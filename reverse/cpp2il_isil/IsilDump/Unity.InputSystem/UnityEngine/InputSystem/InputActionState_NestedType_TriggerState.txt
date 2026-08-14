@@ -1,0 +1,812 @@
+Type: UnityEngine.InputSystem.InputActionState+TriggerState
+
+Method: UnityEngine.InputSystem.InputActionPhase get_phase()
+
+Disassembly:
+	movzx eax,byte ptr [rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_phase(UnityEngine.InputSystem.InputActionPhase value)
+
+Disassembly:
+	mov [rcx],dl
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Boolean get_isDisabled()
+
+Disassembly:
+	cmp byte ptr [rcx],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean get_isWaiting()
+
+Disassembly:
+	cmp byte ptr [rcx],1
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 1
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean get_isStarted()
+
+Disassembly:
+	cmp byte ptr [rcx],2
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 2
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean get_isPerformed()
+
+Disassembly:
+	cmp byte ptr [rcx],3
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 3
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean get_isCanceled()
+
+Disassembly:
+	cmp byte ptr [rcx],4
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 4
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Double get_time()
+
+Disassembly:
+	movsd xmm0,qword ptr [rcx+8]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+8]
+	002 Return xmm0
+
+Method: System.Void set_time(System.Double value)
+
+Disassembly:
+	movsd qword ptr [rcx+8],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+8], xmm1
+	002 Return 
+
+Method: System.Double get_startTime()
+
+Disassembly:
+	movsd xmm0,qword ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+16]
+	002 Return xmm0
+
+Method: System.Void set_startTime(System.Double value)
+
+Disassembly:
+	movsd qword ptr [rcx+10h],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+16], xmm1
+	002 Return 
+
+Method: System.Single get_magnitude()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+1Ch]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+28]
+	002 Return xmm0
+
+Method: System.Void set_magnitude(System.Single value)
+
+Disassembly:
+	or byte ptr [rcx+1],1
+	movss dword ptr [rcx+1Ch],xmm1
+	ret
+
+ISIL:
+	001 Or [rcx+1], [rcx+1], 1
+	002 Move [rcx+28], xmm1
+	003 Return 
+
+Method: System.Boolean get_haveMagnitude()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+1]
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+1]
+	002 And rax, rax, 1
+	003 Return rax
+
+Method: System.Int32 get_mapIndex()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+2]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+2]
+	002 Return rax
+
+Method: System.Void set_mapIndex(System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	cmp edx,0FFh
+	ja short 0000000181F3DA44h
+	mov [rcx+2],dl
+	add rsp,28h
+	ret
+	lea rcx,[1834F0018h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18351FAD0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181808440h
+	lea rcx,[18354F0C0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, 255
+	003 JumpIfGreater {7}
+	004 Move [rcx+2], rdx
+	005 ShiftStack 40
+	006 Return 
+	007 LoadAddress rcx, [0x1834F0018]
+	008 Move stack:0x20, rbx
+	009 Call 0x18037BBB0, rcx, rdx, r8, r9
+	010 Move rcx, rax
+	011 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x18351FAD0]
+	013 Move rbx, rax
+	014 Call 0x18037BBB0, rcx, rdx, r8, r9
+	015 Move rdx, rax
+	016 Move r8, 0
+	017 Move rcx, rbx
+	018 Call NotSupportedException..ctor, rcx, rdx
+	019 LoadAddress rcx, [0x18354F0C0]
+	020 Call 0x18037BBB0, rcx, rdx, r8, r9
+	021 Move rdx, rax
+	022 Move rcx, rbx
+	023 Call 0x18037BDF0, rcx, rdx, r8, r9
+	024 Move rbx, stack:0x20
+
+Method: System.Int32 get_controlIndex()
+
+Disassembly:
+	mov eax,0FFFFh
+	cmp [rcx+4],ax
+	je short 0000000181F3D700h
+	movzx eax,word ptr [rcx+4]
+	ret
+	mov eax,0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move rax, 0xFFFF
+	002 Compare [rcx+4], rax
+	003 JumpIfEqual {6}
+	004 Move rax, [rcx+4]
+	005 Return rax
+	006 Move rax, 0xFFFFFFFF
+	007 Return rax
+
+Method: System.Void set_controlIndex(System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	cmp edx,0FFFFFFFFh
+	je short 0000000181F3D84Ah
+	cmp edx,0FFFEh
+	ja short 0000000181F3D855h
+	mov [rcx+4],dx
+	add rsp,28h
+	ret
+	mov word ptr [rcx+4],0FFFFh
+	add rsp,28h
+	ret
+	lea rcx,[1834F0018h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[183520010h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181808440h
+	lea rcx,[18354EF40h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, 18446744073709551615
+	003 JumpIfEqual {9}
+	004 Compare rdx, 0xFFFE
+	005 JumpIfGreater {12}
+	006 Move [rcx+4], rdx
+	007 ShiftStack 40
+	008 Return 
+	009 Move [rcx+4], 0xFFFF
+	010 ShiftStack 40
+	011 Return 
+	012 LoadAddress rcx, [0x1834F0018]
+	013 Move stack:0x20, rbx
+	014 Call 0x18037BBB0, rcx, rdx, r8, r9
+	015 Move rcx, rax
+	016 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x183520010]
+	018 Move rbx, rax
+	019 Call 0x18037BBB0, rcx, rdx, r8, r9
+	020 Move rdx, rax
+	021 Move r8, 0
+	022 Move rcx, rbx
+	023 Call NotSupportedException..ctor, rcx, rdx
+	024 LoadAddress rcx, [0x18354EF40]
+	025 Call 0x18037BBB0, rcx, rdx, r8, r9
+	026 Move rdx, rax
+	027 Move rcx, rbx
+	028 Call 0x18037BDF0, rcx, rdx, r8, r9
+	029 Move rbx, stack:0x20
+
+Method: System.Int32 get_bindingIndex()
+
+Disassembly:
+	movzx eax,word ptr [rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_bindingIndex(System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	cmp edx,0FFFFh
+	ja short 0000000181F3D7D5h
+	mov [rcx+18h],dx
+	add rsp,28h
+	ret
+	lea rcx,[1834F0018h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18351FF50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181808440h
+	lea rcx,[18354EE80h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, 0xFFFF
+	003 JumpIfGreater {7}
+	004 Move [rcx+24], rdx
+	005 ShiftStack 40
+	006 Return 
+	007 LoadAddress rcx, [0x1834F0018]
+	008 Move stack:0x20, rbx
+	009 Call 0x18037BBB0, rcx, rdx, r8, r9
+	010 Move rcx, rax
+	011 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x18351FF50]
+	013 Move rbx, rax
+	014 Call 0x18037BBB0, rcx, rdx, r8, r9
+	015 Move rdx, rax
+	016 Move r8, 0
+	017 Move rcx, rbx
+	018 Call NotSupportedException..ctor, rcx, rdx
+	019 LoadAddress rcx, [0x18354EE80]
+	020 Call 0x18037BBB0, rcx, rdx, r8, r9
+	021 Move rdx, rax
+	022 Move rcx, rbx
+	023 Call 0x18037BDF0, rcx, rdx, r8, r9
+	024 Move rbx, stack:0x20
+
+Method: System.Int32 get_interactionIndex()
+
+Disassembly:
+	mov eax,0FFFFh
+	cmp [rcx+1Ah],ax
+	je short 0000000181F3D750h
+	movzx eax,word ptr [rcx+1Ah]
+	ret
+	mov eax,0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move rax, 0xFFFF
+	002 Compare [rcx+26], rax
+	003 JumpIfEqual {6}
+	004 Move rax, [rcx+26]
+	005 Return rax
+	006 Move rax, 0xFFFFFFFF
+	007 Return rax
+
+Method: System.Void set_interactionIndex(System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	cmp edx,0FFFFFFFFh
+	je short 0000000181F3D92Ah
+	cmp edx,0FFFEh
+	ja short 0000000181F3D935h
+	mov [rcx+1Ah],dx
+	add rsp,28h
+	ret
+	mov word ptr [rcx+1Ah],0FFFFh
+	add rsp,28h
+	ret
+	lea rcx,[1834F0018h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[1835200D0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181808440h
+	lea rcx,[18354F000h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, 18446744073709551615
+	003 JumpIfEqual {9}
+	004 Compare rdx, 0xFFFE
+	005 JumpIfGreater {12}
+	006 Move [rcx+26], rdx
+	007 ShiftStack 40
+	008 Return 
+	009 Move [rcx+26], 0xFFFF
+	010 ShiftStack 40
+	011 Return 
+	012 LoadAddress rcx, [0x1834F0018]
+	013 Move stack:0x20, rbx
+	014 Call 0x18037BBB0, rcx, rdx, r8, r9
+	015 Move rcx, rax
+	016 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x1835200D0]
+	018 Move rbx, rax
+	019 Call 0x18037BBB0, rcx, rdx, r8, r9
+	020 Move rdx, rax
+	021 Move r8, 0
+	022 Move rcx, rbx
+	023 Call NotSupportedException..ctor, rcx, rdx
+	024 LoadAddress rcx, [0x18354F000]
+	025 Call 0x18037BBB0, rcx, rdx, r8, r9
+	026 Move rdx, rax
+	027 Move rcx, rbx
+	028 Call 0x18037BDF0, rcx, rdx, r8, r9
+	029 Move rbx, stack:0x20
+
+Method: System.UInt32 get_lastPerformedInUpdate()
+
+Disassembly:
+	mov eax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+
+Method: System.Void set_lastPerformedInUpdate(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+20h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+32], rdx
+	002 Return 
+
+Method: System.UInt32 get_lastCompletedInUpdate()
+
+Disassembly:
+	mov eax,[rcx+30h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+48]
+	002 Return rax
+
+Method: System.Void set_lastCompletedInUpdate(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+30h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+48], rdx
+	002 Return 
+
+Method: System.UInt32 get_lastCanceledInUpdate()
+
+Disassembly:
+	mov eax,[rcx+24h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+36]
+	002 Return rax
+
+Method: System.Void set_lastCanceledInUpdate(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+24h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+36], rdx
+	002 Return 
+
+Method: System.UInt32 get_pressedInUpdate()
+
+Disassembly:
+	mov eax,[rcx+28h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+40]
+	002 Return rax
+
+Method: System.Void set_pressedInUpdate(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+28h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+40], rdx
+	002 Return 
+
+Method: System.UInt32 get_releasedInUpdate()
+
+Disassembly:
+	mov eax,[rcx+2Ch]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+44]
+	002 Return rax
+
+Method: System.Void set_releasedInUpdate(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+2Ch],edx
+	ret
+
+ISIL:
+	001 Move [rcx+44], rdx
+	002 Return 
+
+Method: System.Boolean get_isPassThrough()
+
+Disassembly:
+	test byte ptr [rcx+1],2
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+1], 2
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void set_isPassThrough(System.Boolean value)
+
+Disassembly:
+	movzx r8d,byte ptr [rcx+1]
+	movzx eax,r8b
+	and r8b,0FDh
+	or al,2
+	movzx r8d,r8b
+	test dl,dl
+	movzx eax,al
+	cmovne r8d,eax
+	mov [rcx+1],r8b
+	ret
+
+ISIL:
+	001 Move r8, [rcx+1]
+	002 Move rax, r8
+	003 And r8, r8, 253
+	004 Or rax, rax, 2
+	005 Move r8, r8
+	006 Compare rdx, 0
+	007 Move rax, rax
+	008 JumpIfEqual {10}
+	009 Move r8, rax
+	010 Nop 
+	011 Move [rcx+1], r8
+	012 Return 
+
+Method: System.Boolean get_isButton()
+
+Disassembly:
+	test byte ptr [rcx+1],20h
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+1], 32
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void set_isButton(System.Boolean value)
+
+Disassembly:
+	movzx r8d,byte ptr [rcx+1]
+	movzx eax,r8b
+	and r8b,0DFh
+	or al,20h
+	movzx r8d,r8b
+	test dl,dl
+	movzx eax,al
+	cmovne r8d,eax
+	mov [rcx+1],r8b
+	ret
+
+ISIL:
+	001 Move r8, [rcx+1]
+	002 Move rax, r8
+	003 And r8, r8, 223
+	004 Or rax, rax, 32
+	005 Move r8, r8
+	006 Compare rdx, 0
+	007 Move rax, rax
+	008 JumpIfEqual {10}
+	009 Move r8, rax
+	010 Nop 
+	011 Move [rcx+1], r8
+	012 Return 
+
+Method: System.Boolean get_isPressed()
+
+Disassembly:
+	test byte ptr [rcx+1],40h
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+1], 64
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void set_isPressed(System.Boolean value)
+
+Disassembly:
+	movzx r8d,byte ptr [rcx+1]
+	movzx eax,r8b
+	and r8b,0BFh
+	or al,40h
+	movzx r8d,r8b
+	test dl,dl
+	movzx eax,al
+	cmovne r8d,eax
+	mov [rcx+1],r8b
+	ret
+
+ISIL:
+	001 Move r8, [rcx+1]
+	002 Move rax, r8
+	003 And r8, r8, 191
+	004 Or rax, rax, 64
+	005 Move r8, r8
+	006 Compare rdx, 0
+	007 Move rax, rax
+	008 JumpIfEqual {10}
+	009 Move r8, rax
+	010 Nop 
+	011 Move [rcx+1], r8
+	012 Return 
+
+Method: System.Boolean get_mayNeedConflictResolution()
+
+Disassembly:
+	test byte ptr [rcx+1],4
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+1], 4
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void set_mayNeedConflictResolution(System.Boolean value)
+
+Disassembly:
+	movzx r8d,byte ptr [rcx+1]
+	movzx eax,r8b
+	and r8b,0FBh
+	or al,4
+	movzx r8d,r8b
+	test dl,dl
+	movzx eax,al
+	cmovne r8d,eax
+	mov [rcx+1],r8b
+	ret
+
+ISIL:
+	001 Move r8, [rcx+1]
+	002 Move rax, r8
+	003 And r8, r8, 251
+	004 Or rax, rax, 4
+	005 Move r8, r8
+	006 Compare rdx, 0
+	007 Move rax, rax
+	008 JumpIfEqual {10}
+	009 Move r8, rax
+	010 Nop 
+	011 Move [rcx+1], r8
+	012 Return 
+
+Method: System.Boolean get_hasMultipleConcurrentActuations()
+
+Disassembly:
+	test byte ptr [rcx+1],8
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+1], 8
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void set_hasMultipleConcurrentActuations(System.Boolean value)
+
+Disassembly:
+	movzx r8d,byte ptr [rcx+1]
+	movzx eax,r8b
+	and r8b,0F7h
+	or al,8
+	movzx r8d,r8b
+	test dl,dl
+	movzx eax,al
+	cmovne r8d,eax
+	mov [rcx+1],r8b
+	ret
+
+ISIL:
+	001 Move r8, [rcx+1]
+	002 Move rax, r8
+	003 And r8, r8, 247
+	004 Or rax, rax, 8
+	005 Move r8, r8
+	006 Compare rdx, 0
+	007 Move rax, rax
+	008 JumpIfEqual {10}
+	009 Move r8, rax
+	010 Nop 
+	011 Move [rcx+1], r8
+	012 Return 
+
+Method: System.Boolean get_inProcessing()
+
+Disassembly:
+	test byte ptr [rcx+1],10h
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+1], 16
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void set_inProcessing(System.Boolean value)
+
+Disassembly:
+	movzx r8d,byte ptr [rcx+1]
+	movzx eax,r8b
+	and r8b,0EFh
+	or al,10h
+	movzx r8d,r8b
+	test dl,dl
+	movzx eax,al
+	cmovne r8d,eax
+	mov [rcx+1],r8b
+	ret
+
+ISIL:
+	001 Move r8, [rcx+1]
+	002 Move rax, r8
+	003 And r8, r8, 239
+	004 Or rax, rax, 16
+	005 Move r8, r8
+	006 Compare rdx, 0
+	007 Move rax, rax
+	008 JumpIfEqual {10}
+	009 Move r8, rax
+	010 Nop 
+	011 Move [rcx+1], r8
+	012 Return 
+
+Method: UnityEngine.InputSystem.InputActionState+TriggerState+Flags get_flags()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+1]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+1]
+	002 Return rax
+
+Method: System.Void set_flags(UnityEngine.InputSystem.InputActionState+TriggerState+Flags value)
+
+Disassembly:
+	mov [rcx+1],dl
+	ret
+
+ISIL:
+	001 Move [rcx+1], rdx
+	002 Return 
+

@@ -1,0 +1,96 @@
+Type: UnityEngine.Rendering.RenderTargetBinding
+
+Method: UnityEngine.Rendering.RenderTargetIdentifier[] get_colorRenderTargets()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Return rax
+
+Method: UnityEngine.Rendering.RenderTargetIdentifier get_depthRenderTarget()
+
+Disassembly:
+	movups xmm0,[rdx+8]
+	movups xmm1,[rdx+18h]
+	movups [rcx],xmm0
+	movsd xmm0,qword ptr [rdx+28h]
+	movups [rcx+10h],xmm1
+	movsd qword ptr [rcx+20h],xmm0
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+8]
+	002 Move xmm1, [rdx+24]
+	003 Move [rcx], xmm0
+	004 Move xmm0, [rdx+40]
+	005 Move [rcx+16], xmm1
+	006 Move [rcx+32], xmm0
+	007 Move rax, rcx
+	008 Return rax
+
+Method: UnityEngine.Rendering.RenderBufferLoadAction[] get_colorLoadActions()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx+30h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+48]
+	003 Return rax
+
+Method: UnityEngine.Rendering.RenderBufferStoreAction[] get_colorStoreActions()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx+38h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+56]
+	003 Return rax
+
+Method: UnityEngine.Rendering.RenderBufferLoadAction get_depthLoadAction()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+40h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+64]
+	003 Return rax
+
+Method: UnityEngine.Rendering.RenderBufferStoreAction get_depthStoreAction()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+44h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+68]
+	003 Return rax
+
+Method: UnityEngine.Rendering.RenderTargetFlags get_flags()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+48h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+72]
+	003 Return rax
+

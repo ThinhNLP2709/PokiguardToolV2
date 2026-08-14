@@ -1,0 +1,382 @@
+Type: UnityEngine.Rendering.Line
+
+Method: UnityEngine.Rendering.Line LineOfPlaneIntersectingPlane(Unity.Mathematics.float4 a, Unity.Mathematics.float4 b)
+
+Disassembly:
+	sub rsp,28h
+	movss xmm4,dword ptr [rdx+0Ch]
+	mov rax,rcx
+	movss xmm2,dword ptr [r8+0Ch]
+	movaps xmm3,xmm4
+	mulss xmm3,dword ptr [r8]
+	movaps xmm1,xmm4
+	mulss xmm4,dword ptr [r8+8]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [rdx]
+	movss xmm5,dword ptr [rdx+4]
+	mulss xmm1,dword ptr [r8+4]
+	subss xmm3,xmm0
+	movaps [rsp+10h],xmm6
+	movss xmm6,dword ptr [rdx+8]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [rdx+4]
+	mulss xmm2,dword ptr [rdx+8]
+	subss xmm1,xmm0
+	movaps [rsp],xmm7
+	movss xmm7,dword ptr [rdx]
+	movaps xmm0,xmm6
+	mulss xmm0,dword ptr [r8+4]
+	subss xmm4,xmm2
+	mulss xmm6,dword ptr [r8]
+	unpcklps xmm3,xmm1
+	movsd qword ptr [rcx],xmm3
+	movss dword ptr [rcx+8],xmm4
+	movaps xmm4,xmm5
+	mulss xmm4,dword ptr [r8+8]
+	mulss xmm5,dword ptr [r8]
+	subss xmm4,xmm0
+	movaps xmm0,xmm7
+	mulss xmm7,dword ptr [r8+4]
+	mulss xmm0,dword ptr [r8+8]
+	subss xmm7,xmm5
+	subss xmm6,xmm0
+	unpcklps xmm4,xmm6
+	movaps xmm6,[rsp+10h]
+	movsd qword ptr [rcx+0Ch],xmm4
+	movss dword ptr [rcx+14h],xmm7
+	movaps xmm7,[rsp]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm4, [rdx+12]
+	003 Move rax, rcx
+	004 Move xmm2, [r8+12]
+	005 Move xmm3, xmm4
+	006 Multiply xmm3, xmm3, [r8]
+	007 Move xmm1, xmm4
+	008 Multiply xmm4, xmm4, [r8+8]
+	009 Move xmm0, xmm2
+	010 Multiply xmm0, xmm0, [rdx]
+	011 Move xmm5, [rdx+4]
+	012 Multiply xmm1, xmm1, [r8+4]
+	013 Subtract xmm3, xmm3, xmm0
+	014 Move stack:0x10, xmm6
+	015 Move xmm6, [rdx+8]
+	016 Move xmm0, xmm2
+	017 Multiply xmm0, xmm0, [rdx+4]
+	018 Multiply xmm2, xmm2, [rdx+8]
+	019 Subtract xmm1, xmm1, xmm0
+	020 Move stack:0x0, xmm7
+	021 Move xmm7, [rdx]
+	022 Move xmm0, xmm6
+	023 Multiply xmm0, xmm0, [r8+4]
+	024 Subtract xmm4, xmm4, xmm2
+	025 Multiply xmm6, xmm6, [r8]
+	026 Move XMM_TEMP.S[0], xmm3.S[0]
+	027 Move XMM_TEMP.S[1], xmm1.S[0]
+	028 Move XMM_TEMP.S[2], xmm3.S[1]
+	029 Move XMM_TEMP.S[3], xmm1.S[1]
+	030 Move xmm3, XMM_TEMP
+	031 Move [rcx], xmm3
+	032 Move [rcx+8], xmm4
+	033 Move xmm4, xmm5
+	034 Multiply xmm4, xmm4, [r8+8]
+	035 Multiply xmm5, xmm5, [r8]
+	036 Subtract xmm4, xmm4, xmm0
+	037 Move xmm0, xmm7
+	038 Multiply xmm7, xmm7, [r8+4]
+	039 Multiply xmm0, xmm0, [r8+8]
+	040 Subtract xmm7, xmm7, xmm5
+	041 Subtract xmm6, xmm6, xmm0
+	042 Move XMM_TEMP.S[0], xmm4.S[0]
+	043 Move XMM_TEMP.S[1], xmm6.S[0]
+	044 Move XMM_TEMP.S[2], xmm4.S[1]
+	045 Move XMM_TEMP.S[3], xmm6.S[1]
+	046 Move xmm4, XMM_TEMP
+	047 Move xmm6, stack:0x10
+	048 Move [rcx+12], xmm4
+	049 Move [rcx+20], xmm7
+	050 Move xmm7, stack:0x0
+	051 ShiftStack 40
+	052 Return rax
+
+Method: Unity.Mathematics.float4 PlaneContainingLineAndPoint(UnityEngine.Rendering.Line a, Unity.Mathematics.float3 b)
+
+Disassembly:
+	sub rsp,58h
+	movsd xmm5,qword ptr [r8]
+	mov rax,rcx
+	movsd xmm3,qword ptr [rdx]
+	movaps xmm4,xmm5
+	movss xmm0,dword ptr [r8+8]
+	movaps xmm1,xmm4
+	movaps [rsp+40h],xmm6
+	movaps [rsp+30h],xmm7
+	movsd xmm7,qword ptr [rdx+0Ch]
+	mulss xmm0,xmm7
+	movaps [rsp+20h],xmm8
+	movaps xmm8,xmm7
+	shufps xmm1,xmm1,55h
+	movaps xmm2,xmm8
+	mulss xmm1,dword ptr [rdx+14h]
+	shufps xmm2,xmm2,55h
+	mulss xmm2,dword ptr [r8+8]
+	movaps [rsp+10h],xmm9
+	movaps xmm9,xmm5
+	movaps xmm6,[rsp+40h]
+	subss xmm2,xmm1
+	movss xmm1,dword ptr [rdx+14h]
+	mulss xmm1,xmm5
+	subss xmm1,xmm0
+	movaps xmm0,xmm3
+	shufps xmm0,xmm0,55h
+	addss xmm2,xmm3
+	addss xmm1,xmm0
+	movaps xmm0,xmm5
+	movss dword ptr [rcx],xmm2
+	movaps xmm2,xmm9
+	shufps xmm0,xmm0,55h
+	mulss xmm8,xmm0
+	movaps xmm0,xmm7
+	movaps xmm7,[rsp+30h]
+	shufps xmm2,xmm2,55h
+	shufps xmm0,xmm0,55h
+	mulss xmm4,xmm0
+	movaps xmm0,xmm3
+	mulss xmm9,xmm3
+	movss dword ptr [rcx+4],xmm1
+	subss xmm8,xmm4
+	movss xmm1,dword ptr [r8+8]
+	mulss xmm1,dword ptr [rdx+8]
+	shufps xmm0,xmm0,55h
+	addss xmm8,dword ptr [rdx+8]
+	mulss xmm2,xmm0
+	addss xmm2,xmm9
+	movss dword ptr [rcx+8],xmm8
+	movaps xmm8,[rsp+20h]
+	movaps xmm9,[rsp+10h]
+	addss xmm2,xmm1
+	xorps xmm2,[182A500A0h]
+	movss dword ptr [rcx+0Ch],xmm2
+	add rsp,58h
+	ret
+
+ISIL:
+	001 ShiftStack -88
+	002 Move xmm5, [r8]
+	003 Move rax, rcx
+	004 Move xmm3, [rdx]
+	005 Move xmm4, xmm5
+	006 Move xmm0, [r8+8]
+	007 Move xmm1, xmm4
+	008 Move stack:0x40, xmm6
+	009 Move stack:0x30, xmm7
+	010 Move xmm7, [rdx+12]
+	011 Multiply xmm0, xmm0, xmm7
+	012 Move stack:0x20, xmm8
+	013 Move xmm8, xmm7
+	014 Move XMM_TEMP.S[0], xmm1.S[1]
+	015 Move XMM_TEMP.S[1], xmm1.S[1]
+	016 Move XMM_TEMP.S[2], xmm1.S[1]
+	017 Move XMM_TEMP.S[3], xmm1.S[1]
+	018 Move xmm1, XMM_TEMP
+	019 Move xmm2, xmm8
+	020 Multiply xmm1, xmm1, [rdx+20]
+	021 Move XMM_TEMP.S[0], xmm2.S[1]
+	022 Move XMM_TEMP.S[1], xmm2.S[1]
+	023 Move XMM_TEMP.S[2], xmm2.S[1]
+	024 Move XMM_TEMP.S[3], xmm2.S[1]
+	025 Move xmm2, XMM_TEMP
+	026 Multiply xmm2, xmm2, [r8+8]
+	027 Move stack:0x10, xmm9
+	028 Move xmm9, xmm5
+	029 Move xmm6, stack:0x40
+	030 Subtract xmm2, xmm2, xmm1
+	031 Move xmm1, [rdx+20]
+	032 Multiply xmm1, xmm1, xmm5
+	033 Subtract xmm1, xmm1, xmm0
+	034 Move xmm0, xmm3
+	035 Move XMM_TEMP.S[0], xmm0.S[1]
+	036 Move XMM_TEMP.S[1], xmm0.S[1]
+	037 Move XMM_TEMP.S[2], xmm0.S[1]
+	038 Move XMM_TEMP.S[3], xmm0.S[1]
+	039 Move xmm0, XMM_TEMP
+	040 Add xmm2, xmm2, xmm3
+	041 Add xmm1, xmm1, xmm0
+	042 Move xmm0, xmm5
+	043 Move [rcx], xmm2
+	044 Move xmm2, xmm9
+	045 Move XMM_TEMP.S[0], xmm0.S[1]
+	046 Move XMM_TEMP.S[1], xmm0.S[1]
+	047 Move XMM_TEMP.S[2], xmm0.S[1]
+	048 Move XMM_TEMP.S[3], xmm0.S[1]
+	049 Move xmm0, XMM_TEMP
+	050 Multiply xmm8, xmm8, xmm0
+	051 Move xmm0, xmm7
+	052 Move xmm7, stack:0x30
+	053 Move XMM_TEMP.S[0], xmm2.S[1]
+	054 Move XMM_TEMP.S[1], xmm2.S[1]
+	055 Move XMM_TEMP.S[2], xmm2.S[1]
+	056 Move XMM_TEMP.S[3], xmm2.S[1]
+	057 Move xmm2, XMM_TEMP
+	058 Move XMM_TEMP.S[0], xmm0.S[1]
+	059 Move XMM_TEMP.S[1], xmm0.S[1]
+	060 Move XMM_TEMP.S[2], xmm0.S[1]
+	061 Move XMM_TEMP.S[3], xmm0.S[1]
+	062 Move xmm0, XMM_TEMP
+	063 Multiply xmm4, xmm4, xmm0
+	064 Move xmm0, xmm3
+	065 Multiply xmm9, xmm9, xmm3
+	066 Move [rcx+4], xmm1
+	067 Subtract xmm8, xmm8, xmm4
+	068 Move xmm1, [r8+8]
+	069 Multiply xmm1, xmm1, [rdx+8]
+	070 Move XMM_TEMP.S[0], xmm0.S[1]
+	071 Move XMM_TEMP.S[1], xmm0.S[1]
+	072 Move XMM_TEMP.S[2], xmm0.S[1]
+	073 Move XMM_TEMP.S[3], xmm0.S[1]
+	074 Move xmm0, XMM_TEMP
+	075 Add xmm8, xmm8, [rdx+8]
+	076 Multiply xmm2, xmm2, xmm0
+	077 Add xmm2, xmm2, xmm9
+	078 Move [rcx+8], xmm8
+	079 Move xmm8, stack:0x20
+	080 Move xmm9, stack:0x10
+	081 Add xmm2, xmm2, xmm1
+	082 Xor xmm2, xmm2, [0x182A500A0]
+	083 Move [rcx+12], xmm2
+	084 ShiftStack 88
+	085 Return rax
+
+Method: Unity.Mathematics.float4 PlaneContainingLineWithNormalPerpendicularToVector(UnityEngine.Rendering.Line a, Unity.Mathematics.float3 b)
+
+Disassembly:
+	sub rsp,48h
+	movsd xmm4,qword ptr [r8]
+	mov rax,rcx
+	movsd xmm5,qword ptr [rdx+0Ch]
+	movaps xmm3,xmm4
+	movss xmm0,dword ptr [r8+8]
+	movaps xmm1,xmm3
+	movaps [rsp+30h],xmm6
+	movaps xmm6,xmm5
+	mulss xmm0,xmm5
+	movaps xmm2,xmm6
+	shufps xmm2,xmm2,55h
+	mulss xmm2,dword ptr [r8+8]
+	movaps [rsp+20h],xmm7
+	movsd xmm7,qword ptr [rdx]
+	movaps [rsp+10h],xmm8
+	movaps xmm8,xmm4
+	shufps xmm1,xmm1,55h
+	mulss xmm1,dword ptr [rdx+14h]
+	subss xmm2,xmm1
+	movss xmm1,dword ptr [r8+8]
+	mulss xmm1,dword ptr [rdx+8]
+	movss dword ptr [rcx],xmm2
+	movss xmm2,dword ptr [rdx+14h]
+	mulss xmm2,xmm4
+	subss xmm2,xmm0
+	movaps xmm0,xmm4
+	shufps xmm0,xmm0,55h
+	mulss xmm6,xmm0
+	movaps xmm0,xmm5
+	shufps xmm0,xmm0,55h
+	movss dword ptr [rcx+4],xmm2
+	movaps xmm2,xmm8
+	shufps xmm2,xmm2,55h
+	mulss xmm3,xmm0
+	movaps xmm0,xmm7
+	mulss xmm8,xmm7
+	movaps xmm7,[rsp+20h]
+	subss xmm6,xmm3
+	shufps xmm0,xmm0,55h
+	mulss xmm2,xmm0
+	movss dword ptr [rcx+8],xmm6
+	movaps xmm6,[rsp+30h]
+	addss xmm2,xmm8
+	movaps xmm8,[rsp+10h]
+	addss xmm2,xmm1
+	xorps xmm2,[182A500A0h]
+	movss dword ptr [rcx+0Ch],xmm2
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move xmm4, [r8]
+	003 Move rax, rcx
+	004 Move xmm5, [rdx+12]
+	005 Move xmm3, xmm4
+	006 Move xmm0, [r8+8]
+	007 Move xmm1, xmm3
+	008 Move stack:0x30, xmm6
+	009 Move xmm6, xmm5
+	010 Multiply xmm0, xmm0, xmm5
+	011 Move xmm2, xmm6
+	012 Move XMM_TEMP.S[0], xmm2.S[1]
+	013 Move XMM_TEMP.S[1], xmm2.S[1]
+	014 Move XMM_TEMP.S[2], xmm2.S[1]
+	015 Move XMM_TEMP.S[3], xmm2.S[1]
+	016 Move xmm2, XMM_TEMP
+	017 Multiply xmm2, xmm2, [r8+8]
+	018 Move stack:0x20, xmm7
+	019 Move xmm7, [rdx]
+	020 Move stack:0x10, xmm8
+	021 Move xmm8, xmm4
+	022 Move XMM_TEMP.S[0], xmm1.S[1]
+	023 Move XMM_TEMP.S[1], xmm1.S[1]
+	024 Move XMM_TEMP.S[2], xmm1.S[1]
+	025 Move XMM_TEMP.S[3], xmm1.S[1]
+	026 Move xmm1, XMM_TEMP
+	027 Multiply xmm1, xmm1, [rdx+20]
+	028 Subtract xmm2, xmm2, xmm1
+	029 Move xmm1, [r8+8]
+	030 Multiply xmm1, xmm1, [rdx+8]
+	031 Move [rcx], xmm2
+	032 Move xmm2, [rdx+20]
+	033 Multiply xmm2, xmm2, xmm4
+	034 Subtract xmm2, xmm2, xmm0
+	035 Move xmm0, xmm4
+	036 Move XMM_TEMP.S[0], xmm0.S[1]
+	037 Move XMM_TEMP.S[1], xmm0.S[1]
+	038 Move XMM_TEMP.S[2], xmm0.S[1]
+	039 Move XMM_TEMP.S[3], xmm0.S[1]
+	040 Move xmm0, XMM_TEMP
+	041 Multiply xmm6, xmm6, xmm0
+	042 Move xmm0, xmm5
+	043 Move XMM_TEMP.S[0], xmm0.S[1]
+	044 Move XMM_TEMP.S[1], xmm0.S[1]
+	045 Move XMM_TEMP.S[2], xmm0.S[1]
+	046 Move XMM_TEMP.S[3], xmm0.S[1]
+	047 Move xmm0, XMM_TEMP
+	048 Move [rcx+4], xmm2
+	049 Move xmm2, xmm8
+	050 Move XMM_TEMP.S[0], xmm2.S[1]
+	051 Move XMM_TEMP.S[1], xmm2.S[1]
+	052 Move XMM_TEMP.S[2], xmm2.S[1]
+	053 Move XMM_TEMP.S[3], xmm2.S[1]
+	054 Move xmm2, XMM_TEMP
+	055 Multiply xmm3, xmm3, xmm0
+	056 Move xmm0, xmm7
+	057 Multiply xmm8, xmm8, xmm7
+	058 Move xmm7, stack:0x20
+	059 Subtract xmm6, xmm6, xmm3
+	060 Move XMM_TEMP.S[0], xmm0.S[1]
+	061 Move XMM_TEMP.S[1], xmm0.S[1]
+	062 Move XMM_TEMP.S[2], xmm0.S[1]
+	063 Move XMM_TEMP.S[3], xmm0.S[1]
+	064 Move xmm0, XMM_TEMP
+	065 Multiply xmm2, xmm2, xmm0
+	066 Move [rcx+8], xmm6
+	067 Move xmm6, stack:0x30
+	068 Add xmm2, xmm2, xmm8
+	069 Move xmm8, stack:0x10
+	070 Add xmm2, xmm2, xmm1
+	071 Xor xmm2, xmm2, [0x182A500A0]
+	072 Move [rcx+12], xmm2
+	073 ShiftStack 72
+	074 Return rax
+

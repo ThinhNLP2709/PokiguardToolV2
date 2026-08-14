@@ -1,0 +1,100 @@
+Type: UnityEngine.Rendering.NoInterpClampedIntParameter
+
+Method: System.Int32 get_value()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_value(System.Int32 value)
+
+Disassembly:
+	mov eax,[rcx+20h]
+	cmp edx,eax
+	jl short 00000001821FF112h
+	mov eax,[rcx+24h]
+	cmp edx,eax
+	jg short 00000001821FF112h
+	mov [rcx+18h],edx
+	ret
+	mov [rcx+18h],eax
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Compare rdx, rax
+	003 JumpIfLess {9}
+	004 Move rax, [rcx+36]
+	005 Compare rdx, rax
+	006 JumpIfGreater {9}
+	007 Move [rcx+24], rdx
+	008 Return 
+	009 Move [rcx+24], rax
+	010 Return 
+
+Method: System.Void .ctor(System.Int32 value, System.Int32 min, System.Int32 max, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753C5Dh],0
+	mov edi,r9d
+	mov esi,r8d
+	mov ebp,edx
+	mov rbx,rcx
+	jne short 0000000182206E5Bh
+	lea rcx,[18355F660h]
+	call 000000018037BB90h
+	mov byte ptr [183753C5Dh],1
+	mov r9,[18355F660h]
+	mov edx,ebp
+	movzx r8d,byte ptr [rsp+50h]
+	mov rcx,rbx
+	call 0000000180F6FC50h
+	mov rbp,[rsp+38h]
+	mov [rbx+20h],esi
+	mov rsi,[rsp+40h]
+	mov [rbx+24h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183753C5D], 0
+	008 Move rdi, r9
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18355F660]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753C5D], 1
+	016 Move r9, [0x18355F660]
+	017 Move rdx, rbp
+	018 Move r8, stack:0x50
+	019 Move rcx, rbx
+	020 Call 0x180F6FC50, rcx, rdx, r8
+	021 Move rbp, stack:0x38
+	022 Move [rbx+32], rsi
+	023 Move rsi, stack:0x40
+	024 Move [rbx+36], rdi
+	025 Move rbx, stack:0x30
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return 
+

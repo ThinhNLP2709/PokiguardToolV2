@@ -1,0 +1,145 @@
+Type: UnityEngine.UIElements.TempMeshAllocator
+
+Method: System.Void Create(System.Runtime.InteropServices.GCHandle handle, out UnityEngine.UIElements.TempMeshAllocator allocator)
+
+Disassembly:
+	mov [rdx],rcx
+	ret
+
+ISIL:
+	001 Move [rdx], rcx
+	002 Return 
+
+Method: System.Void AllocateTempMesh(System.Int32 vertexCount, System.Int32 indexCount, out Unity.Collections.NativeSlice`1<UnityEngine.UIElements.Vertex> vertices, out Unity.Collections.NativeSlice`1<System.UInt16> indices)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [18375B564h],0
+	mov rdi,r9
+	mov esi,r8d
+	mov ebp,edx
+	mov rbx,rcx
+	jne short 000000018296BBB7h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[18351C830h]
+	call 000000018037BB90h
+	mov byte ptr [18375B564h],1
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180A1D850h
+	mov r8,rax
+	test rax,rax
+	jne short 000000018296BBCDh
+	xor ebx,ebx
+	jmp short 000000018296BC09h
+	mov r9,[rax]
+	mov rdx,[18351C830h]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r9+130h],al
+	jb short 000000018296BBFFh
+	movzx ecx,al
+	mov rax,[r9+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	jne short 000000018296BBFFh
+	mov eax,1
+	jmp short 000000018296BC01h
+	xor eax,eax
+	xor ebx,ebx
+	test eax,eax
+	cmovne rbx,r8
+	mov rcx,[18351F5A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018296BC1Eh
+	call 000000018037BED0h
+	test rbx,rbx
+	setne cl
+	xor edx,edx
+	call 00000001825CB380h
+	test rbx,rbx
+	je short 000000018296BC5Dh
+	mov r9,rdi
+	mov qword ptr [rsp+68h],0
+	mov r8d,esi
+	mov edx,ebp
+	mov rcx,rbx
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	jmp near ptr 0000000182862910h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Compare [0x18375B564], 0
+	008 Move rdi, r9
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {18}
+	013 LoadAddress rcx, [0x18351F5A0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18351C830]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 Move [0x18375B564], 1
+	018 Move rdx, 0
+	019 Move rcx, rbx
+	020 Call 0x180A1D850, rcx, rdx, r8, r9
+	021 Move r8, rax
+	022 Compare rax, 0
+	023 JumpIfNotEqual {26}
+	024 Move rbx, 0
+	025 Goto {43}
+	026 Move r9, [rax]
+	027 Move rdx, typeof(UnityEngine.UIElements.UIR.TempMeshAllocatorImpl)
+	028 Move rax, [rdx+304]
+	029 Compare [r9+304], rax
+	030 JumpIfLess {37}
+	031 Move rcx, rax
+	032 Move rax, [r9+200]
+	033 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	034 JumpIfNotEqual {37}
+	035 Move rax, 1
+	036 Goto {38}
+	037 Move rax, 0
+	038 Move rbx, 0
+	039 Compare rax, 0
+	040 JumpIfEqual {42}
+	041 Move rbx, r8
+	042 Nop 
+	043 Move rcx, typeof(UnityEngine.Debug)
+	044 Compare [rcx+228], 0
+	045 JumpIfNotEqual {47}
+	046 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	047 Compare rbx, 0
+	048 NotImplemented "setne cl"
+	049 Move rdx, 0
+	050 Call Debug.Assert, rcx, rdx
+	051 Compare rbx, 0
+	052 JumpIfEqual {66}
+	053 Move r9, rdi
+	054 Move stack:0x68, 0
+	055 Move r8, rsi
+	056 Move rdx, rbp
+	057 Move rcx, rbx
+	058 Move rbx, stack:0x40
+	059 Move rbp, stack:0x48
+	060 Move rsi, stack:0x50
+	061 ShiftStack 48
+	062 Move rdi, stack:0x0
+	063 ShiftStack 8
+	064 Call TempMeshAllocatorImpl.AllocateTempMesh, rcx, rdx, r8, r9, stack:0x0
+	065 Return 
+	066 Call 0x18037BE30, rcx, rdx, r8, r9
+

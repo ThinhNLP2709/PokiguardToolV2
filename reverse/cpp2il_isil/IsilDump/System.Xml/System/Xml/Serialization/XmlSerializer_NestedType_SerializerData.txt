@@ -1,0 +1,115 @@
+Type: System.Xml.Serialization.XmlSerializer+SerializerData
+
+Method: System.Xml.Serialization.XmlSerializationWriter CreateWriter()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837519A8h],0
+	mov rbx,rcx
+	jne short 0000000181CF6E79h
+	lea rcx,[183542448h]
+	call 000000018037BB90h
+	mov byte ptr [1837519A8h],1
+	mov rcx,[18375C180h]
+	mov rdi,[rbx+18h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181CF6E92h
+	call 000000018037BED0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000180A1D8E0h
+	test al,al
+	jne short 0000000181CF6ED9h
+	cmp qword ptr [rbx+28h],0
+	jne short 0000000181CF6EB7h
+	xor eax,eax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rcx,[rbx+28h]
+	mov rdx,[rcx]
+	mov rax,[rdx+178h]
+	mov rdx,[rdx+180h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	mov rcx,[rbx+18h]
+	xor edx,edx
+	call 00000001818341B0h
+	mov r8,[183542448h]
+	test rax,rax
+	je short 0000000181CF6EAAh
+	mov r9,[rax]
+	movzx ecx,byte ptr [r8+130h]
+	cmp [r9+130h],cl
+	jb short 0000000181CF6F15h
+	movzx edx,cl
+	mov rcx,[r9+0C8h]
+	cmp [rcx+rdx*8-8],r8
+	je short 0000000181CF6EACh
+	mov rdx,r8
+	mov rcx,rax
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837519A8], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183542448]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x1837519A8], 1
+	011 Move rcx, [0x18375C180]
+	012 Move rdi, [rbx+24]
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move r8, 0
+	017 Move rdx, 0
+	018 Move rcx, rdi
+	019 Call 0x180A1D8E0, rcx, rdx, r8
+	020 Compare rax, 0
+	021 JumpIfNotEqual {39}
+	022 Compare [rbx+40], 0
+	023 JumpIfNotEqual {30}
+	024 Move rax, 0
+	025 Move rbx, stack:0x30
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+	030 Move rcx, [rbx+40]
+	031 Move rdx, [rcx]
+	032 Move rax, [rdx+376]
+	033 Move rdx, [rdx+384]
+	034 Move rbx, stack:0x30
+	035 ShiftStack 32
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 CallNoReturn rax
+	039 Move rcx, [rbx+24]
+	040 Move rdx, 0
+	041 Call Activator.CreateInstance, rcx, rdx
+	042 Move r8, typeof(System.Xml.Serialization.XmlSerializationWriter)
+	043 Compare rax, 0
+	044 JumpIfEqual {24}
+	045 Move r9, [rax]
+	046 Move rcx, [r8+304]
+	047 Compare [r9+304], rcx
+	048 JumpIfLess {53}
+	049 Move rdx, rcx
+	050 Move rcx, [r9+200]
+	051 Compare [rcx+0xFFFFFFF8+rdx*8], r8
+	052 JumpIfEqual {25}
+	053 Move rdx, r8
+	054 Move rcx, rax
+	055 Call 0x18037ACF0, rcx, rdx, r8, r9
+

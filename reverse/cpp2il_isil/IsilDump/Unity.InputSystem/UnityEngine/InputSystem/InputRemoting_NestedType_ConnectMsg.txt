@@ -1,0 +1,62 @@
+Type: UnityEngine.InputSystem.InputRemoting+ConnectMsg
+
+Method: System.Void Process(UnityEngine.InputSystem.InputRemoting receiver)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	test rcx,rcx
+	je short 0000000181FC5842h
+	test byte ptr [rcx+10h],1
+	jne short 0000000181FC582Ch
+	test byte ptr [rcx+10h],2
+	je short 0000000181FC5826h
+	xor edx,edx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000181FDC810h
+	add rsp,20h
+	pop rbx
+	ret
+	xor edx,edx
+	call 0000000181FDC070h
+	xor edx,edx
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000181FDBE70h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Compare rcx, 0
+	006 JumpIfEqual {30}
+	007 Compare [rcx+16], 1
+	008 JumpIfNotEqual {21}
+	009 Compare [rcx+16], 2
+	010 JumpIfEqual {17}
+	011 Move rdx, 0
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Call InputRemoting.StartSending, rcx, rdx
+	016 Return 
+	017 ShiftStack 32
+	018 Move rbx, stack:0x0
+	019 ShiftStack 8
+	020 Return 
+	021 Move rdx, 0
+	022 Call InputRemoting.SendAllGeneratedLayouts, rcx, rdx
+	023 Move rdx, 0
+	024 Move rcx, rbx
+	025 ShiftStack 32
+	026 Move rbx, stack:0x0
+	027 ShiftStack 8
+	028 Call InputRemoting.SendAllDevices, rcx, rdx
+	029 Return 
+	030 Call 0x18037BE30, rcx, rdx, r8, r9
+

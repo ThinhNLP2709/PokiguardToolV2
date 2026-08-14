@@ -1,0 +1,251 @@
+Type: System.Runtime.Serialization.Formatters.Binary.ObjectNull
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void SetNullCount(System.Int32 nullCount)
+
+Disassembly:
+	mov [rcx+10h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+
+Method: System.Void Write(System.Runtime.Serialization.Formatters.Binary.__BinaryWriter sout)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp dword ptr [rcx+10h],1
+	mov rbx,rdx
+	mov rdi,rcx
+	je near ptr 00000001816FD771h
+	test rdx,rdx
+	je near ptr 00000001816FD79Fh
+	cmp dword ptr [rcx+10h],100h
+	mov rcx,[rdx+30h]
+	jl short 00000001816FD72Ch
+	test rcx,rcx
+	je near ptr 00000001816FD79Fh
+	mov r8,[rcx]
+	mov dl,0Eh
+	mov rax,[r8+1C8h]
+	mov r8,[r8+1D0h]
+	call rax
+	mov rcx,[rbx+30h]
+	test rcx,rcx
+	je near ptr 00000001816FD79Fh
+	mov r8,[rcx]
+	mov edx,[rdi+10h]
+	mov rax,[r8+258h]
+	mov r8,[r8+260h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	test rcx,rcx
+	je short 00000001816FD79Fh
+	mov r8,[rcx]
+	mov dl,0Dh
+	mov rax,[r8+1C8h]
+	mov r8,[r8+1D0h]
+	call rax
+	mov rcx,[rbx+30h]
+	test rcx,rcx
+	je short 00000001816FD79Fh
+	mov r8,[rcx]
+	movzx edx,byte ptr [rdi+10h]
+	mov rax,[r8+1C8h]
+	mov r8,[r8+1D0h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	test rbx,rbx
+	je short 00000001816FD79Fh
+	mov rcx,[rdx+30h]
+	test rcx,rcx
+	je short 00000001816FD79Fh
+	mov r8,[rcx]
+	mov dl,0Ah
+	mov rax,[r8+1C8h]
+	mov r8,[r8+1D0h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [rcx+16], 1
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfEqual {52}
+	009 Compare rdx, 0
+	010 JumpIfEqual {66}
+	011 Compare [rcx+16], 256
+	012 Move rcx, [rdx+48]
+	013 JumpIfLess {33}
+	014 Compare rcx, 0
+	015 JumpIfEqual {66}
+	016 Move r8, [rcx]
+	017 Move rdx, 14
+	018 Move rax, [r8+456]
+	019 Move r8, [r8+464]
+	020 Call rax
+	021 Move rcx, [rbx+48]
+	022 Compare rcx, 0
+	023 JumpIfEqual {66}
+	024 Move r8, [rcx]
+	025 Move rdx, [rdi+16]
+	026 Move rax, [r8+600]
+	027 Move r8, [r8+608]
+	028 Move rbx, stack:0x30
+	029 ShiftStack 32
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 CallNoReturn rax
+	033 Compare rcx, 0
+	034 JumpIfEqual {66}
+	035 Move r8, [rcx]
+	036 Move rdx, 13
+	037 Move rax, [r8+456]
+	038 Move r8, [r8+464]
+	039 Call rax
+	040 Move rcx, [rbx+48]
+	041 Compare rcx, 0
+	042 JumpIfEqual {66}
+	043 Move r8, [rcx]
+	044 Move rdx, [rdi+16]
+	045 Move rax, [r8+456]
+	046 Move r8, [r8+464]
+	047 Move rbx, stack:0x30
+	048 ShiftStack 32
+	049 Move rdi, stack:0x0
+	050 ShiftStack 8
+	051 CallNoReturn rax
+	052 Compare rbx, 0
+	053 JumpIfEqual {66}
+	054 Move rcx, [rdx+48]
+	055 Compare rcx, 0
+	056 JumpIfEqual {66}
+	057 Move r8, [rcx]
+	058 Move rdx, 10
+	059 Move rax, [r8+456]
+	060 Move r8, [r8+464]
+	061 Move rbx, stack:0x30
+	062 ShiftStack 32
+	063 Move rdi, stack:0x0
+	064 ShiftStack 8
+	065 CallNoReturn rax
+	066 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Read(System.Runtime.Serialization.Formatters.Binary.__BinaryParser input, System.Runtime.Serialization.Formatters.Binary.BinaryHeaderEnum binaryHeaderEnum)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov r9,rdx
+	mov rbx,rcx
+	add r8d,0FFFFFFF6h
+	je short 00000001816FD69Dh
+	sub r8d,1
+	je short 00000001816FD6A4h
+	sub r8d,1
+	je short 00000001816FD6A4h
+	sub r8d,1
+	je short 00000001816FD682h
+	cmp r8d,1
+	jne short 00000001816FD6A4h
+	test rdx,rdx
+	je short 00000001816FD6AAh
+	xor edx,edx
+	mov rcx,r9
+	call 0000000181724F50h
+	mov [rbx+10h],eax
+	add rsp,20h
+	pop rbx
+	ret
+	test r9,r9
+	je short 00000001816FD6AAh
+	xor edx,edx
+	mov rcx,r9
+	call 0000000181724A70h
+	movzx eax,al
+	mov [rbx+10h],eax
+	add rsp,20h
+	pop rbx
+	ret
+	mov dword ptr [rcx+10h],1
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move r9, rdx
+	005 Move rbx, rcx
+	006 Add r8, r8, 18446744073709551606
+	007 JumpIfEqual {37}
+	008 Subtract r8, r8, 1
+	009 JumpIfEqual {38}
+	010 Subtract r8, r8, 1
+	011 JumpIfEqual {38}
+	012 Subtract r8, r8, 1
+	013 JumpIfEqual {26}
+	014 Compare r8, 1
+	015 JumpIfNotEqual {38}
+	016 Compare rdx, 0
+	017 JumpIfEqual {42}
+	018 Move rdx, 0
+	019 Move rcx, r9
+	020 Call __BinaryParser.ReadInt32, rcx, rdx
+	021 Move [rbx+16], rax
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Return 
+	026 Compare r9, 0
+	027 JumpIfEqual {42}
+	028 Move rdx, 0
+	029 Move rcx, r9
+	030 Call 0x181724A70, rcx, rdx
+	031 Move rax, rax
+	032 Move [rbx+16], rax
+	033 ShiftStack 32
+	034 Move rbx, stack:0x0
+	035 ShiftStack 8
+	036 Return 
+	037 Move [rcx+16], 1
+	038 ShiftStack 32
+	039 Move rbx, stack:0x0
+	040 ShiftStack 8
+	041 Return 
+	042 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Dump()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+

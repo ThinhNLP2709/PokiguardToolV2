@@ -1,0 +1,139 @@
+Type: UnityEngine.Rendering.Universal.Internal.CopyDepthPass+<>c
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183754662h],0
+	jne short 000000018237CA22h
+	lea rcx,[183560B98h]
+	call 000000018037BB90h
+	mov byte ptr [183754662h],1
+	mov rcx,[183560B98h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	mov rcx,[183560B98h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[183560B98h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183754662], 0
+	005 JumpIfNotEqual {9}
+	006 LoadAddress rcx, [0x183560B98]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183754662], 1
+	009 Move rcx, typeof(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+<>c)
+	010 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	011 Move rdx, 0
+	012 Move rcx, rax
+	013 Move rbx, rax
+	014 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	015 Move rcx, typeof(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+<>c)
+	016 Move rdx, [rcx+184]
+	017 Move [rdx], rbx
+	018 Move rdx, rbx
+	019 Move rcx, typeof(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+<>c)
+	020 Move rcx, [rcx+184]
+	021 ShiftStack 32
+	022 Move rbx, stack:0x0
+	023 ShiftStack 8
+	024 Call 0x18037ACB0, rcx, rdx, r8, r9
+	025 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <Render>b__38_0(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+PassData data, UnityEngine.Rendering.RenderGraphModule.RasterGraphContext context)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183754663h],0
+	mov rdi,r8
+	mov rbx,rdx
+	jne short 000000018237C3CCh
+	lea rcx,[183520068h]
+	call 000000018037BB90h
+	mov byte ptr [183754663h],1
+	test rbx,rbx
+	je short 000000018237C422h
+	mov rcx,[183520068h]
+	movaps [rsp+30h],xmm6
+	movups xmm6,[rbx+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018237C3EFh
+	call 000000018037BED0h
+	xor edx,edx
+	movdqa [rsp+20h],xmm6
+	lea rcx,[rsp+20h]
+	call 000000018223C900h
+	mov rcx,[rdi+8]
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	movaps xmm6,[rsp+30h]
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	jmp near ptr 000000018236AFC0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183754663], 0
+	006 Move rdi, r8
+	007 Move rbx, rdx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183520068]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183754663], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {35}
+	014 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.TextureHandle)
+	015 Move stack:0x30, xmm6
+	016 Move xmm6, [rbx+16]
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rdx, 0
+	021 Move stack:0x20, xmm6
+	022 LoadAddress rcx, stack:0x20
+	023 Call TextureHandle.op_Implicit, rcx, rdx
+	024 Move rcx, [rdi+8]
+	025 Move r9, 0
+	026 Move r8, rax
+	027 Move rdx, rbx
+	028 Move xmm6, stack:0x30
+	029 Move rbx, stack:0x50
+	030 ShiftStack 64
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Call CopyDepthPass.ExecutePass, rcx, rdx, r8, r9
+	034 Return 
+	035 Call 0x18037BE30, rcx, rdx, r8, r9
+

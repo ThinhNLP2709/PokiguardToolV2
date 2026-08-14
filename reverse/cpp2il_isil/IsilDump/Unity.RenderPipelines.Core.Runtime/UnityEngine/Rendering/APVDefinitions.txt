@@ -1,0 +1,131 @@
+Type: UnityEngine.Rendering.APVDefinitions
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183753A6Ah],0
+	jne short 00000001821B4C8Ch
+	lea rcx,[1834FA108h]
+	call 000000018037BB90h
+	lea rcx,[183565900h]
+	call 000000018037BB90h
+	mov byte ptr [183753A6Ah],1
+	mov rax,[1834FA108h]
+	mov edx,4
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx],0F3h
+	mov rax,[1834FA108h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx+4],4
+	mov rcx,[183565900h]
+	call 000000018037AD30h
+	mov dword ptr [rsp+38h],0FF009FE6h
+	mov rdx,rax
+	test rax,rax
+	je near ptr 00000001821B4D72h
+	cmp dword ptr [rax+18h],0
+	jbe near ptr 00000001821B4D78h
+	mov ecx,[rsp+38h]
+	mov [rax+20h],ecx
+	cmp dword ptr [rax+18h],1
+	mov dword ptr [rsp+38h],0FF739E00h
+	jbe short 00000001821B4D78h
+	mov eax,[rsp+38h]
+	mov [rdx+24h],eax
+	cmp dword ptr [rdx+18h],2
+	mov dword ptr [rsp+38h],0FFB27200h
+	jbe short 00000001821B4D78h
+	mov eax,[rsp+38h]
+	mov [rdx+28h],eax
+	cmp dword ptr [rdx+18h],3
+	mov dword ptr [rsp+38h],0FFA779CCh
+	jbe short 00000001821B4D78h
+	mov eax,[rsp+38h]
+	mov [rdx+2Ch],eax
+	mov rax,[1834FA108h]
+	mov rcx,[rax+0B8h]
+	mov [rcx+8],rdx
+	mov rax,[1834FA108h]
+	mov rcx,[rax+0B8h]
+	add rcx,8
+	call 000000018037ACB0h
+	mov rax,[1834FA108h]
+	movdqa xmm0,[182B1E980h]
+	mov rcx,[rax+0B8h]
+	movups [rcx+10h],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183753A6A], 0
+	003 JumpIfNotEqual {9}
+	004 LoadAddress rcx, [0x1834FA108]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x183565900]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183753A6A], 1
+	009 Move rax, typeof(UnityEngine.Rendering.APVDefinitions)
+	010 Move rdx, 4
+	011 Move rcx, [rax+184]
+	012 Move [rcx], 243
+	013 Move rax, typeof(UnityEngine.Rendering.APVDefinitions)
+	014 Move rcx, [rax+184]
+	015 Move [rcx+4], 4
+	016 Move rcx, typeof(UnityEngine.Color32[1])
+	017 Call "SzArrayNew", rcx, rdx, r8, r9
+	018 Move stack:0x38, 0xFF009FE6
+	019 Move rdx, rax
+	020 Compare rax, 0
+	021 JumpIfEqual {54}
+	022 Compare [rax+24], 0
+	023 JumpIfLessOrEqual {56}
+	024 Move rcx, stack:0x38
+	025 Move [rax+32], rcx
+	026 Compare [rax+24], 1
+	027 Move stack:0x38, 0xFF739E00
+	028 JumpIfLessOrEqual {56}
+	029 Move rax, stack:0x38
+	030 Move [rdx+36], rax
+	031 Compare [rdx+24], 2
+	032 Move stack:0x38, 0xFFB27200
+	033 JumpIfLessOrEqual {56}
+	034 Move rax, stack:0x38
+	035 Move [rdx+40], rax
+	036 Compare [rdx+24], 3
+	037 Move stack:0x38, 0xFFA779CC
+	038 JumpIfLessOrEqual {56}
+	039 Move rax, stack:0x38
+	040 Move [rdx+44], rax
+	041 Move rax, typeof(UnityEngine.Rendering.APVDefinitions)
+	042 Move rcx, [rax+184]
+	043 Move [rcx+8], rdx
+	044 Move rax, typeof(UnityEngine.Rendering.APVDefinitions)
+	045 Move rcx, [rax+184]
+	046 Add rcx, rcx, 8
+	047 Call 0x18037ACB0, rcx, rdx, r8, r9
+	048 Move rax, typeof(UnityEngine.Rendering.APVDefinitions)
+	049 Move xmm0, [0x182B1E980]
+	050 Move rcx, [rax+184]
+	051 Move [rcx+16], xmm0
+	052 ShiftStack 40
+	053 Return 
+	054 Call 0x18037BE30, rcx, rdx, r8, r9
+	055 Interrupt 
+	056 Call 0x18037BE20, rcx, rdx, r8, r9
+

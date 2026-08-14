@@ -1,0 +1,144 @@
+Type: UnityEngine.InputForUI.TextInputEvent
+
+Method: System.Void set_timestamp(Unity.IntegerTime.DiscreteTime value)
+
+Disassembly:
+	mov [rcx+8],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: UnityEngine.InputForUI.EventSource get_eventSource()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_eventSource(UnityEngine.InputForUI.EventSource value)
+
+Disassembly:
+	mov [rcx+10h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+
+Method: System.Void set_playerId(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+14h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+20], rdx
+	002 Return 
+
+Method: UnityEngine.InputForUI.EventModifiers get_eventModifiers()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_eventModifiers(UnityEngine.InputForUI.EventModifiers value)
+
+Disassembly:
+	mov [rcx+18h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+24], rdx
+	002 Return 
+
+Method: System.String ToString()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183759611h],0
+	mov rbx,rcx
+	jne short 00000001826B97A9h
+	lea rcx,[18352B8A0h]
+	call 000000018037BB90h
+	mov byte ptr [183759611h],1
+	cmp word ptr [rbx],0
+	jne short 00000001826B97C2h
+	mov rax,[18375C130h]
+	mov rcx,[rax+0B8h]
+	mov rdi,[rcx]
+	jmp short 00000001826B97E4h
+	mov rcx,[18375C128h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001826B97D7h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000181771590h
+	mov rdi,rax
+	movzx ecx,word ptr [rbx]
+	lea rdx,[rsp+30h]
+	mov [rsp+30h],ecx
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov rcx,[18352B8A0h]
+	xor r9d,r9d
+	mov r8,rdi
+	mov rdx,rax
+	call 000000018165E830h
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183759611], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x18352B8A0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183759611], 1
+	011 Compare [rbx], 0
+	012 JumpIfNotEqual {17}
+	013 Move rax, [0x18375C130]
+	014 Move rcx, [rax+184]
+	015 Move rdi, [rcx]
+	016 Goto {25}
+	017 Move rcx, [0x18375C128]
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Move rdx, 0
+	022 Move rcx, rbx
+	023 Call 0x181771590, rcx, rdx
+	024 Move rdi, rax
+	025 Move rcx, [rbx]
+	026 LoadAddress rdx, stack:0x30
+	027 Move stack:0x30, rcx
+	028 Move rcx, [0x18375C0E8]
+	029 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	030 Move rcx, "text input 0x{0:x8} '{1}'"
+	031 Move r9, 0
+	032 Move r8, rdi
+	033 Move rdx, rax
+	034 Call String.Format, rcx, rdx, r8, r9
+	035 Move rbx, stack:0x38
+	036 ShiftStack 32
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Return rax
+

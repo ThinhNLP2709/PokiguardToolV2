@@ -1,0 +1,36 @@
+Type: Unity.Mathematics.float2+DebuggerProxy
+
+Method: System.Void .ctor(Unity.Mathematics.float2 v)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov [rsp+30h],rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	movss xmm0,dword ptr [rsp+30h]
+	movss xmm1,dword ptr [rsp+34h]
+	movss dword ptr [rbx+10h],xmm0
+	movss dword ptr [rbx+14h],xmm1
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move stack:0x30, rdx
+	005 Move rbx, rcx
+	006 Move rdx, 0
+	007 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	008 Move xmm0, stack:0x30
+	009 Move xmm1, stack:0x34
+	010 Move [rbx+16], xmm0
+	011 Move [rbx+20], xmm1
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Return 
+

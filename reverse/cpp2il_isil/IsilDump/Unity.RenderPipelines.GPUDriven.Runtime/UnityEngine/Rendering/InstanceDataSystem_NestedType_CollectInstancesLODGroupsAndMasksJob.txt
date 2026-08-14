@@ -1,0 +1,80 @@
+Type: UnityEngine.Rendering.InstanceDataSystem+CollectInstancesLODGroupsAndMasksJob
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183754011h],0
+	mov rbx,rcx
+	movsxd rdi,edx
+	jne short 0000000182269511h
+	lea rcx,[183514EC8h]
+	call 000000018037BB90h
+	mov byte ptr [183754011h],1
+	mov r8,[rbx]
+	lea rdx,[rbx+10h]
+	lea rcx,[rbx+0E8h]
+	xor r9d,r9d
+	mov r8d,[r8+rdi*4]
+	call 0000000182277210h
+	mov rcx,[183514EC8h]
+	movups xmm0,[rbx+158h]
+	movsxd rsi,eax
+	mov rcx,[rcx+20h]
+	movups [rsp+20h],xmm0
+	test byte ptr [rcx+135h],1
+	jne short 0000000182269558h
+	call 0000000180384C90h
+	movups xmm0,[rsp+20h]
+	mov rdx,[rbx+188h]
+	movq rax,xmm0
+	mov rbx,[rsp+40h]
+	mov ecx,[rax+rsi*4]
+	mov rsi,[rsp+48h]
+	mov [rdx+rdi*4],ecx
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [0x183754011], 0
+	007 Move rbx, rcx
+	008 Move rdi, rdx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183514EC8]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183754011], 1
+	013 Move r8, [rbx]
+	014 LoadAddress rdx, [rbx+16]
+	015 LoadAddress rcx, [rbx+232]
+	016 Move r9, 0
+	017 Move r8, [r8+rdi*4]
+	018 Call ReadOnly.InstanceToIndex, rcx, rdx, r8
+	019 Move rcx, [0x183514EC8]
+	020 Move xmm0, [rbx+344]
+	021 Move rsi, rax
+	022 Move rcx, [rcx+32]
+	023 Move stack:0x20, xmm0
+	024 Compare [rcx+309], 1
+	025 JumpIfNotEqual {28}
+	026 Call 0x180384C90, rcx, rdx, r8, r9
+	027 Move xmm0, stack:0x20
+	028 Move rdx, [rbx+392]
+	029 Move rax, xmm0
+	030 Move rbx, stack:0x40
+	031 Move rcx, [rax+rsi*4]
+	032 Move rsi, stack:0x48
+	033 Move [rdx+rdi*4], rcx
+	034 ShiftStack 48
+	035 Move rdi, stack:0x0
+	036 ShiftStack 8
+	037 Return 
+

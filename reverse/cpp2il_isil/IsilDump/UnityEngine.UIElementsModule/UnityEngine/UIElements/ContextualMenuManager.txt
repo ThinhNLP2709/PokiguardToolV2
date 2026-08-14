@@ -1,0 +1,434 @@
+Type: UnityEngine.UIElements.ContextualMenuManager
+
+Method: System.Boolean get_displayMenuHandledOSX()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_displayMenuHandledOSX(System.Boolean value)
+
+Disassembly:
+	mov [rcx+10h],dl
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+
+Method: System.Void DisplayMenuIfEventMatches(UnityEngine.UIElements.EventBase evt, UnityEngine.UIElements.IEventHandler eventHandler)
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.Void DisplayMenu(UnityEngine.UIElements.EventBase triggerEvent, UnityEngine.UIElements.IEventHandler target)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [18375A356h],0
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbp,rcx
+	jne short 00000001827AE8C9h
+	lea rcx,[1835272E0h]
+	call 000000018037BB90h
+	mov byte ptr [18375A356h],1
+	mov rcx,[1835272E0h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000182911D20h
+	mov r9,rbx
+	mov qword ptr [rsp+20h],0
+	mov r8,rdi
+	mov rdx,rsi
+	mov rcx,rbp
+	call 00000001827AE600h
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Compare [0x18375A356], 0
+	008 Move rdi, r8
+	009 Move rsi, rdx
+	010 Move rbp, rcx
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x1835272E0]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x18375A356], 1
+	015 Move rcx, typeof(UnityEngine.UIElements.DropdownMenu)
+	016 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	017 Move rdx, 0
+	018 Move rcx, rax
+	019 Move rbx, rax
+	020 Call DropdownMenu..ctor, rcx, rdx
+	021 Move r9, rbx
+	022 Move stack:0x20, 0
+	023 Move r8, rdi
+	024 Move rdx, rsi
+	025 Move rcx, rbp
+	026 Call ContextualMenuManager.DisplayMenu, rcx, rdx, r8, r9
+	027 Move rbx, stack:0x40
+	028 Move rbp, stack:0x48
+	029 Move rsi, stack:0x50
+	030 ShiftStack 48
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Return 
+
+Method: System.Void DisplayMenu(UnityEngine.UIElements.EventBase triggerEvent, UnityEngine.UIElements.IEventHandler target, UnityEngine.UIElements.DropdownMenu menu)
+
+Disassembly:
+	mov [rsp+8],rcx
+	push rbx
+	push rsi
+	push rdi
+	push r13
+	push r14
+	push r15
+	sub rsp,58h
+	mov rsi,r9
+	mov r15,r8
+	mov rdi,rdx
+	mov r13,rcx
+	cmp byte ptr [18375A357h],0
+	jne short 00000001827AE68Eh
+	lea rcx,[183515E28h]
+	call 000000018037BB90h
+	lea rcx,[183540548h]
+	call 000000018037BB90h
+	lea rcx,[183541680h]
+	call 000000018037BB90h
+	lea rcx,[183546FB8h]
+	call 000000018037BB90h
+	lea rcx,[183551A68h]
+	call 000000018037BB90h
+	lea rcx,[1834F8AD0h]
+	call 000000018037BB90h
+	lea rcx,[1834F8F20h]
+	call 000000018037BB90h
+	lea rcx,[183527CE8h]
+	call 000000018037BB90h
+	mov byte ptr [18375A357h],1
+	xor ebx,ebx
+	mov [rsp+98h],ebx
+	mov [rsp+0A0h],ebx
+	mov rcx,[183515E28h]
+	cmp [rcx+0E4h],ebx
+	jne short 00000001827AE6B2h
+	call 000000018037BED0h
+	mov [rsp+20h],rbx
+	mov r9,r13
+	mov r8,r15
+	mov rdx,rsi
+	mov rcx,rdi
+	call 00000001829105A0h
+	mov [rsp+0A8h],rax
+	mov [rsp+38h],rbx
+	lea rax,[rsp+0A8h]
+	mov [rsp+40h],rax
+	mov rdx,[183546FB8h]
+	mov rcx,rdi
+	call 000000018037ACD0h
+	test rax,rax
+	je short 00000001827AE70Ch
+	xor ecx,ecx
+	mov r8,rax
+	mov rdx,[183546FB8h]
+	call 00000001800025F0h
+	mov r14d,eax
+	jmp short 00000001827AE736h
+	mov rax,[1834F8F20h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 00000001827AE72Bh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[1834F8F20h]
+	mov rax,[rax+0B8h]
+	mov r14d,[rax+8]
+	mov [rsp+98h],r14d
+	mov rdi,[rsp+0A8h]
+	test rdi,rdi
+	je near ptr 00000001827AE881h
+	mov esi,[rdi+88h]
+	mov [rsp+0A0h],esi
+	test r15,r15
+	je short 00000001827AE7B9h
+	mov rdx,[183541680h]
+	mov r9,[r15]
+	movzx ecx,word ptr [r9+12Eh]
+	cmp bx,cx
+	jae short 00000001827AE794h
+	mov r8,[r9+0B0h]
+	nop
+	movzx eax,bx
+	add rax,rax
+	cmp [r8+rax*8],rdx
+	je short 00000001827AE7D1h
+	inc bx
+	cmp bx,cx
+	jb short 00000001827AE780h
+	xor r8d,r8d
+	mov rcx,r15
+	call 0000000180384590h
+	mov r8,rax
+	mov rax,[r8]
+	mov r8,[r8+8]
+	mov rdx,rdi
+	mov rcx,r15
+	call rax
+	mov rdi,[rsp+0A8h]
+	test rdi,rdi
+	je short 00000001827AE7CFh
+	xor ecx,ecx
+	mov r8,rdi
+	mov rdx,[183540548h]
+	call 00000001800025F0h
+	jmp short 00000001827AE828h
+	movzx ecx,bx
+	add rcx,rcx
+	movsxd r8,dword ptr [r8+rcx*8+8]
+	shl r8,4
+	add r8,138h
+	add r8,r9
+	jmp short 00000001827AE7A2h
+	mov r8,[rsp+0A8h]
+	test r8,r8
+	je short 00000001827AE807h
+	xor ecx,ecx
+	mov rdx,[183540548h]
+	call 00000001800025F0h
+	mov rcx,[rsp+38h]
+	test rcx,rcx
+	jne short 00000001827AE887h
+	mov r13,[rsp+90h]
+	mov r14d,[rsp+98h]
+	mov esi,[rsp+0A0h]
+	mov rcx,[183527CE8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001827AE83Dh
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 000000018281D760h
+	test al,al
+	je short 00000001827AE873h
+	mov byte ptr [r13+10h],1
+	test esi,esi
+	js short 00000001827AE873h
+	mov rcx,[1834F8AD0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001827AE866h
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov edx,esi
+	mov ecx,r14d
+	call 0000000182923B00h
+	add rsp,58h
+	pop r15
+	pop r14
+	pop r13
+	pop rdi
+	pop rsi
+	pop rbx
+	ret
+	call 000000018037BE30h
+	nop
+	call 000000018037BEC0h
+
+ISIL:
+	001 Move stack:0x8, rcx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbx
+	004 ShiftStack -8
+	005 Move stack:0x0, rsi
+	006 ShiftStack -8
+	007 Move stack:0x0, rdi
+	008 ShiftStack -8
+	009 Move stack:0x0, r13
+	010 ShiftStack -8
+	011 Move stack:0x0, r14
+	012 ShiftStack -8
+	013 Move stack:0x0, r15
+	014 ShiftStack -88
+	015 Move rsi, r9
+	016 Move r15, r8
+	017 Move rdi, rdx
+	018 Move r13, rcx
+	019 Compare [0x18375A357], 0
+	020 JumpIfNotEqual {38}
+	021 LoadAddress rcx, [0x183515E28]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 LoadAddress rcx, [0x183540548]
+	024 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	025 LoadAddress rcx, [0x183541680]
+	026 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	027 LoadAddress rcx, [0x183546FB8]
+	028 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	029 LoadAddress rcx, [0x183551A68]
+	030 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	031 LoadAddress rcx, [0x1834F8AD0]
+	032 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	033 LoadAddress rcx, [0x1834F8F20]
+	034 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	035 LoadAddress rcx, [0x183527CE8]
+	036 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	037 Move [0x18375A357], 1
+	038 Move rbx, 0
+	039 Move stack:0x98, rbx
+	040 Move stack:0xA0, rbx
+	041 Move rcx, typeof(UnityEngine.UIElements.ContextualMenuPopulateEvent)
+	042 Compare [rcx+228], rbx
+	043 JumpIfNotEqual {45}
+	044 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	045 Move stack:0x20, rbx
+	046 Move r9, r13
+	047 Move r8, r15
+	048 Move rdx, rsi
+	049 Move rcx, rdi
+	050 Call ContextualMenuPopulateEvent.GetPooled, rcx, rdx, r8, r9, stack:0x0
+	051 Move stack:0xA8, rax
+	052 Move stack:0x38, rbx
+	053 LoadAddress rax, stack:0xA8
+	054 Move stack:0x40, rax
+	055 Move rdx, typeof(UnityEngine.UIElements.IPointerEvent)
+	056 Move rcx, rdi
+	057 Call 0x18037ACD0, rcx, rdx, r8, r9
+	058 Compare rax, 0
+	059 JumpIfEqual {66}
+	060 Move rcx, 0
+	061 Move r8, rax
+	062 Move rdx, typeof(UnityEngine.UIElements.IPointerEvent)
+	063 Call 0x1800025F0, rcx, rdx, r8, r9
+	064 Move r14, rax
+	065 Goto {74}
+	066 Move rax, typeof(UnityEngine.UIElements.PointerId)
+	067 Compare [rax+228], 0
+	068 JumpIfNotEqual {72}
+	069 Move rcx, rax
+	070 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	071 Move rax, typeof(UnityEngine.UIElements.PointerId)
+	072 Move rax, [rax+184]
+	073 Move r14, [rax+8]
+	074 Move stack:0x98, r14
+	075 Move rdi, stack:0xA8
+	076 Compare rdi, 0
+	077 JumpIfEqual {165}
+	078 Move rsi, [rdi+136]
+	079 Move stack:0xA0, rsi
+	080 Compare r15, 0
+	081 JumpIfEqual {106}
+	082 Move rdx, typeof(UnityEngine.UIElements.IEventHandler)
+	083 Move r9, [r15]
+	084 Move rcx, [r9+302]
+	085 Compare rbx, rcx
+	086 JumpIfGreaterOrEqual {96}
+	087 Move r8, [r9+176]
+	088 Nop 
+	089 Move rax, rbx
+	090 Add rax, rax, rax
+	091 Compare [r8+rax*8], rdx
+	092 JumpIfEqual {113}
+	093 Add rbx, rbx, 1
+	094 Compare rbx, rcx
+	095 JumpIfLess {89}
+	096 Move r8, 0
+	097 Move rcx, r15
+	098 Call 0x180384590, rcx, rdx, r8, r9
+	099 Move r8, rax
+	100 Move rax, [r8]
+	101 Move r8, [r8+8]
+	102 Move rdx, rdi
+	103 Move rcx, r15
+	104 Call rax
+	105 Move rdi, stack:0xA8
+	106 Compare rdi, 0
+	107 JumpIfEqual {112}
+	108 Move rcx, 0
+	109 Move r8, rdi
+	110 Move rdx, typeof(System.IDisposable)
+	111 Call 0x1800025F0, rcx, rdx, r8, r9
+	112 Goto {132}
+	113 Move rcx, rbx
+	114 Add rcx, rcx, rcx
+	115 Move r8, [r8+8+rcx*8]
+	116 ShiftLeft r8, 4
+	117 Add r8, r8, 312
+	118 Add r8, r8, r9
+	119 Goto {100}
+	120 Move r8, stack:0xA8
+	121 Compare r8, 0
+	122 JumpIfEqual {126}
+	123 Move rcx, 0
+	124 Move rdx, typeof(System.IDisposable)
+	125 Call 0x1800025F0, rcx, rdx, r8, r9
+	126 Move rcx, stack:0x38
+	127 Compare rcx, 0
+	128 JumpIfNotEqual {167}
+	129 Move r13, stack:0x90
+	130 Move r14, stack:0x98
+	131 Move rsi, stack:0xA0
+	132 Move rcx, typeof(UnityEngine.UIElements.UIElementsUtility)
+	133 Compare [rcx+228], 0
+	134 JumpIfNotEqual {136}
+	135 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	136 Move rcx, 0
+	137 Call UIElementsUtility.get_isOSXContextualMenuPlatform, rcx
+	138 Compare rax, 0
+	139 JumpIfEqual {151}
+	140 Move [r13+16], 1
+	141 Compare rsi, 0
+	142 JumpIfSign {151}
+	143 Move rcx, typeof(UnityEngine.UIElements.PointerDeviceState)
+	144 Compare [rcx+228], 0
+	145 JumpIfNotEqual {147}
+	146 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	147 Move r8, 0
+	148 Move rdx, rsi
+	149 Move rcx, r14
+	150 Call PointerDeviceState.ReleaseButton, rcx, rdx, r8
+	151 ShiftStack 88
+	152 Move r15, stack:0x0
+	153 ShiftStack 8
+	154 Move r14, stack:0x0
+	155 ShiftStack 8
+	156 Move r13, stack:0x0
+	157 ShiftStack 8
+	158 Move rdi, stack:0x0
+	159 ShiftStack 8
+	160 Move rsi, stack:0x0
+	161 ShiftStack 8
+	162 Move rbx, stack:0x0
+	163 ShiftStack 8
+	164 Return 
+	165 Call 0x18037BE30, rcx, rdx, r8, r9
+	166 Nop 
+	167 Call 0x18037BEC0, rcx, rdx, r8, r9
+
+Method: System.Void DoDisplayMenu(UnityEngine.UIElements.DropdownMenu menu, UnityEngine.UIElements.EventBase triggerEvent)
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated

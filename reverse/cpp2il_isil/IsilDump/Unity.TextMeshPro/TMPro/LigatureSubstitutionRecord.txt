@@ -1,0 +1,245 @@
+Type: TMPro.LigatureSubstitutionRecord
+
+Method: System.UInt32[] get_componentGlyphIDs()
+
+Disassembly:
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_componentGlyphIDs(System.UInt32[] value)
+
+Disassembly:
+	mov [rcx],rdx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Call 0x18037ACB0, rcx, rdx, r8, r9
+	003 Return 
+
+Method: System.UInt32 get_ligatureGlyphID()
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: System.Void set_ligatureGlyphID(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+8],edx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: System.Boolean op_Equality(TMPro.LigatureSubstitutionRecord lhs, TMPro.LigatureSubstitutionRecord rhs)
+
+Disassembly:
+	sub rsp,28h
+	mov eax,[rdx+8]
+	mov r9,rcx
+	cmp [rcx+8],eax
+	jne short 00000001823B353Bh
+	mov rax,[rcx]
+	test rax,rax
+	je short 00000001823B3548h
+	mov rcx,[rdx]
+	test rcx,rcx
+	je short 00000001823B3548h
+	movsxd rax,dword ptr [rax+18h]
+	cmp eax,[rcx+18h]
+	jne short 00000001823B353Bh
+	xor ecx,ecx
+	test eax,eax
+	jle short 00000001823B3534h
+	mov r10,[rdx]
+	mov r11,rax
+	mov r9,[r9]
+	mov edx,20h
+	mov r8d,ecx
+	nop
+	cmp ecx,[r9+18h]
+	jae short 00000001823B3542h
+	cmp ecx,[r10+18h]
+	jae short 00000001823B3542h
+	mov eax,[r10+rdx]
+	cmp [r9+rdx],eax
+	jne short 00000001823B353Bh
+	inc ecx
+	inc r8
+	add rdx,4
+	cmp r8,r11
+	jl short 00000001823B3510h
+	mov al,1
+	add rsp,28h
+	ret
+	xor al,al
+	add rsp,28h
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+8]
+	003 Move r9, rcx
+	004 Compare [rcx+8], rax
+	005 JumpIfNotEqual {39}
+	006 Move rax, [rcx]
+	007 Compare rax, 0
+	008 JumpIfEqual {44}
+	009 Move rcx, [rdx]
+	010 Compare rcx, 0
+	011 JumpIfEqual {44}
+	012 Move rax, [rax+24]
+	013 Compare rax, [rcx+24]
+	014 JumpIfNotEqual {39}
+	015 Move rcx, 0
+	016 Compare rax, 0
+	017 JumpIfLessOrEqual {36}
+	018 Move r10, [rdx]
+	019 Move r11, rax
+	020 Move r9, [r9]
+	021 Move rdx, 32
+	022 Move r8, rcx
+	023 Nop 
+	024 Compare rcx, [r9+24]
+	025 JumpIfGreaterOrEqual {42}
+	026 Compare rcx, [r10+24]
+	027 JumpIfGreaterOrEqual {42}
+	028 Move rax, [r10+rdx]
+	029 Compare [r9+rdx], rax
+	030 JumpIfNotEqual {39}
+	031 Add rcx, rcx, 1
+	032 Add r8, r8, 1
+	033 Add rdx, rdx, 4
+	034 Compare r8, r11
+	035 JumpIfLess {24}
+	036 Move rax, 1
+	037 ShiftStack 40
+	038 Return rax
+	039 Move rax, 0
+	040 ShiftStack 40
+	041 Return rax
+	042 Call 0x18037BE20, rcx, rdx, r8, r9
+	043 Interrupt 
+	044 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean op_Inequality(TMPro.LigatureSubstitutionRecord lhs, TMPro.LigatureSubstitutionRecord rhs)
+
+Disassembly:
+	sub rsp,38h
+	mov r8,[rcx+8]
+	mov r11,rdx
+	mov rdx,rcx
+	cmp r8d,[r11+8]
+	jne short 00000001823B35D6h
+	mov rax,[rcx]
+	test rax,rax
+	je short 00000001823B35E3h
+	mov rcx,[r11]
+	movsxd rax,dword ptr [rax+18h]
+	test rcx,rcx
+	je short 00000001823B35E3h
+	cmp eax,[rcx+18h]
+	jne short 00000001823B35D6h
+	xor ecx,ecx
+	mov r10,rax
+	test eax,eax
+	jle short 00000001823B35CFh
+	movups xmm0,[rdx]
+	mov r8d,ecx
+	mov edx,20h
+	movups [rsp+20h],xmm0
+	mov r9,[rsp+20h]
+	nop dword ptr [rax+rax]
+	test r9,r9
+	je short 00000001823B35E3h
+	cmp ecx,[r9+18h]
+	jae short 00000001823B35DDh
+	mov rax,[r11]
+	test rax,rax
+	je short 00000001823B35E3h
+	cmp ecx,[rax+18h]
+	jae short 00000001823B35DDh
+	mov eax,[rdx+rax]
+	cmp [rdx+r9],eax
+	jne short 00000001823B35D6h
+	inc ecx
+	inc r8
+	add rdx,4
+	cmp r8,r10
+	jl short 00000001823B35A0h
+	xor al,al
+	add rsp,38h
+	ret
+	mov al,1
+	add rsp,38h
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move r8, [rcx+8]
+	003 Move r11, rdx
+	004 Move rdx, rcx
+	005 Compare r8, [r11+8]
+	006 JumpIfNotEqual {46}
+	007 Move rax, [rcx]
+	008 Compare rax, 0
+	009 JumpIfEqual {51}
+	010 Move rcx, [r11]
+	011 Move rax, [rax+24]
+	012 Compare rcx, 0
+	013 JumpIfEqual {51}
+	014 Compare rax, [rcx+24]
+	015 JumpIfNotEqual {46}
+	016 Move rcx, 0
+	017 Move r10, rax
+	018 Compare rax, 0
+	019 JumpIfLessOrEqual {43}
+	020 Move xmm0, [rdx]
+	021 Move r8, rcx
+	022 Move rdx, 32
+	023 Move stack:0x20, xmm0
+	024 Move r9, stack:0x20
+	025 Nop 
+	026 Compare r9, 0
+	027 JumpIfEqual {51}
+	028 Compare rcx, [r9+24]
+	029 JumpIfGreaterOrEqual {49}
+	030 Move rax, [r11]
+	031 Compare rax, 0
+	032 JumpIfEqual {51}
+	033 Compare rcx, [rax+24]
+	034 JumpIfGreaterOrEqual {49}
+	035 Move rax, [rdx+rax]
+	036 Compare [rdx+r9], rax
+	037 JumpIfNotEqual {46}
+	038 Add rcx, rcx, 1
+	039 Add r8, r8, 1
+	040 Add rdx, rdx, 4
+	041 Compare r8, r10
+	042 JumpIfLess {26}
+	043 Move rax, 0
+	044 ShiftStack 56
+	045 Return rax
+	046 Move rax, 1
+	047 ShiftStack 56
+	048 Return rax
+	049 Call 0x18037BE20, rcx, rdx, r8, r9
+	050 Interrupt 
+	051 Call 0x18037BE30, rcx, rdx, r8, r9
+

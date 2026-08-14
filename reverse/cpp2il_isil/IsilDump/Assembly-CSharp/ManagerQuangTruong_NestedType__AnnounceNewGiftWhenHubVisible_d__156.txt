@@ -1,0 +1,266 @@
+Type: ManagerQuangTruong+<AnnounceNewGiftWhenHubVisible>d__156
+
+Method: System.Void .ctor(System.Int32 <>1__state)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov [rbx+10h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Void System.IDisposable.Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [18374B0F7h],0
+	mov rdi,rcx
+	jne short 0000000180645F35h
+	lea rcx,[183532CE8h]
+	call 000000018037BB90h
+	lea rcx,[18353B838h]
+	call 000000018037BB90h
+	mov byte ptr [18374B0F7h],1
+	mov eax,[rdi+10h]
+	mov rbx,[rdi+20h]
+	movaps [rsp+20h],xmm6
+	test eax,eax
+	jne short 0000000180645F4Ah
+	mov [rdi+28h],eax
+	jmp short 0000000180645F53h
+	cmp eax,1
+	jne near ptr 000000018064602Dh
+	mov dword ptr [rdi+10h],0FFFFFFFFh
+	test rbx,rbx
+	je near ptr 000000018064603Fh
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018062D2A0h
+	movss xmm6,dword ptr [182A4FEE8h]
+	test al,al
+	je short 0000000180645F87h
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018062D660h
+	test al,al
+	je short 0000000180645FE9h
+	comiss xmm6,dword ptr [rdi+28h]
+	jbe short 0000000180645FE9h
+	movss xmm0,dword ptr [rdi+28h]
+	movss xmm6,dword ptr [182A4FBA0h]
+	addss xmm0,xmm6
+	movss dword ptr [rdi+28h],xmm0
+	mov rcx,[183532CE8h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	movaps xmm1,xmm6
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018263E9D0h
+	lea rcx,[rdi+18h]
+	mov [rdi+18h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov al,1
+	mov dword ptr [rdi+10h],1
+	movaps xmm6,[rsp+20h]
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	lea rcx,[rbx+258h]
+	mov qword ptr [rbx+258h],0
+	xor edx,edx
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+28h]
+	comiss xmm0,xmm6
+	jae short 000000018064602Dh
+	movss xmm1,dword ptr [182A4FBCCh]
+	xor r8d,r8d
+	mov rcx,[18353B838h]
+	call 00000001805504C0h
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180632300h
+	movaps xmm6,[rsp+20h]
+	xor al,al
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x18374B0F7], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x183532CE8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18353B838]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374B0F7], 1
+	013 Move rax, [rdi+16]
+	014 Move rbx, [rdi+32]
+	015 Move stack:0x20, xmm6
+	016 Compare rax, 0
+	017 JumpIfNotEqual {20}
+	018 Move [rdi+40], rax
+	019 Goto {22}
+	020 Compare rax, 1
+	021 JumpIfNotEqual {75}
+	022 Move [rdi+16], 0xFFFFFFFF
+	023 Compare rbx, 0
+	024 JumpIfEqual {82}
+	025 Move rdx, 0
+	026 Move rcx, rbx
+	027 Call ManagerQuangTruong.IsHubViewActive, rcx, rdx
+	028 Move xmm6, [0x182A4FEE8]
+	029 Compare rax, 0
+	030 JumpIfEqual {36}
+	031 Move rdx, 0
+	032 Move rcx, rbx
+	033 Call ManagerQuangTruong.IsMatchBlockingHubUi, rcx, rdx
+	034 Compare rax, 0
+	035 JumpIfEqual {61}
+	036 Compare xmm6, [rdi+40]
+	037 JumpIfLessOrEqual {61}
+	038 Move xmm0, [rdi+40]
+	039 Move xmm6, [0x182A4FBA0]
+	040 Add xmm0, xmm0, xmm6
+	041 Move [rdi+40], xmm0
+	042 Move rcx, typeof(UnityEngine.WaitForSecondsRealtime)
+	043 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	044 Move r8, 0
+	045 Move xmm1, xmm6
+	046 Move rcx, rax
+	047 Move rbx, rax
+	048 Call WaitForSecondsRealtime..ctor, rcx, rdx
+	049 LoadAddress rcx, [rdi+24]
+	050 Move [rdi+24], rbx
+	051 Move rdx, rbx
+	052 Call 0x18037ACB0, rcx, rdx, r8, r9
+	053 Move rax, 1
+	054 Move [rdi+16], 1
+	055 Move xmm6, stack:0x20
+	056 Move rbx, stack:0x40
+	057 ShiftStack 48
+	058 Move rdi, stack:0x0
+	059 ShiftStack 8
+	060 Return rax
+	061 LoadAddress rcx, [rbx+600]
+	062 Move [rbx+600], 0
+	063 Move rdx, 0
+	064 Call 0x18037ACB0, rcx, rdx, r8, r9
+	065 Move xmm0, [rdi+40]
+	066 Compare xmm0, xmm6
+	067 JumpIfGreaterOrEqual {75}
+	068 Move xmm1, [0x182A4FBCC]
+	069 Move r8, 0
+	070 Move rcx, "Bạn có quà mới! Mở hộp quà để nhận."
+	071 Call GameNotice.Show, rcx, xmm1, r8
+	072 Move rdx, 0
+	073 Move rcx, rbx
+	074 Call ManagerQuangTruong.PlayGiftArrivalFx, rcx, rdx
+	075 Move xmm6, stack:0x20
+	076 Move rax, 0
+	077 Move rbx, stack:0x40
+	078 ShiftStack 48
+	079 Move rdi, stack:0x0
+	080 ShiftStack 8
+	081 Return rax
+	082 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.Generic.IEnumerator<System.Object>.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void System.Collections.IEnumerator.Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[1834F0018h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001818083D0h
+	lea rcx,[1834F0848h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x1834F0018]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Move rbx, rax
+	011 Call NotSupportedException..ctor, rcx, rdx
+	012 LoadAddress rcx, [0x1834F0848]
+	013 Call 0x18037BBB0, rcx, rdx, r8, r9
+	014 Move rdx, rax
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+

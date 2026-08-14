@@ -1,0 +1,172 @@
+Type: ManagerLottery+<>c__DisplayClass47_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <GenerateNumbers>b__0()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,[rcx+18h]
+	mov edi,[rcx+10h]
+	test rbx,rbx
+	je near ptr 00000001805077E1h
+	cmp byte ptr [18374A7A7h],0
+	jne short 00000001805076FAh
+	lea rcx,[1834FF6A0h]
+	call 000000018037BB90h
+	lea rcx,[18353B9B8h]
+	call 000000018037BB90h
+	lea rcx,[18353C138h]
+	call 000000018037BB90h
+	lea rcx,[18353C438h]
+	call 000000018037BB90h
+	mov byte ptr [18374A7A7h],1
+	cmp byte ptr [rbx+120h],0
+	je near ptr 00000001805077CDh
+	cmp qword ptr [rbx+0F0h],0
+	je short 0000000180507747h
+	mov rax,[rbx+0F0h]
+	cmp qword ptr [rax+18h],0
+	je short 0000000180507752h
+	mov r8,[1834FF6A0h]
+	mov edx,edi
+	mov rcx,[rax+18h]
+	call 00000001814F6FB0h
+	test al,al
+	je short 0000000180507752h
+	mov rdx,[18353C438h]
+	xor r8d,r8d
+	mov rcx,rbx
+	call 00000001804F2910h
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rax,[rbx+0F0h]
+	mov [rbx+0F8h],edi
+	test rax,rax
+	je short 00000001805077E1h
+	cmp dword ptr [rax+10h],0
+	lea rdx,[rsp+30h]
+	mov [rsp+30h],edi
+	jg short 000000018050778Fh
+	mov byte ptr [rbx+0FCh],1
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov rcx,[18353B9B8h]
+	jmp short 00000001805077A9h
+	mov byte ptr [rbx+0FCh],0
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov rcx,[18353C138h]
+	mov rdx,rax
+	xor r8d,r8d
+	call 000000018165E580h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rbx
+	call 00000001804F2830h
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	xor edx,edx
+	mov rcx,rbx
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001804F26A0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, [rcx+24]
+	006 Move rdi, [rcx+16]
+	007 Compare rbx, 0
+	008 JumpIfEqual {79}
+	009 Compare [0x18374A7A7], 0
+	010 JumpIfNotEqual {20}
+	011 LoadAddress rcx, [0x1834FF6A0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18353B9B8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18353C138]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x18353C438]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 Move [0x18374A7A7], 1
+	020 Compare [rbx+288], 0
+	021 JumpIfEqual {71}
+	022 Compare [rbx+240], 0
+	023 JumpIfEqual {37}
+	024 Move rax, [rbx+240]
+	025 Compare [rax+24], 0
+	026 JumpIfEqual {42}
+	027 Move r8, [0x1834FF6A0]
+	028 Move rdx, rdi
+	029 Move rcx, [rax+24]
+	030 Call List`1<Int32>.Contains, rcx, rdx
+	031 Compare rax, 0
+	032 JumpIfEqual {42}
+	033 Move rdx, "Bạn đã chọn số này rồi!"
+	034 Move r8, 0
+	035 Move rcx, rbx
+	036 Call ManagerLottery.ShowError, rcx, rdx
+	037 Move rbx, stack:0x38
+	038 ShiftStack 32
+	039 Move rdi, stack:0x0
+	040 ShiftStack 8
+	041 Return 
+	042 Move rax, [rbx+240]
+	043 Move [rbx+248], rdi
+	044 Compare rax, 0
+	045 JumpIfEqual {79}
+	046 Compare [rax+16], 0
+	047 LoadAddress rdx, stack:0x30
+	048 Move stack:0x30, rdi
+	049 JumpIfGreater {55}
+	050 Move [rbx+252], 1
+	051 Move rcx, [0x18375C0E8]
+	052 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	053 Move rcx, "Bạn cần 50.000 gold để mua số {0}"
+	054 Goto {59}
+	055 Move [rbx+252], 0
+	056 Move rcx, [0x18375C0E8]
+	057 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	058 Move rcx, "Bạn muốn chọn số {0} phải không?"
+	059 Move rdx, rax
+	060 Move r8, 0
+	061 Call String.Format, rcx, rdx, r8
+	062 Move r8, 0
+	063 Move rdx, rax
+	064 Move rcx, rbx
+	065 Call ManagerLottery.ShowConfirm, rcx, rdx
+	066 Move rbx, stack:0x38
+	067 ShiftStack 32
+	068 Move rdi, stack:0x0
+	069 ShiftStack 8
+	070 Return 
+	071 Move rdx, 0
+	072 Move rcx, rbx
+	073 Move rbx, stack:0x38
+	074 ShiftStack 32
+	075 Move rdi, stack:0x0
+	076 ShiftStack 8
+	077 Call ManagerLottery.ShowBlockedPanel, rcx, rdx
+	078 Return 
+	079 Call 0x18037BE30, rcx, rdx, r8, r9
+

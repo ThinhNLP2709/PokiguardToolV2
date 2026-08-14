@@ -1,0 +1,36 @@
+Type: UnityEngine.MinAttribute
+
+Method: System.Void .ctor(System.Single min)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	movaps [rsp+20h],xmm6
+	xor edx,edx
+	movaps xmm6,xmm1
+	mov rbx,rcx
+	call 00000001804552D0h
+	movss dword ptr [rbx+18h],xmm6
+	movaps xmm6,[rsp+20h]
+	mov byte ptr [rbx+10h],0
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move stack:0x20, xmm6
+	005 Move rdx, 0
+	006 Move xmm6, xmm1
+	007 Move rbx, rcx
+	008 Call 0x1804552D0, rcx, rdx, r8
+	009 Move [rbx+24], xmm6
+	010 Move xmm6, stack:0x20
+	011 Move [rbx+16], 0
+	012 ShiftStack 48
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Return 
+

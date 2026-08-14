@@ -1,0 +1,124 @@
+Type: TMPro.TMP_WordInfo
+
+Method: System.String GetWord()
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	mov [rsp+18h],rdi
+	push r14
+	sub rsp,20h
+	mov rax,[18375C130h]
+	mov r14,rcx
+	mov rcx,[rcx]
+	mov rdx,[rax+0B8h]
+	mov rsi,[rdx]
+	test rcx,rcx
+	je near ptr 00000001823DDAF8h
+	xor edx,edx
+	call 000000018240E010h
+	test rax,rax
+	je near ptr 00000001823DDAF8h
+	mov rdi,[rax+38h]
+	mov eax,[r14+0Ch]
+	mov ebx,[r14+8]
+	inc eax
+	cmp ebx,eax
+	jge short 00000001823DDADFh
+	test rdi,rdi
+	je short 00000001823DDAF8h
+	nop dword ptr [rax]
+	cmp ebx,[rdi+18h]
+	jae short 00000001823DDAFEh
+	mov rcx,[18375C128h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001823DDAAAh
+	call 000000018037BED0h
+	movsxd rax,ebx
+	xor edx,edx
+	imul rcx,rax,178h
+	add rcx,24h
+	add rcx,rdi
+	call 0000000181771590h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rsi
+	call 000000018165B1F0h
+	mov rsi,rax
+	inc ebx
+	mov eax,[r14+0Ch]
+	inc eax
+	cmp ebx,eax
+	jl short 00000001823DDA90h
+	mov rbx,[rsp+30h]
+	mov rax,rsi
+	mov rsi,[rsp+38h]
+	mov rdi,[rsp+40h]
+	add rsp,20h
+	pop r14
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 Move stack:0x18, rdi
+	004 ShiftStack -8
+	005 Move stack:0x0, r14
+	006 ShiftStack -32
+	007 Move rax, [0x18375C130]
+	008 Move r14, rcx
+	009 Move rcx, [rcx]
+	010 Move rdx, [rax+184]
+	011 Move rsi, [rdx]
+	012 Compare rcx, 0
+	013 JumpIfEqual {57}
+	014 Move rdx, 0
+	015 Call TMP_Text.get_textInfo, rcx, rdx
+	016 Compare rax, 0
+	017 JumpIfEqual {57}
+	018 Move rdi, [rax+56]
+	019 Move rax, [r14+12]
+	020 Move rbx, [r14+8]
+	021 Add rax, rax, 1
+	022 Compare rbx, rax
+	023 JumpIfGreaterOrEqual {49}
+	024 Compare rdi, 0
+	025 JumpIfEqual {57}
+	026 Nop 
+	027 Compare rbx, [rdi+24]
+	028 JumpIfGreaterOrEqual {59}
+	029 Move rcx, [0x18375C128]
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move rax, rbx
+	034 Move rdx, 0
+	035 Multiply rcx, rax, 376
+	036 Add rcx, rcx, 36
+	037 Add rcx, rcx, rdi
+	038 Call 0x181771590, rcx, rdx
+	039 Move r8, 0
+	040 Move rdx, rax
+	041 Move rcx, rsi
+	042 Call String.Concat, rcx, rdx, r8
+	043 Move rsi, rax
+	044 Add rbx, rbx, 1
+	045 Move rax, [r14+12]
+	046 Add rax, rax, 1
+	047 Compare rbx, rax
+	048 JumpIfLess {27}
+	049 Move rbx, stack:0x30
+	050 Move rax, rsi
+	051 Move rsi, stack:0x38
+	052 Move rdi, stack:0x40
+	053 ShiftStack 32
+	054 Move r14, stack:0x0
+	055 ShiftStack 8
+	056 Return rax
+	057 Call 0x18037BE30, rcx, rdx, r8, r9
+	058 Interrupt 
+	059 Call 0x18037BE20, rcx, rdx, r8, r9
+

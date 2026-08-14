@@ -1,0 +1,148 @@
+Type: UnityEngine.Cursor
+
+Method: System.Void SetCursor(UnityEngine.Texture2D texture, UnityEngine.Vector2 hotspot, UnityEngine.CursorMode cursorMode)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183757372h],0
+	mov edi,r8d
+	mov rbx,rcx
+	mov [rsp+20h],rdx
+	jne short 00000001825E4F31h
+	lea rcx,[183509128h]
+	call 000000018037BB90h
+	mov byte ptr [183757372h],1
+	mov rcx,[183509128h]
+	cmp qword ptr [rcx+38h],0
+	jne short 00000001825E4F44h
+	call 0000000180384D10h
+	test rbx,rbx
+	je short 00000001825E4F4Dh
+	mov rbx,[rbx+10h]
+	mov rax,[183757380h]
+	test rax,rax
+	jne short 00000001825E4F6Ch
+	lea rcx,[182B2F6E0h]
+	call 000000018037BE90h
+	mov [183757380h],rax
+	mov r8d,edi
+	lea rdx,[rsp+20h]
+	mov rcx,rbx
+	call rax
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183757372], 0
+	006 Move rdi, r8
+	007 Move rbx, rcx
+	008 Move stack:0x20, rdx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183509128]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183757372], 1
+	013 Move rcx, [0x183509128]
+	014 Compare [rcx+56], 0
+	015 JumpIfNotEqual {17}
+	016 Call 0x180384D10, rcx, rdx, r8, r9
+	017 Compare rbx, 0
+	018 JumpIfEqual {20}
+	019 Move rbx, [rbx+16]
+	020 Move rax, [0x183757380]
+	021 Compare rax, 0
+	022 JumpIfNotEqual {26}
+	023 LoadAddress rcx, [0x182B2F6E0]
+	024 Call 0x18037BE90, rcx, rdx, r8, r9
+	025 Move [0x183757380], rax
+	026 Move r8, rdi
+	027 LoadAddress rdx, stack:0x20
+	028 Move rcx, rbx
+	029 Call rax
+	030 Move rbx, stack:0x40
+	031 ShiftStack 48
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 Return 
+
+Method: UnityEngine.CursorLockMode get_lockState()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183757378h]
+	test rax,rax
+	jne short 00000001825E4FB3h
+	lea rcx,[182B2F6B8h]
+	call 000000018037BE90h
+	mov [183757378h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183757378]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B2F6B8]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183757378], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Void SetCursor_Injected(System.IntPtr texture, in UnityEngine.Vector2 hotspot, UnityEngine.CursorMode cursorMode)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183757380h]
+	mov ebx,r8d
+	mov rdi,rdx
+	mov rsi,rcx
+	test rax,rax
+	jne short 00000001825E4ED7h
+	lea rcx,[182B2F6E0h]
+	call 000000018037BE90h
+	mov [183757380h],rax
+	mov r8d,ebx
+	mov rdx,rdi
+	mov rcx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [0x183757380]
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B2F6E0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183757380], rax
+	015 Move r8, rbx
+	016 Move rdx, rdi
+	017 Move rcx, rsi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 CallNoReturn rax
+

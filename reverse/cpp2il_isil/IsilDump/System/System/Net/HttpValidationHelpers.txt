@@ -1,0 +1,243 @@
+Type: System.Net.HttpValidationHelpers
+
+Method: System.Boolean IsInvalidMethodOrHeaderString(System.String stringValue)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	push rdi
+	sub rsp,20h
+	xor ebx,ebx
+	mov rdi,rcx
+	mov eax,ebx
+	test rcx,rcx
+	je near ptr 0000000181DF49B1h
+	mov [rsp+30h],rbp
+	mov ebp,0FFFDh
+	mov [rsp+38h],rsi
+	lea rsi,[180000000h]
+	cmp eax,[rdi+10h]
+	jge near ptr 0000000181DF49ADh
+	xor r8d,r8d
+	mov edx,ebx
+	mov rcx,rdi
+	call 00000001816652C0h
+	cmp ax,2Fh
+	jbe short 0000000181DF4940h
+	cmp ax,5Dh
+	jbe short 0000000181DF490Eh
+	sub ax,7Bh
+	test bp,ax
+	jmp near ptr 0000000181DF498Bh
+	movzx ecx,ax
+	sub ecx,3Ah
+	cmp ecx,6
+	ja short 0000000181DF492Eh
+	movzx ecx,ax
+	sub ecx,3Ah
+	movsxd rdx,ecx
+	mov ecx,[rsi+rdx*4+1DF49B8h]
+	add rcx,rsi
+	jmp rcx
+	movzx ecx,ax
+	sub ecx,5Bh
+	je short 0000000181DF4996h
+	sub ecx,1
+	je short 0000000181DF4996h
+	cmp ecx,1
+	jmp short 0000000181DF498Bh
+	cmp ax,20h
+	jbe short 0000000181DF496Bh
+	cmp ax,22h
+	je short 0000000181DF4996h
+	movzx ecx,ax
+	sub ecx,27h
+	cmp ecx,8
+	ja short 0000000181DF498Dh
+	movzx eax,ax
+	sub eax,27h
+	cdqe
+	mov ecx,[rsi+rax*4+1DF49D4h]
+	add rcx,rsi
+	jmp rcx
+	movzx edx,ax
+	sub edx,9
+	je short 0000000181DF4996h
+	sub edx,1
+	je short 0000000181DF4996h
+	sub edx,1
+	je short 0000000181DF498Dh
+	sub edx,1
+	je short 0000000181DF498Dh
+	cmp edx,1
+	je short 0000000181DF4996h
+	cmp ax,20h
+	je short 0000000181DF4996h
+	inc ebx
+	mov eax,ebx
+	jmp near ptr 0000000181DF48E0h
+	mov al,1
+	mov rbp,[rsp+30h]
+	mov rsi,[rsp+38h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	xor al,al
+	jmp short 0000000181DF4998h
+	call 000000018037BE30h
+	int 3
+	nop
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, 0
+	006 Move rdi, rcx
+	007 Move rax, rbx
+	008 Compare rcx, 0
+	009 JumpIfEqual {84}
+	010 Move stack:0x30, rbp
+	011 Move rbp, 0xFFFD
+	012 Move stack:0x38, rsi
+	013 LoadAddress rsi, [0x180000000]
+	014 Compare rax, [rdi+16]
+	015 JumpIfGreaterOrEqual {82}
+	016 Move r8, 0
+	017 Move rdx, rbx
+	018 Move rcx, rdi
+	019 Call String.get_Chars, rcx, rdx
+	020 Compare rax, 47
+	021 JumpIfLessOrEqual {44}
+	022 Compare rax, 93
+	023 JumpIfLessOrEqual {27}
+	024 Subtract rax, rax, 123
+	025 Compare rbp, rax
+	026 Goto {70}
+	027 Move rcx, rax
+	028 Subtract rcx, rcx, 58
+	029 Compare rcx, 6
+	030 JumpIfGreater {37}
+	031 Move rcx, rax
+	032 Subtract rcx, rcx, 58
+	033 Move rdx, rcx
+	034 Move rcx, [rsi+0x1DF49B8+rdx*4]
+	035 Add rcx, rcx, rsi
+	036 CallNoReturn rcx
+	037 Move rcx, rax
+	038 Subtract rcx, rcx, 91
+	039 JumpIfEqual {74}
+	040 Subtract rcx, rcx, 1
+	041 JumpIfEqual {74}
+	042 Compare rcx, 1
+	043 Goto {70}
+	044 Compare rax, 32
+	045 JumpIfLessOrEqual {58}
+	046 Compare rax, 34
+	047 JumpIfEqual {74}
+	048 Move rcx, rax
+	049 Subtract rcx, rcx, 39
+	050 Compare rcx, 8
+	051 JumpIfGreater {71}
+	052 Move rax, rax
+	053 Subtract rax, rax, 39
+	054 Move rax, rax
+	055 Move rcx, [rsi+0x1DF49D4+rax*4]
+	056 Add rcx, rcx, rsi
+	057 CallNoReturn rcx
+	058 Move rdx, rax
+	059 Subtract rdx, rdx, 9
+	060 JumpIfEqual {74}
+	061 Subtract rdx, rdx, 1
+	062 JumpIfEqual {74}
+	063 Subtract rdx, rdx, 1
+	064 JumpIfEqual {71}
+	065 Subtract rdx, rdx, 1
+	066 JumpIfEqual {71}
+	067 Compare rdx, 1
+	068 JumpIfEqual {74}
+	069 Compare rax, 32
+	070 JumpIfEqual {74}
+	071 Add rbx, rbx, 1
+	072 Move rax, rbx
+	073 Goto {14}
+	074 Move rax, 1
+	075 Move rbp, stack:0x30
+	076 Move rsi, stack:0x38
+	077 Move rbx, stack:0x40
+	078 ShiftStack 32
+	079 Move rdi, stack:0x0
+	080 ShiftStack 8
+	081 Return rax
+	082 Move rax, 0
+	083 Goto {75}
+	084 Call 0x18037BE30, rcx, rdx, r8, r9
+	085 Interrupt 
+	086 Nop 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18375248Dh],0
+	jne short 0000000181DF4A3Ah
+	lea rcx,[183565780h]
+	call 000000018037BB90h
+	lea rcx,[18353BB10h]
+	call 000000018037BB90h
+	lea rcx,[1834F0E70h]
+	call 000000018037BB90h
+	mov byte ptr [18375248Dh],1
+	mov rcx,[183565780h]
+	mov edx,6
+	call 000000018037AD30h
+	mov rdx,[1834F0E70h]
+	xor r8d,r8d
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018171FC80h
+	mov rcx,[18353BB10h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[18353BB10h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18375248D], 0
+	005 JumpIfNotEqual {13}
+	006 LoadAddress rcx, [0x183565780]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18353BB10]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x1834F0E70]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18375248D], 1
+	013 Move rcx, typeof(System.Char[1])
+	014 Move rdx, 6
+	015 Call "SzArrayNew", rcx, rdx, r8, r9
+	016 Move rdx, [0x1834F0E70]
+	017 Move r8, 0
+	018 Move rcx, rax
+	019 Move rbx, rax
+	020 Call RuntimeHelpers.InitializeArray, rcx, rdx, r8
+	021 Move rcx, typeof(System.Net.HttpValidationHelpers)
+	022 Move rdx, [rcx+184]
+	023 Move [rdx], rbx
+	024 Move rdx, rbx
+	025 Move rcx, typeof(System.Net.HttpValidationHelpers)
+	026 Move rcx, [rcx+184]
+	027 ShiftStack 32
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Call 0x18037ACB0, rcx, rdx, r8, r9
+	031 Return 
+

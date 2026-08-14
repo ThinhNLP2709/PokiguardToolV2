@@ -1,0 +1,87 @@
+Type: Unity.Collections.NativeBitArrayDispose
+
+Method: System.Void Dispose()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183752C33h],0
+	mov rdi,[rcx]
+	mov ebx,[rcx+8]
+	jne short 0000000181EFA23Ch
+	lea rcx,[1834FA438h]
+	call 000000018037BB90h
+	mov byte ptr [183752C33h],1
+	test rdi,rdi
+	je short 0000000181EFA266h
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000181F045B0h
+	mov r8,[1834FA438h]
+	mov edx,ebx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000180A42950h
+	lea rcx,[183553110h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[1834EED30h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181805710h
+	lea rcx,[18354CC48h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183752C33], 0
+	006 Move rdi, [rcx]
+	007 Move rbx, [rcx+8]
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1834FA438]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183752C33], 1
+	012 Compare rdi, 0
+	013 JumpIfEqual {26}
+	014 Move rdx, 0
+	015 Move rcx, rdi
+	016 Call UnsafeBitArray.Dispose, rcx, rdx
+	017 Move r8, [0x1834FA438]
+	018 Move rdx, rbx
+	019 Move rcx, rdi
+	020 Move rbx, stack:0x30
+	021 ShiftStack 32
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Call 0x180A42950, rcx, rdx, r8
+	025 Return 
+	026 LoadAddress rcx, [0x183553110]
+	027 Call 0x18037BBB0, rcx, rdx, r8, r9
+	028 Move rcx, rax
+	029 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	030 LoadAddress rcx, [0x1834EED30]
+	031 Move rbx, rax
+	032 Call 0x18037BBB0, rcx, rdx, r8, r9
+	033 Move rdx, rax
+	034 Move r8, 0
+	035 Move rcx, rbx
+	036 Call InvalidOperationException..ctor, rcx, rdx
+	037 LoadAddress rcx, [0x18354CC48]
+	038 Call 0x18037BBB0, rcx, rdx, r8, r9
+	039 Move rdx, rax
+	040 Move rcx, rbx
+	041 Call 0x18037BDF0, rcx, rdx, r8, r9
+

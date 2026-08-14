@@ -1,0 +1,144 @@
+Type: UnityEngine.InputSystem.InputRemoting+RemoveDeviceMsg
+
+Method: UnityEngine.InputSystem.InputRemoting+Message Create(UnityEngine.InputSystem.InputDevice device)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xorps xmm0,xmm0
+	mov rax,rdx
+	mov rbx,rcx
+	movups [rcx],xmm0
+	mov dword ptr [rcx+4],5
+	test rdx,rdx
+	je short 0000000181FE3E44h
+	mov ecx,[rax+0E4h]
+	xor edx,edx
+	call 000000018176C820h
+	lea rcx,[rbx+8]
+	mov [rbx+8],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move xmm0, 0
+	005 Move rax, rdx
+	006 Move rbx, rcx
+	007 Move [rcx], xmm0
+	008 Move [rcx+4], 5
+	009 Compare rdx, 0
+	010 JumpIfEqual {23}
+	011 Move rcx, [rax+228]
+	012 Move rdx, 0
+	013 Call BitConverter.GetBytes, rcx, rdx
+	014 LoadAddress rcx, [rbx+8]
+	015 Move [rbx+8], rax
+	016 Move rdx, rax
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 Move rax, rbx
+	019 ShiftStack 32
+	020 Move rbx, stack:0x0
+	021 ShiftStack 8
+	022 Return rax
+	023 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Process(UnityEngine.InputSystem.InputRemoting receiver, UnityEngine.InputSystem.InputRemoting+Message msg)
+
+Disassembly:
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rsi,rdx
+	mov rdi,rcx
+	test rcx,rcx
+	je short 0000000181FE3ED3h
+	mov edx,[rdx]
+	xor r8d,r8d
+	mov [rsp+30h],rbx
+	call 0000000181FDBC30h
+	mov rcx,[rsi+8]
+	xor r8d,r8d
+	xor edx,edx
+	mov ebx,eax
+	call 000000018176C980h
+	xor r9d,r9d
+	mov r8d,ebx
+	mov edx,eax
+	mov rcx,rdi
+	call 0000000181FDBBB0h
+	mov rcx,[rdi+18h]
+	mov rbx,[rsp+30h]
+	test rcx,rcx
+	je short 0000000181FE3ED3h
+	xor r8d,r8d
+	mov edx,eax
+	call 0000000181FD93E0h
+	test rax,rax
+	je short 0000000181FE3EC8h
+	mov rcx,[rdi+18h]
+	test rcx,rcx
+	je short 0000000181FE3ED3h
+	xor r9d,r9d
+	xor r8d,r8d
+	mov rdx,rax
+	call 0000000181FD79E0h
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rsi
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rsi, rdx
+	006 Move rdi, rcx
+	007 Compare rcx, 0
+	008 JumpIfEqual {44}
+	009 Move rdx, [rdx]
+	010 Move r8, 0
+	011 Move stack:0x30, rbx
+	012 Call InputRemoting.FindOrCreateSenderRecord, rcx, rdx
+	013 Move rcx, [rsi+8]
+	014 Move r8, 0
+	015 Move rdx, 0
+	016 Move rbx, rax
+	017 Call 0x18176C980, rcx, rdx, r8
+	018 Move r9, 0
+	019 Move r8, rbx
+	020 Move rdx, rax
+	021 Move rcx, rdi
+	022 Call InputRemoting.FindLocalDeviceId, rcx, rdx, r8
+	023 Move rcx, [rdi+24]
+	024 Move rbx, stack:0x30
+	025 Compare rcx, 0
+	026 JumpIfEqual {44}
+	027 Move r8, 0
+	028 Move rdx, rax
+	029 Call InputManager.TryGetDeviceById, rcx, rdx
+	030 Compare rax, 0
+	031 JumpIfEqual {39}
+	032 Move rcx, [rdi+24]
+	033 Compare rcx, 0
+	034 JumpIfEqual {44}
+	035 Move r9, 0
+	036 Move r8, 0
+	037 Move rdx, rax
+	038 Call InputManager.RemoveDevice, rcx, rdx, r8
+	039 Move rsi, stack:0x38
+	040 ShiftStack 32
+	041 Move rdi, stack:0x0
+	042 ShiftStack 8
+	043 Return 
+	044 Call 0x18037BE30, rcx, rdx, r8, r9
+

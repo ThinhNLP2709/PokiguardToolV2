@@ -1,0 +1,983 @@
+Type: UnityEngine.UI.MultipleDisplayUtilities
+
+Method: System.Boolean GetRelativeMousePositionForDrag(UnityEngine.EventSystems.PointerEventData eventData, ref UnityEngine.Vector2 position)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,0A0h
+	mov rdi,rdx
+	mov rbx,rcx
+	test rcx,rcx
+	je near ptr 000000018298C38Dh
+	movss xmm1,dword ptr [rcx+108h]
+	xor r9d,r9d
+	movss xmm0,dword ptr [rcx+104h]
+	mov r8d,[rcx+0FCh]
+	unpcklps xmm0,xmm1
+	movaps [rsp+90h],xmm6
+	movq rdx,xmm0
+	movups xmm6,[rcx+0E0h]
+	lea rcx,[rsp+20h]
+	call 000000018298C4D0h
+	psrldq xmm6,0Ch
+	movd edx,xmm6
+	movaps xmm6,[rsp+90h]
+	cvttss2si ecx,dword ptr [rax+8]
+	movsd xmm0,qword ptr [rax]
+	cmp ecx,edx
+	jne short 000000018298C37Ah
+	test edx,edx
+	je short 000000018298C34Eh
+	movaps xmm1,xmm0
+	shufps xmm1,xmm1,55h
+	unpcklps xmm0,xmm1
+	movaps xmm2,xmm0
+	movsd qword ptr [rsp+0B0h],xmm0
+	movss xmm0,dword ptr [rsp+0B0h]
+	shufps xmm2,xmm2,55h
+	jmp short 000000018298C35Eh
+	movss xmm0,dword ptr [rbx+104h]
+	movss xmm2,dword ptr [rbx+108h]
+	movss dword ptr [rdi],xmm0
+	mov al,1
+	movss dword ptr [rdi+4],xmm2
+	mov rbx,[rsp+0B8h]
+	add rsp,0A0h
+	pop rdi
+	ret
+	mov rbx,[rsp+0B8h]
+	xor al,al
+	add rsp,0A0h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -160
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Compare rcx, 0
+	008 JumpIfEqual {68}
+	009 Move xmm1, [rcx+264]
+	010 Move r9, 0
+	011 Move xmm0, [rcx+260]
+	012 Move r8, [rcx+252]
+	013 Move XMM_TEMP.S[0], xmm0.S[0]
+	014 Move XMM_TEMP.S[1], xmm1.S[0]
+	015 Move XMM_TEMP.S[2], xmm0.S[1]
+	016 Move XMM_TEMP.S[3], xmm1.S[1]
+	017 Move xmm0, XMM_TEMP
+	018 Move stack:0x90, xmm6
+	019 Move rdx, xmm0
+	020 Move xmm6, [rcx+224]
+	021 LoadAddress rcx, stack:0x20
+	022 Call MultipleDisplayUtilities.RelativeMouseAtScaled, rcx, rdx, r8
+	023 NotImplemented "psrldq xmm6,0Ch"
+	024 Move rdx, xmm6
+	025 Move xmm6, stack:0x90
+	026 NotImplemented "cvttss2si ecx,dword ptr [rax+8]"
+	027 Move xmm0, [rax]
+	028 Compare rcx, rdx
+	029 JumpIfNotEqual {62}
+	030 Compare rdx, 0
+	031 JumpIfEqual {52}
+	032 Move xmm1, xmm0
+	033 Move XMM_TEMP.S[0], xmm1.S[1]
+	034 Move XMM_TEMP.S[1], xmm1.S[1]
+	035 Move XMM_TEMP.S[2], xmm1.S[1]
+	036 Move XMM_TEMP.S[3], xmm1.S[1]
+	037 Move xmm1, XMM_TEMP
+	038 Move XMM_TEMP.S[0], xmm0.S[0]
+	039 Move XMM_TEMP.S[1], xmm1.S[0]
+	040 Move XMM_TEMP.S[2], xmm0.S[1]
+	041 Move XMM_TEMP.S[3], xmm1.S[1]
+	042 Move xmm0, XMM_TEMP
+	043 Move xmm2, xmm0
+	044 Move stack:0xB0, xmm0
+	045 Move xmm0, stack:0xB0
+	046 Move XMM_TEMP.S[0], xmm2.S[1]
+	047 Move XMM_TEMP.S[1], xmm2.S[1]
+	048 Move XMM_TEMP.S[2], xmm2.S[1]
+	049 Move XMM_TEMP.S[3], xmm2.S[1]
+	050 Move xmm2, XMM_TEMP
+	051 Goto {54}
+	052 Move xmm0, [rbx+260]
+	053 Move xmm2, [rbx+264]
+	054 Move [rdi], xmm0
+	055 Move rax, 1
+	056 Move [rdi+4], xmm2
+	057 Move rbx, stack:0xB8
+	058 ShiftStack 160
+	059 Move rdi, stack:0x0
+	060 ShiftStack 8
+	061 Return rax
+	062 Move rbx, stack:0xB8
+	063 Move rax, 0
+	064 ShiftStack 160
+	065 Move rdi, stack:0x0
+	066 ShiftStack 8
+	067 Return rax
+	068 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector3 GetRelativeMousePositionForRaycast(UnityEngine.EventSystems.PointerEventData eventData)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,40h
+	xor eax,eax
+	mov rdi,rdx
+	mov [rcx],rax
+	mov rbx,rcx
+	mov [rcx+8],eax
+	test rdx,rdx
+	je near ptr 000000018298C4C6h
+	movss xmm1,dword ptr [rdx+108h]
+	lea rcx,[rsp+30h]
+	movss xmm0,dword ptr [rdx+104h]
+	xor r9d,r9d
+	mov r8d,[rdx+0FCh]
+	unpcklps xmm0,xmm1
+	movq rdx,xmm0
+	mov [rsp+50h],rsi
+	call 000000018298C4D0h
+	cmp byte ptr [18374A31Eh],0
+	movsd xmm0,qword ptr [rax]
+	mov ecx,[rax+8]
+	mov esi,ecx
+	movsd qword ptr [rbx],xmm0
+	mov [rbx+8],ecx
+	movsd qword ptr [rsp+20h],xmm0
+	jne short 000000018298C424h
+	lea rcx,[18352FDA8h]
+	call 000000018037BB90h
+	mov byte ptr [18374A31Eh],1
+	mov rax,[18352FDA8h]
+	movss xmm2,dword ptr [rsp+20h]
+	movss xmm3,dword ptr [rsp+24h]
+	mov rcx,[rax+0B8h]
+	movsd xmm1,qword ptr [rcx]
+	movaps xmm0,xmm1
+	subss xmm2,xmm1
+	shufps xmm0,xmm0,55h
+	movd xmm1,esi
+	subss xmm3,xmm0
+	subss xmm1,dword ptr [rcx+8]
+	movss xmm0,dword ptr [182A4FDA0h]
+	mov rsi,[rsp+50h]
+	mulss xmm3,xmm3
+	mulss xmm2,xmm2
+	mulss xmm1,xmm1
+	addss xmm3,xmm2
+	addss xmm3,xmm1
+	comiss xmm0,xmm3
+	jbe short 000000018298C49Fh
+	movss xmm1,dword ptr [rdi+108h]
+	xorps xmm2,xmm2
+	movss xmm0,dword ptr [rdi+104h]
+	unpcklps xmm0,xmm1
+	movsd qword ptr [rbx],xmm0
+	movss dword ptr [rbx+8],xmm2
+	cmp dword ptr [rdi+0FCh],0
+	jle short 000000018298C4B8h
+	movd xmm0,dword ptr [rdi+0FCh]
+	cvtdq2ps xmm0,xmm0
+	movss dword ptr [rbx+8],xmm0
+	mov rax,rbx
+	mov rbx,[rsp+58h]
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Move rax, 0
+	006 Move rdi, rdx
+	007 Move [rcx], rax
+	008 Move rbx, rcx
+	009 Move [rcx+8], rax
+	010 Compare rdx, 0
+	011 JumpIfEqual {81}
+	012 Move xmm1, [rdx+264]
+	013 LoadAddress rcx, stack:0x30
+	014 Move xmm0, [rdx+260]
+	015 Move r9, 0
+	016 Move r8, [rdx+252]
+	017 Move XMM_TEMP.S[0], xmm0.S[0]
+	018 Move XMM_TEMP.S[1], xmm1.S[0]
+	019 Move XMM_TEMP.S[2], xmm0.S[1]
+	020 Move XMM_TEMP.S[3], xmm1.S[1]
+	021 Move xmm0, XMM_TEMP
+	022 Move rdx, xmm0
+	023 Move stack:0x50, rsi
+	024 Call MultipleDisplayUtilities.RelativeMouseAtScaled, rcx, rdx, r8
+	025 Compare [0x18374A31E], 0
+	026 Move xmm0, [rax]
+	027 Move rcx, [rax+8]
+	028 Move rsi, rcx
+	029 Move [rbx], xmm0
+	030 Move [rbx+8], rcx
+	031 Move stack:0x20, xmm0
+	032 JumpIfNotEqual {36}
+	033 LoadAddress rcx, [0x18352FDA8]
+	034 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	035 Move [0x18374A31E], 1
+	036 Move rax, typeof(UnityEngine.Vector3)
+	037 Move xmm2, stack:0x20
+	038 Move xmm3, stack:0x24
+	039 Move rcx, [rax+184]
+	040 Move xmm1, [rcx]
+	041 Move xmm0, xmm1
+	042 Subtract xmm2, xmm2, xmm1
+	043 Move XMM_TEMP.S[0], xmm0.S[1]
+	044 Move XMM_TEMP.S[1], xmm0.S[1]
+	045 Move XMM_TEMP.S[2], xmm0.S[1]
+	046 Move XMM_TEMP.S[3], xmm0.S[1]
+	047 Move xmm0, XMM_TEMP
+	048 Move xmm1, rsi
+	049 Subtract xmm3, xmm3, xmm0
+	050 Subtract xmm1, xmm1, [rcx+8]
+	051 Move xmm0, [0x182A4FDA0]
+	052 Move rsi, stack:0x50
+	053 Multiply xmm3, xmm3, xmm3
+	054 Multiply xmm2, xmm2, xmm2
+	055 Multiply xmm1, xmm1, xmm1
+	056 Add xmm3, xmm3, xmm2
+	057 Add xmm3, xmm3, xmm1
+	058 Compare xmm0, xmm3
+	059 JumpIfLessOrEqual {70}
+	060 Move xmm1, [rdi+264]
+	061 Move xmm2, 0
+	062 Move xmm0, [rdi+260]
+	063 Move XMM_TEMP.S[0], xmm0.S[0]
+	064 Move XMM_TEMP.S[1], xmm1.S[0]
+	065 Move XMM_TEMP.S[2], xmm0.S[1]
+	066 Move XMM_TEMP.S[3], xmm1.S[1]
+	067 Move xmm0, XMM_TEMP
+	068 Move [rbx], xmm0
+	069 Move [rbx+8], xmm2
+	070 Compare [rdi+252], 0
+	071 JumpIfLessOrEqual {75}
+	072 Move xmm0, [rdi+252]
+	073 Move xmm0, xmm0
+	074 Move [rbx+8], xmm0
+	075 Move rax, rbx
+	076 Move rbx, stack:0x58
+	077 ShiftStack 64
+	078 Move rdi, stack:0x0
+	079 ShiftStack 8
+	080 Return rax
+	081 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector3 RelativeMouseAtScaled(UnityEngine.Vector2 position, System.Int32 displayIndex)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	push rsi
+	sub rsp,0D0h
+	cmp byte ptr [18375B930h],0
+	mov esi,r8d
+	movaps [rsp+40h],xmm14
+	mov rbx,rcx
+	mov [rsp+20h],rdx
+	jne short 000000018298C50Ah
+	lea rcx,[183525960h]
+	call 000000018037BB90h
+	mov byte ptr [18375B930h],1
+	mov rcx,[183525960h]
+	xorps xmm14,xmm14
+	mov dword ptr [rsp+30h],0
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018298C52Bh
+	call 000000018037BED0h
+	mov [rsp+0E0h],rdi
+	xor ecx,ecx
+	movaps [rsp+0C0h],xmm6
+	movaps [rsp+0B0h],xmm7
+	movaps [rsp+0A0h],xmm8
+	movaps [rsp+90h],xmm9
+	movaps [rsp+80h],xmm10
+	movaps [rsp+70h],xmm11
+	movaps [rsp+60h],xmm12
+	movaps [rsp+50h],xmm13
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD9D0h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDB40h
+	cmp edi,eax
+	jne near ptr 000000018298C67Bh
+	mov rcx,[183525960h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018298C5C3h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD950h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDAC0h
+	cmp edi,eax
+	jne short 000000018298C67Bh
+	movss xmm1,dword ptr [rsp+24h]
+	movss xmm0,dword ptr [rsp+20h]
+	unpcklps xmm0,xmm1
+	movd xmm2,esi
+	movsd qword ptr [rbx],xmm0
+	cvtdq2ps xmm2,xmm2
+	movss dword ptr [rbx+8],xmm2
+	movaps xmm13,[rsp+50h]
+	mov rax,rbx
+	mov rbx,[rsp+0F0h]
+	movaps xmm12,[rsp+60h]
+	movaps xmm11,[rsp+70h]
+	movaps xmm10,[rsp+80h]
+	movaps xmm9,[rsp+90h]
+	movaps xmm8,[rsp+0A0h]
+	movaps xmm7,[rsp+0B0h]
+	movaps xmm6,[rsp+0C0h]
+	mov rdi,[rsp+0E0h]
+	movaps xmm14,[rsp+40h]
+	add rsp,0D0h
+	pop rsi
+	ret
+	mov rcx,[183525960h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018298C690h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDB40h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	movd xmm9,edi
+	xor edx,edx
+	mov rcx,rax
+	cvtdq2ps xmm9,xmm9
+	call 00000001825CDAC0h
+	xor ecx,ecx
+	movd xmm0,eax
+	cvtdq2ps xmm0,xmm0
+	divss xmm9,xmm0
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD9D0h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	movd xmm12,edi
+	xor edx,edx
+	mov rcx,rax
+	cvtdq2ps xmm12,xmm12
+	call 00000001825CD950h
+	cmp byte ptr [18374A258h],0
+	movd xmm11,eax
+	cvtdq2ps xmm11,xmm11
+	jne short 000000018298C73Fh
+	lea rcx,[18352F6E8h]
+	call 000000018037BB90h
+	mov byte ptr [18374A258h],1
+	mov rax,[18352F6E8h]
+	mov rcx,[rax+0B8h]
+	movss xmm7,dword ptr [rcx]
+	movss xmm8,dword ptr [rcx+4]
+	xor ecx,ecx
+	call 00000001825DD4F0h
+	movss xmm13,dword ptr [182A4FBA0h]
+	test al,al
+	je near ptr 000000018298C8C7h
+	xor ecx,ecx
+	call 00000001825DD550h
+	xor ecx,ecx
+	movd xmm10,eax
+	cvtdq2ps xmm10,xmm10
+	call 00000001825DD520h
+	mov rcx,[183525960h]
+	movd xmm0,eax
+	cmp dword ptr [rcx+0E4h],0
+	cvtdq2ps xmm0,xmm0
+	divss xmm10,xmm0
+	jne short 000000018298C7A7h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDAC0h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	movd xmm6,edi
+	xor edx,edx
+	cvtdq2ps xmm6,xmm6
+	mov rcx,rax
+	mulss xmm6,xmm10
+	call 00000001825CDB40h
+	movd xmm0,eax
+	cvtdq2ps xmm0,xmm0
+	comiss xmm0,xmm6
+	mov rcx,[183525960h]
+	ja short 000000018298C863h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018298C80Ah
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD9D0h
+	xor ecx,ecx
+	movd xmm11,eax
+	cvtdq2ps xmm11,xmm11
+	divss xmm11,xmm9
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD950h
+	movaps xmm8,xmm11
+	movd xmm0,eax
+	cvtdq2ps xmm0,xmm0
+	subss xmm8,xmm0
+	mulss xmm8,xmm13
+	jmp short 000000018298C8C7h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018298C871h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD950h
+	xor ecx,ecx
+	movd xmm12,eax
+	cvtdq2ps xmm12,xmm12
+	mulss xmm12,xmm9
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD9D0h
+	movaps xmm7,xmm12
+	movd xmm0,eax
+	cvtdq2ps xmm0,xmm0
+	subss xmm7,xmm0
+	mulss xmm7,xmm13
+	movaps xmm2,xmm12
+	movaps xmm1,xmm11
+	subss xmm2,xmm7
+	subss xmm1,xmm8
+	movss xmm3,dword ptr [182A500A0h]
+	movaps xmm0,xmm8
+	movss xmm10,dword ptr [rsp+24h]
+	xorps xmm0,xmm3
+	comiss xmm0,xmm10
+	movss xmm9,dword ptr [rsp+20h]
+	ja short 000000018298C917h
+	comiss xmm10,xmm1
+	ja short 000000018298C917h
+	movaps xmm0,xmm7
+	xorps xmm0,xmm3
+	comiss xmm0,xmm9
+	ja short 000000018298C917h
+	comiss xmm9,xmm2
+	jbe near ptr 000000018298CA48h
+	xor ecx,ecx
+	call 00000001825DD4F0h
+	mov rcx,[183525960h]
+	test al,al
+	je short 000000018298C99Bh
+	cmp dword ptr [rcx+0E4h],0
+	addss xmm7,xmm9
+	addss xmm8,xmm10
+	jne short 000000018298C941h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDB40h
+	xor ecx,ecx
+	movd xmm6,eax
+	cvtdq2ps xmm6,xmm6
+	divss xmm6,xmm12
+	mulss xmm6,xmm7
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDAC0h
+	movd xmm1,eax
+	cvtdq2ps xmm1,xmm1
+	divss xmm1,xmm11
+	mulss xmm1,xmm8
+	jmp near ptr 000000018298CA39h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018298C9A9h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD9D0h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je near ptr 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDB40h
+	sub edi,eax
+	movaps xmm6,xmm9
+	xor ecx,ecx
+	movd xmm0,edi
+	cvtdq2ps xmm0,xmm0
+	mulss xmm0,xmm13
+	subss xmm6,xmm0
+	call 00000001825CD900h
+	test rax,rax
+	je short 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CD950h
+	xor ecx,ecx
+	mov edi,eax
+	call 00000001825CD900h
+	test rax,rax
+	je short 000000018298CA6Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001825CDAC0h
+	sub edi,eax
+	movaps xmm1,xmm10
+	movd xmm0,edi
+	cvtdq2ps xmm0,xmm0
+	mulss xmm0,xmm13
+	subss xmm1,xmm0
+	movd xmm2,esi
+	cvtdq2ps xmm2,xmm2
+	ucomiss xmm2,xmm14
+	jp short 000000018298CA5Fh
+	jne short 000000018298CA5Fh
+	movaps xmm0,xmm9
+	unpcklps xmm0,xmm10
+	movsd qword ptr [rbx],xmm0
+	movss dword ptr [rbx+8],xmm14
+	jmp near ptr 000000018298C61Ch
+	unpcklps xmm6,xmm1
+	movsd qword ptr [rbx],xmm6
+	jmp near ptr 000000018298C617h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -208
+	005 Compare [0x18375B930], 0
+	006 Move rsi, r8
+	007 Move stack:0x40, xmm14
+	008 Move rbx, rcx
+	009 Move stack:0x20, rdx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183525960]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18375B930], 1
+	014 Move rcx, typeof(UnityEngine.Display)
+	015 Move xmm14, 0
+	016 Move stack:0x30, 0
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move stack:0xE0, rdi
+	021 Move rcx, 0
+	022 Move stack:0xC0, xmm6
+	023 Move stack:0xB0, xmm7
+	024 Move stack:0xA0, xmm8
+	025 Move stack:0x90, xmm9
+	026 Move stack:0x80, xmm10
+	027 Move stack:0x70, xmm11
+	028 Move stack:0x60, xmm12
+	029 Move stack:0x50, xmm13
+	030 Call Display.get_main, rcx
+	031 Compare rax, 0
+	032 JumpIfEqual {356}
+	033 Move rdx, 0
+	034 Move rcx, rax
+	035 Call Display.get_renderingWidth, rcx, rdx
+	036 Move rcx, 0
+	037 Move rdi, rax
+	038 Call Display.get_main, rcx
+	039 Compare rax, 0
+	040 JumpIfEqual {356}
+	041 Move rdx, 0
+	042 Move rcx, rax
+	043 Call Display.get_systemWidth, rcx, rdx
+	044 Compare rdi, rax
+	045 JumpIfNotEqual {94}
+	046 Move rcx, typeof(UnityEngine.Display)
+	047 Compare [rcx+228], 0
+	048 JumpIfNotEqual {50}
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rcx, 0
+	051 Call Display.get_main, rcx
+	052 Compare rax, 0
+	053 JumpIfEqual {356}
+	054 Move rdx, 0
+	055 Move rcx, rax
+	056 Call Display.get_renderingHeight, rcx, rdx
+	057 Move rcx, 0
+	058 Move rdi, rax
+	059 Call Display.get_main, rcx
+	060 Compare rax, 0
+	061 JumpIfEqual {356}
+	062 Move rdx, 0
+	063 Move rcx, rax
+	064 Call Display.get_systemHeight, rcx, rdx
+	065 Compare rdi, rax
+	066 JumpIfNotEqual {94}
+	067 Move xmm1, stack:0x24
+	068 Move xmm0, stack:0x20
+	069 Move XMM_TEMP.S[0], xmm0.S[0]
+	070 Move XMM_TEMP.S[1], xmm1.S[0]
+	071 Move XMM_TEMP.S[2], xmm0.S[1]
+	072 Move XMM_TEMP.S[3], xmm1.S[1]
+	073 Move xmm0, XMM_TEMP
+	074 Move xmm2, rsi
+	075 Move [rbx], xmm0
+	076 Move xmm2, xmm2
+	077 Move [rbx+8], xmm2
+	078 Move xmm13, stack:0x50
+	079 Move rax, rbx
+	080 Move rbx, stack:0xF0
+	081 Move xmm12, stack:0x60
+	082 Move xmm11, stack:0x70
+	083 Move xmm10, stack:0x80
+	084 Move xmm9, stack:0x90
+	085 Move xmm8, stack:0xA0
+	086 Move xmm7, stack:0xB0
+	087 Move xmm6, stack:0xC0
+	088 Move rdi, stack:0xE0
+	089 Move xmm14, stack:0x40
+	090 ShiftStack 208
+	091 Move rsi, stack:0x0
+	092 ShiftStack 8
+	093 Return rax
+	094 Move rcx, typeof(UnityEngine.Display)
+	095 Compare [rcx+228], 0
+	096 JumpIfNotEqual {98}
+	097 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	098 Move rcx, 0
+	099 Call Display.get_main, rcx
+	100 Compare rax, 0
+	101 JumpIfEqual {356}
+	102 Move rdx, 0
+	103 Move rcx, rax
+	104 Call Display.get_systemWidth, rcx, rdx
+	105 Move rcx, 0
+	106 Move rdi, rax
+	107 Call Display.get_main, rcx
+	108 Compare rax, 0
+	109 JumpIfEqual {356}
+	110 Move xmm9, rdi
+	111 Move rdx, 0
+	112 Move rcx, rax
+	113 Move xmm9, xmm9
+	114 Call Display.get_systemHeight, rcx, rdx
+	115 Move rcx, 0
+	116 Move xmm0, rax
+	117 Move xmm0, xmm0
+	118 Divide xmm9, xmm9, xmm0
+	119 Call Display.get_main, rcx
+	120 Compare rax, 0
+	121 JumpIfEqual {356}
+	122 Move rdx, 0
+	123 Move rcx, rax
+	124 Call Display.get_renderingWidth, rcx, rdx
+	125 Move rcx, 0
+	126 Move rdi, rax
+	127 Call Display.get_main, rcx
+	128 Compare rax, 0
+	129 JumpIfEqual {356}
+	130 Move xmm12, rdi
+	131 Move rdx, 0
+	132 Move rcx, rax
+	133 Move xmm12, xmm12
+	134 Call Display.get_renderingHeight, rcx, rdx
+	135 Compare [0x18374A258], 0
+	136 Move xmm11, rax
+	137 Move xmm11, xmm11
+	138 JumpIfNotEqual {142}
+	139 LoadAddress rcx, [0x18352F6E8]
+	140 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	141 Move [0x18374A258], 1
+	142 Move rax, typeof(UnityEngine.Vector2)
+	143 Move rcx, [rax+184]
+	144 Move xmm7, [rcx]
+	145 Move xmm8, [rcx+4]
+	146 Move rcx, 0
+	147 Call Screen.get_fullScreen, rcx
+	148 Move xmm13, [0x182A4FBA0]
+	149 Compare rax, 0
+	150 JumpIfEqual {238}
+	151 Move rcx, 0
+	152 Call Screen.get_width, rcx
+	153 Move rcx, 0
+	154 Move xmm10, rax
+	155 Move xmm10, xmm10
+	156 Call Screen.get_height, rcx
+	157 Move rcx, typeof(UnityEngine.Display)
+	158 Move xmm0, rax
+	159 Compare [rcx+228], 0
+	160 Move xmm0, xmm0
+	161 Divide xmm10, xmm10, xmm0
+	162 JumpIfNotEqual {164}
+	163 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	164 Move rcx, 0
+	165 Call Display.get_main, rcx
+	166 Compare rax, 0
+	167 JumpIfEqual {356}
+	168 Move rdx, 0
+	169 Move rcx, rax
+	170 Call Display.get_systemHeight, rcx, rdx
+	171 Move rcx, 0
+	172 Move rdi, rax
+	173 Call Display.get_main, rcx
+	174 Compare rax, 0
+	175 JumpIfEqual {356}
+	176 Move xmm6, rdi
+	177 Move rdx, 0
+	178 Move xmm6, xmm6
+	179 Move rcx, rax
+	180 Multiply xmm6, xmm6, xmm10
+	181 Call Display.get_systemWidth, rcx, rdx
+	182 Move xmm0, rax
+	183 Move xmm0, xmm0
+	184 Compare xmm0, xmm6
+	185 Move rcx, typeof(UnityEngine.Display)
+	186 JumpIfGreater {213}
+	187 Compare [rcx+228], 0
+	188 JumpIfNotEqual {190}
+	189 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	190 Move rcx, 0
+	191 Call Display.get_main, rcx
+	192 Compare rax, 0
+	193 JumpIfEqual {356}
+	194 Move rdx, 0
+	195 Move rcx, rax
+	196 Call Display.get_renderingWidth, rcx, rdx
+	197 Move rcx, 0
+	198 Move xmm11, rax
+	199 Move xmm11, xmm11
+	200 Divide xmm11, xmm11, xmm9
+	201 Call Display.get_main, rcx
+	202 Compare rax, 0
+	203 JumpIfEqual {356}
+	204 Move rdx, 0
+	205 Move rcx, rax
+	206 Call Display.get_renderingHeight, rcx, rdx
+	207 Move xmm8, xmm11
+	208 Move xmm0, rax
+	209 Move xmm0, xmm0
+	210 Subtract xmm8, xmm8, xmm0
+	211 Multiply xmm8, xmm8, xmm13
+	212 Goto {238}
+	213 Compare [rcx+228], 0
+	214 JumpIfNotEqual {216}
+	215 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	216 Move rcx, 0
+	217 Call Display.get_main, rcx
+	218 Compare rax, 0
+	219 JumpIfEqual {356}
+	220 Move rdx, 0
+	221 Move rcx, rax
+	222 Call Display.get_renderingHeight, rcx, rdx
+	223 Move rcx, 0
+	224 Move xmm12, rax
+	225 Move xmm12, xmm12
+	226 Multiply xmm12, xmm12, xmm9
+	227 Call Display.get_main, rcx
+	228 Compare rax, 0
+	229 JumpIfEqual {356}
+	230 Move rdx, 0
+	231 Move rcx, rax
+	232 Call Display.get_renderingWidth, rcx, rdx
+	233 Move xmm7, xmm12
+	234 Move xmm0, rax
+	235 Move xmm0, xmm0
+	236 Subtract xmm7, xmm7, xmm0
+	237 Multiply xmm7, xmm7, xmm13
+	238 Move xmm2, xmm12
+	239 Move xmm1, xmm11
+	240 Subtract xmm2, xmm2, xmm7
+	241 Subtract xmm1, xmm1, xmm8
+	242 Move xmm3, [0x182A500A0]
+	243 Move xmm0, xmm8
+	244 Move xmm10, stack:0x24
+	245 Xor xmm0, xmm0, xmm3
+	246 Compare xmm0, xmm10
+	247 Move xmm9, stack:0x20
+	248 JumpIfGreater {257}
+	249 Compare xmm10, xmm1
+	250 JumpIfGreater {257}
+	251 Move xmm0, xmm7
+	252 Xor xmm0, xmm0, xmm3
+	253 Compare xmm0, xmm9
+	254 JumpIfGreater {257}
+	255 Compare xmm9, xmm2
+	256 JumpIfLessOrEqual {340}
+	257 Move rcx, 0
+	258 Call Screen.get_fullScreen, rcx
+	259 Move rcx, typeof(UnityEngine.Display)
+	260 Compare rax, 0
+	261 JumpIfEqual {290}
+	262 Compare [rcx+228], 0
+	263 Add xmm7, xmm7, xmm9
+	264 Add xmm8, xmm8, xmm10
+	265 JumpIfNotEqual {267}
+	266 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	267 Move rcx, 0
+	268 Call Display.get_main, rcx
+	269 Compare rax, 0
+	270 JumpIfEqual {356}
+	271 Move rdx, 0
+	272 Move rcx, rax
+	273 Call Display.get_systemWidth, rcx, rdx
+	274 Move rcx, 0
+	275 Move xmm6, rax
+	276 Move xmm6, xmm6
+	277 Divide xmm6, xmm6, xmm12
+	278 Multiply xmm6, xmm6, xmm7
+	279 Call Display.get_main, rcx
+	280 Compare rax, 0
+	281 JumpIfEqual {356}
+	282 Move rdx, 0
+	283 Move rcx, rax
+	284 Call Display.get_systemHeight, rcx, rdx
+	285 Move xmm1, rax
+	286 Move xmm1, xmm1
+	287 Divide xmm1, xmm1, xmm11
+	288 Multiply xmm1, xmm1, xmm8
+	289 Goto {335}
+	290 Compare [rcx+228], 0
+	291 JumpIfNotEqual {293}
+	292 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	293 Move rcx, 0
+	294 Call Display.get_main, rcx
+	295 Compare rax, 0
+	296 JumpIfEqual {356}
+	297 Move rdx, 0
+	298 Move rcx, rax
+	299 Call Display.get_renderingWidth, rcx, rdx
+	300 Move rcx, 0
+	301 Move rdi, rax
+	302 Call Display.get_main, rcx
+	303 Compare rax, 0
+	304 JumpIfEqual {356}
+	305 Move rdx, 0
+	306 Move rcx, rax
+	307 Call Display.get_systemWidth, rcx, rdx
+	308 Subtract rdi, rdi, rax
+	309 Move xmm6, xmm9
+	310 Move rcx, 0
+	311 Move xmm0, rdi
+	312 Move xmm0, xmm0
+	313 Multiply xmm0, xmm0, xmm13
+	314 Subtract xmm6, xmm6, xmm0
+	315 Call Display.get_main, rcx
+	316 Compare rax, 0
+	317 JumpIfEqual {356}
+	318 Move rdx, 0
+	319 Move rcx, rax
+	320 Call Display.get_renderingHeight, rcx, rdx
+	321 Move rcx, 0
+	322 Move rdi, rax
+	323 Call Display.get_main, rcx
+	324 Compare rax, 0
+	325 JumpIfEqual {356}
+	326 Move rdx, 0
+	327 Move rcx, rax
+	328 Call Display.get_systemHeight, rcx, rdx
+	329 Subtract rdi, rdi, rax
+	330 Move xmm1, xmm10
+	331 Move xmm0, rdi
+	332 Move xmm0, xmm0
+	333 Multiply xmm0, xmm0, xmm13
+	334 Subtract xmm1, xmm1, xmm0
+	335 Move xmm2, rsi
+	336 Move xmm2, xmm2
+	337 Compare xmm2, xmm14
+	338 NotImplemented "jp short 000000018298CA5Fh"
+	339 JumpIfNotEqual {349}
+	340 Move xmm0, xmm9
+	341 Move XMM_TEMP.S[0], xmm0.S[0]
+	342 Move XMM_TEMP.S[1], xmm10.S[0]
+	343 Move XMM_TEMP.S[2], xmm0.S[1]
+	344 Move XMM_TEMP.S[3], xmm10.S[1]
+	345 Move xmm0, XMM_TEMP
+	346 Move [rbx], xmm0
+	347 Move [rbx+8], xmm14
+	348 Goto {78}
+	349 Move XMM_TEMP.S[0], xmm6.S[0]
+	350 Move XMM_TEMP.S[1], xmm1.S[0]
+	351 Move XMM_TEMP.S[2], xmm6.S[1]
+	352 Move XMM_TEMP.S[3], xmm1.S[1]
+	353 Move xmm6, XMM_TEMP
+	354 Move [rbx], xmm6
+	355 Goto {77}
+	356 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,106 @@
+Type: UnityEngine.TextCore.LowLevel.MarkToMarkAdjustmentRecord
+
+Method: System.UInt32 get_baseMarkGlyphID()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Return rax
+
+Method: System.Void set_baseMarkGlyphID(System.UInt32 value)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: UnityEngine.TextCore.LowLevel.GlyphAnchorPoint get_baseMarkGlyphAnchorPoint()
+
+Disassembly:
+	movss xmm1,dword ptr [rcx+8]
+	movss xmm0,dword ptr [rcx+4]
+	unpcklps xmm0,xmm1
+	movq rax,xmm0
+	ret
+
+ISIL:
+	001 Move xmm1, [rcx+8]
+	002 Move xmm0, [rcx+4]
+	003 Move XMM_TEMP.S[0], xmm0.S[0]
+	004 Move XMM_TEMP.S[1], xmm1.S[0]
+	005 Move XMM_TEMP.S[2], xmm0.S[1]
+	006 Move XMM_TEMP.S[3], xmm1.S[1]
+	007 Move xmm0, XMM_TEMP
+	008 Move rax, xmm0
+	009 Return rax
+
+Method: System.Void set_baseMarkGlyphAnchorPoint(UnityEngine.TextCore.LowLevel.GlyphAnchorPoint value)
+
+Disassembly:
+	mov [rcx+4],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: System.UInt32 get_combiningMarkGlyphID()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+0Ch]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+12]
+	003 Return rax
+
+Method: System.Void set_combiningMarkGlyphID(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+0Ch],edx
+	ret
+
+ISIL:
+	001 Move [rcx+12], rdx
+	002 Return 
+
+Method: UnityEngine.TextCore.LowLevel.MarkPositionAdjustment get_combiningMarkPositionAdjustment()
+
+Disassembly:
+	movss xmm1,dword ptr [rcx+14h]
+	movss xmm0,dword ptr [rcx+10h]
+	unpcklps xmm0,xmm1
+	movq rax,xmm0
+	ret
+
+ISIL:
+	001 Move xmm1, [rcx+20]
+	002 Move xmm0, [rcx+16]
+	003 Move XMM_TEMP.S[0], xmm0.S[0]
+	004 Move XMM_TEMP.S[1], xmm1.S[0]
+	005 Move XMM_TEMP.S[2], xmm0.S[1]
+	006 Move XMM_TEMP.S[3], xmm1.S[1]
+	007 Move xmm0, XMM_TEMP
+	008 Move rax, xmm0
+	009 Return rax
+
+Method: System.Void set_combiningMarkPositionAdjustment(UnityEngine.TextCore.LowLevel.MarkPositionAdjustment value)
+
+Disassembly:
+	mov [rcx+10h],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+

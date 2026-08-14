@@ -1,0 +1,393 @@
+Type: UnityEngine.TextCore.LowLevel.LigatureSubstitutionRecord
+
+Method: System.UInt32[] get_componentGlyphIDs()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Return rax
+
+Method: System.Void set_componentGlyphIDs(System.UInt32[] value)
+
+Disassembly:
+	mov [rcx],rdx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Call 0x18037ACB0, rcx, rdx, r8, r9
+	003 Return 
+
+Method: System.UInt32 get_ligatureGlyphID()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+8]
+	003 Return rax
+
+Method: System.Void set_ligatureGlyphID(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+8],edx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: System.Boolean Equals(UnityEngine.TextCore.LowLevel.LigatureSubstitutionRecord other)
+
+Disassembly:
+	sub rsp,38h
+	movups xmm0,[rdx]
+	mov r11,rdx
+	movups xmm1,[rcx]
+	movq rax,xmm1
+	test rax,rax
+	movq rax,xmm0
+	jne short 00000001826F7038h
+	test rax,rax
+	je short 00000001826F70A0h
+	xor al,al
+	add rsp,38h
+	ret
+	test rax,rax
+	je short 00000001826F7031h
+	mov rax,[rcx]
+	test rax,rax
+	je short 00000001826F70B5h
+	mov rcx,[rdx]
+	movsxd rax,dword ptr [rax+18h]
+	test rcx,rcx
+	je short 00000001826F70B5h
+	cmp eax,[rcx+18h]
+	jne short 00000001826F7031h
+	xor ecx,ecx
+	mov r10,rax
+	test eax,eax
+	jle short 00000001826F70A0h
+	movups [rsp+20h],xmm1
+	mov r9,[rsp+20h]
+	mov r8d,ecx
+	mov edx,20h
+	test r9,r9
+	je short 00000001826F70B5h
+	cmp ecx,[r9+18h]
+	jae short 00000001826F70BBh
+	mov rax,[r11]
+	test rax,rax
+	je short 00000001826F70B5h
+	cmp ecx,[rax+18h]
+	jae short 00000001826F70BBh
+	mov eax,[rdx+rax]
+	cmp [rdx+r9],eax
+	jne short 00000001826F7031h
+	inc ecx
+	inc r8
+	add rdx,4
+	cmp r8,r10
+	jl short 00000001826F7071h
+	psrldq xmm1,8
+	movd ecx,xmm1
+	cmp ecx,[r11+8]
+	sete al
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm0, [rdx]
+	003 Move r11, rdx
+	004 Move xmm1, [rcx]
+	005 Move rax, xmm1
+	006 Compare rax, 0
+	007 Move rax, xmm0
+	008 JumpIfNotEqual {14}
+	009 Compare rax, 0
+	010 JumpIfEqual {50}
+	011 Move rax, 0
+	012 ShiftStack 56
+	013 Return rax
+	014 Compare rax, 0
+	015 JumpIfEqual {11}
+	016 Move rax, [rcx]
+	017 Compare rax, 0
+	018 JumpIfEqual {56}
+	019 Move rcx, [rdx]
+	020 Move rax, [rax+24]
+	021 Compare rcx, 0
+	022 JumpIfEqual {56}
+	023 Compare rax, [rcx+24]
+	024 JumpIfNotEqual {11}
+	025 Move rcx, 0
+	026 Move r10, rax
+	027 Compare rax, 0
+	028 JumpIfLessOrEqual {50}
+	029 Move stack:0x20, xmm1
+	030 Move r9, stack:0x20
+	031 Move r8, rcx
+	032 Move rdx, 32
+	033 Compare r9, 0
+	034 JumpIfEqual {56}
+	035 Compare rcx, [r9+24]
+	036 JumpIfGreaterOrEqual {58}
+	037 Move rax, [r11]
+	038 Compare rax, 0
+	039 JumpIfEqual {56}
+	040 Compare rcx, [rax+24]
+	041 JumpIfGreaterOrEqual {58}
+	042 Move rax, [rdx+rax]
+	043 Compare [rdx+r9], rax
+	044 JumpIfNotEqual {11}
+	045 Add rcx, rcx, 1
+	046 Add r8, r8, 1
+	047 Add rdx, rdx, 4
+	048 Compare r8, r10
+	049 JumpIfLess {33}
+	050 NotImplemented "psrldq xmm1,8"
+	051 Move rcx, xmm1
+	052 Compare rcx, [r11+8]
+	053 NotImplemented "sete al"
+	054 ShiftStack 56
+	055 Return rax
+	056 Call 0x18037BE30, rcx, rdx, r8, r9
+	057 Interrupt 
+	058 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183759D49h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 00000001826F70FCh
+	lea rcx,[18355C290h]
+	call 000000018037BB90h
+	mov byte ptr [183759D49h],1
+	test rbx,rbx
+	je short 00000001826F714Eh
+	mov rdx,[18355C290h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 00000001826F714Eh
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 00000001826F715Bh
+	call 000000018037AE90h
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	mov rcx,rdi
+	movups xmm0,[rax]
+	movaps [rsp+20h],xmm0
+	call 00000001826F7010h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	xor al,al
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183759D49], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x18355C290]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183759D49], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {39}
+	014 Move rdx, typeof(UnityEngine.TextCore.LowLevel.LigatureSubstitutionRecord)
+	015 Move rax, 0
+	016 Compare [rbx], rdx
+	017 JumpIfNotEqual {19}
+	018 Move rax, rbx
+	019 Nop 
+	020 Compare rax, 0
+	021 JumpIfEqual {39}
+	022 Move rcx, [rbx]
+	023 Move rax, [rdx+64]
+	024 Compare [rcx+64], rax
+	025 Move rcx, rbx
+	026 JumpIfNotEqual {45}
+	027 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	028 Move r8, 0
+	029 LoadAddress rdx, stack:0x20
+	030 Move rcx, rdi
+	031 Move xmm0, [rax]
+	032 Move stack:0x20, xmm0
+	033 Call LigatureSubstitutionRecord.Equals, rcx, rdx
+	034 Move rbx, stack:0x40
+	035 ShiftStack 48
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return rax
+	039 Move rax, 0
+	040 Move rbx, stack:0x40
+	041 ShiftStack 48
+	042 Move rdi, stack:0x0
+	043 ShiftStack 8
+	044 Return rax
+	045 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 00000001826F7194h
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	add rsp,28h
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx]
+	003 Compare rcx, 0
+	004 JumpIfEqual {10}
+	005 Move rdx, [rcx]
+	006 Move rax, [rdx+344]
+	007 Move rdx, [rdx+352]
+	008 ShiftStack 40
+	009 CallNoReturn rax
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean op_Equality(UnityEngine.TextCore.LowLevel.LigatureSubstitutionRecord lhs, UnityEngine.TextCore.LowLevel.LigatureSubstitutionRecord rhs)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov r9,rdx
+	mov rbx,rcx
+	cmp qword ptr [rcx],0
+	jne short 00000001826F71C9h
+	cmp qword ptr [rdx],0
+	jbe short 00000001826F7219h
+	xor al,al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp qword ptr [r9],0
+	mov rdx,[rcx]
+	jbe short 00000001826F71BCh
+	mov rax,[r9]
+	movsxd rdx,dword ptr [rdx+18h]
+	cmp edx,[rax+18h]
+	jne short 00000001826F71BCh
+	xor ecx,ecx
+	test edx,edx
+	jle short 00000001826F7219h
+	mov r10,[rbx]
+	mov rdi,rdx
+	mov edx,20h
+	mov r8d,ecx
+	mov r11,rax
+	cmp ecx,[r10+18h]
+	jae short 00000001826F722Eh
+	cmp ecx,[r11+18h]
+	jae short 00000001826F722Eh
+	mov eax,[rdx+r11]
+	cmp [rdx+r10],eax
+	jne short 00000001826F71BCh
+	inc ecx
+	inc r8
+	add rdx,4
+	cmp r8,rdi
+	jl short 00000001826F71F5h
+	mov eax,[r9+8]
+	cmp [rbx+8],eax
+	mov rbx,[rsp+30h]
+	sete al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move r9, rdx
+	006 Move rbx, rcx
+	007 Compare [rcx], 0
+	008 JumpIfNotEqual {17}
+	009 Compare [rdx], 0
+	010 JumpIfLessOrEqual {44}
+	011 Move rax, 0
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Return rax
+	017 Compare [r9], 0
+	018 Move rdx, [rcx]
+	019 JumpIfLessOrEqual {11}
+	020 Move rax, [r9]
+	021 Move rdx, [rdx+24]
+	022 Compare rdx, [rax+24]
+	023 JumpIfNotEqual {11}
+	024 Move rcx, 0
+	025 Compare rdx, 0
+	026 JumpIfLessOrEqual {44}
+	027 Move r10, [rbx]
+	028 Move rdi, rdx
+	029 Move rdx, 32
+	030 Move r8, rcx
+	031 Move r11, rax
+	032 Compare rcx, [r10+24]
+	033 JumpIfGreaterOrEqual {52}
+	034 Compare rcx, [r11+24]
+	035 JumpIfGreaterOrEqual {52}
+	036 Move rax, [rdx+r11]
+	037 Compare [rdx+r10], rax
+	038 JumpIfNotEqual {11}
+	039 Add rcx, rcx, 1
+	040 Add r8, r8, 1
+	041 Add rdx, rdx, 4
+	042 Compare r8, rdi
+	043 JumpIfLess {32}
+	044 Move rax, [r9+8]
+	045 Compare [rbx+8], rax
+	046 Move rbx, stack:0x30
+	047 NotImplemented "sete al"
+	048 ShiftStack 32
+	049 Move rdi, stack:0x0
+	050 ShiftStack 8
+	051 Return rax
+	052 Call 0x18037BE20, rcx, rdx, r8, r9
+

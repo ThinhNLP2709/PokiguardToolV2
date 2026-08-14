@@ -1,0 +1,469 @@
+Type: Unity.VisualScripting.FullSerializer.fsTypeConverter
+
+Method: System.Boolean CanProcess(System.Type type)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rcx,[18375C180h]
+	mov rdi,rdx
+	cmp dword ptr [rcx+0E4h],0
+	lea rbx,[rcx+20h]
+	jne short 0000000182539046h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018182C680h
+	test rax,rax
+	je short 0000000182539079h
+	mov r8,[rax]
+	mov rdx,rdi
+	mov rcx,rax
+	mov r9,[r8+298h]
+	mov r8,[r8+2A0h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp r9
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rcx, [0x18375C180]
+	006 Move rdi, rdx
+	007 Compare [rcx+228], 0
+	008 LoadAddress rbx, [rcx+32]
+	009 JumpIfNotEqual {11}
+	010 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	011 Move rdx, 0
+	012 Move rcx, rbx
+	013 Call Type.GetTypeFromHandle, rcx, rdx
+	014 Compare rax, 0
+	015 JumpIfEqual {26}
+	016 Move r8, [rax]
+	017 Move rdx, rdi
+	018 Move rcx, rax
+	019 Move r9, [r8+664]
+	020 Move r8, [r8+672]
+	021 Move rbx, stack:0x30
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 CallNoReturn r9
+	026 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean RequestCycleSupport(System.Type type)
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Boolean RequestInheritanceSupport(System.Type type)
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: Unity.VisualScripting.FullSerializer.fsResult TrySerialize(System.Object instance, out Unity.VisualScripting.FullSerializer.fsData serialized, System.Type storageType)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rsi
+	push r14
+	sub rsp,20h
+	cmp byte ptr [1837551ACh],0
+	mov r14,r9
+	mov rbx,r8
+	mov rsi,rcx
+	jne short 00000001825392CDh
+	lea rcx,[183507868h]
+	call 000000018037BB90h
+	lea rcx,[183547180h]
+	call 000000018037BB90h
+	lea rcx,[183548200h]
+	call 000000018037BB90h
+	mov byte ptr [1837551ACh],1
+	mov rdx,[18375C180h]
+	test rbx,rbx
+	je short 0000000182539305h
+	mov r8,[rbx]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r8+130h],al
+	jb near ptr 00000001825393A9h
+	movzx ecx,al
+	mov rax,[r8+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	jne near ptr 00000001825393A9h
+	mov rcx,[183507868h]
+	mov [rsp+30h],rdi
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018253931Fh
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001824FCA30h
+	mov rcx,[183547180h]
+	mov rbx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rdi,rax
+	call 0000000180456D90h
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rdx,rdi
+	mov [r14],rdi
+	mov rcx,r14
+	call 000000018037ACB0h
+	mov rax,[183548200h]
+	mov rdi,[rsp+30h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000182539387h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183548200h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+38h]
+	movups xmm0,[rax+8]
+	mov rax,rsi
+	movups [rsi],xmm0
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop r14
+	ret
+	mov rcx,rbx
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, r14
+	005 ShiftStack -32
+	006 Compare [0x1837551AC], 0
+	007 Move r14, r9
+	008 Move rbx, r8
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {18}
+	011 LoadAddress rcx, [0x183507868]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183547180]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x183548200]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 Move [0x1837551AC], 1
+	018 Move rdx, [0x18375C180]
+	019 Compare rbx, 0
+	020 JumpIfEqual {29}
+	021 Move r8, [rbx]
+	022 Move rax, [rdx+304]
+	023 Compare [r8+304], rax
+	024 JumpIfLess {69}
+	025 Move rcx, rax
+	026 Move rax, [r8+200]
+	027 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	028 JumpIfNotEqual {69}
+	029 Move rcx, typeof(Unity.VisualScripting.RuntimeCodebase)
+	030 Move stack:0x30, rdi
+	031 Compare [rcx+228], 0
+	032 JumpIfNotEqual {34}
+	033 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	034 Move rdx, 0
+	035 Move rcx, rbx
+	036 Call RuntimeCodebase.SerializeType, rcx, rdx
+	037 Move rcx, typeof(Unity.VisualScripting.FullSerializer.fsData)
+	038 Move rbx, rax
+	039 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	040 Move rdx, 0
+	041 Move rcx, rax
+	042 Move rdi, rax
+	043 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	044 LoadAddress rcx, [rdi+16]
+	045 Move [rdi+16], rbx
+	046 Move rdx, rbx
+	047 Call 0x18037ACB0, rcx, rdx, r8, r9
+	048 Move rdx, rdi
+	049 Move [r14], rdi
+	050 Move rcx, r14
+	051 Call 0x18037ACB0, rcx, rdx, r8, r9
+	052 Move rax, typeof(Unity.VisualScripting.FullSerializer.fsResult)
+	053 Move rdi, stack:0x30
+	054 Compare [rax+228], 0
+	055 JumpIfNotEqual {59}
+	056 Move rcx, rax
+	057 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	058 Move rax, typeof(Unity.VisualScripting.FullSerializer.fsResult)
+	059 Move rax, [rax+184]
+	060 Move rbx, stack:0x38
+	061 Move xmm0, [rax+8]
+	062 Move rax, rsi
+	063 Move [rsi], xmm0
+	064 Move rsi, stack:0x40
+	065 ShiftStack 32
+	066 Move r14, stack:0x0
+	067 ShiftStack 8
+	068 Return rax
+	069 Move rcx, rbx
+	070 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: Unity.VisualScripting.FullSerializer.fsResult TryDeserialize(Unity.VisualScripting.FullSerializer.fsData data, ref System.Object instance, System.Type storageType)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+20h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837551ADh],0
+	mov rsi,r9
+	mov rbx,r8
+	mov rdi,rcx
+	jne short 00000001825390F0h
+	lea rcx,[183507868h]
+	call 000000018037BB90h
+	lea rcx,[18354D4D0h]
+	call 000000018037BB90h
+	lea rcx,[183554D00h]
+	call 000000018037BB90h
+	lea rcx,[18355FB00h]
+	call 000000018037BB90h
+	lea rcx,[1835558B8h]
+	call 000000018037BB90h
+	lea rcx,[183548200h]
+	call 000000018037BB90h
+	mov byte ptr [1837551ADh],1
+	xor ecx,ecx
+	mov [rsp+40h],rcx
+	test rbx,rbx
+	je near ptr 000000018253926Fh
+	mov rdx,[rbx+10h]
+	test rdx,rdx
+	je near ptr 000000018253922Dh
+	mov rax,[18375C130h]
+	cmp [rdx],rax
+	cmove rcx,rdx
+	test rcx,rcx
+	je near ptr 000000018253922Dh
+	mov [rsp+48h],rbp
+	cmp byte ptr [1837551FCh],0
+	jne short 0000000182539145h
+	lea rcx,[18350FF98h]
+	call 000000018037BB90h
+	mov byte ptr [1837551FCh],1
+	mov rdx,[18350FF98h]
+	mov rcx,rbx
+	call 0000000180A491D0h
+	mov rcx,[183507868h]
+	mov rbp,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018253916Ch
+	call 000000018037BED0h
+	xor r8d,r8d
+	lea rdx,[rsp+40h]
+	mov rcx,rbp
+	call 00000001824FCB70h
+	mov rbp,[rsp+48h]
+	test al,al
+	jne short 00000001825391F1h
+	cmp [1837551FCh],al
+	jne short 00000001825391A0h
+	lea rcx,[18350FF98h]
+	call 000000018037BB90h
+	mov byte ptr [1837551FCh],1
+	mov rdx,[18350FF98h]
+	mov rcx,rbx
+	call 0000000180A491D0h
+	mov rcx,[18355FB00h]
+	test rax,rax
+	jne short 00000001825391C2h
+	mov rax,[1835558B8h]
+	mov r8,[18354D4D0h]
+	xor r9d,r9d
+	mov rdx,rax
+	call 000000018165AF00h
+	mov rcx,[183548200h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001825391ECh
+	call 000000018037BED0h
+	mov rdx,rbx
+	jmp short 0000000182539249h
+	mov rdx,[rsp+40h]
+	mov rcx,rsi
+	mov [rsi],rdx
+	call 000000018037ACB0h
+	mov rax,[183548200h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000182539220h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183548200h]
+	mov rax,[rax+0B8h]
+	movups xmm0,[rax+8]
+	jmp short 0000000182539259h
+	mov rcx,[183548200h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182539242h
+	call 000000018037BED0h
+	mov rdx,[183554D00h]
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	call 0000000182538220h
+	movups xmm0,[rax]
+	mov rbx,[rsp+50h]
+	mov rax,rdi
+	mov rsi,[rsp+58h]
+	movups [rdi],xmm0
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x20, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [0x1837551AD], 0
+	007 Move rsi, r9
+	008 Move rbx, r8
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {24}
+	011 LoadAddress rcx, [0x183507868]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18354D4D0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x183554D00]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x18355FB00]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 LoadAddress rcx, [0x1835558B8]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 LoadAddress rcx, [0x183548200]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 Move [0x1837551AD], 1
+	024 Move rcx, 0
+	025 Move stack:0x40, rcx
+	026 Compare rbx, 0
+	027 JumpIfEqual {112}
+	028 Move rdx, [rbx+16]
+	029 Compare rdx, 0
+	030 JumpIfEqual {95}
+	031 Move rax, [0x18375C130]
+	032 Compare [rdx], rax
+	033 JumpIfNotEqual {35}
+	034 Move rcx, rdx
+	035 Nop 
+	036 Compare rcx, 0
+	037 JumpIfEqual {95}
+	038 Move stack:0x48, rbp
+	039 Compare [0x1837551FC], 0
+	040 JumpIfNotEqual {44}
+	041 LoadAddress rcx, [0x18350FF98]
+	042 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	043 Move [0x1837551FC], 1
+	044 Move rdx, [0x18350FF98]
+	045 Move rcx, rbx
+	046 Call fsData.Cast, rcx, rdx
+	047 Move rcx, typeof(Unity.VisualScripting.RuntimeCodebase)
+	048 Move rbp, rax
+	049 Compare [rcx+228], 0
+	050 JumpIfNotEqual {52}
+	051 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	052 Move r8, 0
+	053 LoadAddress rdx, stack:0x40
+	054 Move rcx, rbp
+	055 Call RuntimeCodebase.TryDeserializeType, rcx, rdx, r8
+	056 Move rbp, stack:0x48
+	057 Compare rax, 0
+	058 JumpIfNotEqual {82}
+	059 Compare [0x1837551FC], rax
+	060 JumpIfNotEqual {64}
+	061 LoadAddress rcx, [0x18350FF98]
+	062 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	063 Move [0x1837551FC], 1
+	064 Move rdx, [0x18350FF98]
+	065 Move rcx, rbx
+	066 Call fsData.Cast, rcx, rdx
+	067 Move rcx, "Unable to find type: '"
+	068 Compare rax, 0
+	069 JumpIfNotEqual {71}
+	070 Move rax, "(null)"
+	071 Move r8, "'."
+	072 Move r9, 0
+	073 Move rdx, rax
+	074 Call String.Concat, rcx, rdx, r8, r9
+	075 Move rcx, typeof(Unity.VisualScripting.FullSerializer.fsResult)
+	076 Move rbx, rax
+	077 Compare [rcx+228], 0
+	078 JumpIfNotEqual {80}
+	079 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	080 Move rdx, rbx
+	081 Goto {100}
+	082 Move rdx, stack:0x40
+	083 Move rcx, rsi
+	084 Move [rsi], rdx
+	085 Call 0x18037ACB0, rcx, rdx, r8, r9
+	086 Move rax, typeof(Unity.VisualScripting.FullSerializer.fsResult)
+	087 Compare [rax+228], 0
+	088 JumpIfNotEqual {92}
+	089 Move rcx, rax
+	090 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	091 Move rax, typeof(Unity.VisualScripting.FullSerializer.fsResult)
+	092 Move rax, [rax+184]
+	093 Move xmm0, [rax+8]
+	094 Goto {104}
+	095 Move rcx, typeof(Unity.VisualScripting.FullSerializer.fsResult)
+	096 Compare [rcx+228], 0
+	097 JumpIfNotEqual {99}
+	098 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	099 Move rdx, "Type converter requires a string"
+	100 Move r8, 0
+	101 LoadAddress rcx, stack:0x20
+	102 Call fsResult.Fail, rcx, rdx
+	103 Move xmm0, [rax]
+	104 Move rbx, stack:0x50
+	105 Move rax, rdi
+	106 Move rsi, stack:0x58
+	107 Move [rdi], xmm0
+	108 ShiftStack 48
+	109 Move rdi, stack:0x0
+	110 ShiftStack 8
+	111 Return rax
+	112 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object CreateInstance(Unity.VisualScripting.FullSerializer.fsData data, System.Type storageType)
+
+Disassembly:
+	mov rax,r8
+	ret
+
+ISIL:
+	001 Move rax, r8
+	002 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

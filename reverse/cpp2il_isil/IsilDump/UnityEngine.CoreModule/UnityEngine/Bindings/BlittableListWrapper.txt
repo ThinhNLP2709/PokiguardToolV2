@@ -1,0 +1,59 @@
+Type: UnityEngine.Bindings.BlittableListWrapper
+
+Method: System.Void .ctor(UnityEngine.Bindings.BlittableArrayWrapper arrayWrapper, System.Int32 listSize)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov [rcx+10h],r8d
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move [rcx+16], r8
+	003 Move [rcx], xmm0
+	004 Return 
+
+Method: System.Void Unmarshal(System.Collections.Generic.List`1<T> list)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+20h],rsi
+	push rdi
+	sub rsp,30h
+	cmp qword ptr [r8+38h],0
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 0000000180850A97h
+	mov rcx,r8
+	call 0000000180384D10h
+	test rsi,rsi
+	je short 0000000180850B04h
+	movsxd rax,dword ptr [rbx+0Ch]
+	cmp eax,5
+	ja short 0000000180850B04h
+	lea rdx,[180000000h]
+	mov [rsp+40h],rbp
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x20, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [r8+56], 0
+	007 Move rdi, r8
+	008 Move rsi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {13}
+	011 Move rcx, r8
+	012 Call 0x180384D10, rcx, rdx, r8, r9
+	013 Compare rsi, 0
+	014 Invalid "Jump target not found in method."
+	015 Move rax, [rbx+12]
+	016 Compare rax, 5
+	017 Invalid "Jump target not found in method."
+	018 LoadAddress rdx, [0x180000000]
+	019 Move stack:0x40, rbp
+

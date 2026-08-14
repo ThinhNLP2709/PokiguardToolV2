@@ -1,0 +1,27 @@
+Type: UnityEngine.Rendering.Universal.BuddyAllocation
+
+Method: System.Void .ctor(System.Int32 level, System.Int32 index)
+
+Disassembly:
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+4], r8
+	003 Return 
+
+Method: Unity.Mathematics.uint2 get_index2D()
+
+Disassembly:
+	mov ecx,[rcx+4]
+	xor edx,edx
+	jmp near ptr 00000001823236E0h
+
+ISIL:
+	001 Move rcx, [rcx+4]
+	002 Move rdx, 0
+	003 Call SpaceFillingCurves.DecodeMorton2D, rcx, rdx
+	004 Return rax
+

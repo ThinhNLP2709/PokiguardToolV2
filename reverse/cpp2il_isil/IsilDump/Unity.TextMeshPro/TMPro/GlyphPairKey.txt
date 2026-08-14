@@ -1,0 +1,52 @@
+Type: TMPro.GlyphPairKey
+
+Method: System.Void .ctor(System.UInt32 firstGlyphIndex, System.UInt32 secondGlyphIndex)
+
+Disassembly:
+	mov [rcx+4],r8d
+	shl r8d,10h
+	or r8d,edx
+	mov [rcx],edx
+	mov [rcx+8],r8d
+	ret
+
+ISIL:
+	001 Move [rcx+4], r8
+	002 ShiftLeft r8, 16
+	003 Or r8, r8, rdx
+	004 Move [rcx], rdx
+	005 Move [rcx+8], r8
+	006 Return 
+
+Method: System.Void .ctor(TMPro.TMP_GlyphPairAdjustmentRecord record)
+
+Disassembly:
+	sub rsp,48h
+	test rdx,rdx
+	je short 00000001823DF3E4h
+	movups xmm0,[rdx+10h]
+	movd dword ptr [rcx],xmm0
+	mov eax,[rdx+24h]
+	mov [rcx+4],eax
+	shl eax,10h
+	or eax,[rcx]
+	mov [rcx+8],eax
+	add rsp,48h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare rdx, 0
+	003 JumpIfEqual {13}
+	004 Move xmm0, [rdx+16]
+	005 Move [rcx], xmm0
+	006 Move rax, [rdx+36]
+	007 Move [rcx+4], rax
+	008 ShiftLeft rax, 16
+	009 Or rax, rax, [rcx]
+	010 Move [rcx+8], rax
+	011 ShiftStack 72
+	012 Return 
+	013 Call 0x18037BE30, rcx, rdx, r8, r9
+

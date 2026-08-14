@@ -1,0 +1,721 @@
+Type: UnityEngine.Rendering.Universal.SingleHistoryBase
+
+Method: System.Void OnCreate(UnityEngine.Rendering.BufferedRTHandleSystem owner, System.UInt32 typeId)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xor r9d,r9d
+	mov rbx,rcx
+	call 00000001818556B0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000182166730h
+	mov [rbx+20h],eax
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move r9, 0
+	005 Move rbx, rcx
+	006 Call 0x1818556B0, rcx, rdx, r8
+	007 Move r8, 0
+	008 Move rdx, 0
+	009 Move rcx, rbx
+	010 Call CameraHistoryItem.MakeId, rcx, rdx
+	011 Move [rbx+32], rax
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Return 
+
+Method: UnityEngine.Rendering.RTHandle GetTexture(System.Int32 frameIndex = 0)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	mov rdx,[rcx]
+	mov rax,[rdx+198h]
+	mov rdx,[rdx+1A0h]
+	call rax
+	movsxd r8,eax
+	cmp rdi,r8
+	jge short 00000001822D836Bh
+	mov rcx,[rbx+10h]
+	test rcx,rcx
+	je short 00000001822D8378h
+	mov edx,[rbx+20h]
+	xor r9d,r9d
+	mov r8d,edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001821CB220h
+	mov rbx,[rsp+30h]
+	xor eax,eax
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, [rcx]
+	008 Move rax, [rdx+408]
+	009 Move rdx, [rdx+416]
+	010 Call rax
+	011 Move r8, rax
+	012 Compare rdi, r8
+	013 JumpIfGreaterOrEqual {26}
+	014 Move rcx, [rbx+16]
+	015 Compare rcx, 0
+	016 JumpIfEqual {32}
+	017 Move rdx, [rbx+32]
+	018 Move r9, 0
+	019 Move r8, rdi
+	020 Move rbx, stack:0x30
+	021 ShiftStack 32
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Call BufferedRTHandleSystem.GetFrameRT, rcx, rdx, r8
+	025 Return rax
+	026 Move rbx, stack:0x30
+	027 Move rax, 0
+	028 ShiftStack 32
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+	032 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Rendering.RTHandle GetCurrentTexture()
+
+Disassembly:
+	mov edx,[rcx+20h]
+	xor r8d,r8d
+	jmp near ptr 00000001821666D0h
+
+ISIL:
+	001 Move rdx, [rcx+32]
+	002 Move r8, 0
+	003 Call CameraHistoryItem.GetCurrentFrameRT, rcx, rdx
+	004 Return rax
+
+Method: UnityEngine.Rendering.RTHandle GetPreviousTexture()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rdx,[rcx]
+	mov rbx,rcx
+	mov rax,[rdx+198h]
+	mov rdx,[rdx+1A0h]
+	call rax
+	cmp eax,1
+	jle short 00000001822D8310h
+	mov rcx,[rbx+10h]
+	test rcx,rcx
+	je short 00000001822D8318h
+	mov edx,[rbx+20h]
+	xor r9d,r9d
+	mov r8d,1
+	add rsp,20h
+	pop rbx
+	jmp near ptr 00000001821CB220h
+	xor eax,eax
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rdx, [rcx]
+	005 Move rbx, rcx
+	006 Move rax, [rdx+408]
+	007 Move rdx, [rdx+416]
+	008 Call rax
+	009 Compare rax, 1
+	010 JumpIfLessOrEqual {22}
+	011 Move rcx, [rbx+16]
+	012 Compare rcx, 0
+	013 JumpIfEqual {27}
+	014 Move rdx, [rbx+32]
+	015 Move r9, 0
+	016 Move r8, 1
+	017 ShiftStack 32
+	018 Move rbx, stack:0x0
+	019 ShiftStack 8
+	020 Call BufferedRTHandleSystem.GetFrameRT, rcx, rdx, r8
+	021 Return rax
+	022 Move rax, 0
+	023 ShiftStack 32
+	024 Move rbx, stack:0x0
+	025 ShiftStack 8
+	026 Return rax
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean IsAllocated()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rdx,[rcx]
+	mov rbx,rcx
+	mov rax,[rdx+198h]
+	mov rdx,[rdx+1A0h]
+	call rax
+	test eax,eax
+	jle short 00000001822D83C3h
+	mov rcx,[rbx+10h]
+	test rcx,rcx
+	je short 00000001822D83D1h
+	mov edx,[rbx+20h]
+	xor r9d,r9d
+	xor r8d,r8d
+	call 00000001821CB220h
+	test rax,rax
+	setne al
+	add rsp,20h
+	pop rbx
+	ret
+	xor eax,eax
+	test rax,rax
+	setne al
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rdx, [rcx]
+	005 Move rbx, rcx
+	006 Move rax, [rdx+408]
+	007 Move rdx, [rdx+416]
+	008 Call rax
+	009 Compare rax, 0
+	010 JumpIfLessOrEqual {24}
+	011 Move rcx, [rbx+16]
+	012 Compare rcx, 0
+	013 JumpIfEqual {31}
+	014 Move rdx, [rbx+32]
+	015 Move r9, 0
+	016 Move r8, 0
+	017 Call BufferedRTHandleSystem.GetFrameRT, rcx, rdx, r8
+	018 Compare rax, 0
+	019 NotImplemented "setne al"
+	020 ShiftStack 32
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+	024 Move rax, 0
+	025 Compare rax, 0
+	026 NotImplemented "setne al"
+	027 ShiftStack 32
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+	031 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean IsDirty(ref UnityEngine.RenderTextureDescriptor desc)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,50h
+	cmp byte ptr [1837542A7h],0
+	mov rbx,rdx
+	movaps [rsp+40h],xmm6
+	mov rdi,rcx
+	jne short 00000001822D8411h
+	lea rcx,[18353DD68h]
+	call 000000018037BB90h
+	mov byte ptr [1837542A7h],1
+	mov r8,[18353DD68h]
+	lea rcx,[rsp+20h]
+	movups xmm6,[rdi+58h]
+	mov rdx,rbx
+	call 00000001808EB680h
+	movaps xmm0,[rsp+20h]
+	lea rdx,[rsp+20h]
+	xor r8d,r8d
+	movdqa [rsp+20h],xmm0
+	lea rcx,[rsp+30h]
+	movdqa [rsp+30h],xmm6
+	call 00000001825E7C80h
+	mov rbx,[rsp+60h]
+	movaps xmm6,[rsp+40h]
+	add rsp,50h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -80
+	005 Compare [0x1837542A7], 0
+	006 Move rbx, rdx
+	007 Move stack:0x40, xmm6
+	008 Move rdi, rcx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x18353DD68]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x1837542A7], 1
+	013 Move r8, [0x18353DD68]
+	014 LoadAddress rcx, stack:0x20
+	015 Move xmm6, [rdi+88]
+	016 Move rdx, rbx
+	017 Call 0x1808EB680, rcx, rdx
+	018 Move xmm0, stack:0x20
+	019 LoadAddress rdx, stack:0x20
+	020 Move r8, 0
+	021 Move stack:0x20, xmm0
+	022 LoadAddress rcx, stack:0x30
+	023 Move stack:0x30, xmm6
+	024 Call Hash128.op_Inequality, rcx, rdx, r8
+	025 Move rbx, stack:0x60
+	026 Move xmm6, stack:0x40
+	027 ShiftStack 80
+	028 Move rdi, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+
+Method: System.Void Alloc(ref UnityEngine.RenderTextureDescriptor desc)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [1837542A8h],0
+	mov rbp,rdx
+	mov rsi,rcx
+	jne short 00000001822D8216h
+	lea rcx,[18353DD68h]
+	call 000000018037BB90h
+	mov byte ptr [1837542A8h],1
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov edi,[rsi+20h]
+	mov rax,[rdx+198h]
+	mov rdx,[rdx+1A0h]
+	call rax
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov ebx,eax
+	mov r8,[rdx+1A8h]
+	mov rdx,[rdx+1B0h]
+	call r8
+	mov r9,rbp
+	mov qword ptr [rsp+28h],0
+	mov r8d,ebx
+	mov [rsp+20h],rax
+	mov edx,edi
+	mov rcx,rsi
+	call 0000000182166660h
+	movups xmm0,[rbp]
+	mov eax,[rbp+30h]
+	mov rdx,rbp
+	movups xmm1,[rbp+10h]
+	lea rcx,[rsp+30h]
+	movups xmm2,[rbp+20h]
+	movups [rsi+24h],xmm0
+	movups [rsi+34h],xmm1
+	movups [rsi+44h],xmm2
+	mov [rsi+54h],eax
+	mov r8,[18353DD68h]
+	call 00000001808EB680h
+	movups xmm0,[rsp+30h]
+	mov rbx,[rsp+50h]
+	mov rbp,[rsp+58h]
+	movups [rsi+58h],xmm0
+	mov rsi,[rsp+60h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -64
+	007 Compare [0x1837542A8], 0
+	008 Move rbp, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x18353DD68]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x1837542A8], 1
+	014 Move rdx, [rsi]
+	015 Move rcx, rsi
+	016 Move rdi, [rsi+32]
+	017 Move rax, [rdx+408]
+	018 Move rdx, [rdx+416]
+	019 Call rax
+	020 Move rdx, [rsi]
+	021 Move rcx, rsi
+	022 Move rbx, rax
+	023 Move r8, [rdx+424]
+	024 Move rdx, [rdx+432]
+	025 Call r8
+	026 Move r9, rbp
+	027 Move stack:0x28, 0
+	028 Move r8, rbx
+	029 Move stack:0x20, rax
+	030 Move rdx, rdi
+	031 Move rcx, rsi
+	032 Call CameraHistoryItem.AllocHistoryFrameRT, rcx, rdx, r8, r9, stack:0x0
+	033 Move xmm0, [rbp]
+	034 Move rax, [rbp+48]
+	035 Move rdx, rbp
+	036 Move xmm1, [rbp+16]
+	037 LoadAddress rcx, stack:0x30
+	038 Move xmm2, [rbp+32]
+	039 Move [rsi+36], xmm0
+	040 Move [rsi+52], xmm1
+	041 Move [rsi+68], xmm2
+	042 Move [rsi+84], rax
+	043 Move r8, [0x18353DD68]
+	044 Call 0x1808EB680, rcx, rdx
+	045 Move xmm0, stack:0x30
+	046 Move rbx, stack:0x50
+	047 Move rbp, stack:0x58
+	048 Move [rsi+88], xmm0
+	049 Move rsi, stack:0x60
+	050 ShiftStack 64
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return 
+
+Method: System.Void Reset()
+
+Disassembly:
+	mov edx,[rcx+20h]
+	xor r8d,r8d
+	jmp near ptr 0000000182166740h
+
+ISIL:
+	001 Move rdx, [rcx+32]
+	002 Move r8, 0
+	003 Call CameraHistoryItem.ReleaseHistoryFrameRT, rcx, rdx
+	004 Return 
+
+Method: System.Boolean Update(ref UnityEngine.RenderTextureDescriptor cameraDesc)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rsi
+	push rbp
+	lea rbp,[rsp-57h]
+	sub rsp,0E0h
+	xorps xmm0,xmm0
+	xor eax,eax
+	mov rbx,rdx
+	mov rsi,rcx
+	movups [rbp-59h],xmm0
+	mov [rbp-29h],eax
+	movups [rbp-49h],xmm0
+	movups [rbp-39h],xmm0
+	cmp [rdx],eax
+	jle near ptr 00000001822D85E4h
+	cmp [rdx+4],eax
+	jle near ptr 00000001822D85E4h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001811A55A0h
+	test eax,eax
+	je near ptr 00000001822D85E4h
+	mov r9,[rsi]
+	lea rcx,[rbp+7]
+	mov r8,rbx
+	movaps [rsp+0D0h],xmm6
+	mov rdx,rsi
+	mov rax,[r9+1B8h]
+	mov r9,[r9+1C0h]
+	call rax
+	cmp byte ptr [1837542A7h],0
+	movups xmm0,[rax]
+	movups [rbp-59h],xmm0
+	movups xmm1,[rax+10h]
+	movups [rbp-49h],xmm1
+	movups xmm0,[rax+20h]
+	movups [rbp-39h],xmm0
+	mov eax,[rax+30h]
+	mov [rbp-29h],eax
+	jne short 00000001822D8552h
+	lea rcx,[18353DD68h]
+	call 000000018037BB90h
+	mov byte ptr [1837542A7h],1
+	mov r8,[18353DD68h]
+	lea rdx,[rbp-59h]
+	movups xmm6,[rsi+58h]
+	lea rcx,[rbp-19h]
+	call 00000001808EB680h
+	movaps xmm0,[rbp-19h]
+	lea rdx,[rbp-19h]
+	xor r8d,r8d
+	movdqa [rbp-19h],xmm0
+	lea rcx,[rbp-9]
+	movdqa [rbp-9],xmm6
+	call 00000001825E7C80h
+	movaps xmm6,[rsp+0D0h]
+	test al,al
+	je short 00000001822D85AAh
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov rax,[rdx+178h]
+	mov rdx,[rdx+180h]
+	call rax
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov rax,[rdx+198h]
+	mov rdx,[rdx+1A0h]
+	call rax
+	test eax,eax
+	jle short 00000001822D85FBh
+	mov rcx,[rsi+10h]
+	test rcx,rcx
+	je near ptr 00000001822D86B9h
+	mov edx,[rsi+20h]
+	xor r9d,r9d
+	xor r8d,r8d
+	call 00000001821CB220h
+	test rax,rax
+	je short 00000001822D85FBh
+	xor al,al
+	lea r11,[rsp+0E0h]
+	mov rbx,[r11+18h]
+	mov rsi,[r11+20h]
+	mov rsp,r11
+	pop rbp
+	ret
+	cmp byte ptr [1837542A8h],0
+	mov [rsp+0F0h],rdi
+	jne short 00000001822D861Fh
+	lea rcx,[18353DD68h]
+	call 000000018037BB90h
+	mov byte ptr [1837542A8h],1
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov edi,[rsi+20h]
+	mov rax,[rdx+198h]
+	mov rdx,[rdx+1A0h]
+	call rax
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov ebx,eax
+	mov r8,[rdx+1A8h]
+	mov rdx,[rdx+1B0h]
+	call r8
+	lea r9,[rbp-59h]
+	mov qword ptr [rsp+28h],0
+	mov r8d,ebx
+	mov [rsp+20h],rax
+	mov edx,edi
+	mov rcx,rsi
+	call 0000000182166660h
+	movups xmm0,[rbp-59h]
+	mov eax,[rbp-29h]
+	lea rdx,[rbp-59h]
+	movups xmm1,[rbp-49h]
+	lea rcx,[rbp-9]
+	movups [rsi+24h],xmm0
+	movups xmm0,[rbp-39h]
+	movups [rsi+34h],xmm1
+	movups [rsi+44h],xmm0
+	mov [rsi+54h],eax
+	mov r8,[18353DD68h]
+	call 00000001808EB680h
+	movups xmm0,[rbp-9]
+	mov rdi,[rsp+0F0h]
+	mov al,1
+	movups [rsi+58h],xmm0
+	jmp near ptr 00000001822D85E6h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rbp
+	005 LoadAddress rbp, stack:0xFFFFFFA9
+	006 ShiftStack -224
+	007 Move xmm0, 0
+	008 Move rax, 0
+	009 Move rbx, rdx
+	010 Move rsi, rcx
+	011 Move [rbp-89], xmm0
+	012 Move [rbp-41], rax
+	013 Move [rbp-73], xmm0
+	014 Move [rbp-57], xmm0
+	015 Compare [rdx], rax
+	016 JumpIfLessOrEqual {81}
+	017 Compare [rdx+4], rax
+	018 JumpIfLessOrEqual {81}
+	019 Move rdx, 0
+	020 Move rcx, rbx
+	021 Call 0x1811A55A0, rcx, rdx
+	022 Compare rax, 0
+	023 JumpIfEqual {81}
+	024 Move r9, [rsi]
+	025 LoadAddress rcx, [rbp+7]
+	026 Move r8, rbx
+	027 Move stack:0xD0, xmm6
+	028 Move rdx, rsi
+	029 Move rax, [r9+440]
+	030 Move r9, [r9+448]
+	031 Call rax
+	032 Compare [0x1837542A7], 0
+	033 Move xmm0, [rax]
+	034 Move [rbp-89], xmm0
+	035 Move xmm1, [rax+16]
+	036 Move [rbp-73], xmm1
+	037 Move xmm0, [rax+32]
+	038 Move [rbp-57], xmm0
+	039 Move rax, [rax+48]
+	040 Move [rbp-41], rax
+	041 JumpIfNotEqual {45}
+	042 LoadAddress rcx, [0x18353DD68]
+	043 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	044 Move [0x1837542A7], 1
+	045 Move r8, [0x18353DD68]
+	046 LoadAddress rdx, [rbp-89]
+	047 Move xmm6, [rsi+88]
+	048 LoadAddress rcx, [rbp-25]
+	049 Call 0x1808EB680, rcx, rdx
+	050 Move xmm0, [rbp-25]
+	051 LoadAddress rdx, [rbp-25]
+	052 Move r8, 0
+	053 Move [rbp-25], xmm0
+	054 LoadAddress rcx, [rbp-9]
+	055 Move [rbp-9], xmm6
+	056 Call Hash128.op_Inequality, rcx, rdx, r8
+	057 Move xmm6, stack:0xD0
+	058 Compare rax, 0
+	059 JumpIfEqual {65}
+	060 Move rdx, [rsi]
+	061 Move rcx, rsi
+	062 Move rax, [rdx+376]
+	063 Move rdx, [rdx+384]
+	064 Call rax
+	065 Move rdx, [rsi]
+	066 Move rcx, rsi
+	067 Move rax, [rdx+408]
+	068 Move rdx, [rdx+416]
+	069 Call rax
+	070 Compare rax, 0
+	071 JumpIfLessOrEqual {89}
+	072 Move rcx, [rsi+16]
+	073 Compare rcx, 0
+	074 JumpIfEqual {131}
+	075 Move rdx, [rsi+32]
+	076 Move r9, 0
+	077 Move r8, 0
+	078 Call BufferedRTHandleSystem.GetFrameRT, rcx, rdx, r8
+	079 Compare rax, 0
+	080 JumpIfEqual {89}
+	081 Move rax, 0
+	082 LoadAddress r11, stack:0xE0
+	083 Move rbx, [r11+24]
+	084 Move rsi, [r11+32]
+	085 Move rsp, r11
+	086 Move rbp, stack:0x0
+	087 ShiftStack 8
+	088 Return rax
+	089 Compare [0x1837542A8], 0
+	090 Move stack:0xF0, rdi
+	091 JumpIfNotEqual {95}
+	092 LoadAddress rcx, [0x18353DD68]
+	093 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	094 Move [0x1837542A8], 1
+	095 Move rdx, [rsi]
+	096 Move rcx, rsi
+	097 Move rdi, [rsi+32]
+	098 Move rax, [rdx+408]
+	099 Move rdx, [rdx+416]
+	100 Call rax
+	101 Move rdx, [rsi]
+	102 Move rcx, rsi
+	103 Move rbx, rax
+	104 Move r8, [rdx+424]
+	105 Move rdx, [rdx+432]
+	106 Call r8
+	107 LoadAddress r9, [rbp-89]
+	108 Move stack:0x28, 0
+	109 Move r8, rbx
+	110 Move stack:0x20, rax
+	111 Move rdx, rdi
+	112 Move rcx, rsi
+	113 Call CameraHistoryItem.AllocHistoryFrameRT, rcx, rdx, r8, r9, stack:0x0
+	114 Move xmm0, [rbp-89]
+	115 Move rax, [rbp-41]
+	116 LoadAddress rdx, [rbp-89]
+	117 Move xmm1, [rbp-73]
+	118 LoadAddress rcx, [rbp-9]
+	119 Move [rsi+36], xmm0
+	120 Move xmm0, [rbp-57]
+	121 Move [rsi+52], xmm1
+	122 Move [rsi+68], xmm0
+	123 Move [rsi+84], rax
+	124 Move r8, [0x18353DD68]
+	125 Call 0x1808EB680, rcx, rdx
+	126 Move xmm0, [rbp-9]
+	127 Move rdi, stack:0xF0
+	128 Move rax, 1
+	129 Move [rsi+88], xmm0
+	130 Goto {82}
+	131 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHistoryFrameCount()
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.String GetHistoryName()
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: UnityEngine.RenderTextureDescriptor GetHistoryDescriptor(ref UnityEngine.RenderTextureDescriptor cameraDesc)
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000182166760h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call CameraHistoryItem..ctor, rcx, rdx
+	003 Return 
+

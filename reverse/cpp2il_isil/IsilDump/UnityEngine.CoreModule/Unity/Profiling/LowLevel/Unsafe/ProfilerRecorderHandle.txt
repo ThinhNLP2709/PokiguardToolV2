@@ -1,0 +1,350 @@
+Type: Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderHandle
+
+Method: System.Void .ctor(System.UInt64 handle)
+
+Disassembly:
+	mov [rcx],rdx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Boolean get_Valid()
+
+Disassembly:
+	cmp qword ptr [rcx],0
+	jne short 00000001825D8F09h
+	xor eax,eax
+	ret
+	cmp qword ptr [rcx],0FFFFFFFFFFFFFFFFh
+	setne al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 JumpIfNotEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 Compare [rcx], 18446744073709551615
+	006 NotImplemented "setne al"
+	007 Return rax
+
+Method: Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderDescription GetDescription(Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderHandle handle)
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	xor eax,eax
+	xorps xmm0,xmm0
+	mov rbx,rcx
+	movups [rcx],xmm0
+	mov [rcx+10h],rax
+	test rdx,rdx
+	je short 00000001825D8E96h
+	cmp rdx,0FFFFFFFFFFFFFFFFh
+	je short 00000001825D8E96h
+	mov [rsp+30h],rax
+	mov rax,[183755E00h]
+	mov [rsp+50h],rdx
+	movups [rsp+20h],xmm0
+	test rax,rax
+	jne short 00000001825D8E6Eh
+	lea rcx,[182B22CF0h]
+	call 000000018037BE90h
+	mov [183755E00h],rax
+	lea rdx,[rsp+20h]
+	lea rcx,[rsp+50h]
+	call rax
+	movups xmm0,[rsp+20h]
+	movsd xmm1,qword ptr [rsp+30h]
+	movups [rbx],xmm0
+	movsd qword ptr [rbx+10h],xmm1
+	mov rax,rbx
+	add rsp,40h
+	pop rbx
+	ret
+	lea rcx,[1834FF8E8h]
+	mov [rsp+58h],rdi
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18353C708h]
+	mov rdi,rax
+	call 000000018037BBB0h
+	lea rcx,[183556C40h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	xor r9d,r9d
+	mov r8,rbx
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018176B5A0h
+	lea rcx,[183552170h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+	mov rdi,[rsp+58h]
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Move rax, 0
+	005 Move xmm0, 0
+	006 Move rbx, rcx
+	007 Move [rcx], xmm0
+	008 Move [rcx+16], rax
+	009 Compare rdx, 0
+	010 JumpIfEqual {34}
+	011 Compare rdx, 18446744073709551615
+	012 JumpIfEqual {34}
+	013 Move stack:0x30, rax
+	014 Move rax, [0x183755E00]
+	015 Move stack:0x50, rdx
+	016 Move stack:0x20, xmm0
+	017 Compare rax, 0
+	018 JumpIfNotEqual {22}
+	019 LoadAddress rcx, [0x182B22CF0]
+	020 Call 0x18037BE90, rcx, rdx, r8, r9
+	021 Move [0x183755E00], rax
+	022 LoadAddress rdx, stack:0x20
+	023 LoadAddress rcx, stack:0x50
+	024 Call rax
+	025 Move xmm0, stack:0x20
+	026 Move xmm1, stack:0x30
+	027 Move [rbx], xmm0
+	028 Move [rbx+16], xmm1
+	029 Move rax, rbx
+	030 ShiftStack 64
+	031 Move rbx, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+	034 LoadAddress rcx, [0x1834FF8E8]
+	035 Move stack:0x58, rdi
+	036 Call 0x18037BBB0, rcx, rdx, r8, r9
+	037 Move rcx, rax
+	038 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	039 LoadAddress rcx, [0x18353C708]
+	040 Move rdi, rax
+	041 Call 0x18037BBB0, rcx, rdx, r8, r9
+	042 LoadAddress rcx, [0x183556C40]
+	043 Move rbx, rax
+	044 Call 0x18037BBB0, rcx, rdx, r8, r9
+	045 Move r9, 0
+	046 Move r8, rbx
+	047 Move rdx, rax
+	048 Move rcx, rdi
+	049 Call ArgumentException..ctor, rcx, rdx, r8
+	050 LoadAddress rcx, [0x183552170]
+	051 Call 0x18037BBB0, rcx, rdx, r8, r9
+	052 Move rdx, rax
+	053 Move rcx, rdi
+	054 Call 0x18037BDF0, rcx, rdx, r8, r9
+	055 Move rdi, stack:0x58
+
+Method: Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderHandle GetByName__Unmanaged(Unity.Profiling.ProfilerCategory category, System.Byte* name, System.Int32 nameLen)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+8],cx
+	push rdi
+	sub rsp,20h
+	mov rax,[183755DF8h]
+	mov ebx,r8d
+	mov qword ptr [rsp+38h],0
+	mov rdi,rdx
+	test rax,rax
+	jne short 00000001825D8D5Dh
+	lea rcx,[182B22C20h]
+	call 000000018037BE90h
+	mov [183755DF8h],rax
+	lea r9,[rsp+38h]
+	mov r8d,ebx
+	mov rdx,rdi
+	lea rcx,[rsp+30h]
+	call rax
+	mov rax,[rsp+38h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x8, rcx
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [0x183755DF8]
+	007 Move rbx, r8
+	008 Move stack:0x38, 0
+	009 Move rdi, rdx
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B22C20]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183755DF8], rax
+	015 LoadAddress r9, stack:0x38
+	016 Move r8, rbx
+	017 Move rdx, rdi
+	018 LoadAddress rcx, stack:0x30
+	019 Call rax
+	020 Move rax, stack:0x38
+	021 Move rbx, stack:0x40
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Return rax
+
+Method: Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderDescription GetDescriptionInternal(Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderHandle handle)
+
+Disassembly:
+	mov [rsp+10h],rdx
+	push rbx
+	sub rsp,20h
+	xor eax,eax
+	xorps xmm0,xmm0
+	movups [rcx],xmm0
+	mov [rcx+10h],rax
+	mov rbx,rcx
+	mov rax,[183755E00h]
+	test rax,rax
+	jne short 00000001825D8E08h
+	lea rcx,[182B22CF0h]
+	call 000000018037BE90h
+	mov [183755E00h],rax
+	mov rdx,rbx
+	lea rcx,[rsp+38h]
+	call rax
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 Move stack:0x10, rdx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbx
+	004 ShiftStack -32
+	005 Move rax, 0
+	006 Move xmm0, 0
+	007 Move [rcx], xmm0
+	008 Move [rcx+16], rax
+	009 Move rbx, rcx
+	010 Move rax, [0x183755E00]
+	011 Compare rax, 0
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x182B22CF0]
+	014 Call 0x18037BE90, rcx, rdx, r8, r9
+	015 Move [0x183755E00], rax
+	016 Move rdx, rbx
+	017 LoadAddress rcx, stack:0x38
+	018 Call rax
+	019 Move rax, rbx
+	020 ShiftStack 32
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+
+Method: System.Void GetByName__Unmanaged_Injected(in Unity.Profiling.ProfilerCategory category, System.Byte* name, System.Int32 nameLen, out Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderHandle ret)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183755DF8h]
+	mov rbx,r9
+	mov edi,r8d
+	mov rsi,rdx
+	mov rbp,rcx
+	test rax,rax
+	jne short 00000001825D8CEFh
+	lea rcx,[182B22C20h]
+	call 000000018037BE90h
+	mov [183755DF8h],rax
+	mov r9,rbx
+	mov r8d,edi
+	mov rdx,rsi
+	mov rcx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rax, [0x183755DF8]
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B22C20]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755DF8], rax
+	017 Move r9, rbx
+	018 Move r8, rdi
+	019 Move rdx, rsi
+	020 Move rcx, rbp
+	021 Move rbx, stack:0x30
+	022 Move rbp, stack:0x38
+	023 Move rsi, stack:0x40
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 CallNoReturn rax
+
+Method: System.Void GetDescriptionInternal_Injected(in Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderHandle handle, out Unity.Profiling.LowLevel.Unsafe.ProfilerRecorderDescription ret)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183755E00h]
+	mov rbx,rdx
+	mov rdi,rcx
+	test rax,rax
+	jne short 00000001825D8DAFh
+	lea rcx,[182B22CF0h]
+	call 000000018037BE90h
+	mov [183755E00h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183755E00]
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B22CF0]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183755E00], rax
+	013 Move rdx, rbx
+	014 Move rcx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+

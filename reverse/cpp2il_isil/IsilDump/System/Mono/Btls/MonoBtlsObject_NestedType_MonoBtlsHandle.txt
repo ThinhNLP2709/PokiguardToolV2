@@ -1,0 +1,25 @@
+Type: Mono.Btls.MonoBtlsObject+MonoBtlsHandle
+
+Method: System.Void .ctor(System.IntPtr handle, System.Boolean ownsHandle)
+
+Disassembly:
+	xor r9d,r9d
+	jmp near ptr 00000001817217D0h
+
+ISIL:
+	001 Move r9, 0
+	002 Call SafeHandle..ctor, rcx, rdx, r8
+	003 Return 
+
+Method: System.Boolean get_IsInvalid()
+
+Disassembly:
+	cmp qword ptr [rcx+10h],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+16], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+

@@ -1,0 +1,145 @@
+Type: LeanAudioOptions
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	mov dword ptr [rcx+28h],0AC44h
+	mov dword ptr [rcx+2Ch],447A0000h
+	mov dword ptr [rcx+30h],3F800000h
+	mov byte ptr [rcx+34h],1
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Move [rcx+40], 0xAC44
+	003 Move [rcx+44], 0x447A0000
+	004 Move [rcx+48], 0x3F800000
+	005 Move [rcx+52], 1
+	006 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	007 Return 
+
+Method: LeanAudioOptions setFrequency(System.Int32 frequencyRate)
+
+Disassembly:
+	mov [rcx+28h],edx
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+40], rdx
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setVibrato(UnityEngine.Vector3[] vibrato)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	mov [rcx+18h],rdx
+	add rcx,18h
+	call 000000018037ACB0h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Move [rcx+24], rdx
+	006 Add rcx, rcx, 24
+	007 Call 0x18037ACB0, rcx, rdx, r8, r9
+	008 Move rax, rbx
+	009 ShiftStack 32
+	010 Move rbx, stack:0x0
+	011 ShiftStack 8
+	012 Return rax
+
+Method: LeanAudioOptions setWaveSine()
+
+Disassembly:
+	mov dword ptr [rcx+10h],0
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+16], 0
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setWaveSquare()
+
+Disassembly:
+	mov dword ptr [rcx+10h],1
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+16], 1
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setWaveSawtooth()
+
+Disassembly:
+	mov dword ptr [rcx+10h],2
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+16], 2
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setWaveNoise()
+
+Disassembly:
+	mov dword ptr [rcx+10h],3
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+16], 3
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setWaveStyle(LeanAudioOptions+LeanAudioWaveStyle style)
+
+Disassembly:
+	mov [rcx+10h],edx
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setWaveNoiseScale(System.Single waveScale)
+
+Disassembly:
+	movss dword ptr [rcx+2Ch],xmm1
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+44], xmm1
+	002 Move rax, rcx
+	003 Return rax
+
+Method: LeanAudioOptions setWaveNoiseInfluence(System.Single influence)
+
+Disassembly:
+	movss dword ptr [rcx+30h],xmm1
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+48], xmm1
+	002 Move rax, rcx
+	003 Return rax
+

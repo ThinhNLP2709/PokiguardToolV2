@@ -1,0 +1,148 @@
+Type: UnityEngine.InputSystem.LowLevel.SetIMECursorPositionCommand
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_Type()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,49h
+	mov [rsp+28h],rcx
+	mov r9d,45h
+	mov [rsp+48h],ecx
+	mov r8d,4Dh
+	lea rcx,[rsp+48h]
+	mov word ptr [rsp+20h],50h
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 73
+	004 Move stack:0x28, rcx
+	005 Move r9, 69
+	006 Move stack:0x48, rcx
+	007 Move r8, 77
+	008 LoadAddress rcx, stack:0x48
+	009 Move stack:0x20, 80
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x48
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.Vector2 get_position()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+0Ch]
+	movss xmm1,dword ptr [rcx+8]
+	unpcklps xmm1,xmm0
+	movq rax,xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+12]
+	002 Move xmm1, [rcx+8]
+	003 Move XMM_TEMP.S[0], xmm1.S[0]
+	004 Move XMM_TEMP.S[1], xmm0.S[0]
+	005 Move XMM_TEMP.S[2], xmm1.S[1]
+	006 Move XMM_TEMP.S[3], xmm0.S[1]
+	007 Move xmm1, XMM_TEMP
+	008 Move rax, xmm1
+	009 Return rax
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_typeStatic()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,49h
+	mov [rsp+28h],rcx
+	mov r9d,45h
+	mov [rsp+50h],ecx
+	mov r8d,4Dh
+	lea rcx,[rsp+50h]
+	mov word ptr [rsp+20h],50h
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 73
+	004 Move stack:0x28, rcx
+	005 Move r9, 69
+	006 Move stack:0x50, rcx
+	007 Move r8, 77
+	008 LoadAddress rcx, stack:0x50
+	009 Move stack:0x20, 80
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x50
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.InputSystem.LowLevel.SetIMECursorPositionCommand Create(UnityEngine.Vector2 cursorPosition)
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	mov rbx,rcx
+	movaps [rsp+30h],xmm6
+	xorps xmm0,xmm0
+	movq xmm6,rdx
+	movups [rcx],xmm0
+	xor ecx,ecx
+	mov edx,49h
+	mov [rsp+28h],rcx
+	mov r9d,45h
+	mov [rsp+50h],ecx
+	mov r8d,4Dh
+	lea rcx,[rsp+50h]
+	mov word ptr [rsp+20h],50h
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	mov [rsp+50h],eax
+	mov dword ptr [rsp+54h],10h
+	mov rax,[rsp+50h]
+	mov [rbx],rax
+	mov rax,rbx
+	movsd qword ptr [rbx+8],xmm6
+	movaps xmm6,[rsp+30h]
+	add rsp,40h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Move rbx, rcx
+	005 Move stack:0x30, xmm6
+	006 Move xmm0, 0
+	007 Move xmm6, rdx
+	008 Move [rcx], xmm0
+	009 Move rcx, 0
+	010 Move rdx, 73
+	011 Move stack:0x28, rcx
+	012 Move r9, 69
+	013 Move stack:0x50, rcx
+	014 Move r8, 77
+	015 LoadAddress rcx, stack:0x50
+	016 Move stack:0x20, 80
+	017 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	018 Move rax, stack:0x50
+	019 Move stack:0x50, rax
+	020 Move stack:0x54, 16
+	021 Move rax, stack:0x50
+	022 Move [rbx], rax
+	023 Move rax, rbx
+	024 Move [rbx+8], xmm6
+	025 Move xmm6, stack:0x30
+	026 ShiftStack 64
+	027 Move rbx, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+

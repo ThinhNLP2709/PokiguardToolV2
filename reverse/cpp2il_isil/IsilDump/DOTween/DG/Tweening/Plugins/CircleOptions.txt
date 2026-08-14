@@ -1,0 +1,154 @@
+Type: DG.Tweening.Plugins.CircleOptions
+
+Method: System.Void Reset()
+
+Disassembly:
+	xor eax,eax
+	mov byte ptr [rcx+18h],0
+	mov [rcx],eax
+	mov [rcx+14h],eax
+	mov [rcx+4],ax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx+24], 0
+	003 Move [rcx], rax
+	004 Move [rcx+20], rax
+	005 Move [rcx+4], rax
+	006 Return 
+
+Method: System.Void Initialize(UnityEngine.Vector2 startValue, UnityEngine.Vector2 endValue)
+
+Disassembly:
+	push rbx
+	sub rsp,70h
+	cmp byte ptr [rcx+4],0
+	mov rbx,rcx
+	movaps [rsp+60h],xmm6
+	mov [rsp+80h],r8
+	movss xmm0,dword ptr [rsp+80h]
+	movss xmm1,dword ptr [rsp+84h]
+	movaps [rsp+50h],xmm7
+	movaps [rsp+40h],xmm8
+	mov [rsp+20h],rdx
+	movss xmm8,dword ptr [rsp+24h]
+	movaps [rsp+30h],xmm9
+	movss xmm9,dword ptr [rsp+20h]
+	movss dword ptr [rcx+8],xmm0
+	movss dword ptr [rcx+0Ch],xmm1
+	mov byte ptr [rcx+18h],1
+	je short 0000000180755784h
+	addss xmm0,xmm9
+	addss xmm1,xmm8
+	movss dword ptr [rcx+8],xmm0
+	movss dword ptr [rcx+0Ch],xmm1
+	cmp byte ptr [18374AC6Ch],0
+	movss xmm7,dword ptr [rcx+8]
+	movss xmm6,dword ptr [rcx+0Ch]
+	jne short 00000001807557AAh
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [18374AC6Ch],1
+	mov rcx,[183562D00h]
+	subss xmm7,xmm9
+	subss xmm6,xmm8
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001807557C9h
+	call 000000018037BED0h
+	mulss xmm6,xmm6
+	xorps xmm0,xmm0
+	mulss xmm7,xmm7
+	addss xmm6,xmm7
+	cvtps2pd xmm1,xmm6
+	ucomisd xmm0,xmm1
+	ja short 00000001807557E7h
+	sqrtpd xmm0,xmm1
+	jmp short 00000001807557EFh
+	movaps xmm0,xmm1
+	call 00000001804170F0h
+	xorps xmm2,xmm2
+	cvtsd2ss xmm2,xmm0
+	movss dword ptr [rbx+10h],xmm2
+	subss xmm9,dword ptr [rbx+8]
+	subss xmm8,dword ptr [rbx+0Ch]
+	movaps xmm0,xmm9
+	movaps xmm1,xmm8
+	call 0000000180418100h
+	mulss xmm0,dword ptr [182A50898h]
+	movaps xmm6,[rsp+60h]
+	movaps xmm7,[rsp+50h]
+	movaps xmm8,[rsp+40h]
+	movaps xmm9,[rsp+30h]
+	movss dword ptr [rbx+14h],xmm0
+	add rsp,70h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -112
+	004 Compare [rcx+4], 0
+	005 Move rbx, rcx
+	006 Move stack:0x60, xmm6
+	007 Move stack:0x80, r8
+	008 Move xmm0, stack:0x80
+	009 Move xmm1, stack:0x84
+	010 Move stack:0x50, xmm7
+	011 Move stack:0x40, xmm8
+	012 Move stack:0x20, rdx
+	013 Move xmm8, stack:0x24
+	014 Move stack:0x30, xmm9
+	015 Move xmm9, stack:0x20
+	016 Move [rcx+8], xmm0
+	017 Move [rcx+12], xmm1
+	018 Move [rcx+24], 1
+	019 JumpIfEqual {24}
+	020 Add xmm0, xmm0, xmm9
+	021 Add xmm1, xmm1, xmm8
+	022 Move [rcx+8], xmm0
+	023 Move [rcx+12], xmm1
+	024 Compare [0x18374AC6C], 0
+	025 Move xmm7, [rcx+8]
+	026 Move xmm6, [rcx+12]
+	027 JumpIfNotEqual {31}
+	028 LoadAddress rcx, [0x183562D00]
+	029 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	030 Move [0x18374AC6C], 1
+	031 Move rcx, typeof(System.Math)
+	032 Subtract xmm7, xmm7, xmm9
+	033 Subtract xmm6, xmm6, xmm8
+	034 Compare [rcx+228], 0
+	035 JumpIfNotEqual {37}
+	036 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	037 Multiply xmm6, xmm6, xmm6
+	038 Move xmm0, 0
+	039 Multiply xmm7, xmm7, xmm7
+	040 Add xmm6, xmm6, xmm7
+	041 Move xmm1, xmm6
+	042 NotImplemented "ucomisd xmm0,xmm1"
+	043 JumpIfGreater {46}
+	044 NotImplemented "sqrtpd xmm0,xmm1"
+	045 Goto {48}
+	046 Move xmm0, xmm1
+	047 Call 0x1804170F0, rcx, rdx, r8, r9
+	048 Move xmm2, 0
+	049 NotImplemented "cvtsd2ss xmm2,xmm0"
+	050 Move [rbx+16], xmm2
+	051 Subtract xmm9, xmm9, [rbx+8]
+	052 Subtract xmm8, xmm8, [rbx+12]
+	053 Move xmm0, xmm9
+	054 Move xmm1, xmm8
+	055 Call 0x180418100, rcx, rdx, r8, r9
+	056 Multiply xmm0, xmm0, [0x182A50898]
+	057 Move xmm6, stack:0x60
+	058 Move xmm7, stack:0x50
+	059 Move xmm8, stack:0x40
+	060 Move xmm9, stack:0x30
+	061 Move [rbx+20], xmm0
+	062 ShiftStack 112
+	063 Move rbx, stack:0x0
+	064 ShiftStack 8
+	065 Return 
+

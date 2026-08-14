@@ -1,0 +1,180 @@
+Type: Unity.VisualScripting.SerializableType
+
+Method: System.Void .ctor(System.String identification)
+
+Disassembly:
+	mov [rcx],rdx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Call 0x18037ACB0, rcx, rdx, r8, r9
+	003 Return 
+
+Method: System.Boolean Equals(Unity.VisualScripting.SerializableType other)
+
+Disassembly:
+	mov rcx,[rcx]
+	xor r8d,r8d
+	jmp near ptr 000000018165D590h
+
+ISIL:
+	001 Move rcx, [rcx]
+	002 Move r8, 0
+	003 Call 0x18165D590, rcx, rdx, r8
+	004 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837550B5h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 00000001824FE5ECh
+	lea rcx,[18350C960h]
+	call 000000018037BB90h
+	mov byte ptr [1837550B5h],1
+	test rbx,rbx
+	je short 00000001824FE633h
+	mov rdx,[18350C960h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 00000001824FE633h
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 00000001824FE640h
+	call 000000018037AE90h
+	mov rcx,[rdi]
+	xor r8d,r8d
+	mov rdx,[rax]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018165D590h
+	mov rbx,[rsp+30h]
+	xor al,al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837550B5], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x18350C960]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x1837550B5], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {37}
+	014 Move rdx, typeof(Unity.VisualScripting.SerializableType)
+	015 Move rax, 0
+	016 Compare [rbx], rdx
+	017 JumpIfNotEqual {19}
+	018 Move rax, rbx
+	019 Nop 
+	020 Compare rax, 0
+	021 JumpIfEqual {37}
+	022 Move rcx, [rbx]
+	023 Move rax, [rdx+64]
+	024 Compare [rcx+64], rax
+	025 Move rcx, rbx
+	026 JumpIfNotEqual {43}
+	027 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	028 Move rcx, [rdi]
+	029 Move r8, 0
+	030 Move rdx, [rax]
+	031 Move rbx, stack:0x30
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Call 0x18165D590, rcx, rdx, r8
+	036 Return rax
+	037 Move rbx, stack:0x30
+	038 Move rax, 0
+	039 ShiftStack 32
+	040 Move rdi, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 000000018189E86Ch
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	jmp rax
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rcx, [rcx]
+	002 Compare rcx, 0
+	003 JumpIfEqual {8}
+	004 Move rdx, [rcx]
+	005 Move rax, [rdx+344]
+	006 Move rdx, [rdx+352]
+	007 CallNoReturn rax
+	008 Move rax, 0
+	009 Return rax
+
+Method: System.Boolean op_Equality(Unity.VisualScripting.SerializableType left, Unity.VisualScripting.SerializableType right)
+
+Disassembly:
+	xor r8d,r8d
+	jmp near ptr 000000018165D590h
+
+ISIL:
+	001 Move r8, 0
+	002 Call 0x18165D590, rcx, rdx, r8
+	003 Return rax
+
+Method: System.Boolean op_Inequality(Unity.VisualScripting.SerializableType left, Unity.VisualScripting.SerializableType right)
+
+Disassembly:
+	sub rsp,28h
+	xor r8d,r8d
+	call 000000018165D590h
+	xor al,1
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r8, 0
+	003 Call 0x18165D590, rcx, rdx, r8
+	004 Xor rax, rax, 1
+	005 ShiftStack 40
+	006 Return rax
+
+Method: System.Int32 CompareTo(Unity.VisualScripting.SerializableType other)
+
+Disassembly:
+	mov rcx,[rcx]
+	xor r9d,r9d
+	mov r8d,4
+	jmp near ptr 000000018165A2A0h
+
+ISIL:
+	001 Move rcx, [rcx]
+	002 Move r9, 0
+	003 Move r8, 4
+	004 Call String.Compare, rcx, rdx, r8, r9
+	005 Return rax
+

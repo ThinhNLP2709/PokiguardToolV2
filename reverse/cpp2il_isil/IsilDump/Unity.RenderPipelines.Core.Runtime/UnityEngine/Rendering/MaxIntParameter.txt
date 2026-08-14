@@ -1,0 +1,90 @@
+Type: UnityEngine.Rendering.MaxIntParameter
+
+Method: System.Int32 get_value()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_value(System.Int32 value)
+
+Disassembly:
+	mov eax,[rcx+20h]
+	cmp edx,eax
+	cmovl eax,edx
+	mov [rcx+18h],eax
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Compare rdx, rax
+	003 JumpIfGreaterOrEqual {5}
+	004 Move rax, rdx
+	005 Nop 
+	006 Move [rcx+24], rax
+	007 Return 
+
+Method: System.Void .ctor(System.Int32 value, System.Int32 max, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753C59h],0
+	movzx edi,r9b
+	mov esi,r8d
+	mov ebp,edx
+	mov rbx,rcx
+	jne short 0000000182205BDCh
+	lea rcx,[18355F660h]
+	call 000000018037BB90h
+	mov byte ptr [183753C59h],1
+	mov r9,[18355F660h]
+	movzx r8d,dil
+	mov edx,ebp
+	mov rcx,rbx
+	call 0000000180F6FC50h
+	mov rbp,[rsp+38h]
+	mov [rbx+20h],esi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183753C59], 0
+	008 Move rdi, r9
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18355F660]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753C59], 1
+	016 Move r9, [0x18355F660]
+	017 Move r8, rdi
+	018 Move rdx, rbp
+	019 Move rcx, rbx
+	020 Call 0x180F6FC50, rcx, rdx, r8
+	021 Move rbp, stack:0x38
+	022 Move [rbx+32], rsi
+	023 Move rbx, stack:0x30
+	024 Move rsi, stack:0x40
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+

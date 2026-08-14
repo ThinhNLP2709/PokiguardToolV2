@@ -1,0 +1,124 @@
+Type: UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler.Name
+
+Method: System.Void .ctor(System.String name, System.Boolean computeUTF8ByteCount = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	mov [rsp+18h],rdi
+	push r14
+	sub rsp,30h
+	movzx esi,r8b
+	mov [rcx],rdx
+	mov rdi,rdx
+	mov r14,rcx
+	call 000000018037ACB0h
+	xor ebx,ebx
+	test rdi,rdi
+	je short 0000000182221016h
+	cmp [rdi+10h],ebx
+	setg al
+	jmp short 0000000182221018h
+	mov eax,ebx
+	test al,sil
+	je short 0000000182221094h
+	xor ecx,ecx
+	call 0000000181682850h
+	cmp byte ptr [18374DE2Eh],0
+	mov rsi,rax
+	jne short 0000000182221043h
+	lea rcx,[18351B2F8h]
+	call 000000018037BB90h
+	mov byte ptr [18374DE2Eh],1
+	test rdi,rdi
+	je short 0000000182221069h
+	xor edx,edx
+	mov rcx,rdi
+	call 000000018165E9C0h
+	mov [rsp+20h],rax
+	mov eax,[rdi+10h]
+	mov [rsp+28h],eax
+	mov [rsp+2Ch],ebx
+	movaps xmm0,[rsp+20h]
+	jmp short 000000018222106Ch
+	xorps xmm0,xmm0
+	test rsi,rsi
+	je short 00000001822210AEh
+	mov r8,[rsi]
+	lea rdx,[rsp+20h]
+	mov rcx,rsi
+	movdqa [rsp+20h],xmm0
+	mov rax,[r8+398h]
+	mov r8,[r8+3A0h]
+	call rax
+	mov ebx,eax
+	mov rsi,[rsp+48h]
+	mov rdi,[rsp+50h]
+	mov [r14+8],ebx
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop r14
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 Move stack:0x18, rdi
+	004 ShiftStack -8
+	005 Move stack:0x0, r14
+	006 ShiftStack -48
+	007 Move rsi, r8
+	008 Move [rcx], rdx
+	009 Move rdi, rdx
+	010 Move r14, rcx
+	011 Call 0x18037ACB0, rcx, rdx, r8, r9
+	012 Move rbx, 0
+	013 Compare rdi, 0
+	014 JumpIfEqual {18}
+	015 Compare [rdi+16], rbx
+	016 NotImplemented "setg al"
+	017 Goto {19}
+	018 Move rax, rbx
+	019 Compare rax, rsi
+	020 JumpIfEqual {51}
+	021 Move rcx, 0
+	022 Call Encoding.get_UTF8, rcx
+	023 Compare [0x18374DE2E], 0
+	024 Move rsi, rax
+	025 JumpIfNotEqual {29}
+	026 LoadAddress rcx, [0x18351B2F8]
+	027 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	028 Move [0x18374DE2E], 1
+	029 Compare rdi, 0
+	030 JumpIfEqual {40}
+	031 Move rdx, 0
+	032 Move rcx, rdi
+	033 Call String.GetRawStringData, rcx, rdx
+	034 Move stack:0x20, rax
+	035 Move rax, [rdi+16]
+	036 Move stack:0x28, rax
+	037 Move stack:0x2C, rbx
+	038 Move xmm0, stack:0x20
+	039 Goto {41}
+	040 Move xmm0, 0
+	041 Compare rsi, 0
+	042 JumpIfEqual {59}
+	043 Move r8, [rsi]
+	044 LoadAddress rdx, stack:0x20
+	045 Move rcx, rsi
+	046 Move stack:0x20, xmm0
+	047 Move rax, [r8+920]
+	048 Move r8, [r8+928]
+	049 Call rax
+	050 Move rbx, rax
+	051 Move rsi, stack:0x48
+	052 Move rdi, stack:0x50
+	053 Move [r14+8], rbx
+	054 Move rbx, stack:0x40
+	055 ShiftStack 48
+	056 Move r14, stack:0x0
+	057 ShiftStack 8
+	058 Return 
+	059 Call 0x18037BE30, rcx, rdx, r8, r9
+

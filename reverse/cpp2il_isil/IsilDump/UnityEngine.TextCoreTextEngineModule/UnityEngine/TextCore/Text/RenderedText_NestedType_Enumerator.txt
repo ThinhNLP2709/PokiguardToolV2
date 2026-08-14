@@ -1,0 +1,201 @@
+Type: UnityEngine.TextCore.Text.RenderedText+Enumerator
+
+Method: System.Char get_Current()
+
+Disassembly:
+	movzx eax,word ptr [rcx+28h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+40]
+	002 Return rax
+
+Method: System.Void .ctor(in UnityEngine.TextCore.Text.RenderedText source)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	movups xmm0,[rdx]
+	mov rbx,rcx
+	movups xmm1,[rdx+10h]
+	xor edx,edx
+	movups [rcx],xmm0
+	movups [rcx+10h],xmm1
+	call 000000018037ACB0h
+	xor eax,eax
+	mov [rbx+20h],rax
+	mov [rbx+28h],ax
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move xmm0, [rdx]
+	005 Move rbx, rcx
+	006 Move xmm1, [rdx+16]
+	007 Move rdx, 0
+	008 Move [rcx], xmm0
+	009 Move [rcx+16], xmm1
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 Move rax, 0
+	012 Move [rbx+32], rax
+	013 Move [rbx+40], rax
+	014 ShiftStack 32
+	015 Move rbx, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xor r9d,r9d
+	mov rbx,rcx
+	cmp [rcx+20h],r9d
+	jne short 000000018273BA9Ah
+	cmp [rcx],r9
+	jbe short 000000018273BA92h
+	mov ecx,[rcx+8]
+	mov eax,[rbx+0Ch]
+	add eax,ecx
+	cmp [rbx+24h],ecx
+	jge short 000000018273BA67h
+	mov [rbx+24h],ecx
+	cmp [rbx+24h],eax
+	jge short 000000018273BA92h
+	mov rcx,[rbx]
+	test rcx,rcx
+	je near ptr 000000018273BB12h
+	mov edx,[rbx+24h]
+	xor r8d,r8d
+	call 00000001816652C0h
+	inc dword ptr [rbx+24h]
+	mov [rbx+28h],ax
+	mov al,1
+	add rsp,20h
+	pop rbx
+	ret
+	mov qword ptr [rbx+20h],1
+	cmp dword ptr [rbx+20h],1
+	jne short 000000018273BAB0h
+	mov eax,[rbx+1Ch]
+	cmp [rbx+24h],eax
+	jl short 000000018273BADEh
+	mov qword ptr [rbx+20h],2
+	cmp dword ptr [rbx+20h],2
+	jne short 000000018273BAD6h
+	lea rdx,[rbx+24h]
+	cmp [rbx+10h],r9
+	je short 000000018273BACCh
+	mov rax,[rbx+10h]
+	mov ecx,[rax+10h]
+	cmp [rbx+24h],ecx
+	jl short 000000018273BAF1h
+	mov dword ptr [rbx+20h],3
+	mov [rdx],r9d
+	xor al,al
+	add rsp,20h
+	pop rbx
+	ret
+	movzx eax,word ptr [rbx+18h]
+	inc dword ptr [rbx+24h]
+	mov [rbx+28h],ax
+	mov al,1
+	add rsp,20h
+	pop rbx
+	ret
+	mov rcx,rax
+	test rax,rax
+	je short 000000018273BB12h
+	mov edx,[rdx]
+	xor r8d,r8d
+	call 00000001816652C0h
+	inc dword ptr [rbx+24h]
+	mov [rbx+28h],ax
+	mov al,1
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move r9, 0
+	005 Move rbx, rcx
+	006 Compare [rcx+32], r9
+	007 JumpIfNotEqual {32}
+	008 Compare [rcx], r9
+	009 JumpIfLessOrEqual {31}
+	010 Move rcx, [rcx+8]
+	011 Move rax, [rbx+12]
+	012 Add rax, rax, rcx
+	013 Compare [rbx+36], rcx
+	014 JumpIfGreaterOrEqual {16}
+	015 Move [rbx+36], rcx
+	016 Compare [rbx+36], rax
+	017 JumpIfGreaterOrEqual {31}
+	018 Move rcx, [rbx]
+	019 Compare rcx, 0
+	020 JumpIfEqual {75}
+	021 Move rdx, [rbx+36]
+	022 Move r8, 0
+	023 Call String.get_Chars, rcx, rdx
+	024 Add [rbx+36], [rbx+36], 1
+	025 Move [rbx+40], rax
+	026 Move rax, 1
+	027 ShiftStack 32
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+	031 Move [rbx+32], 1
+	032 Compare [rbx+32], 1
+	033 JumpIfNotEqual {38}
+	034 Move rax, [rbx+28]
+	035 Compare [rbx+36], rax
+	036 JumpIfLess {54}
+	037 Move [rbx+32], 2
+	038 Compare [rbx+32], 2
+	039 JumpIfNotEqual {49}
+	040 LoadAddress rdx, [rbx+36]
+	041 Compare [rbx+16], r9
+	042 JumpIfEqual {47}
+	043 Move rax, [rbx+16]
+	044 Move rcx, [rax+16]
+	045 Compare [rbx+36], rcx
+	046 JumpIfLess {62}
+	047 Move [rbx+32], 3
+	048 Move [rdx], r9
+	049 Move rax, 0
+	050 ShiftStack 32
+	051 Move rbx, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+	054 Move rax, [rbx+24]
+	055 Add [rbx+36], [rbx+36], 1
+	056 Move [rbx+40], rax
+	057 Move rax, 1
+	058 ShiftStack 32
+	059 Move rbx, stack:0x0
+	060 ShiftStack 8
+	061 Return rax
+	062 Move rcx, rax
+	063 Compare rax, 0
+	064 JumpIfEqual {75}
+	065 Move rdx, [rdx]
+	066 Move r8, 0
+	067 Call String.get_Chars, rcx, rdx
+	068 Add [rbx+36], [rbx+36], 1
+	069 Move [rbx+40], rax
+	070 Move rax, 1
+	071 ShiftStack 32
+	072 Move rbx, stack:0x0
+	073 ShiftStack 8
+	074 Return rax
+	075 Call 0x18037BE30, rcx, rdx, r8, r9
+

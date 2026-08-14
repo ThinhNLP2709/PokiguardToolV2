@@ -1,0 +1,526 @@
+Type: UnityEngine.Tilemaps.TileBase
+
+Method: System.Void RefreshTile(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,60h
+	mov rbx,r8
+	mov rdi,rdx
+	test r8,r8
+	je near ptr 000000018275DE2Ah
+	cmp byte ptr [18375A0E8h],0
+	jne short 000000018275DCB9h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	lea rcx,[18355D760h]
+	call 000000018037BB90h
+	lea rcx,[18355D820h]
+	call 000000018037BB90h
+	lea rcx,[18355D6A0h]
+	call 000000018037BB90h
+	mov byte ptr [18375A0E8h],1
+	cmp byte ptr [rbx+18h],0
+	xorps xmm0,xmm0
+	movups [rsp+40h],xmm0
+	mov [rsp+70h],rsi
+	jne near ptr 000000018275DD56h
+	mov rsi,[rbx+10h]
+	test rsi,rsi
+	je near ptr 000000018275DE30h
+	cmp byte ptr [18375A0F6h],0
+	movsd xmm0,qword ptr [rdi]
+	mov eax,[rdi+8]
+	movsd qword ptr [rsp+30h],xmm0
+	mov [rsp+38h],eax
+	jne short 000000018275DD0Ah
+	lea rcx,[18350B840h]
+	call 000000018037BB90h
+	mov byte ptr [18375A0F6h],1
+	mov rbx,[rsi+10h]
+	test rbx,rbx
+	jne short 000000018275DD1Dh
+	xor edx,edx
+	mov rcx,rsi
+	call 0000000182635460h
+	mov rax,[18375A0F8h]
+	test rax,rax
+	jne short 000000018275DD3Ch
+	lea rcx,[182B4B6C0h]
+	call 000000018037BE90h
+	mov [18375A0F8h],rax
+	lea rdx,[rsp+30h]
+	mov rcx,rbx
+	call rax
+	mov rsi,[rsp+70h]
+	mov rbx,[rsp+78h]
+	add rsp,60h
+	pop rdi
+	ret
+	mov eax,[rbx+28h]
+	cmp [rbx+1Ch],eax
+	jl near ptr 000000018275DDF5h
+	mov rcx,[183562D00h]
+	mov esi,[rbx+1Ch]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018275DD7Ah
+	call 000000018037BED0h
+	lea edx,[rsi+rsi]
+	xor r8d,r8d
+	mov ecx,1
+	call 00000001818068F0h
+	mov rcx,[18355D6A0h]
+	mov r9d,1
+	mov [rsp+20h],rcx
+	mov r8d,2
+	lea rcx,[rsp+40h]
+	mov edx,eax
+	call 0000000180ACE6F0h
+	movups xmm1,[rbx+20h]
+	lea rdx,[rsp+30h]
+	mov r9,[18355D760h]
+	movaps xmm0,[rsp+40h]
+	lea rcx,[rsp+50h]
+	mov r8d,[rbx+28h]
+	movaps [rsp+50h],xmm1
+	movdqa [rsp+30h],xmm0
+	call 0000000180AC6110h
+	mov rdx,[18355D820h]
+	lea rcx,[rbx+20h]
+	call 0000000180AC9160h
+	movaps xmm0,[rsp+40h]
+	movups [rbx+20h],xmm0
+	movsxd rcx,dword ptr [rbx+1Ch]
+	movsd xmm0,qword ptr [rdi]
+	mov rsi,[rsp+70h]
+	lea eax,[rcx+1]
+	mov [rbx+1Ch],eax
+	lea rcx,[rcx+rcx*2]
+	mov rax,[rbx+20h]
+	movsd qword ptr [rax+rcx*4],xmm0
+	lea rdx,[rax+rcx*4]
+	mov eax,[rdi+8]
+	mov [rdx+8],eax
+	mov rbx,[rsp+78h]
+	add rsp,60h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -96
+	005 Move rbx, r8
+	006 Move rdi, rdx
+	007 Compare r8, 0
+	008 JumpIfEqual {107}
+	009 Compare [0x18375A0E8], 0
+	010 JumpIfNotEqual {20}
+	011 LoadAddress rcx, [0x183562D00]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18355D760]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18355D820]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x18355D6A0]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 Move [0x18375A0E8], 1
+	020 Compare [rbx+24], 0
+	021 Move xmm0, 0
+	022 Move stack:0x40, xmm0
+	023 Move stack:0x70, rsi
+	024 JumpIfNotEqual {58}
+	025 Move rsi, [rbx+16]
+	026 Compare rsi, 0
+	027 JumpIfEqual {109}
+	028 Compare [0x18375A0F6], 0
+	029 Move xmm0, [rdi]
+	030 Move rax, [rdi+8]
+	031 Move stack:0x30, xmm0
+	032 Move stack:0x38, rax
+	033 JumpIfNotEqual {37}
+	034 LoadAddress rcx, [0x18350B840]
+	035 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	036 Move [0x18375A0F6], 1
+	037 Move rbx, [rsi+16]
+	038 Compare rbx, 0
+	039 JumpIfNotEqual {43}
+	040 Move rdx, 0
+	041 Move rcx, rsi
+	042 Call ThrowHelper.ThrowNullReferenceException, rcx, rdx
+	043 Move rax, [0x18375A0F8]
+	044 Compare rax, 0
+	045 JumpIfNotEqual {49}
+	046 LoadAddress rcx, [0x182B4B6C0]
+	047 Call 0x18037BE90, rcx, rdx, r8, r9
+	048 Move [0x18375A0F8], rax
+	049 LoadAddress rdx, stack:0x30
+	050 Move rcx, rbx
+	051 Call rax
+	052 Move rsi, stack:0x70
+	053 Move rbx, stack:0x78
+	054 ShiftStack 96
+	055 Move rdi, stack:0x0
+	056 ShiftStack 8
+	057 Return 
+	058 Move rax, [rbx+40]
+	059 Compare [rbx+28], rax
+	060 JumpIfLess {91}
+	061 Move rcx, typeof(System.Math)
+	062 Move rsi, [rbx+28]
+	063 Compare [rcx+228], 0
+	064 JumpIfNotEqual {66}
+	065 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	066 LoadAddress rdx, [rsi+rsi]
+	067 Move r8, 0
+	068 Move rcx, 1
+	069 Call Math.Max, rcx, rdx, r8
+	070 Move rcx, [0x18355D6A0]
+	071 Move r9, 1
+	072 Move stack:0x20, rcx
+	073 Move r8, 2
+	074 LoadAddress rcx, stack:0x40
+	075 Move rdx, rax
+	076 Call 0x180ACE6F0, rcx, rdx, r8, r9
+	077 Move xmm1, [rbx+32]
+	078 LoadAddress rdx, stack:0x30
+	079 Move r9, [0x18355D760]
+	080 Move xmm0, stack:0x40
+	081 LoadAddress rcx, stack:0x50
+	082 Move r8, [rbx+40]
+	083 Move stack:0x50, xmm1
+	084 Move stack:0x30, xmm0
+	085 Call 0x180AC6110, rcx, rdx, r8, r9
+	086 Move rdx, [0x18355D820]
+	087 LoadAddress rcx, [rbx+32]
+	088 Call 0x180AC9160, rcx, rdx
+	089 Move xmm0, stack:0x40
+	090 Move [rbx+32], xmm0
+	091 Move rcx, [rbx+28]
+	092 Move xmm0, [rdi]
+	093 Move rsi, stack:0x70
+	094 LoadAddress rax, [rcx+1]
+	095 Move [rbx+28], rax
+	096 LoadAddress rcx, [rcx+rcx*2]
+	097 Move rax, [rbx+32]
+	098 Move [rax+rcx*4], xmm0
+	099 LoadAddress rdx, [rax+rcx*4]
+	100 Move rax, [rdi+8]
+	101 Move [rdx+8], rax
+	102 Move rbx, stack:0x78
+	103 ShiftStack 96
+	104 Move rdi, stack:0x0
+	105 ShiftStack 8
+	106 Return 
+	107 Call 0x18037BE30, rcx, rdx, r8, r9
+	108 Interrupt 
+	109 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void GetTileData(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap, ref UnityEngine.Tilemaps.TileData tileData)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: UnityEngine.Tilemaps.TileData GetTileDataNoRef(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	push rdi
+	sub rsp,0A0h
+	xorps xmm0,xmm0
+	mov rdi,rcx
+	movups [rcx],xmm0
+	mov r11,r9
+	mov rbx,rdx
+	movups [rcx+10h],xmm0
+	lea r9,[rsp+40h]
+	movups [rcx+20h],xmm0
+	movups [rcx+30h],xmm0
+	movups [rcx+40h],xmm0
+	movups [rax-68h],xmm0
+	movups [rax-58h],xmm0
+	movups [rax-48h],xmm0
+	movups [rax-38h],xmm0
+	movups [rax-28h],xmm0
+	movups [rax-18h],xmm0
+	movups [rcx+50h],xmm0
+	mov rcx,[rdx]
+	lea rdx,[rsp+30h]
+	movsd xmm0,qword ptr [r8]
+	movsd qword ptr [rax-78h],xmm0
+	mov eax,[r8+8]
+	mov r8,r11
+	mov r10,[rcx+188h]
+	mov [rsp+38h],eax
+	mov rax,[rcx+190h]
+	mov rcx,rbx
+	mov [rsp+20h],rax
+	call r10
+	movaps xmm0,[rsp+40h]
+	movaps xmm1,[rsp+50h]
+	movups [rdi],xmm0
+	movaps xmm0,[rsp+60h]
+	movups [rdi+10h],xmm1
+	movaps xmm1,[rsp+70h]
+	movups [rdi+20h],xmm0
+	movaps xmm0,[rsp+80h]
+	movups [rdi+30h],xmm1
+	movaps xmm1,[rsp+90h]
+	movups [rdi+40h],xmm0
+	movups [rdi+50h],xmm1
+	mov rbx,[rsp+0B0h]
+	mov rax,rdi
+	add rsp,0A0h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -160
+	006 Move xmm0, 0
+	007 Move rdi, rcx
+	008 Move [rcx], xmm0
+	009 Move r11, r9
+	010 Move rbx, rdx
+	011 Move [rcx+16], xmm0
+	012 LoadAddress r9, stack:0x40
+	013 Move [rcx+32], xmm0
+	014 Move [rcx+48], xmm0
+	015 Move [rcx+64], xmm0
+	016 Move [rax-104], xmm0
+	017 Move [rax-88], xmm0
+	018 Move [rax-72], xmm0
+	019 Move [rax-56], xmm0
+	020 Move [rax-40], xmm0
+	021 Move [rax-24], xmm0
+	022 Move [rcx+80], xmm0
+	023 Move rcx, [rdx]
+	024 LoadAddress rdx, stack:0x30
+	025 Move xmm0, [r8]
+	026 Move [rax-120], xmm0
+	027 Move rax, [r8+8]
+	028 Move r8, r11
+	029 Move r10, [rcx+392]
+	030 Move stack:0x38, rax
+	031 Move rax, [rcx+400]
+	032 Move rcx, rbx
+	033 Move stack:0x20, rax
+	034 Call r10
+	035 Move xmm0, stack:0x40
+	036 Move xmm1, stack:0x50
+	037 Move [rdi], xmm0
+	038 Move xmm0, stack:0x60
+	039 Move [rdi+16], xmm1
+	040 Move xmm1, stack:0x70
+	041 Move [rdi+32], xmm0
+	042 Move xmm0, stack:0x80
+	043 Move [rdi+48], xmm1
+	044 Move xmm1, stack:0x90
+	045 Move [rdi+64], xmm0
+	046 Move [rdi+80], xmm1
+	047 Move rbx, stack:0xB0
+	048 Move rax, rdi
+	049 ShiftStack 160
+	050 Move rdi, stack:0x0
+	051 ShiftStack 8
+	052 Return rax
+
+Method: System.Boolean GetTileAnimationData(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap, ref UnityEngine.Tilemaps.TileAnimationData tileAnimationData)
+
+Disassembly:
+	xchg ax,ax
+	xor al,al
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, 0
+	003 Return rax
+
+Method: UnityEngine.Tilemaps.TileAnimationData GetTileAnimationDataNoRef(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,60h
+	mov r11,[rdx]
+	xor eax,eax
+	xorps xmm0,xmm0
+	mov [rsp+50h],rax
+	movups [rcx],xmm0
+	mov [rcx+10h],rax
+	mov rbx,r9
+	mov eax,[r8+8]
+	lea r9,[rsp+40h]
+	movups [rsp+40h],xmm0
+	mov rdi,rdx
+	mov r10,[r11+198h]
+	movsd xmm0,qword ptr [r8]
+	lea rdx,[rsp+30h]
+	mov [rsp+38h],eax
+	mov rsi,rcx
+	mov rax,[r11+1A0h]
+	mov r8,rbx
+	mov rcx,rdi
+	mov [rsp+20h],rax
+	movsd qword ptr [rsp+30h],xmm0
+	call r10
+	movups xmm0,[rsp+40h]
+	movsd xmm1,qword ptr [rsp+50h]
+	movups [rsi],xmm0
+	movsd qword ptr [rsi+10h],xmm1
+	mov rbx,[rsp+70h]
+	mov rax,rsi
+	mov rsi,[rsp+78h]
+	add rsp,60h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -96
+	006 Move r11, [rdx]
+	007 Move rax, 0
+	008 Move xmm0, 0
+	009 Move stack:0x50, rax
+	010 Move [rcx], xmm0
+	011 Move [rcx+16], rax
+	012 Move rbx, r9
+	013 Move rax, [r8+8]
+	014 LoadAddress r9, stack:0x40
+	015 Move stack:0x40, xmm0
+	016 Move rdi, rdx
+	017 Move r10, [r11+408]
+	018 Move xmm0, [r8]
+	019 LoadAddress rdx, stack:0x30
+	020 Move stack:0x38, rax
+	021 Move rsi, rcx
+	022 Move rax, [r11+416]
+	023 Move r8, rbx
+	024 Move rcx, rdi
+	025 Move stack:0x20, rax
+	026 Move stack:0x30, xmm0
+	027 Call r10
+	028 Move xmm0, stack:0x40
+	029 Move xmm1, stack:0x50
+	030 Move [rsi], xmm0
+	031 Move [rsi+16], xmm1
+	032 Move rbx, stack:0x70
+	033 Move rax, rsi
+	034 Move rsi, stack:0x78
+	035 ShiftStack 96
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return rax
+
+Method: System.Void GetTileAnimationDataRef(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap, ref UnityEngine.Tilemaps.TileAnimationData tileAnimationData, ref System.Boolean hasAnimation)
+
+Disassembly:
+	sub rsp,48h
+	mov eax,[rdx+8]
+	mov r11,[rcx]
+	movsd xmm0,qword ptr [rdx]
+	lea rdx,[rsp+30h]
+	mov [rsp+38h],eax
+	movsd qword ptr [rsp+30h],xmm0
+	mov rax,[r11+1A0h]
+	mov r10,[r11+198h]
+	mov [rsp+20h],rax
+	call r10
+	mov rcx,[rsp+70h]
+	mov [rcx],al
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rax, [rdx+8]
+	003 Move r11, [rcx]
+	004 Move xmm0, [rdx]
+	005 LoadAddress rdx, stack:0x30
+	006 Move stack:0x38, rax
+	007 Move stack:0x30, xmm0
+	008 Move rax, [r11+416]
+	009 Move r10, [r11+408]
+	010 Move stack:0x20, rax
+	011 Call r10
+	012 Move rcx, stack:0x70
+	013 Move [rcx], rax
+	014 ShiftStack 72
+	015 Return 
+
+Method: System.Boolean StartUp(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap, UnityEngine.GameObject go)
+
+Disassembly:
+	xchg ax,ax
+	xor al,al
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, 0
+	003 Return rax
+
+Method: System.Void StartUpRef(UnityEngine.Vector3Int position, UnityEngine.Tilemaps.ITilemap tilemap, UnityEngine.GameObject go, ref System.Boolean startUpInvokedByUser)
+
+Disassembly:
+	sub rsp,48h
+	mov eax,[rdx+8]
+	mov r11,[rcx]
+	movsd xmm0,qword ptr [rdx]
+	lea rdx,[rsp+30h]
+	mov [rsp+38h],eax
+	movsd qword ptr [rsp+30h],xmm0
+	mov rax,[r11+1B0h]
+	mov r10,[r11+1A8h]
+	mov [rsp+20h],rax
+	call r10
+	mov rcx,[rsp+70h]
+	mov [rcx],al
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rax, [rdx+8]
+	003 Move r11, [rcx]
+	004 Move xmm0, [rdx]
+	005 LoadAddress rdx, stack:0x30
+	006 Move stack:0x38, rax
+	007 Move stack:0x30, xmm0
+	008 Move rax, [r11+432]
+	009 Move r10, [r11+424]
+	010 Move stack:0x20, rax
+	011 Call r10
+	012 Move rcx, stack:0x70
+	013 Move [rcx], rax
+	014 ShiftStack 72
+	015 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000182618FC0h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call ScriptableObject..ctor, rcx, rdx
+	003 Return 
+

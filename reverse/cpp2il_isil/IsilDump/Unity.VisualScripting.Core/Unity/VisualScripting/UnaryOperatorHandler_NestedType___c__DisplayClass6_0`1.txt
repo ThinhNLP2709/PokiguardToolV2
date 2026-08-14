@@ -1,0 +1,89 @@
+Type: Unity.VisualScripting.UnaryOperatorHandler+<>c__DisplayClass6_0`1
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Object <Handle>b__0(System.Object operand)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,[rcx+10h]
+	mov rbx,rdx
+	test rdi,rdi
+	je short 0000000180A84B5Ch
+	mov rax,[r8+20h]
+	mov rcx,[rax+0C0h]
+	mov rax,[rcx+10h]
+	test byte ptr [rax+135h],1
+	jne short 0000000180A84B26h
+	mov rcx,rax
+	call 0000000180384C90h
+	test rbx,rbx
+	je short 0000000180A84B5Ch
+	mov r8,[rbx]
+	mov rcx,rbx
+	mov rdx,[rax+40h]
+	cmp [r8+40h],rdx
+	jne short 0000000180A84B62h
+	call 000000018037AE90h
+	mov r9,[rdi+18h]
+	mov r8,[rdi+28h]
+	mov rcx,[rdi+40h]
+	movzx edx,byte ptr [rax]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp r9
+	call 000000018037BE30h
+	int 3
+	mov rdx,rax
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, [rcx+16]
+	006 Move rbx, rdx
+	007 Compare rdi, 0
+	008 JumpIfEqual {33}
+	009 Move rax, [r8+32]
+	010 Move rcx, [rax+192]
+	011 Move rax, [rcx+16]
+	012 Compare [rax+309], 1
+	013 JumpIfNotEqual {16}
+	014 Move rcx, rax
+	015 Call 0x180384C90, rcx, rdx, r8, r9
+	016 Compare rbx, 0
+	017 JumpIfEqual {33}
+	018 Move r8, [rbx]
+	019 Move rcx, rbx
+	020 Move rdx, [rax+64]
+	021 Compare [r8+64], rdx
+	022 JumpIfNotEqual {35}
+	023 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	024 Move r9, [rdi+24]
+	025 Move r8, [rdi+40]
+	026 Move rcx, [rdi+64]
+	027 Move rdx, [rax]
+	028 Move rbx, stack:0x30
+	029 ShiftStack 32
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 CallNoReturn r9
+	033 Call 0x18037BE30, rcx, rdx, r8, r9
+	034 Interrupt 
+	035 Move rdx, rax
+	036 Call 0x18037ACF0, rcx, rdx, r8, r9
+

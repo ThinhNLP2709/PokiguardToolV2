@@ -1,0 +1,111 @@
+Type: UnityEngine.InputSystem.UI.ExtendedAxisEventData
+
+Method: UnityEngine.InputSystem.InputDevice get_device()
+
+Disassembly:
+	mov rax,[rcx+30h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+48]
+	002 Return rax
+
+Method: System.Void set_device(UnityEngine.InputSystem.InputDevice value)
+
+Disassembly:
+	mov [rcx+30h],rdx
+	add rcx,30h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+48], rdx
+	002 Add rcx, rcx, 48
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: System.Void .ctor(UnityEngine.EventSystems.EventSystem eventSystem)
+
+Disassembly:
+	xor r8d,r8d
+	jmp near ptr 00000001829A20F0h
+
+ISIL:
+	001 Move r8, 0
+	002 Call AxisEventData..ctor, rcx, rdx
+	003 Return 
+
+Method: System.String ToString()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753385h],0
+	mov rdi,rcx
+	jne short 0000000182007771h
+	lea rcx,[183569F48h]
+	call 000000018037BB90h
+	lea rcx,[18352F6E8h]
+	call 000000018037BB90h
+	lea rcx,[183520910h]
+	call 000000018037BB90h
+	mov byte ptr [183753385h],1
+	mov eax,[rdi+28h]
+	lea rdx,[rsp+30h]
+	mov rcx,[183569F48h]
+	mov [rsp+30h],eax
+	call 000000018037AC90h
+	movsd xmm0,qword ptr [rdi+20h]
+	lea rdx,[rsp+40h]
+	mov rcx,[18352F6E8h]
+	mov rbx,rax
+	movsd qword ptr [rsp+40h],xmm0
+	call 000000018037AC90h
+	mov rcx,[183520910h]
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	call 000000018165E830h
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183753385], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {15}
+	008 LoadAddress rcx, [0x183569F48]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18352F6E8]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183520910]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x183753385], 1
+	015 Move rax, [rdi+40]
+	016 LoadAddress rdx, stack:0x30
+	017 Move rcx, typeof(UnityEngine.EventSystems.MoveDirection)
+	018 Move stack:0x30, rax
+	019 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	020 Move xmm0, [rdi+32]
+	021 LoadAddress rdx, stack:0x40
+	022 Move rcx, typeof(UnityEngine.Vector2)
+	023 Move rbx, rax
+	024 Move stack:0x40, xmm0
+	025 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	026 Move rcx, "MoveDir: {0}
+MoveVector: {1}"
+	027 Move r9, 0
+	028 Move r8, rax
+	029 Move rdx, rbx
+	030 Call String.Format, rcx, rdx, r8, r9
+	031 Move rbx, stack:0x38
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+

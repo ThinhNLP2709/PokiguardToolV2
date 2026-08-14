@@ -1,0 +1,66 @@
+Type: Unity.Collections.RewindableAllocator+Union
+
+Method: System.Int64 get_m_current()
+
+Disassembly:
+	mov rax,[rcx]
+	mov rcx,0FFFFFFFFFFh
+	and rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move rcx, 0xFFFFFFFFFF
+	003 And rax, rax, rcx
+	004 Return rax
+
+Method: System.Void set_m_current(System.Int64 value)
+
+Disassembly:
+	mov rax,rdx
+	mov r8,0FFFFFF0000000000h
+	xor rax,[rcx]
+	and rax,r8
+	xor rax,rdx
+	mov [rcx],rax
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 Move r8, 18446742974197923840
+	003 Xor rax, rax, [rcx]
+	004 And rax, rax, r8
+	005 Xor rax, rax, rdx
+	006 Move [rcx], rax
+	007 Return 
+
+Method: System.Int64 get_m_allocCount()
+
+Disassembly:
+	mov rax,[rcx]
+	sar rax,28h
+	and eax,0FFFFFFh
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 40
+	003 And rax, rax, 0xFFFFFF
+	004 Return rax
+
+Method: System.Void set_m_allocCount(System.Int64 value)
+
+Disassembly:
+	mov rax,0FFFFFFFFFFh
+	shl rdx,28h
+	and [rcx],rax
+	or [rcx],rdx
+	ret
+
+ISIL:
+	001 Move rax, 0xFFFFFFFFFF
+	002 ShiftLeft rdx, 40
+	003 And [rcx], [rcx], rax
+	004 Or [rcx], [rcx], rdx
+	005 Return 
+

@@ -1,0 +1,54 @@
+Type: UnityEngine.Rendering.IndirectBufferAllocInfo
+
+Method: System.Boolean IsEmpty()
+
+Disassembly:
+	cmp dword ptr [rcx+4],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+4], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean IsWithinLimits(in UnityEngine.Rendering.IndirectBufferLimits limits)
+
+Disassembly:
+	mov eax,[rcx+4]
+	add eax,[rcx]
+	cmp eax,[rdx+4]
+	jle short 000000018227ACADh
+	xor al,al
+	ret
+	mov eax,[rcx+0Ch]
+	add eax,[rcx+8]
+	cmp eax,[rdx]
+	setle al
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Add rax, rax, [rcx]
+	003 Compare rax, [rdx+4]
+	004 JumpIfLessOrEqual {7}
+	005 Move rax, 0
+	006 Return rax
+	007 Move rax, [rcx+12]
+	008 Add rax, rax, [rcx+8]
+	009 Compare rax, [rdx]
+	010 NotImplemented "setle al"
+	011 Return rax
+
+Method: System.Int32 GetExtraDrawInfoSlotIndex()
+
+Disassembly:
+	mov eax,[rcx+4]
+	add eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Add rax, rax, [rcx]
+	003 Return rax
+

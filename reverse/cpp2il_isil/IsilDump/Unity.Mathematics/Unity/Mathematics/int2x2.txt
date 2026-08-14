@@ -1,0 +1,4466 @@
+Type: Unity.Mathematics.int2x2
+
+Method: System.Void .ctor(Unity.Mathematics.int2 c0, Unity.Mathematics.int2 c1)
+
+Disassembly:
+	mov [rcx],rdx
+	mov [rcx+8],r8
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+8], r8
+	003 Return 
+
+Method: System.Void .ctor(System.Int32 m00, System.Int32 m01, System.Int32 m10, System.Int32 m11)
+
+Disassembly:
+	mov [rsp+8],edx
+	mov [rsp+0Ch],r9d
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov eax,[rsp+28h]
+	mov [rsp+0Ch],eax
+	mov [rsp+8],r8d
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move stack:0x8, rdx
+	002 Move stack:0xC, r9
+	003 Move rax, stack:0x8
+	004 Move [rcx], rax
+	005 Move rax, stack:0x28
+	006 Move stack:0xC, rax
+	007 Move stack:0x8, r8
+	008 Move rax, stack:0x8
+	009 Move [rcx+8], rax
+	010 Return 
+
+Method: System.Void .ctor(System.Int32 v)
+
+Disassembly:
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov rax,[rsp+8]
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov [rcx],rax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move stack:0x8, rdx
+	002 Move stack:0xC, rdx
+	003 Move rax, stack:0x8
+	004 Move stack:0x8, rdx
+	005 Move stack:0xC, rdx
+	006 Move [rcx], rax
+	007 Move rax, stack:0x8
+	008 Move [rcx+8], rax
+	009 Return 
+
+Method: System.Void .ctor(System.Boolean v)
+
+Disassembly:
+	xor r8d,r8d
+	mov dword ptr [rsp+8],1
+	mov [rsp+20h],r8
+	mov dword ptr [rsp+0Ch],1
+	test dl,dl
+	je short 0000000182128C8Eh
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov dword ptr [rsp+8],1
+	mov dword ptr [rsp+0Ch],1
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+	mov rax,[rsp+20h]
+	mov [rcx],rax
+	mov [rsp+8],r8
+	mov rax,r8
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move r8, 0
+	002 Move stack:0x8, 1
+	003 Move stack:0x20, r8
+	004 Move stack:0xC, 1
+	005 Compare rdx, 0
+	006 JumpIfEqual {14}
+	007 Move rax, stack:0x8
+	008 Move [rcx], rax
+	009 Move stack:0x8, 1
+	010 Move stack:0xC, 1
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Return 
+	014 Move rax, stack:0x20
+	015 Move [rcx], rax
+	016 Move stack:0x8, r8
+	017 Move rax, r8
+	018 Move [rcx+8], rax
+	019 Return 
+
+Method: System.Void .ctor(Unity.Mathematics.bool2x2 v)
+
+Disassembly:
+	xor r8d,r8d
+	mov [rsp+8],r8
+	test dl,dl
+	mov r9d,r8d
+	mov [rsp+20h],r8
+	setne r9b
+	mov dword ptr [rsp+8],1
+	mov dword ptr [rsp+0Ch],1
+	movzx eax,dx
+	shr ax,8
+	test al,al
+	mov rax,[rsp+8]
+	jne short 000000018204CC99h
+	mov eax,r8d
+	shr rax,20h
+	mov [rsp+8],r9d
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rsp+8],r8
+	shr edx,10h
+	test dl,dl
+	mov [rsp+20h],r8
+	mov [rcx],rax
+	setne r8b
+	mov dword ptr [rsp+8],1
+	mov dword ptr [rsp+0Ch],1
+	mov rax,[rsp+8]
+	shr dx,8
+	test dl,dl
+	jne short 000000018204CCE3h
+	mov rax,[rsp+20h]
+	shr rax,20h
+	mov [rsp+8],r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move r8, 0
+	002 Move stack:0x8, r8
+	003 Compare rdx, 0
+	004 Move r9, r8
+	005 Move stack:0x20, r8
+	006 NotImplemented "setne r9b"
+	007 Move stack:0x8, 1
+	008 Move stack:0xC, 1
+	009 Move rax, rdx
+	010 ShiftRight rax, 8
+	011 Compare rax, 0
+	012 Move rax, stack:0x8
+	013 JumpIfNotEqual {15}
+	014 Move rax, r8
+	015 ShiftRight rax, 32
+	016 Move stack:0x8, r9
+	017 Move stack:0xC, rax
+	018 Move rax, stack:0x8
+	019 Move stack:0x8, r8
+	020 ShiftRight rdx, 16
+	021 Compare rdx, 0
+	022 Move stack:0x20, r8
+	023 Move [rcx], rax
+	024 NotImplemented "setne r8b"
+	025 Move stack:0x8, 1
+	026 Move stack:0xC, 1
+	027 Move rax, stack:0x8
+	028 ShiftRight rdx, 8
+	029 Compare rdx, 0
+	030 JumpIfNotEqual {32}
+	031 Move rax, stack:0x20
+	032 ShiftRight rax, 32
+	033 Move stack:0x8, r8
+	034 Move stack:0xC, rax
+	035 Move rax, stack:0x8
+	036 Move [rcx+8], rax
+	037 Return 
+
+Method: System.Void .ctor(System.UInt32 v)
+
+Disassembly:
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov rax,[rsp+8]
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov [rcx],rax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move stack:0x8, rdx
+	002 Move stack:0xC, rdx
+	003 Move rax, stack:0x8
+	004 Move stack:0x8, rdx
+	005 Move stack:0xC, rdx
+	006 Move [rcx], rax
+	007 Move rax, stack:0x8
+	008 Move [rcx+8], rax
+	009 Return 
+
+Method: System.Void .ctor(Unity.Mathematics.uint2x2 v)
+
+Disassembly:
+	mov rax,[rdx]
+	mov [rsp+8],eax
+	shr rax,20h
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rdx+8]
+	mov [rsp+8],eax
+	shr rax,20h
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move stack:0x8, rax
+	003 ShiftRight rax, 32
+	004 Move stack:0xC, rax
+	005 Move rax, stack:0x8
+	006 Move [rcx], rax
+	007 Move rax, [rdx+8]
+	008 Move stack:0x8, rax
+	009 ShiftRight rax, 32
+	010 Move stack:0xC, rax
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Return 
+
+Method: System.Void .ctor(System.Single v)
+
+Disassembly:
+	cvttss2si eax,xmm1
+	mov [rsp+8],eax
+	cvttss2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	cvttss2si eax,xmm1
+	mov [rsp+8],eax
+	cvttss2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 NotImplemented "cvttss2si eax,xmm1"
+	002 Move stack:0x8, rax
+	003 NotImplemented "cvttss2si eax,xmm1"
+	004 Move stack:0xC, rax
+	005 Move rax, stack:0x8
+	006 Move [rcx], rax
+	007 NotImplemented "cvttss2si eax,xmm1"
+	008 Move stack:0x8, rax
+	009 NotImplemented "cvttss2si eax,xmm1"
+	010 Move stack:0xC, rax
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Return 
+
+Method: System.Void .ctor(Unity.Mathematics.float2x2 v)
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx]
+	movsd qword ptr [rsp+8],xmm0
+	cvttss2si eax,dword ptr [rsp+8]
+	mov [rsp+10h],eax
+	cvttss2si eax,dword ptr [rsp+0Ch]
+	mov [rsp+14h],eax
+	mov rax,[rsp+10h]
+	mov [rcx],rax
+	cvttss2si eax,dword ptr [rdx+8]
+	mov [rsp+8],eax
+	cvttss2si eax,dword ptr [rdx+0Ch]
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move stack:0x8, xmm0
+	003 NotImplemented "cvttss2si eax,dword ptr [rsp+8]"
+	004 Move stack:0x10, rax
+	005 NotImplemented "cvttss2si eax,dword ptr [rsp+0Ch]"
+	006 Move stack:0x14, rax
+	007 Move rax, stack:0x10
+	008 Move [rcx], rax
+	009 NotImplemented "cvttss2si eax,dword ptr [rdx+8]"
+	010 Move stack:0x8, rax
+	011 NotImplemented "cvttss2si eax,dword ptr [rdx+0Ch]"
+	012 Move stack:0xC, rax
+	013 Move rax, stack:0x8
+	014 Move [rcx+8], rax
+	015 Return 
+
+Method: System.Void .ctor(System.Double v)
+
+Disassembly:
+	cvttsd2si eax,xmm1
+	mov [rsp+8],eax
+	cvttsd2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	cvttsd2si eax,xmm1
+	mov [rsp+8],eax
+	cvttsd2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move rax, xmm1
+	002 Move stack:0x8, rax
+	003 Move rax, xmm1
+	004 Move stack:0xC, rax
+	005 Move rax, stack:0x8
+	006 Move [rcx], rax
+	007 Move rax, xmm1
+	008 Move stack:0x8, rax
+	009 Move rax, xmm1
+	010 Move stack:0xC, rax
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Return 
+
+Method: System.Void .ctor(Unity.Mathematics.double2x2 v)
+
+Disassembly:
+	movups xmm0,[rdx]
+	cvttsd2si eax,xmm0
+	unpckhpd xmm0,xmm0
+	mov [rsp+8],eax
+	cvttsd2si eax,xmm0
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	cvttsd2si eax,qword ptr [rdx+10h]
+	mov [rsp+8],eax
+	cvttsd2si eax,qword ptr [rdx+18h]
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, xmm0
+	003 NotImplemented "unpckhpd xmm0,xmm0"
+	004 Move stack:0x8, rax
+	005 Move rax, xmm0
+	006 Move stack:0xC, rax
+	007 Move rax, stack:0x8
+	008 Move [rcx], rax
+	009 Move rax, [rdx+16]
+	010 Move stack:0x8, rax
+	011 Move rax, [rdx+24]
+	012 Move stack:0xC, rax
+	013 Move rax, stack:0x8
+	014 Move [rcx+8], rax
+	015 Return 
+
+Method: Unity.Mathematics.int2x2 op_Implicit(System.Int32 v)
+
+Disassembly:
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move stack:0x8, rdx
+	002 Move stack:0xC, rdx
+	003 Move rax, stack:0x8
+	004 Move [rcx], rax
+	005 Move stack:0x8, rdx
+	006 Move stack:0xC, rdx
+	007 Move rax, stack:0x8
+	008 Move [rcx+8], rax
+	009 Move rax, rcx
+	010 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(System.Boolean v)
+
+Disassembly:
+	xor r8d,r8d
+	mov dword ptr [rsp+8],1
+	mov [rsp+20h],r8
+	mov dword ptr [rsp+0Ch],1
+	test dl,dl
+	je short 0000000182075151h
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov dword ptr [rsp+8],1
+	mov dword ptr [rsp+0Ch],1
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+	mov rax,[rsp+20h]
+	mov [rcx],rax
+	mov [rsp+8],r8
+	mov rax,r8
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move r8, 0
+	002 Move stack:0x8, 1
+	003 Move stack:0x20, r8
+	004 Move stack:0xC, 1
+	005 Compare rdx, 0
+	006 JumpIfEqual {15}
+	007 Move rax, stack:0x8
+	008 Move [rcx], rax
+	009 Move stack:0x8, 1
+	010 Move stack:0xC, 1
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Move rax, rcx
+	014 Return rax
+	015 Move rax, stack:0x20
+	016 Move [rcx], rax
+	017 Move stack:0x8, r8
+	018 Move rax, r8
+	019 Move [rcx+8], rax
+	020 Move rax, rcx
+	021 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(Unity.Mathematics.bool2x2 v)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xorps xmm0,xmm0
+	xor r8d,r8d
+	movups [rcx],xmm0
+	mov rbx,rcx
+	call 000000018204CC60h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move xmm0, 0
+	005 Move r8, 0
+	006 Move [rcx], xmm0
+	007 Move rbx, rcx
+	008 Call 0x18204CC60, rcx, rdx
+	009 Move rax, rbx
+	010 ShiftStack 32
+	011 Move rbx, stack:0x0
+	012 ShiftStack 8
+	013 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(System.UInt32 v)
+
+Disassembly:
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+8],edx
+	mov [rsp+0Ch],edx
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move stack:0x8, rdx
+	002 Move stack:0xC, rdx
+	003 Move rax, stack:0x8
+	004 Move [rcx], rax
+	005 Move stack:0x8, rdx
+	006 Move stack:0xC, rdx
+	007 Move rax, stack:0x8
+	008 Move [rcx+8], rax
+	009 Move rax, rcx
+	010 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(Unity.Mathematics.uint2x2 v)
+
+Disassembly:
+	sub rsp,18h
+	movups xmm0,[rdx]
+	movups [rsp],xmm0
+	mov rax,[rsp]
+	mov [rsp+20h],eax
+	shr rax,20h
+	mov [rsp+24h],eax
+	mov rax,[rsp+20h]
+	mov [rcx],rax
+	movups [rsp],xmm0
+	mov rax,[rsp+8]
+	mov [rsp+20h],eax
+	shr rax,20h
+	mov [rsp+24h],eax
+	mov rax,[rsp+20h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm0, [rdx]
+	003 Move stack:0x0, xmm0
+	004 Move rax, stack:0x0
+	005 Move stack:0x20, rax
+	006 ShiftRight rax, 32
+	007 Move stack:0x24, rax
+	008 Move rax, stack:0x20
+	009 Move [rcx], rax
+	010 Move stack:0x0, xmm0
+	011 Move rax, stack:0x8
+	012 Move stack:0x20, rax
+	013 ShiftRight rax, 32
+	014 Move stack:0x24, rax
+	015 Move rax, stack:0x20
+	016 Move [rcx+8], rax
+	017 Move rax, rcx
+	018 ShiftStack 24
+	019 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(System.Single v)
+
+Disassembly:
+	cvttss2si eax,xmm1
+	mov [rsp+8],eax
+	cvttss2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	cvttss2si eax,xmm1
+	mov [rsp+8],eax
+	cvttss2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 NotImplemented "cvttss2si eax,xmm1"
+	002 Move stack:0x8, rax
+	003 NotImplemented "cvttss2si eax,xmm1"
+	004 Move stack:0xC, rax
+	005 Move rax, stack:0x8
+	006 Move [rcx], rax
+	007 NotImplemented "cvttss2si eax,xmm1"
+	008 Move stack:0x8, rax
+	009 NotImplemented "cvttss2si eax,xmm1"
+	010 Move stack:0xC, rax
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Move rax, rcx
+	014 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(Unity.Mathematics.float2x2 v)
+
+Disassembly:
+	movups xmm1,[rdx]
+	cvttss2si eax,xmm1
+	movaps xmm0,xmm1
+	mov [rsp+8],eax
+	shufps xmm0,xmm1,55h
+	cvttss2si eax,xmm0
+	movaps xmm0,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	shufps xmm0,xmm1,0AAh
+	cvttss2si eax,xmm0
+	shufps xmm1,xmm1,0FFh
+	mov [rsp+8],eax
+	cvttss2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm1, [rdx]
+	002 NotImplemented "cvttss2si eax,xmm1"
+	003 Move xmm0, xmm1
+	004 Move stack:0x8, rax
+	005 Move XMM_TEMP.S[0], xmm0.S[1]
+	006 Move XMM_TEMP.S[1], xmm0.S[1]
+	007 Move XMM_TEMP.S[2], xmm1.S[1]
+	008 Move XMM_TEMP.S[3], xmm1.S[1]
+	009 Move xmm0, XMM_TEMP
+	010 NotImplemented "cvttss2si eax,xmm0"
+	011 Move xmm0, xmm1
+	012 Move stack:0xC, rax
+	013 Move rax, stack:0x8
+	014 Move [rcx], rax
+	015 Move XMM_TEMP.S[0], xmm0.S[2]
+	016 Move XMM_TEMP.S[1], xmm0.S[2]
+	017 Move XMM_TEMP.S[2], xmm1.S[2]
+	018 Move XMM_TEMP.S[3], xmm1.S[2]
+	019 Move xmm0, XMM_TEMP
+	020 NotImplemented "cvttss2si eax,xmm0"
+	021 Move XMM_TEMP.S[0], xmm1.S[3]
+	022 Move XMM_TEMP.S[1], xmm1.S[3]
+	023 Move XMM_TEMP.S[2], xmm1.S[3]
+	024 Move XMM_TEMP.S[3], xmm1.S[3]
+	025 Move xmm1, XMM_TEMP
+	026 Move stack:0x8, rax
+	027 NotImplemented "cvttss2si eax,xmm1"
+	028 Move stack:0xC, rax
+	029 Move rax, stack:0x8
+	030 Move [rcx+8], rax
+	031 Move rax, rcx
+	032 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(System.Double v)
+
+Disassembly:
+	cvttsd2si eax,xmm1
+	mov [rsp+8],eax
+	cvttsd2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	cvttsd2si eax,xmm1
+	mov [rsp+8],eax
+	cvttsd2si eax,xmm1
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, xmm1
+	002 Move stack:0x8, rax
+	003 Move rax, xmm1
+	004 Move stack:0xC, rax
+	005 Move rax, stack:0x8
+	006 Move [rcx], rax
+	007 Move rax, xmm1
+	008 Move stack:0x8, rax
+	009 Move rax, xmm1
+	010 Move stack:0xC, rax
+	011 Move rax, stack:0x8
+	012 Move [rcx+8], rax
+	013 Move rax, rcx
+	014 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Explicit(Unity.Mathematics.double2x2 v)
+
+Disassembly:
+	sub rsp,28h
+	movups xmm1,[rdx]
+	cvttsd2si eax,xmm1
+	unpckhpd xmm1,xmm1
+	mov [rsp+30h],eax
+	cvttsd2si eax,xmm1
+	movups xmm1,[rdx+10h]
+	mov [rsp+34h],eax
+	mov rax,[rsp+30h]
+	mov [rcx],rax
+	cvttsd2si eax,xmm1
+	unpckhpd xmm1,xmm1
+	mov [rsp+30h],eax
+	cvttsd2si eax,xmm1
+	mov [rsp+34h],eax
+	mov rax,[rsp+30h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm1, [rdx]
+	003 Move rax, xmm1
+	004 NotImplemented "unpckhpd xmm1,xmm1"
+	005 Move stack:0x30, rax
+	006 Move rax, xmm1
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x34, rax
+	009 Move rax, stack:0x30
+	010 Move [rcx], rax
+	011 Move rax, xmm1
+	012 NotImplemented "unpckhpd xmm1,xmm1"
+	013 Move stack:0x30, rax
+	014 Move rax, xmm1
+	015 Move stack:0x34, rax
+	016 Move rax, stack:0x30
+	017 Move [rcx+8], rax
+	018 Move rax, rcx
+	019 ShiftStack 40
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Multiply(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r11,rcx
+	mov r9,[r8]
+	mov rcx,[r8+8]
+	mov r10d,r9d
+	imul r10d,eax
+	shr rax,20h
+	shr r9,20h
+	imul r9d,eax
+	mov rax,[rdx+8]
+	mov edx,ecx
+	imul edx,eax
+	shr rax,20h
+	shr rcx,20h
+	imul ecx,eax
+	mov [rsp+8],r10d
+	mov [rsp+0Ch],r9d
+	mov rax,[rsp+8]
+	mov [r11],rax
+	mov [rsp+14h],ecx
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [r11+8],rax
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r11, rcx
+	003 Move r9, [r8]
+	004 Move rcx, [r8+8]
+	005 Move r10, r9
+	006 Multiply r10, r10, rax
+	007 ShiftRight rax, 32
+	008 ShiftRight r9, 32
+	009 Multiply r9, r9, rax
+	010 Move rax, [rdx+8]
+	011 Move rdx, rcx
+	012 Multiply rdx, rdx, rax
+	013 ShiftRight rax, 32
+	014 ShiftRight rcx, 32
+	015 Multiply rcx, rcx, rax
+	016 Move stack:0x8, r10
+	017 Move stack:0xC, r9
+	018 Move rax, stack:0x8
+	019 Move [r11], rax
+	020 Move stack:0x14, rcx
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x10
+	023 Move [r11+8], rax
+	024 Move rax, r11
+	025 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Multiply(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,eax
+	shr rax,20h
+	imul eax,r8d
+	imul r9d,r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	imul eax,r8d
+	imul edx,r8d
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Multiply rax, rax, r8
+	005 Multiply r9, r9, r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Multiply rax, rax, r8
+	012 Multiply rdx, rdx, r8
+	013 Move stack:0x14, rax
+	014 Move rax, stack:0x8
+	015 Move [rcx], rax
+	016 Move stack:0x10, rdx
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Multiply(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[r8]
+	mov r9d,eax
+	shr rax,20h
+	imul eax,edx
+	imul r9d,edx
+	mov [rsp+0Ch],eax
+	mov rax,[r8+8]
+	mov r8d,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	imul eax,edx
+	imul r8d,edx
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+18h],r8d
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [r8]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Multiply rax, rax, rdx
+	005 Multiply r9, r9, rdx
+	006 Move stack:0xC, rax
+	007 Move rax, [r8+8]
+	008 Move r8, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Multiply rax, rax, rdx
+	012 Multiply r8, r8, rdx
+	013 Move stack:0x1C, rax
+	014 Move rax, stack:0x8
+	015 Move [rcx], rax
+	016 Move stack:0x18, r8
+	017 Move rax, stack:0x18
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Addition(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r11,rcx
+	mov r9,[r8]
+	lea r10d,[r9+rax]
+	shr rax,20h
+	shr r9,20h
+	add r9d,eax
+	mov [rsp+8],r10d
+	mov rax,[rdx+8]
+	mov rdx,[r8+8]
+	mov [rsp+0Ch],r9d
+	lea ecx,[rdx+rax]
+	shr rax,20h
+	shr rdx,20h
+	add edx,eax
+	mov [rsp+10h],ecx
+	mov rax,[rsp+8]
+	mov [r11],rax
+	mov [rsp+14h],edx
+	mov rax,[rsp+10h]
+	mov [r11+8],rax
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r11, rcx
+	003 Move r9, [r8]
+	004 LoadAddress r10, [r9+rax]
+	005 ShiftRight rax, 32
+	006 ShiftRight r9, 32
+	007 Add r9, r9, rax
+	008 Move stack:0x8, r10
+	009 Move rax, [rdx+8]
+	010 Move rdx, [r8+8]
+	011 Move stack:0xC, r9
+	012 LoadAddress rcx, [rdx+rax]
+	013 ShiftRight rax, 32
+	014 ShiftRight rdx, 32
+	015 Add rdx, rdx, rax
+	016 Move stack:0x10, rcx
+	017 Move rax, stack:0x8
+	018 Move [r11], rax
+	019 Move stack:0x14, rdx
+	020 Move rax, stack:0x10
+	021 Move [r11+8], rax
+	022 Move rax, r11
+	023 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Addition(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	lea r9d,[rax+r8]
+	shr rax,20h
+	add eax,r8d
+	mov [rsp+8],r9d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	lea edx,[rax+r8]
+	shr rax,20h
+	add eax,r8d
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 LoadAddress r9, [rax+r8]
+	003 ShiftRight rax, 32
+	004 Add rax, rax, r8
+	005 Move stack:0x8, r9
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 LoadAddress rdx, [rax+r8]
+	009 ShiftRight rax, 32
+	010 Add rax, rax, r8
+	011 Move stack:0x10, rdx
+	012 Move stack:0x14, rax
+	013 Move rax, stack:0x8
+	014 Move [rcx], rax
+	015 Move rax, stack:0x10
+	016 Move [rcx+8], rax
+	017 Move rax, rcx
+	018 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Addition(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[r8]
+	lea r9d,[rax+rdx]
+	shr rax,20h
+	add eax,edx
+	mov [rsp+8],r9d
+	mov [rsp+0Ch],eax
+	mov rax,[r8+8]
+	lea r8d,[rax+rdx]
+	shr rax,20h
+	add eax,edx
+	mov [rsp+18h],r8d
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [r8]
+	002 LoadAddress r9, [rax+rdx]
+	003 ShiftRight rax, 32
+	004 Add rax, rax, rdx
+	005 Move stack:0x8, r9
+	006 Move stack:0xC, rax
+	007 Move rax, [r8+8]
+	008 LoadAddress r8, [rax+rdx]
+	009 ShiftRight rax, 32
+	010 Add rax, rax, rdx
+	011 Move stack:0x18, r8
+	012 Move stack:0x1C, rax
+	013 Move rax, stack:0x8
+	014 Move [rcx], rax
+	015 Move rax, stack:0x18
+	016 Move [rcx+8], rax
+	017 Move rax, rcx
+	018 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Subtraction(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r9,[rdx]
+	mov r11,rcx
+	mov rdx,[rdx+8]
+	mov r10d,r9d
+	mov rax,[r8]
+	mov ecx,edx
+	sub r10d,eax
+	shr r9,20h
+	shr rax,20h
+	sub r9d,eax
+	shr rdx,20h
+	mov rax,[r8+8]
+	sub ecx,eax
+	mov [rsp+8],r10d
+	shr rax,20h
+	sub edx,eax
+	mov [rsp+0Ch],r9d
+	mov rax,[rsp+8]
+	mov [r11],rax
+	mov [rsp+14h],edx
+	mov [rsp+10h],ecx
+	mov rax,[rsp+10h]
+	mov [r11+8],rax
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move r9, [rdx]
+	002 Move r11, rcx
+	003 Move rdx, [rdx+8]
+	004 Move r10, r9
+	005 Move rax, [r8]
+	006 Move rcx, rdx
+	007 Subtract r10, r10, rax
+	008 ShiftRight r9, 32
+	009 ShiftRight rax, 32
+	010 Subtract r9, r9, rax
+	011 ShiftRight rdx, 32
+	012 Move rax, [r8+8]
+	013 Subtract rcx, rcx, rax
+	014 Move stack:0x8, r10
+	015 ShiftRight rax, 32
+	016 Subtract rdx, rdx, rax
+	017 Move stack:0xC, r9
+	018 Move rax, stack:0x8
+	019 Move [r11], rax
+	020 Move stack:0x14, rdx
+	021 Move stack:0x10, rcx
+	022 Move rax, stack:0x10
+	023 Move [r11+8], rax
+	024 Move rax, r11
+	025 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Subtraction(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,eax
+	shr rax,20h
+	sub eax,r8d
+	sub r9d,r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	sub edx,r8d
+	sub eax,r8d
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Subtract rax, rax, r8
+	005 Subtract r9, r9, r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Subtract rdx, rdx, r8
+	012 Subtract rax, rax, r8
+	013 Move stack:0x10, rdx
+	014 Move stack:0x14, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Subtraction(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[r8]
+	mov r9d,edx
+	sub r9d,eax
+	shr rax,20h
+	mov [rsp+8],r9d
+	mov r9d,edx
+	sub r9d,eax
+	mov rax,[r8+8]
+	mov r8d,edx
+	mov [rsp+0Ch],r9d
+	sub r8d,eax
+	shr rax,20h
+	sub edx,eax
+	mov [rsp+18h],r8d
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+1Ch],edx
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [r8]
+	002 Move r9, rdx
+	003 Subtract r9, r9, rax
+	004 ShiftRight rax, 32
+	005 Move stack:0x8, r9
+	006 Move r9, rdx
+	007 Subtract r9, r9, rax
+	008 Move rax, [r8+8]
+	009 Move r8, rdx
+	010 Move stack:0xC, r9
+	011 Subtract r8, r8, rax
+	012 ShiftRight rax, 32
+	013 Subtract rdx, rdx, rax
+	014 Move stack:0x18, r8
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move stack:0x1C, rdx
+	018 Move rax, stack:0x18
+	019 Move [rcx+8], rax
+	020 Move rax, rcx
+	021 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Division(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov r9,[rdx]
+	mov r11,rdx
+	mov r10,[r8]
+	mov eax,r9d
+	mov r8,[r8+8]
+	cdq
+	idiv r10d
+	mov rbx,rcx
+	shr r9,20h
+	mov rcx,[r11+8]
+	mov [rsp+8],eax
+	mov eax,r9d
+	cdq
+	shr r10,20h
+	idiv r10d
+	mov [rsp+0Ch],eax
+	mov eax,ecx
+	cdq
+	shr rcx,20h
+	idiv r8d
+	shr r8,20h
+	mov [rsp+10h],eax
+	mov eax,ecx
+	cdq
+	idiv r8d
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rbx],rax
+	mov rax,[rsp+10h]
+	mov [rbx+8],rax
+	mov rax,rbx
+	mov rbx,[rsp+18h]
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move r9, [rdx]
+	003 Move r11, rdx
+	004 Move r10, [r8]
+	005 Move rax, r9
+	006 Move r8, [r8+8]
+	007 Move TEMP, rax
+	008 ShiftRight TEMP, 31
+	009 Compare TEMP, 1
+	010 JumpIfNotEqual {13}
+	011 Move rdx, 0xFFFFFFFF
+	012 Goto {14}
+	013 Move rdx, 0
+	014 Nop 
+	015 NotImplemented "idiv r10d"
+	016 Move rbx, rcx
+	017 ShiftRight r9, 32
+	018 Move rcx, [r11+8]
+	019 Move stack:0x8, rax
+	020 Move rax, r9
+	021 Move TEMP, rax
+	022 ShiftRight TEMP, 31
+	023 Compare TEMP, 1
+	024 JumpIfNotEqual {27}
+	025 Move rdx, 0xFFFFFFFF
+	026 Goto {28}
+	027 Move rdx, 0
+	028 Nop 
+	029 ShiftRight r10, 32
+	030 NotImplemented "idiv r10d"
+	031 Move stack:0xC, rax
+	032 Move rax, rcx
+	033 Move TEMP, rax
+	034 ShiftRight TEMP, 31
+	035 Compare TEMP, 1
+	036 JumpIfNotEqual {39}
+	037 Move rdx, 0xFFFFFFFF
+	038 Goto {40}
+	039 Move rdx, 0
+	040 Nop 
+	041 ShiftRight rcx, 32
+	042 NotImplemented "idiv r8d"
+	043 ShiftRight r8, 32
+	044 Move stack:0x10, rax
+	045 Move rax, rcx
+	046 Move TEMP, rax
+	047 ShiftRight TEMP, 31
+	048 Compare TEMP, 1
+	049 JumpIfNotEqual {52}
+	050 Move rdx, 0xFFFFFFFF
+	051 Goto {53}
+	052 Move rdx, 0
+	053 Nop 
+	054 NotImplemented "idiv r8d"
+	055 Move stack:0x14, rax
+	056 Move rax, stack:0x8
+	057 Move [rbx], rax
+	058 Move rax, stack:0x10
+	059 Move [rbx+8], rax
+	060 Move rax, rbx
+	061 Move rbx, stack:0x18
+	062 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Division(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov r9,[rdx]
+	mov r10d,r8d
+	mov r8,[rdx+8]
+	mov eax,r9d
+	cdq
+	shr r9,20h
+	idiv r10d
+	mov [rsp+8],eax
+	mov eax,r9d
+	cdq
+	idiv r10d
+	mov [rsp+0Ch],eax
+	mov eax,r8d
+	cdq
+	shr r8,20h
+	idiv r10d
+	mov [rsp+10h],eax
+	mov eax,r8d
+	cdq
+	idiv r10d
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move r9, [rdx]
+	002 Move r10, r8
+	003 Move r8, [rdx+8]
+	004 Move rax, r9
+	005 Move TEMP, rax
+	006 ShiftRight TEMP, 31
+	007 Compare TEMP, 1
+	008 JumpIfNotEqual {11}
+	009 Move rdx, 0xFFFFFFFF
+	010 Goto {12}
+	011 Move rdx, 0
+	012 Nop 
+	013 ShiftRight r9, 32
+	014 NotImplemented "idiv r10d"
+	015 Move stack:0x8, rax
+	016 Move rax, r9
+	017 Move TEMP, rax
+	018 ShiftRight TEMP, 31
+	019 Compare TEMP, 1
+	020 JumpIfNotEqual {23}
+	021 Move rdx, 0xFFFFFFFF
+	022 Goto {24}
+	023 Move rdx, 0
+	024 Nop 
+	025 NotImplemented "idiv r10d"
+	026 Move stack:0xC, rax
+	027 Move rax, r8
+	028 Move TEMP, rax
+	029 ShiftRight TEMP, 31
+	030 Compare TEMP, 1
+	031 JumpIfNotEqual {34}
+	032 Move rdx, 0xFFFFFFFF
+	033 Goto {35}
+	034 Move rdx, 0
+	035 Nop 
+	036 ShiftRight r8, 32
+	037 NotImplemented "idiv r10d"
+	038 Move stack:0x10, rax
+	039 Move rax, r8
+	040 Move TEMP, rax
+	041 ShiftRight TEMP, 31
+	042 Compare TEMP, 1
+	043 JumpIfNotEqual {46}
+	044 Move rdx, 0xFFFFFFFF
+	045 Goto {47}
+	046 Move rdx, 0
+	047 Nop 
+	048 NotImplemented "idiv r10d"
+	049 Move stack:0x14, rax
+	050 Move rax, stack:0x8
+	051 Move [rcx], rax
+	052 Move rax, stack:0x10
+	053 Move [rcx+8], rax
+	054 Move rax, rcx
+	055 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Division(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r9,[r8]
+	mov r10d,edx
+	mov r8,[r8+8]
+	mov eax,edx
+	cdq
+	idiv r9d
+	shr r9,20h
+	mov [rsp+8],eax
+	mov eax,r10d
+	cdq
+	idiv r9d
+	mov [rsp+0Ch],eax
+	mov eax,r10d
+	cdq
+	idiv r8d
+	shr r8,20h
+	mov [rsp+18h],eax
+	mov eax,r10d
+	cdq
+	idiv r8d
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move r9, [r8]
+	002 Move r10, rdx
+	003 Move r8, [r8+8]
+	004 Move rax, rdx
+	005 Move TEMP, rax
+	006 ShiftRight TEMP, 31
+	007 Compare TEMP, 1
+	008 JumpIfNotEqual {11}
+	009 Move rdx, 0xFFFFFFFF
+	010 Goto {12}
+	011 Move rdx, 0
+	012 Nop 
+	013 NotImplemented "idiv r9d"
+	014 ShiftRight r9, 32
+	015 Move stack:0x8, rax
+	016 Move rax, r10
+	017 Move TEMP, rax
+	018 ShiftRight TEMP, 31
+	019 Compare TEMP, 1
+	020 JumpIfNotEqual {23}
+	021 Move rdx, 0xFFFFFFFF
+	022 Goto {24}
+	023 Move rdx, 0
+	024 Nop 
+	025 NotImplemented "idiv r9d"
+	026 Move stack:0xC, rax
+	027 Move rax, r10
+	028 Move TEMP, rax
+	029 ShiftRight TEMP, 31
+	030 Compare TEMP, 1
+	031 JumpIfNotEqual {34}
+	032 Move rdx, 0xFFFFFFFF
+	033 Goto {35}
+	034 Move rdx, 0
+	035 Nop 
+	036 NotImplemented "idiv r8d"
+	037 ShiftRight r8, 32
+	038 Move stack:0x18, rax
+	039 Move rax, r10
+	040 Move TEMP, rax
+	041 ShiftRight TEMP, 31
+	042 Compare TEMP, 1
+	043 JumpIfNotEqual {46}
+	044 Move rdx, 0xFFFFFFFF
+	045 Goto {47}
+	046 Move rdx, 0
+	047 Nop 
+	048 NotImplemented "idiv r8d"
+	049 Move stack:0x1C, rax
+	050 Move rax, stack:0x8
+	051 Move [rcx], rax
+	052 Move rax, stack:0x18
+	053 Move [rcx+8], rax
+	054 Move rax, rcx
+	055 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Modulus(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov r9,[rdx]
+	mov r11,rdx
+	mov r10,[r8]
+	mov eax,r9d
+	mov r8,[r8+8]
+	cdq
+	idiv r10d
+	mov rbx,rcx
+	shr r9,20h
+	mov rcx,[r11+8]
+	mov eax,r9d
+	mov [rsp+8],edx
+	cdq
+	shr r10,20h
+	idiv r10d
+	mov eax,ecx
+	shr rcx,20h
+	mov [rsp+0Ch],edx
+	cdq
+	idiv r8d
+	mov eax,ecx
+	shr r8,20h
+	mov [rsp+10h],edx
+	cdq
+	idiv r8d
+	mov rax,[rsp+8]
+	mov [rbx],rax
+	mov [rsp+14h],edx
+	mov rax,[rsp+10h]
+	mov [rbx+8],rax
+	mov rax,rbx
+	mov rbx,[rsp+18h]
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move r9, [rdx]
+	003 Move r11, rdx
+	004 Move r10, [r8]
+	005 Move rax, r9
+	006 Move r8, [r8+8]
+	007 Move TEMP, rax
+	008 ShiftRight TEMP, 31
+	009 Compare TEMP, 1
+	010 JumpIfNotEqual {13}
+	011 Move rdx, 0xFFFFFFFF
+	012 Goto {14}
+	013 Move rdx, 0
+	014 Nop 
+	015 NotImplemented "idiv r10d"
+	016 Move rbx, rcx
+	017 ShiftRight r9, 32
+	018 Move rcx, [r11+8]
+	019 Move rax, r9
+	020 Move stack:0x8, rdx
+	021 Move TEMP, rax
+	022 ShiftRight TEMP, 31
+	023 Compare TEMP, 1
+	024 JumpIfNotEqual {27}
+	025 Move rdx, 0xFFFFFFFF
+	026 Goto {28}
+	027 Move rdx, 0
+	028 Nop 
+	029 ShiftRight r10, 32
+	030 NotImplemented "idiv r10d"
+	031 Move rax, rcx
+	032 ShiftRight rcx, 32
+	033 Move stack:0xC, rdx
+	034 Move TEMP, rax
+	035 ShiftRight TEMP, 31
+	036 Compare TEMP, 1
+	037 JumpIfNotEqual {40}
+	038 Move rdx, 0xFFFFFFFF
+	039 Goto {41}
+	040 Move rdx, 0
+	041 Nop 
+	042 NotImplemented "idiv r8d"
+	043 Move rax, rcx
+	044 ShiftRight r8, 32
+	045 Move stack:0x10, rdx
+	046 Move TEMP, rax
+	047 ShiftRight TEMP, 31
+	048 Compare TEMP, 1
+	049 JumpIfNotEqual {52}
+	050 Move rdx, 0xFFFFFFFF
+	051 Goto {53}
+	052 Move rdx, 0
+	053 Nop 
+	054 NotImplemented "idiv r8d"
+	055 Move rax, stack:0x8
+	056 Move [rbx], rax
+	057 Move stack:0x14, rdx
+	058 Move rax, stack:0x10
+	059 Move [rbx+8], rax
+	060 Move rax, rbx
+	061 Move rbx, stack:0x18
+	062 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Modulus(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov r9,[rdx]
+	mov r10d,r8d
+	mov r8,[rdx+8]
+	mov eax,r9d
+	cdq
+	shr r9,20h
+	idiv r10d
+	mov eax,r9d
+	mov [rsp+8],edx
+	cdq
+	idiv r10d
+	mov eax,r8d
+	shr r8,20h
+	mov [rsp+0Ch],edx
+	cdq
+	idiv r10d
+	mov eax,r8d
+	mov [rsp+10h],edx
+	cdq
+	idiv r10d
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+14h],edx
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move r9, [rdx]
+	002 Move r10, r8
+	003 Move r8, [rdx+8]
+	004 Move rax, r9
+	005 Move TEMP, rax
+	006 ShiftRight TEMP, 31
+	007 Compare TEMP, 1
+	008 JumpIfNotEqual {11}
+	009 Move rdx, 0xFFFFFFFF
+	010 Goto {12}
+	011 Move rdx, 0
+	012 Nop 
+	013 ShiftRight r9, 32
+	014 NotImplemented "idiv r10d"
+	015 Move rax, r9
+	016 Move stack:0x8, rdx
+	017 Move TEMP, rax
+	018 ShiftRight TEMP, 31
+	019 Compare TEMP, 1
+	020 JumpIfNotEqual {23}
+	021 Move rdx, 0xFFFFFFFF
+	022 Goto {24}
+	023 Move rdx, 0
+	024 Nop 
+	025 NotImplemented "idiv r10d"
+	026 Move rax, r8
+	027 ShiftRight r8, 32
+	028 Move stack:0xC, rdx
+	029 Move TEMP, rax
+	030 ShiftRight TEMP, 31
+	031 Compare TEMP, 1
+	032 JumpIfNotEqual {35}
+	033 Move rdx, 0xFFFFFFFF
+	034 Goto {36}
+	035 Move rdx, 0
+	036 Nop 
+	037 NotImplemented "idiv r10d"
+	038 Move rax, r8
+	039 Move stack:0x10, rdx
+	040 Move TEMP, rax
+	041 ShiftRight TEMP, 31
+	042 Compare TEMP, 1
+	043 JumpIfNotEqual {46}
+	044 Move rdx, 0xFFFFFFFF
+	045 Goto {47}
+	046 Move rdx, 0
+	047 Nop 
+	048 NotImplemented "idiv r10d"
+	049 Move rax, stack:0x8
+	050 Move [rcx], rax
+	051 Move stack:0x14, rdx
+	052 Move rax, stack:0x10
+	053 Move [rcx+8], rax
+	054 Move rax, rcx
+	055 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Modulus(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r9,[r8]
+	mov r10d,edx
+	mov r8,[r8+8]
+	mov eax,edx
+	cdq
+	idiv r9d
+	mov eax,r10d
+	shr r9,20h
+	mov [rsp+8],edx
+	cdq
+	idiv r9d
+	mov eax,r10d
+	mov [rsp+0Ch],edx
+	cdq
+	idiv r8d
+	mov eax,r10d
+	shr r8,20h
+	mov [rsp+18h],edx
+	cdq
+	idiv r8d
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov [rsp+1Ch],edx
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move r9, [r8]
+	002 Move r10, rdx
+	003 Move r8, [r8+8]
+	004 Move rax, rdx
+	005 Move TEMP, rax
+	006 ShiftRight TEMP, 31
+	007 Compare TEMP, 1
+	008 JumpIfNotEqual {11}
+	009 Move rdx, 0xFFFFFFFF
+	010 Goto {12}
+	011 Move rdx, 0
+	012 Nop 
+	013 NotImplemented "idiv r9d"
+	014 Move rax, r10
+	015 ShiftRight r9, 32
+	016 Move stack:0x8, rdx
+	017 Move TEMP, rax
+	018 ShiftRight TEMP, 31
+	019 Compare TEMP, 1
+	020 JumpIfNotEqual {23}
+	021 Move rdx, 0xFFFFFFFF
+	022 Goto {24}
+	023 Move rdx, 0
+	024 Nop 
+	025 NotImplemented "idiv r9d"
+	026 Move rax, r10
+	027 Move stack:0xC, rdx
+	028 Move TEMP, rax
+	029 ShiftRight TEMP, 31
+	030 Compare TEMP, 1
+	031 JumpIfNotEqual {34}
+	032 Move rdx, 0xFFFFFFFF
+	033 Goto {35}
+	034 Move rdx, 0
+	035 Nop 
+	036 NotImplemented "idiv r8d"
+	037 Move rax, r10
+	038 ShiftRight r8, 32
+	039 Move stack:0x18, rdx
+	040 Move TEMP, rax
+	041 ShiftRight TEMP, 31
+	042 Compare TEMP, 1
+	043 JumpIfNotEqual {46}
+	044 Move rdx, 0xFFFFFFFF
+	045 Goto {47}
+	046 Move rdx, 0
+	047 Nop 
+	048 NotImplemented "idiv r8d"
+	049 Move rax, stack:0x8
+	050 Move [rcx], rax
+	051 Move stack:0x1C, rdx
+	052 Move rax, stack:0x18
+	053 Move [rcx+8], rax
+	054 Move rax, rcx
+	055 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Increment(Unity.Mathematics.int2x2 val)
+
+Disassembly:
+	mov rax,[rdx]
+	lea r8d,[rax+1]
+	shr rax,20h
+	inc eax
+	mov [rsp+8],r8d
+	mov [rsp+0Ch],eax
+	mov r8,[rsp+8]
+	mov [rdx],r8
+	mov rax,[rdx+8]
+	mov [rcx],r8
+	lea edx,[rax+1]
+	shr rax,20h
+	inc eax
+	mov [rsp+8],edx
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 LoadAddress r8, [rax+1]
+	003 ShiftRight rax, 32
+	004 Add rax, rax, 1
+	005 Move stack:0x8, r8
+	006 Move stack:0xC, rax
+	007 Move r8, stack:0x8
+	008 Move [rdx], r8
+	009 Move rax, [rdx+8]
+	010 Move [rcx], r8
+	011 LoadAddress rdx, [rax+1]
+	012 ShiftRight rax, 32
+	013 Add rax, rax, 1
+	014 Move stack:0x8, rdx
+	015 Move stack:0xC, rax
+	016 Move rax, stack:0x8
+	017 Move [rcx+8], rax
+	018 Move rax, rcx
+	019 Return rax
+
+Method: Unity.Mathematics.int2x2 op_Decrement(Unity.Mathematics.int2x2 val)
+
+Disassembly:
+	mov rax,[rdx]
+	lea r8d,[rax-1]
+	shr rax,20h
+	dec eax
+	mov [rsp+8],r8d
+	mov [rsp+0Ch],eax
+	mov r8,[rsp+8]
+	mov [rdx],r8
+	mov rax,[rdx+8]
+	mov [rcx],r8
+	lea edx,[rax-1]
+	shr rax,20h
+	dec eax
+	mov [rsp+8],edx
+	mov [rsp+0Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 LoadAddress r8, [rax-1]
+	003 ShiftRight rax, 32
+	004 Subtract rax, rax, 1
+	005 Move stack:0x8, r8
+	006 Move stack:0xC, rax
+	007 Move r8, stack:0x8
+	008 Move [rdx], r8
+	009 Move rax, [rdx+8]
+	010 Move [rcx], r8
+	011 LoadAddress rdx, [rax-1]
+	012 ShiftRight rax, 32
+	013 Subtract rax, rax, 1
+	014 Move stack:0x8, rdx
+	015 Move stack:0xC, rax
+	016 Move rax, stack:0x8
+	017 Move [rcx+8], rax
+	018 Move rax, rcx
+	019 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_LessThan(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r8,[rcx]
+	xor r10d,r10d
+	mov rax,[rdx]
+	mov rcx,[rcx+8]
+	cmp r8d,eax
+	mov [rsp+8],r10w
+	setl r9b
+	mov [rsp+10h],r10w
+	shr rax,20h
+	shr r8,20h
+	cmp r8d,eax
+	mov [rsp+8],r9b
+	mov rax,[rdx+8]
+	setl byte ptr [rsp+9]
+	mov [rsp+20h],r9b
+	cmp ecx,eax
+	setl dl
+	shr rax,20h
+	shr rcx,20h
+	cmp ecx,eax
+	mov [rsp+10h],dl
+	movzx eax,word ptr [rsp+8]
+	setl byte ptr [rsp+11h]
+	mov [rsp+22h],dl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move r10, 0
+	003 Move rax, [rdx]
+	004 Move rcx, [rcx+8]
+	005 Compare r8, rax
+	006 Move stack:0x8, r10
+	007 NotImplemented "setl r9b"
+	008 Move stack:0x10, r10
+	009 ShiftRight rax, 32
+	010 ShiftRight r8, 32
+	011 Compare r8, rax
+	012 Move stack:0x8, r9
+	013 Move rax, [rdx+8]
+	014 NotImplemented "setl byte ptr [rsp+9]"
+	015 Move stack:0x20, r9
+	016 Compare rcx, rax
+	017 NotImplemented "setl dl"
+	018 ShiftRight rax, 32
+	019 ShiftRight rcx, 32
+	020 Compare rcx, rax
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x8
+	023 NotImplemented "setl byte ptr [rsp+11h]"
+	024 Move stack:0x22, rdx
+	025 ShiftRight rax, 8
+	026 Move stack:0x21, rax
+	027 Move rax, stack:0x10
+	028 ShiftRight rax, 8
+	029 Move stack:0x23, rax
+	030 Move rax, stack:0x20
+	031 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_LessThan(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rcx]
+	xor r9d,r9d
+	cmp eax,edx
+	mov [rsp+10h],r9w
+	mov [rsp+8],r9w
+	setl r8b
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+10h],r8b
+	mov rax,[rcx+8]
+	setl byte ptr [rsp+11h]
+	mov [rsp+20h],r8b
+	cmp eax,edx
+	setl cl
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+8],cl
+	movzx eax,word ptr [rsp+10h]
+	setl byte ptr [rsp+9]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+8]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move r9, 0
+	003 Compare rax, rdx
+	004 Move stack:0x10, r9
+	005 Move stack:0x8, r9
+	006 NotImplemented "setl r8b"
+	007 ShiftRight rax, 32
+	008 Compare rax, rdx
+	009 Move stack:0x10, r8
+	010 Move rax, [rcx+8]
+	011 NotImplemented "setl byte ptr [rsp+11h]"
+	012 Move stack:0x20, r8
+	013 Compare rax, rdx
+	014 NotImplemented "setl cl"
+	015 ShiftRight rax, 32
+	016 Compare rax, rdx
+	017 Move stack:0x8, rcx
+	018 Move rax, stack:0x10
+	019 NotImplemented "setl byte ptr [rsp+9]"
+	020 Move stack:0x22, rcx
+	021 ShiftRight rax, 8
+	022 Move stack:0x21, rax
+	023 Move rax, stack:0x8
+	024 ShiftRight rax, 8
+	025 Move stack:0x23, rax
+	026 Move rax, stack:0x20
+	027 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_LessThan(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,ecx
+	xor ecx,ecx
+	cmp r9d,eax
+	mov [rsp+8],cx
+	mov [rsp+10h],cx
+	setl r8b
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+8],r8b
+	mov rax,[rdx+8]
+	setl byte ptr [rsp+9]
+	mov [rsp+20h],r8b
+	cmp r9d,eax
+	setl cl
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+10h],cl
+	movzx eax,word ptr [rsp+8]
+	setl byte ptr [rsp+11h]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rcx
+	003 Move rcx, 0
+	004 Compare r9, rax
+	005 Move stack:0x8, rcx
+	006 Move stack:0x10, rcx
+	007 NotImplemented "setl r8b"
+	008 ShiftRight rax, 32
+	009 Compare r9, rax
+	010 Move stack:0x8, r8
+	011 Move rax, [rdx+8]
+	012 NotImplemented "setl byte ptr [rsp+9]"
+	013 Move stack:0x20, r8
+	014 Compare r9, rax
+	015 NotImplemented "setl cl"
+	016 ShiftRight rax, 32
+	017 Compare r9, rax
+	018 Move stack:0x10, rcx
+	019 Move rax, stack:0x8
+	020 NotImplemented "setl byte ptr [rsp+11h]"
+	021 Move stack:0x22, rcx
+	022 ShiftRight rax, 8
+	023 Move stack:0x21, rax
+	024 Move rax, stack:0x10
+	025 ShiftRight rax, 8
+	026 Move stack:0x23, rax
+	027 Move rax, stack:0x20
+	028 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_LessThanOrEqual(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r8,[rcx]
+	xor r10d,r10d
+	mov rax,[rdx]
+	mov rcx,[rcx+8]
+	cmp r8d,eax
+	mov [rsp+8],r10w
+	setle r9b
+	mov [rsp+10h],r10w
+	shr rax,20h
+	shr r8,20h
+	cmp r8d,eax
+	mov [rsp+8],r9b
+	mov rax,[rdx+8]
+	setle byte ptr [rsp+9]
+	mov [rsp+20h],r9b
+	cmp ecx,eax
+	setle dl
+	shr rax,20h
+	shr rcx,20h
+	cmp ecx,eax
+	mov [rsp+10h],dl
+	movzx eax,word ptr [rsp+8]
+	setle byte ptr [rsp+11h]
+	mov [rsp+22h],dl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move r10, 0
+	003 Move rax, [rdx]
+	004 Move rcx, [rcx+8]
+	005 Compare r8, rax
+	006 Move stack:0x8, r10
+	007 NotImplemented "setle r9b"
+	008 Move stack:0x10, r10
+	009 ShiftRight rax, 32
+	010 ShiftRight r8, 32
+	011 Compare r8, rax
+	012 Move stack:0x8, r9
+	013 Move rax, [rdx+8]
+	014 NotImplemented "setle byte ptr [rsp+9]"
+	015 Move stack:0x20, r9
+	016 Compare rcx, rax
+	017 NotImplemented "setle dl"
+	018 ShiftRight rax, 32
+	019 ShiftRight rcx, 32
+	020 Compare rcx, rax
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x8
+	023 NotImplemented "setle byte ptr [rsp+11h]"
+	024 Move stack:0x22, rdx
+	025 ShiftRight rax, 8
+	026 Move stack:0x21, rax
+	027 Move rax, stack:0x10
+	028 ShiftRight rax, 8
+	029 Move stack:0x23, rax
+	030 Move rax, stack:0x20
+	031 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_LessThanOrEqual(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rcx]
+	xor r9d,r9d
+	cmp eax,edx
+	mov [rsp+10h],r9w
+	mov [rsp+8],r9w
+	setle r8b
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+10h],r8b
+	mov rax,[rcx+8]
+	setle byte ptr [rsp+11h]
+	mov [rsp+20h],r8b
+	cmp eax,edx
+	setle cl
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+8],cl
+	movzx eax,word ptr [rsp+10h]
+	setle byte ptr [rsp+9]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+8]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move r9, 0
+	003 Compare rax, rdx
+	004 Move stack:0x10, r9
+	005 Move stack:0x8, r9
+	006 NotImplemented "setle r8b"
+	007 ShiftRight rax, 32
+	008 Compare rax, rdx
+	009 Move stack:0x10, r8
+	010 Move rax, [rcx+8]
+	011 NotImplemented "setle byte ptr [rsp+11h]"
+	012 Move stack:0x20, r8
+	013 Compare rax, rdx
+	014 NotImplemented "setle cl"
+	015 ShiftRight rax, 32
+	016 Compare rax, rdx
+	017 Move stack:0x8, rcx
+	018 Move rax, stack:0x10
+	019 NotImplemented "setle byte ptr [rsp+9]"
+	020 Move stack:0x22, rcx
+	021 ShiftRight rax, 8
+	022 Move stack:0x21, rax
+	023 Move rax, stack:0x8
+	024 ShiftRight rax, 8
+	025 Move stack:0x23, rax
+	026 Move rax, stack:0x20
+	027 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_LessThanOrEqual(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,ecx
+	xor ecx,ecx
+	cmp r9d,eax
+	mov [rsp+8],cx
+	mov [rsp+10h],cx
+	setle r8b
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+8],r8b
+	mov rax,[rdx+8]
+	setle byte ptr [rsp+9]
+	mov [rsp+20h],r8b
+	cmp r9d,eax
+	setle cl
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+10h],cl
+	movzx eax,word ptr [rsp+8]
+	setle byte ptr [rsp+11h]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rcx
+	003 Move rcx, 0
+	004 Compare r9, rax
+	005 Move stack:0x8, rcx
+	006 Move stack:0x10, rcx
+	007 NotImplemented "setle r8b"
+	008 ShiftRight rax, 32
+	009 Compare r9, rax
+	010 Move stack:0x8, r8
+	011 Move rax, [rdx+8]
+	012 NotImplemented "setle byte ptr [rsp+9]"
+	013 Move stack:0x20, r8
+	014 Compare r9, rax
+	015 NotImplemented "setle cl"
+	016 ShiftRight rax, 32
+	017 Compare r9, rax
+	018 Move stack:0x10, rcx
+	019 Move rax, stack:0x8
+	020 NotImplemented "setle byte ptr [rsp+11h]"
+	021 Move stack:0x22, rcx
+	022 ShiftRight rax, 8
+	023 Move stack:0x21, rax
+	024 Move rax, stack:0x10
+	025 ShiftRight rax, 8
+	026 Move stack:0x23, rax
+	027 Move rax, stack:0x20
+	028 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_GreaterThan(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r8,[rcx]
+	xor r10d,r10d
+	mov rax,[rdx]
+	mov rcx,[rcx+8]
+	cmp r8d,eax
+	mov [rsp+8],r10w
+	setg r9b
+	mov [rsp+10h],r10w
+	shr rax,20h
+	shr r8,20h
+	cmp r8d,eax
+	mov [rsp+8],r9b
+	mov rax,[rdx+8]
+	setg byte ptr [rsp+9]
+	mov [rsp+20h],r9b
+	cmp ecx,eax
+	setg dl
+	shr rax,20h
+	shr rcx,20h
+	cmp ecx,eax
+	mov [rsp+10h],dl
+	movzx eax,word ptr [rsp+8]
+	setg byte ptr [rsp+11h]
+	mov [rsp+22h],dl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move r10, 0
+	003 Move rax, [rdx]
+	004 Move rcx, [rcx+8]
+	005 Compare r8, rax
+	006 Move stack:0x8, r10
+	007 NotImplemented "setg r9b"
+	008 Move stack:0x10, r10
+	009 ShiftRight rax, 32
+	010 ShiftRight r8, 32
+	011 Compare r8, rax
+	012 Move stack:0x8, r9
+	013 Move rax, [rdx+8]
+	014 NotImplemented "setg byte ptr [rsp+9]"
+	015 Move stack:0x20, r9
+	016 Compare rcx, rax
+	017 NotImplemented "setg dl"
+	018 ShiftRight rax, 32
+	019 ShiftRight rcx, 32
+	020 Compare rcx, rax
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x8
+	023 NotImplemented "setg byte ptr [rsp+11h]"
+	024 Move stack:0x22, rdx
+	025 ShiftRight rax, 8
+	026 Move stack:0x21, rax
+	027 Move rax, stack:0x10
+	028 ShiftRight rax, 8
+	029 Move stack:0x23, rax
+	030 Move rax, stack:0x20
+	031 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_GreaterThan(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rcx]
+	xor r9d,r9d
+	cmp eax,edx
+	mov [rsp+10h],r9w
+	mov [rsp+8],r9w
+	setg r8b
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+10h],r8b
+	mov rax,[rcx+8]
+	setg byte ptr [rsp+11h]
+	mov [rsp+20h],r8b
+	cmp eax,edx
+	setg cl
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+8],cl
+	movzx eax,word ptr [rsp+10h]
+	setg byte ptr [rsp+9]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+8]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move r9, 0
+	003 Compare rax, rdx
+	004 Move stack:0x10, r9
+	005 Move stack:0x8, r9
+	006 NotImplemented "setg r8b"
+	007 ShiftRight rax, 32
+	008 Compare rax, rdx
+	009 Move stack:0x10, r8
+	010 Move rax, [rcx+8]
+	011 NotImplemented "setg byte ptr [rsp+11h]"
+	012 Move stack:0x20, r8
+	013 Compare rax, rdx
+	014 NotImplemented "setg cl"
+	015 ShiftRight rax, 32
+	016 Compare rax, rdx
+	017 Move stack:0x8, rcx
+	018 Move rax, stack:0x10
+	019 NotImplemented "setg byte ptr [rsp+9]"
+	020 Move stack:0x22, rcx
+	021 ShiftRight rax, 8
+	022 Move stack:0x21, rax
+	023 Move rax, stack:0x8
+	024 ShiftRight rax, 8
+	025 Move stack:0x23, rax
+	026 Move rax, stack:0x20
+	027 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_GreaterThan(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,ecx
+	xor ecx,ecx
+	cmp r9d,eax
+	mov [rsp+8],cx
+	mov [rsp+10h],cx
+	setg r8b
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+8],r8b
+	mov rax,[rdx+8]
+	setg byte ptr [rsp+9]
+	mov [rsp+20h],r8b
+	cmp r9d,eax
+	setg cl
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+10h],cl
+	movzx eax,word ptr [rsp+8]
+	setg byte ptr [rsp+11h]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rcx
+	003 Move rcx, 0
+	004 Compare r9, rax
+	005 Move stack:0x8, rcx
+	006 Move stack:0x10, rcx
+	007 NotImplemented "setg r8b"
+	008 ShiftRight rax, 32
+	009 Compare r9, rax
+	010 Move stack:0x8, r8
+	011 Move rax, [rdx+8]
+	012 NotImplemented "setg byte ptr [rsp+9]"
+	013 Move stack:0x20, r8
+	014 Compare r9, rax
+	015 NotImplemented "setg cl"
+	016 ShiftRight rax, 32
+	017 Compare r9, rax
+	018 Move stack:0x10, rcx
+	019 Move rax, stack:0x8
+	020 NotImplemented "setg byte ptr [rsp+11h]"
+	021 Move stack:0x22, rcx
+	022 ShiftRight rax, 8
+	023 Move stack:0x21, rax
+	024 Move rax, stack:0x10
+	025 ShiftRight rax, 8
+	026 Move stack:0x23, rax
+	027 Move rax, stack:0x20
+	028 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_GreaterThanOrEqual(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r8,[rcx]
+	xor r10d,r10d
+	mov rax,[rdx]
+	mov rcx,[rcx+8]
+	cmp r8d,eax
+	mov [rsp+8],r10w
+	setge r9b
+	mov [rsp+10h],r10w
+	shr rax,20h
+	shr r8,20h
+	cmp r8d,eax
+	mov [rsp+8],r9b
+	mov rax,[rdx+8]
+	setge byte ptr [rsp+9]
+	mov [rsp+20h],r9b
+	cmp ecx,eax
+	setge dl
+	shr rax,20h
+	shr rcx,20h
+	cmp ecx,eax
+	mov [rsp+10h],dl
+	movzx eax,word ptr [rsp+8]
+	setge byte ptr [rsp+11h]
+	mov [rsp+22h],dl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move r10, 0
+	003 Move rax, [rdx]
+	004 Move rcx, [rcx+8]
+	005 Compare r8, rax
+	006 Move stack:0x8, r10
+	007 NotImplemented "setge r9b"
+	008 Move stack:0x10, r10
+	009 ShiftRight rax, 32
+	010 ShiftRight r8, 32
+	011 Compare r8, rax
+	012 Move stack:0x8, r9
+	013 Move rax, [rdx+8]
+	014 NotImplemented "setge byte ptr [rsp+9]"
+	015 Move stack:0x20, r9
+	016 Compare rcx, rax
+	017 NotImplemented "setge dl"
+	018 ShiftRight rax, 32
+	019 ShiftRight rcx, 32
+	020 Compare rcx, rax
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x8
+	023 NotImplemented "setge byte ptr [rsp+11h]"
+	024 Move stack:0x22, rdx
+	025 ShiftRight rax, 8
+	026 Move stack:0x21, rax
+	027 Move rax, stack:0x10
+	028 ShiftRight rax, 8
+	029 Move stack:0x23, rax
+	030 Move rax, stack:0x20
+	031 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_GreaterThanOrEqual(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rcx]
+	xor r9d,r9d
+	cmp eax,edx
+	mov [rsp+10h],r9w
+	mov [rsp+8],r9w
+	setge r8b
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+10h],r8b
+	mov rax,[rcx+8]
+	setge byte ptr [rsp+11h]
+	mov [rsp+20h],r8b
+	cmp eax,edx
+	setge cl
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+8],cl
+	movzx eax,word ptr [rsp+10h]
+	setge byte ptr [rsp+9]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+8]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move r9, 0
+	003 Compare rax, rdx
+	004 Move stack:0x10, r9
+	005 Move stack:0x8, r9
+	006 NotImplemented "setge r8b"
+	007 ShiftRight rax, 32
+	008 Compare rax, rdx
+	009 Move stack:0x10, r8
+	010 Move rax, [rcx+8]
+	011 NotImplemented "setge byte ptr [rsp+11h]"
+	012 Move stack:0x20, r8
+	013 Compare rax, rdx
+	014 NotImplemented "setge cl"
+	015 ShiftRight rax, 32
+	016 Compare rax, rdx
+	017 Move stack:0x8, rcx
+	018 Move rax, stack:0x10
+	019 NotImplemented "setge byte ptr [rsp+9]"
+	020 Move stack:0x22, rcx
+	021 ShiftRight rax, 8
+	022 Move stack:0x21, rax
+	023 Move rax, stack:0x8
+	024 ShiftRight rax, 8
+	025 Move stack:0x23, rax
+	026 Move rax, stack:0x20
+	027 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_GreaterThanOrEqual(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,ecx
+	xor ecx,ecx
+	cmp r9d,eax
+	mov [rsp+8],cx
+	mov [rsp+10h],cx
+	setge r8b
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+8],r8b
+	mov rax,[rdx+8]
+	setge byte ptr [rsp+9]
+	mov [rsp+20h],r8b
+	cmp r9d,eax
+	setge cl
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+10h],cl
+	movzx eax,word ptr [rsp+8]
+	setge byte ptr [rsp+11h]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rcx
+	003 Move rcx, 0
+	004 Compare r9, rax
+	005 Move stack:0x8, rcx
+	006 Move stack:0x10, rcx
+	007 NotImplemented "setge r8b"
+	008 ShiftRight rax, 32
+	009 Compare r9, rax
+	010 Move stack:0x8, r8
+	011 Move rax, [rdx+8]
+	012 NotImplemented "setge byte ptr [rsp+9]"
+	013 Move stack:0x20, r8
+	014 Compare r9, rax
+	015 NotImplemented "setge cl"
+	016 ShiftRight rax, 32
+	017 Compare r9, rax
+	018 Move stack:0x10, rcx
+	019 Move rax, stack:0x8
+	020 NotImplemented "setge byte ptr [rsp+11h]"
+	021 Move stack:0x22, rcx
+	022 ShiftRight rax, 8
+	023 Move stack:0x21, rax
+	024 Move rax, stack:0x10
+	025 ShiftRight rax, 8
+	026 Move stack:0x23, rax
+	027 Move rax, stack:0x20
+	028 Return rax
+
+Method: Unity.Mathematics.int2x2 op_UnaryNegation(Unity.Mathematics.int2x2 val)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r8d,eax
+	shr rax,20h
+	neg eax
+	neg r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r8d
+	shr rax,20h
+	neg edx
+	neg eax
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r8, rax
+	003 ShiftRight rax, 32
+	004 Neg rax
+	005 Neg r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r8
+	010 ShiftRight rax, 32
+	011 Neg rdx
+	012 Neg rax
+	013 Move stack:0x10, rdx
+	014 Move stack:0x14, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_UnaryPlus(Unity.Mathematics.int2x2 val)
+
+Disassembly:
+	mov rax,[rdx]
+	mov [rsp+8],eax
+	shr rax,20h
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov [rsp+10h],eax
+	shr rax,20h
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move stack:0x8, rax
+	003 ShiftRight rax, 32
+	004 Move stack:0xC, rax
+	005 Move rax, [rdx+8]
+	006 Move stack:0x10, rax
+	007 ShiftRight rax, 32
+	008 Move stack:0x14, rax
+	009 Move rax, stack:0x8
+	010 Move [rcx], rax
+	011 Move rax, stack:0x10
+	012 Move [rcx+8], rax
+	013 Move rax, rcx
+	014 Return rax
+
+Method: Unity.Mathematics.int2x2 op_LeftShift(Unity.Mathematics.int2x2 x, System.Int32 n)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r10,rcx
+	mov r9d,eax
+	and r8d,1Fh
+	shr rax,20h
+	mov ecx,r8d
+	shl eax,cl
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	shl r9d,cl
+	shr rax,20h
+	shl eax,cl
+	mov [rsp+14h],eax
+	mov [rsp+8],r9d
+	mov rax,[rsp+8]
+	mov [r10],rax
+	shl edx,cl
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [r10+8],rax
+	mov rax,r10
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r10, rcx
+	003 Move r9, rax
+	004 And r8, r8, 31
+	005 ShiftRight rax, 32
+	006 Move rcx, r8
+	007 ShiftLeft rax, rcx
+	008 Move stack:0xC, rax
+	009 Move rax, [rdx+8]
+	010 Move rdx, rax
+	011 ShiftLeft r9, rcx
+	012 ShiftRight rax, 32
+	013 ShiftLeft rax, rcx
+	014 Move stack:0x14, rax
+	015 Move stack:0x8, r9
+	016 Move rax, stack:0x8
+	017 Move [r10], rax
+	018 ShiftLeft rdx, rcx
+	019 Move stack:0x10, rdx
+	020 Move rax, stack:0x10
+	021 Move [r10+8], rax
+	022 Move rax, r10
+	023 Return rax
+
+Method: Unity.Mathematics.int2x2 op_RightShift(Unity.Mathematics.int2x2 x, System.Int32 n)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r10,rcx
+	mov r9d,eax
+	and r8d,1Fh
+	shr rax,20h
+	mov ecx,r8d
+	sar eax,cl
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	sar r9d,cl
+	shr rax,20h
+	sar eax,cl
+	mov [rsp+14h],eax
+	mov [rsp+8],r9d
+	mov rax,[rsp+8]
+	mov [r10],rax
+	sar edx,cl
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [r10+8],rax
+	mov rax,r10
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r10, rcx
+	003 Move r9, rax
+	004 And r8, r8, 31
+	005 ShiftRight rax, 32
+	006 Move rcx, r8
+	007 ShiftRight rax, rcx
+	008 Move stack:0xC, rax
+	009 Move rax, [rdx+8]
+	010 Move rdx, rax
+	011 ShiftRight r9, rcx
+	012 ShiftRight rax, 32
+	013 ShiftRight rax, rcx
+	014 Move stack:0x14, rax
+	015 Move stack:0x8, r9
+	016 Move rax, stack:0x8
+	017 Move [r10], rax
+	018 ShiftRight rdx, rcx
+	019 Move stack:0x10, rdx
+	020 Move rax, stack:0x10
+	021 Move [r10+8], rax
+	022 Move rax, r10
+	023 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_Equality(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r8,[rcx]
+	xor r10d,r10d
+	mov rax,[rdx]
+	mov rcx,[rcx+8]
+	cmp r8d,eax
+	mov [rsp+8],r10w
+	sete r9b
+	mov [rsp+10h],r10w
+	shr rax,20h
+	shr r8,20h
+	cmp r8d,eax
+	mov [rsp+8],r9b
+	mov rax,[rdx+8]
+	sete byte ptr [rsp+9]
+	mov [rsp+20h],r9b
+	cmp ecx,eax
+	sete dl
+	shr rax,20h
+	shr rcx,20h
+	cmp ecx,eax
+	mov [rsp+10h],dl
+	movzx eax,word ptr [rsp+8]
+	sete byte ptr [rsp+11h]
+	mov [rsp+22h],dl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move r10, 0
+	003 Move rax, [rdx]
+	004 Move rcx, [rcx+8]
+	005 Compare r8, rax
+	006 Move stack:0x8, r10
+	007 NotImplemented "sete r9b"
+	008 Move stack:0x10, r10
+	009 ShiftRight rax, 32
+	010 ShiftRight r8, 32
+	011 Compare r8, rax
+	012 Move stack:0x8, r9
+	013 Move rax, [rdx+8]
+	014 NotImplemented "sete byte ptr [rsp+9]"
+	015 Move stack:0x20, r9
+	016 Compare rcx, rax
+	017 NotImplemented "sete dl"
+	018 ShiftRight rax, 32
+	019 ShiftRight rcx, 32
+	020 Compare rcx, rax
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x8
+	023 NotImplemented "sete byte ptr [rsp+11h]"
+	024 Move stack:0x22, rdx
+	025 ShiftRight rax, 8
+	026 Move stack:0x21, rax
+	027 Move rax, stack:0x10
+	028 ShiftRight rax, 8
+	029 Move stack:0x23, rax
+	030 Move rax, stack:0x20
+	031 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_Equality(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rcx]
+	xor r9d,r9d
+	cmp eax,edx
+	mov [rsp+10h],r9w
+	mov [rsp+8],r9w
+	sete r8b
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+10h],r8b
+	mov rax,[rcx+8]
+	sete byte ptr [rsp+11h]
+	mov [rsp+20h],r8b
+	cmp eax,edx
+	sete cl
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+8],cl
+	movzx eax,word ptr [rsp+10h]
+	sete byte ptr [rsp+9]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+8]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move r9, 0
+	003 Compare rax, rdx
+	004 Move stack:0x10, r9
+	005 Move stack:0x8, r9
+	006 NotImplemented "sete r8b"
+	007 ShiftRight rax, 32
+	008 Compare rax, rdx
+	009 Move stack:0x10, r8
+	010 Move rax, [rcx+8]
+	011 NotImplemented "sete byte ptr [rsp+11h]"
+	012 Move stack:0x20, r8
+	013 Compare rax, rdx
+	014 NotImplemented "sete cl"
+	015 ShiftRight rax, 32
+	016 Compare rax, rdx
+	017 Move stack:0x8, rcx
+	018 Move rax, stack:0x10
+	019 NotImplemented "sete byte ptr [rsp+9]"
+	020 Move stack:0x22, rcx
+	021 ShiftRight rax, 8
+	022 Move stack:0x21, rax
+	023 Move rax, stack:0x8
+	024 ShiftRight rax, 8
+	025 Move stack:0x23, rax
+	026 Move rax, stack:0x20
+	027 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_Equality(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,ecx
+	xor ecx,ecx
+	cmp r9d,eax
+	mov [rsp+8],cx
+	mov [rsp+10h],cx
+	sete r8b
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+8],r8b
+	mov rax,[rdx+8]
+	sete byte ptr [rsp+9]
+	mov [rsp+20h],r8b
+	cmp r9d,eax
+	sete cl
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+10h],cl
+	movzx eax,word ptr [rsp+8]
+	sete byte ptr [rsp+11h]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rcx
+	003 Move rcx, 0
+	004 Compare r9, rax
+	005 Move stack:0x8, rcx
+	006 Move stack:0x10, rcx
+	007 NotImplemented "sete r8b"
+	008 ShiftRight rax, 32
+	009 Compare r9, rax
+	010 Move stack:0x8, r8
+	011 Move rax, [rdx+8]
+	012 NotImplemented "sete byte ptr [rsp+9]"
+	013 Move stack:0x20, r8
+	014 Compare r9, rax
+	015 NotImplemented "sete cl"
+	016 ShiftRight rax, 32
+	017 Compare r9, rax
+	018 Move stack:0x10, rcx
+	019 Move rax, stack:0x8
+	020 NotImplemented "sete byte ptr [rsp+11h]"
+	021 Move stack:0x22, rcx
+	022 ShiftRight rax, 8
+	023 Move stack:0x21, rax
+	024 Move rax, stack:0x10
+	025 ShiftRight rax, 8
+	026 Move stack:0x23, rax
+	027 Move rax, stack:0x20
+	028 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_Inequality(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov r8,[rcx]
+	xor r10d,r10d
+	mov rax,[rdx]
+	mov rcx,[rcx+8]
+	cmp r8d,eax
+	mov [rsp+8],r10w
+	setne r9b
+	mov [rsp+10h],r10w
+	shr rax,20h
+	shr r8,20h
+	cmp r8d,eax
+	mov [rsp+8],r9b
+	mov rax,[rdx+8]
+	setne byte ptr [rsp+9]
+	mov [rsp+20h],r9b
+	cmp ecx,eax
+	setne dl
+	shr rax,20h
+	shr rcx,20h
+	cmp ecx,eax
+	mov [rsp+10h],dl
+	movzx eax,word ptr [rsp+8]
+	setne byte ptr [rsp+11h]
+	mov [rsp+22h],dl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move r10, 0
+	003 Move rax, [rdx]
+	004 Move rcx, [rcx+8]
+	005 Compare r8, rax
+	006 Move stack:0x8, r10
+	007 NotImplemented "setne r9b"
+	008 Move stack:0x10, r10
+	009 ShiftRight rax, 32
+	010 ShiftRight r8, 32
+	011 Compare r8, rax
+	012 Move stack:0x8, r9
+	013 Move rax, [rdx+8]
+	014 NotImplemented "setne byte ptr [rsp+9]"
+	015 Move stack:0x20, r9
+	016 Compare rcx, rax
+	017 NotImplemented "setne dl"
+	018 ShiftRight rax, 32
+	019 ShiftRight rcx, 32
+	020 Compare rcx, rax
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x8
+	023 NotImplemented "setne byte ptr [rsp+11h]"
+	024 Move stack:0x22, rdx
+	025 ShiftRight rax, 8
+	026 Move stack:0x21, rax
+	027 Move rax, stack:0x10
+	028 ShiftRight rax, 8
+	029 Move stack:0x23, rax
+	030 Move rax, stack:0x20
+	031 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_Inequality(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rcx]
+	xor r9d,r9d
+	cmp eax,edx
+	mov [rsp+10h],r9w
+	mov [rsp+8],r9w
+	setne r8b
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+10h],r8b
+	mov rax,[rcx+8]
+	setne byte ptr [rsp+11h]
+	mov [rsp+20h],r8b
+	cmp eax,edx
+	setne cl
+	shr rax,20h
+	cmp eax,edx
+	mov [rsp+8],cl
+	movzx eax,word ptr [rsp+10h]
+	setne byte ptr [rsp+9]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+8]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move r9, 0
+	003 Compare rax, rdx
+	004 Move stack:0x10, r9
+	005 Move stack:0x8, r9
+	006 NotImplemented "setne r8b"
+	007 ShiftRight rax, 32
+	008 Compare rax, rdx
+	009 Move stack:0x10, r8
+	010 Move rax, [rcx+8]
+	011 NotImplemented "setne byte ptr [rsp+11h]"
+	012 Move stack:0x20, r8
+	013 Compare rax, rdx
+	014 NotImplemented "setne cl"
+	015 ShiftRight rax, 32
+	016 Compare rax, rdx
+	017 Move stack:0x8, rcx
+	018 Move rax, stack:0x10
+	019 NotImplemented "setne byte ptr [rsp+9]"
+	020 Move stack:0x22, rcx
+	021 ShiftRight rax, 8
+	022 Move stack:0x21, rax
+	023 Move rax, stack:0x8
+	024 ShiftRight rax, 8
+	025 Move stack:0x23, rax
+	026 Move rax, stack:0x20
+	027 Return rax
+
+Method: Unity.Mathematics.bool2x2 op_Inequality(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,ecx
+	xor ecx,ecx
+	cmp r9d,eax
+	mov [rsp+8],cx
+	mov [rsp+10h],cx
+	setne r8b
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+8],r8b
+	mov rax,[rdx+8]
+	setne byte ptr [rsp+9]
+	mov [rsp+20h],r8b
+	cmp r9d,eax
+	setne cl
+	shr rax,20h
+	cmp r9d,eax
+	mov [rsp+10h],cl
+	movzx eax,word ptr [rsp+8]
+	setne byte ptr [rsp+11h]
+	mov [rsp+22h],cl
+	shr ax,8
+	mov [rsp+21h],al
+	movzx eax,word ptr [rsp+10h]
+	shr ax,8
+	mov [rsp+23h],al
+	mov eax,[rsp+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rcx
+	003 Move rcx, 0
+	004 Compare r9, rax
+	005 Move stack:0x8, rcx
+	006 Move stack:0x10, rcx
+	007 NotImplemented "setne r8b"
+	008 ShiftRight rax, 32
+	009 Compare r9, rax
+	010 Move stack:0x8, r8
+	011 Move rax, [rdx+8]
+	012 NotImplemented "setne byte ptr [rsp+9]"
+	013 Move stack:0x20, r8
+	014 Compare r9, rax
+	015 NotImplemented "setne cl"
+	016 ShiftRight rax, 32
+	017 Compare r9, rax
+	018 Move stack:0x10, rcx
+	019 Move rax, stack:0x8
+	020 NotImplemented "setne byte ptr [rsp+11h]"
+	021 Move stack:0x22, rcx
+	022 ShiftRight rax, 8
+	023 Move stack:0x21, rax
+	024 Move rax, stack:0x10
+	025 ShiftRight rax, 8
+	026 Move stack:0x23, rax
+	027 Move rax, stack:0x20
+	028 Return rax
+
+Method: Unity.Mathematics.int2x2 op_OnesComplement(Unity.Mathematics.int2x2 val)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r8d,eax
+	shr rax,20h
+	not eax
+	not r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r8d
+	shr rax,20h
+	not edx
+	not eax
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r8, rax
+	003 ShiftRight rax, 32
+	004 Neg rax
+	005 Neg r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r8
+	010 ShiftRight rax, 32
+	011 Neg rdx
+	012 Neg rax
+	013 Move stack:0x10, rdx
+	014 Move stack:0x14, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_BitwiseAnd(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r11,rcx
+	mov r9,[r8]
+	mov rcx,[r8+8]
+	mov r10d,r9d
+	and r10d,eax
+	shr r9,20h
+	shr rax,20h
+	and r9d,eax
+	mov [rsp+8],r10d
+	mov rax,[rdx+8]
+	mov edx,ecx
+	and edx,eax
+	shr rcx,20h
+	shr rax,20h
+	and ecx,eax
+	mov [rsp+0Ch],r9d
+	mov rax,[rsp+8]
+	mov [r11],rax
+	mov [rsp+14h],ecx
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [r11+8],rax
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r11, rcx
+	003 Move r9, [r8]
+	004 Move rcx, [r8+8]
+	005 Move r10, r9
+	006 And r10, r10, rax
+	007 ShiftRight r9, 32
+	008 ShiftRight rax, 32
+	009 And r9, r9, rax
+	010 Move stack:0x8, r10
+	011 Move rax, [rdx+8]
+	012 Move rdx, rcx
+	013 And rdx, rdx, rax
+	014 ShiftRight rcx, 32
+	015 ShiftRight rax, 32
+	016 And rcx, rcx, rax
+	017 Move stack:0xC, r9
+	018 Move rax, stack:0x8
+	019 Move [r11], rax
+	020 Move stack:0x14, rcx
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x10
+	023 Move [r11+8], rax
+	024 Move rax, r11
+	025 Return rax
+
+Method: Unity.Mathematics.int2x2 op_BitwiseAnd(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,eax
+	shr rax,20h
+	and eax,r8d
+	and r9d,r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	and edx,r8d
+	and eax,r8d
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 And rax, rax, r8
+	005 And r9, r9, r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 And rdx, rdx, r8
+	012 And rax, rax, r8
+	013 Move stack:0x10, rdx
+	014 Move stack:0x14, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_BitwiseAnd(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[r8]
+	mov r9d,eax
+	shr rax,20h
+	and eax,edx
+	and r9d,edx
+	mov [rsp+0Ch],eax
+	mov rax,[r8+8]
+	mov r8d,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	and r8d,edx
+	and eax,edx
+	mov [rsp+18h],r8d
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [r8]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 And rax, rax, rdx
+	005 And r9, r9, rdx
+	006 Move stack:0xC, rax
+	007 Move rax, [r8+8]
+	008 Move r8, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 And r8, r8, rdx
+	012 And rax, rax, rdx
+	013 Move stack:0x18, r8
+	014 Move stack:0x1C, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x18
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_BitwiseOr(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r11,rcx
+	mov r9,[r8]
+	mov rcx,[r8+8]
+	mov r10d,r9d
+	or r10d,eax
+	shr r9,20h
+	shr rax,20h
+	or r9d,eax
+	mov [rsp+8],r10d
+	mov rax,[rdx+8]
+	mov edx,ecx
+	or edx,eax
+	shr rcx,20h
+	shr rax,20h
+	or ecx,eax
+	mov [rsp+0Ch],r9d
+	mov rax,[rsp+8]
+	mov [r11],rax
+	mov [rsp+14h],ecx
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [r11+8],rax
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r11, rcx
+	003 Move r9, [r8]
+	004 Move rcx, [r8+8]
+	005 Move r10, r9
+	006 Or r10, r10, rax
+	007 ShiftRight r9, 32
+	008 ShiftRight rax, 32
+	009 Or r9, r9, rax
+	010 Move stack:0x8, r10
+	011 Move rax, [rdx+8]
+	012 Move rdx, rcx
+	013 Or rdx, rdx, rax
+	014 ShiftRight rcx, 32
+	015 ShiftRight rax, 32
+	016 Or rcx, rcx, rax
+	017 Move stack:0xC, r9
+	018 Move rax, stack:0x8
+	019 Move [r11], rax
+	020 Move stack:0x14, rcx
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x10
+	023 Move [r11+8], rax
+	024 Move rax, r11
+	025 Return rax
+
+Method: Unity.Mathematics.int2x2 op_BitwiseOr(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,eax
+	shr rax,20h
+	or eax,r8d
+	or r9d,r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	or edx,r8d
+	or eax,r8d
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Or rax, rax, r8
+	005 Or r9, r9, r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Or rdx, rdx, r8
+	012 Or rax, rax, r8
+	013 Move stack:0x10, rdx
+	014 Move stack:0x14, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_BitwiseOr(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[r8]
+	mov r9d,eax
+	shr rax,20h
+	or eax,edx
+	or r9d,edx
+	mov [rsp+0Ch],eax
+	mov rax,[r8+8]
+	mov r8d,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	or r8d,edx
+	or eax,edx
+	mov [rsp+18h],r8d
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [r8]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Or rax, rax, rdx
+	005 Or r9, r9, rdx
+	006 Move stack:0xC, rax
+	007 Move rax, [r8+8]
+	008 Move r8, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Or r8, r8, rdx
+	012 Or rax, rax, rdx
+	013 Move stack:0x18, r8
+	014 Move stack:0x1C, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x18
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_ExclusiveOr(Unity.Mathematics.int2x2 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r11,rcx
+	mov r9,[r8]
+	mov rcx,[r8+8]
+	mov r10d,r9d
+	xor r10d,eax
+	shr r9,20h
+	shr rax,20h
+	xor r9d,eax
+	mov [rsp+8],r10d
+	mov rax,[rdx+8]
+	mov edx,ecx
+	xor edx,eax
+	shr rcx,20h
+	shr rax,20h
+	xor ecx,eax
+	mov [rsp+0Ch],r9d
+	mov rax,[rsp+8]
+	mov [r11],rax
+	mov [rsp+14h],ecx
+	mov [rsp+10h],edx
+	mov rax,[rsp+10h]
+	mov [r11+8],rax
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r11, rcx
+	003 Move r9, [r8]
+	004 Move rcx, [r8+8]
+	005 Move r10, r9
+	006 Xor r10, r10, rax
+	007 ShiftRight r9, 32
+	008 ShiftRight rax, 32
+	009 Xor r9, r9, rax
+	010 Move stack:0x8, r10
+	011 Move rax, [rdx+8]
+	012 Move rdx, rcx
+	013 Xor rdx, rdx, rax
+	014 ShiftRight rcx, 32
+	015 ShiftRight rax, 32
+	016 Xor rcx, rcx, rax
+	017 Move stack:0xC, r9
+	018 Move rax, stack:0x8
+	019 Move [r11], rax
+	020 Move stack:0x14, rcx
+	021 Move stack:0x10, rdx
+	022 Move rax, stack:0x10
+	023 Move [r11+8], rax
+	024 Move rax, r11
+	025 Return rax
+
+Method: Unity.Mathematics.int2x2 op_ExclusiveOr(Unity.Mathematics.int2x2 lhs, System.Int32 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	mov r9d,eax
+	shr rax,20h
+	xor eax,r8d
+	xor r9d,r8d
+	mov [rsp+0Ch],eax
+	mov rax,[rdx+8]
+	mov edx,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	xor edx,r8d
+	xor eax,r8d
+	mov [rsp+10h],edx
+	mov [rsp+14h],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+10h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Xor rax, rax, r8
+	005 Xor r9, r9, r8
+	006 Move stack:0xC, rax
+	007 Move rax, [rdx+8]
+	008 Move rdx, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Xor rdx, rdx, r8
+	012 Xor rax, rax, r8
+	013 Move stack:0x10, rdx
+	014 Move stack:0x14, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x10
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2x2 op_ExclusiveOr(System.Int32 lhs, Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[r8]
+	mov r9d,eax
+	shr rax,20h
+	xor eax,edx
+	xor r9d,edx
+	mov [rsp+0Ch],eax
+	mov rax,[r8+8]
+	mov r8d,eax
+	mov [rsp+8],r9d
+	shr rax,20h
+	xor r8d,edx
+	xor eax,edx
+	mov [rsp+18h],r8d
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+8]
+	mov [rcx],rax
+	mov rax,[rsp+18h]
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [r8]
+	002 Move r9, rax
+	003 ShiftRight rax, 32
+	004 Xor rax, rax, rdx
+	005 Xor r9, r9, rdx
+	006 Move stack:0xC, rax
+	007 Move rax, [r8+8]
+	008 Move r8, rax
+	009 Move stack:0x8, r9
+	010 ShiftRight rax, 32
+	011 Xor r8, r8, rdx
+	012 Xor rax, rax, rdx
+	013 Move stack:0x18, r8
+	014 Move stack:0x1C, rax
+	015 Move rax, stack:0x8
+	016 Move [rcx], rax
+	017 Move rax, stack:0x18
+	018 Move [rcx+8], rax
+	019 Move rax, rcx
+	020 Return rax
+
+Method: Unity.Mathematics.int2 get_Item(System.Int32 index)
+
+Disassembly:
+	movsxd rax,edx
+	lea rax,[rcx+rax*8]
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 LoadAddress rax, [rcx+rax*8]
+	003 Return rax
+
+Method: System.Boolean Equals(Unity.Mathematics.int2x2 rhs)
+
+Disassembly:
+	mov rax,[rdx]
+	cmp [rcx],eax
+	jne short 0000000182128504h
+	shr rax,20h
+	cmp [rcx+4],eax
+	jne short 0000000182128504h
+	mov rax,[rdx+8]
+	cmp [rcx+8],eax
+	jne short 0000000182128504h
+	shr rax,20h
+	cmp [rcx+0Ch],eax
+	sete al
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Compare [rcx], rax
+	003 JumpIfNotEqual {14}
+	004 ShiftRight rax, 32
+	005 Compare [rcx+4], rax
+	006 JumpIfNotEqual {14}
+	007 Move rax, [rdx+8]
+	008 Compare [rcx+8], rax
+	009 JumpIfNotEqual {14}
+	010 ShiftRight rax, 32
+	011 Compare [rcx+12], rax
+	012 NotImplemented "sete al"
+	013 Return rax
+	014 Move rax, 0
+	015 Return rax
+
+Method: System.Boolean Equals(System.Object o)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753712h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 000000018212853Ch
+	lea rcx,[183548BC0h]
+	call 000000018037BB90h
+	mov byte ptr [183753712h],1
+	test rbx,rbx
+	je short 00000001821285A9h
+	mov rdx,[183548BC0h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 00000001821285A9h
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 00000001821285B6h
+	call 000000018037AE90h
+	movups xmm0,[rax]
+	movups [rsp+20h],xmm0
+	mov rcx,[rsp+20h]
+	cmp [rdi],ecx
+	jne short 00000001821285A9h
+	shr rcx,20h
+	cmp [rdi+4],ecx
+	jne short 00000001821285A9h
+	movups [rsp+20h],xmm0
+	mov rax,[rsp+28h]
+	cmp [rdi+8],eax
+	jne short 00000001821285A9h
+	shr rax,20h
+	cmp [rdi+0Ch],eax
+	sete al
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	mov rbx,[rsp+40h]
+	xor al,al
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183753712], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183548BC0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183753712], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {48}
+	014 Move rdx, typeof(Unity.Mathematics.int2x2)
+	015 Move rax, 0
+	016 Compare [rbx], rdx
+	017 JumpIfNotEqual {19}
+	018 Move rax, rbx
+	019 Nop 
+	020 Compare rax, 0
+	021 JumpIfEqual {48}
+	022 Move rcx, [rbx]
+	023 Move rax, [rdx+64]
+	024 Compare [rcx+64], rax
+	025 Move rcx, rbx
+	026 JumpIfNotEqual {54}
+	027 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	028 Move xmm0, [rax]
+	029 Move stack:0x20, xmm0
+	030 Move rcx, stack:0x20
+	031 Compare [rdi], rcx
+	032 JumpIfNotEqual {48}
+	033 ShiftRight rcx, 32
+	034 Compare [rdi+4], rcx
+	035 JumpIfNotEqual {48}
+	036 Move stack:0x20, xmm0
+	037 Move rax, stack:0x28
+	038 Compare [rdi+8], rax
+	039 JumpIfNotEqual {48}
+	040 ShiftRight rax, 32
+	041 Compare [rdi+12], rax
+	042 NotImplemented "sete al"
+	043 Move rbx, stack:0x40
+	044 ShiftStack 48
+	045 Move rdi, stack:0x0
+	046 ShiftStack 8
+	047 Return rax
+	048 Move rbx, stack:0x40
+	049 Move rax, 0
+	050 ShiftStack 48
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+	054 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	sub rsp,18h
+	movups xmm0,[rcx]
+	xor r9d,r9d
+	mov [rsp+20h],r9
+	mov [rsp+38h],r9
+	mov [rsp+30h],r9
+	movups [rsp],xmm0
+	mov rax,[rsp]
+	imul r8d,eax,0E191B035h
+	shr rax,20h
+	mov dword ptr [rsp+20h],0E191B035h
+	mov dword ptr [rsp+24h],68586FAFh
+	mov rdx,[rsp+20h]
+	mov [rsp+20h],r9
+	shr rdx,20h
+	imul edx,eax
+	mov dword ptr [rsp+20h],0D4DFF6D3h
+	mov dword ptr [rsp+24h],0CB634F4Dh
+	mov rcx,[rsp+20h]
+	shr rcx,20h
+	mov [rsp+20h],r9
+	mov [rsp+3Ch],edx
+	mov [rsp+38h],r8d
+	movups [rsp],xmm0
+	mov rax,[rsp+8]
+	imul edx,eax,0D4DFF6D3h
+	shr rax,20h
+	imul ecx,eax
+	mov rax,[rsp+38h]
+	shr rax,20h
+	add r8d,edx
+	mov [rsp+30h],edx
+	mov [rsp+20h],r8d
+	mov [rsp+34h],ecx
+	mov rcx,[rsp+30h]
+	shr rcx,20h
+	add ecx,eax
+	mov [rsp+24h],ecx
+	mov rax,[rsp+20h]
+	shr rax,20h
+	add eax,9B13B92Dh
+	add eax,r8d
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm0, [rcx]
+	003 Move r9, 0
+	004 Move stack:0x20, r9
+	005 Move stack:0x38, r9
+	006 Move stack:0x30, r9
+	007 Move stack:0x0, xmm0
+	008 Move rax, stack:0x0
+	009 Multiply r8, rax, 0xE191B035
+	010 ShiftRight rax, 32
+	011 Move stack:0x20, 0xE191B035
+	012 Move stack:0x24, 0x68586FAF
+	013 Move rdx, stack:0x20
+	014 Move stack:0x20, r9
+	015 ShiftRight rdx, 32
+	016 Multiply rdx, rdx, rax
+	017 Move stack:0x20, 0xD4DFF6D3
+	018 Move stack:0x24, 0xCB634F4D
+	019 Move rcx, stack:0x20
+	020 ShiftRight rcx, 32
+	021 Move stack:0x20, r9
+	022 Move stack:0x3C, rdx
+	023 Move stack:0x38, r8
+	024 Move stack:0x0, xmm0
+	025 Move rax, stack:0x8
+	026 Multiply rdx, rax, 0xD4DFF6D3
+	027 ShiftRight rax, 32
+	028 Multiply rcx, rcx, rax
+	029 Move rax, stack:0x38
+	030 ShiftRight rax, 32
+	031 Add r8, r8, rdx
+	032 Move stack:0x30, rdx
+	033 Move stack:0x20, r8
+	034 Move stack:0x34, rcx
+	035 Move rcx, stack:0x30
+	036 ShiftRight rcx, 32
+	037 Add rcx, rcx, rax
+	038 Move stack:0x24, rcx
+	039 Move rax, stack:0x20
+	040 ShiftRight rax, 32
+	041 Add rax, rax, 0x9B13B92D
+	042 Add rax, rax, r8
+	043 ShiftStack 24
+	044 Return rax
+
+Method: System.String ToString()
+
+Disassembly:
+	push rbx
+	push rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753713h],0
+	mov rsi,rcx
+	jne short 00000001821286C3h
+	lea rcx,[18356C6B0h]
+	call 000000018037BB90h
+	lea rcx,[18354AA20h]
+	call 000000018037BB90h
+	mov byte ptr [183753713h],1
+	mov rcx,[18356C6B0h]
+	mov edx,4
+	call 000000018037AD30h
+	mov ecx,[rsi]
+	lea rdx,[rsp+50h]
+	mov [rsp+50h],ecx
+	mov rbx,rax
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov rdi,rax
+	test rbx,rbx
+	je near ptr 0000000182128839h
+	test rax,rax
+	je short 0000000182128717h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 000000018212883Fh
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 000000018212887Fh
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov eax,[rsi+8]
+	lea rdx,[rsp+60h]
+	mov rcx,[18375C0E8h]
+	mov [rsp+60h],eax
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 0000000182128769h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 000000018212884Fh
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 000000018212887Fh
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov eax,[rsi+4]
+	lea rdx,[rsp+68h]
+	mov rcx,[18375C0E8h]
+	mov [rsp+68h],eax
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 00000001821287BBh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 000000018212885Fh
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 000000018212887Fh
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov eax,[rsi+0Ch]
+	lea rdx,[rsp+20h]
+	mov rcx,[18375C0E8h]
+	mov [rsp+20h],eax
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 0000000182128809h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je short 000000018212886Fh
+	cmp dword ptr [rbx+18h],3
+	jbe short 000000018212887Fh
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[18354AA20h]
+	xor r8d,r8d
+	mov rdx,rbx
+	call 000000018165E2A0h
+	add rsp,30h
+	pop rdi
+	pop rsi
+	pop rbx
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -8
+	004 Move stack:0x0, rsi
+	005 ShiftStack -8
+	006 Move stack:0x0, rdi
+	007 ShiftStack -48
+	008 Compare [0x183753713], 0
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x18356C6B0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18354AA20]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753713], 1
+	016 Move rcx, typeof(System.Object[1])
+	017 Move rdx, 4
+	018 Call "SzArrayNew", rcx, rdx, r8, r9
+	019 Move rcx, [rsi]
+	020 LoadAddress rdx, stack:0x50
+	021 Move stack:0x50, rcx
+	022 Move rbx, rax
+	023 Move rcx, [0x18375C0E8]
+	024 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	025 Move rdi, rax
+	026 Compare rbx, 0
+	027 JumpIfEqual {114}
+	028 Compare rax, 0
+	029 JumpIfEqual {36}
+	030 Move rdx, [rbx]
+	031 Move rcx, rax
+	032 Move rdx, [rdx+64]
+	033 Call 0x18037ACD0, rcx, rdx, r8, r9
+	034 Compare rax, 0
+	035 JumpIfEqual {116}
+	036 Compare [rbx+24], 0
+	037 JumpIfLessOrEqual {136}
+	038 LoadAddress rcx, [rbx+32]
+	039 Move [rbx+32], rdi
+	040 Move rdx, rdi
+	041 Call 0x18037ACB0, rcx, rdx, r8, r9
+	042 Move rax, [rsi+8]
+	043 LoadAddress rdx, stack:0x60
+	044 Move rcx, [0x18375C0E8]
+	045 Move stack:0x60, rax
+	046 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	047 Move rdi, rax
+	048 Compare rax, 0
+	049 JumpIfEqual {56}
+	050 Move rdx, [rbx]
+	051 Move rcx, rax
+	052 Move rdx, [rdx+64]
+	053 Call 0x18037ACD0, rcx, rdx, r8, r9
+	054 Compare rax, 0
+	055 JumpIfEqual {121}
+	056 Compare [rbx+24], 1
+	057 JumpIfLessOrEqual {136}
+	058 LoadAddress rcx, [rbx+40]
+	059 Move [rbx+40], rdi
+	060 Move rdx, rdi
+	061 Call 0x18037ACB0, rcx, rdx, r8, r9
+	062 Move rax, [rsi+4]
+	063 LoadAddress rdx, stack:0x68
+	064 Move rcx, [0x18375C0E8]
+	065 Move stack:0x68, rax
+	066 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	067 Move rdi, rax
+	068 Compare rax, 0
+	069 JumpIfEqual {76}
+	070 Move rdx, [rbx]
+	071 Move rcx, rax
+	072 Move rdx, [rdx+64]
+	073 Call 0x18037ACD0, rcx, rdx, r8, r9
+	074 Compare rax, 0
+	075 JumpIfEqual {126}
+	076 Compare [rbx+24], 2
+	077 JumpIfLessOrEqual {136}
+	078 LoadAddress rcx, [rbx+48]
+	079 Move [rbx+48], rdi
+	080 Move rdx, rdi
+	081 Call 0x18037ACB0, rcx, rdx, r8, r9
+	082 Move rax, [rsi+12]
+	083 LoadAddress rdx, stack:0x20
+	084 Move rcx, [0x18375C0E8]
+	085 Move stack:0x20, rax
+	086 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	087 Move rdi, rax
+	088 Compare rax, 0
+	089 JumpIfEqual {96}
+	090 Move rdx, [rbx]
+	091 Move rcx, rax
+	092 Move rdx, [rdx+64]
+	093 Call 0x18037ACD0, rcx, rdx, r8, r9
+	094 Compare rax, 0
+	095 JumpIfEqual {131}
+	096 Compare [rbx+24], 3
+	097 JumpIfLessOrEqual {136}
+	098 LoadAddress rcx, [rbx+56]
+	099 Move [rbx+56], rdi
+	100 Move rdx, rdi
+	101 Call 0x18037ACB0, rcx, rdx, r8, r9
+	102 Move rcx, "int2x2({0}, {1},  {2}, {3})"
+	103 Move r8, 0
+	104 Move rdx, rbx
+	105 Call String.Format, rcx, rdx, r8
+	106 ShiftStack 48
+	107 Move rdi, stack:0x0
+	108 ShiftStack 8
+	109 Move rsi, stack:0x0
+	110 ShiftStack 8
+	111 Move rbx, stack:0x0
+	112 ShiftStack 8
+	113 Return rax
+	114 Call 0x18037BE30, rcx, rdx, r8, r9
+	115 Interrupt 
+	116 Call 0x18037B7B0, rcx, rdx, r8, r9
+	117 Move rcx, rax
+	118 Move rdx, 0
+	119 Call 0x18037BDF0, rcx, rdx, r8, r9
+	120 Interrupt 
+	121 Call 0x18037B7B0, rcx, rdx, r8, r9
+	122 Move rcx, rax
+	123 Move rdx, 0
+	124 Call 0x18037BDF0, rcx, rdx, r8, r9
+	125 Interrupt 
+	126 Call 0x18037B7B0, rcx, rdx, r8, r9
+	127 Move rcx, rax
+	128 Move rdx, 0
+	129 Call 0x18037BDF0, rcx, rdx, r8, r9
+	130 Interrupt 
+	131 Call 0x18037B7B0, rcx, rdx, r8, r9
+	132 Move rcx, rax
+	133 Move rdx, 0
+	134 Call 0x18037BDF0, rcx, rdx, r8, r9
+	135 Interrupt 
+	136 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.String ToString(System.String format, System.IFormatProvider formatProvider)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	cmp byte ptr [183753714h],0
+	mov rsi,r8
+	mov rbp,rdx
+	mov r14,rcx
+	jne short 00000001821288DBh
+	lea rcx,[18356C6B0h]
+	call 000000018037BB90h
+	lea rcx,[18354AA20h]
+	call 000000018037BB90h
+	mov byte ptr [183753714h],1
+	mov rcx,[18356C6B0h]
+	mov edx,4
+	call 000000018037AD30h
+	xor r9d,r9d
+	mov r8,rsi
+	mov rdx,rbp
+	mov rcx,r14
+	mov rbx,rax
+	call 00000001818042D0h
+	mov rdi,rax
+	test rbx,rbx
+	je near ptr 0000000182128A4Fh
+	test rax,rax
+	je short 0000000182128929h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 0000000182128A55h
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 0000000182128A95h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	lea rcx,[r14+8]
+	xor r9d,r9d
+	mov r8,rsi
+	mov rdx,rbp
+	call 00000001818042D0h
+	mov rdi,rax
+	test rax,rax
+	je short 0000000182128975h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 0000000182128A65h
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 0000000182128A95h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	lea rcx,[r14+4]
+	xor r9d,r9d
+	mov r8,rsi
+	mov rdx,rbp
+	call 00000001818042D0h
+	mov rdi,rax
+	test rax,rax
+	je short 00000001821289C1h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 0000000182128A75h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 0000000182128A95h
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	lea rcx,[r14+0Ch]
+	xor r9d,r9d
+	mov r8,rsi
+	mov rdx,rbp
+	call 00000001818042D0h
+	mov rdi,rax
+	test rax,rax
+	je short 0000000182128A09h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je short 0000000182128A85h
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 0000000182128A95h
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[18354AA20h]
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	jmp near ptr 000000018165E2A0h
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Compare [0x183753714], 0
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move r14, rcx
+	012 JumpIfNotEqual {18}
+	013 LoadAddress rcx, [0x18356C6B0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18354AA20]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 Move [0x183753714], 1
+	018 Move rcx, typeof(System.Object[1])
+	019 Move rdx, 4
+	020 Call "SzArrayNew", rcx, rdx, r8, r9
+	021 Move r9, 0
+	022 Move r8, rsi
+	023 Move rdx, rbp
+	024 Move rcx, r14
+	025 Move rbx, rax
+	026 Call Int32.ToString, rcx, rdx, r8
+	027 Move rdi, rax
+	028 Compare rbx, 0
+	029 JumpIfEqual {116}
+	030 Compare rax, 0
+	031 JumpIfEqual {38}
+	032 Move rdx, [rbx]
+	033 Move rcx, rax
+	034 Move rdx, [rdx+64]
+	035 Call 0x18037ACD0, rcx, rdx, r8, r9
+	036 Compare rax, 0
+	037 JumpIfEqual {118}
+	038 Compare [rbx+24], 0
+	039 JumpIfLessOrEqual {138}
+	040 LoadAddress rcx, [rbx+32]
+	041 Move [rbx+32], rdi
+	042 Move rdx, rdi
+	043 Call 0x18037ACB0, rcx, rdx, r8, r9
+	044 LoadAddress rcx, [r14+8]
+	045 Move r9, 0
+	046 Move r8, rsi
+	047 Move rdx, rbp
+	048 Call Int32.ToString, rcx, rdx, r8
+	049 Move rdi, rax
+	050 Compare rax, 0
+	051 JumpIfEqual {58}
+	052 Move rdx, [rbx]
+	053 Move rcx, rax
+	054 Move rdx, [rdx+64]
+	055 Call 0x18037ACD0, rcx, rdx, r8, r9
+	056 Compare rax, 0
+	057 JumpIfEqual {123}
+	058 Compare [rbx+24], 1
+	059 JumpIfLessOrEqual {138}
+	060 LoadAddress rcx, [rbx+40]
+	061 Move [rbx+40], rdi
+	062 Move rdx, rdi
+	063 Call 0x18037ACB0, rcx, rdx, r8, r9
+	064 LoadAddress rcx, [r14+4]
+	065 Move r9, 0
+	066 Move r8, rsi
+	067 Move rdx, rbp
+	068 Call Int32.ToString, rcx, rdx, r8
+	069 Move rdi, rax
+	070 Compare rax, 0
+	071 JumpIfEqual {78}
+	072 Move rdx, [rbx]
+	073 Move rcx, rax
+	074 Move rdx, [rdx+64]
+	075 Call 0x18037ACD0, rcx, rdx, r8, r9
+	076 Compare rax, 0
+	077 JumpIfEqual {128}
+	078 Compare [rbx+24], 2
+	079 JumpIfLessOrEqual {138}
+	080 LoadAddress rcx, [rbx+48]
+	081 Move [rbx+48], rdi
+	082 Move rdx, rdi
+	083 Call 0x18037ACB0, rcx, rdx, r8, r9
+	084 LoadAddress rcx, [r14+12]
+	085 Move r9, 0
+	086 Move r8, rsi
+	087 Move rdx, rbp
+	088 Call Int32.ToString, rcx, rdx, r8
+	089 Move rdi, rax
+	090 Compare rax, 0
+	091 JumpIfEqual {98}
+	092 Move rdx, [rbx]
+	093 Move rcx, rax
+	094 Move rdx, [rdx+64]
+	095 Call 0x18037ACD0, rcx, rdx, r8, r9
+	096 Compare rax, 0
+	097 JumpIfEqual {133}
+	098 Compare [rbx+24], 3
+	099 JumpIfLessOrEqual {138}
+	100 LoadAddress rcx, [rbx+56]
+	101 Move [rbx+56], rdi
+	102 Move rdx, rdi
+	103 Call 0x18037ACB0, rcx, rdx, r8, r9
+	104 Move rcx, "int2x2({0}, {1},  {2}, {3})"
+	105 Move r8, 0
+	106 Move rdx, rbx
+	107 Move rbx, stack:0x30
+	108 Move rbp, stack:0x38
+	109 Move rsi, stack:0x40
+	110 Move rdi, stack:0x48
+	111 ShiftStack 32
+	112 Move r14, stack:0x0
+	113 ShiftStack 8
+	114 Call String.Format, rcx, rdx, r8
+	115 Return rax
+	116 Call 0x18037BE30, rcx, rdx, r8, r9
+	117 Interrupt 
+	118 Call 0x18037B7B0, rcx, rdx, r8, r9
+	119 Move rcx, rax
+	120 Move rdx, 0
+	121 Call 0x18037BDF0, rcx, rdx, r8, r9
+	122 Interrupt 
+	123 Call 0x18037B7B0, rcx, rdx, r8, r9
+	124 Move rcx, rax
+	125 Move rdx, 0
+	126 Call 0x18037BDF0, rcx, rdx, r8, r9
+	127 Interrupt 
+	128 Call 0x18037B7B0, rcx, rdx, r8, r9
+	129 Move rcx, rax
+	130 Move rdx, 0
+	131 Call 0x18037BDF0, rcx, rdx, r8, r9
+	132 Interrupt 
+	133 Call 0x18037B7B0, rcx, rdx, r8, r9
+	134 Move rcx, rax
+	135 Move rdx, 0
+	136 Call 0x18037BDF0, rcx, rdx, r8, r9
+	137 Interrupt 
+	138 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [183753715h],0
+	jne short 0000000182128AC0h
+	lea rcx,[183548BC0h]
+	call 000000018037BB90h
+	mov byte ptr [183753715h],1
+	mov qword ptr [rsp+48h],1
+	xor ecx,ecx
+	mov rax,[rsp+48h]
+	mov [rsp+20h],rax
+	mov [rsp+48h],ecx
+	mov dword ptr [rsp+4Ch],1
+	mov rax,[rsp+48h]
+	mov [rsp+28h],rax
+	mov rax,[183548BC0h]
+	movups xmm0,[rsp+20h]
+	mov rcx,[rax+0B8h]
+	movups [rcx],xmm0
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x183753715], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183548BC0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183753715], 1
+	007 Move stack:0x48, 1
+	008 Move rcx, 0
+	009 Move rax, stack:0x48
+	010 Move stack:0x20, rax
+	011 Move stack:0x48, rcx
+	012 Move stack:0x4C, 1
+	013 Move rax, stack:0x48
+	014 Move stack:0x28, rax
+	015 Move rax, typeof(Unity.Mathematics.int2x2)
+	016 Move xmm0, stack:0x20
+	017 Move rcx, [rax+184]
+	018 Move [rcx], xmm0
+	019 ShiftStack 56
+	020 Return 
+

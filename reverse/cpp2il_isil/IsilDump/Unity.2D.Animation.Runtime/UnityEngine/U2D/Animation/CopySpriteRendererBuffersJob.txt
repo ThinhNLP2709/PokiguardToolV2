@@ -1,0 +1,76 @@
+Type: UnityEngine.U2D.Animation.CopySpriteRendererBuffersJob
+
+Method: System.Void Execute(System.Int32 i)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,0A0h
+	mov rax,[rcx]
+	xor r10d,r10d
+	movsxd rdi,edx
+	mov rbx,rcx
+	imul r9,rdi,68h
+	mov r8d,r10d
+	add r9,[rcx+10h]
+	movups xmm0,[r9+40h]
+	movups [rsp+20h],xmm0
+	cmp [rdi+rax],r10b
+	je short 0000000181E443F4h
+	mov edx,[r9+50h]
+	mov rcx,[rcx+20h]
+	call 0000000180A23060h
+	movups xmm1,[rsp+20h]
+	mov r10,rax
+	movdqa xmm0,xmm1
+	psrldq xmm1,4
+	psrldq xmm0,8
+	movd r8d,xmm0
+	movd ecx,xmm1
+	imul r8d,ecx
+	mov rcx,[rbx+28h]
+	mov rax,[rbx+38h]
+	mov rbx,[rsp+0B0h]
+	mov [rcx+rdi*8],r10
+	mov [rax+rdi*4],r8d
+	add rsp,0A0h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -160
+	005 Move rax, [rcx]
+	006 Move r10, 0
+	007 Move rdi, rdx
+	008 Move rbx, rcx
+	009 Multiply r9, rdi, 104
+	010 Move r8, r10
+	011 Add r9, r9, [rcx+16]
+	012 Move xmm0, [r9+64]
+	013 Move stack:0x20, xmm0
+	014 Compare [rdi+rax], r10
+	015 JumpIfEqual {27}
+	016 Move rdx, [r9+80]
+	017 Move rcx, [rcx+32]
+	018 Call 0x180A23060, rcx, rdx, r8
+	019 Move xmm1, stack:0x20
+	020 Move r10, rax
+	021 Move xmm0, xmm1
+	022 NotImplemented "psrldq xmm1,4"
+	023 NotImplemented "psrldq xmm0,8"
+	024 Move r8, xmm0
+	025 Move rcx, xmm1
+	026 Multiply r8, r8, rcx
+	027 Move rcx, [rbx+40]
+	028 Move rax, [rbx+56]
+	029 Move rbx, stack:0xB0
+	030 Move [rcx+rdi*8], r10
+	031 Move [rax+rdi*4], r8
+	032 ShiftStack 160
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return 
+

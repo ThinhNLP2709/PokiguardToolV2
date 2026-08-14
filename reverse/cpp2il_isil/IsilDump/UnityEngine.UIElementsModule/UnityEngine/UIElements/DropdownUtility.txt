@@ -1,0 +1,68 @@
+Type: UnityEngine.UIElements.DropdownUtility
+
+Method: UnityEngine.UIElements.IGenericMenu CreateDropdown()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18375B1D2h],0
+	jne short 0000000182911E0Ch
+	lea rcx,[1835275E0h]
+	call 000000018037BB90h
+	lea rcx,[183535158h]
+	call 000000018037BB90h
+	mov byte ptr [18375B1D2h],1
+	mov rcx,[1835275E0h]
+	mov rax,[rcx+0B8h]
+	cmp qword ptr [rax],0
+	je short 0000000182911E36h
+	mov rcx,[rax]
+	mov rax,[rcx+18h]
+	mov rdx,[rcx+28h]
+	mov rcx,[rcx+40h]
+	call rax
+	add rsp,28h
+	ret
+	mov rcx,[183535158h]
+	mov [rsp+20h],rbx
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001828B2770h
+	mov rax,rbx
+	mov rbx,[rsp+20h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18375B1D2], 0
+	003 JumpIfNotEqual {9}
+	004 LoadAddress rcx, [0x1835275E0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x183535158]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x18375B1D2], 1
+	009 Move rcx, typeof(UnityEngine.UIElements.DropdownUtility)
+	010 Move rax, [rcx+184]
+	011 Compare [rax], 0
+	012 JumpIfEqual {20}
+	013 Move rcx, [rax]
+	014 Move rax, [rcx+24]
+	015 Move rdx, [rcx+40]
+	016 Move rcx, [rcx+64]
+	017 Call rax
+	018 ShiftStack 40
+	019 Return rax
+	020 Move rcx, typeof(UnityEngine.UIElements.GenericDropdownMenu)
+	021 Move stack:0x20, rbx
+	022 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	023 Move rdx, 0
+	024 Move rcx, rax
+	025 Move rbx, rax
+	026 Call GenericDropdownMenu..ctor, rcx, rdx
+	027 Move rax, rbx
+	028 Move rbx, stack:0x20
+	029 ShiftStack 40
+	030 Return rax
+

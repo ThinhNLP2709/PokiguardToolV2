@@ -1,0 +1,168 @@
+Type: UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDUSBOutputReport
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_Type()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,48h
+	mov [rsp+28h],rcx
+	mov r9d,44h
+	mov [rsp+48h],ecx
+	mov r8d,49h
+	lea rcx,[rsp+48h]
+	mov word ptr [rsp+20h],4Fh
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 72
+	004 Move stack:0x28, rcx
+	005 Move r9, 68
+	006 Move stack:0x48, rcx
+	007 Move r8, 73
+	008 LoadAddress rcx, stack:0x48
+	009 Move stack:0x20, 79
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x48
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_typeStatic()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,48h
+	mov [rsp+28h],rcx
+	mov r9d,44h
+	mov [rsp+50h],ecx
+	mov r8d,49h
+	lea rcx,[rsp+50h]
+	mov word ptr [rsp+20h],4Fh
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 72
+	004 Move stack:0x28, rcx
+	005 Move r9, 68
+	006 Move stack:0x50, rcx
+	007 Move r8, 73
+	008 LoadAddress rcx, stack:0x50
+	009 Move stack:0x20, 79
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x50
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDUSBOutputReport Create(UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDOutputReportPayload payload, System.Int32 outputReportSize)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+20h],rsi
+	push rdi
+	sub rsp,30h
+	xorps xmm0,xmm0
+	mov rsi,rcx
+	movups [rcx],xmm0
+	xor eax,eax
+	mov ebx,r8d
+	movups [rcx+10h],xmm0
+	mov rdi,rdx
+	mov edx,48h
+	movups [rcx+20h],xmm0
+	mov [rcx+30h],rax
+	mov r9d,44h
+	xor ecx,ecx
+	mov r8d,49h
+	mov [rsp+28h],rcx
+	mov [rsp+50h],ecx
+	lea rcx,[rsp+50h]
+	mov word ptr [rsp+20h],4Fh
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	movups xmm0,[rdi]
+	mov [rsp+40h],eax
+	lea eax,[rbx+8]
+	movups xmm1,[rdi+10h]
+	mov rbx,[rsp+48h]
+	movups [rsi+9],xmm0
+	mov [rsp+44h],eax
+	mov rax,[rsp+40h]
+	movsd xmm0,qword ptr [rdi+20h]
+	mov [rsi],rax
+	mov eax,[rdi+28h]
+	movups [rsi+19h],xmm1
+	mov byte ptr [rsi+8],2
+	movsd qword ptr [rsi+29h],xmm0
+	mov [rsi+31h],eax
+	movzx eax,word ptr [rdi+2Ch]
+	mov [rsi+35h],ax
+	movzx eax,byte ptr [rdi+2Eh]
+	mov [rsi+37h],al
+	mov rax,rsi
+	mov rsi,[rsp+58h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x20, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Move xmm0, 0
+	007 Move rsi, rcx
+	008 Move [rcx], xmm0
+	009 Move rax, 0
+	010 Move rbx, r8
+	011 Move [rcx+16], xmm0
+	012 Move rdi, rdx
+	013 Move rdx, 72
+	014 Move [rcx+32], xmm0
+	015 Move [rcx+48], rax
+	016 Move r9, 68
+	017 Move rcx, 0
+	018 Move r8, 73
+	019 Move stack:0x28, rcx
+	020 Move stack:0x50, rcx
+	021 LoadAddress rcx, stack:0x50
+	022 Move stack:0x20, 79
+	023 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	024 Move rax, stack:0x50
+	025 Move xmm0, [rdi]
+	026 Move stack:0x40, rax
+	027 LoadAddress rax, [rbx+8]
+	028 Move xmm1, [rdi+16]
+	029 Move rbx, stack:0x48
+	030 Move [rsi+9], xmm0
+	031 Move stack:0x44, rax
+	032 Move rax, stack:0x40
+	033 Move xmm0, [rdi+32]
+	034 Move [rsi], rax
+	035 Move rax, [rdi+40]
+	036 Move [rsi+25], xmm1
+	037 Move [rsi+8], 2
+	038 Move [rsi+41], xmm0
+	039 Move [rsi+49], rax
+	040 Move rax, [rdi+44]
+	041 Move [rsi+53], rax
+	042 Move rax, [rdi+46]
+	043 Move [rsi+55], rax
+	044 Move rax, rsi
+	045 Move rsi, stack:0x58
+	046 ShiftStack 48
+	047 Move rdi, stack:0x0
+	048 ShiftStack 8
+	049 Return rax
+

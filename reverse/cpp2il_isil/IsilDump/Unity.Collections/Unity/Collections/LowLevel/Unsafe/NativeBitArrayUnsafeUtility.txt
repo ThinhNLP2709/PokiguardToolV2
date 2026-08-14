@@ -1,0 +1,124 @@
+Type: Unity.Collections.LowLevel.Unsafe.NativeBitArrayUnsafeUtility
+
+Method: Unity.Collections.NativeBitArray ConvertExistingDataToNativeBitArray(System.Void* ptr, System.Int32 sizeInBytes, Unity.Collections.AllocatorManager+AllocatorHandle allocator)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,60h
+	xorps xmm0,xmm0
+	mov r14,rdx
+	movups [rcx],xmm0
+	mov rsi,rcx
+	xor edx,edx
+	mov ecx,4
+	mov ebx,r9d
+	mov ebp,r8d
+	call 0000000181EDB460h
+	cmp byte ptr [183752C32h],0
+	mov edi,eax
+	jne short 0000000181EFA306h
+	lea rcx,[18354D248h]
+	call 000000018037BB90h
+	mov byte ptr [183752C32h],1
+	mov rcx,[18354D248h]
+	call 000000018085C090h
+	mov qword ptr [rsp+30h],0
+	mov r9d,edi
+	mov [rsp+28h],eax
+	xor edx,edx
+	xor ecx,ecx
+	mov qword ptr [rsp+20h],18h
+	mov r8d,1
+	call 0000000181EF8620h
+	lea edx,[rbp*8]
+	mov [rsp+40h],r14
+	mov [rsp+48h],edx
+	mov ecx,4
+	lea edx,[rbp*8]
+	mov dword ptr [rsp+54h],0
+	mov [rsp+4Ch],edx
+	xor edx,edx
+	movups xmm0,[rsp+40h]
+	mov [rsp+50h],ebx
+	movsd xmm1,qword ptr [rsp+50h]
+	movups [rax],xmm0
+	movsd qword ptr [rax+10h],xmm1
+	mov qword ptr [rsi+8],0
+	mov [rsi],rax
+	call 0000000181EDB460h
+	lea r11,[rsp+60h]
+	mov [rsi+8],eax
+	mov rbx,[r11+10h]
+	mov rax,rsi
+	mov rbp,[r11+18h]
+	mov rsi,[r11+20h]
+	mov rdi,[r11+28h]
+	mov rsp,r11
+	pop r14
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -96
+	008 Move xmm0, 0
+	009 Move r14, rdx
+	010 Move [rcx], xmm0
+	011 Move rsi, rcx
+	012 Move rdx, 0
+	013 Move rcx, 4
+	014 Move rbx, r9
+	015 Move rbp, r8
+	016 Call AllocatorHandle.op_Implicit, rcx, rdx
+	017 Compare [0x183752C32], 0
+	018 Move rdi, rax
+	019 JumpIfNotEqual {23}
+	020 LoadAddress rcx, [0x18354D248]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 Move [0x183752C32], 1
+	023 Move rcx, [0x18354D248]
+	024 Call 0x18085C090, rcx
+	025 Move stack:0x30, 0
+	026 Move r9, rdi
+	027 Move stack:0x28, rax
+	028 Move rdx, 0
+	029 Move rcx, 0
+	030 Move stack:0x20, 24
+	031 Move r8, 1
+	032 Call Array.Resize, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	033 LoadAddress rdx, []
+	034 Move stack:0x40, r14
+	035 Move stack:0x48, rdx
+	036 Move rcx, 4
+	037 LoadAddress rdx, []
+	038 Move stack:0x54, 0
+	039 Move stack:0x4C, rdx
+	040 Move rdx, 0
+	041 Move xmm0, stack:0x40
+	042 Move stack:0x50, rbx
+	043 Move xmm1, stack:0x50
+	044 Move [rax], xmm0
+	045 Move [rax+16], xmm1
+	046 Move [rsi+8], 0
+	047 Move [rsi], rax
+	048 Call AllocatorHandle.op_Implicit, rcx, rdx
+	049 LoadAddress r11, stack:0x60
+	050 Move [rsi+8], rax
+	051 Move rbx, [r11+16]
+	052 Move rax, rsi
+	053 Move rbp, [r11+24]
+	054 Move rsi, [r11+32]
+	055 Move rdi, [r11+40]
+	056 Move rsp, r11
+	057 Move r14, stack:0x0
+	058 ShiftStack 8
+	059 Return rax
+

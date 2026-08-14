@@ -1,0 +1,4170 @@
+Type: UnityEngine.Rendering.RasterCommandBuffer
+
+Method: System.Void .ctor(UnityEngine.Rendering.CommandBuffer wrapped, UnityEngine.Rendering.RenderGraphModule.RenderGraphPass executingPass, System.Boolean isAsync)
+
+Disassembly:
+	mov qword ptr [rsp+28h],0
+	jmp near ptr 00000001821665A0h
+
+ISIL:
+	001 Move stack:0x28, 0
+	002 Call BaseCommandBuffer..ctor, rcx, rdx, r8, r9
+	003 Return 
+
+Method: System.Void SetInvertCulling(System.Boolean invertCulling)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169229h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001826558F0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetInvertCulling, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetViewport(UnityEngine.Rect pixelRect)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169BA7h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 000000018265A6E0h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [rdx]
+	006 Move r8, 0
+	007 LoadAddress rdx, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.SetViewport, rcx, rdx
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EnableScissorRect(UnityEngine.Rect scissor)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167BF7h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182649920h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [rdx]
+	006 Move r8, 0
+	007 LoadAddress rdx, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.EnableScissorRect, rcx, rdx
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DisableScissorRect()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A88h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 0000000182645B50h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move rdx, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableScissorRect, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ClearRenderTarget(System.Boolean clearDepth, System.Boolean clearColor, UnityEngine.Color backgroundColor)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018217100Eh
+	movups xmm0,[r9]
+	lea r9,[rsp+30h]
+	mov qword ptr [rsp+20h],0
+	movaps [rsp+30h],xmm0
+	call 0000000182644B50h
+	add rsp,48h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [r9]
+	006 LoadAddress r9, stack:0x30
+	007 Move stack:0x20, 0
+	008 Move stack:0x30, xmm0
+	009 Call CommandBuffer.ClearRenderTarget, rcx, rdx, r8, r9
+	010 ShiftStack 72
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ClearRenderTarget(System.Boolean clearDepth, System.Boolean clearColor, UnityEngine.Color backgroundColor, System.Single depth)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018217105Ah
+	movups xmm0,[r9]
+	lea r9,[rsp+30h]
+	mov qword ptr [rsp+28h],0
+	movss xmm1,dword ptr [rsp+70h]
+	movaps [rsp+30h],xmm0
+	movss dword ptr [rsp+20h],xmm1
+	call 0000000182644C40h
+	add rsp,48h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {14}
+	005 Move xmm0, [r9]
+	006 LoadAddress r9, stack:0x30
+	007 Move stack:0x28, 0
+	008 Move xmm1, stack:0x70
+	009 Move stack:0x30, xmm0
+	010 Move stack:0x20, xmm1
+	011 Call CommandBuffer.ClearRenderTarget, rcx, rdx, r8, xmm3, stack:0x0
+	012 ShiftStack 72
+	013 Return 
+	014 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ClearRenderTarget(System.Boolean clearDepth, System.Boolean clearColor, UnityEngine.Color backgroundColor, System.Single depth, System.UInt32 stencil)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182170FD8h
+	movups xmm0,[r9]
+	mov eax,[rsp+88h]
+	lea r9,[rsp+40h]
+	mov qword ptr [rsp+30h],0
+	movaps [rsp+40h],xmm0
+	movss xmm0,dword ptr [rsp+80h]
+	mov [rsp+28h],eax
+	movss dword ptr [rsp+20h],xmm0
+	call 0000000182644A50h
+	add rsp,58h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {16}
+	005 Move xmm0, [r9]
+	006 Move rax, stack:0x88
+	007 LoadAddress r9, stack:0x40
+	008 Move stack:0x30, 0
+	009 Move stack:0x40, xmm0
+	010 Move xmm0, stack:0x80
+	011 Move stack:0x28, rax
+	012 Move stack:0x20, xmm0
+	013 Call CommandBuffer.ClearRenderTarget, rcx, rdx, r8, xmm3, stack:0x0, stack:0x8
+	014 ShiftStack 88
+	015 Return 
+	016 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ClearRenderTarget(UnityEngine.Rendering.RTClearFlags clearFlags, UnityEngine.Color backgroundColor, System.Single depth, System.UInt32 stencil)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171096h
+	movups xmm0,[r8]
+	mov eax,[rsp+70h]
+	lea r8,[rsp+30h]
+	mov qword ptr [rsp+28h],0
+	movaps [rsp+30h],xmm0
+	mov [rsp+20h],eax
+	call 0000000182644D30h
+	add rsp,48h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {14}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0x70
+	007 LoadAddress r8, stack:0x30
+	008 Move stack:0x28, 0
+	009 Move stack:0x30, xmm0
+	010 Move stack:0x20, rax
+	011 Call CommandBuffer.ClearRenderTarget, rcx, rdx, xmm2, r9, stack:0x0
+	012 ShiftStack 72
+	013 Return 
+	014 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ClearRenderTarget(UnityEngine.Rendering.RTClearFlags clearFlags, UnityEngine.Color[] backgroundColors, System.Single depth, System.UInt32 stencil)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821710BFh
+	mov qword ptr [rsp+68h],0
+	add rsp,38h
+	jmp near ptr 00000001826447B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x68, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.ClearRenderTarget, rcx, rdx, xmm2, r9, stack:0x0
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalFloat(System.Int32 nameID, System.Single value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168C49h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182654150h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalFloat, rcx, xmm1, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalInt(System.Int32 nameID, System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168C89h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182654380h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalInt, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalInteger(System.Int32 nameID, System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168CE9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826544D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalInteger, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalVector(System.Int32 nameID, UnityEngine.Vector4 value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821691D8h
+	movups xmm0,[r8]
+	xor r9d,r9d
+	lea r8,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182655790h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [r8]
+	006 Move r9, 0
+	007 LoadAddress r8, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.SetGlobalVector, rcx, rdx, r8
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalColor(System.Int32 nameID, UnityEngine.Color value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168A98h
+	movups xmm0,[r8]
+	xor r9d,r9d
+	lea r8,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 00000001826535B0h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [r8]
+	006 Move r9, 0
+	007 LoadAddress r8, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.SetGlobalColor, rcx, rdx, r8
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalMatrix(System.Int32 nameID, UnityEngine.Matrix4x4 value)
+
+Disassembly:
+	sub rsp,68h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168DB6h
+	movups xmm0,[r8]
+	xor r9d,r9d
+	movups xmm1,[r8+10h]
+	movaps [rsp+20h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rsp+30h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+20h]
+	movaps [rsp+40h],xmm0
+	movaps [rsp+50h],xmm1
+	call 0000000182654C70h
+	add rsp,68h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -104
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {18}
+	005 Move xmm0, [r8]
+	006 Move r9, 0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x20, xmm0
+	009 Move xmm0, [r8+32]
+	010 Move stack:0x30, xmm1
+	011 Move xmm1, [r8+48]
+	012 LoadAddress r8, stack:0x20
+	013 Move stack:0x40, xmm0
+	014 Move stack:0x50, xmm1
+	015 Call CommandBuffer.SetGlobalMatrix, rcx, rdx, r8
+	016 ShiftStack 104
+	017 Return 
+	018 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EnableShaderKeyword(System.String keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167C19h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001826499D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableShaderKeyword, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EnableKeyword(in UnityEngine.Rendering.GlobalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167B89h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001826495A0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableKeyword, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EnableKeyword(UnityEngine.Material material, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167BC9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826496D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EnableKeyword(UnityEngine.ComputeShader computeShader, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167BA9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182649600h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DisableShaderKeyword(System.String keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167AA9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182645C00h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableShaderKeyword, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DisableKeyword(in UnityEngine.Rendering.GlobalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A29h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182645980h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableKeyword, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DisableKeyword(UnityEngine.Material material, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A69h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826457E0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DisableKeyword(UnityEngine.ComputeShader computeShader, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A49h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826458B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetKeyword(in UnityEngine.Rendering.GlobalKeyword keyword, System.Boolean value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169249h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182655A40h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetKeyword(UnityEngine.Material material, in UnityEngine.Rendering.LocalKeyword keyword, System.Boolean value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018216929Fh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182655AB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.SetKeyword, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetKeyword(UnityEngine.ComputeShader computeShader, in UnityEngine.Rendering.LocalKeyword keyword, System.Boolean value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018216926Fh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182655950h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.SetKeyword, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetViewProjectionMatrices(UnityEngine.Matrix4x4 view, UnityEngine.Matrix4x4 proj)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,0A8h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169B6Fh
+	movups xmm0,[r8]
+	xor r9d,r9d
+	movups xmm1,[r8+10h]
+	movaps [rsp+20h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-78h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+20h]
+	movaps [rax-68h],xmm0
+	movups xmm0,[rdx]
+	movaps [rax-58h],xmm1
+	movups xmm1,[rdx+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[rdx+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rax-48h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	call 000000018265A620h
+	add rsp,0A8h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -168
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {28}
+	006 Move xmm0, [r8]
+	007 Move r9, 0
+	008 Move xmm1, [r8+16]
+	009 Move stack:0x20, xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-120], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x20
+	014 Move [rax-104], xmm0
+	015 Move xmm0, [rdx]
+	016 Move [rax-88], xmm1
+	017 Move xmm1, [rdx+16]
+	018 Move [rax-72], xmm0
+	019 Move xmm0, [rdx+32]
+	020 Move [rax-56], xmm1
+	021 Move xmm1, [rdx+48]
+	022 LoadAddress rdx, [rax-72]
+	023 Move [rax-40], xmm0
+	024 Move [rax-24], xmm1
+	025 Call CommandBuffer.SetViewProjectionMatrices, rcx, rdx, r8
+	026 ShiftStack 168
+	027 Return 
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalDepthBias(System.Single bias, System.Single slopeBias)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168BA9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653A70h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalDepthBias, rcx, xmm1, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalFloatArray(System.Int32 nameID, System.Single[] values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168C09h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653C00h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalFloatArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalVectorArray(System.Int32 nameID, UnityEngine.Vector4[] values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169189h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182655300h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalVectorArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalMatrixArray(System.Int32 nameID, UnityEngine.Matrix4x4[] values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168D49h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182654AF0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalMatrixArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetLateLatchProjectionMatrices(UnityEngine.Matrix4x4[] projectionMat)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821692C9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182655BF0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetLateLatchProjectionMatrices, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void MarkLateLatchMatrixShaderPropertyID(UnityEngine.Rendering.CameraLateLatchMatrixType matrixPropertyType, System.Int32 shaderPropertyID)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167E09h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182650550h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.MarkLateLatchMatrixShaderPropertyID, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnmarkLateLatchMatrix(UnityEngine.Rendering.CameraLateLatchMatrixType matrixPropertyType)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169BE9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 000000018265AA60h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.UnmarkLateLatchMatrix, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void BeginSample(System.String name)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821678C9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001826439E0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.BeginSample, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EndSample(System.String name)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167C39h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182649E20h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EndSample, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void BeginSample(UnityEngine.Profiling.CustomSampler sampler)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821678E9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001826438D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call 0x1826438D0, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void EndSample(UnityEngine.Profiling.CustomSampler sampler)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167C59h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182649D10h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call 0x182649D10, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void BeginSample(Unity.Profiling.ProfilerMarker marker)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Void EndSample(Unity.Profiling.ProfilerMarker marker)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Void IncrementUpdateCount(UnityEngine.Rendering.RenderTargetIdentifier dest)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167C9Bh
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	movups xmm1,[rdx+10h]
+	movaps [rsp+20h],xmm0
+	movsd xmm0,qword ptr [rdx+20h]
+	lea rdx,[rsp+20h]
+	movsd qword ptr [rsp+40h],xmm0
+	movaps [rsp+30h],xmm1
+	call 000000018264A0D0h
+	add rsp,58h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {16}
+	005 Move xmm0, [rdx]
+	006 Move r8, 0
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x20, xmm0
+	009 Move xmm0, [rdx+32]
+	010 LoadAddress rdx, stack:0x20
+	011 Move stack:0x40, xmm0
+	012 Move stack:0x30, xmm1
+	013 Call CommandBuffer.IncrementUpdateCount, rcx, rdx
+	014 ShiftStack 88
+	015 Return 
+	016 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetInstanceMultiplier(System.UInt32 multiplier)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182172269h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182655840h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetInstanceMultiplier, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetFoveatedRenderingMode(UnityEngine.Rendering.FoveatedRenderingMode foveatedRenderingMode)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171F29h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182653270h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetFoveatedRenderingMode, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetWireframe(System.Boolean enable)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182172289h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 000000018265A790h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetWireframe, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ConfigureFoveatedRendering(System.IntPtr platformData)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821710E9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182644F00h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.ConfigureFoveatedRendering, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetupCameraProperties(UnityEngine.Camera camera)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169BC9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 000000018265A910h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetupCameraProperties, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void InvokeOnRenderObjectCallbacks()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167CC8h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 000000018264FC90h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move rdx, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.InvokeOnRenderObjectCallbacks, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMesh(UnityEngine.Mesh mesh, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 submeshIndex, System.Int32 shaderPass, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171475h
+	movups xmm0,[r8]
+	mov rax,[rsp+0C0h]
+	movups xmm1,[r8+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],rax
+	mov eax,[rsp+0B8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[r8+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 00000001826475E0h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [r8+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [r8+48]
+	018 LoadAddress r8, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawMesh, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMesh(UnityEngine.Mesh mesh, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 submeshIndex, System.Int32 shaderPass)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171338h
+	movups xmm0,[r8]
+	mov eax,[rsp+0B8h]
+	movups xmm1,[r8+10h]
+	mov qword ptr [rsp+30h],0
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[r8+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182647510h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {22}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0xB8
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x30, 0
+	009 Move stack:0x28, rax
+	010 Move rax, stack:0xB0
+	011 Move stack:0x40, xmm0
+	012 Move xmm0, [r8+32]
+	013 Move stack:0x20, rax
+	014 Move stack:0x50, xmm1
+	015 Move xmm1, [r8+48]
+	016 LoadAddress r8, stack:0x40
+	017 Move stack:0x60, xmm0
+	018 Move stack:0x70, xmm1
+	019 Call CommandBuffer.DrawMesh, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	020 ShiftStack 136
+	021 Return 
+	022 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMesh(UnityEngine.Mesh mesh, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 submeshIndex)
+
+Disassembly:
+	sub rsp,78h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171397h
+	movups xmm0,[r8]
+	mov eax,[rsp+0A0h]
+	movups xmm1,[r8+10h]
+	mov qword ptr [rsp+28h],0
+	movaps [rsp+30h],xmm0
+	movups xmm0,[r8+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+40h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+30h]
+	movaps [rsp+50h],xmm0
+	movaps [rsp+60h],xmm1
+	call 00000001826474B0h
+	add rsp,78h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -120
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {20}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0xA0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x28, 0
+	009 Move stack:0x30, xmm0
+	010 Move xmm0, [r8+32]
+	011 Move stack:0x20, rax
+	012 Move stack:0x40, xmm1
+	013 Move xmm1, [r8+48]
+	014 LoadAddress r8, stack:0x30
+	015 Move stack:0x50, xmm0
+	016 Move stack:0x60, xmm1
+	017 Call CommandBuffer.DrawMesh, rcx, rdx, r8, r9, stack:0x0
+	018 ShiftStack 120
+	019 Return 
+	020 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMesh(UnityEngine.Mesh mesh, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material)
+
+Disassembly:
+	sub rsp,78h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821713ECh
+	movups xmm0,[r8]
+	mov qword ptr [rsp+20h],0
+	movups xmm1,[r8+10h]
+	movaps [rsp+30h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rsp+40h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+30h]
+	movaps [rsp+50h],xmm0
+	movaps [rsp+60h],xmm1
+	call 0000000182647580h
+	add rsp,78h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -120
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {18}
+	005 Move xmm0, [r8]
+	006 Move stack:0x20, 0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x30, xmm0
+	009 Move xmm0, [r8+32]
+	010 Move stack:0x40, xmm1
+	011 Move xmm1, [r8+48]
+	012 LoadAddress r8, stack:0x30
+	013 Move stack:0x50, xmm0
+	014 Move stack:0x60, xmm1
+	015 Call CommandBuffer.DrawMesh, rcx, rdx, r8, r9
+	016 ShiftStack 120
+	017 Return 
+	018 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMultipleMeshes(UnityEngine.Matrix4x4[] matrices, UnityEngine.Mesh[] meshes, System.Int32[] subsetIndices, System.Int32 count, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821714A2h
+	mov qword ptr [rsp+0A0h],0
+	add rsp,58h
+	jmp near ptr 0000000182647940h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0xA0, 0
+	006 ShiftStack 88
+	007 Call CommandBuffer.DrawMultipleMeshes, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawRenderer(UnityEngine.Renderer renderer, UnityEngine.Material material, System.Int32 submeshIndex, System.Int32 shaderPass)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171EFFh
+	mov qword ptr [rsp+68h],0
+	add rsp,38h
+	jmp near ptr 00000001826490A0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x68, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.DrawRenderer, rcx, rdx, r8, r9, stack:0x0
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawRenderer(UnityEngine.Renderer renderer, UnityEngine.Material material, System.Int32 submeshIndex)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171ECFh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182649370h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.DrawRenderer, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawRenderer(UnityEngine.Renderer renderer, UnityEngine.Material material)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171EA9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182649390h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DrawRenderer, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawRendererList(UnityEngine.Rendering.RendererList rendererList)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171E82h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	movsd xmm1,qword ptr [rdx+10h]
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	movsd qword ptr [rsp+30h],xmm1
+	call 0000000182649030h
+	add rsp,48h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {14}
+	005 Move xmm0, [rdx]
+	006 Move r8, 0
+	007 Move xmm1, [rdx+16]
+	008 LoadAddress rdx, stack:0x20
+	009 Move stack:0x20, xmm0
+	010 Move stack:0x30, xmm1
+	011 Call CommandBuffer.DrawRendererList, rcx, rdx
+	012 ShiftStack 72
+	013 Return 
+	014 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProcedural(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, System.Int32 vertexCount, System.Int32 instanceCount, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171D4Ah
+	movups xmm0,[rdx]
+	mov qword ptr [rax-58h],0
+	movups xmm1,[rdx+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[rdx+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov rax,[rsp+0D8h]
+	mov [rsp+38h],rax
+	mov eax,[rsp+0D0h]
+	mov [rsp+30h],eax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182648D20h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {27}
+	006 Move xmm0, [rdx]
+	007 Move [rax-88], 0
+	008 Move xmm1, [rdx+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [rdx+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [rdx+48]
+	013 LoadAddress rdx, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xD8
+	017 Move stack:0x38, rax
+	018 Move rax, stack:0xD0
+	019 Move stack:0x30, rax
+	020 Move rax, stack:0xC8
+	021 Move stack:0x28, rax
+	022 Move rax, stack:0xC0
+	023 Move stack:0x20, rax
+	024 Call CommandBuffer.DrawProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	025 ShiftStack 152
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProcedural(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, System.Int32 vertexCount, System.Int32 instanceCount)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171E3Fh
+	movups xmm0,[rdx]
+	mov eax,[rsp+0C0h]
+	movups xmm1,[rdx+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],eax
+	mov eax,[rsp+0B8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[rdx+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182648CB0h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [rdx]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [rdx+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [rdx+48]
+	018 LoadAddress rdx, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProcedural(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, System.Int32 vertexCount)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171CC4h
+	movups xmm0,[rdx]
+	mov eax,[rsp+0B8h]
+	movups xmm1,[rdx+10h]
+	mov qword ptr [rsp+30h],0
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[rdx+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182648FC0h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {22}
+	005 Move xmm0, [rdx]
+	006 Move rax, stack:0xB8
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x30, 0
+	009 Move stack:0x28, rax
+	010 Move rax, stack:0xB0
+	011 Move stack:0x40, xmm0
+	012 Move xmm0, [rdx+32]
+	013 Move stack:0x20, rax
+	014 Move stack:0x50, xmm1
+	015 Move xmm1, [rdx+48]
+	016 LoadAddress rdx, stack:0x40
+	017 Move stack:0x60, xmm0
+	018 Move stack:0x70, xmm1
+	019 Call CommandBuffer.DrawProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	020 ShiftStack 136
+	021 Return 
+	022 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProcedural(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, System.Int32 indexCount, System.Int32 instanceCount, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171BC9h
+	movups xmm0,[r8]
+	mov qword ptr [rax-50h],0
+	movups xmm1,[r8+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov rax,[rsp+0E0h]
+	mov [rsp+40h],rax
+	mov eax,[rsp+0D8h]
+	mov [rsp+38h],eax
+	mov eax,[rsp+0D0h]
+	mov [rsp+30h],eax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 00000001826489F0h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {29}
+	006 Move xmm0, [r8]
+	007 Move [rax-80], 0
+	008 Move xmm1, [r8+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xE0
+	017 Move stack:0x40, rax
+	018 Move rax, stack:0xD8
+	019 Move stack:0x38, rax
+	020 Move rax, stack:0xD0
+	021 Move stack:0x30, rax
+	022 Move rax, stack:0xC8
+	023 Move stack:0x28, rax
+	024 Move rax, stack:0xC0
+	025 Move stack:0x20, rax
+	026 Call CommandBuffer.DrawProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	027 ShiftStack 152
+	028 Return 
+	029 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProcedural(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, System.Int32 indexCount, System.Int32 instanceCount)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171C4Ch
+	movups xmm0,[r8]
+	mov qword ptr [rax-58h],0
+	movups xmm1,[r8+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov eax,[rsp+0D8h]
+	mov [rsp+38h],eax
+	mov eax,[rsp+0D0h]
+	mov [rsp+30h],eax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182648C30h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {27}
+	006 Move xmm0, [r8]
+	007 Move [rax-88], 0
+	008 Move xmm1, [r8+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xD8
+	017 Move stack:0x38, rax
+	018 Move rax, stack:0xD0
+	019 Move stack:0x30, rax
+	020 Move rax, stack:0xC8
+	021 Move stack:0x28, rax
+	022 Move rax, stack:0xC0
+	023 Move stack:0x20, rax
+	024 Call CommandBuffer.DrawProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	025 ShiftStack 152
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProcedural(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, System.Int32 indexCount)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171DC3h
+	movups xmm0,[r8]
+	mov eax,[rsp+0C0h]
+	movups xmm1,[r8+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],eax
+	mov eax,[rsp+0B8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[r8+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182648F40h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [r8+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [r8+48]
+	018 LoadAddress r8, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.ComputeBuffer bufferWithArgs, System.Int32 argsOffset, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018217155Ch
+	movups xmm0,[rdx]
+	mov qword ptr [rax-58h],0
+	movups xmm1,[rdx+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[rdx+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov rax,[rsp+0D8h]
+	mov [rsp+38h],rax
+	mov eax,[rsp+0D0h]
+	mov [rsp+30h],eax
+	mov rax,[rsp+0C8h]
+	mov [rsp+28h],rax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182647B90h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {27}
+	006 Move xmm0, [rdx]
+	007 Move [rax-88], 0
+	008 Move xmm1, [rdx+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [rdx+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [rdx+48]
+	013 LoadAddress rdx, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xD8
+	017 Move stack:0x38, rax
+	018 Move rax, stack:0xD0
+	019 Move stack:0x30, rax
+	020 Move rax, stack:0xC8
+	021 Move stack:0x28, rax
+	022 Move rax, stack:0xC0
+	023 Move stack:0x20, rax
+	024 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	025 ShiftStack 152
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.ComputeBuffer bufferWithArgs, System.Int32 argsOffset)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171AA1h
+	movups xmm0,[rdx]
+	mov eax,[rsp+0C0h]
+	movups xmm1,[rdx+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],eax
+	mov rax,[rsp+0B8h]
+	mov [rsp+28h],rax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[rdx+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182648980h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [rdx]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [rdx+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [rdx+48]
+	018 LoadAddress rdx, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.ComputeBuffer bufferWithArgs)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821716E6h
+	movups xmm0,[rdx]
+	mov rax,[rsp+0B8h]
+	movups xmm1,[rdx+10h]
+	mov qword ptr [rsp+30h],0
+	mov [rsp+28h],rax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[rdx+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182648160h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {22}
+	005 Move xmm0, [rdx]
+	006 Move rax, stack:0xB8
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x30, 0
+	009 Move stack:0x28, rax
+	010 Move rax, stack:0xB0
+	011 Move stack:0x40, xmm0
+	012 Move xmm0, [rdx+32]
+	013 Move stack:0x20, rax
+	014 Move stack:0x50, xmm1
+	015 Move xmm1, [rdx+48]
+	016 LoadAddress rdx, stack:0x40
+	017 Move stack:0x60, xmm0
+	018 Move stack:0x70, xmm1
+	019 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	020 ShiftStack 136
+	021 Return 
+	022 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.ComputeBuffer bufferWithArgs, System.Int32 argsOffset, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821717FBh
+	movups xmm0,[r8]
+	mov qword ptr [rax-50h],0
+	movups xmm1,[r8+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov rax,[rsp+0E0h]
+	mov [rsp+40h],rax
+	mov eax,[rsp+0D8h]
+	mov [rsp+38h],eax
+	mov rax,[rsp+0D0h]
+	mov [rsp+30h],rax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182647E70h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {29}
+	006 Move xmm0, [r8]
+	007 Move [rax-80], 0
+	008 Move xmm1, [r8+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xE0
+	017 Move stack:0x40, rax
+	018 Move rax, stack:0xD8
+	019 Move stack:0x38, rax
+	020 Move rax, stack:0xD0
+	021 Move stack:0x30, rax
+	022 Move rax, stack:0xC8
+	023 Move stack:0x28, rax
+	024 Move rax, stack:0xC0
+	025 Move stack:0x20, rax
+	026 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	027 ShiftStack 152
+	028 Return 
+	029 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.ComputeBuffer bufferWithArgs, System.Int32 argsOffset)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171A1Eh
+	movups xmm0,[r8]
+	mov qword ptr [rax-58h],0
+	movups xmm1,[r8+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov eax,[rsp+0D8h]
+	mov [rsp+38h],eax
+	mov rax,[rsp+0D0h]
+	mov [rsp+30h],rax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182648530h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {27}
+	006 Move xmm0, [r8]
+	007 Move [rax-88], 0
+	008 Move xmm1, [r8+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xD8
+	017 Move stack:0x38, rax
+	018 Move rax, stack:0xD0
+	019 Move stack:0x30, rax
+	020 Move rax, stack:0xC8
+	021 Move stack:0x28, rax
+	022 Move rax, stack:0xC0
+	023 Move stack:0x20, rax
+	024 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	025 ShiftStack 152
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.ComputeBuffer bufferWithArgs)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171765h
+	movups xmm0,[r8]
+	mov rax,[rsp+0C0h]
+	movups xmm1,[r8+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],rax
+	mov eax,[rsp+0B8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[r8+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 00000001826485B0h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [r8+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [r8+48]
+	018 LoadAddress r8, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.GraphicsBuffer bufferWithArgs, System.Int32 argsOffset, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171B2Ch
+	movups xmm0,[rdx]
+	mov qword ptr [rax-58h],0
+	movups xmm1,[rdx+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[rdx+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov rax,[rsp+0D8h]
+	mov [rsp+38h],rax
+	mov eax,[rsp+0D0h]
+	mov [rsp+30h],eax
+	mov rax,[rsp+0C8h]
+	mov [rsp+28h],rax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182648630h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {27}
+	006 Move xmm0, [rdx]
+	007 Move [rax-88], 0
+	008 Move xmm1, [rdx+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [rdx+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [rdx+48]
+	013 LoadAddress rdx, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xD8
+	017 Move stack:0x38, rax
+	018 Move rax, stack:0xD0
+	019 Move stack:0x30, rax
+	020 Move rax, stack:0xC8
+	021 Move stack:0x28, rax
+	022 Move rax, stack:0xC0
+	023 Move stack:0x20, rax
+	024 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	025 ShiftStack 152
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.GraphicsBuffer bufferWithArgs, System.Int32 argsOffset)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171991h
+	movups xmm0,[rdx]
+	mov eax,[rsp+0C0h]
+	movups xmm1,[rdx+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],eax
+	mov rax,[rsp+0B8h]
+	mov [rsp+28h],rax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[rdx+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 00000001826484C0h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [rdx]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [rdx+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [rdx+48]
+	018 LoadAddress rdx, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.GraphicsBuffer bufferWithArgs)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171916h
+	movups xmm0,[rdx]
+	mov rax,[rsp+0B8h]
+	movups xmm1,[rdx+10h]
+	mov qword ptr [rsp+30h],0
+	mov [rsp+28h],rax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[rdx+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[rdx+30h]
+	lea rdx,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182648910h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {22}
+	005 Move xmm0, [rdx]
+	006 Move rax, stack:0xB8
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x30, 0
+	009 Move stack:0x28, rax
+	010 Move rax, stack:0xB0
+	011 Move stack:0x40, xmm0
+	012 Move xmm0, [rdx+32]
+	013 Move stack:0x20, rax
+	014 Move stack:0x50, xmm1
+	015 Move xmm1, [rdx+48]
+	016 LoadAddress rdx, stack:0x40
+	017 Move stack:0x60, xmm0
+	018 Move stack:0x70, xmm1
+	019 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	020 ShiftStack 136
+	021 Return 
+	022 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.GraphicsBuffer bufferWithArgs, System.Int32 argsOffset, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018217189Bh
+	movups xmm0,[r8]
+	mov qword ptr [rax-50h],0
+	movups xmm1,[r8+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov rax,[rsp+0E0h]
+	mov [rsp+40h],rax
+	mov eax,[rsp+0D8h]
+	mov [rsp+38h],eax
+	mov rax,[rsp+0D0h]
+	mov [rsp+30h],rax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 00000001826481D0h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {29}
+	006 Move xmm0, [r8]
+	007 Move [rax-80], 0
+	008 Move xmm1, [r8+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xE0
+	017 Move stack:0x40, rax
+	018 Move rax, stack:0xD8
+	019 Move stack:0x38, rax
+	020 Move rax, stack:0xD0
+	021 Move stack:0x30, rax
+	022 Move rax, stack:0xC8
+	023 Move stack:0x28, rax
+	024 Move rax, stack:0xC0
+	025 Move stack:0x20, rax
+	026 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	027 ShiftStack 152
+	028 Return 
+	029 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.GraphicsBuffer bufferWithArgs, System.Int32 argsOffset)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,98h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018217166Eh
+	movups xmm0,[r8]
+	mov qword ptr [rax-58h],0
+	movups xmm1,[r8+10h]
+	movaps [rax-48h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rax-38h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+50h]
+	movaps [rax-28h],xmm0
+	movaps [rax-18h],xmm1
+	mov eax,[rsp+0D8h]
+	mov [rsp+38h],eax
+	mov rax,[rsp+0D0h]
+	mov [rsp+30h],rax
+	mov eax,[rsp+0C8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0C0h]
+	mov [rsp+20h],eax
+	call 0000000182647A90h
+	add rsp,98h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -152
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {27}
+	006 Move xmm0, [r8]
+	007 Move [rax-88], 0
+	008 Move xmm1, [r8+16]
+	009 Move [rax-72], xmm0
+	010 Move xmm0, [r8+32]
+	011 Move [rax-56], xmm1
+	012 Move xmm1, [r8+48]
+	013 LoadAddress r8, stack:0x50
+	014 Move [rax-40], xmm0
+	015 Move [rax-24], xmm1
+	016 Move rax, stack:0xD8
+	017 Move stack:0x38, rax
+	018 Move rax, stack:0xD0
+	019 Move stack:0x30, rax
+	020 Move rax, stack:0xC8
+	021 Move stack:0x28, rax
+	022 Move rax, stack:0xC0
+	023 Move stack:0x20, rax
+	024 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	025 ShiftStack 152
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawProceduralIndirect(UnityEngine.GraphicsBuffer indexBuffer, UnityEngine.Matrix4x4 matrix, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.MeshTopology topology, UnityEngine.GraphicsBuffer bufferWithArgs)
+
+Disassembly:
+	sub rsp,88h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821715E5h
+	movups xmm0,[r8]
+	mov rax,[rsp+0C0h]
+	movups xmm1,[r8+10h]
+	mov qword ptr [rsp+38h],0
+	mov [rsp+30h],rax
+	mov eax,[rsp+0B8h]
+	mov [rsp+28h],eax
+	mov eax,[rsp+0B0h]
+	movaps [rsp+40h],xmm0
+	movups xmm0,[r8+20h]
+	mov [rsp+20h],eax
+	movaps [rsp+50h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+40h]
+	movaps [rsp+60h],xmm0
+	movaps [rsp+70h],xmm1
+	call 0000000182647B10h
+	add rsp,88h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -136
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {24}
+	005 Move xmm0, [r8]
+	006 Move rax, stack:0xC0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x38, 0
+	009 Move stack:0x30, rax
+	010 Move rax, stack:0xB8
+	011 Move stack:0x28, rax
+	012 Move rax, stack:0xB0
+	013 Move stack:0x40, xmm0
+	014 Move xmm0, [r8+32]
+	015 Move stack:0x20, rax
+	016 Move stack:0x50, xmm1
+	017 Move xmm1, [r8+48]
+	018 LoadAddress r8, stack:0x40
+	019 Move stack:0x60, xmm0
+	020 Move stack:0x70, xmm1
+	021 Call CommandBuffer.DrawProceduralIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	022 ShiftStack 136
+	023 Return 
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstanced(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.Matrix4x4[] matrices, System.Int32 count, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821712C2h
+	mov qword ptr [rsp+0A0h],0
+	add rsp,58h
+	jmp near ptr 0000000182646F20h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0xA0, 0
+	006 ShiftStack 88
+	007 Call CommandBuffer.DrawMeshInstanced, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstanced(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.Matrix4x4[] matrices, System.Int32 count)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171262h
+	mov qword ptr [rsp+88h],0
+	add rsp,48h
+	jmp near ptr 0000000182646EE0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x88, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstanced, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstanced(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.Matrix4x4[] matrices)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171292h
+	mov qword ptr [rsp+80h],0
+	add rsp,48h
+	jmp near ptr 0000000182646E90h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x80, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstanced, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedProcedural(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, System.Int32 count, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171232h
+	mov qword ptr [rsp+88h],0
+	add rsp,48h
+	jmp near ptr 0000000182646AF0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x88, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstancedProcedural, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedIndirect(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.ComputeBuffer bufferWithArgs, System.Int32 argsOffset, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171112h
+	mov qword ptr [rsp+0A0h],0
+	add rsp,58h
+	jmp near ptr 00000001826466F0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0xA0, 0
+	006 ShiftStack 88
+	007 Call CommandBuffer.DrawMeshInstancedIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedIndirect(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.ComputeBuffer bufferWithArgs, System.Int32 argsOffset)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171142h
+	mov qword ptr [rsp+88h],0
+	add rsp,48h
+	jmp near ptr 0000000182646630h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x88, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstancedIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedIndirect(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.ComputeBuffer bufferWithArgs)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821711A2h
+	mov qword ptr [rsp+80h],0
+	add rsp,48h
+	jmp near ptr 0000000182646AB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x80, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstancedIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedIndirect(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.GraphicsBuffer bufferWithArgs, System.Int32 argsOffset, UnityEngine.MaterialPropertyBlock properties)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171172h
+	mov qword ptr [rsp+0A0h],0
+	add rsp,58h
+	jmp near ptr 0000000182646270h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0xA0, 0
+	006 ShiftStack 88
+	007 Call CommandBuffer.DrawMeshInstancedIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedIndirect(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.GraphicsBuffer bufferWithArgs, System.Int32 argsOffset)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182171202h
+	mov qword ptr [rsp+88h],0
+	add rsp,48h
+	jmp near ptr 00000001826466B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x88, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstancedIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawMeshInstancedIndirect(UnityEngine.Mesh mesh, System.Int32 submeshIndex, UnityEngine.Material material, System.Int32 shaderPass, UnityEngine.GraphicsBuffer bufferWithArgs)
+
+Disassembly:
+	sub rsp,48h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821711D2h
+	mov qword ptr [rsp+80h],0
+	add rsp,48h
+	jmp near ptr 0000000182646670h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x80, 0
+	006 ShiftStack 72
+	007 Call CommandBuffer.DrawMeshInstancedIndirect, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void DrawOcclusionMesh(UnityEngine.RectInt normalizedCamViewport)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821714D7h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182647A30h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [rdx]
+	006 Move r8, 0
+	007 LoadAddress rdx, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.DrawOcclusionMesh, rcx, rdx
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalFloat(System.String name, System.Single value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168C69h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826541C0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalFloat, rcx, xmm1, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalInt(System.String name, System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168CA9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826542F0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalInt, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalInteger(System.String name, System.Int32 value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168CC9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182654440h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalInteger, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalVector(System.String name, UnityEngine.Vector4 value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169208h
+	movups xmm0,[r8]
+	xor r9d,r9d
+	lea r8,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182655700h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [r8]
+	006 Move r9, 0
+	007 LoadAddress r8, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.SetGlobalVector, rcx, rdx, r8
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalColor(System.String name, UnityEngine.Color value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168AC8h
+	movups xmm0,[r8]
+	xor r9d,r9d
+	lea r8,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182653620h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move xmm0, [r8]
+	006 Move r9, 0
+	007 LoadAddress r8, stack:0x20
+	008 Move stack:0x20, xmm0
+	009 Call CommandBuffer.SetGlobalColor, rcx, rdx, r8
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalMatrix(System.String name, UnityEngine.Matrix4x4 value)
+
+Disassembly:
+	sub rsp,68h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168E06h
+	movups xmm0,[r8]
+	xor r9d,r9d
+	movups xmm1,[r8+10h]
+	movaps [rsp+20h],xmm0
+	movups xmm0,[r8+20h]
+	movaps [rsp+30h],xmm1
+	movups xmm1,[r8+30h]
+	lea r8,[rsp+20h]
+	movaps [rsp+40h],xmm0
+	movaps [rsp+50h],xmm1
+	call 0000000182654CE0h
+	add rsp,68h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -104
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {18}
+	005 Move xmm0, [r8]
+	006 Move r9, 0
+	007 Move xmm1, [r8+16]
+	008 Move stack:0x20, xmm0
+	009 Move xmm0, [r8+32]
+	010 Move stack:0x30, xmm1
+	011 Move xmm1, [r8+48]
+	012 LoadAddress r8, stack:0x20
+	013 Move stack:0x40, xmm0
+	014 Move stack:0x50, xmm1
+	015 Call CommandBuffer.SetGlobalMatrix, rcx, rdx, r8
+	016 ShiftStack 104
+	017 Return 
+	018 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalFloatArray(System.String propertyName, System.Collections.Generic.List`1<System.Single> values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168C29h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653FB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalFloatArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalFloatArray(System.Int32 nameID, System.Collections.Generic.List`1<System.Single> values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168BE9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653E70h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalFloatArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalFloatArray(System.String propertyName, System.Single[] values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168BC9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653D30h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalFloatArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalVectorArray(System.String propertyName, System.Collections.Generic.List`1<UnityEngine.Vector4> values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169149h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826551B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalVectorArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalVectorArray(System.Int32 nameID, System.Collections.Generic.List`1<UnityEngine.Vector4> values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001821691A9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182655430h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalVectorArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalVectorArray(System.String propertyName, UnityEngine.Vector4[] values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169169h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182655570h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalVectorArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalMatrixArray(System.String propertyName, System.Collections.Generic.List`1<UnityEngine.Matrix4x4> values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168D09h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182654860h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalMatrixArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalMatrixArray(System.Int32 nameID, System.Collections.Generic.List`1<UnityEngine.Matrix4x4> values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168D69h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826549B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalMatrixArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalMatrixArray(System.String propertyName, UnityEngine.Matrix4x4[] values)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168D29h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182654720h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalMatrixArray, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalTexture(System.String name, UnityEngine.Rendering.RenderGraphModule.TextureHandle value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,90h
+	cmp byte ptr [18375381Bh],0
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 0000000182171F67h
+	lea rcx,[183520068h]
+	call 000000018037BB90h
+	mov byte ptr [18375381Bh],1
+	mov rcx,[183520068h]
+	mov rbx,[rbx+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182171F80h
+	call 000000018037BED0h
+	movups xmm0,[rdi]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	lea rcx,[rsp+60h]
+	movaps [rsp+20h],xmm0
+	call 000000018223CB20h
+	test rbx,rbx
+	je short 0000000182171FE3h
+	movups xmm0,[rax]
+	xor r9d,r9d
+	lea r8,[rsp+30h]
+	movups xmm1,[rax+10h]
+	mov rdx,rsi
+	mov rcx,rbx
+	movaps [rsp+30h],xmm0
+	movsd xmm0,qword ptr [rax+20h]
+	movsd qword ptr [rsp+50h],xmm0
+	movaps [rsp+40h],xmm1
+	call 0000000182655000h
+	lea r11,[rsp+90h]
+	mov rbx,[r11+10h]
+	mov rsi,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -144
+	006 Compare [0x18375381B], 0
+	007 Move rdi, r8
+	008 Move rsi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183520068]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18375381B], 1
+	014 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.TextureHandle)
+	015 Move rbx, [rbx+16]
+	016 Compare [rcx+228], 0
+	017 JumpIfNotEqual {19}
+	018 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	019 Move xmm0, [rdi]
+	020 Move r8, 0
+	021 LoadAddress rdx, stack:0x20
+	022 LoadAddress rcx, stack:0x60
+	023 Move stack:0x20, xmm0
+	024 Call TextureHandle.op_Implicit, rcx, rdx
+	025 Compare rbx, 0
+	026 JumpIfEqual {45}
+	027 Move xmm0, [rax]
+	028 Move r9, 0
+	029 LoadAddress r8, stack:0x30
+	030 Move xmm1, [rax+16]
+	031 Move rdx, rsi
+	032 Move rcx, rbx
+	033 Move stack:0x30, xmm0
+	034 Move xmm0, [rax+32]
+	035 Move stack:0x50, xmm0
+	036 Move stack:0x40, xmm1
+	037 Call CommandBuffer.SetGlobalTexture, rcx, rdx, r8
+	038 LoadAddress r11, stack:0x90
+	039 Move rbx, [r11+16]
+	040 Move rsi, [r11+24]
+	041 Move rsp, r11
+	042 Move rdi, stack:0x0
+	043 ShiftStack 8
+	044 Return 
+	045 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalTexture(System.Int32 nameID, UnityEngine.Rendering.RenderGraphModule.TextureHandle value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,90h
+	cmp byte ptr [18375381Ch],0
+	mov rdi,r8
+	mov esi,edx
+	mov rbx,rcx
+	jne short 00000001821720F6h
+	lea rcx,[183520068h]
+	call 000000018037BB90h
+	mov byte ptr [18375381Ch],1
+	mov rcx,[183520068h]
+	mov rbx,[rbx+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018217210Fh
+	call 000000018037BED0h
+	movups xmm0,[rdi]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	lea rcx,[rsp+60h]
+	movaps [rsp+20h],xmm0
+	call 000000018223CB20h
+	test rbx,rbx
+	je short 0000000182172171h
+	movups xmm0,[rax]
+	xor r9d,r9d
+	lea r8,[rsp+30h]
+	movups xmm1,[rax+10h]
+	mov edx,esi
+	mov rcx,rbx
+	movaps [rsp+30h],xmm0
+	movsd xmm0,qword ptr [rax+20h]
+	movsd qword ptr [rsp+50h],xmm0
+	movaps [rsp+40h],xmm1
+	call 0000000182654EE0h
+	lea r11,[rsp+90h]
+	mov rbx,[r11+10h]
+	mov rsi,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -144
+	006 Compare [0x18375381C], 0
+	007 Move rdi, r8
+	008 Move rsi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183520068]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18375381C], 1
+	014 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.TextureHandle)
+	015 Move rbx, [rbx+16]
+	016 Compare [rcx+228], 0
+	017 JumpIfNotEqual {19}
+	018 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	019 Move xmm0, [rdi]
+	020 Move r8, 0
+	021 LoadAddress rdx, stack:0x20
+	022 LoadAddress rcx, stack:0x60
+	023 Move stack:0x20, xmm0
+	024 Call TextureHandle.op_Implicit, rcx, rdx
+	025 Compare rbx, 0
+	026 JumpIfEqual {45}
+	027 Move xmm0, [rax]
+	028 Move r9, 0
+	029 LoadAddress r8, stack:0x30
+	030 Move xmm1, [rax+16]
+	031 Move rdx, rsi
+	032 Move rcx, rbx
+	033 Move stack:0x30, xmm0
+	034 Move xmm0, [rax+32]
+	035 Move stack:0x50, xmm0
+	036 Move stack:0x40, xmm1
+	037 Call CommandBuffer.SetGlobalTexture, rcx, rdx, r8
+	038 LoadAddress r11, stack:0x90
+	039 Move rbx, [r11+16]
+	040 Move rsi, [r11+24]
+	041 Move rsp, r11
+	042 Move rdi, stack:0x0
+	043 ShiftStack 8
+	044 Return 
+	045 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalTexture(System.String name, UnityEngine.Rendering.RenderGraphModule.TextureHandle value, UnityEngine.Rendering.RenderTextureSubElement element)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,0A0h
+	cmp byte ptr [18375381Dh],0
+	mov esi,r9d
+	mov rdi,r8
+	mov rbp,rdx
+	mov rbx,rcx
+	jne short 000000018217202Fh
+	lea rcx,[183520068h]
+	call 000000018037BB90h
+	mov byte ptr [18375381Dh],1
+	mov rcx,[183520068h]
+	mov rbx,[rbx+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182172048h
+	call 000000018037BED0h
+	movups xmm0,[rdi]
+	xor r8d,r8d
+	lea rdx,[rsp+30h]
+	lea rcx,[rsp+70h]
+	movaps [rsp+30h],xmm0
+	call 000000018223CB20h
+	test rbx,rbx
+	je short 00000001821720B8h
+	movups xmm0,[rax]
+	mov r9d,esi
+	lea r8,[rsp+40h]
+	movups xmm1,[rax+10h]
+	mov rdx,rbp
+	mov rcx,rbx
+	movaps [rsp+40h],xmm0
+	movsd xmm0,qword ptr [rax+20h]
+	movsd qword ptr [rsp+60h],xmm0
+	movaps [rsp+50h],xmm1
+	mov qword ptr [rsp+20h],0
+	call 0000000182654F50h
+	lea r11,[rsp+0A0h]
+	mov rbx,[r11+10h]
+	mov rbp,[r11+18h]
+	mov rsi,[r11+20h]
+	mov rsp,r11
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -160
+	007 Compare [0x18375381D], 0
+	008 Move rsi, r9
+	009 Move rdi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x183520068]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18375381D], 1
+	016 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.TextureHandle)
+	017 Move rbx, [rbx+16]
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Move xmm0, [rdi]
+	022 Move r8, 0
+	023 LoadAddress rdx, stack:0x30
+	024 LoadAddress rcx, stack:0x70
+	025 Move stack:0x30, xmm0
+	026 Call TextureHandle.op_Implicit, rcx, rdx
+	027 Compare rbx, 0
+	028 JumpIfEqual {49}
+	029 Move xmm0, [rax]
+	030 Move r9, rsi
+	031 LoadAddress r8, stack:0x40
+	032 Move xmm1, [rax+16]
+	033 Move rdx, rbp
+	034 Move rcx, rbx
+	035 Move stack:0x40, xmm0
+	036 Move xmm0, [rax+32]
+	037 Move stack:0x60, xmm0
+	038 Move stack:0x50, xmm1
+	039 Move stack:0x20, 0
+	040 Call CommandBuffer.SetGlobalTexture, rcx, rdx, r8, r9
+	041 LoadAddress r11, stack:0xA0
+	042 Move rbx, [r11+16]
+	043 Move rbp, [r11+24]
+	044 Move rsi, [r11+32]
+	045 Move rsp, r11
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return 
+	049 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalTexture(System.Int32 nameID, UnityEngine.Rendering.RenderGraphModule.TextureHandle value, UnityEngine.Rendering.RenderTextureSubElement element)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,0A0h
+	cmp byte ptr [18375381Eh],0
+	mov esi,r9d
+	mov rdi,r8
+	mov ebp,edx
+	mov rbx,rcx
+	jne short 00000001821721BEh
+	lea rcx,[183520068h]
+	call 000000018037BB90h
+	mov byte ptr [18375381Eh],1
+	mov rcx,[183520068h]
+	mov rbx,[rbx+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001821721D7h
+	call 000000018037BED0h
+	movups xmm0,[rdi]
+	xor r8d,r8d
+	lea rdx,[rsp+30h]
+	lea rcx,[rsp+70h]
+	movaps [rsp+30h],xmm0
+	call 000000018223CB20h
+	test rbx,rbx
+	je short 0000000182172246h
+	movups xmm0,[rax]
+	mov r9d,esi
+	lea r8,[rsp+40h]
+	movups xmm1,[rax+10h]
+	mov edx,ebp
+	mov rcx,rbx
+	movaps [rsp+40h],xmm0
+	movsd xmm0,qword ptr [rax+20h]
+	movsd qword ptr [rsp+60h],xmm0
+	movaps [rsp+50h],xmm1
+	mov qword ptr [rsp+20h],0
+	call 0000000182654E60h
+	lea r11,[rsp+0A0h]
+	mov rbx,[r11+10h]
+	mov rbp,[r11+18h]
+	mov rsi,[r11+20h]
+	mov rsp,r11
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -160
+	007 Compare [0x18375381E], 0
+	008 Move rsi, r9
+	009 Move rdi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x183520068]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18375381E], 1
+	016 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.TextureHandle)
+	017 Move rbx, [rbx+16]
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Move xmm0, [rdi]
+	022 Move r8, 0
+	023 LoadAddress rdx, stack:0x30
+	024 LoadAddress rcx, stack:0x70
+	025 Move stack:0x30, xmm0
+	026 Call TextureHandle.op_Implicit, rcx, rdx
+	027 Compare rbx, 0
+	028 JumpIfEqual {49}
+	029 Move xmm0, [rax]
+	030 Move r9, rsi
+	031 LoadAddress r8, stack:0x40
+	032 Move xmm1, [rax+16]
+	033 Move rdx, rbp
+	034 Move rcx, rbx
+	035 Move stack:0x40, xmm0
+	036 Move xmm0, [rax+32]
+	037 Move stack:0x60, xmm0
+	038 Move stack:0x50, xmm1
+	039 Move stack:0x20, 0
+	040 Call CommandBuffer.SetGlobalTexture, rcx, rdx, r8, r9
+	041 LoadAddress r11, stack:0xA0
+	042 Move rbx, [r11+16]
+	043 Move rbp, [r11+24]
+	044 Move rsi, [r11+32]
+	045 Move rsp, r11
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return 
+	049 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalBuffer(System.String name, UnityEngine.ComputeBuffer value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168A29h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826533A0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalBuffer, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalBuffer(System.Int32 nameID, UnityEngine.ComputeBuffer value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168A09h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653320h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call 0x182653320, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalBuffer(System.String name, UnityEngine.GraphicsBuffer value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168A69h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826534C0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetGlobalBuffer, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalBuffer(System.Int32 nameID, UnityEngine.GraphicsBuffer value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168A49h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182653440h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call 0x182653440, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalConstantBuffer(UnityEngine.ComputeBuffer buffer, System.Int32 nameID, System.Int32 offset, System.Int32 size)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168B7Fh
+	mov qword ptr [rsp+68h],0
+	add rsp,38h
+	jmp near ptr 0000000182653720h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x68, 0
+	006 ShiftStack 56
+	007 Call 0x182653720, rcx, rdx, r8, r9, stack:0x0
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalConstantBuffer(UnityEngine.ComputeBuffer buffer, System.String name, System.Int32 offset, System.Int32 size)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168B1Fh
+	mov qword ptr [rsp+68h],0
+	add rsp,38h
+	jmp near ptr 0000000182653860h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x68, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.SetGlobalConstantBuffer, rcx, rdx, r8, r9, stack:0x0
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalConstantBuffer(UnityEngine.GraphicsBuffer buffer, System.Int32 nameID, System.Int32 offset, System.Int32 size)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168AEFh
+	mov qword ptr [rsp+68h],0
+	add rsp,38h
+	jmp near ptr 00000001826537C0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x68, 0
+	006 ShiftStack 56
+	007 Call 0x1826537C0, rcx, rdx, r8, r9, stack:0x0
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetGlobalConstantBuffer(UnityEngine.GraphicsBuffer buffer, System.String name, System.Int32 offset, System.Int32 size)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182168B4Fh
+	mov qword ptr [rsp+68h],0
+	add rsp,38h
+	jmp near ptr 0000000182653900h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x68, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.SetGlobalConstantBuffer, rcx, rdx, r8, r9, stack:0x0
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetShadowSamplingMode(UnityEngine.Rendering.RenderTargetIdentifier shadowmap, UnityEngine.Rendering.ShadowSamplingMode mode)
+
+Disassembly:
+	sub rsp,58h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169ACBh
+	movups xmm0,[rdx]
+	xor r9d,r9d
+	movups xmm1,[rdx+10h]
+	movaps [rsp+20h],xmm0
+	movsd xmm0,qword ptr [rdx+20h]
+	lea rdx,[rsp+20h]
+	movsd qword ptr [rsp+40h],xmm0
+	movaps [rsp+30h],xmm1
+	call 000000018265A500h
+	add rsp,58h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -88
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {16}
+	005 Move xmm0, [rdx]
+	006 Move r9, 0
+	007 Move xmm1, [rdx+16]
+	008 Move stack:0x20, xmm0
+	009 Move xmm0, [rdx+32]
+	010 LoadAddress rdx, stack:0x20
+	011 Move stack:0x40, xmm0
+	012 Move stack:0x30, xmm1
+	013 Call CommandBuffer.SetShadowSamplingMode, rcx, rdx, r8
+	014 ShiftStack 88
+	015 Return 
+	016 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetSinglePassStereo(UnityEngine.Rendering.SinglePassStereoMode mode)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169AF9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 000000018264FB90h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call 0x18264FB90, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void IssuePluginEvent(System.IntPtr callback, System.Int32 eventID)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167DE9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182650440h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.IssuePluginEvent, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void IssuePluginEventAndData(System.IntPtr callback, System.Int32 eventID, System.IntPtr data)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167DBFh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182650250h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.IssuePluginEventAndData, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void IssuePluginCustomBlit(System.IntPtr callback, System.UInt32 command, UnityEngine.Rendering.RenderTargetIdentifier source, UnityEngine.Rendering.RenderTargetIdentifier dest, System.UInt32 commandParam, System.UInt32 commandFlags)
+
+Disassembly:
+	mov r11,rsp
+	sub rsp,0A8h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167D5Eh
+	mov rax,[rsp+0D0h]
+	mov qword ptr [r11-70h],0
+	movups xmm0,[rax]
+	movups xmm1,[rax+10h]
+	movaps [rsp+40h],xmm0
+	movsd xmm0,qword ptr [rax+20h]
+	mov eax,[rsp+0E0h]
+	mov [rsp+30h],eax
+	mov eax,[rsp+0D8h]
+	movaps [rsp+50h],xmm1
+	movups xmm1,[r9]
+	mov [rsp+28h],eax
+	lea rax,[r11-68h]
+	movsd qword ptr [rsp+60h],xmm0
+	movups xmm0,[r9+10h]
+	mov [rsp+20h],rax
+	movaps [rsp+70h],xmm1
+	movsd xmm1,qword ptr [r9+20h]
+	lea r9,[r11-38h]
+	movaps [r11-28h],xmm0
+	movsd qword ptr [r11-18h],xmm1
+	call 000000018264FE20h
+	add rsp,0A8h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move r11, rsp
+	002 ShiftStack -168
+	003 Move rcx, [rcx+16]
+	004 Compare rcx, 0
+	005 JumpIfEqual {30}
+	006 Move rax, stack:0xD0
+	007 Move [r11-112], 0
+	008 Move xmm0, [rax]
+	009 Move xmm1, [rax+16]
+	010 Move stack:0x40, xmm0
+	011 Move xmm0, [rax+32]
+	012 Move rax, stack:0xE0
+	013 Move stack:0x30, rax
+	014 Move rax, stack:0xD8
+	015 Move stack:0x50, xmm1
+	016 Move xmm1, [r9]
+	017 Move stack:0x28, rax
+	018 LoadAddress rax, [r11-104]
+	019 Move stack:0x60, xmm0
+	020 Move xmm0, [r9+16]
+	021 Move stack:0x20, rax
+	022 Move stack:0x70, xmm1
+	023 Move xmm1, [r9+32]
+	024 LoadAddress r9, [r11-56]
+	025 Move [r11-40], xmm0
+	026 Move [r11-24], xmm1
+	027 Call CommandBuffer.IssuePluginCustomBlit, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	028 ShiftStack 168
+	029 Return 
+	030 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void IssuePluginCustomTextureUpdateV2(System.IntPtr callback, UnityEngine.Texture targetTexture, System.UInt32 userData)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167D8Fh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182650050h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.IssuePluginCustomTextureUpdateV2, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.EnableKeyword(in UnityEngine.Rendering.GlobalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167B89h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001826495A0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableKeyword, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.EnableKeyword(UnityEngine.Material material, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167BC9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826496D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.EnableKeyword(UnityEngine.ComputeShader computeShader, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167BA9h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182649600h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.EnableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.DisableKeyword(in UnityEngine.Rendering.GlobalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A29h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000182645980h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableKeyword, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.DisableKeyword(UnityEngine.Material material, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A69h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826457E0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.DisableKeyword(UnityEngine.ComputeShader computeShader, in UnityEngine.Rendering.LocalKeyword keyword)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182167A49h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 00000001826458B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.DisableKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.SetKeyword(in UnityEngine.Rendering.GlobalKeyword keyword, System.Boolean value)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 0000000182169249h
+	xor r9d,r9d
+	add rsp,28h
+	jmp near ptr 0000000182655A40h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r9, 0
+	006 ShiftStack 40
+	007 Call CommandBuffer.SetKeyword, rcx, rdx, r8
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.SetKeyword(UnityEngine.Material material, in UnityEngine.Rendering.LocalKeyword keyword, System.Boolean value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018216929Fh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182655AB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.SetKeyword, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void UnityEngine.Rendering.IBaseCommandBuffer.SetKeyword(UnityEngine.ComputeShader computeShader, in UnityEngine.Rendering.LocalKeyword keyword, System.Boolean value)
+
+Disassembly:
+	sub rsp,38h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 000000018216926Fh
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 0000000182655950h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move stack:0x60, 0
+	006 ShiftStack 56
+	007 Call CommandBuffer.SetKeyword, rcx, rdx, r8, r9
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+

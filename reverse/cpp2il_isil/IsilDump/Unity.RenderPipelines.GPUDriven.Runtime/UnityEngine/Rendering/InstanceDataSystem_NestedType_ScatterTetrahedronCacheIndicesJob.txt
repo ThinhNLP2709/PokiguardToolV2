@@ -1,0 +1,50 @@
+Type: UnityEngine.Rendering.InstanceDataSystem+ScatterTetrahedronCacheIndicesJob
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[rcx+10h]
+	lea rdi,[rcx+20h]
+	movsxd r8,edx
+	mov ebx,[rax+r8*4]
+	xor r8d,r8d
+	movsxd rax,edx
+	mov rdx,[rcx]
+	mov rcx,rdi
+	mov edx,[rdx+rax*4]
+	call 0000000182266F70h
+	movsxd rcx,eax
+	mov rax,[rdi+68h]
+	mov [rax+rcx*4],ebx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [rcx+16]
+	006 LoadAddress rdi, [rcx+32]
+	007 Move r8, rdx
+	008 Move rbx, [rax+r8*4]
+	009 Move r8, 0
+	010 Move rax, rdx
+	011 Move rdx, [rcx]
+	012 Move rcx, rdi
+	013 Move rdx, [rdx+rax*4]
+	014 Call CPUInstanceData.InstanceToIndex, rcx, rdx
+	015 Move rcx, rax
+	016 Move rax, [rdi+104]
+	017 Move [rax+rcx*4], rbx
+	018 Move rbx, stack:0x30
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Return 
+

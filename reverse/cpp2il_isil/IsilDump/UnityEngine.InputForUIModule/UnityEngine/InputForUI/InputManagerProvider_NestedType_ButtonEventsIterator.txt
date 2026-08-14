@@ -1,0 +1,146 @@
+Type: UnityEngine.InputForUI.InputManagerProvider+ButtonEventsIterator
+
+Method: System.Boolean get_Current()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+4]
+	not al
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Neg rax
+	003 And rax, rax, 1
+	004 Return rax
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov r9d,[rcx]
+	mov r8,rcx
+	nop word ptr [rax+rax]
+	inc dword ptr [r8+4]
+	mov eax,1
+	mov edx,[r8+4]
+	mov ecx,edx
+	shl eax,cl
+	test r9d,eax
+	ja short 00000001826B081Eh
+	cmp edx,4
+	jl short 00000001826B0800h
+	xor al,al
+	ret
+	mov al,1
+	ret
+
+ISIL:
+	001 Move r9, [rcx]
+	002 Move r8, rcx
+	003 Nop 
+	004 Add [r8+4], [r8+4], 1
+	005 Move rax, 1
+	006 Move rdx, [r8+4]
+	007 Move rcx, rdx
+	008 ShiftLeft rax, rcx
+	009 Compare r9, rax
+	010 JumpIfGreater {15}
+	011 Compare rdx, 4
+	012 JumpIfLess {4}
+	013 Move rax, 0
+	014 Return rax
+	015 Move rax, 1
+	016 Return rax
+
+Method: System.Void Reset()
+
+Disassembly:
+	mov dword ptr [rcx+4],0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move [rcx+4], 0xFFFFFFFF
+	002 Return 
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	sub rsp,28h
+	movzx eax,byte ptr [rcx+4]
+	lea rdx,[rsp+30h]
+	mov rcx,[18375C0C8h]
+	not al
+	and al,1
+	mov [rsp+30h],al
+	call 000000018037AC90h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+4]
+	003 LoadAddress rdx, stack:0x30
+	004 Move rcx, [0x18375C0C8]
+	005 Neg rax
+	006 And rax, rax, 1
+	007 Move stack:0x30, rax
+	008 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	009 ShiftStack 40
+	010 Return rax
+
+Method: UnityEngine.InputForUI.InputManagerProvider+ButtonEventsIterator FromState(System.Boolean previous, System.Boolean down, System.Boolean up, System.Boolean current)
+
+Disassembly:
+	sub rsp,18h
+	test cl,cl
+	jne short 00000001826B07B6h
+	test r9b,r9b
+	je short 00000001826B07D4h
+	mov eax,1
+	mov [rsp],eax
+	mov dword ptr [rsp+4],0FFFFFFFFh
+	mov rax,[rsp]
+	add rsp,18h
+	ret
+	test r9b,r9b
+	jne short 00000001826B07D4h
+	mov eax,2
+	mov [rsp],eax
+	mov dword ptr [rsp+4],0FFFFFFFFh
+	mov rax,[rsp]
+	add rsp,18h
+	ret
+	xor eax,eax
+	mov [rsp],eax
+	mov dword ptr [rsp+4],0FFFFFFFFh
+	mov rax,[rsp]
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Compare rcx, 0
+	003 JumpIfNotEqual {12}
+	004 Compare r9, 0
+	005 JumpIfEqual {20}
+	006 Move rax, 1
+	007 Move stack:0x0, rax
+	008 Move stack:0x4, 0xFFFFFFFF
+	009 Move rax, stack:0x0
+	010 ShiftStack 24
+	011 Return rax
+	012 Compare r9, 0
+	013 JumpIfNotEqual {20}
+	014 Move rax, 2
+	015 Move stack:0x0, rax
+	016 Move stack:0x4, 0xFFFFFFFF
+	017 Move rax, stack:0x0
+	018 ShiftStack 24
+	019 Return rax
+	020 Move rax, 0
+	021 Move stack:0x0, rax
+	022 Move stack:0x4, 0xFFFFFFFF
+	023 Move rax, stack:0x0
+	024 ShiftStack 24
+	025 Return rax
+

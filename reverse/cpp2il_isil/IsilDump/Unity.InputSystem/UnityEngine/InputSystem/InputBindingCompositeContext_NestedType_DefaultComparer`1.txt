@@ -1,0 +1,42 @@
+Type: UnityEngine.InputSystem.InputBindingCompositeContext+DefaultComparer`1
+
+Method: System.Int32 Compare(TValue x, TValue y)
+
+Disassembly:
+	movss dword ptr [rsp+10h],xmm1
+	sub rsp,38h
+	mov rax,[r9+20h]
+	movaps [rsp+20h],xmm6
+	movaps xmm6,xmm2
+	test byte ptr [rax+135h],1
+	jne short 00000001810277E7h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov r8,[rax+0C0h]
+	lea rcx,[rsp+48h]
+	movaps xmm1,xmm6
+	mov r8,[r8+10h]
+	call 00000001818232F0h
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 Move stack:0x10, xmm1
+	002 ShiftStack -56
+	003 Move rax, [r9+32]
+	004 Move stack:0x20, xmm6
+	005 Move xmm6, xmm2
+	006 Compare [rax+309], 1
+	007 JumpIfNotEqual {10}
+	008 Move rcx, rax
+	009 Call 0x180384C90, rcx, rdx, r8, r9
+	010 Move r8, [rax+192]
+	011 LoadAddress rcx, stack:0x48
+	012 Move xmm1, xmm6
+	013 Move r8, [r8+16]
+	014 Call Single.CompareTo, rcx, rdx
+	015 Move xmm6, stack:0x20
+	016 ShiftStack 56
+	017 Return rax
+

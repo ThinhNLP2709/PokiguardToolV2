@@ -1,0 +1,200 @@
+Type: TMPro.TMP_GlyphValueRecord
+
+Method: System.Single get_xPlacement()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx]
+	002 Return xmm0
+
+Method: System.Void set_xPlacement(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx], xmm1
+	002 Return 
+
+Method: System.Single get_yPlacement()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+4]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+4]
+	002 Return xmm0
+
+Method: System.Void set_yPlacement(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+4],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+4], xmm1
+	002 Return 
+
+Method: System.Single get_xAdvance()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+8]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+8]
+	002 Return xmm0
+
+Method: System.Void set_xAdvance(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+8],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+8], xmm1
+	002 Return 
+
+Method: System.Single get_yAdvance()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+0Ch]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+12]
+	002 Return xmm0
+
+Method: System.Void set_yAdvance(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+12], xmm1
+	002 Return 
+
+Method: System.Void .ctor(System.Single xPlacement, System.Single yPlacement, System.Single xAdvance, System.Single yAdvance)
+
+Disassembly:
+	movss xmm0,dword ptr [rsp+28h]
+	movss dword ptr [rcx+0Ch],xmm0
+	movss dword ptr [rcx],xmm1
+	movss dword ptr [rcx+4],xmm2
+	movss dword ptr [rcx+8],xmm3
+	ret
+
+ISIL:
+	001 Move xmm0, stack:0x28
+	002 Move [rcx+12], xmm0
+	003 Move [rcx], xmm1
+	004 Move [rcx+4], xmm2
+	005 Move [rcx+8], xmm3
+	006 Return 
+
+Method: System.Void .ctor(TMPro.GlyphValueRecord_Legacy valueRecord)
+
+Disassembly:
+	mov eax,[rdx]
+	mov [rcx],eax
+	mov eax,[rdx+4]
+	mov [rcx+4],eax
+	mov eax,[rdx+8]
+	mov [rcx+8],eax
+	mov eax,[rdx+0Ch]
+	mov [rcx+0Ch],eax
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move [rcx], rax
+	003 Move rax, [rdx+4]
+	004 Move [rcx+4], rax
+	005 Move rax, [rdx+8]
+	006 Move [rcx+8], rax
+	007 Move rax, [rdx+12]
+	008 Move [rcx+12], rax
+	009 Return 
+
+Method: System.Void .ctor(UnityEngine.TextCore.LowLevel.GlyphValueRecord valueRecord)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	mov rcx,rbx
+	xor edx,edx
+	call 00000001804BA640h
+	xor edx,edx
+	movss dword ptr [rdi],xmm0
+	mov rcx,rbx
+	call 00000001804BA650h
+	xor edx,edx
+	movss dword ptr [rdi+4],xmm0
+	mov rcx,rbx
+	call 000000018044A050h
+	xor edx,edx
+	movss dword ptr [rdi+8],xmm0
+	mov rcx,rbx
+	call 000000018044A040h
+	mov rbx,[rsp+30h]
+	movss dword ptr [rdi+0Ch],xmm0
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rcx, rbx
+	008 Move rdx, 0
+	009 Call 0x1804BA640, rcx, rdx
+	010 Move rdx, 0
+	011 Move [rdi], xmm0
+	012 Move rcx, rbx
+	013 Call 0x1804BA650, rcx, rdx
+	014 Move rdx, 0
+	015 Move [rdi+4], xmm0
+	016 Move rcx, rbx
+	017 Call 0x18044A050, rcx, rdx
+	018 Move rdx, 0
+	019 Move [rdi+8], xmm0
+	020 Move rcx, rbx
+	021 Call 0x18044A040, rcx, rdx
+	022 Move rbx, stack:0x30
+	023 Move [rdi+12], xmm0
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Return 
+
+Method: TMPro.TMP_GlyphValueRecord op_Addition(TMPro.TMP_GlyphValueRecord a, TMPro.TMP_GlyphValueRecord b)
+
+Disassembly:
+	movups xmm1,[rdx]
+	mov rax,rcx
+	movups xmm0,[r8]
+	addps xmm1,xmm0
+	movups [rcx],xmm1
+	ret
+
+ISIL:
+	001 Move xmm1, [rdx]
+	002 Move rax, rcx
+	003 Move xmm0, [r8]
+	004 NotImplemented "addps xmm1,xmm0"
+	005 Move [rcx], xmm1
+	006 Return rax
+

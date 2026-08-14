@@ -1,0 +1,428 @@
+Type: UnityEngine.InputSystem.LowLevel.QueryPairedUserAccountCommand
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_Type()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov eax,43h
+	mov [rsp+28h],rcx
+	mov r9d,eax
+	mov [rsp+48h],ecx
+	mov edx,50h
+	lea rcx,[rsp+48h]
+	mov [rsp+20h],ax
+	mov r8d,41h
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rax, 67
+	004 Move stack:0x28, rcx
+	005 Move r9, rax
+	006 Move stack:0x48, rcx
+	007 Move rdx, 80
+	008 LoadAddress rcx, stack:0x48
+	009 Move stack:0x20, rax
+	010 Move r8, 65
+	011 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	012 Move rax, stack:0x48
+	013 ShiftStack 56
+	014 Return rax
+
+Method: System.String get_id()
+
+Disassembly:
+	add rcx,210h
+	xor r8d,r8d
+	mov edx,100h
+	jmp near ptr 0000000181F5AAE0h
+
+ISIL:
+	001 Add rcx, rcx, 528
+	002 Move r8, 0
+	003 Move rdx, 256
+	004 Call StringHelpers.ReadStringFromBuffer, rcx, rdx, r8
+	005 Return rax
+
+Method: System.Void set_id(System.String value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	test rdx,rdx
+	je short 000000018202E17Dh
+	cmp dword ptr [rdx+10h],100h
+	jg short 000000018202E1C6h
+	lea rdx,[rcx+210h]
+	xor r9d,r9d
+	mov rcx,rdi
+	mov r8d,100h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181F5B0E0h
+	lea rcx,[1834FF998h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[1835479B0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 000000018176B740h
+	lea rcx,[1835585E8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	mov rcx,[18375C0E8h]
+	lea rdx,[rsp+38h]
+	mov dword ptr [rsp+38h],100h
+	call 000000018037AC90h
+	lea rcx,[18354A3E8h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	xor r9d,r9d
+	mov r8,rbx
+	mov rdx,rdi
+	call 000000018165E830h
+	lea rcx,[1834FF8E8h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[1835479B0h]
+	mov rdi,rax
+	call 000000018037BBB0h
+	mov r8,rax
+	xor r9d,r9d
+	mov rdx,rbx
+	mov rcx,rdi
+	call 000000018176B5A0h
+	lea rcx,[1835585E8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Compare rdx, 0
+	007 JumpIfEqual {20}
+	008 Compare [rdx+16], 256
+	009 JumpIfGreater {37}
+	010 LoadAddress rdx, [rcx+528]
+	011 Move r9, 0
+	012 Move rcx, rdi
+	013 Move r8, 256
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call StringHelpers.WriteStringToBuffer, rcx, rdx, r8, r9
+	019 Return 
+	020 LoadAddress rcx, [0x1834FF998]
+	021 Call 0x18037BBB0, rcx, rdx, r8, r9
+	022 Move rcx, rax
+	023 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	024 LoadAddress rcx, [0x1835479B0]
+	025 Move rbx, rax
+	026 Call 0x18037BBB0, rcx, rdx, r8, r9
+	027 Move rdx, rax
+	028 Move r8, 0
+	029 Move rcx, rbx
+	030 Call ArgumentNullException..ctor, rcx, rdx
+	031 LoadAddress rcx, [0x1835585E8]
+	032 Call 0x18037BBB0, rcx, rdx, r8, r9
+	033 Move rdx, rax
+	034 Move rcx, rbx
+	035 Call 0x18037BDF0, rcx, rdx, r8, r9
+	036 Interrupt 
+	037 Move rcx, [0x18375C0E8]
+	038 LoadAddress rdx, stack:0x38
+	039 Move stack:0x38, 256
+	040 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	041 LoadAddress rcx, [0x18354A3E8]
+	042 Move rbx, rax
+	043 Call 0x18037BBB0, rcx, rdx, r8, r9
+	044 Move rcx, rax
+	045 Move r9, 0
+	046 Move r8, rbx
+	047 Move rdx, rdi
+	048 Call String.Format, rcx, rdx, r8, r9
+	049 LoadAddress rcx, [0x1834FF8E8]
+	050 Move rbx, rax
+	051 Call 0x18037BBB0, rcx, rdx, r8, r9
+	052 Move rcx, rax
+	053 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	054 LoadAddress rcx, [0x1835479B0]
+	055 Move rdi, rax
+	056 Call 0x18037BBB0, rcx, rdx, r8, r9
+	057 Move r8, rax
+	058 Move r9, 0
+	059 Move rdx, rbx
+	060 Move rcx, rdi
+	061 Call ArgumentException..ctor, rcx, rdx, r8
+	062 LoadAddress rcx, [0x1835585E8]
+	063 Call 0x18037BBB0, rcx, rdx, r8, r9
+	064 Move rdx, rax
+	065 Move rcx, rdi
+	066 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.String get_name()
+
+Disassembly:
+	add rcx,10h
+	xor r8d,r8d
+	mov edx,100h
+	jmp near ptr 0000000181F5AAE0h
+
+ISIL:
+	001 Add rcx, rcx, 16
+	002 Move r8, 0
+	003 Move rdx, 256
+	004 Call StringHelpers.ReadStringFromBuffer, rcx, rdx, r8
+	005 Return rax
+
+Method: System.Void set_name(System.String value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	test rdx,rdx
+	je short 000000018202E28Ah
+	cmp dword ptr [rdx+10h],100h
+	jg short 000000018202E2D3h
+	lea rdx,[rcx+10h]
+	xor r9d,r9d
+	mov rcx,rdi
+	mov r8d,100h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181F5B0E0h
+	lea rcx,[1834FF998h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[1835479B0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 000000018176B740h
+	lea rcx,[1835586A8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	mov rcx,[18375C0E8h]
+	lea rdx,[rsp+38h]
+	mov dword ptr [rsp+38h],100h
+	call 000000018037AC90h
+	lea rcx,[183525890h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	xor r9d,r9d
+	mov r8,rbx
+	mov rdx,rdi
+	call 000000018165E830h
+	lea rcx,[1834FF8E8h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[1835479B0h]
+	mov rdi,rax
+	call 000000018037BBB0h
+	mov r8,rax
+	xor r9d,r9d
+	mov rdx,rbx
+	mov rcx,rdi
+	call 000000018176B5A0h
+	lea rcx,[1835586A8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Compare rdx, 0
+	007 JumpIfEqual {20}
+	008 Compare [rdx+16], 256
+	009 JumpIfGreater {37}
+	010 LoadAddress rdx, [rcx+16]
+	011 Move r9, 0
+	012 Move rcx, rdi
+	013 Move r8, 256
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call StringHelpers.WriteStringToBuffer, rcx, rdx, r8, r9
+	019 Return 
+	020 LoadAddress rcx, [0x1834FF998]
+	021 Call 0x18037BBB0, rcx, rdx, r8, r9
+	022 Move rcx, rax
+	023 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	024 LoadAddress rcx, [0x1835479B0]
+	025 Move rbx, rax
+	026 Call 0x18037BBB0, rcx, rdx, r8, r9
+	027 Move rdx, rax
+	028 Move r8, 0
+	029 Move rcx, rbx
+	030 Call ArgumentNullException..ctor, rcx, rdx
+	031 LoadAddress rcx, [0x1835586A8]
+	032 Call 0x18037BBB0, rcx, rdx, r8, r9
+	033 Move rdx, rax
+	034 Move rcx, rbx
+	035 Call 0x18037BDF0, rcx, rdx, r8, r9
+	036 Interrupt 
+	037 Move rcx, [0x18375C0E8]
+	038 LoadAddress rdx, stack:0x38
+	039 Move stack:0x38, 256
+	040 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	041 LoadAddress rcx, [0x183525890]
+	042 Move rbx, rax
+	043 Call 0x18037BBB0, rcx, rdx, r8, r9
+	044 Move rcx, rax
+	045 Move r9, 0
+	046 Move r8, rbx
+	047 Move rdx, rdi
+	048 Call String.Format, rcx, rdx, r8, r9
+	049 LoadAddress rcx, [0x1834FF8E8]
+	050 Move rbx, rax
+	051 Call 0x18037BBB0, rcx, rdx, r8, r9
+	052 Move rcx, rax
+	053 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	054 LoadAddress rcx, [0x1835479B0]
+	055 Move rdi, rax
+	056 Call 0x18037BBB0, rcx, rdx, r8, r9
+	057 Move r8, rax
+	058 Move r9, 0
+	059 Move rdx, rbx
+	060 Move rcx, rdi
+	061 Call ArgumentException..ctor, rcx, rdx, r8
+	062 LoadAddress rcx, [0x1835586A8]
+	063 Call 0x18037BBB0, rcx, rdx, r8, r9
+	064 Move rdx, rax
+	065 Move rcx, rdi
+	066 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_typeStatic()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov eax,43h
+	mov [rsp+28h],rcx
+	mov r9d,eax
+	mov [rsp+50h],ecx
+	mov edx,50h
+	lea rcx,[rsp+50h]
+	mov [rsp+20h],ax
+	mov r8d,41h
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rax, 67
+	004 Move stack:0x28, rcx
+	005 Move r9, rax
+	006 Move stack:0x50, rcx
+	007 Move rdx, 80
+	008 LoadAddress rcx, stack:0x50
+	009 Move stack:0x20, rax
+	010 Move r8, 65
+	011 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	012 Move rax, stack:0x50
+	013 ShiftStack 56
+	014 Return rax
+
+Method: UnityEngine.InputSystem.LowLevel.QueryPairedUserAccountCommand Create()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	xor edx,edx
+	mov r8d,410h
+	mov rbx,rcx
+	call 0000000180444E50h
+	xor ecx,ecx
+	mov eax,43h
+	mov [rsp+28h],rcx
+	mov r9d,eax
+	mov [rsp+40h],ecx
+	mov edx,50h
+	lea rcx,[rsp+40h]
+	mov [rsp+20h],ax
+	mov r8d,41h
+	call 0000000181F41F80h
+	mov eax,[rsp+40h]
+	mov [rsp+40h],eax
+	mov dword ptr [rsp+44h],410h
+	mov rax,[rsp+40h]
+	mov [rbx],rax
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rdx, 0
+	005 Move r8, 1040
+	006 Move rbx, rcx
+	007 Call 0x180444E50, rcx, rdx, r8, r9
+	008 Move rcx, 0
+	009 Move rax, 67
+	010 Move stack:0x28, rcx
+	011 Move r9, rax
+	012 Move stack:0x40, rcx
+	013 Move rdx, 80
+	014 LoadAddress rcx, stack:0x40
+	015 Move stack:0x20, rax
+	016 Move r8, 65
+	017 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	018 Move rax, stack:0x40
+	019 Move stack:0x40, rax
+	020 Move stack:0x44, 1040
+	021 Move rax, stack:0x40
+	022 Move [rbx], rax
+	023 Move rax, rbx
+	024 ShiftStack 48
+	025 Move rbx, stack:0x0
+	026 ShiftStack 8
+	027 Return rax
+

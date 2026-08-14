@@ -1,0 +1,190 @@
+Type: ActivePVP+<OutputsParam>d__185
+
+Method: System.Void .ctor(System.Int32 <>1__state)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov [rbx+10h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Void System.IDisposable.Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,20h
+	mov eax,[rcx+10h]
+	mov rbx,rcx
+	mov rdi,[rcx+20h]
+	test eax,eax
+	jne short 0000000180596F51h
+	mov [rsp+30h],rsi
+	mov rsi,[rcx+28h]
+	mov dword ptr [rcx+10h],0FFFFFFFFh
+	test rdi,rdi
+	je short 0000000180596F6Ah
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000180473CF0h
+	xor r9d,r9d
+	mov r8d,eax
+	mov rdx,rsi
+	mov rcx,rdi
+	call 0000000180471DC0h
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rsi,[rsp+30h]
+	mov al,1
+	mov dword ptr [rbx+10h],1
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp eax,1
+	jne short 0000000180596F5Dh
+	mov dword ptr [rcx+10h],0FFFFFFFFh
+	mov rbx,[rsp+38h]
+	xor al,al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [rcx+16]
+	006 Move rbx, rcx
+	007 Move rdi, [rcx+32]
+	008 Compare rax, 0
+	009 JumpIfNotEqual {35}
+	010 Move stack:0x30, rsi
+	011 Move rsi, [rcx+40]
+	012 Move [rcx+16], 0xFFFFFFFF
+	013 Compare rdi, 0
+	014 JumpIfEqual {44}
+	015 Move rdx, 0
+	016 Move rcx, rdi
+	017 Call ActivePVP.get_CurrentTurnPlayerActorNumber, rcx, rdx
+	018 Move r9, 0
+	019 Move r8, rax
+	020 Move rdx, rsi
+	021 Move rcx, rdi
+	022 Call ActivePVP.OutputsParam, rcx, rdx, r8
+	023 LoadAddress rcx, [rbx+24]
+	024 Move [rbx+24], rax
+	025 Move rdx, rax
+	026 Call 0x18037ACB0, rcx, rdx, r8, r9
+	027 Move rsi, stack:0x30
+	028 Move rax, 1
+	029 Move [rbx+16], 1
+	030 Move rbx, stack:0x38
+	031 ShiftStack 32
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 Return rax
+	035 Compare rax, 1
+	036 JumpIfNotEqual {38}
+	037 Move [rcx+16], 0xFFFFFFFF
+	038 Move rbx, stack:0x38
+	039 Move rax, 0
+	040 ShiftStack 32
+	041 Move rdi, stack:0x0
+	042 ShiftStack 8
+	043 Return rax
+	044 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.Generic.IEnumerator<System.Object>.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void System.Collections.IEnumerator.Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[1834F0018h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001818083D0h
+	lea rcx,[183512CE0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x1834F0018]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Move rbx, rax
+	011 Call NotSupportedException..ctor, rcx, rdx
+	012 LoadAddress rcx, [0x183512CE0]
+	013 Call 0x18037BBB0, rcx, rdx, r8, r9
+	014 Move rdx, rax
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+

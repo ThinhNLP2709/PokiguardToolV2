@@ -1,0 +1,374 @@
+Type: UnityEngine.Rendering.BitArrayUtilities
+
+Method: System.Boolean Get8(System.UInt32 index, System.Byte data)
+
+Disassembly:
+	movzx eax,dl
+	mov r8d,1
+	shl r8d,cl
+	test eax,r8d
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 Move r8, 1
+	003 ShiftLeft r8, rcx
+	004 Compare rax, r8
+	005 NotImplemented "seta al"
+	006 Return rax
+
+Method: System.Boolean Get16(System.UInt32 index, System.UInt16 data)
+
+Disassembly:
+	movzx eax,dx
+	mov r8d,1
+	shl r8d,cl
+	test eax,r8d
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 Move r8, 1
+	003 ShiftLeft r8, rcx
+	004 Compare rax, r8
+	005 NotImplemented "seta al"
+	006 Return rax
+
+Method: System.Boolean Get32(System.UInt32 index, System.UInt32 data)
+
+Disassembly:
+	mov eax,1
+	shl eax,cl
+	test edx,eax
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, 1
+	002 ShiftLeft rax, rcx
+	003 Compare rdx, rax
+	004 NotImplemented "seta al"
+	005 Return rax
+
+Method: System.Boolean Get64(System.UInt32 index, System.UInt64 data)
+
+Disassembly:
+	mov eax,1
+	shl rax,cl
+	test rdx,rax
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, 1
+	002 ShiftLeft rax, rcx
+	003 Compare rdx, rax
+	004 NotImplemented "seta al"
+	005 Return rax
+
+Method: System.Boolean Get128(System.UInt32 index, System.UInt64 data1, System.UInt64 data2)
+
+Disassembly:
+	mov r9d,1
+	shl r9,cl
+	cmp ecx,40h
+	jae short 00000001821E4A45h
+	test rdx,r9
+	seta al
+	ret
+	test r8,r9
+	seta al
+	ret
+
+ISIL:
+	001 Move r9, 1
+	002 ShiftLeft r9, rcx
+	003 Compare rcx, 64
+	004 JumpIfGreaterOrEqual {8}
+	005 Compare rdx, r9
+	006 NotImplemented "seta al"
+	007 Return rax
+	008 Compare r8, r9
+	009 NotImplemented "seta al"
+	010 Return rax
+
+Method: System.Boolean Get256(System.UInt32 index, System.UInt64 data1, System.UInt64 data2, System.UInt64 data3, System.UInt64 data4)
+
+Disassembly:
+	mov eax,1
+	shl rax,cl
+	cmp ecx,80h
+	jae short 00000001821E4A93h
+	cmp ecx,40h
+	jae short 00000001821E4A8Ch
+	test rdx,rax
+	seta al
+	ret
+	test r8,rax
+	seta al
+	ret
+	cmp ecx,0C0h
+	jae short 00000001821E4AA2h
+	test r9,rax
+	seta al
+	ret
+	test [rsp+28h],rax
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, 1
+	002 ShiftLeft rax, rcx
+	003 Compare rcx, 128
+	004 JumpIfGreaterOrEqual {13}
+	005 Compare rcx, 64
+	006 JumpIfGreaterOrEqual {10}
+	007 Compare rdx, rax
+	008 NotImplemented "seta al"
+	009 Return rax
+	010 Compare r8, rax
+	011 NotImplemented "seta al"
+	012 Return rax
+	013 Compare rcx, 192
+	014 JumpIfGreaterOrEqual {18}
+	015 Compare r9, rax
+	016 NotImplemented "seta al"
+	017 Return rax
+	018 Compare stack:0x28, rax
+	019 NotImplemented "seta al"
+	020 Return rax
+
+Method: System.Void Set8(System.UInt32 index, ref System.Byte data, System.Boolean value)
+
+Disassembly:
+	movzx eax,byte ptr [rdx]
+	and ecx,1Fh
+	test r8b,r8b
+	je short 00000001821E4C11h
+	bts eax,ecx
+	mov [rdx],al
+	ret
+	btr eax,ecx
+	mov [rdx],al
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 And rcx, rcx, 31
+	003 Compare r8, 0
+	004 JumpIfEqual {8}
+	005 NotImplemented "bts eax,ecx"
+	006 Move [rdx], rax
+	007 Return 
+	008 NotImplemented "btr eax,ecx"
+	009 Move [rdx], rax
+	010 Return 
+
+Method: System.Void Set16(System.UInt32 index, ref System.UInt16 data, System.Boolean value)
+
+Disassembly:
+	movzx eax,word ptr [rdx]
+	and ecx,1Fh
+	test r8b,r8b
+	je short 00000001821E4B42h
+	bts eax,ecx
+	mov [rdx],ax
+	ret
+	btr eax,ecx
+	mov [rdx],ax
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 And rcx, rcx, 31
+	003 Compare r8, 0
+	004 JumpIfEqual {8}
+	005 NotImplemented "bts eax,ecx"
+	006 Move [rdx], rax
+	007 Return 
+	008 NotImplemented "btr eax,ecx"
+	009 Move [rdx], rax
+	010 Return 
+
+Method: System.Void Set32(System.UInt32 index, ref System.UInt32 data, System.Boolean value)
+
+Disassembly:
+	mov eax,[rdx]
+	and ecx,1Fh
+	test r8b,r8b
+	je short 00000001821E4BD0h
+	bts eax,ecx
+	mov [rdx],eax
+	ret
+	btr eax,ecx
+	mov [rdx],eax
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 And rcx, rcx, 31
+	003 Compare r8, 0
+	004 JumpIfEqual {8}
+	005 NotImplemented "bts eax,ecx"
+	006 Move [rdx], rax
+	007 Return 
+	008 NotImplemented "btr eax,ecx"
+	009 Move [rdx], rax
+	010 Return 
+
+Method: System.Void Set64(System.UInt32 index, ref System.UInt64 data, System.Boolean value)
+
+Disassembly:
+	mov rax,[rdx]
+	and ecx,3Fh
+	test r8b,r8b
+	je short 00000001821E4BF3h
+	bts rax,rcx
+	mov [rdx],rax
+	ret
+	btr rax,rcx
+	mov [rdx],rax
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 And rcx, rcx, 63
+	003 Compare r8, 0
+	004 JumpIfEqual {8}
+	005 NotImplemented "bts rax,rcx"
+	006 Move [rdx], rax
+	007 Return 
+	008 NotImplemented "btr rax,rcx"
+	009 Move [rdx], rax
+	010 Return 
+
+Method: System.Void Set128(System.UInt32 index, ref System.UInt64 data1, ref System.UInt64 data2, System.Boolean value)
+
+Disassembly:
+	mov r10d,ecx
+	and r10d,3Fh
+	cmp ecx,40h
+	jb short 00000001821E4B14h
+	mov rax,[r8]
+	test r9b,r9b
+	je short 00000001821E4B0Ch
+	bts rax,r10
+	mov [r8],rax
+	ret
+	btr rax,r10
+	mov [r8],rax
+	ret
+	mov rax,[rdx]
+	test r9b,r9b
+	je short 00000001821E4B24h
+	bts rax,r10
+	mov [rdx],rax
+	ret
+	btr rax,r10
+	mov [rdx],rax
+	ret
+
+ISIL:
+	001 Move r10, rcx
+	002 And r10, r10, 63
+	003 Compare rcx, 64
+	004 JumpIfLess {14}
+	005 Move rax, [r8]
+	006 Compare r9, 0
+	007 JumpIfEqual {11}
+	008 NotImplemented "bts rax,r10"
+	009 Move [r8], rax
+	010 Return 
+	011 NotImplemented "btr rax,r10"
+	012 Move [r8], rax
+	013 Return 
+	014 Move rax, [rdx]
+	015 Compare r9, 0
+	016 JumpIfEqual {20}
+	017 NotImplemented "bts rax,r10"
+	018 Move [rdx], rax
+	019 Return 
+	020 NotImplemented "btr rax,r10"
+	021 Move [rdx], rax
+	022 Return 
+
+Method: System.Void Set256(System.UInt32 index, ref System.UInt64 data1, ref System.UInt64 data2, ref System.UInt64 data3, ref System.UInt64 data4, System.Boolean value)
+
+Disassembly:
+	mov eax,ecx
+	and eax,3Fh
+	cmp ecx,40h
+	jb short 00000001821E4B6Fh
+	cmp ecx,80h
+	jb short 00000001821E4B9Bh
+	cmp ecx,0C0h
+	jb short 00000001821E4B81h
+	mov rdx,[rsp+28h]
+	cmp byte ptr [rsp+30h],0
+	mov rcx,[rdx]
+	je short 00000001821E4BB5h
+	bts rcx,rax
+	mov [rdx],rcx
+	ret
+	cmp byte ptr [rsp+30h],0
+	mov rcx,[r9]
+	je short 00000001821E4B93h
+	bts rcx,rax
+	mov [r9],rcx
+	ret
+	btr rcx,rax
+	mov [r9],rcx
+	ret
+	cmp byte ptr [rsp+30h],0
+	mov rcx,[r8]
+	je short 00000001821E4BADh
+	bts rcx,rax
+	mov [r8],rcx
+	ret
+	btr rcx,rax
+	mov [r8],rcx
+	ret
+	btr rcx,rax
+	mov [rdx],rcx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 And rax, rax, 63
+	003 Compare rcx, 64
+	004 JumpIfLess {10}
+	005 Compare rcx, 128
+	006 JumpIfLess {25}
+	007 Compare rcx, 192
+	008 JumpIfLess {16}
+	009 Move rdx, stack:0x28
+	010 Compare stack:0x30, 0
+	011 Move rcx, [rdx]
+	012 JumpIfEqual {34}
+	013 NotImplemented "bts rcx,rax"
+	014 Move [rdx], rcx
+	015 Return 
+	016 Compare stack:0x30, 0
+	017 Move rcx, [r9]
+	018 JumpIfEqual {22}
+	019 NotImplemented "bts rcx,rax"
+	020 Move [r9], rcx
+	021 Return 
+	022 NotImplemented "btr rcx,rax"
+	023 Move [r9], rcx
+	024 Return 
+	025 Compare stack:0x30, 0
+	026 Move rcx, [r8]
+	027 JumpIfEqual {31}
+	028 NotImplemented "bts rcx,rax"
+	029 Move [r8], rcx
+	030 Return 
+	031 NotImplemented "btr rcx,rax"
+	032 Move [r8], rcx
+	033 Return 
+	034 NotImplemented "btr rcx,rax"
+	035 Move [rdx], rcx
+	036 Return 
+

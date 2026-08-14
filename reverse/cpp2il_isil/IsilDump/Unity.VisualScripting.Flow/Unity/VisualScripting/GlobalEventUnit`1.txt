@@ -1,0 +1,114 @@
+Type: Unity.VisualScripting.GlobalEventUnit`1
+
+Method: System.Boolean get_register()
+
+Disassembly:
+	mov al,1
+	ret
+
+ISIL:
+	001 Move rax, 1
+	002 Return rax
+
+Method: System.String get_hookName()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	lea rcx,[183552E10h]
+	mov rdi,rdx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001824769B0h
+	mov rdx,rdi
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 LoadAddress rcx, [0x183552E10]
+	006 Move rdi, rdx
+	007 Call 0x18037BBB0, rcx, rdx, r8, r9
+	008 Move rcx, rax
+	009 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	010 Move rdx, 0
+	011 Move rcx, rax
+	012 Move rbx, rax
+	013 Call InvalidImplementationException..ctor, rcx, rdx
+	014 Move rdx, rdi
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.VisualScripting.EventHook GetHook(Unity.VisualScripting.GraphReference reference)
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	mov r8,rdx
+	mov rbx,rcx
+	mov rdx,[rdx]
+	mov rcx,r8
+	mov rax,[rdx+6D8h]
+	mov rdx,[rdx+6E0h]
+	call rax
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	mov rdx,rax
+	call 000000018246B1F0h
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rbx
+	movups [rbx],xmm0
+	movsd qword ptr [rbx+10h],xmm1
+	add rsp,40h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Move r8, rdx
+	005 Move rbx, rcx
+	006 Move rdx, [rdx]
+	007 Move rcx, r8
+	008 Move rax, [rdx+1752]
+	009 Move rdx, [rdx+1760]
+	010 Call rax
+	011 Move r8, 0
+	012 LoadAddress rcx, stack:0x20
+	013 Move rdx, rax
+	014 Call EventHook.op_Implicit, rcx, rdx
+	015 Move xmm0, [rax]
+	016 Move xmm1, [rax+16]
+	017 Move rax, rbx
+	018 Move [rbx], xmm0
+	019 Move [rbx+16], xmm1
+	020 ShiftStack 64
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov rax,[rdx+20h]
+	mov rdx,[rax+0C0h]
+	mov rdx,[rdx+10h]
+	jmp near ptr 0000000180B170F0h
+
+ISIL:
+	001 Move rax, [rdx+32]
+	002 Move rdx, [rax+192]
+	003 Move rdx, [rdx+16]
+	004 Call 0x180B170F0, rcx, rdx
+	005 Return 
+

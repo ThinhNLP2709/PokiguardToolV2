@@ -1,0 +1,134 @@
+Type: UnityEngine.InputSystem.XR.PoseState
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_format()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183753300h],0
+	jne short 0000000181FFCF50h
+	lea rcx,[1834F9AF8h]
+	call 000000018037BB90h
+	mov byte ptr [183753300h],1
+	mov rax,[1834F9AF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181FFCF6Fh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[1834F9AF8h]
+	mov rax,[rax+0B8h]
+	mov eax,[rax]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183753300], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834F9AF8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183753300], 1
+	007 Move rax, typeof(UnityEngine.InputSystem.XR.PoseState)
+	008 Compare [rax+228], 0
+	009 JumpIfNotEqual {13}
+	010 Move rcx, rax
+	011 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	012 Move rax, typeof(UnityEngine.InputSystem.XR.PoseState)
+	013 Move rax, [rax+184]
+	014 Move rax, [rax]
+	015 ShiftStack 40
+	016 Return rax
+
+Method: System.Void .ctor(System.Boolean isTracked, UnityEngine.XR.InputTrackingState trackingState, UnityEngine.Vector3 position, UnityEngine.Quaternion rotation, UnityEngine.Vector3 velocity, UnityEngine.Vector3 angularVelocity)
+
+Disassembly:
+	movsd xmm0,qword ptr [r9]
+	mov eax,[r9+8]
+	movsd qword ptr [rcx+8],xmm0
+	mov [rcx+10h],eax
+	mov rax,[rsp+28h]
+	mov [rcx],dl
+	mov [rcx+4],r8d
+	movups xmm0,[rax]
+	mov rax,[rsp+30h]
+	movups [rcx+14h],xmm0
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rcx+24h],xmm0
+	mov [rcx+2Ch],eax
+	mov rax,[rsp+38h]
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rcx+30h],xmm0
+	mov [rcx+38h],eax
+	ret
+
+ISIL:
+	001 Move xmm0, [r9]
+	002 Move rax, [r9+8]
+	003 Move [rcx+8], xmm0
+	004 Move [rcx+16], rax
+	005 Move rax, stack:0x28
+	006 Move [rcx], rdx
+	007 Move [rcx+4], r8
+	008 Move xmm0, [rax]
+	009 Move rax, stack:0x30
+	010 Move [rcx+20], xmm0
+	011 Move xmm0, [rax]
+	012 Move rax, [rax+8]
+	013 Move [rcx+36], xmm0
+	014 Move [rcx+44], rax
+	015 Move rax, stack:0x38
+	016 Move xmm0, [rax]
+	017 Move rax, [rax+8]
+	018 Move [rcx+48], xmm0
+	019 Move [rcx+56], rax
+	020 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [183753301h],0
+	jne short 0000000181FFCE90h
+	lea rcx,[1834F9AF8h]
+	call 000000018037BB90h
+	mov byte ptr [183753301h],1
+	xor ecx,ecx
+	mov edx,50h
+	mov [rsp+28h],rcx
+	mov r9d,73h
+	mov [rsp+48h],ecx
+	mov r8d,6Fh
+	lea rcx,[rsp+48h]
+	mov word ptr [rsp+20h],65h
+	call 0000000181F41F80h
+	mov rax,[1834F9AF8h]
+	mov rcx,[rax+0B8h]
+	mov eax,[rsp+48h]
+	mov [rcx],eax
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x183753301], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834F9AF8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183753301], 1
+	007 Move rcx, 0
+	008 Move rdx, 80
+	009 Move stack:0x28, rcx
+	010 Move r9, 115
+	011 Move stack:0x48, rcx
+	012 Move r8, 111
+	013 LoadAddress rcx, stack:0x48
+	014 Move stack:0x20, 101
+	015 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	016 Move rax, typeof(UnityEngine.InputSystem.XR.PoseState)
+	017 Move rcx, [rax+184]
+	018 Move rax, stack:0x48
+	019 Move [rcx], rax
+	020 ShiftStack 56
+	021 Return 
+

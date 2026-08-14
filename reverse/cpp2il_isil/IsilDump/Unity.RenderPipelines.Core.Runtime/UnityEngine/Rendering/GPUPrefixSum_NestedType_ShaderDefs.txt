@@ -1,0 +1,101 @@
+Type: UnityEngine.Rendering.GPUPrefixSum+ShaderDefs
+
+Method: System.Int32 DivUpGroup(System.Int32 value)
+
+Disassembly:
+	lea eax,[rcx+7Fh]
+	cdq
+	and edx,7Fh
+	add eax,edx
+	sar eax,7
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx+127]
+	002 Move TEMP, rax
+	003 ShiftRight TEMP, 31
+	004 Compare TEMP, 1
+	005 JumpIfNotEqual {8}
+	006 Move rdx, 0xFFFFFFFF
+	007 Goto {9}
+	008 Move rdx, 0
+	009 Nop 
+	010 And rdx, rdx, 127
+	011 Add rax, rax, rdx
+	012 ShiftRight rax, 7
+	013 Return rax
+
+Method: System.Int32 AlignUpGroup(System.Int32 value)
+
+Disassembly:
+	lea eax,[rcx+7Fh]
+	cdq
+	and edx,7Fh
+	add eax,edx
+	and eax,0FFFFFF80h
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx+127]
+	002 Move TEMP, rax
+	003 ShiftRight TEMP, 31
+	004 Compare TEMP, 1
+	005 JumpIfNotEqual {8}
+	006 Move rdx, 0xFFFFFFFF
+	007 Goto {9}
+	008 Move rdx, 0
+	009 Nop 
+	010 And rdx, rdx, 127
+	011 Add rax, rax, rdx
+	012 And rax, rax, 18446744073709551488
+	013 Return rax
+
+Method: System.Void CalculateTotalBufferSize(System.Int32 maxElementCount, out System.Int32 totalSize, out System.Int32 levelCounts)
+
+Disassembly:
+	mov r9,rdx
+	lea eax,[rcx+7Fh]
+	cdq
+	and edx,7Fh
+	add eax,edx
+	and eax,0FFFFFF80h
+	mov [r9],eax
+	mov dword ptr [r8],1
+	cmp eax,80h
+	jle short 0000000182213D66h
+	shr eax,7
+	add eax,7Fh
+	and eax,0FFFFFF80h
+	add [r9],eax
+	inc dword ptr [r8]
+	cmp eax,80h
+	ja short 0000000182213D50h
+	ret
+
+ISIL:
+	001 Move r9, rdx
+	002 LoadAddress rax, [rcx+127]
+	003 Move TEMP, rax
+	004 ShiftRight TEMP, 31
+	005 Compare TEMP, 1
+	006 JumpIfNotEqual {9}
+	007 Move rdx, 0xFFFFFFFF
+	008 Goto {10}
+	009 Move rdx, 0
+	010 Nop 
+	011 And rdx, rdx, 127
+	012 Add rax, rax, rdx
+	013 And rax, rax, 18446744073709551488
+	014 Move [r9], rax
+	015 Move [r8], 1
+	016 Compare rax, 128
+	017 JumpIfLessOrEqual {25}
+	018 ShiftRight rax, 7
+	019 Add rax, rax, 127
+	020 And rax, rax, 18446744073709551488
+	021 Add [r9], [r9], rax
+	022 Add [r8], [r8], 1
+	023 Compare rax, 128
+	024 JumpIfGreater {18}
+	025 Return 
+

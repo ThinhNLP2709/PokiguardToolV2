@@ -1,0 +1,466 @@
+Type: Unity.Collections.BitField32
+
+Method: System.Void .ctor(System.UInt32 initialValue = 0)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Void Clear()
+
+Disassembly:
+	mov dword ptr [rcx],0
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Return 
+
+Method: System.Void SetBits(System.Int32 pos, System.Boolean value)
+
+Disassembly:
+	mov r10,rcx
+	and edx,1Fh
+	movzx r9d,r8b
+	not r9d
+	mov ecx,edx
+	dec r9d
+	mov eax,1
+	shl eax,cl
+	and r9d,1
+	not eax
+	shl r9d,cl
+	and eax,[r10]
+	or r9d,eax
+	mov [r10],r9d
+	ret
+
+ISIL:
+	001 Move r10, rcx
+	002 And rdx, rdx, 31
+	003 Move r9, r8
+	004 Neg r9
+	005 Move rcx, rdx
+	006 Subtract r9, r9, 1
+	007 Move rax, 1
+	008 ShiftLeft rax, rcx
+	009 And r9, r9, 1
+	010 Neg rax
+	011 ShiftLeft r9, rcx
+	012 And rax, rax, [r10]
+	013 Or r9, r9, rax
+	014 Move [r10], r9
+	015 Return 
+
+Method: System.Void SetBits(System.Int32 pos, System.Boolean value, System.Int32 numBits)
+
+Disassembly:
+	neg r9d
+	mov r11,rcx
+	and r9d,1Fh
+	mov r10d,0FFFFFFFFh
+	movzx ecx,r9b
+	shr r10d,cl
+	movzx eax,r8b
+	and edx,1Fh
+	xor eax,1
+	mov ecx,edx
+	dec eax
+	and eax,r10d
+	shl r10d,cl
+	not r10d
+	shl eax,cl
+	and r10d,[r11]
+	or eax,r10d
+	mov [r11],eax
+	ret
+
+ISIL:
+	001 Neg r9
+	002 Move r11, rcx
+	003 And r9, r9, 31
+	004 Move r10, 0xFFFFFFFF
+	005 Move rcx, r9
+	006 ShiftRight r10, rcx
+	007 Move rax, r8
+	008 And rdx, rdx, 31
+	009 Xor rax, rax, 1
+	010 Move rcx, rdx
+	011 Subtract rax, rax, 1
+	012 And rax, rax, r10
+	013 ShiftLeft r10, rcx
+	014 Neg r10
+	015 ShiftLeft rax, rcx
+	016 And r10, r10, [r11]
+	017 Or rax, rax, r10
+	018 Move [r11], rax
+	019 Return 
+
+Method: System.UInt32 GetBits(System.Int32 pos, System.Int32 numBits = 1)
+
+Disassembly:
+	mov eax,[rcx]
+	and edx,1Fh
+	movzx ecx,dl
+	neg r8d
+	shr eax,cl
+	and r8d,1Fh
+	movzx ecx,r8b
+	mov edx,0FFFFFFFFh
+	shr edx,cl
+	and eax,edx
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 And rdx, rdx, 31
+	003 Move rcx, rdx
+	004 Neg r8
+	005 ShiftRight rax, rcx
+	006 And r8, r8, 31
+	007 Move rcx, r8
+	008 Move rdx, 0xFFFFFFFF
+	009 ShiftRight rdx, rcx
+	010 And rax, rax, rdx
+	011 Return rax
+
+Method: System.Boolean IsSet(System.Int32 pos)
+
+Disassembly:
+	mov eax,[rcx]
+	and edx,1Fh
+	movzx ecx,dl
+	shr eax,cl
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 And rdx, rdx, 31
+	003 Move rcx, rdx
+	004 ShiftRight rax, rcx
+	005 And rax, rax, 1
+	006 Return rax
+
+Method: System.Boolean TestNone(System.Int32 pos, System.Int32 numBits = 1)
+
+Disassembly:
+	mov r9d,[rcx]
+	and edx,1Fh
+	neg r8d
+	movzx ecx,dl
+	and r8d,1Fh
+	shr r9d,cl
+	movzx ecx,r8b
+	mov eax,0FFFFFFFFh
+	shr eax,cl
+	test eax,r9d
+	sete al
+	ret
+
+ISIL:
+	001 Move r9, [rcx]
+	002 And rdx, rdx, 31
+	003 Neg r8
+	004 Move rcx, rdx
+	005 And r8, r8, 31
+	006 ShiftRight r9, rcx
+	007 Move rcx, r8
+	008 Move rax, 0xFFFFFFFF
+	009 ShiftRight rax, rcx
+	010 Compare rax, r9
+	011 NotImplemented "sete al"
+	012 Return rax
+
+Method: System.Boolean TestAny(System.Int32 pos, System.Int32 numBits = 1)
+
+Disassembly:
+	mov r9d,[rcx]
+	and edx,1Fh
+	neg r8d
+	movzx ecx,dl
+	and r8d,1Fh
+	shr r9d,cl
+	movzx ecx,r8b
+	mov eax,0FFFFFFFFh
+	shr eax,cl
+	test eax,r9d
+	seta al
+	ret
+
+ISIL:
+	001 Move r9, [rcx]
+	002 And rdx, rdx, 31
+	003 Neg r8
+	004 Move rcx, rdx
+	005 And r8, r8, 31
+	006 ShiftRight r9, rcx
+	007 Move rcx, r8
+	008 Move rax, 0xFFFFFFFF
+	009 ShiftRight rax, rcx
+	010 Compare rax, r9
+	011 NotImplemented "seta al"
+	012 Return rax
+
+Method: System.Boolean TestAll(System.Int32 pos, System.Int32 numBits = 1)
+
+Disassembly:
+	mov eax,[rcx]
+	neg r8d
+	and r8d,1Fh
+	and edx,1Fh
+	movzx ecx,r8b
+	mov r9d,0FFFFFFFFh
+	shr r9d,cl
+	movzx ecx,dl
+	shr eax,cl
+	and eax,r9d
+	cmp r9d,eax
+	sete al
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Neg r8
+	003 And r8, r8, 31
+	004 And rdx, rdx, 31
+	005 Move rcx, r8
+	006 Move r9, 0xFFFFFFFF
+	007 ShiftRight r9, rcx
+	008 Move rcx, rdx
+	009 ShiftRight rax, rcx
+	010 And rax, rax, r9
+	011 Compare r9, rax
+	012 NotImplemented "sete al"
+	013 Return rax
+
+Method: System.Int32 CountBits()
+
+Disassembly:
+	mov edx,[rcx]
+	mov eax,edx
+	shr eax,1
+	and eax,55555555h
+	sub edx,eax
+	mov eax,edx
+	and edx,33333333h
+	shr eax,2
+	and eax,33333333h
+	add eax,edx
+	mov ecx,eax
+	shr ecx,4
+	add ecx,eax
+	and ecx,0F0F0F0Fh
+	imul eax,ecx,1010101h
+	shr eax,18h
+	ret
+
+ISIL:
+	001 Move rdx, [rcx]
+	002 Move rax, rdx
+	003 ShiftRight rax, 1
+	004 And rax, rax, 0x55555555
+	005 Subtract rdx, rdx, rax
+	006 Move rax, rdx
+	007 And rdx, rdx, 0x33333333
+	008 ShiftRight rax, 2
+	009 And rax, rax, 0x33333333
+	010 Add rax, rax, rdx
+	011 Move rcx, rax
+	012 ShiftRight rcx, 4
+	013 Add rcx, rcx, rax
+	014 And rcx, rcx, 0xF0F0F0F
+	015 Multiply rax, rcx, 0x1010101
+	016 ShiftRight rax, 24
+	017 Return rax
+
+Method: System.Int32 CountLeadingZeros()
+
+Disassembly:
+	mov eax,[rcx]
+	test eax,eax
+	je short 0000000181EDCF0Dh
+	mov rcx,4330000000000000h
+	add rax,rcx
+	mov [rsp+8],rax
+	mov eax,41Eh
+	movsd xmm0,qword ptr [rsp+8]
+	subsd xmm0,qword ptr [182A511D8h]
+	movsd qword ptr [rsp+8],xmm0
+	mov rcx,[rsp+8]
+	sar rcx,34h
+	sub eax,ecx
+	ret
+	mov eax,20h
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Compare rax, 0
+	003 JumpIfEqual {15}
+	004 Move rcx, 0x4330000000000000
+	005 Add rax, rax, rcx
+	006 Move stack:0x8, rax
+	007 Move rax, 1054
+	008 Move xmm0, stack:0x8
+	009 NotImplemented "subsd xmm0,qword ptr [182A511D8h]"
+	010 Move stack:0x8, xmm0
+	011 Move rcx, stack:0x8
+	012 ShiftRight rcx, 52
+	013 Subtract rax, rax, rcx
+	014 Return rax
+	015 Move rax, 32
+	016 Return rax
+
+Method: System.Int32 CountTrailingZeros()
+
+Disassembly:
+	mov edx,[rcx]
+	test edx,edx
+	je short 0000000181EDCF62h
+	mov ecx,edx
+	mov rax,4330000000000000h
+	neg ecx
+	and rcx,rdx
+	add rcx,rax
+	mov [rsp+8],rcx
+	movsd xmm0,qword ptr [rsp+8]
+	subsd xmm0,qword ptr [182A511D8h]
+	movsd qword ptr [rsp+8],xmm0
+	mov rax,[rsp+8]
+	sar rax,34h
+	sub eax,3FFh
+	ret
+	mov eax,20h
+	ret
+
+ISIL:
+	001 Move rdx, [rcx]
+	002 Compare rdx, 0
+	003 JumpIfEqual {17}
+	004 Move rcx, rdx
+	005 Move rax, 0x4330000000000000
+	006 Neg rcx
+	007 And rcx, rcx, rdx
+	008 Add rcx, rcx, rax
+	009 Move stack:0x8, rcx
+	010 Move xmm0, stack:0x8
+	011 NotImplemented "subsd xmm0,qword ptr [182A511D8h]"
+	012 Move stack:0x8, xmm0
+	013 Move rax, stack:0x8
+	014 ShiftRight rax, 52
+	015 Subtract rax, rax, 1023
+	016 Return rax
+	017 Move rax, 32
+	018 Return rax
+
+Method: System.Void CheckArgs(System.Int32 pos, System.Int32 numBits)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov ebx,edx
+	cmp ecx,1Fh
+	jg short 0000000181EDCDF4h
+	test edx,edx
+	je short 0000000181EDCDF4h
+	cmp edx,20h
+	jg short 0000000181EDCDF4h
+	lea eax,[rcx+rdx]
+	cmp eax,20h
+	jg short 0000000181EDCDF4h
+	add rsp,20h
+	pop rbx
+	ret
+	mov [rsp+30h],ecx
+	lea rdx,[rsp+30h]
+	mov rcx,[18375C0E8h]
+	mov [rsp+38h],rdi
+	call 000000018037AC90h
+	mov rcx,[18375C0E8h]
+	lea rdx,[rsp+48h]
+	mov rdi,rax
+	mov [rsp+48h],ebx
+	call 000000018037AC90h
+	lea rcx,[183535300h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	xor r9d,r9d
+	mov r8,rbx
+	mov rdx,rdi
+	call 000000018165E830h
+	lea rcx,[1834FF8E8h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018176B4E0h
+	lea rcx,[183519A80h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+	mov rdi,[rsp+38h]
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rdx
+	005 Compare rcx, 31
+	006 JumpIfGreater {18}
+	007 Compare rdx, 0
+	008 JumpIfEqual {18}
+	009 Compare rdx, 32
+	010 JumpIfGreater {18}
+	011 LoadAddress rax, [rcx+rdx]
+	012 Compare rax, 32
+	013 JumpIfGreater {18}
+	014 ShiftStack 32
+	015 Move rbx, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+	018 Move stack:0x30, rcx
+	019 LoadAddress rdx, stack:0x30
+	020 Move rcx, [0x18375C0E8]
+	021 Move stack:0x38, rdi
+	022 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	023 Move rcx, [0x18375C0E8]
+	024 LoadAddress rdx, stack:0x48
+	025 Move rdi, rax
+	026 Move stack:0x48, rbx
+	027 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	028 LoadAddress rcx, [0x183535300]
+	029 Move rbx, rax
+	030 Call 0x18037BBB0, rcx, rdx, r8, r9
+	031 Move rcx, rax
+	032 Move r9, 0
+	033 Move r8, rbx
+	034 Move rdx, rdi
+	035 Call String.Format, rcx, rdx, r8, r9
+	036 LoadAddress rcx, [0x1834FF8E8]
+	037 Move rbx, rax
+	038 Call 0x18037BBB0, rcx, rdx, r8, r9
+	039 Move rcx, rax
+	040 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	041 Move r8, 0
+	042 Move rdx, rbx
+	043 Move rcx, rax
+	044 Move rdi, rax
+	045 Call ArgumentException..ctor, rcx, rdx
+	046 LoadAddress rcx, [0x183519A80]
+	047 Call 0x18037BBB0, rcx, rdx, r8, r9
+	048 Move rdx, rax
+	049 Move rcx, rdi
+	050 Call 0x18037BDF0, rcx, rdx, r8, r9
+	051 Move rdi, stack:0x38
+

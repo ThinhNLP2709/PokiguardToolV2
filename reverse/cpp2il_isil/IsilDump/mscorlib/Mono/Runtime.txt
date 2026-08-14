@@ -1,0 +1,59 @@
+Type: Mono.Runtime
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374E778h],0
+	jne short 0000000181640ECEh
+	lea rcx,[1834F10F8h]
+	call 000000018037BB90h
+	lea rcx,[183507598h]
+	call 000000018037BB90h
+	mov byte ptr [18374E778h],1
+	mov rcx,[1834F10F8h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	mov rcx,[183507598h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[183507598h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374E778], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x1834F10F8]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183507598]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374E778], 1
+	011 Move rcx, typeof(System.Object)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	017 Move rcx, typeof(Mono.Runtime)
+	018 Move rdx, [rcx+184]
+	019 Move [rdx], rbx
+	020 Move rdx, rbx
+	021 Move rcx, typeof(Mono.Runtime)
+	022 Move rcx, [rcx+184]
+	023 ShiftStack 32
+	024 Move rbx, stack:0x0
+	025 ShiftStack 8
+	026 Call 0x18037ACB0, rcx, rdx, r8, r9
+	027 Return 
+

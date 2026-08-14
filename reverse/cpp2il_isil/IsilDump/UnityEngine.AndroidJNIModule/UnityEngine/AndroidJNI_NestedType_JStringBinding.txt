@@ -1,0 +1,118 @@
+Type: UnityEngine.AndroidJNI+JStringBinding
+
+Method: System.String ToString()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	cmp dword ptr [rcx+10h],0
+	mov rbx,rcx
+	mov rax,[rcx+8]
+	je short 00000001825B0B4Bh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001804D4100h
+	mov r9d,[rbx+10h]
+	xor edx,edx
+	mov [rsp+20h],rdx
+	xor r8d,r8d
+	mov rdx,rax
+	xor ecx,ecx
+	call 000000018165C2B0h
+	add rsp,30h
+	pop rbx
+	ret
+	test rax,rax
+	jne short 00000001825B0B5Ah
+	xor edx,edx
+	mov eax,edx
+	add rsp,30h
+	pop rbx
+	ret
+	mov rax,[18375C130h]
+	mov rcx,[rax+0B8h]
+	mov rdx,[rcx]
+	mov rax,rdx
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Compare [rcx+16], 0
+	005 Move rbx, rcx
+	006 Move rax, [rcx+8]
+	007 JumpIfEqual {22}
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Call 0x1804D4100, rcx, rdx, r8, r9
+	011 Move r9, [rbx+16]
+	012 Move rdx, 0
+	013 Move stack:0x20, rdx
+	014 Move r8, 0
+	015 Move rdx, rax
+	016 Move rcx, 0
+	017 Call String.CreateString, rcx, rdx, r8, r9
+	018 ShiftStack 48
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Return rax
+	022 Compare rax, 0
+	023 JumpIfNotEqual {30}
+	024 Move rdx, 0
+	025 Move rax, rdx
+	026 ShiftStack 48
+	027 Move rbx, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+	030 Move rax, [0x18375C130]
+	031 Move rcx, [rax+184]
+	032 Move rdx, [rcx]
+	033 Move rax, rdx
+	034 ShiftStack 48
+	035 Move rbx, stack:0x0
+	036 ShiftStack 8
+	037 Return rax
+
+Method: System.Void Dispose()
+
+Disassembly:
+	sub rsp,48h
+	cmp dword ptr [rcx+10h],0
+	jle short 00000001825B0B03h
+	movups xmm0,[rcx]
+	mov rax,[183755A08h]
+	movsd xmm1,qword ptr [rcx+10h]
+	movaps [rsp+20h],xmm0
+	movsd qword ptr [rsp+30h],xmm1
+	test rax,rax
+	jne short 00000001825B0AFCh
+	lea rcx,[182B20420h]
+	call 000000018037BE90h
+	mov [183755A08h],rax
+	lea rcx,[rsp+20h]
+	call rax
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare [rcx+16], 0
+	003 JumpIfLessOrEqual {16}
+	004 Move xmm0, [rcx]
+	005 Move rax, [0x183755A08]
+	006 Move xmm1, [rcx+16]
+	007 Move stack:0x20, xmm0
+	008 Move stack:0x30, xmm1
+	009 Compare rax, 0
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x182B20420]
+	012 Call 0x18037BE90, rcx, rdx, r8, r9
+	013 Move [0x183755A08], rax
+	014 LoadAddress rcx, stack:0x20
+	015 Call rax
+	016 ShiftStack 72
+	017 Return 
+

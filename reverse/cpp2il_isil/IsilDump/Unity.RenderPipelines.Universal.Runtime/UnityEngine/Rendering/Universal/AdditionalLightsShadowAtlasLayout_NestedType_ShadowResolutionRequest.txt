@@ -1,0 +1,80 @@
+Type: UnityEngine.Rendering.Universal.AdditionalLightsShadowAtlasLayout+ShadowResolutionRequest
+
+Method: System.Boolean get_softShadow()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+0Ch]
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+12]
+	002 And rax, rax, 1
+	003 Return rax
+
+Method: System.Void set_softShadow(System.Boolean value)
+
+Disassembly:
+	movzx r8d,word ptr [rcx+0Ch]
+	movzx eax,r8w
+	mov r9d,0FFFEh
+	or ax,1
+	and r8w,r9w
+	test dl,dl
+	cmovne r8w,ax
+	mov [rcx+0Ch],r8w
+	ret
+
+ISIL:
+	001 Move r8, [rcx+12]
+	002 Move rax, r8
+	003 Move r9, 0xFFFE
+	004 Or rax, rax, 1
+	005 And r8, r8, r9
+	006 Compare rdx, 0
+	007 JumpIfEqual {9}
+	008 Move r8, rax
+	009 Nop 
+	010 Move [rcx+12], r8
+	011 Return 
+
+Method: System.Boolean get_pointLightShadow()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+0Ch]
+	shr al,1
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+12]
+	002 ShiftRight rax, 1
+	003 And rax, rax, 1
+	004 Return rax
+
+Method: System.Void set_pointLightShadow(System.Boolean value)
+
+Disassembly:
+	movzx r8d,word ptr [rcx+0Ch]
+	movzx eax,r8w
+	mov r9d,0FFFDh
+	or ax,2
+	and r8w,r9w
+	test dl,dl
+	cmovne r8w,ax
+	mov [rcx+0Ch],r8w
+	ret
+
+ISIL:
+	001 Move r8, [rcx+12]
+	002 Move rax, r8
+	003 Move r9, 0xFFFD
+	004 Or rax, rax, 2
+	005 And r8, r8, r9
+	006 Compare rdx, 0
+	007 JumpIfEqual {9}
+	008 Move r8, rax
+	009 Nop 
+	010 Move [rcx+12], r8
+	011 Return 
+

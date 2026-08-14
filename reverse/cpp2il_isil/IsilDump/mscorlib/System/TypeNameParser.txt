@@ -1,0 +1,59 @@
+Type: System.TypeNameParser
+
+Method: System.Type GetType(System.String typeName, System.Func`2<System.Reflection.AssemblyName, System.Reflection.Assembly> assemblyResolver, System.Func`4<System.Reflection.Assembly, System.String, System.Boolean, System.Type> typeResolver, System.Boolean throwOnError, System.Boolean ignoreCase, ref System.Threading.StackCrawlMark stackMark)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,40h
+	mov rsi,rdx
+	movzx ebx,r9b
+	xor edx,edx
+	mov rdi,r8
+	call 0000000181881A70h
+	test rax,rax
+	je short 000000018186B4BBh
+	movzx r9d,bl
+	mov qword ptr [rsp+80h],0
+	mov r8,rdi
+	mov rdx,rsi
+	movzx ecx,byte ptr [rsp+70h]
+	mov [rsp+70h],cl
+	mov rcx,rax
+	mov rbx,[rsp+50h]
+	mov rsi,[rsp+58h]
+	add rsp,40h
+	pop rdi
+	jmp near ptr 0000000181881B60h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -64
+	006 Move rsi, rdx
+	007 Move rbx, r9
+	008 Move rdx, 0
+	009 Move rdi, r8
+	010 Call TypeSpec.Parse, rcx, rdx
+	011 Compare rax, 0
+	012 JumpIfEqual {27}
+	013 Move r9, rbx
+	014 Move stack:0x80, 0
+	015 Move r8, rdi
+	016 Move rdx, rsi
+	017 Move rcx, stack:0x70
+	018 Move stack:0x70, rcx
+	019 Move rcx, rax
+	020 Move rbx, stack:0x50
+	021 Move rsi, stack:0x58
+	022 ShiftStack 64
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Call TypeSpec.Resolve, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	026 Return rax
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,406 @@
+Type: Unity.Burst.Intrinsics.X86+Bmi1
+
+Method: System.Boolean get_IsBmi1Supported()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.UInt32 andn_u32(System.UInt32 a, System.UInt32 b)
+
+Disassembly:
+	not ecx
+	and ecx,edx
+	mov eax,ecx
+	ret
+
+ISIL:
+	001 Neg rcx
+	002 And rcx, rcx, rdx
+	003 Move rax, rcx
+	004 Return rax
+
+Method: System.UInt64 andn_u64(System.UInt64 a, System.UInt64 b)
+
+Disassembly:
+	not rcx
+	and rcx,rdx
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Neg rcx
+	002 And rcx, rcx, rdx
+	003 Move rax, rcx
+	004 Return rax
+
+Method: System.UInt32 bextr_u32(System.UInt32 a, System.UInt32 start, System.UInt32 len)
+
+Disassembly:
+	mov r9d,ecx
+	movzx ecx,dl
+	cmp ecx,20h
+	jae short 0000000181ECE0E8h
+	shr r9d,cl
+	movzx ecx,r8b
+	cmp ecx,20h
+	jae short 0000000181ECE0E4h
+	mov eax,1
+	shl eax,cl
+	dec eax
+	and eax,r9d
+	ret
+	mov eax,r9d
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move r9, rcx
+	002 Move rcx, rdx
+	003 Compare rcx, 32
+	004 JumpIfGreaterOrEqual {16}
+	005 ShiftRight r9, rcx
+	006 Move rcx, r8
+	007 Compare rcx, 32
+	008 JumpIfGreaterOrEqual {14}
+	009 Move rax, 1
+	010 ShiftLeft rax, rcx
+	011 Subtract rax, rax, 1
+	012 And rax, rax, r9
+	013 Return rax
+	014 Move rax, r9
+	015 Return rax
+	016 Move rax, 0
+	017 Return rax
+
+Method: System.UInt64 bextr_u64(System.UInt64 a, System.UInt32 start, System.UInt32 len)
+
+Disassembly:
+	mov r9,rcx
+	movzx ecx,dl
+	cmp ecx,40h
+	jae short 0000000181ECE11Ah
+	shr r9,cl
+	movzx ecx,r8b
+	cmp ecx,40h
+	jae short 0000000181ECE116h
+	mov eax,1
+	shl rax,cl
+	dec rax
+	and rax,r9
+	ret
+	mov rax,r9
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move r9, rcx
+	002 Move rcx, rdx
+	003 Compare rcx, 64
+	004 JumpIfGreaterOrEqual {16}
+	005 ShiftRight r9, rcx
+	006 Move rcx, r8
+	007 Compare rcx, 64
+	008 JumpIfGreaterOrEqual {14}
+	009 Move rax, 1
+	010 ShiftLeft rax, rcx
+	011 Subtract rax, rax, 1
+	012 And rax, rax, r9
+	013 Return rax
+	014 Move rax, r9
+	015 Return rax
+	016 Move rax, 0
+	017 Return rax
+
+Method: System.UInt32 bextr2_u32(System.UInt32 a, System.UInt32 control)
+
+Disassembly:
+	mov r8d,ecx
+	movzx ecx,dl
+	cmp ecx,20h
+	jae short 0000000181ECE082h
+	shr r8d,cl
+	mov ecx,edx
+	shr ecx,8
+	and edx,0FF00h
+	cmp edx,2000h
+	jae short 0000000181ECE07Eh
+	mov eax,1
+	shl eax,cl
+	dec eax
+	and eax,r8d
+	ret
+	mov eax,r8d
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move r8, rcx
+	002 Move rcx, rdx
+	003 Compare rcx, 32
+	004 JumpIfGreaterOrEqual {18}
+	005 ShiftRight r8, rcx
+	006 Move rcx, rdx
+	007 ShiftRight rcx, 8
+	008 And rdx, rdx, 0xFF00
+	009 Compare rdx, 0x2000
+	010 JumpIfGreaterOrEqual {16}
+	011 Move rax, 1
+	012 ShiftLeft rax, rcx
+	013 Subtract rax, rax, 1
+	014 And rax, rax, r8
+	015 Return rax
+	016 Move rax, r8
+	017 Return rax
+	018 Move rax, 0
+	019 Return rax
+
+Method: System.UInt64 bextr2_u64(System.UInt64 a, System.UInt64 control)
+
+Disassembly:
+	mov r8,rcx
+	movzx ecx,dl
+	cmp ecx,40h
+	jae short 0000000181ECE0BDh
+	shr rdx,8
+	shr r8,cl
+	movzx ecx,dl
+	cmp ecx,40h
+	jae short 0000000181ECE0B9h
+	mov eax,1
+	shl rax,cl
+	dec rax
+	and rax,r8
+	ret
+	mov rax,r8
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move r8, rcx
+	002 Move rcx, rdx
+	003 Compare rcx, 64
+	004 JumpIfGreaterOrEqual {17}
+	005 ShiftRight rdx, 8
+	006 ShiftRight r8, rcx
+	007 Move rcx, rdx
+	008 Compare rcx, 64
+	009 JumpIfGreaterOrEqual {15}
+	010 Move rax, 1
+	011 ShiftLeft rax, rcx
+	012 Subtract rax, rax, 1
+	013 And rax, rax, r8
+	014 Return rax
+	015 Move rax, r8
+	016 Return rax
+	017 Move rax, 0
+	018 Return rax
+
+Method: System.UInt32 blsi_u32(System.UInt32 a)
+
+Disassembly:
+	mov eax,ecx
+	neg eax
+	and eax,ecx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Neg rax
+	003 And rax, rax, rcx
+	004 Return rax
+
+Method: System.UInt64 blsi_u64(System.UInt64 a)
+
+Disassembly:
+	mov rax,rcx
+	neg rax
+	and rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Neg rax
+	003 And rax, rax, rcx
+	004 Return rax
+
+Method: System.UInt32 blsmsk_u32(System.UInt32 a)
+
+Disassembly:
+	lea eax,[rcx-1]
+	xor eax,ecx
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-1]
+	002 Xor rax, rax, rcx
+	003 Return rax
+
+Method: System.UInt64 blsmsk_u64(System.UInt64 a)
+
+Disassembly:
+	lea rax,[rcx-1]
+	xor rax,rcx
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-1]
+	002 Xor rax, rax, rcx
+	003 Return rax
+
+Method: System.UInt32 blsr_u32(System.UInt32 a)
+
+Disassembly:
+	lea eax,[rcx-1]
+	and eax,ecx
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-1]
+	002 And rax, rax, rcx
+	003 Return rax
+
+Method: System.UInt64 blsr_u64(System.UInt64 a)
+
+Disassembly:
+	lea rax,[rcx-1]
+	and rax,rcx
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-1]
+	002 And rax, rax, rcx
+	003 Return rax
+
+Method: System.UInt32 tzcnt_u32(System.UInt32 a)
+
+Disassembly:
+	mov eax,ecx
+	mov edx,20h
+	neg eax
+	and ecx,eax
+	je short 0000000181ECE1B5h
+	test cx,cx
+	mov edx,1Fh
+	mov r8d,0Fh
+	cmovne edx,r8d
+	test ecx,0FF00FFh
+	je short 0000000181ECE1AAh
+	sub edx,8
+	test ecx,0F0F0F0Fh
+	je short 0000000181ECE1B5h
+	sub edx,4
+	test ecx,33333333h
+	je short 0000000181ECE1C0h
+	sub edx,2
+	lea eax,[rdx-1]
+	test ecx,55555555h
+	jne short 0000000181ECE1CDh
+	mov eax,edx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Move rdx, 32
+	003 Neg rax
+	004 And rcx, rcx, rax
+	005 JumpIfEqual {18}
+	006 Compare rcx, 0
+	007 Move rdx, 31
+	008 Move r8, 15
+	009 JumpIfEqual {11}
+	010 Move rdx, r8
+	011 Nop 
+	012 Compare rcx, 0xFF00FF
+	013 JumpIfEqual {15}
+	014 Subtract rdx, rdx, 8
+	015 Compare rcx, 0xF0F0F0F
+	016 JumpIfEqual {18}
+	017 Subtract rdx, rdx, 4
+	018 Compare rcx, 0x33333333
+	019 JumpIfEqual {21}
+	020 Subtract rdx, rdx, 2
+	021 LoadAddress rax, [rdx-1]
+	022 Compare rcx, 0x55555555
+	023 JumpIfNotEqual {25}
+	024 Move rax, rdx
+	025 Return rax
+
+Method: System.UInt64 tzcnt_u64(System.UInt64 a)
+
+Disassembly:
+	mov rax,rcx
+	mov edx,40h
+	neg rax
+	and rcx,rax
+	je short 0000000181ECE217h
+	test ecx,ecx
+	mov edx,3Fh
+	mov r8d,1Fh
+	cmovne edx,r8d
+	mov rax,0FFFF0000FFFFh
+	test rax,rcx
+	je short 0000000181ECE204h
+	sub rdx,10h
+	mov rax,0FF00FF00FF00FFh
+	test rax,rcx
+	je short 0000000181ECE217h
+	sub rdx,8
+	mov rax,0F0F0F0F0F0F0F0Fh
+	test rax,rcx
+	je short 0000000181ECE22Ah
+	sub rdx,4
+	mov rax,3333333333333333h
+	test rax,rcx
+	je short 0000000181ECE23Dh
+	sub rdx,2
+	mov rax,5555555555555555h
+	test rax,rcx
+	lea rax,[rdx-1]
+	jne short 0000000181ECE253h
+	mov rax,rdx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Move rdx, 64
+	003 Neg rax
+	004 And rcx, rcx, rax
+	005 JumpIfEqual {20}
+	006 Compare rcx, 0
+	007 Move rdx, 63
+	008 Move r8, 31
+	009 JumpIfEqual {11}
+	010 Move rdx, r8
+	011 Nop 
+	012 Move rax, 0xFFFF0000FFFF
+	013 Compare rax, rcx
+	014 JumpIfEqual {16}
+	015 Subtract rdx, rdx, 16
+	016 Move rax, 0xFF00FF00FF00FF
+	017 Compare rax, rcx
+	018 JumpIfEqual {20}
+	019 Subtract rdx, rdx, 8
+	020 Move rax, 0xF0F0F0F0F0F0F0F
+	021 Compare rax, rcx
+	022 JumpIfEqual {24}
+	023 Subtract rdx, rdx, 4
+	024 Move rax, 0x3333333333333333
+	025 Compare rax, rcx
+	026 JumpIfEqual {28}
+	027 Subtract rdx, rdx, 2
+	028 Move rax, 0x5555555555555555
+	029 Compare rax, rcx
+	030 LoadAddress rax, [rdx-1]
+	031 JumpIfNotEqual {33}
+	032 Move rax, rdx
+	033 Return rax
+

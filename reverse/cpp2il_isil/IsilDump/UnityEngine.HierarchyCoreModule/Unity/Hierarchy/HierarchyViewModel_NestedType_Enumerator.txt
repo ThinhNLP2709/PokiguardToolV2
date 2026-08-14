@@ -1,0 +1,163 @@
+Type: Unity.Hierarchy.HierarchyViewModel+Enumerator
+
+Method: System.Void .ctor(Unity.Hierarchy.HierarchyViewModel hierarchyViewModel)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov [rcx],rdx
+	mov rdi,rcx
+	call 000000018037ACB0h
+	test rbx,rbx
+	je short 0000000182676C1Bh
+	mov rdx,[rbx+20h]
+	lea rcx,[rdi+8]
+	mov [rdi+8],rdx
+	call 000000018037ACB0h
+	mov rcx,[rbx+28h]
+	xor edx,edx
+	call 00000001804D4100h
+	mov [rdi+10h],rax
+	mov eax,[rbx+30h]
+	mov [rdi+18h],eax
+	mov eax,[rbx+34h]
+	mov rbx,[rsp+30h]
+	mov [rdi+1Ch],eax
+	mov dword ptr [rdi+20h],0FFFFFFFFh
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move [rcx], rdx
+	007 Move rdi, rcx
+	008 Call 0x18037ACB0, rcx, rdx, r8, r9
+	009 Compare rbx, 0
+	010 JumpIfEqual {29}
+	011 Move rdx, [rbx+32]
+	012 LoadAddress rcx, [rdi+8]
+	013 Move [rdi+8], rdx
+	014 Call 0x18037ACB0, rcx, rdx, r8, r9
+	015 Move rcx, [rbx+40]
+	016 Move rdx, 0
+	017 Call 0x1804D4100, rcx, rdx, r8, r9
+	018 Move [rdi+16], rax
+	019 Move rax, [rbx+48]
+	020 Move [rdi+24], rax
+	021 Move rax, [rbx+52]
+	022 Move rbx, stack:0x30
+	023 Move [rdi+28], rax
+	024 Move [rdi+32], 0xFFFFFFFF
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+	029 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: Unity.Hierarchy.HierarchyNode get_Current()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx]
+	test rax,rax
+	je short 0000000182676E97h
+	mov eax,[rax+34h]
+	cmp [rcx+1Ch],eax
+	jne short 0000000182676E9Dh
+	mov r9,[rcx+8]
+	movsxd rdx,dword ptr [rcx+20h]
+	mov rax,[rcx+10h]
+	test r9,r9
+	je short 0000000182676E97h
+	mov edx,[rax+rdx*4]
+	xor r8d,r8d
+	mov rcx,r9
+	add rsp,28h
+	jmp near ptr 0000000182675E60h
+	call 000000018037BE30h
+	int 3
+	lea rcx,[183553110h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[183544CE8h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181805710h
+	lea rcx,[183545658h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx]
+	003 Compare rax, 0
+	004 JumpIfEqual {19}
+	005 Move rax, [rax+52]
+	006 Compare [rcx+28], rax
+	007 JumpIfNotEqual {21}
+	008 Move r9, [rcx+8]
+	009 Move rdx, [rcx+32]
+	010 Move rax, [rcx+16]
+	011 Compare r9, 0
+	012 JumpIfEqual {19}
+	013 Move rdx, [rax+rdx*4]
+	014 Move r8, 0
+	015 Move rcx, r9
+	016 ShiftStack 40
+	017 Call HierarchyFlattened.get_Item, rcx, rdx
+	018 Return rax
+	019 Call 0x18037BE30, rcx, rdx, r8, r9
+	020 Interrupt 
+	021 LoadAddress rcx, [0x183553110]
+	022 Move stack:0x20, rbx
+	023 Call 0x18037BBB0, rcx, rdx, r8, r9
+	024 Move rcx, rax
+	025 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	026 LoadAddress rcx, [0x183544CE8]
+	027 Move rbx, rax
+	028 Call 0x18037BBB0, rcx, rdx, r8, r9
+	029 Move rdx, rax
+	030 Move r8, 0
+	031 Move rcx, rbx
+	032 Call InvalidOperationException..ctor, rcx, rdx
+	033 LoadAddress rcx, [0x183545658]
+	034 Call 0x18037BBB0, rcx, rdx, r8, r9
+	035 Move rdx, rax
+	036 Move rcx, rbx
+	037 Call 0x18037BDF0, rcx, rdx, r8, r9
+	038 Move rbx, stack:0x20
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov eax,[rcx+20h]
+	inc eax
+	cmp eax,[rcx+18h]
+	mov [rcx+20h],eax
+	setl al
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Add rax, rax, 1
+	003 Compare rax, [rcx+24]
+	004 Move [rcx+32], rax
+	005 NotImplemented "setl al"
+	006 Return rax
+

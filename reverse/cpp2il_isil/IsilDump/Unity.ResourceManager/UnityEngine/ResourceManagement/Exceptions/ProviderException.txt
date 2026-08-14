@@ -1,0 +1,85 @@
+Type: UnityEngine.ResourceManagement.Exceptions.ProviderException
+
+Method: System.Void .ctor(System.String message, UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation location = null, System.Exception innerException = null)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183754701h],0
+	mov rsi,r9
+	mov rdi,r8
+	mov rbp,rdx
+	mov rbx,rcx
+	jne short 000000018238CFCCh
+	lea rcx,[18352CBE8h]
+	call 000000018037BB90h
+	mov byte ptr [183754701h],1
+	mov rcx,[18352CBE8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018238CFE1h
+	call 000000018037BED0h
+	xor r9d,r9d
+	mov r8,rsi
+	mov rdx,rbp
+	mov rcx,rbx
+	call 0000000181844570h
+	lea rcx,[rbx+90h]
+	mov [rbx+90h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183754701], 0
+	008 Move rsi, r9
+	009 Move rdi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18352CBE8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183754701], 1
+	016 Move rcx, typeof(System.Exception)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move r9, 0
+	021 Move r8, rsi
+	022 Move rdx, rbp
+	023 Move rcx, rbx
+	024 Call Exception..ctor, rcx, rdx, r8
+	025 LoadAddress rcx, [rbx+144]
+	026 Move [rbx+144], rdi
+	027 Move rdx, rdi
+	028 Move rbx, stack:0x30
+	029 Move rbp, stack:0x38
+	030 Move rsi, stack:0x40
+	031 ShiftStack 32
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 Call 0x18037ACB0, rcx, rdx, r8, r9
+	035 Return 
+
+Method: UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation get_Location()
+
+Disassembly:
+	mov rax,[rcx+90h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+144]
+	002 Return rax
+

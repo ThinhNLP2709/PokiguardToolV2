@@ -1,0 +1,126 @@
+Type: UnityEngine.Rendering.InstanceOcclusionTestSubviewSettings
+
+Method: UnityEngine.Rendering.InstanceOcclusionTestSubviewSettings FromSpan(System.ReadOnlySpan`1<UnityEngine.Rendering.SubviewOcclusionTest> subviewOcclusionTests)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rbp
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183754028h],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018227C001h
+	lea rcx,[18351CD38h]
+	call 000000018037BB90h
+	mov byte ptr [183754028h],1
+	mov ebp,[rdi+8]
+	xor eax,eax
+	xorps xmm0,xmm0
+	mov [rsp+30h],rsi
+	xor r9d,r9d
+	movups [rbx],xmm0
+	mov [rbx+10h],eax
+	test ebp,ebp
+	jle short 000000018227C073h
+	mov r11d,r9d
+	mov esi,r9d
+	cmp r9d,ebp
+	jae short 000000018227C08Dh
+	mov rax,[rdi]
+	mov ecx,r11d
+	and ecx,1Fh
+	inc r9d
+	add r11d,4
+	mov rax,[rsi+rax]
+	add rsi,8
+	mov r8,rax
+	shr r8,20h
+	mov edx,r8d
+	and r8d,1Fh
+	shl edx,cl
+	or [rbx+4],edx
+	mov edx,[rbx+8]
+	bts edx,r8d
+	mov [rbx+8],edx
+	mov edx,eax
+	shl edx,cl
+	and eax,1Fh
+	or [rbx+0Ch],edx
+	mov ecx,[rbx+10h]
+	bts ecx,eax
+	mov [rbx+10h],ecx
+	cmp r9d,ebp
+	jl short 000000018227C024h
+	mov rsi,[rsp+30h]
+	mov rax,rbx
+	mov [rbx],ebp
+	mov rbx,[rsp+38h]
+	mov rbp,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x183754028], 0
+	007 Move rdi, rdx
+	008 Move rbx, rcx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x18351CD38]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183754028], 1
+	013 Move rbp, [rdi+8]
+	014 Move rax, 0
+	015 Move xmm0, 0
+	016 Move stack:0x30, rsi
+	017 Move r9, 0
+	018 Move [rbx], xmm0
+	019 Move [rbx+16], rax
+	020 Compare rbp, 0
+	021 JumpIfLessOrEqual {51}
+	022 Move r11, r9
+	023 Move rsi, r9
+	024 Compare r9, rbp
+	025 JumpIfGreaterOrEqual {60}
+	026 Move rax, [rdi]
+	027 Move rcx, r11
+	028 And rcx, rcx, 31
+	029 Add r9, r9, 1
+	030 Add r11, r11, 4
+	031 Move rax, [rsi+rax]
+	032 Add rsi, rsi, 8
+	033 Move r8, rax
+	034 ShiftRight r8, 32
+	035 Move rdx, r8
+	036 And r8, r8, 31
+	037 ShiftLeft rdx, rcx
+	038 Or [rbx+4], [rbx+4], rdx
+	039 Move rdx, [rbx+8]
+	040 NotImplemented "bts edx,r8d"
+	041 Move [rbx+8], rdx
+	042 Move rdx, rax
+	043 ShiftLeft rdx, rcx
+	044 And rax, rax, 31
+	045 Or [rbx+12], [rbx+12], rdx
+	046 Move rcx, [rbx+16]
+	047 NotImplemented "bts ecx,eax"
+	048 Move [rbx+16], rcx
+	049 Compare r9, rbp
+	050 JumpIfLess {25}
+	051 Move rsi, stack:0x30
+	052 Move rax, rbx
+	053 Move [rbx], rbp
+	054 Move rbx, stack:0x38
+	055 Move rbp, stack:0x40
+	056 ShiftStack 32
+	057 Move rdi, stack:0x0
+	058 ShiftStack 8
+	059 Return rax
+	060 Call 0x18037BE20, rcx, rdx, r8, r9
+

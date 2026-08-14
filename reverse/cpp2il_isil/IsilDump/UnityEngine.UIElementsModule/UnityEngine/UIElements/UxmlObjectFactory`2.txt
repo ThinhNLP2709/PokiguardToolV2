@@ -1,0 +1,103 @@
+Type: UnityEngine.UIElements.UxmlObjectFactory`2
+
+Method: TCreatedType CreateObject(UnityEngine.UIElements.IUxmlAttributes bag, UnityEngine.UIElements.CreationContext cc)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,70h
+	mov rax,[r9+20h]
+	mov rbx,rcx
+	mov rdi,r8
+	mov rsi,rdx
+	mov rcx,[rax+0C0h]
+	mov rcx,[rcx]
+	call 00000001807E1080h
+	mov rcx,[rbx+10h]
+	mov [rsp+80h],rax
+	test rcx,rcx
+	je short 0000000180E8BC44h
+	movups xmm0,[rdi]
+	mov rax,[rcx]
+	lea r9,[rsp+30h]
+	movups xmm1,[rdi+10h]
+	lea rdx,[rsp+80h]
+	mov r8,rsi
+	movaps [rsp+30h],xmm0
+	movups xmm0,[rdi+20h]
+	mov r10,[rax+178h]
+	mov rax,[rax+180h]
+	movaps [rsp+40h],xmm1
+	movsd xmm1,qword ptr [rdi+30h]
+	movaps [rsp+50h],xmm0
+	movsd qword ptr [rsp+60h],xmm1
+	mov [rsp+20h],rax
+	call r10
+	mov rax,[rsp+80h]
+	lea r11,[rsp+70h]
+	mov rbx,[r11+18h]
+	mov rsi,[r11+20h]
+	mov rsp,r11
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -112
+	006 Move rax, [r9+32]
+	007 Move rbx, rcx
+	008 Move rdi, r8
+	009 Move rsi, rdx
+	010 Move rcx, [rax+192]
+	011 Move rcx, [rcx]
+	012 Call Activator.CreateInstance, rcx
+	013 Move rcx, [rbx+16]
+	014 Move stack:0x80, rax
+	015 Compare rcx, 0
+	016 JumpIfEqual {41}
+	017 Move xmm0, [rdi]
+	018 Move rax, [rcx]
+	019 LoadAddress r9, stack:0x30
+	020 Move xmm1, [rdi+16]
+	021 LoadAddress rdx, stack:0x80
+	022 Move r8, rsi
+	023 Move stack:0x30, xmm0
+	024 Move xmm0, [rdi+32]
+	025 Move r10, [rax+376]
+	026 Move rax, [rax+384]
+	027 Move stack:0x40, xmm1
+	028 Move xmm1, [rdi+48]
+	029 Move stack:0x50, xmm0
+	030 Move stack:0x60, xmm1
+	031 Move stack:0x20, rax
+	032 Call r10
+	033 Move rax, stack:0x80
+	034 LoadAddress r11, stack:0x70
+	035 Move rbx, [r11+24]
+	036 Move rsi, [r11+32]
+	037 Move rsp, r11
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return rax
+	041 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov rax,[rdx+20h]
+	mov rdx,[rax+0C0h]
+	mov rdx,[rdx+38h]
+	jmp near ptr 0000000180D82D80h
+
+ISIL:
+	001 Move rax, [rdx+32]
+	002 Move rdx, [rax+192]
+	003 Move rdx, [rdx+56]
+	004 Call 0x180D82D80, rcx, rdx
+	005 Return 
+

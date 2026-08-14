@@ -1,0 +1,222 @@
+Type: WebSocketSharp.Net.HttpHeaderInfo
+
+Method: System.Void .ctor(System.String headerName, WebSocketSharp.Net.HttpHeaderType headerType)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov esi,r8d
+	xor edx,edx
+	mov rdi,rcx
+	call 0000000180456D90h
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	mov [rdi+18h],esi
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, rdx
+	007 Move rsi, r8
+	008 Move rdx, 0
+	009 Move rdi, rcx
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rdi+16]
+	012 Move [rdi+16], rbx
+	013 Move rdx, rbx
+	014 Call 0x18037ACB0, rcx, rdx, r8, r9
+	015 Move rbx, stack:0x30
+	016 Move [rdi+24], rsi
+	017 Move rsi, stack:0x38
+	018 ShiftStack 32
+	019 Move rdi, stack:0x0
+	020 ShiftStack 8
+	021 Return 
+
+Method: System.Boolean get_IsMultiValueInRequest()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+18h]
+	shr eax,4
+	and al,1
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+24]
+	003 ShiftRight rax, 4
+	004 And rax, rax, 1
+	005 Return rax
+
+Method: System.Boolean get_IsMultiValueInResponse()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+18h]
+	shr eax,5
+	and al,1
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+24]
+	003 ShiftRight rax, 5
+	004 And rax, rax, 1
+	005 Return rax
+
+Method: System.String get_HeaderName()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+16]
+	003 Return rax
+
+Method: WebSocketSharp.Net.HttpHeaderType get_HeaderType()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+24]
+	003 Return rax
+
+Method: System.Boolean get_IsRequest()
+
+Disassembly:
+	xchg ax,ax
+	movzx eax,byte ptr [rcx+18h]
+	and al,1
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+24]
+	003 And rax, rax, 1
+	004 Return rax
+
+Method: System.Boolean get_IsResponse()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+18h]
+	shr eax,1
+	and al,1
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+24]
+	003 ShiftRight rax, 1
+	004 And rax, rax, 1
+	005 Return rax
+
+Method: System.Boolean IsMultiValue(System.Boolean response)
+
+Disassembly:
+	test byte ptr [rcx+18h],8
+	je short 00000001829F2F31h
+	test dl,dl
+	je short 00000001829F2F26h
+	mov ecx,[rcx+18h]
+	shr ecx,1
+	and cl,1
+	movzx eax,cl
+	ret
+	movzx ecx,byte ptr [rcx+18h]
+	and cl,1
+	movzx eax,cl
+	ret
+	mov ecx,[rcx+18h]
+	mov eax,ecx
+	shr ecx,5
+	shr eax,4
+	test dl,dl
+	movzx ecx,cl
+	movzx eax,al
+	cmove ecx,eax
+	and cl,1
+	movzx eax,cl
+	ret
+
+ISIL:
+	001 Compare [rcx+24], 8
+	002 JumpIfEqual {14}
+	003 Compare rdx, 0
+	004 JumpIfEqual {10}
+	005 Move rcx, [rcx+24]
+	006 ShiftRight rcx, 1
+	007 And rcx, rcx, 1
+	008 Move rax, rcx
+	009 Return rax
+	010 Move rcx, [rcx+24]
+	011 And rcx, rcx, 1
+	012 Move rax, rcx
+	013 Return rax
+	014 Move rcx, [rcx+24]
+	015 Move rax, rcx
+	016 ShiftRight rcx, 5
+	017 ShiftRight rax, 4
+	018 Compare rdx, 0
+	019 Move rcx, rcx
+	020 Move rax, rax
+	021 JumpIfNotEqual {23}
+	022 Move rcx, rax
+	023 Nop 
+	024 And rcx, rcx, 1
+	025 Move rax, rcx
+	026 Return rax
+
+Method: System.Boolean IsRestricted(System.Boolean response)
+
+Disassembly:
+	test byte ptr [rcx+18h],4
+	je short 00000001829F2F69h
+	test dl,dl
+	je short 00000001829F2F62h
+	mov eax,[rcx+18h]
+	shr eax,1
+	and al,1
+	ret
+	movzx eax,byte ptr [rcx+18h]
+	and al,1
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Compare [rcx+24], 4
+	002 JumpIfEqual {12}
+	003 Compare rdx, 0
+	004 JumpIfEqual {9}
+	005 Move rax, [rcx+24]
+	006 ShiftRight rax, 1
+	007 And rax, rax, 1
+	008 Return rax
+	009 Move rax, [rcx+24]
+	010 And rax, rax, 1
+	011 Return rax
+	012 Move rax, 0
+	013 Return rax
+

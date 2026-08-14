@@ -1,0 +1,339 @@
+Type: UnityEngine.Rendering.TileLayoutUtils
+
+Method: System.Boolean TryLayoutByTiles(UnityEngine.RectInt src, System.UInt32 tileSize, out UnityEngine.RectInt main, out UnityEngine.RectInt topRow, out UnityEngine.RectInt rightCol, out UnityEngine.RectInt topRight)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,10h
+	mov rdi,r9
+	mov ebx,edx
+	mov rsi,r8
+	mov r11,rcx
+	movsxd r10,dword ptr [rcx+8]
+	cmp r10,rbx
+	jl near ptr 0000000182216971h
+	movsxd r10,dword ptr [rcx+0Ch]
+	cmp r10,rbx
+	jl near ptr 0000000182216971h
+	mov r8d,[rcx+8]
+	mov eax,r8d
+	mov r10d,[rcx+0Ch]
+	cdq
+	idiv ebx
+	mov eax,r10d
+	sub r8d,edx
+	mov r9d,edx
+	cdq
+	idiv ebx
+	sub r10d,edx
+	mov eax,[rcx]
+	mov [rsp],eax
+	mov eax,[rcx+4]
+	mov [rsp+4],eax
+	mov [rsp+8],r8d
+	mov [rsp+0Ch],r10d
+	movups xmm0,[rsp]
+	movups [rsi],xmm0
+	lea ecx,[r10+rax]
+	mov [rsp+4],ecx
+	mov [rsp+0Ch],edx
+	movups xmm0,[rsp]
+	movups [rdi],xmm0
+	mov ecx,[r11]
+	add ecx,r8d
+	mov [rsp],ecx
+	mov [rsp+4],eax
+	mov rax,[rsp+40h]
+	mov [rsp+8],r9d
+	mov [rsp+0Ch],r10d
+	movups xmm0,[rsp]
+	movups [rax],xmm0
+	mov ecx,[r11+4]
+	add ecx,r10d
+	mov [rsp+4],ecx
+	mov rax,[rsp+48h]
+	mov [rsp+0Ch],edx
+	movups xmm0,[rsp]
+	movups [rax],xmm0
+	mov al,1
+	mov rbx,[rsp+20h]
+	mov rsi,[rsp+28h]
+	add rsp,10h
+	pop rdi
+	ret
+	mov rax,[rsp+40h]
+	xorps xmm0,xmm0
+	mov rbx,[rsp+20h]
+	xorps xmm1,xmm1
+	mov rsi,[rsp+28h]
+	movups [r8],xmm0
+	movups [r9],xmm1
+	movups [rax],xmm0
+	mov rax,[rsp+48h]
+	movups [rax],xmm1
+	xor al,al
+	add rsp,10h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -16
+	006 Move rdi, r9
+	007 Move rbx, rdx
+	008 Move rsi, r8
+	009 Move r11, rcx
+	010 Move r10, [rcx+8]
+	011 Compare r10, rbx
+	012 JumpIfLess {77}
+	013 Move r10, [rcx+12]
+	014 Compare r10, rbx
+	015 JumpIfLess {77}
+	016 Move r8, [rcx+8]
+	017 Move rax, r8
+	018 Move r10, [rcx+12]
+	019 Move TEMP, rax
+	020 ShiftRight TEMP, 31
+	021 Compare TEMP, 1
+	022 JumpIfNotEqual {25}
+	023 Move rdx, 0xFFFFFFFF
+	024 Goto {26}
+	025 Move rdx, 0
+	026 Nop 
+	027 NotImplemented "idiv ebx"
+	028 Move rax, r10
+	029 Subtract r8, r8, rdx
+	030 Move r9, rdx
+	031 Move TEMP, rax
+	032 ShiftRight TEMP, 31
+	033 Compare TEMP, 1
+	034 JumpIfNotEqual {37}
+	035 Move rdx, 0xFFFFFFFF
+	036 Goto {38}
+	037 Move rdx, 0
+	038 Nop 
+	039 NotImplemented "idiv ebx"
+	040 Subtract r10, r10, rdx
+	041 Move rax, [rcx]
+	042 Move stack:0x0, rax
+	043 Move rax, [rcx+4]
+	044 Move stack:0x4, rax
+	045 Move stack:0x8, r8
+	046 Move stack:0xC, r10
+	047 Move xmm0, stack:0x0
+	048 Move [rsi], xmm0
+	049 LoadAddress rcx, [r10+rax]
+	050 Move stack:0x4, rcx
+	051 Move stack:0xC, rdx
+	052 Move xmm0, stack:0x0
+	053 Move [rdi], xmm0
+	054 Move rcx, [r11]
+	055 Add rcx, rcx, r8
+	056 Move stack:0x0, rcx
+	057 Move stack:0x4, rax
+	058 Move rax, stack:0x40
+	059 Move stack:0x8, r9
+	060 Move stack:0xC, r10
+	061 Move xmm0, stack:0x0
+	062 Move [rax], xmm0
+	063 Move rcx, [r11+4]
+	064 Add rcx, rcx, r10
+	065 Move stack:0x4, rcx
+	066 Move rax, stack:0x48
+	067 Move stack:0xC, rdx
+	068 Move xmm0, stack:0x0
+	069 Move [rax], xmm0
+	070 Move rax, 1
+	071 Move rbx, stack:0x20
+	072 Move rsi, stack:0x28
+	073 ShiftStack 16
+	074 Move rdi, stack:0x0
+	075 ShiftStack 8
+	076 Return rax
+	077 Move rax, stack:0x40
+	078 Move xmm0, 0
+	079 Move rbx, stack:0x20
+	080 Move xmm1, 0
+	081 Move rsi, stack:0x28
+	082 Move [r8], xmm0
+	083 Move [r9], xmm1
+	084 Move [rax], xmm0
+	085 Move rax, stack:0x48
+	086 Move [rax], xmm1
+	087 Move rax, 0
+	088 ShiftStack 16
+	089 Move rdi, stack:0x0
+	090 ShiftStack 8
+	091 Return rax
+
+Method: System.Boolean TryLayoutByRow(UnityEngine.RectInt src, System.UInt32 tileSize, out UnityEngine.RectInt main, out UnityEngine.RectInt other)
+
+Disassembly:
+	sub rsp,18h
+	mov r11d,edx
+	movsxd r10,dword ptr [rcx+0Ch]
+	cmp r10,r11
+	jl short 000000018221688Bh
+	mov r10d,[rcx+0Ch]
+	mov eax,r10d
+	cdq
+	idiv r11d
+	sub r10d,edx
+	mov eax,[rcx]
+	mov [rsp],eax
+	mov eax,[rcx+4]
+	mov [rsp+4],eax
+	mov eax,[rcx+8]
+	mov [rsp+8],eax
+	mov [rsp+0Ch],r10d
+	movups xmm0,[rsp]
+	movups [r8],xmm0
+	mov ecx,[rcx+4]
+	add ecx,r10d
+	mov [rsp+4],ecx
+	mov [rsp+0Ch],edx
+	mov al,1
+	movups xmm0,[rsp]
+	movups [r9],xmm0
+	add rsp,18h
+	ret
+	xorps xmm0,xmm0
+	xorps xmm1,xmm1
+	movups [r8],xmm0
+	xor al,al
+	movups [r9],xmm1
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move r11, rdx
+	003 Move r10, [rcx+12]
+	004 Compare r10, r11
+	005 JumpIfLess {36}
+	006 Move r10, [rcx+12]
+	007 Move rax, r10
+	008 Move TEMP, rax
+	009 ShiftRight TEMP, 31
+	010 Compare TEMP, 1
+	011 JumpIfNotEqual {14}
+	012 Move rdx, 0xFFFFFFFF
+	013 Goto {15}
+	014 Move rdx, 0
+	015 Nop 
+	016 NotImplemented "idiv r11d"
+	017 Subtract r10, r10, rdx
+	018 Move rax, [rcx]
+	019 Move stack:0x0, rax
+	020 Move rax, [rcx+4]
+	021 Move stack:0x4, rax
+	022 Move rax, [rcx+8]
+	023 Move stack:0x8, rax
+	024 Move stack:0xC, r10
+	025 Move xmm0, stack:0x0
+	026 Move [r8], xmm0
+	027 Move rcx, [rcx+4]
+	028 Add rcx, rcx, r10
+	029 Move stack:0x4, rcx
+	030 Move stack:0xC, rdx
+	031 Move rax, 1
+	032 Move xmm0, stack:0x0
+	033 Move [r9], xmm0
+	034 ShiftStack 24
+	035 Return rax
+	036 Move xmm0, 0
+	037 Move xmm1, 0
+	038 Move [r8], xmm0
+	039 Move rax, 0
+	040 Move [r9], xmm1
+	041 ShiftStack 24
+	042 Return rax
+
+Method: System.Boolean TryLayoutByCol(UnityEngine.RectInt src, System.UInt32 tileSize, out UnityEngine.RectInt main, out UnityEngine.RectInt other)
+
+Disassembly:
+	sub rsp,18h
+	mov r11d,edx
+	movsxd r10,dword ptr [rcx+8]
+	cmp r10,r11
+	jl short 0000000182216819h
+	mov r10d,[rcx+8]
+	mov eax,r10d
+	cdq
+	idiv r11d
+	sub r10d,edx
+	mov eax,[rcx]
+	mov [rsp],eax
+	mov eax,[rcx+4]
+	mov [rsp+4],eax
+	mov [rsp+8],r10d
+	mov eax,[rcx+0Ch]
+	mov [rsp+0Ch],eax
+	movups xmm0,[rsp]
+	movups [r8],xmm0
+	mov ecx,[rcx]
+	add ecx,r10d
+	mov [rsp],ecx
+	mov [rsp+8],edx
+	movups xmm0,[rsp]
+	mov al,1
+	movups [r9],xmm0
+	add rsp,18h
+	ret
+	xorps xmm0,xmm0
+	xorps xmm1,xmm1
+	movups [r8],xmm0
+	xor al,al
+	movups [r9],xmm1
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move r11, rdx
+	003 Move r10, [rcx+8]
+	004 Compare r10, r11
+	005 JumpIfLess {36}
+	006 Move r10, [rcx+8]
+	007 Move rax, r10
+	008 Move TEMP, rax
+	009 ShiftRight TEMP, 31
+	010 Compare TEMP, 1
+	011 JumpIfNotEqual {14}
+	012 Move rdx, 0xFFFFFFFF
+	013 Goto {15}
+	014 Move rdx, 0
+	015 Nop 
+	016 NotImplemented "idiv r11d"
+	017 Subtract r10, r10, rdx
+	018 Move rax, [rcx]
+	019 Move stack:0x0, rax
+	020 Move rax, [rcx+4]
+	021 Move stack:0x4, rax
+	022 Move stack:0x8, r10
+	023 Move rax, [rcx+12]
+	024 Move stack:0xC, rax
+	025 Move xmm0, stack:0x0
+	026 Move [r8], xmm0
+	027 Move rcx, [rcx]
+	028 Add rcx, rcx, r10
+	029 Move stack:0x0, rcx
+	030 Move stack:0x8, rdx
+	031 Move xmm0, stack:0x0
+	032 Move rax, 1
+	033 Move [r9], xmm0
+	034 ShiftStack 24
+	035 Return rax
+	036 Move xmm0, 0
+	037 Move xmm1, 0
+	038 Move [r8], xmm0
+	039 Move rax, 0
+	040 Move [r9], xmm1
+	041 ShiftStack 24
+	042 Return rax
+

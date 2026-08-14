@@ -1,0 +1,137 @@
+Type: System.Text.UTF8Encoding+UTF8EncodingSealed
+
+Method: System.Void .ctor(System.Boolean encoderShouldEmitUTF8Identifier)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374E90Ah],0
+	movzx ebx,dl
+	mov rdi,rcx
+	jne short 000000018168E06Ch
+	lea rcx,[183529050h]
+	call 000000018037BB90h
+	mov byte ptr [18374E90Ah],1
+	mov rcx,[183529050h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018168E081h
+	call 000000018037BED0h
+	xor r8d,r8d
+	movzx edx,bl
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018167B0F0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374E90A], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183529050]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18374E90A], 1
+	012 Move rcx, typeof(System.Text.UTF8Encoding)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move r8, 0
+	017 Move rdx, rbx
+	018 Move rcx, rdi
+	019 Move rbx, stack:0x30
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call UTF8Encoding..ctor, rcx, rdx
+	024 Return 
+
+Method: System.ReadOnlySpan`1<System.Byte> get_Preamble()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [18374E90Bh],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 000000018168E0E4h
+	lea rcx,[1834F08F8h]
+	call 000000018037BB90h
+	lea rcx,[18351B238h]
+	call 000000018037BB90h
+	lea rcx,[183529050h]
+	call 000000018037BB90h
+	mov byte ptr [18374E90Bh],1
+	cmp byte ptr [rbx+38h],0
+	je short 000000018168E116h
+	mov rax,[183529050h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 000000018168E109h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183529050h]
+	mov rax,[rax+0B8h]
+	mov rax,[rax+8]
+	jmp short 000000018168E122h
+	mov rcx,[1834F08F8h]
+	call 00000001800024A0h
+	mov r8,[18351B238h]
+	lea rcx,[rsp+20h]
+	mov rdx,rax
+	call 0000000180C691B0h
+	movups xmm0,[rsp+20h]
+	mov rbx,[rsp+40h]
+	mov rax,rdi
+	movups [rdi],xmm0
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x18374E90B], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x1834F08F8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x18351B238]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183529050]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18374E90B], 1
+	016 Compare [rbx+56], 0
+	017 JumpIfEqual {27}
+	018 Move rax, typeof(System.Text.UTF8Encoding)
+	019 Compare [rax+228], 0
+	020 JumpIfNotEqual {24}
+	021 Move rcx, rax
+	022 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	023 Move rax, typeof(System.Text.UTF8Encoding)
+	024 Move rax, [rax+184]
+	025 Move rax, [rax+8]
+	026 Goto {29}
+	027 Move rcx, [0x1834F08F8]
+	028 Call 0x1800024A0, rcx, rdx, r8, r9
+	029 Move r8, [0x18351B238]
+	030 LoadAddress rcx, stack:0x20
+	031 Move rdx, rax
+	032 Call 0x180C691B0, rcx, rdx
+	033 Move xmm0, stack:0x20
+	034 Move rbx, stack:0x40
+	035 Move rax, rdi
+	036 Move [rdi], xmm0
+	037 ShiftStack 48
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return rax
+

@@ -1,0 +1,45 @@
+Type: Unity.Hierarchy.HierarchyNodeTypeHandlerBaseEnumerable
+
+Method: System.Void .ctor(Unity.Hierarchy.Hierarchy hierarchy)
+
+Disassembly:
+	mov [rcx],rdx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Call 0x18037ACB0, rcx, rdx, r8, r9
+	003 Return 
+
+Method: Unity.Hierarchy.HierarchyNodeTypeHandlerBaseEnumerable+Enumerator GetEnumerator()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rdx,[rdx]
+	xorps xmm0,xmm0
+	xor r8d,r8d
+	mov rbx,rcx
+	movups [rcx],xmm0
+	call 0000000182676850h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rdx, [rdx]
+	005 Move xmm0, 0
+	006 Move r8, 0
+	007 Move rbx, rcx
+	008 Move [rcx], xmm0
+	009 Call Enumerator..ctor, rcx, rdx
+	010 Move rax, rbx
+	011 ShiftStack 32
+	012 Move rbx, stack:0x0
+	013 ShiftStack 8
+	014 Return rax
+

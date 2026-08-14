@@ -1,0 +1,100 @@
+Type: System.Data.XDRSchema+NameType
+
+Method: System.Void .ctor(System.String n, System.Type t)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rsi,r8
+	xor edx,edx
+	mov rdi,rcx
+	call 0000000180456D90h
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	lea rcx,[rdi+18h]
+	mov [rdi+18h],rsi
+	mov rdx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, rdx
+	007 Move rsi, r8
+	008 Move rdx, 0
+	009 Move rdi, rcx
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rdi+16]
+	012 Move [rdi+16], rbx
+	013 Move rdx, rbx
+	014 Call 0x18037ACB0, rcx, rdx, r8, r9
+	015 LoadAddress rcx, [rdi+24]
+	016 Move [rdi+24], rsi
+	017 Move rdx, rsi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call 0x18037ACB0, rcx, rdx, r8, r9
+	024 Return 
+
+Method: System.Int32 CompareTo(System.Object obj)
+
+Disassembly:
+	sub rsp,28h
+	mov r10,[rcx+10h]
+	mov rax,rdx
+	mov rcx,[18375C130h]
+	test rdx,rdx
+	je short 0000000181AB7D35h
+	xor edx,edx
+	cmp [rax],rcx
+	cmove rdx,rax
+	test rdx,rdx
+	je short 0000000181AB7D4Ah
+	xor r9d,r9d
+	mov r8d,4
+	mov rcx,r10
+	add rsp,28h
+	jmp near ptr 000000018165A2A0h
+	mov rdx,rcx
+	mov rcx,rax
+	call 000000018037ACF0h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r10, [rcx+16]
+	003 Move rax, rdx
+	004 Move rcx, [0x18375C130]
+	005 Compare rdx, 0
+	006 JumpIfEqual {14}
+	007 Move rdx, 0
+	008 Compare [rax], rcx
+	009 JumpIfNotEqual {11}
+	010 Move rdx, rax
+	011 Nop 
+	012 Compare rdx, 0
+	013 JumpIfEqual {20}
+	014 Move r9, 0
+	015 Move r8, 4
+	016 Move rcx, r10
+	017 ShiftStack 40
+	018 Call String.Compare, rcx, rdx, r8, r9
+	019 Return rax
+	020 Move rdx, rcx
+	021 Move rcx, rax
+	022 Call 0x18037ACF0, rcx, rdx, r8, r9
+

@@ -1,0 +1,86 @@
+Type: Unity.VisualScripting.PlatformUtility
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183754DFAh],0
+	jne short 000000018247DAE0h
+	lea rcx,[1834F74C8h]
+	call 000000018037BB90h
+	mov byte ptr [183754DFAh],1
+	mov rax,[1834F74C8h]
+	mov rcx,[rax+0B8h]
+	mov byte ptr [rcx],0
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183754DFA], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834F74C8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183754DFA], 1
+	007 Move rax, typeof(Unity.VisualScripting.PlatformUtility)
+	008 Move rcx, [rax+184]
+	009 Move [rcx], 0
+	010 ShiftStack 40
+	011 Return 
+
+Method: System.Boolean CheckJitSupport()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Boolean IsEditor(UnityEngine.RuntimePlatform platform)
+
+Disassembly:
+	cmp ecx,7
+	je short 000000018247DA90h
+	test ecx,ecx
+	je short 000000018247DA90h
+	cmp ecx,10h
+	sete al
+	ret
+	mov al,1
+	ret
+
+ISIL:
+	001 Compare rcx, 7
+	002 JumpIfEqual {8}
+	003 Compare rcx, 0
+	004 JumpIfEqual {8}
+	005 Compare rcx, 16
+	006 NotImplemented "sete al"
+	007 Return rax
+	008 Move rax, 1
+	009 Return rax
+
+Method: System.Boolean IsStandalone(UnityEngine.RuntimePlatform platform)
+
+Disassembly:
+	lea eax,[rcx-1]
+	cmp eax,1
+	ja short 000000018247DAABh
+	mov al,1
+	ret
+	cmp ecx,0Dh
+	sete al
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-1]
+	002 Compare rax, 1
+	003 JumpIfGreater {6}
+	004 Move rax, 1
+	005 Return rax
+	006 Compare rcx, 13
+	007 NotImplemented "sete al"
+	008 Return rax
+

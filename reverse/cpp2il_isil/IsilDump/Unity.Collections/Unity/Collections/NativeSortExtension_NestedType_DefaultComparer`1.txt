@@ -1,0 +1,68 @@
+Type: Unity.Collections.NativeSortExtension+DefaultComparer`1
+
+Method: System.Int32 Compare(T x, T y)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],edx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374D576h],0
+	mov rdi,r9
+	mov ebx,r8d
+	jne short 0000000181027AB0h
+	lea rcx,[183550B98h]
+	call 000000018037BB90h
+	mov byte ptr [18374D576h],1
+	mov rcx,[183550B98h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181027AC5h
+	call 000000018037BED0h
+	mov rax,[rdi+20h]
+	test byte ptr [rax+135h],1
+	jne short 0000000181027ADAh
+	mov rcx,rax
+	call 0000000180384C90h
+	mov r8,[rax+0C0h]
+	lea rcx,[rsp+38h]
+	mov edx,ebx
+	mov r8,[r8+10h]
+	call 0000000182275BD0h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rdx
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374D576], 0
+	007 Move rdi, r9
+	008 Move rbx, r8
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183550B98]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374D576], 1
+	013 Move rcx, typeof(UnityEngine.Rendering.InstanceHandle)
+	014 Compare [rcx+228], 0
+	015 JumpIfNotEqual {17}
+	016 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	017 Move rax, [rdi+32]
+	018 Compare [rax+309], 1
+	019 JumpIfNotEqual {22}
+	020 Move rcx, rax
+	021 Call 0x180384C90, rcx, rdx, r8, r9
+	022 Move r8, [rax+192]
+	023 LoadAddress rcx, stack:0x38
+	024 Move rdx, rbx
+	025 Move r8, [r8+16]
+	026 Call InstanceHandle.CompareTo, rcx, rdx
+	027 Move rbx, stack:0x30
+	028 ShiftStack 32
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+

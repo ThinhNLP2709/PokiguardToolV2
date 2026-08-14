@@ -1,0 +1,76 @@
+Type: UnityEngine.Rendering.TextureCurveParameter
+
+Method: System.Void .ctor(UnityEngine.Rendering.TextureCurve value, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753C31h],0
+	movzx ebx,r8b
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 00000001822150E5h
+	lea rcx,[1835600E0h]
+	call 000000018037BB90h
+	mov byte ptr [183753C31h],1
+	mov r9,[1835600E0h]
+	movzx r8d,bl
+	mov rdx,rdi
+	mov rcx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000180F6FFE0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x183753C31], 0
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x1835600E0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183753C31], 1
+	014 Move r9, [0x1835600E0]
+	015 Move r8, rbx
+	016 Move rdx, rdi
+	017 Move rcx, rsi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call VolumeParameter`1<Object>..ctor, rcx, rdx, r8
+	024 Return 
+
+Method: System.Void Release()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 00000001822150A8h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 00000001822156D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+24]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move rdx, 0
+	006 ShiftStack 40
+	007 Call TextureCurve.Release, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+

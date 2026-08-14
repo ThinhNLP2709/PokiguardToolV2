@@ -1,0 +1,112 @@
+Type: System.Threading.OSSpecificSynchronizationContext+InvocationEntryDelegate
+
+Method: System.Void .ctor(System.Object object, System.IntPtr method)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[r8+8]
+	mov rbx,r8
+	mov [rcx+10h],rax
+	mov rdi,rcx
+	mov [rcx+28h],rbx
+	mov rsi,rdx
+	mov [rcx+20h],rdx
+	add rcx,20h
+	call 000000018037ACB0h
+	movzx ebp,byte ptr [rbx+52h]
+	mov rcx,rbx
+	mov [rdi+40h],rdi
+	call 000000018037ACE0h
+	test al,al
+	je short 000000018100F239h
+	cmp bpl,1
+	jne short 000000018100F23Eh
+	lea rax,[180063C20h]
+	jmp short 000000018100F24Ah
+	test rsi,rsi
+	je short 000000018100F26Eh
+	mov rax,[rdi+20h]
+	mov [rdi+40h],rax
+	mov rax,[rdi+10h]
+	mov [rdi+18h],rax
+	lea rax,[18008FF80h]
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov [rdi+38h],rax
+	add rsp,20h
+	pop rdi
+	ret
+	lea rdx,[182A50388h]
+	xor ecx,ecx
+	call 000000018037B790h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rax, [r8+8]
+	008 Move rbx, r8
+	009 Move [rcx+16], rax
+	010 Move rdi, rcx
+	011 Move [rcx+40], rbx
+	012 Move rsi, rdx
+	013 Move [rcx+32], rdx
+	014 Add rcx, rcx, 32
+	015 Call 0x18037ACB0, rcx, rdx, r8, r9
+	016 Move rbp, [rbx+82]
+	017 Move rcx, rbx
+	018 Move [rdi+64], rdi
+	019 Call 0x18037ACE0, rcx, rdx, r8, r9
+	020 Compare rax, 0
+	021 JumpIfEqual {26}
+	022 Compare rbp, 1
+	023 JumpIfNotEqual {28}
+	024 LoadAddress rax, [0x180063C20]
+	025 Goto {31}
+	026 Compare rsi, 0
+	027 JumpIfEqual {41}
+	028 Move rax, [rdi+32]
+	029 Move [rdi+64], rax
+	030 Move rax, [rdi+16]
+	031 Move [rdi+24], rax
+	032 LoadAddress rax, [0x18008FF80]
+	033 Move rbx, stack:0x30
+	034 Move rbp, stack:0x38
+	035 Move rsi, stack:0x40
+	036 Move [rdi+56], rax
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return 
+	041 LoadAddress rdx, [0x182A50388]
+	042 Move rcx, 0
+	043 Call 0x18037B790, rcx, rdx, r8, r9
+	044 Move rcx, rax
+	045 Move rdx, 0
+	046 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Void Invoke(System.IntPtr arg)
+
+Disassembly:
+	mov rax,[rcx+18h]
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	jmp rax
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Move r8, [rcx+40]
+	003 Move rcx, [rcx+64]
+	004 CallNoReturn rax
+

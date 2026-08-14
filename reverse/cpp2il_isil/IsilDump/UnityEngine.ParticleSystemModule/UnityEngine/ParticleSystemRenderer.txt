@@ -1,0 +1,134 @@
+Type: UnityEngine.ParticleSystemRenderer
+
+Method: System.Int32 GetMeshes(out UnityEngine.Mesh[] meshes)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	sub rsp,20h
+	cmp byte ptr [183759870h],0
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 00000001826BE068h
+	lea rcx,[18350A7B8h]
+	call 000000018037BB90h
+	lea rcx,[1835669B8h]
+	call 000000018037BB90h
+	mov byte ptr [183759870h],1
+	test rsi,rsi
+	jne short 00000001826BE07Eh
+	mov rdx,[1835669B8h]
+	xor r8d,r8d
+	xor ecx,ecx
+	call 0000000182635400h
+	test rbx,rbx
+	je short 00000001826BE0D2h
+	mov [rsp+30h],rdi
+	mov rdi,[rbx+10h]
+	test rdi,rdi
+	jne short 00000001826BE09Bh
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000182635460h
+	mov rax,[183759878h]
+	test rax,rax
+	jne short 00000001826BE0BAh
+	lea rcx,[182B47250h]
+	call 000000018037BE90h
+	mov [183759878h],rax
+	mov rdx,rsi
+	mov rcx,rdi
+	mov rdi,[rsp+30h]
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rsi
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -32
+	005 Compare [0x183759870], 0
+	006 Move rsi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {14}
+	009 LoadAddress rcx, [0x18350A7B8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x1835669B8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183759870], 1
+	014 Compare rsi, 0
+	015 JumpIfNotEqual {20}
+	016 Move rdx, "meshes"
+	017 Move r8, 0
+	018 Move rcx, 0
+	019 Call ThrowHelper.ThrowArgumentNullException, rcx, rdx, r8
+	020 Compare rbx, 0
+	021 JumpIfEqual {43}
+	022 Move stack:0x30, rdi
+	023 Move rdi, [rbx+16]
+	024 Compare rdi, 0
+	025 JumpIfNotEqual {29}
+	026 Move rdx, 0
+	027 Move rcx, rbx
+	028 Call ThrowHelper.ThrowNullReferenceException, rcx, rdx
+	029 Move rax, [0x183759878]
+	030 Compare rax, 0
+	031 JumpIfNotEqual {35}
+	032 LoadAddress rcx, [0x182B47250]
+	033 Call 0x18037BE90, rcx, rdx, r8, r9
+	034 Move [0x183759878], rax
+	035 Move rdx, rsi
+	036 Move rcx, rdi
+	037 Move rdi, stack:0x30
+	038 Move rbx, stack:0x38
+	039 ShiftStack 32
+	040 Move rsi, stack:0x0
+	041 ShiftStack 8
+	042 CallNoReturn rax
+	043 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Int32 GetMeshes_Injected(System.IntPtr _unity_self, out UnityEngine.Mesh[] meshes)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183759878h]
+	mov rbx,rdx
+	mov rdi,rcx
+	test rax,rax
+	jne short 00000001826BE00Fh
+	lea rcx,[182B47250h]
+	call 000000018037BE90h
+	mov [183759878h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183759878]
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B47250]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183759878], rax
+	013 Move rdx, rbx
+	014 Move rcx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+

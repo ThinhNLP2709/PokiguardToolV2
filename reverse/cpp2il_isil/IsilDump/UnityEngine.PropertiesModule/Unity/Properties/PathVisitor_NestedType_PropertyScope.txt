@@ -1,0 +1,90 @@
+Type: Unity.Properties.PathVisitor+PropertyScope
+
+Method: System.Void .ctor(Unity.Properties.PathVisitor visitor, Unity.Properties.IProperty property)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,r8
+	mov [rcx],rdx
+	mov rbx,rcx
+	call 000000018037ACB0h
+	mov rdx,[rbx]
+	test rdx,rdx
+	je short 00000001826E613Ch
+	mov rdx,[rdx+0A8h]
+	lea rcx,[rbx+8]
+	mov [rbx+8],rdx
+	call 000000018037ACB0h
+	mov rcx,[rbx]
+	test rcx,rcx
+	je short 00000001826E613Ch
+	mov [rcx+0A8h],rdi
+	mov rdx,rdi
+	add rcx,0A8h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, r8
+	006 Move [rcx], rdx
+	007 Move rbx, rcx
+	008 Call 0x18037ACB0, rcx, rdx, r8, r9
+	009 Move rdx, [rbx]
+	010 Compare rdx, 0
+	011 JumpIfEqual {28}
+	012 Move rdx, [rdx+168]
+	013 LoadAddress rcx, [rbx+8]
+	014 Move [rbx+8], rdx
+	015 Call 0x18037ACB0, rcx, rdx, r8, r9
+	016 Move rcx, [rbx]
+	017 Compare rcx, 0
+	018 JumpIfEqual {28}
+	019 Move [rcx+168], rdi
+	020 Move rdx, rdi
+	021 Add rcx, rcx, 168
+	022 Move rbx, stack:0x30
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Call 0x18037ACB0, rcx, rdx, r8, r9
+	027 Return 
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Dispose()
+
+Disassembly:
+	sub rsp,28h
+	mov rdx,rcx
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 00000001826E60DAh
+	mov rdx,[rdx+8]
+	mov [rcx+0A8h],rdx
+	add rcx,0A8h
+	add rsp,28h
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rdx, rcx
+	003 Move rcx, [rcx]
+	004 Compare rcx, 0
+	005 JumpIfEqual {12}
+	006 Move rdx, [rdx+8]
+	007 Move [rcx+168], rdx
+	008 Add rcx, rcx, 168
+	009 ShiftStack 40
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+

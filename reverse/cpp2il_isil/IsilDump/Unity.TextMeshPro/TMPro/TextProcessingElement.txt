@@ -1,0 +1,394 @@
+Type: TMPro.TextProcessingElement
+
+Method: TMPro.TextProcessingElementType get_ElementType()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_ElementType(TMPro.TextProcessingElementType value)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Int32 get_StartIndex()
+
+Disassembly:
+	mov eax,[rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+
+Method: System.Void set_StartIndex(System.Int32 value)
+
+Disassembly:
+	mov [rcx+4],edx
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: System.Int32 get_Length()
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: System.Void set_Length(System.Int32 value)
+
+Disassembly:
+	mov [rcx+8],edx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: TMPro.CharacterElement get_CharacterElement()
+
+Disassembly:
+	movups xmm0,[rdx+10h]
+	mov rax,rcx
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+16]
+	002 Move rax, rcx
+	003 Move [rcx], xmm0
+	004 Return rax
+
+Method: TMPro.MarkupElement get_MarkupElement()
+
+Disassembly:
+	mov rax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+
+Method: System.Void set_MarkupElement(TMPro.MarkupElement value)
+
+Disassembly:
+	mov [rcx+20h],rdx
+	add rcx,20h
+	xor edx,edx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+32], rdx
+	002 Add rcx, rcx, 32
+	003 Move rdx, 0
+	004 Call 0x18037ACB0, rcx, rdx, r8, r9
+	005 Return 
+
+Method: System.Void .ctor(TMPro.TextProcessingElementType elementType, System.Int32 startIndex, System.Int32 length)
+
+Disassembly:
+	mov [rcx],edx
+	xorps xmm0,xmm0
+	mov [rcx+4],r8d
+	xor eax,eax
+	mov [rcx+8],r9d
+	movups [rcx+10h],xmm0
+	mov [rcx+20h],rax
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move xmm0, 0
+	003 Move [rcx+4], r8
+	004 Move rax, 0
+	005 Move [rcx+8], r9
+	006 Move [rcx+16], xmm0
+	007 Move [rcx+32], rax
+	008 Return 
+
+Method: System.Void .ctor(TMPro.TMP_TextElement textElement, System.Int32 startIndex, System.Int32 length)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov [rcx+4],r8d
+	mov rbx,rcx
+	mov dword ptr [rcx],1
+	xorps xmm0,xmm0
+	mov [rcx+8],r9d
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	movups [rsp+20h],xmm0
+	call 000000018241CF90h
+	movups xmm0,[rsp+20h]
+	lea rcx,[rbx+18h]
+	xor edx,edx
+	movups [rbx+10h],xmm0
+	call 000000018037ACB0h
+	xor eax,eax
+	mov [rbx+20h],rax
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move [rcx+4], r8
+	005 Move rbx, rcx
+	006 Move [rcx], 1
+	007 Move xmm0, 0
+	008 Move [rcx+8], r9
+	009 Move r8, 0
+	010 LoadAddress rcx, stack:0x20
+	011 Move stack:0x20, xmm0
+	012 Call CharacterElement..ctor, rcx, rdx
+	013 Move xmm0, stack:0x20
+	014 LoadAddress rcx, [rbx+24]
+	015 Move rdx, 0
+	016 Move [rbx+16], xmm0
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 Move rax, 0
+	019 Move [rbx+32], rax
+	020 ShiftStack 48
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return 
+
+Method: System.Void .ctor(TMPro.CharacterElement characterElement, System.Int32 startIndex, System.Int32 length)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	movups xmm0,[rdx]
+	mov rbx,rcx
+	mov dword ptr [rcx],1
+	mov [rcx+4],r8d
+	xor edx,edx
+	movups [rcx+10h],xmm0
+	mov [rcx+8],r9d
+	add rcx,18h
+	call 000000018037ACB0h
+	xor eax,eax
+	mov [rbx+20h],rax
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move xmm0, [rdx]
+	005 Move rbx, rcx
+	006 Move [rcx], 1
+	007 Move [rcx+4], r8
+	008 Move rdx, 0
+	009 Move [rcx+16], xmm0
+	010 Move [rcx+8], r9
+	011 Add rcx, rcx, 24
+	012 Call 0x18037ACB0, rcx, rdx, r8, r9
+	013 Move rax, 0
+	014 Move [rbx+32], rax
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return 
+
+Method: System.Void .ctor(TMPro.MarkupElement markupElement)
+
+Disassembly:
+	mov [rsp+10h],rdx
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	mov dword ptr [rcx],2
+	lea rcx,[rsp+38h]
+	xor edx,edx
+	call 000000018241D140h
+	xor edx,edx
+	mov [rbx+4],eax
+	lea rcx,[rsp+38h]
+	call 000000018241D110h
+	mov [rbx+8],eax
+	lea rcx,[rbx+20h]
+	mov rax,[rsp+38h]
+	xorps xmm0,xmm0
+	movups [rbx+10h],xmm0
+	xor edx,edx
+	mov [rbx+20h],rax
+	call 000000018037ACB0h
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 Move stack:0x10, rdx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbx
+	004 ShiftStack -32
+	005 Move rbx, rcx
+	006 Move [rcx], 2
+	007 LoadAddress rcx, stack:0x38
+	008 Move rdx, 0
+	009 Call MarkupElement.get_ValueStartIndex, rcx, rdx
+	010 Move rdx, 0
+	011 Move [rbx+4], rax
+	012 LoadAddress rcx, stack:0x38
+	013 Call MarkupElement.get_ValueLength, rcx, rdx
+	014 Move [rbx+8], rax
+	015 LoadAddress rcx, [rbx+32]
+	016 Move rax, stack:0x38
+	017 Move xmm0, 0
+	018 Move [rbx+16], xmm0
+	019 Move rdx, 0
+	020 Move [rbx+32], rax
+	021 Call 0x18037ACB0, rcx, rdx, r8, r9
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Return 
+
+Method: TMPro.TextProcessingElement get_Undefined()
+
+Disassembly:
+	xorps xmm0,xmm0
+	xor eax,eax
+	movups [rcx],xmm0
+	movups [rcx+10h],xmm0
+	mov [rcx+20h],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Move rax, 0
+	003 Move [rcx], xmm0
+	004 Move [rcx+16], xmm0
+	005 Move [rcx+32], rax
+	006 Move rax, rcx
+	007 Return rax
+
+Method: System.String DebuggerDisplay()
+
+Disassembly:
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183754AE8h],0
+	mov rdi,rcx
+	jne short 000000018243A65Dh
+	lea rcx,[1835618D0h]
+	call 000000018037BB90h
+	lea rcx,[1835672F0h]
+	call 000000018037BB90h
+	lea rcx,[1835137B8h]
+	call 000000018037BB90h
+	mov byte ptr [183754AE8h],1
+	cmp dword ptr [rdi],1
+	jne short 000000018243A6BCh
+	mov [rsp+38h],rbx
+	mov eax,[rdi+10h]
+	lea rdx,[rsp+40h]
+	mov rcx,[18375C0F0h]
+	mov [rsp+40h],eax
+	call 000000018037AC90h
+	movzx ecx,word ptr [rdi+10h]
+	lea rdx,[rsp+30h]
+	mov [rsp+30h],cx
+	mov rbx,rax
+	mov rcx,[18375C128h]
+	call 000000018037AC90h
+	mov rcx,[1835672F0h]
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	call 000000018165E830h
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	lea rcx,[rdi+20h]
+	xor edx,edx
+	call 000000018241D0B0h
+	mov rcx,[1835618D0h]
+	lea rdx,[rsp+30h]
+	mov [rsp+30h],eax
+	call 000000018037AC90h
+	mov rcx,[1835137B8h]
+	xor r8d,r8d
+	mov rdx,rax
+	call 000000018165E580h
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rdi
+	003 ShiftStack -32
+	004 Compare [0x183754AE8], 0
+	005 Move rdi, rcx
+	006 JumpIfNotEqual {14}
+	007 LoadAddress rcx, [0x1835618D0]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x1835672F0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x1835137B8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183754AE8], 1
+	014 Compare [rdi], 1
+	015 JumpIfNotEqual {38}
+	016 Move stack:0x38, rbx
+	017 Move rax, [rdi+16]
+	018 LoadAddress rdx, stack:0x40
+	019 Move rcx, [0x18375C0F0]
+	020 Move stack:0x40, rax
+	021 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	022 Move rcx, [rdi+16]
+	023 LoadAddress rdx, stack:0x30
+	024 Move stack:0x30, rcx
+	025 Move rbx, rax
+	026 Move rcx, [0x18375C128]
+	027 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	028 Move rcx, "Unicode ({0})   '{1}' "
+	029 Move r9, 0
+	030 Move r8, rax
+	031 Move rdx, rbx
+	032 Call String.Format, rcx, rdx, r8, r9
+	033 Move rbx, stack:0x38
+	034 ShiftStack 32
+	035 Move rdi, stack:0x0
+	036 ShiftStack 8
+	037 Return rax
+	038 LoadAddress rcx, [rdi+32]
+	039 Move rdx, 0
+	040 Call MarkupElement.get_NameHashCode, rcx, rdx
+	041 Move rcx, typeof(TMPro.MarkupTag)
+	042 LoadAddress rdx, stack:0x30
+	043 Move stack:0x30, rax
+	044 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	045 Move rcx, "Markup = {0}"
+	046 Move r8, 0
+	047 Move rdx, rax
+	048 Call String.Format, rcx, rdx, r8
+	049 ShiftStack 32
+	050 Move rdi, stack:0x0
+	051 ShiftStack 8
+	052 Return rax
+

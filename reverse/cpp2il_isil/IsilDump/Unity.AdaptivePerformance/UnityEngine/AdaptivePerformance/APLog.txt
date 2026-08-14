@@ -1,0 +1,86 @@
+Type: UnityEngine.AdaptivePerformance.APLog
+
+Method: System.Void Debug(System.String format, System.Object[] args)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183752720h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181E5B0D4h
+	lea rcx,[1834FA058h]
+	call 000000018037BB90h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[18350BA78h]
+	call 000000018037BB90h
+	mov byte ptr [183752720h],1
+	mov rax,[1834FA058h]
+	mov rcx,[rax+0B8h]
+	cmp byte ptr [rcx],0
+	je short 0000000181E5B129h
+	mov rcx,[18350BA78h]
+	xor r8d,r8d
+	mov rdx,rdi
+	call 000000018165B1F0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	call 000000018165E2A0h
+	mov rcx,[18351F5A0h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181E5B11Fh
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001825CCB10h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183752720], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x1834FA058]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x18351F5A0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18350BA78]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183752720], 1
+	016 Move rax, typeof(UnityEngine.AdaptivePerformance.APLog)
+	017 Move rcx, [rax+184]
+	018 Compare [rcx], 0
+	019 JumpIfEqual {36}
+	020 Move rcx, "[Adaptive Performance] "
+	021 Move r8, 0
+	022 Move rdx, rdi
+	023 Call String.Concat, rcx, rdx, r8
+	024 Move r8, 0
+	025 Move rdx, rbx
+	026 Move rcx, rax
+	027 Call String.Format, rcx, rdx, r8
+	028 Move rcx, typeof(UnityEngine.Debug)
+	029 Move rbx, rax
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move rdx, 0
+	034 Move rcx, rbx
+	035 Call Debug.Log, rcx, rdx
+	036 Move rbx, stack:0x30
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return 
+

@@ -1,0 +1,124 @@
+Type: Unity.Profiling.ProfilerMarker
+
+Method: System.IntPtr get_Handle()
+
+Disassembly:
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void .ctor(System.String name)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rax,rdx
+	mov rbx,rcx
+	xor r8d,r8d
+	mov rcx,rax
+	mov edx,1
+	mov [rsp+20h],r8
+	xor r9d,r9d
+	call 00000001825D9AF0h
+	mov [rbx],rax
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rax, rdx
+	005 Move rbx, rcx
+	006 Move r8, 0
+	007 Move rcx, rax
+	008 Move rdx, 1
+	009 Move stack:0x20, r8
+	010 Move r9, 0
+	011 Call ProfilerUnsafeUtility.CreateMarker, rcx, rdx, r8, r9, stack:0x0
+	012 Move [rbx], rax
+	013 ShiftStack 48
+	014 Move rbx, stack:0x0
+	015 ShiftStack 8
+	016 Return 
+
+Method: System.Void .ctor(Unity.Profiling.ProfilerCategory category, System.String name)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rax,r8
+	mov rbx,rcx
+	xor r8d,r8d
+	xor r9d,r9d
+	mov rcx,rax
+	mov [rsp+20h],r8
+	call 00000001825D9AF0h
+	mov [rbx],rax
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rax, r8
+	005 Move rbx, rcx
+	006 Move r8, 0
+	007 Move r9, 0
+	008 Move rcx, rax
+	009 Move stack:0x20, r8
+	010 Call ProfilerUnsafeUtility.CreateMarker, rcx, rdx, r8, r9, stack:0x0
+	011 Move [rbx], rax
+	012 ShiftStack 48
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Return 
+
+Method: Unity.Profiling.ProfilerMarker+AutoScope Auto()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,[rcx]
+	test rbx,rbx
+	je short 00000001825D8C42h
+	mov rax,[183755E28h]
+	test rax,rax
+	jne short 00000001825D8C3Dh
+	lea rcx,[182B22FC0h]
+	call 000000018037BE90h
+	mov [183755E28h],rax
+	mov rcx,rbx
+	call rax
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, [rcx]
+	005 Compare rbx, 0
+	006 JumpIfEqual {15}
+	007 Move rax, [0x183755E28]
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B22FC0]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183755E28], rax
+	013 Move rcx, rbx
+	014 Call rax
+	015 Move rax, rbx
+	016 ShiftStack 32
+	017 Move rbx, stack:0x0
+	018 ShiftStack 8
+	019 Return rax
+

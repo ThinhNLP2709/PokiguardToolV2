@@ -1,0 +1,92 @@
+Type: UnityEngine.UIElements.StyleSheets.Syntax.ExpressionMultiplier
+
+Method: UnityEngine.UIElements.StyleSheets.Syntax.ExpressionMultiplierType get_type()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Return rax
+
+Method: System.Void set_type(UnityEngine.UIElements.StyleSheets.Syntax.ExpressionMultiplierType value)
+
+Disassembly:
+	xor r8d,r8d
+	jmp near ptr 0000000182883620h
+
+ISIL:
+	001 Move r8, 0
+	002 Call ExpressionMultiplier.SetType, rcx, rdx
+	003 Return 
+
+Method: System.Void .ctor(UnityEngine.UIElements.StyleSheets.Syntax.ExpressionMultiplierType type = 0)
+
+Disassembly:
+	xor r8d,r8d
+	mov [rcx],edx
+	mov dword ptr [rcx+8],1
+	mov dword ptr [rcx+4],1
+	jmp near ptr 0000000182883620h
+
+ISIL:
+	001 Move r8, 0
+	002 Move [rcx], rdx
+	003 Move [rcx+8], 1
+	004 Move [rcx+4], 1
+	005 Call ExpressionMultiplier.SetType, rcx, rdx
+	006 Return 
+
+Method: System.Void SetType(UnityEngine.UIElements.StyleSheets.Syntax.ExpressionMultiplierType value)
+
+Disassembly:
+	lea eax,[rdx-1]
+	mov [rcx],edx
+	cmp eax,5
+	ja short 0000000182883671h
+	lea eax,[rdx-1]
+	movsxd rdx,eax
+	lea r8,[180000000h]
+	mov eax,[r8+rdx*4+2883680h]
+	add rax,r8
+	jmp rax
+	mov dword ptr [rcx+4],0
+	mov dword ptr [rcx+8],64h
+	ret
+	mov dword ptr [rcx+4],0
+	mov dword ptr [rcx+8],1
+	ret
+	mov dword ptr [rcx+4],1
+	mov dword ptr [rcx+8],64h
+	ret
+	mov dword ptr [rcx+4],1
+	mov dword ptr [rcx+8],1
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rdx-1]
+	002 Move [rcx], rdx
+	003 Compare rax, 5
+	004 JumpIfGreater {20}
+	005 LoadAddress rax, [rdx-1]
+	006 Move rdx, rax
+	007 LoadAddress r8, [0x180000000]
+	008 Move rax, [r8+0x2883680+rdx*4]
+	009 Add rax, rax, r8
+	010 CallNoReturn rax
+	011 Move [rcx+4], 0
+	012 Move [rcx+8], 100
+	013 Return 
+	014 Move [rcx+4], 0
+	015 Move [rcx+8], 1
+	016 Return 
+	017 Move [rcx+4], 1
+	018 Move [rcx+8], 100
+	019 Return 
+	020 Move [rcx+4], 1
+	021 Move [rcx+8], 1
+	022 Return 
+

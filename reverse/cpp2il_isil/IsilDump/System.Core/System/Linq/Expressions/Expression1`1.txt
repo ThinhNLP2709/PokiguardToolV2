@@ -1,0 +1,268 @@
+Type: System.Linq.Expressions.Expression1`1
+
+Method: System.Void .ctor(System.Linq.Expressions.Expression body, System.Linq.Expressions.ParameterExpression par0)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[r9+20h]
+	mov rdi,r8
+	mov rbx,rcx
+	mov r9,[rax+0C0h]
+	mov r8,[r9]
+	mov rax,[r8]
+	call rax
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [r9+32]
+	006 Move rdi, r8
+	007 Move rbx, rcx
+	008 Move r9, [rax+192]
+	009 Move r8, [r9]
+	010 Move rax, [r8]
+	011 Call rax
+	012 LoadAddress rcx, [rbx+24]
+	013 Move [rbx+24], rdi
+	014 Move rdx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 Call 0x18037ACB0, rcx, rdx, r8, r9
+	020 Return 
+
+Method: System.Int32 get_ParameterCount()
+
+Disassembly:
+	mov eax,1
+	ret
+
+ISIL:
+	001 Move rax, 1
+	002 Return rax
+
+Method: System.Linq.Expressions.ParameterExpression GetParameter(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374DDE0h],0
+	mov rsi,r8
+	mov ebx,edx
+	mov rdi,rcx
+	jne short 0000000181300643h
+	lea rcx,[183512CD8h]
+	call 000000018037BB90h
+	mov byte ptr [18374DDE0h],1
+	test ebx,ebx
+	jne short 0000000181300666h
+	mov rdx,[183512CD8h]
+	mov rcx,[rdi+18h]
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018089F690h
+	lea rcx,[183547AF0h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	xor edx,edx
+	call 00000001819C7900h
+	mov rdx,rsi
+	mov rcx,rax
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374DDE0], 0
+	007 Move rsi, r8
+	008 Move rbx, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183512CD8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18374DDE0], 1
+	014 Compare rbx, 0
+	015 JumpIfNotEqual {25}
+	016 Move rdx, [0x183512CD8]
+	017 Move rcx, [rdi+24]
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call 0x18089F690, rcx, rdx
+	024 Return rax
+	025 LoadAddress rcx, [0x183547AF0]
+	026 Call 0x18037BBB0, rcx, rdx, r8, r9
+	027 Move rcx, rax
+	028 Move rdx, 0
+	029 Call Error.ArgumentOutOfRange, rcx, rdx
+	030 Move rdx, rsi
+	031 Move rcx, rax
+	032 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Linq.Expressions.Expression`1<TDelegate> Rewrite(System.Linq.Expressions.Expression body, System.Linq.Expressions.ParameterExpression[] parameters)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374DDE1h],0
+	mov rsi,r9
+	mov rbx,r8
+	mov rbp,rdx
+	mov rdi,rcx
+	jne short 00000001813006E4h
+	lea rcx,[183512CD8h]
+	call 000000018037BB90h
+	lea rcx,[18352DA28h]
+	call 000000018037BB90h
+	lea rcx,[1834EE9D0h]
+	call 000000018037BB90h
+	mov byte ptr [18374DDE1h],1
+	test rbx,rbx
+	jne short 0000000181300744h
+	mov rcx,[1834EE9D0h]
+	mov edx,1
+	call 000000018037AD30h
+	mov rdx,[183512CD8h]
+	mov rbx,rax
+	mov rcx,[rdi+18h]
+	call 000000018089F690h
+	mov rdi,rax
+	test rbx,rbx
+	je short 000000018130078Bh
+	test rax,rax
+	je short 000000018130072Eh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je short 0000000181300791h
+	cmp dword ptr [rbx+18h],0
+	jbe short 00000001813007A1h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[18352DA28h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181300759h
+	call 000000018037BED0h
+	mov rax,[rsi+20h]
+	mov rdx,rbx
+	mov rcx,rbp
+	mov r8,[rax+0C0h]
+	mov rax,[r8+18h]
+	mov r8,rax
+	mov r9,[rax]
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp r9
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x18374DDE1], 0
+	008 Move rsi, r9
+	009 Move rbx, r8
+	010 Move rbp, rdx
+	011 Move rdi, rcx
+	012 JumpIfNotEqual {20}
+	013 LoadAddress rcx, [0x183512CD8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18352DA28]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x1834EE9D0]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 Move [0x18374DDE1], 1
+	020 Compare rbx, 0
+	021 JumpIfNotEqual {46}
+	022 Move rcx, typeof(System.Linq.Expressions.ParameterExpression[1])
+	023 Move rdx, 1
+	024 Call "SzArrayNew", rcx, rdx, r8, r9
+	025 Move rdx, [0x183512CD8]
+	026 Move rbx, rax
+	027 Move rcx, [rdi+24]
+	028 Call 0x18089F690, rcx, rdx
+	029 Move rdi, rax
+	030 Compare rbx, 0
+	031 JumpIfEqual {64}
+	032 Compare rax, 0
+	033 JumpIfEqual {40}
+	034 Move rdx, [rbx]
+	035 Move rcx, rax
+	036 Move rdx, [rdx+64]
+	037 Call 0x18037ACD0, rcx, rdx, r8, r9
+	038 Compare rax, 0
+	039 JumpIfEqual {66}
+	040 Compare [rbx+24], 0
+	041 JumpIfLessOrEqual {71}
+	042 LoadAddress rcx, [rbx+32]
+	043 Move [rbx+32], rdi
+	044 Move rdx, rdi
+	045 Call 0x18037ACB0, rcx, rdx, r8, r9
+	046 Move rcx, typeof(System.Linq.Expressions.Expression)
+	047 Compare [rcx+228], 0
+	048 JumpIfNotEqual {50}
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rax, [rsi+32]
+	051 Move rdx, rbx
+	052 Move rcx, rbp
+	053 Move r8, [rax+192]
+	054 Move rax, [r8+24]
+	055 Move r8, rax
+	056 Move r9, [rax]
+	057 Move rbx, stack:0x30
+	058 Move rbp, stack:0x38
+	059 Move rsi, stack:0x40
+	060 ShiftStack 32
+	061 Move rdi, stack:0x0
+	062 ShiftStack 8
+	063 CallNoReturn r9
+	064 Call 0x18037BE30, rcx, rdx, r8, r9
+	065 Interrupt 
+	066 Call 0x18037B7B0, rcx, rdx, r8, r9
+	067 Move rcx, rax
+	068 Move rdx, 0
+	069 Call 0x18037BDF0, rcx, rdx, r8, r9
+	070 Interrupt 
+	071 Call 0x18037BE20, rcx, rdx, r8, r9
+

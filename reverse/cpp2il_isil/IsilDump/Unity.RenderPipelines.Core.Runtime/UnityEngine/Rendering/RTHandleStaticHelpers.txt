@@ -1,0 +1,228 @@
+Type: UnityEngine.Rendering.RTHandleStaticHelpers
+
+Method: System.Void SetRTHandleStaticWrapper(UnityEngine.Rendering.RenderTargetIdentifier rtId)
+
+Disassembly:
+	push rdi
+	sub rsp,50h
+	cmp byte ptr [183753ADCh],0
+	mov rdi,rcx
+	jne short 00000001821F2DD1h
+	lea rcx,[1834FDDB8h]
+	call 000000018037BB90h
+	lea rcx,[1834FDF20h]
+	call 000000018037BB90h
+	mov byte ptr [183753ADCh],1
+	mov rcx,[1834FDDB8h]
+	mov [rsp+60h],rbx
+	mov rax,[rcx+0B8h]
+	cmp qword ptr [rax],0
+	je short 00000001821F2E37h
+	mov rbx,[rax]
+	xor edx,edx
+	lea rcx,[rbx+18h]
+	mov qword ptr [rbx+18h],0
+	call 000000018037ACB0h
+	lea rcx,[rbx+20h]
+	mov qword ptr [rbx+20h],0
+	xor edx,edx
+	call 000000018037ACB0h
+	movups xmm0,[rdi]
+	movups xmm1,[rdi+10h]
+	movups [rbx+28h],xmm0
+	movsd xmm0,qword ptr [rdi+20h]
+	movups [rbx+38h],xmm1
+	movsd qword ptr [rbx+48h],xmm0
+	mov rbx,[rsp+60h]
+	add rsp,50h
+	pop rdi
+	ret
+	mov rcx,[1834FDF20h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001821F2E4Ch
+	call 000000018037BED0h
+	cmp byte ptr [183753AF4h],0
+	jne short 00000001821F2E68h
+	lea rcx,[1834FDF20h]
+	call 000000018037BB90h
+	mov byte ptr [183753AF4h],1
+	mov rcx,[1834FDF20h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001821F2E7Dh
+	call 000000018037BED0h
+	mov rax,[1834FDF20h]
+	mov rcx,[rax+0B8h]
+	mov rbx,[rcx]
+	test rbx,rbx
+	je near ptr 00000001821F2F17h
+	cmp byte ptr [183753B15h],0
+	jne short 00000001821F2EB3h
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [183753B15h],1
+	movups xmm0,[rdi]
+	mov r8,[18351D790h]
+	xor r9d,r9d
+	movups xmm1,[rdi+10h]
+	lea rdx,[rsp+20h]
+	mov rcx,rbx
+	movaps [rsp+20h],xmm0
+	movsd xmm0,qword ptr [rdi+20h]
+	movsd qword ptr [rsp+40h],xmm0
+	movaps [rsp+30h],xmm1
+	call 00000001821F4100h
+	mov rcx,[1834FDDB8h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rax
+	mov rdx,rax
+	mov rcx,[1834FDDB8h]
+	mov rcx,[rcx+0B8h]
+	mov rbx,[rsp+60h]
+	add rsp,50h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rdi
+	003 ShiftStack -80
+	004 Compare [0x183753ADC], 0
+	005 Move rdi, rcx
+	006 JumpIfNotEqual {12}
+	007 LoadAddress rcx, [0x1834FDDB8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x1834FDF20]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183753ADC], 1
+	012 Move rcx, typeof(UnityEngine.Rendering.RTHandleStaticHelpers)
+	013 Move stack:0x60, rbx
+	014 Move rax, [rcx+184]
+	015 Compare [rax], 0
+	016 JumpIfEqual {37}
+	017 Move rbx, [rax]
+	018 Move rdx, 0
+	019 LoadAddress rcx, [rbx+24]
+	020 Move [rbx+24], 0
+	021 Call 0x18037ACB0, rcx, rdx, r8, r9
+	022 LoadAddress rcx, [rbx+32]
+	023 Move [rbx+32], 0
+	024 Move rdx, 0
+	025 Call 0x18037ACB0, rcx, rdx, r8, r9
+	026 Move xmm0, [rdi]
+	027 Move xmm1, [rdi+16]
+	028 Move [rbx+40], xmm0
+	029 Move xmm0, [rdi+32]
+	030 Move [rbx+56], xmm1
+	031 Move [rbx+72], xmm0
+	032 Move rbx, stack:0x60
+	033 ShiftStack 80
+	034 Move rdi, stack:0x0
+	035 ShiftStack 8
+	036 Return 
+	037 Move rcx, typeof(UnityEngine.Rendering.RTHandles)
+	038 Compare [rcx+228], 0
+	039 JumpIfNotEqual {41}
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Compare [0x183753AF4], 0
+	042 JumpIfNotEqual {46}
+	043 LoadAddress rcx, [0x1834FDF20]
+	044 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	045 Move [0x183753AF4], 1
+	046 Move rcx, typeof(UnityEngine.Rendering.RTHandles)
+	047 Compare [rcx+228], 0
+	048 JumpIfNotEqual {50}
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rax, typeof(UnityEngine.Rendering.RTHandles)
+	051 Move rcx, [rax+184]
+	052 Move rbx, [rcx]
+	053 Compare rbx, 0
+	054 JumpIfEqual {83}
+	055 Compare [0x183753B15], 0
+	056 JumpIfNotEqual {60}
+	057 LoadAddress rcx, [0x18351D790]
+	058 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	059 Move [0x183753B15], 1
+	060 Move xmm0, [rdi]
+	061 Move r8, ""
+	062 Move r9, 0
+	063 Move xmm1, [rdi+16]
+	064 LoadAddress rdx, stack:0x20
+	065 Move rcx, rbx
+	066 Move stack:0x20, xmm0
+	067 Move xmm0, [rdi+32]
+	068 Move stack:0x40, xmm0
+	069 Move stack:0x30, xmm1
+	070 Call RTHandleSystem.Alloc, rcx, rdx, r8
+	071 Move rcx, typeof(UnityEngine.Rendering.RTHandleStaticHelpers)
+	072 Move rdx, [rcx+184]
+	073 Move [rdx], rax
+	074 Move rdx, rax
+	075 Move rcx, typeof(UnityEngine.Rendering.RTHandleStaticHelpers)
+	076 Move rcx, [rcx+184]
+	077 Move rbx, stack:0x60
+	078 ShiftStack 80
+	079 Move rdi, stack:0x0
+	080 ShiftStack 8
+	081 Call 0x18037ACB0, rcx, rdx, r8, r9
+	082 Return 
+	083 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void SetRTHandleUserManagedWrapper(ref UnityEngine.Rendering.RTHandle rtWrapper, UnityEngine.Rendering.RenderTargetIdentifier rtId)
+
+Disassembly:
+	push rdi
+	sub rsp,20h
+	cmp qword ptr [rcx],0
+	mov rdi,rdx
+	je short 00000001821F2F7Bh
+	mov [rsp+30h],rbx
+	mov rbx,[rcx]
+	xor edx,edx
+	lea rcx,[rbx+18h]
+	mov qword ptr [rbx+18h],0
+	call 000000018037ACB0h
+	lea rcx,[rbx+20h]
+	mov qword ptr [rbx+20h],0
+	xor edx,edx
+	call 000000018037ACB0h
+	movups xmm0,[rdi]
+	movups xmm1,[rdi+10h]
+	movups [rbx+28h],xmm0
+	movsd xmm0,qword ptr [rdi+20h]
+	movups [rbx+38h],xmm1
+	movsd qword ptr [rbx+48h],xmm0
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rdi
+	003 ShiftStack -32
+	004 Compare [rcx], 0
+	005 Move rdi, rdx
+	006 JumpIfEqual {24}
+	007 Move stack:0x30, rbx
+	008 Move rbx, [rcx]
+	009 Move rdx, 0
+	010 LoadAddress rcx, [rbx+24]
+	011 Move [rbx+24], 0
+	012 Call 0x18037ACB0, rcx, rdx, r8, r9
+	013 LoadAddress rcx, [rbx+32]
+	014 Move [rbx+32], 0
+	015 Move rdx, 0
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Move xmm0, [rdi]
+	018 Move xmm1, [rdi+16]
+	019 Move [rbx+40], xmm0
+	020 Move xmm0, [rdi+32]
+	021 Move [rbx+56], xmm1
+	022 Move [rbx+72], xmm0
+	023 Move rbx, stack:0x30
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Return 
+

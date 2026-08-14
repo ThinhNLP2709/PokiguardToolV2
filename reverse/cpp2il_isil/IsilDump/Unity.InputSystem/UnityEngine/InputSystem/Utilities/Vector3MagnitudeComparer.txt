@@ -1,0 +1,58 @@
+Type: UnityEngine.InputSystem.Utilities.Vector3MagnitudeComparer
+
+Method: System.Int32 Compare(UnityEngine.Vector3 x, UnityEngine.Vector3 y)
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rdx+4]
+	movss xmm2,dword ptr [rdx]
+	movss xmm1,dword ptr [rdx+8]
+	mulss xmm2,xmm2
+	mulss xmm0,xmm0
+	mulss xmm1,xmm1
+	addss xmm2,xmm0
+	addss xmm2,xmm1
+	movss xmm0,dword ptr [r8+4]
+	movss xmm3,dword ptr [r8]
+	movss xmm1,dword ptr [r8+8]
+	mulss xmm3,xmm3
+	mulss xmm0,xmm0
+	mulss xmm1,xmm1
+	addss xmm3,xmm0
+	addss xmm3,xmm1
+	comiss xmm3,xmm2
+	ja short 0000000181F53827h
+	xor eax,eax
+	comiss xmm2,xmm3
+	seta al
+	ret
+	mov eax,0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rdx+4]
+	003 Move xmm2, [rdx]
+	004 Move xmm1, [rdx+8]
+	005 Multiply xmm2, xmm2, xmm2
+	006 Multiply xmm0, xmm0, xmm0
+	007 Multiply xmm1, xmm1, xmm1
+	008 Add xmm2, xmm2, xmm0
+	009 Add xmm2, xmm2, xmm1
+	010 Move xmm0, [r8+4]
+	011 Move xmm3, [r8]
+	012 Move xmm1, [r8+8]
+	013 Multiply xmm3, xmm3, xmm3
+	014 Multiply xmm0, xmm0, xmm0
+	015 Multiply xmm1, xmm1, xmm1
+	016 Add xmm3, xmm3, xmm0
+	017 Add xmm3, xmm3, xmm1
+	018 Compare xmm3, xmm2
+	019 JumpIfGreater {24}
+	020 Move rax, 0
+	021 Compare xmm2, xmm3
+	022 NotImplemented "seta al"
+	023 Return rax
+	024 Move rax, 0xFFFFFFFF
+	025 Return rax
+

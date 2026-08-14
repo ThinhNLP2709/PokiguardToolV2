@@ -1,0 +1,341 @@
+Type: System.Threading.NativeEventCalls
+
+Method: System.IntPtr CreateEvent_internal(System.Boolean manual, System.Boolean initial, System.String name, out System.Int32 errorCode)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rdi,r9
+	mov rbx,r8
+	movzx esi,dl
+	movzx ebp,cl
+	test r8,r8
+	je short 000000018188B548h
+	xor ecx,ecx
+	call 000000018171FD80h
+	movsxd r8,eax
+	add r8,rbx
+	mov r9d,[rbx+10h]
+	jmp short 000000018188B54Bh
+	xor r9d,r9d
+	movzx edx,sil
+	mov [rsp+60h],rdi
+	movzx ecx,bpl
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	jmp near ptr 00000001803AAF20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rdi, r9
+	008 Move rbx, r8
+	009 Move rsi, rdx
+	010 Move rbp, rcx
+	011 Compare r8, 0
+	012 JumpIfEqual {19}
+	013 Move rcx, 0
+	014 Call RuntimeHelpers.get_OffsetToStringData, rcx
+	015 Move r8, rax
+	016 Add r8, r8, rbx
+	017 Move r9, [rbx+16]
+	018 Goto {20}
+	019 Move r9, 0
+	020 Move rdx, rsi
+	021 Move stack:0x60, rdi
+	022 Move rcx, rbp
+	023 Move rbx, stack:0x40
+	024 Move rbp, stack:0x48
+	025 Move rsi, stack:0x50
+	026 ShiftStack 48
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Call 0x1803AAF20, rcx, rdx, r8, r9
+	030 Return rax
+
+Method: System.IntPtr CreateEvent_icall(System.Boolean manual, System.Boolean initial, System.Char* name, System.Int32 name_length, out System.Int32 errorCode)
+
+Disassembly:
+	jmp near ptr 00000001803AAF20h
+
+ISIL:
+	001 Call 0x1803AAF20, rcx, rdx, r8, r9
+	002 Return rax
+
+Method: System.Boolean SetEvent(Microsoft.Win32.SafeHandles.SafeWaitHandle handle)
+
+Disassembly:
+	mov r11,rsp
+	mov [r11+8],rcx
+	push rbx
+	sub rsp,40h
+	mov byte ptr [rsp+68h],0
+	mov byte ptr [rsp+60h],0
+	mov qword ptr [r11-20h],0
+	lea rax,[r11+18h]
+	mov [r11-18h],rax
+	lea rax,[r11+8]
+	mov [r11-10h],rax
+	mov rcx,[r11+8]
+	test rcx,rcx
+	je short 000000018188B723h
+	xor r8d,r8d
+	lea rdx,[r11+18h]
+	call 0000000181721440h
+	mov rcx,[rsp+50h]
+	test rcx,rcx
+	je short 000000018188B717h
+	mov rcx,[rcx+10h]
+	call 00000001803AB2E0h
+	movzx ebx,al
+	mov [rsp+68h],al
+	cmp byte ptr [rsp+60h],0
+	je short 000000018188B6E5h
+	mov rcx,[rsp+50h]
+	test rcx,rcx
+	je short 000000018188B71Dh
+	xor edx,edx
+	call 0000000181721550h
+	jmp short 000000018188B70Eh
+	cmp byte ptr [rsp+60h],0
+	je short 000000018188B6FFh
+	mov rcx,[rsp+50h]
+	test rcx,rcx
+	je short 000000018188B72Fh
+	xor edx,edx
+	call 0000000181721550h
+	mov rcx,[rsp+28h]
+	test rcx,rcx
+	jne short 000000018188B729h
+	movzx ebx,byte ptr [rsp+68h]
+	movzx eax,bl
+	add rsp,40h
+	pop rbx
+	ret
+	call 000000018037BE30h
+	nop
+	call 000000018037BE30h
+	nop
+	call 000000018037BE30h
+	nop
+	call 000000018037BEC0h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move r11, rsp
+	002 Move [r11+8], rcx
+	003 ShiftStack -8
+	004 Move stack:0x0, rbx
+	005 ShiftStack -64
+	006 Move stack:0x68, 0
+	007 Move stack:0x60, 0
+	008 Move [r11-32], 0
+	009 LoadAddress rax, [r11+24]
+	010 Move [r11-24], rax
+	011 LoadAddress rax, [r11+8]
+	012 Move [r11-16], rax
+	013 Move rcx, [r11+8]
+	014 Compare rcx, 0
+	015 JumpIfEqual {54}
+	016 Move r8, 0
+	017 LoadAddress rdx, [r11+24]
+	018 Call SafeHandle.DangerousAddRef, rcx, rdx
+	019 Move rcx, stack:0x50
+	020 Compare rcx, 0
+	021 JumpIfEqual {50}
+	022 Move rcx, [rcx+16]
+	023 Call 0x1803AB2E0, rcx, rdx, r8, r9
+	024 Move rbx, rax
+	025 Move stack:0x68, rax
+	026 Compare stack:0x60, 0
+	027 JumpIfEqual {33}
+	028 Move rcx, stack:0x50
+	029 Compare rcx, 0
+	030 JumpIfEqual {52}
+	031 Move rdx, 0
+	032 Call SafeHandle.DangerousRelease, rcx, rdx
+	033 Goto {45}
+	034 Compare stack:0x60, 0
+	035 JumpIfEqual {41}
+	036 Move rcx, stack:0x50
+	037 Compare rcx, 0
+	038 JumpIfEqual {58}
+	039 Move rdx, 0
+	040 Call SafeHandle.DangerousRelease, rcx, rdx
+	041 Move rcx, stack:0x28
+	042 Compare rcx, 0
+	043 JumpIfNotEqual {56}
+	044 Move rbx, stack:0x68
+	045 Move rax, rbx
+	046 ShiftStack 64
+	047 Move rbx, stack:0x0
+	048 ShiftStack 8
+	049 Return rax
+	050 Call 0x18037BE30, rcx, rdx, r8, r9
+	051 Nop 
+	052 Call 0x18037BE30, rcx, rdx, r8, r9
+	053 Nop 
+	054 Call 0x18037BE30, rcx, rdx, r8, r9
+	055 Nop 
+	056 Call 0x18037BEC0, rcx, rdx, r8, r9
+	057 Interrupt 
+	058 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean SetEvent_internal(System.IntPtr handle)
+
+Disassembly:
+	jmp near ptr 00000001803AB2E0h
+
+ISIL:
+	001 Call 0x1803AB2E0, rcx, rdx, r8, r9
+	002 Return rax
+
+Method: System.Boolean ResetEvent(Microsoft.Win32.SafeHandles.SafeWaitHandle handle)
+
+Disassembly:
+	mov r11,rsp
+	mov [r11+8],rcx
+	push rbx
+	sub rsp,40h
+	mov byte ptr [rsp+68h],0
+	mov byte ptr [rsp+60h],0
+	mov qword ptr [r11-20h],0
+	lea rax,[r11+18h]
+	mov [r11-18h],rax
+	lea rax,[r11+8]
+	mov [r11-10h],rax
+	mov rcx,[r11+8]
+	test rcx,rcx
+	je short 000000018188B643h
+	xor r8d,r8d
+	lea rdx,[r11+18h]
+	call 0000000181721440h
+	mov rcx,[rsp+50h]
+	test rcx,rcx
+	je short 000000018188B637h
+	mov rcx,[rcx+10h]
+	call 00000001803AB2C0h
+	movzx ebx,al
+	mov [rsp+68h],al
+	cmp byte ptr [rsp+60h],0
+	je short 000000018188B605h
+	mov rcx,[rsp+50h]
+	test rcx,rcx
+	je short 000000018188B63Dh
+	xor edx,edx
+	call 0000000181721550h
+	jmp short 000000018188B62Eh
+	cmp byte ptr [rsp+60h],0
+	je short 000000018188B61Fh
+	mov rcx,[rsp+50h]
+	test rcx,rcx
+	je short 000000018188B64Fh
+	xor edx,edx
+	call 0000000181721550h
+	mov rcx,[rsp+28h]
+	test rcx,rcx
+	jne short 000000018188B649h
+	movzx ebx,byte ptr [rsp+68h]
+	movzx eax,bl
+	add rsp,40h
+	pop rbx
+	ret
+	call 000000018037BE30h
+	nop
+	call 000000018037BE30h
+	nop
+	call 000000018037BE30h
+	nop
+	call 000000018037BEC0h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move r11, rsp
+	002 Move [r11+8], rcx
+	003 ShiftStack -8
+	004 Move stack:0x0, rbx
+	005 ShiftStack -64
+	006 Move stack:0x68, 0
+	007 Move stack:0x60, 0
+	008 Move [r11-32], 0
+	009 LoadAddress rax, [r11+24]
+	010 Move [r11-24], rax
+	011 LoadAddress rax, [r11+8]
+	012 Move [r11-16], rax
+	013 Move rcx, [r11+8]
+	014 Compare rcx, 0
+	015 JumpIfEqual {54}
+	016 Move r8, 0
+	017 LoadAddress rdx, [r11+24]
+	018 Call SafeHandle.DangerousAddRef, rcx, rdx
+	019 Move rcx, stack:0x50
+	020 Compare rcx, 0
+	021 JumpIfEqual {50}
+	022 Move rcx, [rcx+16]
+	023 Call 0x1803AB2C0, rcx, rdx, r8, r9
+	024 Move rbx, rax
+	025 Move stack:0x68, rax
+	026 Compare stack:0x60, 0
+	027 JumpIfEqual {33}
+	028 Move rcx, stack:0x50
+	029 Compare rcx, 0
+	030 JumpIfEqual {52}
+	031 Move rdx, 0
+	032 Call SafeHandle.DangerousRelease, rcx, rdx
+	033 Goto {45}
+	034 Compare stack:0x60, 0
+	035 JumpIfEqual {41}
+	036 Move rcx, stack:0x50
+	037 Compare rcx, 0
+	038 JumpIfEqual {58}
+	039 Move rdx, 0
+	040 Call SafeHandle.DangerousRelease, rcx, rdx
+	041 Move rcx, stack:0x28
+	042 Compare rcx, 0
+	043 JumpIfNotEqual {56}
+	044 Move rbx, stack:0x68
+	045 Move rax, rbx
+	046 ShiftStack 64
+	047 Move rbx, stack:0x0
+	048 ShiftStack 8
+	049 Return rax
+	050 Call 0x18037BE30, rcx, rdx, r8, r9
+	051 Nop 
+	052 Call 0x18037BE30, rcx, rdx, r8, r9
+	053 Nop 
+	054 Call 0x18037BE30, rcx, rdx, r8, r9
+	055 Nop 
+	056 Call 0x18037BEC0, rcx, rdx, r8, r9
+	057 Interrupt 
+	058 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean ResetEvent_internal(System.IntPtr handle)
+
+Disassembly:
+	jmp near ptr 00000001803AB2C0h
+
+ISIL:
+	001 Call 0x1803AB2C0, rcx, rdx, r8, r9
+	002 Return rax
+
+Method: System.Void CloseEvent_internal(System.IntPtr handle)
+
+Disassembly:
+	jmp near ptr 00000001803AAEA0h
+
+ISIL:
+	001 Call 0x1803AAEA0, rcx, rdx, r8, r9
+	002 Return 
+

@@ -1,0 +1,33 @@
+Type: UnityEngine.Rendering.DebugDisplayStats`1+AccumulatedTiming
+
+Method: System.Void UpdateLastAverage(System.Int32 frameCount)
+
+Disassembly:
+	movss xmm1,dword ptr [rcx+10h]
+	movd xmm0,edx
+	cvtdq2ps xmm0,xmm0
+	mov dword ptr [rcx+10h],0
+	divss xmm1,xmm0
+	movss dword ptr [rcx+14h],xmm1
+	ret
+
+ISIL:
+	001 Move xmm1, [rcx+16]
+	002 Move xmm0, rdx
+	003 Move xmm0, xmm0
+	004 Move [rcx+16], 0
+	005 Divide xmm1, xmm1, xmm0
+	006 Move [rcx+20], xmm1
+	007 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

@@ -1,0 +1,617 @@
+Type: UnityEngine.Rendering.RenderGraphModule.ResourceHandle
+
+Method: System.Int32 get_index()
+
+Disassembly:
+	movzx eax,word ptr [rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Int32 get_iType()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183753D9Dh],0
+	mov rbx,rcx
+	jne short 000000018223BD05h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753D9Dh],1
+	mov rcx,[183505490h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223BD1Ah
+	call 000000018037BED0h
+	mov eax,[rbx+8]
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183753D9D], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183505490]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183753D9D], 1
+	010 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	011 Compare [rcx+228], 0
+	012 JumpIfNotEqual {14}
+	013 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	014 Move rax, [rbx+8]
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+
+Method: System.Int32 get_version()
+
+Disassembly:
+	mov eax,[rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+
+Method: System.Void set_version(System.Int32 value)
+
+Disassembly:
+	mov [rcx+4],edx
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: UnityEngine.Rendering.RenderGraphModule.RenderGraphResourceType get_type()
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: System.Void set_type(UnityEngine.Rendering.RenderGraphModule.RenderGraphResourceType value)
+
+Disassembly:
+	mov [rcx+8],edx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: System.Void .ctor(System.Int32 value, UnityEngine.Rendering.RenderGraphModule.RenderGraphResourceType type, System.Boolean shared)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753D9Eh],0
+	movzx esi,r9b
+	mov edi,r8d
+	mov ebp,edx
+	mov rbx,rcx
+	jne short 000000018223BBCCh
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753D9Eh],1
+	mov rax,[183505490h]
+	test sil,sil
+	je short 000000018223BBFDh
+	cmp dword ptr [rax+0E4h],0
+	jne short 000000018223BBF0h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183505490h]
+	mov rcx,[rax+0B8h]
+	add rcx,4
+	jmp short 000000018223BC1Ch
+	cmp dword ptr [rax+0E4h],0
+	jne short 000000018223BC15h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183505490h]
+	mov rcx,[rax+0B8h]
+	movzx eax,bp
+	or eax,[rcx]
+	mov [rbx],eax
+	mov rcx,[183505490h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223BC38h
+	call 000000018037BED0h
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov dword ptr [rbx+4],0FFFFFFFFh
+	mov [rbx+8],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183753D9E], 0
+	008 Move rsi, r9
+	009 Move rdi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x183505490]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753D9E], 1
+	016 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	017 Compare rsi, 0
+	018 JumpIfEqual {27}
+	019 Compare [rax+228], 0
+	020 JumpIfNotEqual {24}
+	021 Move rcx, rax
+	022 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	023 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	024 Move rcx, [rax+184]
+	025 Add rcx, rcx, 4
+	026 Goto {33}
+	027 Compare [rax+228], 0
+	028 JumpIfNotEqual {32}
+	029 Move rcx, rax
+	030 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	031 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	032 Move rcx, [rax+184]
+	033 Move rax, rbp
+	034 Or rax, rax, [rcx]
+	035 Move [rbx], rax
+	036 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	037 Compare [rcx+228], 0
+	038 JumpIfNotEqual {40}
+	039 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	040 Move rbp, stack:0x38
+	041 Move rsi, stack:0x40
+	042 Move [rbx+4], 0xFFFFFFFF
+	043 Move [rbx+8], rdi
+	044 Move rbx, stack:0x30
+	045 ShiftStack 32
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return 
+
+Method: System.Void .ctor(in UnityEngine.Rendering.RenderGraphModule.ResourceHandle h, System.Int32 version)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753D9Fh],0
+	mov esi,r8d
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018223BC94h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753D9Fh],1
+	mov eax,[rdi]
+	mov [rbx],eax
+	mov rcx,[183505490h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223BCADh
+	call 000000018037BED0h
+	mov eax,[rdi+8]
+	mov [rbx+4],esi
+	mov rsi,[rsp+38h]
+	mov [rbx+8],eax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x183753D9F], 0
+	007 Move rsi, r8
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183505490]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183753D9F], 1
+	014 Move rax, [rdi]
+	015 Move [rbx], rax
+	016 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rax, [rdi+8]
+	021 Move [rbx+4], rsi
+	022 Move rsi, stack:0x38
+	023 Move [rbx+8], rax
+	024 Move rbx, stack:0x30
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+
+Method: System.Boolean IsValid()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183753DA0h],0
+	mov rbx,rcx
+	jne short 000000018223B9E5h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753DA0h],1
+	mov ebx,[rbx]
+	and ebx,0FFFF0000h
+	jne short 000000018223B9F7h
+	xor al,al
+	add rsp,20h
+	pop rbx
+	ret
+	mov rcx,[183505490h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223BA13h
+	call 000000018037BED0h
+	mov rcx,[183505490h]
+	mov rax,[rcx+0B8h]
+	cmp ebx,[rax]
+	jne short 000000018223BA26h
+	mov al,1
+	add rsp,20h
+	pop rbx
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223BA3Bh
+	call 000000018037BED0h
+	mov rcx,[183505490h]
+	mov rax,[rcx+0B8h]
+	cmp ebx,[rax+4]
+	sete al
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183753DA0], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183505490]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183753DA0], 1
+	010 Move rbx, [rbx]
+	011 And rbx, rbx, 0xFFFF0000
+	012 JumpIfNotEqual {18}
+	013 Move rax, 0
+	014 ShiftStack 32
+	015 Move rbx, stack:0x0
+	016 ShiftStack 8
+	017 Return rax
+	018 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	019 Compare [rcx+228], 0
+	020 JumpIfNotEqual {23}
+	021 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	022 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	023 Move rax, [rcx+184]
+	024 Compare rbx, [rax]
+	025 JumpIfNotEqual {31}
+	026 Move rax, 1
+	027 ShiftStack 32
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+	031 Compare [rcx+228], 0
+	032 JumpIfNotEqual {35}
+	033 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	034 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	035 Move rax, [rcx+184]
+	036 Compare rbx, [rax+4]
+	037 NotImplemented "sete al"
+	038 ShiftStack 32
+	039 Move rbx, stack:0x0
+	040 ShiftStack 8
+	041 Return rax
+
+Method: System.Boolean IsNull()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183753DA1h],0
+	mov rbx,rcx
+	jne short 000000018223B995h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753DA1h],1
+	mov rcx,[183505490h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223B9AAh
+	call 000000018037BED0h
+	movzx eax,word ptr [rbx]
+	test eax,eax
+	sete al
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183753DA1], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183505490]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183753DA1], 1
+	010 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	011 Compare [rcx+228], 0
+	012 JumpIfNotEqual {14}
+	013 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	014 Move rax, [rbx]
+	015 Compare rax, 0
+	016 NotImplemented "sete al"
+	017 ShiftStack 32
+	018 Move rbx, stack:0x0
+	019 ShiftStack 8
+	020 Return rax
+
+Method: System.Void NewFrame(System.Int32 executionIndex)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753DA2h],0
+	mov ebx,ecx
+	jne short 000000018223BA78h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753DA2h],1
+	mov rdx,[183505490h]
+	cmp dword ptr [rdx+0E4h],0
+	jne short 000000018223BA97h
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[183505490h]
+	mov rax,[rdx+0B8h]
+	imul ecx,ebx,5AC30000h
+	and ebx,0FFFF0000h
+	mov edi,[rax]
+	xor ecx,ebx
+	mov [rax],ecx
+	mov rdx,[183505490h]
+	mov rax,[rdx+0B8h]
+	cmp dword ptr [rax],0
+	je short 000000018223BAECh
+	cmp dword ptr [rdx+0E4h],0
+	jne short 000000018223BADBh
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[183505490h]
+	mov rax,[rdx+0B8h]
+	mov rcx,rax
+	mov eax,[rax+4]
+	cmp [rcx],eax
+	jne short 000000018223BB2Ch
+	mov ebx,1
+	cmp edi,10000h
+	jne short 000000018223BB08h
+	nop dword ptr [rax]
+	inc ebx
+	cmp bx,1
+	je short 000000018223BB00h
+	cmp dword ptr [rdx+0E4h],0
+	jne short 000000018223BB20h
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[183505490h]
+	mov rax,[rdx+0B8h]
+	shl ebx,10h
+	mov [rax],ebx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183753DA2], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183505490]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183753DA2], 1
+	011 Move rdx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	012 Compare [rdx+228], 0
+	013 JumpIfNotEqual {17}
+	014 Move rcx, rdx
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move rdx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	017 Move rax, [rdx+184]
+	018 Multiply rcx, rbx, 0x5AC30000
+	019 And rbx, rbx, 0xFFFF0000
+	020 Move rdi, [rax]
+	021 Xor rcx, rcx, rbx
+	022 Move [rax], rcx
+	023 Move rdx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	024 Move rax, [rdx+184]
+	025 Compare [rax], 0
+	026 JumpIfEqual {37}
+	027 Compare [rdx+228], 0
+	028 JumpIfNotEqual {32}
+	029 Move rcx, rdx
+	030 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	031 Move rdx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	032 Move rax, [rdx+184]
+	033 Move rcx, rax
+	034 Move rax, [rax+4]
+	035 Compare [rcx], rax
+	036 JumpIfNotEqual {52}
+	037 Move rbx, 1
+	038 Compare rdi, 0x10000
+	039 JumpIfNotEqual {44}
+	040 Nop 
+	041 Add rbx, rbx, 1
+	042 Compare rbx, 1
+	043 JumpIfEqual {41}
+	044 Compare [rdx+228], 0
+	045 JumpIfNotEqual {49}
+	046 Move rcx, rdx
+	047 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	048 Move rdx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	049 Move rax, [rdx+184]
+	050 ShiftLeft rbx, 16
+	051 Move [rax], rbx
+	052 Move rbx, stack:0x30
+	053 ShiftStack 32
+	054 Move rdi, stack:0x0
+	055 ShiftStack 8
+	056 Return 
+
+Method: System.Boolean get_IsVersioned()
+
+Disassembly:
+	mov eax,[rcx+4]
+	shr eax,1Fh
+	xor al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 ShiftRight rax, 31
+	003 Xor rax, rax, 1
+	004 Return rax
+
+Method: System.Boolean Equals(UnityEngine.Rendering.RenderGraphModule.ResourceHandle hdl)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753DA3h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 000000018223B92Ch
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753DA3h],1
+	mov eax,[rdi]
+	cmp [rbx],eax
+	jne short 000000018223B963h
+	mov eax,[rdi+4]
+	cmp [rbx+4],eax
+	jne short 000000018223B963h
+	mov rcx,[183505490h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223B94Fh
+	call 000000018037BED0h
+	mov eax,[rdi+8]
+	cmp [rbx+8],eax
+	sete al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rbx,[rsp+30h]
+	xor al,al
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183753DA3], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183505490]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183753DA3], 1
+	012 Move rax, [rdi]
+	013 Compare [rbx], rax
+	014 JumpIfNotEqual {30}
+	015 Move rax, [rdi+4]
+	016 Compare [rbx+4], rax
+	017 JumpIfNotEqual {30}
+	018 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	019 Compare [rcx+228], 0
+	020 JumpIfNotEqual {22}
+	021 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	022 Move rax, [rdi+8]
+	023 Compare [rbx+8], rax
+	024 NotImplemented "sete al"
+	025 Move rbx, stack:0x30
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+	030 Move rbx, stack:0x30
+	031 Move rax, 0
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183753DA4h],0
+	jne short 000000018223BB60h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753DA4h],1
+	mov rax,[183505490h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx],10000h
+	mov rax,[183505490h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx+4],7FFF0000h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183753DA4], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183505490]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183753DA4], 1
+	007 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	008 Move rcx, [rax+184]
+	009 Move [rcx], 0x10000
+	010 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	011 Move rcx, [rax+184]
+	012 Move [rcx+4], 0x7FFF0000
+	013 ShiftStack 40
+	014 Return 
+

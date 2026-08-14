@@ -1,0 +1,84 @@
+Type: Unity.VisualScripting.UnitPort`3+<>c__DisplayClass46_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Boolean <DisconnectInvalid>b__0(Unity.VisualScripting.InvalidConnection c)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	test rdx,rdx
+	je short 0000000180A839B6h
+	mov rdx,[rdx]
+	mov rcx,rbx
+	mov rax,[rdx+3A8h]
+	mov rdx,[rdx+3B0h]
+	call rax
+	cmp rax,[rdi+10h]
+	je short 0000000180A8398Eh
+	xor al,al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rdx,[rbx]
+	mov rcx,rbx
+	mov rax,[rdx+3B8h]
+	mov rdx,[rdx+3C0h]
+	call rax
+	cmp rax,[rdi+18h]
+	mov rbx,[rsp+30h]
+	sete al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Compare rdx, 0
+	008 JumpIfEqual {34}
+	009 Move rdx, [rdx]
+	010 Move rcx, rbx
+	011 Move rax, [rdx+936]
+	012 Move rdx, [rdx+944]
+	013 Call rax
+	014 Compare rax, [rdi+16]
+	015 JumpIfEqual {22}
+	016 Move rax, 0
+	017 Move rbx, stack:0x30
+	018 ShiftStack 32
+	019 Move rdi, stack:0x0
+	020 ShiftStack 8
+	021 Return rax
+	022 Move rdx, [rbx]
+	023 Move rcx, rbx
+	024 Move rax, [rdx+952]
+	025 Move rdx, [rdx+960]
+	026 Call rax
+	027 Compare rax, [rdi+24]
+	028 Move rbx, stack:0x30
+	029 NotImplemented "sete al"
+	030 ShiftStack 32
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+	034 Call 0x18037BE30, rcx, rdx, r8, r9
+

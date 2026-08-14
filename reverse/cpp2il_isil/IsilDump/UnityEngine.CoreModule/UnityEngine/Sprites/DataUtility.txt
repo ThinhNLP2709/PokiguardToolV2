@@ -1,0 +1,210 @@
+Type: UnityEngine.Sprites.DataUtility
+
+Method: UnityEngine.Vector4 GetInnerUV(UnityEngine.Sprite sprite)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	xorps xmm0,xmm0
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rdx,rdx
+	je short 000000018265FBC0h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	call 00000001825DE900h
+	movups xmm0,[rax]
+	movups [rbx],xmm0
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move xmm0, 0
+	005 Move rbx, rcx
+	006 Move [rcx], xmm0
+	007 Compare rdx, 0
+	008 JumpIfEqual {19}
+	009 Move r8, 0
+	010 LoadAddress rcx, stack:0x20
+	011 Call Sprite.GetInnerUVs, rcx, rdx
+	012 Move xmm0, [rax]
+	013 Move [rbx], xmm0
+	014 Move rax, rbx
+	015 ShiftStack 48
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+	019 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 GetOuterUV(UnityEngine.Sprite sprite)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	xorps xmm0,xmm0
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rdx,rdx
+	je short 000000018265FC90h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	call 00000001825DE9E0h
+	movups xmm0,[rax]
+	movups [rbx],xmm0
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move xmm0, 0
+	005 Move rbx, rcx
+	006 Move [rcx], xmm0
+	007 Compare rdx, 0
+	008 JumpIfEqual {19}
+	009 Move r8, 0
+	010 LoadAddress rcx, stack:0x20
+	011 Call Sprite.GetOuterUVs, rcx, rdx
+	012 Move xmm0, [rax]
+	013 Move [rbx], xmm0
+	014 Move rax, rbx
+	015 ShiftStack 48
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+	019 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 GetPadding(UnityEngine.Sprite sprite)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	xorps xmm0,xmm0
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rdx,rdx
+	je short 000000018265FCD0h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	call 00000001825DEC40h
+	movups xmm0,[rax]
+	movups [rbx],xmm0
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move xmm0, 0
+	005 Move rbx, rcx
+	006 Move [rcx], xmm0
+	007 Compare rdx, 0
+	008 JumpIfEqual {19}
+	009 Move r8, 0
+	010 LoadAddress rcx, stack:0x20
+	011 Call Sprite.GetPadding, rcx, rdx
+	012 Move xmm0, [rax]
+	013 Move [rbx], xmm0
+	014 Move rax, rbx
+	015 ShiftStack 48
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+	019 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector2 GetMinSize(UnityEngine.Sprite sprite)
+
+Disassembly:
+	push rbx
+	sub rsp,50h
+	mov rbx,rcx
+	test rcx,rcx
+	je short 000000018265FC53h
+	mov rdx,rcx
+	movaps [rsp+40h],xmm6
+	lea rcx,[rsp+20h]
+	movaps [rsp+30h],xmm7
+	xor r8d,r8d
+	call 00000001825DEE50h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	mov rdx,rbx
+	movss xmm7,dword ptr [rax]
+	call 00000001825DEE50h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	mov rdx,rbx
+	addss xmm7,dword ptr [rax+8]
+	call 00000001825DEE50h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	mov rdx,rbx
+	movss xmm6,dword ptr [rax+4]
+	call 00000001825DEE50h
+	addss xmm6,dword ptr [rax+0Ch]
+	unpcklps xmm7,xmm6
+	movaps xmm6,[rsp+40h]
+	movq rax,xmm7
+	movaps xmm7,[rsp+30h]
+	add rsp,50h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -80
+	004 Move rbx, rcx
+	005 Compare rcx, 0
+	006 JumpIfEqual {41}
+	007 Move rdx, rcx
+	008 Move stack:0x40, xmm6
+	009 LoadAddress rcx, stack:0x20
+	010 Move stack:0x30, xmm7
+	011 Move r8, 0
+	012 Call Sprite.get_border, rcx, rdx
+	013 Move r8, 0
+	014 LoadAddress rcx, stack:0x20
+	015 Move rdx, rbx
+	016 Move xmm7, [rax]
+	017 Call Sprite.get_border, rcx, rdx
+	018 Move r8, 0
+	019 LoadAddress rcx, stack:0x20
+	020 Move rdx, rbx
+	021 Add xmm7, xmm7, [rax+8]
+	022 Call Sprite.get_border, rcx, rdx
+	023 Move r8, 0
+	024 LoadAddress rcx, stack:0x20
+	025 Move rdx, rbx
+	026 Move xmm6, [rax+4]
+	027 Call Sprite.get_border, rcx, rdx
+	028 Add xmm6, xmm6, [rax+12]
+	029 Move XMM_TEMP.S[0], xmm7.S[0]
+	030 Move XMM_TEMP.S[1], xmm6.S[0]
+	031 Move XMM_TEMP.S[2], xmm7.S[1]
+	032 Move XMM_TEMP.S[3], xmm6.S[1]
+	033 Move xmm7, XMM_TEMP
+	034 Move xmm6, stack:0x40
+	035 Move rax, xmm7
+	036 Move xmm7, stack:0x30
+	037 ShiftStack 80
+	038 Move rbx, stack:0x0
+	039 ShiftStack 8
+	040 Return rax
+	041 Call 0x18037BE30, rcx, rdx, r8, r9
+

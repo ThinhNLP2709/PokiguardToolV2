@@ -1,0 +1,75 @@
+Type: UnityEngine.InputSystem.Layouts.InputDeviceBuilder+RefInstance
+
+Method: System.Void Dispose()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183752DC2h],0
+	jne short 0000000181F51560h
+	lea rcx,[18354EF20h]
+	call 000000018037BB90h
+	mov byte ptr [183752DC2h],1
+	mov rdx,[18354EF20h]
+	mov rax,[rdx+0B8h]
+	mov ecx,[rax+28h]
+	dec ecx
+	mov [rax+28h],ecx
+	mov rcx,[18354EF20h]
+	mov rax,[rcx+0B8h]
+	xor edx,edx
+	cmp [rax+28h],edx
+	jle short 0000000181F51597h
+	mov rcx,rax
+	add rsp,28h
+	jmp near ptr 0000000181F488F0h
+	lea rcx,[rax+8]
+	call 0000000181F40480h
+	mov rax,[18354EF20h]
+	xorps xmm0,xmm0
+	xor edx,edx
+	mov rcx,[rax+0B8h]
+	movups [rcx],xmm0
+	movups [rcx+10h],xmm0
+	mov [rcx+20h],rdx
+	mov rax,[18354EF20h]
+	mov rcx,[rax+0B8h]
+	mov [rcx+28h],edx
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183752DC2], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x18354EF20]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183752DC2], 1
+	007 Move rdx, typeof(UnityEngine.InputSystem.Layouts.InputDeviceBuilder)
+	008 Move rax, [rdx+184]
+	009 Move rcx, [rax+40]
+	010 Subtract rcx, rcx, 1
+	011 Move [rax+40], rcx
+	012 Move rcx, typeof(UnityEngine.InputSystem.Layouts.InputDeviceBuilder)
+	013 Move rax, [rcx+184]
+	014 Move rdx, 0
+	015 Compare [rax+40], rdx
+	016 JumpIfLessOrEqual {21}
+	017 Move rcx, rax
+	018 ShiftStack 40
+	019 Call InputDeviceBuilder.Reset, rcx, rdx
+	020 Return 
+	021 LoadAddress rcx, [rax+8]
+	022 Call CacheRefInstance.Dispose, rcx, rdx
+	023 Move rax, typeof(UnityEngine.InputSystem.Layouts.InputDeviceBuilder)
+	024 Move xmm0, 0
+	025 Move rdx, 0
+	026 Move rcx, [rax+184]
+	027 Move [rcx], xmm0
+	028 Move [rcx+16], xmm0
+	029 Move [rcx+32], rdx
+	030 Move rax, typeof(UnityEngine.InputSystem.Layouts.InputDeviceBuilder)
+	031 Move rcx, [rax+184]
+	032 Move [rcx+40], rdx
+	033 ShiftStack 40
+	034 Return 
+

@@ -1,0 +1,87 @@
+Type: DG.Tweening.DOVirtual+<>c__DisplayClass3_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.Vector3 <Vector3>b__0()
+
+Disassembly:
+	mov eax,[rdx+18h]
+	movsd xmm0,qword ptr [rdx+10h]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx+24]
+	002 Move xmm0, [rdx+16]
+	003 Move [rcx], xmm0
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Return rax
+
+Method: System.Void <Vector3>b__1(UnityEngine.Vector3 x)
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx]
+	mov eax,[rdx+8]
+	movsd qword ptr [rcx+10h],xmm0
+	mov [rcx+18h],eax
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, [rdx+8]
+	003 Move [rcx+16], xmm0
+	004 Move [rcx+24], rax
+	005 Return 
+
+Method: System.Void <Vector3>b__2()
+
+Disassembly:
+	sub rsp,38h
+	mov rax,rcx
+	mov rcx,[rcx+20h]
+	test rcx,rcx
+	je short 000000018076FE3Ah
+	movsd xmm0,qword ptr [rax+10h]
+	lea rdx,[rsp+20h]
+	mov eax,[rax+18h]
+	mov r8,[rcx+28h]
+	mov [rsp+28h],eax
+	mov rax,[rcx+18h]
+	mov rcx,[rcx+40h]
+	movsd qword ptr [rsp+20h],xmm0
+	call rax
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rax, rcx
+	003 Move rcx, [rcx+32]
+	004 Compare rcx, 0
+	005 JumpIfEqual {17}
+	006 Move xmm0, [rax+16]
+	007 LoadAddress rdx, stack:0x20
+	008 Move rax, [rax+24]
+	009 Move r8, [rcx+40]
+	010 Move stack:0x28, rax
+	011 Move rax, [rcx+24]
+	012 Move rcx, [rcx+64]
+	013 Move stack:0x20, xmm0
+	014 Call rax
+	015 ShiftStack 56
+	016 Return 
+	017 Call 0x18037BE30, rcx, rdx, r8, r9
+

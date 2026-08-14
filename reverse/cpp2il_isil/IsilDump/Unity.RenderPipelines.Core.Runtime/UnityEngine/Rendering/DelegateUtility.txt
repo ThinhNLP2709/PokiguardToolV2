@@ -1,0 +1,246 @@
+Type: UnityEngine.Rendering.DelegateUtility
+
+Method: System.Delegate Cast(System.Delegate source, System.Type type)
+
+Disassembly:
+	push rbx
+	push rbp
+	sub rsp,28h
+	cmp byte ptr [183753BF0h],0
+	mov rbp,rdx
+	mov rbx,rcx
+	jne short 00000001821FF439h
+	lea rcx,[183566E00h]
+	call 000000018037BB90h
+	mov byte ptr [183753BF0h],1
+	test rbx,rbx
+	je near ptr 00000001821FF59Ah
+	mov [rsp+40h],rsi
+	mov [rsp+48h],rdi
+	mov [rsp+50h],r12
+	mov [rsp+58h],r14
+	mov [rsp+20h],r15
+	mov rdx,[rbx]
+	mov rcx,rbx
+	mov rax,[rdx+1D8h]
+	mov rdx,[rdx+1E0h]
+	call rax
+	mov rsi,rax
+	test rax,rax
+	je near ptr 00000001821FF5B9h
+	mov eax,[rax+18h]
+	cmp eax,1
+	je near ptr 00000001821FF56Ch
+	mov rcx,[183566E00h]
+	mov edx,eax
+	call 000000018037AD30h
+	mov r12,rax
+	lea r14,[rsi+20h]
+	xor edi,edi
+	mov r15,rax
+	sub r12,rsi
+	mov eax,edi
+	nop dword ptr [rax+rax]
+	cmp eax,[rsi+18h]
+	jge near ptr 00000001821FF542h
+	cmp edi,[rsi+18h]
+	jae near ptr 00000001821FF5B3h
+	mov rbx,[r14]
+	test rbx,rbx
+	je near ptr 00000001821FF5B9h
+	mov rcx,[r14]
+	xor edx,edx
+	mov rbx,[rbx+20h]
+	call 000000018182CA30h
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	mov rcx,rbp
+	call 0000000181858E40h
+	mov rbx,rax
+	test r15,r15
+	je near ptr 00000001821FF5B9h
+	test rax,rax
+	je short 00000001821FF516h
+	mov rdx,[r15]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001821FF5A3h
+	cmp edi,[r15+18h]
+	jae near ptr 00000001821FF5B3h
+	movsxd rax,edi
+	mov rdx,rbx
+	add rax,4
+	mov [r12+r14],rbx
+	lea rcx,[r15+rax*8]
+	call 000000018037ACB0h
+	inc edi
+	add r14,8
+	jmp near ptr 00000001821FF4A6h
+	xor edx,edx
+	mov rcx,r15
+	call 0000000181857E90h
+	mov r14,[rsp+58h]
+	mov r12,[rsp+50h]
+	mov rdi,[rsp+48h]
+	mov r15,[rsp+20h]
+	mov rsi,[rsp+40h]
+	add rsp,28h
+	pop rbp
+	pop rbx
+	ret
+	test eax,eax
+	je short 00000001821FF5B3h
+	mov rax,[rsi+20h]
+	test rax,rax
+	je short 00000001821FF5B9h
+	mov rbx,[rax+20h]
+	mov rcx,rax
+	xor edx,edx
+	call 000000018182CA30h
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	mov rcx,rbp
+	call 0000000181858E40h
+	jmp short 00000001821FF54Ch
+	xor eax,eax
+	add rsp,28h
+	pop rbp
+	pop rbx
+	ret
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -8
+	004 Move stack:0x0, rbp
+	005 ShiftStack -40
+	006 Compare [0x183753BF0], 0
+	007 Move rbp, rdx
+	008 Move rbx, rcx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183566E00]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183753BF0], 1
+	013 Compare rbx, 0
+	014 JumpIfEqual {108}
+	015 Move stack:0x40, rsi
+	016 Move stack:0x48, rdi
+	017 Move stack:0x50, r12
+	018 Move stack:0x58, r14
+	019 Move stack:0x20, r15
+	020 Move rdx, [rbx]
+	021 Move rcx, rbx
+	022 Move rax, [rdx+472]
+	023 Move rdx, [rdx+480]
+	024 Call rax
+	025 Move rsi, rax
+	026 Compare rax, 0
+	027 JumpIfEqual {122}
+	028 Move rax, [rax+24]
+	029 Compare rax, 1
+	030 JumpIfEqual {93}
+	031 Move rcx, typeof(System.Delegate[1])
+	032 Move rdx, rax
+	033 Call "SzArrayNew", rcx, rdx, r8, r9
+	034 Move r12, rax
+	035 LoadAddress r14, [rsi+32]
+	036 Move rdi, 0
+	037 Move r15, rax
+	038 Subtract r12, r12, rsi
+	039 Move rax, rdi
+	040 Nop 
+	041 Compare rax, [rsi+24]
+	042 JumpIfGreaterOrEqual {79}
+	043 Compare rdi, [rsi+24]
+	044 JumpIfGreaterOrEqual {120}
+	045 Move rbx, [r14]
+	046 Compare rbx, 0
+	047 JumpIfEqual {122}
+	048 Move rcx, [r14]
+	049 Move rdx, 0
+	050 Move rbx, [rbx+32]
+	051 Call 0x18182CA30, rcx, rdx
+	052 Move r9, 0
+	053 Move r8, rax
+	054 Move rdx, rbx
+	055 Move rcx, rbp
+	056 Call Delegate.CreateDelegate, rcx, rdx, r8, r9
+	057 Move rbx, rax
+	058 Compare r15, 0
+	059 JumpIfEqual {122}
+	060 Compare rax, 0
+	061 JumpIfEqual {68}
+	062 Move rdx, [r15]
+	063 Move rcx, rax
+	064 Move rdx, [rdx+64]
+	065 Call 0x18037ACD0, rcx, rdx, r8, r9
+	066 Compare rax, 0
+	067 JumpIfEqual {115}
+	068 Compare rdi, [r15+24]
+	069 JumpIfGreaterOrEqual {120}
+	070 Move rax, rdi
+	071 Move rdx, rbx
+	072 Add rax, rax, 4
+	073 Move [r12+r14], rbx
+	074 LoadAddress rcx, [r15+rax*8]
+	075 Call 0x18037ACB0, rcx, rdx, r8, r9
+	076 Add rdi, rdi, 1
+	077 Add r14, r14, 8
+	078 Goto {39}
+	079 Move rdx, 0
+	080 Move rcx, r15
+	081 Call Delegate.Combine, rcx, rdx
+	082 Move r14, stack:0x58
+	083 Move r12, stack:0x50
+	084 Move rdi, stack:0x48
+	085 Move r15, stack:0x20
+	086 Move rsi, stack:0x40
+	087 ShiftStack 40
+	088 Move rbp, stack:0x0
+	089 ShiftStack 8
+	090 Move rbx, stack:0x0
+	091 ShiftStack 8
+	092 Return rax
+	093 Compare rax, 0
+	094 JumpIfEqual {120}
+	095 Move rax, [rsi+32]
+	096 Compare rax, 0
+	097 JumpIfEqual {122}
+	098 Move rbx, [rax+32]
+	099 Move rcx, rax
+	100 Move rdx, 0
+	101 Call 0x18182CA30, rcx, rdx
+	102 Move r9, 0
+	103 Move r8, rax
+	104 Move rdx, rbx
+	105 Move rcx, rbp
+	106 Call Delegate.CreateDelegate, rcx, rdx, r8, r9
+	107 Goto {82}
+	108 Move rax, 0
+	109 ShiftStack 40
+	110 Move rbp, stack:0x0
+	111 ShiftStack 8
+	112 Move rbx, stack:0x0
+	113 ShiftStack 8
+	114 Return rax
+	115 Call 0x18037B7B0, rcx, rdx, r8, r9
+	116 Move rcx, rax
+	117 Move rdx, 0
+	118 Call 0x18037BDF0, rcx, rdx, r8, r9
+	119 Interrupt 
+	120 Call 0x18037BE20, rcx, rdx, r8, r9
+	121 Interrupt 
+	122 Call 0x18037BE30, rcx, rdx, r8, r9
+

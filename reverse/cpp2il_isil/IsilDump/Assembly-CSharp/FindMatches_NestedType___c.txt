@@ -1,0 +1,170 @@
+Type: FindMatches+<>c
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374AE1Dh],0
+	jne short 00000001805EF662h
+	lea rcx,[1834F5640h]
+	call 000000018037BB90h
+	mov byte ptr [18374AE1Dh],1
+	mov rcx,[1834F5640h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	mov rcx,[1834F5640h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[1834F5640h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374AE1D], 0
+	005 JumpIfNotEqual {9}
+	006 LoadAddress rcx, [0x1834F5640]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x18374AE1D], 1
+	009 Move rcx, typeof(FindMatches+<>c)
+	010 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	011 Move rdx, 0
+	012 Move rcx, rax
+	013 Move rbx, rax
+	014 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	015 Move rcx, typeof(FindMatches+<>c)
+	016 Move rdx, [rcx+184]
+	017 Move [rdx], rbx
+	018 Move rdx, rbx
+	019 Move rcx, typeof(FindMatches+<>c)
+	020 Move rcx, [rcx+184]
+	021 ShiftStack 32
+	022 Move rbx, stack:0x0
+	023 ShiftStack 8
+	024 Call 0x18037ACB0, rcx, rdx, r8, r9
+	025 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.GameObject <VirtualFindAllMatches>b__19_1(System.Int32 x, System.Int32 y)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374AE1Eh],0
+	movsxd rdi,r8d
+	movsxd rbx,edx
+	jne short 00000001805EF01Ch
+	lea rcx,[183508B28h]
+	call 000000018037BB90h
+	mov byte ptr [18374AE1Eh],1
+	mov rcx,[183508B28h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001805EF031h
+	call 000000018037BED0h
+	cmp byte ptr [18374A31Ch],0
+	jne short 00000001805EF04Dh
+	lea rcx,[183508B28h]
+	call 000000018037BB90h
+	mov byte ptr [18374A31Ch],1
+	mov rcx,[183508B28h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001805EF062h
+	call 000000018037BED0h
+	mov rax,[183508B28h]
+	mov rcx,[rax+0B8h]
+	mov rdx,[rcx+10h]
+	test rdx,rdx
+	je short 00000001805EF0B0h
+	mov rdx,[rdx+140h]
+	test rdx,rdx
+	je short 00000001805EF0B0h
+	mov rcx,[rdx+10h]
+	cmp ebx,[rcx]
+	jae short 00000001805EF0B6h
+	mov r8,[rcx+10h]
+	cmp edi,r8d
+	jae short 00000001805EF0B6h
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	imul rax,r8
+	add rax,rdi
+	mov rax,[rdx+rax*8+20h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374AE1E], 0
+	006 Move rdi, r8
+	007 Move rbx, rdx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183508B28]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18374AE1E], 1
+	012 Move rcx, typeof(Board)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Compare [0x18374A31C], 0
+	017 JumpIfNotEqual {21}
+	018 LoadAddress rcx, [0x183508B28]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 Move [0x18374A31C], 1
+	021 Move rcx, typeof(Board)
+	022 Compare [rcx+228], 0
+	023 JumpIfNotEqual {25}
+	024 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	025 Move rax, typeof(Board)
+	026 Move rcx, [rax+184]
+	027 Move rdx, [rcx+16]
+	028 Compare rdx, 0
+	029 JumpIfEqual {48}
+	030 Move rdx, [rdx+320]
+	031 Compare rdx, 0
+	032 JumpIfEqual {48}
+	033 Move rcx, [rdx+16]
+	034 Compare rbx, [rcx]
+	035 JumpIfGreaterOrEqual {50}
+	036 Move r8, [rcx+16]
+	037 Compare rdi, r8
+	038 JumpIfGreaterOrEqual {50}
+	039 Move rax, rbx
+	040 Move rbx, stack:0x30
+	041 Multiply rax, rax, r8
+	042 Add rax, rax, rdi
+	043 Move rax, [rdx+32+rax*8]
+	044 ShiftStack 32
+	045 Move rdi, stack:0x0
+	046 ShiftStack 8
+	047 Return rax
+	048 Call 0x18037BE30, rcx, rdx, r8, r9
+	049 Interrupt 
+	050 Call 0x18037BE20, rcx, rdx, r8, r9
+

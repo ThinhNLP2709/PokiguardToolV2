@@ -1,0 +1,174 @@
+Type: UnityEngine.UIElements.Layout.LayoutNative
+
+Method: System.Void CalculateLayout(System.IntPtr node, System.Single parentWidth, System.Single parentHeight, System.Int32 parentDirection, System.IntPtr state, System.IntPtr exceptionGCHandle)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,50h
+	mov rax,[18375AC98h]
+	mov ebx,r9d
+	movaps [rsp+40h],xmm6
+	movaps xmm6,xmm2
+	movaps [rsp+30h],xmm7
+	movaps xmm7,xmm1
+	mov rdi,rcx
+	test rax,rax
+	jne short 0000000182871E6Fh
+	lea rcx,[182B4C2B0h]
+	call 000000018037BE90h
+	mov [18375AC98h],rax
+	mov r9d,ebx
+	movaps xmm2,xmm6
+	movaps xmm1,xmm7
+	mov rcx,rdi
+	mov rbx,[rsp+60h]
+	movaps xmm6,[rsp+40h]
+	movaps xmm7,[rsp+30h]
+	add rsp,50h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -80
+	005 Move rax, [0x18375AC98]
+	006 Move rbx, r9
+	007 Move stack:0x40, xmm6
+	008 Move xmm6, xmm2
+	009 Move stack:0x30, xmm7
+	010 Move xmm7, xmm1
+	011 Move rdi, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B4C2B0]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x18375AC98], rax
+	017 Move r9, rbx
+	018 Move xmm2, xmm6
+	019 Move xmm1, xmm7
+	020 Move rcx, rdi
+	021 Move rbx, stack:0x60
+	022 Move xmm6, stack:0x40
+	023 Move xmm7, stack:0x30
+	024 ShiftStack 80
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 CallNoReturn rax
+
+Method: System.Void LayoutLog_Internal(System.IntPtr nodePtr, UnityEngine.UIElements.Layout.LayoutNative+LayoutLogEventType type, System.String message)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375ACA0h],0
+	mov rdi,r8
+	mov esi,edx
+	mov rbp,rcx
+	jne short 0000000182871EE4h
+	lea rcx,[183507308h]
+	call 000000018037BB90h
+	lea rcx,[183559E90h]
+	call 000000018037BB90h
+	mov byte ptr [18375ACA0h],1
+	mov rcx,[183507308h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	xor edx,edx
+	mov rcx,rbp
+	call 00000001804D4100h
+	movups xmm0,[rax]
+	movups xmm1,[rax+10h]
+	movups xmm2,[rax+20h]
+	test rbx,rbx
+	je short 0000000182871F72h
+	movups [rbx+10h],xmm0
+	lea rcx,[rbx+48h]
+	mov rdx,rdi
+	movups [rbx+20h],xmm1
+	mov [rbx+48h],rdi
+	movups [rbx+30h],xmm2
+	call 000000018037ACB0h
+	mov [rbx+40h],esi
+	mov rax,[183559E90h]
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 0000000182871F72h
+	mov rax,[rcx+18h]
+	mov rdx,rbx
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x18375ACA0], 0
+	008 Move rdi, r8
+	009 Move rsi, rdx
+	010 Move rbp, rcx
+	011 JumpIfNotEqual {17}
+	012 LoadAddress rcx, [0x183507308]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x183559E90]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 Move [0x18375ACA0], 1
+	017 Move rcx, typeof(UnityEngine.UIElements.Layout.LayoutNative+LayoutLogData)
+	018 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	019 Move rdx, 0
+	020 Move rcx, rax
+	021 Move rbx, rax
+	022 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	023 Move rdx, 0
+	024 Move rcx, rbp
+	025 Call 0x1804D4100, rcx, rdx, r8, r9
+	026 Move xmm0, [rax]
+	027 Move xmm1, [rax+16]
+	028 Move xmm2, [rax+32]
+	029 Compare rbx, 0
+	030 JumpIfEqual {55}
+	031 Move [rbx+16], xmm0
+	032 LoadAddress rcx, [rbx+72]
+	033 Move rdx, rdi
+	034 Move [rbx+32], xmm1
+	035 Move [rbx+72], rdi
+	036 Move [rbx+48], xmm2
+	037 Call 0x18037ACB0, rcx, rdx, r8, r9
+	038 Move [rbx+64], rsi
+	039 Move rax, typeof(UnityEngine.UIElements.Layout.LayoutNative)
+	040 Move rcx, [rax+184]
+	041 Move rcx, [rcx]
+	042 Compare rcx, 0
+	043 JumpIfEqual {55}
+	044 Move rax, [rcx+24]
+	045 Move rdx, rbx
+	046 Move r8, [rcx+40]
+	047 Move rcx, [rcx+64]
+	048 Move rbx, stack:0x30
+	049 Move rbp, stack:0x38
+	050 Move rsi, stack:0x40
+	051 ShiftStack 32
+	052 Move rdi, stack:0x0
+	053 ShiftStack 8
+	054 CallNoReturn rax
+	055 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,140 @@
+Type: Unity.Collections.LowLevel.Unsafe.HashMapHelper`1+Enumerator
+
+Method: System.Void .ctor(Unity.Collections.LowLevel.Unsafe.HashMapHelper`1<TKey>* data)
+
+Disassembly:
+	mov [rcx],rdx
+	mov dword ptr [rcx+8],0FFFFFFFFh
+	mov dword ptr [rcx+0Ch],0
+	mov dword ptr [rcx+10h],0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+8], 0xFFFFFFFF
+	003 Move [rcx+12], 0
+	004 Move [rcx+16], 0xFFFFFFFF
+	005 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	mov rax,[rdx+20h]
+	mov rbx,rcx
+	mov rdi,[rcx]
+	test byte ptr [rax+135h],1
+	jne short 00000001811A6E25h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rax,[rax+0C0h]
+	lea r9,[rbx+8]
+	lea r8,[rbx+10h]
+	mov rcx,rdi
+	lea rdx,[rbx+0Ch]
+	mov rax,[rax+10h]
+	mov [rsp+20h],rax
+	call 0000000180117E60h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Move rax, [rdx+32]
+	006 Move rbx, rcx
+	007 Move rdi, [rcx]
+	008 Compare [rax+309], 1
+	009 JumpIfNotEqual {12}
+	010 Move rcx, rax
+	011 Call 0x180384C90, rcx, rdx, r8, r9
+	012 Move rax, [rax+192]
+	013 LoadAddress r9, [rbx+8]
+	014 LoadAddress r8, [rbx+16]
+	015 Move rcx, rdi
+	016 LoadAddress rdx, [rbx+12]
+	017 Move rax, [rax+16]
+	018 Move stack:0x20, rax
+	019 Call 0x180117E60, rcx, rdx, r8, r9
+	020 Move rbx, stack:0x40
+	021 ShiftStack 48
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Return rax
+
+Method: System.Void Reset()
+
+Disassembly:
+	mov dword ptr [rcx+8],0FFFFFFFFh
+	mov dword ptr [rcx+0Ch],0
+	mov dword ptr [rcx+10h],0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move [rcx+8], 0xFFFFFFFF
+	002 Move [rcx+12], 0
+	003 Move [rcx+16], 0xFFFFFFFF
+	004 Return 
+
+Method: Unity.Collections.KVPair`2<TKey, TValue> GetCurrent()
+
+Disassembly:
+	mov dword ptr [rcx+0Ch],0
+	mov rax,[rdx]
+	mov [rcx],rax
+	mov eax,[rdx+8]
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move [rcx+12], 0
+	002 Move rax, [rdx]
+	003 Move [rcx], rax
+	004 Move rax, [rdx+8]
+	005 Move [rcx+8], rax
+	006 Move rax, rcx
+	007 Return rax
+
+Method: TKey GetCurrentKey()
+
+Disassembly:
+	sub rsp,28h
+	cmp dword ptr [rcx+8],0FFFFFFFFh
+	jne short 00000001811A5F51h
+	xor eax,eax
+	add rsp,28h
+	ret
+	mov rax,[rcx]
+	test rax,rax
+	je short 00000001811A5F69h
+	movsxd rcx,dword ptr [rcx+8]
+	mov rax,[rax+8]
+	mov eax,[rax+rcx*4]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx+8], 18446744073709551615
+	003 JumpIfNotEqual {7}
+	004 Move rax, 0
+	005 ShiftStack 40
+	006 Return rax
+	007 Move rax, [rcx]
+	008 Compare rax, 0
+	009 JumpIfEqual {15}
+	010 Move rcx, [rcx+8]
+	011 Move rax, [rax+8]
+	012 Move rax, [rax+rcx*4]
+	013 ShiftStack 40
+	014 Return rax
+	015 Call 0x18037BE30, rcx, rdx, r8, r9
+

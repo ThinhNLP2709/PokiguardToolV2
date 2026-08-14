@@ -1,0 +1,176 @@
+Type: System.Runtime.Remoting.ChannelInfo
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374EAC4h],0
+	mov rbx,rcx
+	jne short 00000001816B5905h
+	lea rcx,[18350EF30h]
+	call 000000018037BB90h
+	mov byte ptr [18374EAC4h],1
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180456D90h
+	mov rcx,[18350EF30h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001816B5924h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001816DB720h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rax
+	mov rdx,rax
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374EAC4], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x18350EF30]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x18374EAC4], 1
+	010 Move rdx, 0
+	011 Move rcx, rbx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 Move rcx, typeof(System.Runtime.Remoting.Channels.ChannelServices)
+	014 Compare [rcx+228], 0
+	015 JumpIfNotEqual {17}
+	016 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	017 Move rcx, 0
+	018 Call ChannelServices.GetCurrentChannelInfo, rcx
+	019 LoadAddress rcx, [rbx+16]
+	020 Move [rbx+16], rax
+	021 Move rdx, rax
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Call 0x18037ACB0, rcx, rdx, r8, r9
+	026 Return 
+
+Method: System.Void .ctor(System.Object remoteChannelData)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374EAC5h],0
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 00000001816B5971h
+	lea rcx,[18356C6B0h]
+	call 000000018037BB90h
+	mov byte ptr [18374EAC5h],1
+	xor edx,edx
+	mov rcx,rsi
+	call 0000000180456D90h
+	mov rcx,[18356C6B0h]
+	mov edx,1
+	call 000000018037AD30h
+	mov rbx,rax
+	test rax,rax
+	je short 00000001816B59E2h
+	test rdi,rdi
+	je short 00000001816B59ADh
+	mov rdx,[rax]
+	mov rcx,rdi
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je short 00000001816B59E8h
+	cmp dword ptr [rbx+18h],0
+	jbe short 00000001816B59F8h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	lea rcx,[rsi+10h]
+	mov [rsi+10h],rbx
+	mov rdx,rbx
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374EAC5], 0
+	007 Move rdi, rdx
+	008 Move rsi, rcx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x18356C6B0]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374EAC5], 1
+	013 Move rdx, 0
+	014 Move rcx, rsi
+	015 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	016 Move rcx, typeof(System.Object[1])
+	017 Move rdx, 1
+	018 Call "SzArrayNew", rcx, rdx, r8, r9
+	019 Move rbx, rax
+	020 Compare rax, 0
+	021 JumpIfEqual {46}
+	022 Compare rdi, 0
+	023 JumpIfEqual {30}
+	024 Move rdx, [rax]
+	025 Move rcx, rdi
+	026 Move rdx, [rdx+64]
+	027 Call 0x18037ACD0, rcx, rdx, r8, r9
+	028 Compare rax, 0
+	029 JumpIfEqual {48}
+	030 Compare [rbx+24], 0
+	031 JumpIfLessOrEqual {53}
+	032 LoadAddress rcx, [rbx+32]
+	033 Move [rbx+32], rdi
+	034 Move rdx, rdi
+	035 Call 0x18037ACB0, rcx, rdx, r8, r9
+	036 LoadAddress rcx, [rsi+16]
+	037 Move [rsi+16], rbx
+	038 Move rdx, rbx
+	039 Move rbx, stack:0x30
+	040 Move rsi, stack:0x38
+	041 ShiftStack 32
+	042 Move rdi, stack:0x0
+	043 ShiftStack 8
+	044 Call 0x18037ACB0, rcx, rdx, r8, r9
+	045 Return 
+	046 Call 0x18037BE30, rcx, rdx, r8, r9
+	047 Interrupt 
+	048 Call 0x18037B7B0, rcx, rdx, r8, r9
+	049 Move rcx, rax
+	050 Move rdx, 0
+	051 Call 0x18037BDF0, rcx, rdx, r8, r9
+	052 Interrupt 
+	053 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.Object[] get_ChannelData()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+

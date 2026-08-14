@@ -1,0 +1,113 @@
+Type: Unity.VisualScripting.FlowGraphData
+
+Method: Unity.VisualScripting.VariableDeclarations get_variables()
+
+Disassembly:
+	mov rax,[rcx+38h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+56]
+	002 Return rax
+
+Method: System.Boolean get_isListening()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+40h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+64]
+	002 Return rax
+
+Method: System.Void set_isListening(System.Boolean value)
+
+Disassembly:
+	mov [rcx+40h],dl
+	ret
+
+ISIL:
+	001 Move [rcx+64], rdx
+	002 Return 
+
+Method: System.Void .ctor(Unity.VisualScripting.FlowGraph definition)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375530Dh],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 000000018254BEB4h
+	lea rcx,[18352BB00h]
+	call 000000018037BB90h
+	lea rcx,[183510D60h]
+	call 000000018037BB90h
+	lea rcx,[18352AF18h]
+	call 000000018037BB90h
+	mov byte ptr [18375530Dh],1
+	mov r8,[18352AF18h]
+	mov rdx,rbx
+	mov rcx,rdi
+	call 0000000181386960h
+	test rbx,rbx
+	je short 000000018254BF0Dh
+	mov rcx,[183510D60h]
+	mov rbx,[rbx+40h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018254BEE4h
+	call 000000018037BED0h
+	mov rdx,[18352BB00h]
+	mov rcx,rbx
+	call 0000000180853030h
+	lea rcx,[rdi+38h]
+	mov [rdi+38h],rax
+	mov rdx,rax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18375530D], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x18352BB00]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183510D60]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18352AF18]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18375530D], 1
+	016 Move r8, [0x18352AF18]
+	017 Move rdx, rbx
+	018 Move rcx, rdi
+	019 Call 0x181386960, rcx, rdx
+	020 Compare rbx, 0
+	021 JumpIfEqual {39}
+	022 Move rcx, typeof(Unity.VisualScripting.Cloning)
+	023 Move rbx, [rbx+64]
+	024 Compare [rcx+228], 0
+	025 JumpIfNotEqual {27}
+	026 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	027 Move rdx, [0x18352BB00]
+	028 Move rcx, rbx
+	029 Call 0x180853030, rcx, rdx
+	030 LoadAddress rcx, [rdi+56]
+	031 Move [rdi+56], rax
+	032 Move rdx, rax
+	033 Move rbx, stack:0x30
+	034 ShiftStack 32
+	035 Move rdi, stack:0x0
+	036 ShiftStack 8
+	037 Call 0x18037ACB0, rcx, rdx, r8, r9
+	038 Return 
+	039 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,308 @@
+Type: UnityEngine.InputSystem.LowLevel.IMECompositionString
+
+Method: System.Int32 get_Count()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Char get_Item(System.Int32 index)
+
+Disassembly:
+	sub rsp,28h
+	cmp edx,[rcx]
+	jge short 0000000182028379h
+	test edx,edx
+	js short 0000000182028379h
+	movsxd rax,edx
+	movzx eax,word ptr [rcx+rax*2+4]
+	add rsp,28h
+	ret
+	lea rcx,[1834FFA50h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[183547AF0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 000000018176BB50h
+	lea rcx,[18354E180h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, [rcx]
+	003 JumpIfGreaterOrEqual {10}
+	004 Compare rdx, 0
+	005 JumpIfSign {10}
+	006 Move rax, rdx
+	007 Move rax, [rcx+4+rax*2]
+	008 ShiftStack 40
+	009 Return rax
+	010 LoadAddress rcx, [0x1834FFA50]
+	011 Move stack:0x20, rbx
+	012 Call 0x18037BBB0, rcx, rdx, r8, r9
+	013 Move rcx, rax
+	014 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x183547AF0]
+	016 Move rbx, rax
+	017 Call 0x18037BBB0, rcx, rdx, r8, r9
+	018 Move rdx, rax
+	019 Move r8, 0
+	020 Move rcx, rbx
+	021 Call ArgumentOutOfRangeException..ctor, rcx, rdx
+	022 LoadAddress rcx, [0x18354E180]
+	023 Call 0x18037BBB0, rcx, rdx, r8, r9
+	024 Move rdx, rax
+	025 Move rcx, rbx
+	026 Call 0x18037BDF0, rcx, rdx, r8, r9
+	027 Move rbx, stack:0x20
+
+Method: System.Void .ctor(System.String characters)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rbp
+	push rsi
+	sub rsp,20h
+	mov rbp,rdx
+	mov rsi,rcx
+	mov rcx,rbp
+	xor edx,edx
+	call 000000018165FE70h
+	test al,al
+	jne short 000000018202833Fh
+	test rbp,rbp
+	je short 0000000182028353h
+	mov eax,[rbp+10h]
+	xor ebx,ebx
+	mov [rsi],eax
+	test eax,eax
+	jle short 0000000182028343h
+	mov [rsp+30h],rdi
+	lea rdi,[rsi+4]
+	nop dword ptr [rax]
+	xor r8d,r8d
+	mov edx,ebx
+	mov rcx,rbp
+	call 00000001816652C0h
+	mov [rdi],ax
+	lea rdi,[rdi+2]
+	inc ebx
+	cmp ebx,[rsi]
+	jl short 0000000182028310h
+	mov rdi,[rsp+30h]
+	mov rbx,[rsp+38h]
+	mov rbp,[rsp+40h]
+	add rsp,20h
+	pop rsi
+	ret
+	xor ebx,ebx
+	mov [rsi],ebx
+	mov rbx,[rsp+38h]
+	mov rbp,[rsp+40h]
+	add rsp,20h
+	pop rsi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rsi
+	005 ShiftStack -32
+	006 Move rbp, rdx
+	007 Move rsi, rcx
+	008 Move rcx, rbp
+	009 Move rdx, 0
+	010 Call String.IsNullOrEmpty, rcx, rdx
+	011 Compare rax, 0
+	012 JumpIfNotEqual {39}
+	013 Compare rbp, 0
+	014 JumpIfEqual {47}
+	015 Move rax, [rbp+16]
+	016 Move rbx, 0
+	017 Move [rsi], rax
+	018 Compare rax, 0
+	019 JumpIfLessOrEqual {41}
+	020 Move stack:0x30, rdi
+	021 LoadAddress rdi, [rsi+4]
+	022 Nop 
+	023 Move r8, 0
+	024 Move rdx, rbx
+	025 Move rcx, rbp
+	026 Call String.get_Chars, rcx, rdx
+	027 Move [rdi], rax
+	028 LoadAddress rdi, [rdi+2]
+	029 Add rbx, rbx, 1
+	030 Compare rbx, [rsi]
+	031 JumpIfLess {23}
+	032 Move rdi, stack:0x30
+	033 Move rbx, stack:0x38
+	034 Move rbp, stack:0x40
+	035 ShiftStack 32
+	036 Move rsi, stack:0x0
+	037 ShiftStack 8
+	038 Return 
+	039 Move rbx, 0
+	040 Move [rsi], rbx
+	041 Move rbx, stack:0x38
+	042 Move rbp, stack:0x40
+	043 ShiftStack 32
+	044 Move rsi, stack:0x0
+	045 ShiftStack 8
+	046 Return 
+	047 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.String ToString()
+
+Disassembly:
+	sub rsp,38h
+	mov r9d,[rcx]
+	lea rdx,[rcx+4]
+	xor ecx,ecx
+	mov qword ptr [rsp+20h],0
+	xor r8d,r8d
+	call 000000018165C2B0h
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move r9, [rcx]
+	003 LoadAddress rdx, [rcx+4]
+	004 Move rcx, 0
+	005 Move stack:0x20, 0
+	006 Move r8, 0
+	007 Call String.CreateString, rcx, rdx, r8, r9
+	008 ShiftStack 56
+	009 Return rax
+
+Method: System.Collections.Generic.IEnumerator`1<System.Char> GetEnumerator()
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	push rbp
+	lea rbp,[rax-68h]
+	sub rsp,160h
+	cmp byte ptr [1837534C0h],0
+	mov rbx,rcx
+	movaps [rax-18h],xmm6
+	movaps [rax-28h],xmm7
+	jne short 00000001820281FAh
+	lea rcx,[1834FBFC0h]
+	call 000000018037BB90h
+	mov byte ptr [1837534C0h],1
+	movups xmm0,[rbx]
+	mov rcx,[1834FBFC0h]
+	xor eax,eax
+	movups xmm1,[rbx+10h]
+	mov [rbp-60h],rax
+	lea rdx,[rbp-54h]
+	mov eax,[rbx+80h]
+	movups xmm2,[rbx+20h]
+	mov [rbp-60h],eax
+	xor eax,eax
+	movups xmm3,[rbx+30h]
+	mov [rbp-5Ch],ax
+	movups xmm4,[rbx+40h]
+	mov dword ptr [rbp+34h],0FFFFFFFFh
+	movups xmm5,[rbx+50h]
+	movups xmm6,[rbx+60h]
+	movups xmm7,[rbx+70h]
+	movups [rbp-54h],xmm0
+	movsd xmm0,qword ptr [rbp-60h]
+	movsd qword ptr [rbp+2Ch],xmm0
+	movups [rbp-44h],xmm1
+	movups [rbp-34h],xmm2
+	movups [rbp-24h],xmm3
+	movups [rbp-14h],xmm4
+	movups [rbp-4],xmm5
+	movups [rbp+0Ch],xmm6
+	movups [rbp+1Ch],xmm7
+	call 000000018037AC90h
+	lea r11,[rsp+160h]
+	mov rbx,[r11+10h]
+	movaps xmm6,[r11-10h]
+	movaps xmm7,[r11-20h]
+	mov rsp,r11
+	pop rbp
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 ShiftStack -8
+	004 Move stack:0x0, rbp
+	005 LoadAddress rbp, [rax-104]
+	006 ShiftStack -352
+	007 Compare [0x1837534C0], 0
+	008 Move rbx, rcx
+	009 Move [rax-24], xmm6
+	010 Move [rax-40], xmm7
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x1834FBFC0]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x1837534C0], 1
+	015 Move xmm0, [rbx]
+	016 Move rcx, typeof(UnityEngine.InputSystem.LowLevel.IMECompositionString+Enumerator)
+	017 Move rax, 0
+	018 Move xmm1, [rbx+16]
+	019 Move [rbp-96], rax
+	020 LoadAddress rdx, [rbp-84]
+	021 Move rax, [rbx+128]
+	022 Move xmm2, [rbx+32]
+	023 Move [rbp-96], rax
+	024 Move rax, 0
+	025 Move xmm3, [rbx+48]
+	026 Move [rbp-92], rax
+	027 Move xmm4, [rbx+64]
+	028 Move [rbp+52], 0xFFFFFFFF
+	029 Move xmm5, [rbx+80]
+	030 Move xmm6, [rbx+96]
+	031 Move xmm7, [rbx+112]
+	032 Move [rbp-84], xmm0
+	033 Move xmm0, [rbp-96]
+	034 Move [rbp+44], xmm0
+	035 Move [rbp-68], xmm1
+	036 Move [rbp-52], xmm2
+	037 Move [rbp-36], xmm3
+	038 Move [rbp-20], xmm4
+	039 Move [rbp-4], xmm5
+	040 Move [rbp+12], xmm6
+	041 Move [rbp+28], xmm7
+	042 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	043 LoadAddress r11, stack:0x160
+	044 Move rbx, [r11+16]
+	045 Move xmm6, [r11-16]
+	046 Move xmm7, [r11-32]
+	047 Move rsp, r11
+	048 Move rbp, stack:0x0
+	049 ShiftStack 8
+	050 Return rax
+
+Method: System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 00000001820281C0h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call IMECompositionString.GetEnumerator, rcx, rdx
+	003 Return rax
+

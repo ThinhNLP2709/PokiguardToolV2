@@ -1,0 +1,51 @@
+Type: Unity.VisualScripting.EventUnit`1+<>c__DisplayClass14_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <StartListening>b__0(TArgs args)
+
+Disassembly:
+	sub rsp,38h
+	mov r10,[rcx+10h]
+	test r10,r10
+	je short 0000000180A7FFFAh
+	mov rax,[r8+20h]
+	lea r8,[rsp+20h]
+	movups xmm0,[rdx]
+	mov rdx,[rcx+18h]
+	mov rcx,r10
+	mov r9,[rax+0C0h]
+	movaps [rsp+20h],xmm0
+	mov r9,[r9+18h]
+	call 00000001812FBC20h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move r10, [rcx+16]
+	003 Compare r10, 0
+	004 JumpIfEqual {16}
+	005 Move rax, [r8+32]
+	006 LoadAddress r8, stack:0x20
+	007 Move xmm0, [rdx]
+	008 Move rdx, [rcx+24]
+	009 Move rcx, r10
+	010 Move r9, [rax+192]
+	011 Move stack:0x20, xmm0
+	012 Move r9, [r9+24]
+	013 Call 0x1812FBC20, rcx, rdx, r8
+	014 ShiftStack 56
+	015 Return 
+	016 Call 0x18037BE30, rcx, rdx, r8, r9
+

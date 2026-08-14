@@ -1,0 +1,44 @@
+Type: UnityEngine.Rendering.IndirectBufferContext
+
+Method: System.Void .ctor(Unity.Jobs.JobHandle cullingJobHandle)
+
+Disassembly:
+	movups xmm0,[rdx]
+	xor eax,eax
+	mov [rcx+10h],rax
+	movups [rcx],xmm0
+	mov [rcx+18h],eax
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, 0
+	003 Move [rcx+16], rax
+	004 Move [rcx], xmm0
+	005 Move [rcx+24], rax
+	006 Return 
+
+Method: System.Boolean Matches(UnityEngine.Rendering.IndirectBufferContext+BufferState bufferState, System.Int32 occluderVersion, System.Int32 subviewMask)
+
+Disassembly:
+	cmp [rcx+10h],edx
+	jne short 000000018227BDE3h
+	cmp [rcx+14h],r8d
+	jne short 000000018227BDE3h
+	cmp [rcx+18h],r9d
+	sete al
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Compare [rcx+16], rdx
+	002 JumpIfNotEqual {8}
+	003 Compare [rcx+20], r8
+	004 JumpIfNotEqual {8}
+	005 Compare [rcx+24], r9
+	006 NotImplemented "sete al"
+	007 Return rax
+	008 Move rax, 0
+	009 Return rax
+

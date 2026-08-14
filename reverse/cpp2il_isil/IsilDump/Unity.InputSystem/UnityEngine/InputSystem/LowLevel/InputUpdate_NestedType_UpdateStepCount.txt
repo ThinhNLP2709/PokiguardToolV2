@@ -1,0 +1,50 @@
+Type: UnityEngine.InputSystem.LowLevel.InputUpdate+UpdateStepCount
+
+Method: System.UInt32 get_value()
+
+Disassembly:
+	mov eax,[rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+
+Method: System.Void set_value(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+4],edx
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: System.Void OnBeforeUpdate()
+
+Disassembly:
+	inc dword ptr [rcx+4]
+	mov byte ptr [rcx],1
+	ret
+
+ISIL:
+	001 Add [rcx+4], [rcx+4], 1
+	002 Move [rcx], 1
+	003 Return 
+
+Method: System.Void OnUpdate()
+
+Disassembly:
+	cmp byte ptr [rcx],0
+	mov byte ptr [rcx],0
+	jne short 000000018204950Bh
+	inc dword ptr [rcx+4]
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 Move [rcx], 0
+	003 JumpIfNotEqual {5}
+	004 Add [rcx+4], [rcx+4], 1
+	005 Return 
+

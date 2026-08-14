@@ -1,0 +1,124 @@
+Type: System.Collections.Generic.SByteEnumEqualityComparer`1
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov rax,[rdx+20h]
+	mov rdx,[rax+0C0h]
+	mov rdx,[rdx]
+	mov rax,[rdx]
+	jmp rax
+
+ISIL:
+	001 Move rax, [rdx+32]
+	002 Move rdx, [rax+192]
+	003 Move rdx, [rdx]
+	004 Move rax, [rdx]
+	005 CallNoReturn rax
+
+Method: System.Void .ctor(System.Runtime.Serialization.SerializationInfo information, System.Runtime.Serialization.StreamingContext context)
+
+Disassembly:
+	mov rax,[r9+20h]
+	mov rdx,[rax+0C0h]
+	mov rdx,[rdx]
+	mov rax,[rdx]
+	jmp rax
+
+ISIL:
+	001 Move rax, [r9+32]
+	002 Move rdx, [rax+192]
+	003 Move rdx, [rdx]
+	004 Move rax, [rdx]
+	005 CallNoReturn rax
+
+Method: System.Int32 GetHashCode(T obj)
+
+Disassembly:
+	push rbp
+	sub rsp,40h
+	lea rbp,[rsp+30h]
+	mov rax,[r8+20h]
+	mov [rbp+20h],rbx
+	mov [rbp+28h],rdi
+	mov rdi,r8
+	mov rcx,[rax+0C0h]
+	mov rax,[rcx+18h]
+	mov r8d,[rax+0FCh]
+	lea rax,[r8+0Fh]
+	cmp rax,r8
+	ja short 0000000180C8957Fh
+	mov rax,0FFFFFFFFFFFFFF0h
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rbx,[rsp+30h]
+	mov rcx,rbx
+	call 0000000180445210h
+	mov rax,[rdi+20h]
+	lea r8,[rbp+38h]
+	mov [rsp+20h],r8
+	lea r9,[rbp]
+	xor r8d,r8d
+	mov [rbp],rbx
+	mov rcx,[rax+0C0h]
+	mov rdx,[rcx+20h]
+	mov rax,[rdx+10h]
+	mov rcx,[rdx]
+	call rax
+	movzx eax,byte ptr [rbp+38h]
+	lea rcx,[rbp+30h]
+	xor edx,edx
+	mov [rbp+30h],al
+	call 00000001818224E0h
+	mov rbx,[rbp+20h]
+	mov rdi,[rbp+28h]
+	lea rsp,[rbp+10h]
+	pop rbp
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -64
+	004 LoadAddress rbp, stack:0x30
+	005 Move rax, [r8+32]
+	006 Move [rbp+32], rbx
+	007 Move [rbp+40], rdi
+	008 Move rdi, r8
+	009 Move rcx, [rax+192]
+	010 Move rax, [rcx+24]
+	011 Move r8, [rax+252]
+	012 LoadAddress rax, [r8+15]
+	013 Compare rax, r8
+	014 JumpIfGreater {16}
+	015 Move rax, 0xFFFFFFFFFFFFFF0
+	016 And rax, rax, 18446744073709551600
+	017 Call 0x180410930, rcx, rdx, r8, r9
+	018 Subtract rsp, rsp, rax
+	019 LoadAddress rbx, stack:0x30
+	020 Move rcx, rbx
+	021 Call 0x180445210, rcx, rdx, r8, r9
+	022 Move rax, [rdi+32]
+	023 LoadAddress r8, [rbp+56]
+	024 Move stack:0x20, r8
+	025 LoadAddress r9, [rbp]
+	026 Move r8, 0
+	027 Move [rbp], rbx
+	028 Move rcx, [rax+192]
+	029 Move rdx, [rcx+32]
+	030 Move rax, [rdx+16]
+	031 Move rcx, [rdx]
+	032 Call rax
+	033 Move rax, [rbp+56]
+	034 LoadAddress rcx, [rbp+48]
+	035 Move rdx, 0
+	036 Move [rbp+48], rax
+	037 Call SByte.GetHashCode, rcx, rdx
+	038 Move rbx, [rbp+32]
+	039 Move rdi, [rbp+40]
+	040 LoadAddress rsp, [rbp+16]
+	041 Move rbp, stack:0x0
+	042 ShiftStack 8
+	043 Return rax
+

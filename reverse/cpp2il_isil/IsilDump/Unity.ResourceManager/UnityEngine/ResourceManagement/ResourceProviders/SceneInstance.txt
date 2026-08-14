@@ -1,0 +1,209 @@
+Type: UnityEngine.ResourceManagement.ResourceProviders.SceneInstance
+
+Method: UnityEngine.SceneManagement.Scene get_Scene()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_Scene(UnityEngine.SceneManagement.Scene value)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Boolean get_ReleaseSceneOnSceneUnloaded()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+
+Method: System.Void set_ReleaseSceneOnSceneUnloaded(System.Boolean value)
+
+Disassembly:
+	mov [rcx+4],dl
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: UnityEngine.AsyncOperation ActivateAsync()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	mov rcx,[rcx+8]
+	test rcx,rcx
+	je short 0000000182394476h
+	xor r8d,r8d
+	mov dl,1
+	call 0000000182607510h
+	mov rax,[rbx+8]
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Move rcx, [rcx+8]
+	006 Compare rcx, 0
+	007 JumpIfEqual {16}
+	008 Move r8, 0
+	009 Move rdx, 1
+	010 Call AsyncOperation.set_allowSceneActivation, rcx, rdx
+	011 Move rax, [rbx+8]
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Return rax
+	016 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	sub rsp,28h
+	mov eax,[rcx]
+	xor edx,edx
+	lea rcx,[rsp+30h]
+	mov [rsp+30h],eax
+	call 0000000180CFCE10h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx]
+	003 Move rdx, 0
+	004 LoadAddress rcx, stack:0x30
+	005 Move stack:0x30, rax
+	006 Call 0x180CFCE10, rcx, rdx
+	007 ShiftStack 40
+	008 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837547A0h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 00000001823944B8h
+	lea rcx,[183509FC8h]
+	call 000000018037BB90h
+	lea rcx,[183509E60h]
+	call 000000018037BB90h
+	mov byte ptr [1837547A0h],1
+	test rbx,rbx
+	je short 0000000182394529h
+	mov rdx,[183509FC8h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 0000000182394529h
+	mov rcx,[rbx]
+	mov eax,[rdi]
+	mov [rsp+58h],eax
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 0000000182394536h
+	call 000000018037AE90h
+	mov rcx,[183509E60h]
+	lea rdx,[rsp+48h]
+	movups xmm0,[rax]
+	movups [rsp+20h],xmm0
+	mov eax,[rsp+20h]
+	mov [rsp+48h],eax
+	call 000000018037AC90h
+	xor r8d,r8d
+	lea rcx,[rsp+58h]
+	mov rdx,rax
+	call 0000000182632F30h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	mov rbx,[rsp+40h]
+	xor al,al
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x1837547A0], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {14}
+	009 LoadAddress rcx, [0x183509FC8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183509E60]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x1837547A0], 1
+	014 Compare rbx, 0
+	015 JumpIfEqual {48}
+	016 Move rdx, typeof(UnityEngine.ResourceManagement.ResourceProviders.SceneInstance)
+	017 Move rax, 0
+	018 Compare [rbx], rdx
+	019 JumpIfNotEqual {21}
+	020 Move rax, rbx
+	021 Nop 
+	022 Compare rax, 0
+	023 JumpIfEqual {48}
+	024 Move rcx, [rbx]
+	025 Move rax, [rdi]
+	026 Move stack:0x58, rax
+	027 Move rax, [rdx+64]
+	028 Compare [rcx+64], rax
+	029 Move rcx, rbx
+	030 JumpIfNotEqual {54}
+	031 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	032 Move rcx, typeof(UnityEngine.SceneManagement.Scene)
+	033 LoadAddress rdx, stack:0x48
+	034 Move xmm0, [rax]
+	035 Move stack:0x20, xmm0
+	036 Move rax, stack:0x20
+	037 Move stack:0x48, rax
+	038 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	039 Move r8, 0
+	040 LoadAddress rcx, stack:0x58
+	041 Move rdx, rax
+	042 Call Scene.Equals, rcx, rdx
+	043 Move rbx, stack:0x40
+	044 ShiftStack 48
+	045 Move rdi, stack:0x0
+	046 ShiftStack 8
+	047 Return rax
+	048 Move rbx, stack:0x40
+	049 Move rax, 0
+	050 ShiftStack 48
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+	054 Call 0x18037ACF0, rcx, rdx, r8, r9
+

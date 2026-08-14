@@ -1,0 +1,42 @@
+Type: CardUIPVP+<>c__DisplayClass153_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <SetupMega1PanelOnce>b__0(System.Boolean on)
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+18h]
+	test rax,rax
+	je short 00000001806DB623h
+	movzx r8d,dl
+	xor r9d,r9d
+	mov edx,[rcx+10h]
+	mov rcx,rax
+	add rsp,28h
+	jmp near ptr 000000018068EE20h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+24]
+	003 Compare rax, 0
+	004 JumpIfEqual {12}
+	005 Move r8, rdx
+	006 Move r9, 0
+	007 Move rdx, [rcx+16]
+	008 Move rcx, rax
+	009 ShiftStack 40
+	010 Call CardUIPVP.OnMega1ToggleChanged, rcx, rdx, r8
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+

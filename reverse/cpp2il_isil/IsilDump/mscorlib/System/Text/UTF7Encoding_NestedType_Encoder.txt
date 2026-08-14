@@ -1,0 +1,110 @@
+Type: System.Text.UTF7Encoding+Encoder
+
+Method: System.Void .ctor(System.Text.UTF7Encoding encoding)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	lea rcx,[rdi+28h]
+	mov [rdi+28h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rdx,[rdi+28h]
+	test rdx,rdx
+	je short 00000001816694A2h
+	mov rdx,[rdx+28h]
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rdx
+	call 000000018037ACB0h
+	mov rdx,[rdi]
+	mov rcx,rdi
+	mov rax,[rdx+178h]
+	mov rdx,[rdx+180h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 LoadAddress rcx, [rdi+40]
+	010 Move [rdi+40], rbx
+	011 Move rdx, rbx
+	012 Call 0x18037ACB0, rcx, rdx, r8, r9
+	013 Move rdx, [rdi+40]
+	014 Compare rdx, 0
+	015 JumpIfEqual {29}
+	016 Move rdx, [rdx+40]
+	017 LoadAddress rcx, [rdi+16]
+	018 Move [rdi+16], rdx
+	019 Call 0x18037ACB0, rcx, rdx, r8, r9
+	020 Move rdx, [rdi]
+	021 Move rcx, rdi
+	022 Move rax, [rdx+376]
+	023 Move rdx, [rdx+384]
+	024 Move rbx, stack:0x30
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 CallNoReturn rax
+	029 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Reset()
+
+Disassembly:
+	cmp qword ptr [rcx+18h],0
+	mov dword ptr [rcx+3Ch],0FFFFFFFFh
+	mov dword ptr [rcx+38h],0
+	je short 000000018166A75Dh
+	mov rcx,[rcx+18h]
+	mov rdx,[rcx]
+	mov rax,[rdx+1C8h]
+	mov rdx,[rdx+1D0h]
+	jmp rax
+	ret
+
+ISIL:
+	001 Compare [rcx+24], 0
+	002 Move [rcx+60], 0xFFFFFFFF
+	003 Move [rcx+56], 0
+	004 JumpIfEqual {10}
+	005 Move rcx, [rcx+24]
+	006 Move rdx, [rcx]
+	007 Move rax, [rdx+456]
+	008 Move rdx, [rdx+464]
+	009 CallNoReturn rax
+	010 Return 
+
+Method: System.Boolean get_HasState()
+
+Disassembly:
+	cmp dword ptr [rcx+38h],0
+	je short 000000018166A959h
+	mov al,1
+	ret
+	cmp dword ptr [rcx+3Ch],0FFFFFFFFh
+	setne al
+	ret
+
+ISIL:
+	001 Compare [rcx+56], 0
+	002 JumpIfEqual {5}
+	003 Move rax, 1
+	004 Return rax
+	005 Compare [rcx+60], 18446744073709551615
+	006 NotImplemented "setne al"
+	007 Return rax
+

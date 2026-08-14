@@ -1,0 +1,78 @@
+Type: UnityEngine.Rendering.OcclusionTestComputeShader
+
+Method: System.Void Init(UnityEngine.ComputeShader cs)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183754049h],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018228322Ch
+	lea rcx,[183535508h]
+	call 000000018037BB90h
+	mov byte ptr [183754049h],1
+	mov rdx,rdi
+	mov [rbx],rdi
+	mov rcx,rbx
+	call 000000018037ACB0h
+	mov r8,[183535508h]
+	lea rcx,[rsp+20h]
+	xorps xmm0,xmm0
+	xor eax,eax
+	xor r9d,r9d
+	mov [rsp+30h],rax
+	mov rdx,rdi
+	movups [rsp+20h],xmm0
+	call 0000000182664CB0h
+	movups xmm0,[rsp+20h]
+	lea rcx,[rbx+10h]
+	xor edx,edx
+	movsd xmm1,qword ptr [rsp+30h]
+	movups [rbx+8],xmm0
+	movsd qword ptr [rbx+18h],xmm1
+	call 000000018037ACB0h
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183754049], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183535508]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183754049], 1
+	012 Move rdx, rdi
+	013 Move [rbx], rdi
+	014 Move rcx, rbx
+	015 Call 0x18037ACB0, rcx, rdx, r8, r9
+	016 Move r8, "OCCLUSION_DEBUG"
+	017 LoadAddress rcx, stack:0x20
+	018 Move xmm0, 0
+	019 Move rax, 0
+	020 Move r9, 0
+	021 Move stack:0x30, rax
+	022 Move rdx, rdi
+	023 Move stack:0x20, xmm0
+	024 Call LocalKeyword..ctor, rcx, rdx, r8
+	025 Move xmm0, stack:0x20
+	026 LoadAddress rcx, [rbx+16]
+	027 Move rdx, 0
+	028 Move xmm1, stack:0x30
+	029 Move [rbx+8], xmm0
+	030 Move [rbx+24], xmm1
+	031 Call 0x18037ACB0, rcx, rdx, r8, r9
+	032 Move rbx, stack:0x50
+	033 ShiftStack 64
+	034 Move rdi, stack:0x0
+	035 ShiftStack 8
+	036 Return 
+

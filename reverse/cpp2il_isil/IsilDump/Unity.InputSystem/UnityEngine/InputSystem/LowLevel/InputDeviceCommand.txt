@@ -1,0 +1,136 @@
+Type: UnityEngine.InputSystem.LowLevel.InputDeviceCommand
+
+Method: System.Int32 get_payloadSizeInBytes()
+
+Disassembly:
+	mov eax,[rcx+4]
+	sub eax,8
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Subtract rax, rax, 8
+	003 Return rax
+
+Method: System.Void* get_payloadPtr()
+
+Disassembly:
+	lea rax,[rcx+8]
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx+8]
+	002 Return rax
+
+Method: System.Void .ctor(UnityEngine.InputSystem.Utilities.FourCC type, System.Int32 sizeInBytes = 8)
+
+Disassembly:
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+4], r8
+	003 Return 
+
+Method: Unity.Collections.NativeArray`1<System.Byte> AllocateNative(UnityEngine.InputSystem.Utilities.FourCC type, System.Int32 payloadSize)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,50h
+	cmp byte ptr [1837534BBh],0
+	mov esi,r8d
+	mov ebx,edx
+	mov rdi,rcx
+	jne short 000000018202864Fh
+	lea rcx,[183534DB0h]
+	call 000000018037BB90h
+	lea rcx,[183556020h]
+	call 000000018037BB90h
+	mov byte ptr [1837534BBh],1
+	mov rax,[183556020h]
+	lea rcx,[rsp+30h]
+	xorps xmm0,xmm0
+	mov [rsp+20h],rax
+	add esi,8
+	mov r9d,1
+	mov edx,esi
+	mov r8d,2
+	movups [rsp+30h],xmm0
+	call 00000001815FB440h
+	movaps xmm0,[rsp+30h]
+	lea rcx,[rsp+40h]
+	mov rdx,[183534DB0h]
+	movups [rdi],xmm0
+	movdqa [rsp+40h],xmm0
+	call 0000000180945F00h
+	test rax,rax
+	je short 00000001820286BAh
+	mov [rax],ebx
+	mov rbx,[rsp+60h]
+	mov [rax+4],esi
+	mov rax,rdi
+	mov rsi,[rsp+68h]
+	add rsp,50h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -80
+	006 Compare [0x1837534BB], 0
+	007 Move rsi, r8
+	008 Move rbx, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x183534DB0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183556020]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837534BB], 1
+	016 Move rax, [0x183556020]
+	017 LoadAddress rcx, stack:0x30
+	018 Move xmm0, 0
+	019 Move stack:0x20, rax
+	020 Add rsi, rsi, 8
+	021 Move r9, 1
+	022 Move rdx, rsi
+	023 Move r8, 2
+	024 Move stack:0x30, xmm0
+	025 Call 0x1815FB440, rcx, rdx, r8, r9
+	026 Move xmm0, stack:0x30
+	027 LoadAddress rcx, stack:0x40
+	028 Move rdx, [0x183534DB0]
+	029 Move [rdi], xmm0
+	030 Move stack:0x40, xmm0
+	031 Call 0x180945F00, rcx, rdx
+	032 Compare rax, 0
+	033 JumpIfEqual {43}
+	034 Move [rax], rbx
+	035 Move rbx, stack:0x60
+	036 Move [rax+4], rsi
+	037 Move rax, rdi
+	038 Move rsi, stack:0x68
+	039 ShiftStack 80
+	040 Move rdi, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_typeStatic()
+
+Disassembly:
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+

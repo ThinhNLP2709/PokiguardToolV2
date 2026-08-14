@@ -1,0 +1,79 @@
+Type: Unity.Collections.SortJob`2+SegmentSort
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	mov [rsp+18h],rdi
+	push r14
+	sub rsp,20h
+	mov eax,[rcx+0Ch]
+	mov esi,edx
+	imul esi,[rcx+10h]
+	sub eax,esi
+	cmp eax,[rcx+10h]
+	jge short 0000000180C8D95Ch
+	mov edi,[rcx+0Ch]
+	sub edi,esi
+	jmp short 0000000180C8D95Fh
+	mov edi,[rcx+10h]
+	mov rax,[r8+20h]
+	mov r14,[rcx]
+	movzx ebx,byte ptr [rcx+8]
+	test byte ptr [rax+135h],1
+	jne short 0000000180C8D97Bh
+	mov rcx,rax
+	call 0000000180384C90h
+	mov r9,[rax+0C0h]
+	movzx r8d,bl
+	movsxd rax,esi
+	mov edx,edi
+	mov r9,[r9+20h]
+	lea rcx,[r14+rax*4]
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	mov rdi,[rsp+40h]
+	add rsp,20h
+	pop r14
+	jmp near ptr 000000018094DDE0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 Move stack:0x18, rdi
+	004 ShiftStack -8
+	005 Move stack:0x0, r14
+	006 ShiftStack -32
+	007 Move rax, [rcx+12]
+	008 Move rsi, rdx
+	009 Multiply rsi, rsi, [rcx+16]
+	010 Subtract rax, rax, rsi
+	011 Compare rax, [rcx+16]
+	012 JumpIfGreaterOrEqual {16}
+	013 Move rdi, [rcx+12]
+	014 Subtract rdi, rdi, rsi
+	015 Goto {17}
+	016 Move rdi, [rcx+16]
+	017 Move rax, [r8+32]
+	018 Move r14, [rcx]
+	019 Move rbx, [rcx+8]
+	020 Compare [rax+309], 1
+	021 JumpIfNotEqual {24}
+	022 Move rcx, rax
+	023 Call 0x180384C90, rcx, rdx, r8, r9
+	024 Move r9, [rax+192]
+	025 Move r8, rbx
+	026 Move rax, rsi
+	027 Move rdx, rdi
+	028 Move r9, [r9+32]
+	029 LoadAddress rcx, [r14+rax*4]
+	030 Move rbx, stack:0x30
+	031 Move rsi, stack:0x38
+	032 Move rdi, stack:0x40
+	033 ShiftStack 32
+	034 Move r14, stack:0x0
+	035 ShiftStack 8
+	036 Call 0x18094DDE0, rcx, rdx, r8, r9
+	037 Return 
+

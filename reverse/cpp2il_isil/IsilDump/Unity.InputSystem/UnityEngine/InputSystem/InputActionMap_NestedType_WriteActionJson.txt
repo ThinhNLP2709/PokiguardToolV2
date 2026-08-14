@@ -1,0 +1,147 @@
+Type: UnityEngine.InputSystem.InputActionMap+WriteActionJson
+
+Method: UnityEngine.InputSystem.InputActionMap+WriteActionJson FromAction(UnityEngine.InputSystem.InputAction action)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183752CCBh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 0000000181F254DCh
+	lea rcx,[18354E928h]
+	call 000000018037BB90h
+	mov byte ptr [183752CCBh],1
+	xorps xmm0,xmm0
+	xor eax,eax
+	movups [rbx],xmm0
+	movups [rbx+10h],xmm0
+	movups [rbx+20h],xmm0
+	mov [rbx+30h],rax
+	test rdi,rdi
+	je near ptr 0000000181F255B5h
+	mov rdx,[rdi+10h]
+	mov rcx,rbx
+	mov [rbx],rdx
+	call 000000018037ACB0h
+	mov rax,[18354E928h]
+	lea rcx,[rsp+20h]
+	mov [rsp+20h],rax
+	xor edx,edx
+	mov eax,[rdi+18h]
+	mov [rsp+30h],eax
+	mov qword ptr [rsp+28h],0FFFFFFFFFFFFFFFFh
+	call 0000000181842700h
+	lea rcx,[rbx+8]
+	mov [rbx+8],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rdx,[rdi+28h]
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdx
+	call 000000018037ACB0h
+	mov rdx,[rdi+20h]
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rdx
+	call 000000018037ACB0h
+	mov rdx,[rdi+30h]
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdx
+	call 000000018037ACB0h
+	mov rdx,[rdi+38h]
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rdi+18h],0
+	jne short 0000000181F2559Dh
+	mov al,1
+	mov [rbx+30h],al
+	mov rax,rbx
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+	test byte ptr [rdi+48h],1
+	seta al
+	mov [rbx+30h],al
+	mov rax,rbx
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183752CCB], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x18354E928]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183752CCB], 1
+	012 Move xmm0, 0
+	013 Move rax, 0
+	014 Move [rbx], xmm0
+	015 Move [rbx+16], xmm0
+	016 Move [rbx+32], xmm0
+	017 Move [rbx+48], rax
+	018 Compare rdi, 0
+	019 JumpIfEqual {71}
+	020 Move rdx, [rdi+16]
+	021 Move rcx, rbx
+	022 Move [rbx], rdx
+	023 Call 0x18037ACB0, rcx, rdx, r8, r9
+	024 Move rax, typeof(UnityEngine.InputSystem.InputActionType)
+	025 LoadAddress rcx, stack:0x20
+	026 Move stack:0x20, rax
+	027 Move rdx, 0
+	028 Move rax, [rdi+24]
+	029 Move stack:0x30, rax
+	030 Move stack:0x28, 18446744073709551615
+	031 Call Enum.ToString, rcx, rdx
+	032 LoadAddress rcx, [rbx+8]
+	033 Move [rbx+8], rax
+	034 Move rdx, rax
+	035 Call 0x18037ACB0, rcx, rdx, r8, r9
+	036 Move rdx, [rdi+40]
+	037 LoadAddress rcx, [rbx+16]
+	038 Move [rbx+16], rdx
+	039 Call 0x18037ACB0, rcx, rdx, r8, r9
+	040 Move rdx, [rdi+32]
+	041 LoadAddress rcx, [rbx+24]
+	042 Move [rbx+24], rdx
+	043 Call 0x18037ACB0, rcx, rdx, r8, r9
+	044 Move rdx, [rdi+48]
+	045 LoadAddress rcx, [rbx+32]
+	046 Move [rbx+32], rdx
+	047 Call 0x18037ACB0, rcx, rdx, r8, r9
+	048 Move rdx, [rdi+56]
+	049 LoadAddress rcx, [rbx+40]
+	050 Move [rbx+40], rdx
+	051 Call 0x18037ACB0, rcx, rdx, r8, r9
+	052 Compare [rdi+24], 0
+	053 JumpIfNotEqual {62}
+	054 Move rax, 1
+	055 Move [rbx+48], rax
+	056 Move rax, rbx
+	057 Move rbx, stack:0x50
+	058 ShiftStack 64
+	059 Move rdi, stack:0x0
+	060 ShiftStack 8
+	061 Return rax
+	062 Compare [rdi+72], 1
+	063 NotImplemented "seta al"
+	064 Move [rbx+48], rax
+	065 Move rax, rbx
+	066 Move rbx, stack:0x50
+	067 ShiftStack 64
+	068 Move rdi, stack:0x0
+	069 ShiftStack 8
+	070 Return rax
+	071 Call 0x18037BE30, rcx, rdx, r8, r9
+

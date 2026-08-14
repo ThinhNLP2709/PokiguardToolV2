@@ -1,0 +1,108 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafePtrListExtensions
+
+Method: Unity.Collections.LowLevel.Unsafe.UnsafeList`1<System.IntPtr> ListData(ref Unity.Collections.LowLevel.Unsafe.UnsafePtrList`1<T> from)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp qword ptr [rdx+38h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000180940BCFh
+	mov rcx,rdx
+	call 0000000180384D10h
+	mov rdx,[rbx+38h]
+	mov rcx,rdi
+	mov r8,[rdx+8]
+	mov rdx,r8
+	mov rax,[r8]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [rdx+56], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {11}
+	009 Move rcx, rdx
+	010 Call 0x180384D10, rcx, rdx, r8, r9
+	011 Move rdx, [rbx+56]
+	012 Move rcx, rdi
+	013 Move r8, [rdx+8]
+	014 Move rdx, r8
+	015 Move rax, [r8]
+	016 Move rbx, stack:0x30
+	017 ShiftStack 32
+	018 Move rdi, stack:0x0
+	019 ShiftStack 8
+	020 CallNoReturn rax
+
+Method: Unity.Collections.LowLevel.Unsafe.UnsafeList`1<System.IntPtr> ListDataRO(Unity.Collections.LowLevel.Unsafe.UnsafePtrList`1<T> from)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp qword ptr [r8+38h],0
+	mov rbx,r8
+	mov rsi,rdx
+	mov rdi,rcx
+	jne short 0000000180A226E7h
+	mov rcx,rbx
+	call 0000000180384D10h
+	mov rdx,[rbx+38h]
+	mov rcx,rsi
+	mov r8,[rdx+8]
+	mov rdx,r8
+	mov rax,[r8]
+	call rax
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rdi
+	movups [rdi],xmm0
+	movsd qword ptr [rdi+10h],xmm1
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [r8+56], 0
+	007 Move rbx, r8
+	008 Move rsi, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {13}
+	011 Move rcx, rbx
+	012 Call 0x180384D10, rcx, rdx, r8, r9
+	013 Move rdx, [rbx+56]
+	014 Move rcx, rsi
+	015 Move r8, [rdx+8]
+	016 Move rdx, r8
+	017 Move rax, [r8]
+	018 Call rax
+	019 Move rbx, stack:0x30
+	020 Move rsi, stack:0x38
+	021 Move xmm0, [rax]
+	022 Move xmm1, [rax+16]
+	023 Move rax, rdi
+	024 Move [rdi], xmm0
+	025 Move [rdi+16], xmm1
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+

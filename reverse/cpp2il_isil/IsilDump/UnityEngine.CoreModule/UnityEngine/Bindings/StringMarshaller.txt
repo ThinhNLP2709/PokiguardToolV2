@@ -1,0 +1,74 @@
+Type: UnityEngine.Bindings.StringMarshaller
+
+Method: System.Boolean TryMarshalEmptyOrNullString(System.String s, ref UnityEngine.Bindings.ManagedSpanWrapper managedSpanWrapper)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rbx,rdx
+	test rcx,rcx
+	je short 0000000182633B80h
+	cmp dword ptr [rcx+10h],0
+	je short 0000000182633B4Ch
+	xor al,al
+	add rsp,30h
+	pop rbx
+	ret
+	xor edx,edx
+	mov ecx,1
+	call 000000018185C5A0h
+	xor edx,edx
+	mov qword ptr [rsp+28h],0
+	mov rcx,rax
+	call 00000001804D4100h
+	mov [rsp+20h],rax
+	mov al,1
+	movups xmm0,[rsp+20h]
+	movups [rbx],xmm0
+	add rsp,30h
+	pop rbx
+	ret
+	xorps xmm0,xmm0
+	mov al,1
+	movups [rdx],xmm0
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rbx, rdx
+	005 Compare rcx, 0
+	006 JumpIfEqual {29}
+	007 Compare [rcx+16], 0
+	008 JumpIfEqual {14}
+	009 Move rax, 0
+	010 ShiftStack 48
+	011 Move rbx, stack:0x0
+	012 ShiftStack 8
+	013 Return rax
+	014 Move rdx, 0
+	015 Move rcx, 1
+	016 Call 0x18185C5A0, rcx, rdx
+	017 Move rdx, 0
+	018 Move stack:0x28, 0
+	019 Move rcx, rax
+	020 Call 0x1804D4100, rcx, rdx, r8, r9
+	021 Move stack:0x20, rax
+	022 Move rax, 1
+	023 Move xmm0, stack:0x20
+	024 Move [rbx], xmm0
+	025 ShiftStack 48
+	026 Move rbx, stack:0x0
+	027 ShiftStack 8
+	028 Return rax
+	029 Move xmm0, 0
+	030 Move rax, 1
+	031 Move [rdx], xmm0
+	032 ShiftStack 48
+	033 Move rbx, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+

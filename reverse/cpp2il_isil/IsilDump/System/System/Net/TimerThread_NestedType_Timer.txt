@@ -1,0 +1,90 @@
+Type: System.Net.TimerThread+Timer
+
+Method: System.Void .ctor(System.Int32 durationMilliseconds)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	xor ecx,ecx
+	mov [rdi+14h],ebx
+	call 000000018185C250h
+	mov rbx,[rsp+30h]
+	mov [rdi+10h],eax
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move rcx, 0
+	010 Move [rdi+20], rbx
+	011 Call Environment.get_TickCount, rcx
+	012 Move rbx, stack:0x30
+	013 Move [rdi+16], rax
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+
+Method: System.Int32 get_StartTime()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Int32 get_Expiration()
+
+Disassembly:
+	mov eax,[rcx+14h]
+	add eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+20]
+	002 Add rax, rax, [rcx+16]
+	003 Return rax
+
+Method: System.Boolean Cancel()
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.Boolean get_HasExpired()
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.Void Dispose()
+
+Disassembly:
+	mov rdx,[rcx]
+	mov rax,[rdx+188h]
+	mov rdx,[rdx+190h]
+	jmp rax
+
+ISIL:
+	001 Move rdx, [rcx]
+	002 Move rax, [rdx+392]
+	003 Move rdx, [rdx+400]
+	004 CallNoReturn rax
+

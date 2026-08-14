@@ -1,0 +1,117 @@
+Type: UnityEngine.UIElements.StyleValuePropertyBag`2+ValueProperty
+
+Method: System.String get_Name()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Boolean get_IsReadOnly()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+
+Method: TValue GetValue(ref TContainer container)
+
+Disassembly:
+	mov rax,[r8+20h]
+	mov rcx,rdx
+	mov rdx,[rax+0C0h]
+	mov rdx,[rdx+20h]
+	jmp near ptr 0000000180CFAE40h
+
+ISIL:
+	001 Move rax, [r8+32]
+	002 Move rcx, rdx
+	003 Move rdx, [rax+192]
+	004 Move rdx, [rdx+32]
+	005 Call 0x180CFAE40, rcx, rdx
+	006 Return rax
+
+Method: System.Void SetValue(ref TContainer container, TValue value)
+
+Disassembly:
+	mov rax,[r9+20h]
+	mov r10d,r8d
+	mov rcx,rdx
+	mov edx,r10d
+	mov r8,[rax+0C0h]
+	mov r8,[r8+30h]
+	jmp near ptr 0000000180CFB700h
+
+ISIL:
+	001 Move rax, [r9+32]
+	002 Move r10, r8
+	003 Move rcx, rdx
+	004 Move rdx, r10
+	005 Move r8, [rax+192]
+	006 Move r8, [r8+48]
+	007 Call 0x180CFB700, rcx, rdx
+	008 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374CF9Dh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 0000000180EB4F2Ch
+	lea rcx,[1835479B0h]
+	call 000000018037BB90h
+	mov byte ptr [18374CF9Dh],1
+	mov rax,[1835479B0h]
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rax
+	mov rdx,[1835479B0h]
+	call 000000018037ACB0h
+	mov byte ptr [rbx+20h],0
+	mov rcx,rbx
+	mov rax,[rdi+20h]
+	mov rdx,[rax+0C0h]
+	mov rdx,[rdx+38h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001804552D0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374CF9D], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1835479B0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18374CF9D], 1
+	012 Move rax, "value"
+	013 LoadAddress rcx, [rbx+24]
+	014 Move [rbx+24], rax
+	015 Move rdx, "value"
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Move [rbx+32], 0
+	018 Move rcx, rbx
+	019 Move rax, [rdi+32]
+	020 Move rdx, [rax+192]
+	021 Move rdx, [rdx+56]
+	022 Move rbx, stack:0x30
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Call 0x1804552D0, rcx, rdx, r8
+	027 Return 
+

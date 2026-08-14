@@ -1,0 +1,88 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafeParallelMultiHashMap`2+ParallelWriter
+
+Method: System.Int32 get_Capacity()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx]
+	test rax,rax
+	je short 0000000180AEAFB4h
+	mov eax,[rax+20h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx]
+	003 Compare rax, 0
+	004 JumpIfEqual {8}
+	005 Move rax, [rax+32]
+	006 ShiftStack 40
+	007 Return rax
+	008 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Add(TKey key, TValue item)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[r9+20h]
+	mov ebx,r8d
+	mov rsi,[rcx]
+	mov edi,edx
+	mov ebp,[rcx+8]
+	test byte ptr [rax+135h],1
+	jne short 0000000180B81F84h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rax,[rax+0C0h]
+	mov r9d,ebp
+	mov r8d,ebx
+	mov rcx,rsi
+	mov rdx,[rax+18h]
+	mov [rsp+20h],rdx
+	mov edx,edi
+	call 0000000180E58890h
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rax, [r9+32]
+	008 Move rbx, r8
+	009 Move rsi, [rcx]
+	010 Move rdi, rdx
+	011 Move rbp, [rcx+8]
+	012 Compare [rax+309], 1
+	013 JumpIfNotEqual {16}
+	014 Move rcx, rax
+	015 Call 0x180384C90, rcx, rdx, r8, r9
+	016 Move rax, [rax+192]
+	017 Move r9, rbp
+	018 Move r8, rbx
+	019 Move rcx, rsi
+	020 Move rdx, [rax+24]
+	021 Move stack:0x20, rdx
+	022 Move rdx, rdi
+	023 Call 0x180E58890, rcx, rdx, r8, r9, stack:0x0
+	024 Move rbx, stack:0x40
+	025 Move rbp, stack:0x48
+	026 Move rsi, stack:0x50
+	027 ShiftStack 48
+	028 Move rdi, stack:0x0
+	029 ShiftStack 8
+	030 Return 
+

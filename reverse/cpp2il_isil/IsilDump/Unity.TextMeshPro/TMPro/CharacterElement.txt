@@ -1,0 +1,49 @@
+Type: TMPro.CharacterElement
+
+Method: System.UInt32 get_Unicode()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_Unicode(System.UInt32 value)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Void .ctor(TMPro.TMP_TextElement textElement)
+
+Disassembly:
+	sub rsp,28h
+	test rdx,rdx
+	je short 000000018241CFAFh
+	mov eax,[rdx+14h]
+	mov [rcx],eax
+	mov [rcx+8],rdx
+	add rcx,8
+	add rsp,28h
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, 0
+	003 JumpIfEqual {11}
+	004 Move rax, [rdx+20]
+	005 Move [rcx], rax
+	006 Move [rcx+8], rdx
+	007 Add rcx, rcx, 8
+	008 ShiftStack 40
+	009 Call 0x18037ACB0, rcx, rdx, r8, r9
+	010 Return 
+	011 Call 0x18037BE30, rcx, rdx, r8, r9
+

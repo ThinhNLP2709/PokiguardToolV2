@@ -1,0 +1,174 @@
+Type: UnityEngine.Windows.Speech.DictationRecognizer
+
+Method: System.Void DictationRecognizer_InvokeHypothesisGeneratedEvent(System.IntPtr keyword, System.Int32 keywordLength)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	mov rbx,[rcx+18h]
+	mov edi,r8d
+	mov rax,rdx
+	test rbx,rbx
+	je short 00000001826232DEh
+	xor edx,edx
+	mov rcx,rax
+	call 00000001804D4100h
+	mov r9d,edi
+	mov qword ptr [rsp+20h],0
+	xor r8d,r8d
+	mov rdx,rax
+	xor ecx,ecx
+	call 000000018165C2B0h
+	mov r9,[rbx+18h]
+	mov rdx,rax
+	mov r8,[rbx+28h]
+	mov rcx,[rbx+40h]
+	call r9
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Move rbx, [rcx+24]
+	006 Move rdi, r8
+	007 Move rax, rdx
+	008 Compare rbx, 0
+	009 JumpIfEqual {24}
+	010 Move rdx, 0
+	011 Move rcx, rax
+	012 Call 0x1804D4100, rcx, rdx, r8, r9
+	013 Move r9, rdi
+	014 Move stack:0x20, 0
+	015 Move r8, 0
+	016 Move rdx, rax
+	017 Move rcx, 0
+	018 Call String.CreateString, rcx, rdx, r8, r9
+	019 Move r9, [rbx+24]
+	020 Move rdx, rax
+	021 Move r8, [rbx+40]
+	022 Move rcx, [rbx+64]
+	023 Call r9
+	024 Move rbx, stack:0x40
+	025 ShiftStack 48
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+
+Method: System.Void DictationRecognizer_InvokeResultGeneratedEvent(System.IntPtr keyword, System.Int32 keywordLength, UnityEngine.Windows.Speech.ConfidenceLevel minimumConfidence)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	mov rbx,[rcx+20h]
+	mov edi,r9d
+	mov esi,r8d
+	mov rax,rdx
+	test rbx,rbx
+	je short 0000000182623349h
+	xor edx,edx
+	mov rcx,rax
+	call 00000001804D4100h
+	mov r9d,esi
+	mov qword ptr [rsp+20h],0
+	xor r8d,r8d
+	mov rdx,rax
+	xor ecx,ecx
+	call 000000018165C2B0h
+	mov r10,[rbx+18h]
+	mov r8d,edi
+	mov r9,[rbx+28h]
+	mov rdx,rax
+	mov rcx,[rbx+40h]
+	call r10
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Move rbx, [rcx+32]
+	007 Move rdi, r9
+	008 Move rsi, r8
+	009 Move rax, rdx
+	010 Compare rbx, 0
+	011 JumpIfEqual {27}
+	012 Move rdx, 0
+	013 Move rcx, rax
+	014 Call 0x1804D4100, rcx, rdx, r8, r9
+	015 Move r9, rsi
+	016 Move stack:0x20, 0
+	017 Move r8, 0
+	018 Move rdx, rax
+	019 Move rcx, 0
+	020 Call String.CreateString, rcx, rdx, r8, r9
+	021 Move r10, [rbx+24]
+	022 Move r8, rdi
+	023 Move r9, [rbx+40]
+	024 Move rdx, rax
+	025 Move rcx, [rbx+64]
+	026 Call r10
+	027 Move rbx, stack:0x40
+	028 Move rsi, stack:0x48
+	029 ShiftStack 48
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return 
+
+Method: System.Void DictationRecognizer_InvokeCompletedEvent(UnityEngine.Windows.Speech.DictationCompletionCause cause)
+
+Disassembly:
+	mov rcx,[rcx+28h]
+	test rcx,rcx
+	je short 00000001804D4F98h
+	mov rax,[rcx+18h]
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	jmp rax
+	ret
+
+ISIL:
+	001 Move rcx, [rcx+40]
+	002 Compare rcx, 0
+	003 JumpIfEqual {8}
+	004 Move rax, [rcx+24]
+	005 Move r8, [rcx+40]
+	006 Move rcx, [rcx+64]
+	007 CallNoReturn rax
+	008 Return 
+
+Method: System.Void DictationRecognizer_InvokeErrorEvent(System.String error, System.Int32 hresult)
+
+Disassembly:
+	mov rcx,[rcx+30h]
+	test rcx,rcx
+	je short 0000000182623288h
+	mov rax,[rcx+18h]
+	mov r9,[rcx+28h]
+	mov rcx,[rcx+40h]
+	jmp rax
+	ret
+
+ISIL:
+	001 Move rcx, [rcx+48]
+	002 Compare rcx, 0
+	003 JumpIfEqual {8}
+	004 Move rax, [rcx+24]
+	005 Move r9, [rcx+40]
+	006 Move rcx, [rcx+64]
+	007 CallNoReturn rax
+	008 Return 
+

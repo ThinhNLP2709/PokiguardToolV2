@@ -1,0 +1,160 @@
+Type: UnityEngine.Rendering.FindMaterialDrawInstancesJob
+
+Method: System.Void Execute(System.Int32 startIndex, System.Int32 count)
+
+Disassembly:
+	push rbp
+	push r12
+	push r13
+	push r14
+	push r15
+	sub rsp,30h
+	lea rbp,[rsp+20h]
+	cmp byte ptr [183753F66h],0
+	mov r13,rcx
+	mov [rbp+40h],rbx
+	mov ebx,edx
+	mov [rbp+48h],rsi
+	mov [rbp+50h],rdi
+	mov edi,r8d
+	jne short 000000018225536Bh
+	lea rcx,[183561DD8h]
+	call 000000018037BB90h
+	lea rcx,[183538E30h]
+	call 000000018037BB90h
+	lea rcx,[183505460h]
+	call 000000018037BB90h
+	mov byte ptr [183753F66h],1
+	mov eax,[rsp]
+	mov eax,200h
+	sub rsp,rax
+	lea r14,[rsp+20h]
+	mov eax,[r14]
+	xor edx,edx
+	mov r8d,200h
+	mov rcx,r14
+	call 0000000180444E50h
+	xor esi,esi
+	lea r15d,[rbx+rdi]
+	cmp ebx,r15d
+	jge short 00000001822553E5h
+	mov edi,esi
+	nop dword ptr [rax+rax]
+	mov r8,[183561DD8h]
+	lea rcx,[r13+10h]
+	mov edx,ebx
+	call 0000000180AF2040h
+	movups xmm0,[r13]
+	mov r8,[183538E30h]
+	lea rcx,[rbp]
+	mov edx,[rax+8]
+	movaps [rbp],xmm0
+	call 0000000180948990h
+	test eax,eax
+	js short 00000001822553DEh
+	mov rax,rdi
+	inc esi
+	inc rdi
+	mov [r14+rax*4],ebx
+	inc ebx
+	cmp ebx,r15d
+	jl short 00000001822553A0h
+	mov r9,[183505460h]
+	lea rcx,[r13+18h]
+	mov r8d,esi
+	mov rdx,r14
+	call 0000000180B80320h
+	mov rbx,[rbp+40h]
+	mov rsi,[rbp+48h]
+	mov rdi,[rbp+50h]
+	lea rsp,[rbp+10h]
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop rbp
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, r12
+	005 ShiftStack -8
+	006 Move stack:0x0, r13
+	007 ShiftStack -8
+	008 Move stack:0x0, r14
+	009 ShiftStack -8
+	010 Move stack:0x0, r15
+	011 ShiftStack -48
+	012 LoadAddress rbp, stack:0x20
+	013 Compare [0x183753F66], 0
+	014 Move r13, rcx
+	015 Move [rbp+64], rbx
+	016 Move rbx, rdx
+	017 Move [rbp+72], rsi
+	018 Move [rbp+80], rdi
+	019 Move rdi, r8
+	020 JumpIfNotEqual {28}
+	021 LoadAddress rcx, [0x183561DD8]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 LoadAddress rcx, [0x183538E30]
+	024 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	025 LoadAddress rcx, [0x183505460]
+	026 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	027 Move [0x183753F66], 1
+	028 Move rax, stack:0x0
+	029 Move rax, 512
+	030 Subtract rsp, rsp, rax
+	031 LoadAddress r14, stack:0x20
+	032 Move rax, [r14]
+	033 Move rdx, 0
+	034 Move r8, 512
+	035 Move rcx, r14
+	036 Call 0x180444E50, rcx, rdx, r8, r9
+	037 Move rsi, 0
+	038 LoadAddress r15, [rbx+rdi]
+	039 Compare rbx, r15
+	040 JumpIfGreaterOrEqual {62}
+	041 Move rdi, rsi
+	042 Nop 
+	043 Move r8, [0x183561DD8]
+	044 LoadAddress rcx, [r13+16]
+	045 Move rdx, rbx
+	046 Call NativeList`1<DrawInstance>.ElementAt, rcx, rdx
+	047 Move xmm0, [r13]
+	048 Move r8, [0x183538E30]
+	049 LoadAddress rcx, [rbp]
+	050 Move rdx, [rax+8]
+	051 Move [rbp], xmm0
+	052 Call NativeSortExtension.BinarySearch, rcx, rdx, r8
+	053 Compare rax, 0
+	054 JumpIfSign {59}
+	055 Move rax, rdi
+	056 Add rsi, rsi, 1
+	057 Add rdi, rdi, 1
+	058 Move [r14+rax*4], rbx
+	059 Add rbx, rbx, 1
+	060 Compare rbx, r15
+	061 JumpIfLess {43}
+	062 Move r9, [0x183505460]
+	063 LoadAddress rcx, [r13+24]
+	064 Move r8, rsi
+	065 Move rdx, r14
+	066 Call 0x180B80320, rcx, rdx, r8
+	067 Move rbx, [rbp+64]
+	068 Move rsi, [rbp+72]
+	069 Move rdi, [rbp+80]
+	070 LoadAddress rsp, [rbp+16]
+	071 Move r15, stack:0x0
+	072 ShiftStack 8
+	073 Move r14, stack:0x0
+	074 ShiftStack 8
+	075 Move r13, stack:0x0
+	076 ShiftStack 8
+	077 Move r12, stack:0x0
+	078 ShiftStack 8
+	079 Move rbp, stack:0x0
+	080 ShiftStack 8
+	081 Return 
+

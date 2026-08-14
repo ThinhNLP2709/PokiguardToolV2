@@ -1,0 +1,196 @@
+Type: UnityEngine.WaitWhile
+
+Method: System.Boolean get_keepWaiting()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	movsd xmm0,qword ptr [rcx+28h]
+	mov rbx,rcx
+	ucomisd xmm0,qword ptr [182A511E8h]
+	jp short 000000018263EC50h
+	jne short 000000018263EC50h
+	mov rcx,[rcx+10h]
+	jmp short 000000018263ECA3h
+	cmp dword ptr [rcx+20h],1
+	jne short 000000018263EC77h
+	mov rax,[183757CD0h]
+	test rax,rax
+	jne short 000000018263EC96h
+	lea rcx,[182B34A90h]
+	call 000000018037BE90h
+	mov [183757CD0h],rax
+	jmp short 000000018263EC96h
+	mov rax,[183757D38h]
+	test rax,rax
+	jne short 000000018263EC96h
+	lea rcx,[182B34CD0h]
+	call 000000018037BE90h
+	mov [183757D38h],rax
+	call rax
+	comisd xmm0,qword ptr [rbx+28h]
+	ja short 000000018263ECBCh
+	mov rcx,[rbx+10h]
+	test rcx,rcx
+	je short 000000018263ECDBh
+	mov rax,[rcx+18h]
+	mov rdx,[rcx+28h]
+	mov rcx,[rcx+40h]
+	add rsp,20h
+	pop rbx
+	jmp rax
+	mov rcx,[rbx+18h]
+	test rcx,rcx
+	je short 000000018263ECDBh
+	mov rax,[rcx+18h]
+	mov rdx,[rcx+28h]
+	mov rcx,[rcx+40h]
+	call rax
+	xor al,al
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move xmm0, [rcx+40]
+	005 Move rbx, rcx
+	006 NotImplemented "ucomisd xmm0,qword ptr [182A511E8h]"
+	007 NotImplemented "jp short 000000018263EC50h"
+	008 JumpIfNotEqual {11}
+	009 Move rcx, [rcx+16]
+	010 Goto {30}
+	011 Compare [rcx+32], 1
+	012 JumpIfNotEqual {20}
+	013 Move rax, [0x183757CD0]
+	014 Compare rax, 0
+	015 JumpIfNotEqual {26}
+	016 LoadAddress rcx, [0x182B34A90]
+	017 Call 0x18037BE90, rcx, rdx, r8, r9
+	018 Move [0x183757CD0], rax
+	019 Goto {26}
+	020 Move rax, [0x183757D38]
+	021 Compare rax, 0
+	022 JumpIfNotEqual {26}
+	023 LoadAddress rcx, [0x182B34CD0]
+	024 Call 0x18037BE90, rcx, rdx, r8, r9
+	025 Move [0x183757D38], rax
+	026 Call rax
+	027 NotImplemented "comisd xmm0,qword ptr [rbx+28h]"
+	028 JumpIfGreater {39}
+	029 Move rcx, [rbx+16]
+	030 Compare rcx, 0
+	031 JumpIfEqual {51}
+	032 Move rax, [rcx+24]
+	033 Move rdx, [rcx+40]
+	034 Move rcx, [rcx+64]
+	035 ShiftStack 32
+	036 Move rbx, stack:0x0
+	037 ShiftStack 8
+	038 CallNoReturn rax
+	039 Move rcx, [rbx+24]
+	040 Compare rcx, 0
+	041 JumpIfEqual {51}
+	042 Move rax, [rcx+24]
+	043 Move rdx, [rcx+40]
+	044 Move rcx, [rcx+64]
+	045 Call rax
+	046 Move rax, 0
+	047 ShiftStack 32
+	048 Move rbx, stack:0x0
+	049 ShiftStack 8
+	050 Return rax
+	051 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor(System.Func`1<System.Boolean> predicate)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rax,0BFF0000000000000h
+	xor edx,edx
+	mov [rcx+28h],rax
+	mov rbx,rcx
+	call 00000001804552D0h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rax, 13830554455654793216
+	007 Move rdx, 0
+	008 Move [rcx+40], rax
+	009 Move rbx, rcx
+	010 Call 0x1804552D0, rcx, rdx, r8
+	011 LoadAddress rcx, [rbx+16]
+	012 Move [rbx+16], rdi
+	013 Move rdx, rdi
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Return 
+
+Method: System.Double GetTime()
+
+Disassembly:
+	sub rsp,28h
+	cmp dword ptr [rcx+20h],1
+	jne short 000000018263EB00h
+	mov rax,[183757CD0h]
+	test rax,rax
+	jne short 000000018263EB1Fh
+	lea rcx,[182B34A90h]
+	call 000000018037BE90h
+	mov [183757CD0h],rax
+	call rax
+	add rsp,28h
+	ret
+	mov rax,[183757D38h]
+	test rax,rax
+	jne short 000000018263EB1Fh
+	lea rcx,[182B34CD0h]
+	call 000000018037BE90h
+	mov [183757D38h],rax
+	call rax
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx+32], 1
+	003 JumpIfNotEqual {13}
+	004 Move rax, [0x183757CD0]
+	005 Compare rax, 0
+	006 JumpIfNotEqual {19}
+	007 LoadAddress rcx, [0x182B34A90]
+	008 Call 0x18037BE90, rcx, rdx, r8, r9
+	009 Move [0x183757CD0], rax
+	010 Call rax
+	011 ShiftStack 40
+	012 Return xmm0
+	013 Move rax, [0x183757D38]
+	014 Compare rax, 0
+	015 JumpIfNotEqual {19}
+	016 LoadAddress rcx, [0x182B34CD0]
+	017 Call 0x18037BE90, rcx, rdx, r8, r9
+	018 Move [0x183757D38], rax
+	019 Call rax
+	020 ShiftStack 40
+	021 Return xmm0
+

@@ -1,0 +1,131 @@
+Type: System.Xml.Serialization.XmlTypeAttribute
+
+Method: System.Boolean get_IncludeInSchema()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.String get_Namespace()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.String get_TypeName()
+
+Disassembly:
+	cmp qword ptr [rcx+20h],0
+	je short 0000000181CFF15Ch
+	mov rax,[rcx+20h]
+	ret
+	mov rax,[18375C130h]
+	mov rax,[rax+0B8h]
+	mov rax,[rax]
+	ret
+
+ISIL:
+	001 Compare [rcx+32], 0
+	002 JumpIfEqual {5}
+	003 Move rax, [rcx+32]
+	004 Return rax
+	005 Move rax, [0x18375C130]
+	006 Move rax, [rax+184]
+	007 Move rax, [rax]
+	008 Return rax
+
+Method: System.Void AddKeyHash(System.Text.StringBuilder sb)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837519ACh],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181CFF0DCh
+	lea rcx,[183504E68h]
+	call 000000018037BB90h
+	mov byte ptr [1837519ACh],1
+	test rbx,rbx
+	je short 0000000181CFF14Ah
+	mov rdx,[183504E68h]
+	xor r8d,r8d
+	mov rcx,rbx
+	call 000000018166E870h
+	mov r8,[rdi+18h]
+	xor r9d,r9d
+	mov edx,1
+	mov rcx,rbx
+	call 0000000181CAFD70h
+	mov r8,[rdi+20h]
+	xor r9d,r9d
+	mov edx,2
+	mov rcx,rbx
+	call 0000000181CAFD70h
+	movzx r8d,byte ptr [rdi+10h]
+	xor r9d,r9d
+	mov edx,4
+	mov rcx,rbx
+	call 0000000181CB0010h
+	mov edx,7Ch
+	xor r8d,r8d
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018166ECB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837519AC], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183504E68]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x1837519AC], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {42}
+	014 Move rdx, "XTA "
+	015 Move r8, 0
+	016 Move rcx, rbx
+	017 Call StringBuilder.Append, rcx, rdx
+	018 Move r8, [rdi+24]
+	019 Move r9, 0
+	020 Move rdx, 1
+	021 Move rcx, rbx
+	022 Call KeyHelper.AddField, rcx, rdx, r8, r9
+	023 Move r8, [rdi+32]
+	024 Move r9, 0
+	025 Move rdx, 2
+	026 Move rcx, rbx
+	027 Call KeyHelper.AddField, rcx, rdx, r8, r9
+	028 Move r8, [rdi+16]
+	029 Move r9, 0
+	030 Move rdx, 4
+	031 Move rcx, rbx
+	032 Call KeyHelper.AddField, rcx, rdx, r8, r9
+	033 Move rdx, 124
+	034 Move r8, 0
+	035 Move rcx, rbx
+	036 Move rbx, stack:0x30
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Call StringBuilder.Append, rcx, rdx
+	041 Return 
+	042 Call 0x18037BE30, rcx, rdx, r8, r9
+

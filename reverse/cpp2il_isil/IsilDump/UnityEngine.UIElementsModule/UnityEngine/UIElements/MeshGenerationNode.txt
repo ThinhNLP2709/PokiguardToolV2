@@ -1,0 +1,36 @@
+Type: UnityEngine.UIElements.MeshGenerationNode
+
+Method: System.Void Create(System.Runtime.InteropServices.GCHandle handle, out UnityEngine.UIElements.MeshGenerationNode node)
+
+Disassembly:
+	mov [rdx],rcx
+	ret
+
+ISIL:
+	001 Move [rdx], rcx
+	002 Return 
+
+Method: UnityEngine.UIElements.UIR.Entry GetParentEntry()
+
+Disassembly:
+	sub rsp,28h
+	xor edx,edx
+	call 00000001827F7F60h
+	test rax,rax
+	je short 000000018296A5C9h
+	mov rax,[rax+18h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rdx, 0
+	003 Call 0x1827F7F60, rcx, rdx, r8, r9
+	004 Compare rax, 0
+	005 JumpIfEqual {9}
+	006 Move rax, [rax+24]
+	007 ShiftStack 40
+	008 Return rax
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+

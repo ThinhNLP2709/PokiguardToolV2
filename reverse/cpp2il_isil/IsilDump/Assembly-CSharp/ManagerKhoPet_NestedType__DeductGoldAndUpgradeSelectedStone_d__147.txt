@@ -1,0 +1,233 @@
+Type: ManagerKhoPet+<DeductGoldAndUpgradeSelectedStone>d__147
+
+Method: System.Void .ctor(System.Int32 <>1__state)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov [rbx+10h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Void System.IDisposable.Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	mov eax,[rcx+10h]
+	mov rdi,rcx
+	mov rsi,[rcx+20h]
+	test eax,eax
+	jne near ptr 000000018061F601h
+	mov rbp,[rcx+28h]
+	mov r14d,[rcx+30h]
+	mov dword ptr [rcx+10h],0FFFFFFFFh
+	test rsi,rsi
+	je near ptr 000000018061F631h
+	cmp [18374AFA9h],al
+	mov [rsp+30h],rbx
+	jne short 000000018061F58Fh
+	lea rcx,[18350DC48h]
+	call 000000018037BB90h
+	mov byte ptr [18374AFA9h],1
+	mov rcx,[18350DC48h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	lea rcx,[rbx+30h]
+	mov dword ptr [rbx+10h],0
+	mov rdx,rsi
+	mov [rbx+30h],rsi
+	call 000000018037ACB0h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rbp
+	mov rdx,rbp
+	call 000000018037ACB0h
+	xor r8d,r8d
+	mov [rbx+20h],r14d
+	mov rdx,rbx
+	mov rcx,rsi
+	call 0000000180618340h
+	lea rcx,[rdi+18h]
+	mov [rdi+18h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	mov al,1
+	mov dword ptr [rdi+10h],1
+	jmp short 000000018061F61Bh
+	cmp eax,1
+	jne short 000000018061F619h
+	mov dword ptr [rcx+10h],0FFFFFFFFh
+	test rsi,rsi
+	je short 000000018061F631h
+	mov byte ptr [rsi+2C0h],0
+	xor al,al
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbp
+	002 Move stack:0x18, rsi
+	003 Move stack:0x20, rdi
+	004 ShiftStack -8
+	005 Move stack:0x0, r14
+	006 ShiftStack -32
+	007 Move rax, [rcx+16]
+	008 Move rdi, rcx
+	009 Move rsi, [rcx+32]
+	010 Compare rax, 0
+	011 JumpIfNotEqual {51}
+	012 Move rbp, [rcx+40]
+	013 Move r14, [rcx+48]
+	014 Move [rcx+16], 0xFFFFFFFF
+	015 Compare rsi, 0
+	016 JumpIfEqual {65}
+	017 Compare [0x18374AFA9], rax
+	018 Move stack:0x30, rbx
+	019 JumpIfNotEqual {23}
+	020 LoadAddress rcx, [0x18350DC48]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 Move [0x18374AFA9], 1
+	023 Move rcx, typeof(ManagerKhoPet+<UpgradeSelectedStoneSequence>d__148)
+	024 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	025 Move rdx, 0
+	026 Move rcx, rax
+	027 Move rbx, rax
+	028 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	029 LoadAddress rcx, [rbx+48]
+	030 Move [rbx+16], 0
+	031 Move rdx, rsi
+	032 Move [rbx+48], rsi
+	033 Call 0x18037ACB0, rcx, rdx, r8, r9
+	034 LoadAddress rcx, [rbx+40]
+	035 Move [rbx+40], rbp
+	036 Move rdx, rbp
+	037 Call 0x18037ACB0, rcx, rdx, r8, r9
+	038 Move r8, 0
+	039 Move [rbx+32], r14
+	040 Move rdx, rbx
+	041 Move rcx, rsi
+	042 Call ManagerKhoPet.StartCoroutineTracked, rcx, rdx
+	043 LoadAddress rcx, [rdi+24]
+	044 Move [rdi+24], rax
+	045 Move rdx, rax
+	046 Call 0x18037ACB0, rcx, rdx, r8, r9
+	047 Move rbx, stack:0x30
+	048 Move rax, 1
+	049 Move [rdi+16], 1
+	050 Goto {58}
+	051 Compare rax, 1
+	052 JumpIfNotEqual {57}
+	053 Move [rcx+16], 0xFFFFFFFF
+	054 Compare rsi, 0
+	055 JumpIfEqual {65}
+	056 Move [rsi+704], 0
+	057 Move rax, 0
+	058 Move rbp, stack:0x38
+	059 Move rsi, stack:0x40
+	060 Move rdi, stack:0x48
+	061 ShiftStack 32
+	062 Move r14, stack:0x0
+	063 ShiftStack 8
+	064 Return rax
+	065 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.Generic.IEnumerator<System.Object>.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void System.Collections.IEnumerator.Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[1834F0018h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001818083D0h
+	lea rcx,[183569468h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x1834F0018]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Move rbx, rax
+	011 Call NotSupportedException..ctor, rcx, rdx
+	012 LoadAddress rcx, [0x183569468]
+	013 Call 0x18037BBB0, rcx, rdx, r8, r9
+	014 Move rdx, rax
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+

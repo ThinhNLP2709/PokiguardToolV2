@@ -1,0 +1,68 @@
+Type: Unity.Burst.Intrinsics.Common
+
+Method: System.Void Pause()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.UInt64 umul128(System.UInt64 x, System.UInt64 y, out System.UInt64 high)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov r9d,ecx
+	mov r10,rcx
+	mov eax,edx
+	mov r11,rdx
+	imul r9,rax
+	mov eax,ecx
+	shr r9,20h
+	shr r11,20h
+	imul rax,r11
+	imul rcx,rdx
+	add r9,rax
+	shr r10,20h
+	mov ebx,edx
+	imul rbx,r10
+	imul r10,r11
+	mov eax,ebx
+	add r9,rax
+	shr rbx,20h
+	shr r9,20h
+	mov rax,rcx
+	add r9,r10
+	add r9,rbx
+	mov rbx,[rsp+8]
+	mov [r8],r9
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move r9, rcx
+	003 Move r10, rcx
+	004 Move rax, rdx
+	005 Move r11, rdx
+	006 Multiply r9, r9, rax
+	007 Move rax, rcx
+	008 ShiftRight r9, 32
+	009 ShiftRight r11, 32
+	010 Multiply rax, rax, r11
+	011 Multiply rcx, rcx, rdx
+	012 Add r9, r9, rax
+	013 ShiftRight r10, 32
+	014 Move rbx, rdx
+	015 Multiply rbx, rbx, r10
+	016 Multiply r10, r10, r11
+	017 Move rax, rbx
+	018 Add r9, r9, rax
+	019 ShiftRight rbx, 32
+	020 ShiftRight r9, 32
+	021 Move rax, rcx
+	022 Add r9, r9, r10
+	023 Add r9, r9, rbx
+	024 Move rbx, stack:0x8
+	025 Move [r8], r9
+	026 Return rax
+

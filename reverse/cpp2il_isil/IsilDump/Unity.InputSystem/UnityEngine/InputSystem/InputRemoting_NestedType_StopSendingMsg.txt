@@ -1,0 +1,23 @@
+Type: UnityEngine.InputSystem.InputRemoting+StopSendingMsg
+
+Method: System.Void Process(UnityEngine.InputSystem.InputRemoting receiver)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 0000000181FE4274h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 0000000181FDC9E0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {8}
+	004 Move rdx, 0
+	005 ShiftStack 40
+	006 Call InputRemoting.StopSending, rcx, rdx
+	007 Return 
+	008 Call 0x18037BE30, rcx, rdx, r8, r9
+

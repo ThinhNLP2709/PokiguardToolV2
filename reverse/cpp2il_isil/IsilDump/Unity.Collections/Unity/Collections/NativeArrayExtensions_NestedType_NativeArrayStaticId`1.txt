@@ -1,0 +1,99 @@
+Type: Unity.Collections.NativeArrayExtensions+NativeArrayStaticId`1
+
+Method: System.Void .cctor()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[rcx+20h]
+	mov rdi,rcx
+	test byte ptr [rax+135h],1
+	jne short 00000001815F7462h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rax,[rax+0C0h]
+	mov rcx,[rax]
+	mov rax,[rdi+20h]
+	mov rbx,[rcx]
+	test byte ptr [rax+135h],1
+	jne short 00000001815F7484h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rdx,[rax+0C0h]
+	xor ecx,ecx
+	mov rdx,[rdx]
+	call rbx
+	mov rbx,rax
+	mov rax,[rdi+20h]
+	test byte ptr [rax+135h],1
+	jne short 00000001815F74AAh
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rax,[rax+0C0h]
+	mov rcx,[rax+10h]
+	test byte ptr [rcx+135h],1
+	je short 00000001815F74D3h
+	mov rax,[rcx+0B8h]
+	mov [rax],rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 0000000180384C90h
+	mov rax,[rax+0B8h]
+	mov [rax],rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [rcx+32]
+	006 Move rdi, rcx
+	007 Compare [rax+309], 1
+	008 JumpIfNotEqual {11}
+	009 Move rcx, rax
+	010 Call 0x180384C90, rcx, rdx, r8, r9
+	011 Move rax, [rax+192]
+	012 Move rcx, [rax]
+	013 Move rax, [rdi+32]
+	014 Move rbx, [rcx]
+	015 Compare [rax+309], 1
+	016 JumpIfNotEqual {19}
+	017 Move rcx, rax
+	018 Call 0x180384C90, rcx, rdx, r8, r9
+	019 Move rdx, [rax+192]
+	020 Move rcx, 0
+	021 Move rdx, [rdx]
+	022 Call rbx
+	023 Move rbx, rax
+	024 Move rax, [rdi+32]
+	025 Compare [rax+309], 1
+	026 JumpIfNotEqual {29}
+	027 Move rcx, rax
+	028 Call 0x180384C90, rcx, rdx, r8, r9
+	029 Move rax, [rax+192]
+	030 Move rcx, [rax+16]
+	031 Compare [rcx+309], 1
+	032 JumpIfEqual {40}
+	033 Move rax, [rcx+184]
+	034 Move [rax], rbx
+	035 Move rbx, stack:0x30
+	036 ShiftStack 32
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Return 
+	040 Call 0x180384C90, rcx, rdx, r8, r9
+	041 Move rax, [rax+184]
+	042 Move [rax], rbx
+	043 Move rbx, stack:0x30
+	044 ShiftStack 32
+	045 Move rdi, stack:0x0
+	046 ShiftStack 8
+	047 Return 
+

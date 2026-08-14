@@ -1,0 +1,131 @@
+Type: UnityEngine.Rendering.DynamicArray`1+RangeEnumerable+RangeIterator
+
+Method: System.Void .ctor(UnityEngine.Rendering.DynamicArray`1<T> setOwner, System.Int32 first, System.Int32 numItems)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov esi,r9d
+	mov [rcx],rdx
+	mov edi,r8d
+	mov rbx,rcx
+	call 000000018037ACB0h
+	lea eax,[rdi-1]
+	mov [rbx+0Ch],edi
+	mov [rbx+8],eax
+	lea eax,[rdi+rsi]
+	mov rsi,[rsp+38h]
+	mov [rbx+10h],eax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rsi, r9
+	007 Move [rcx], rdx
+	008 Move rdi, r8
+	009 Move rbx, rcx
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 LoadAddress rax, [rdi-1]
+	012 Move [rbx+12], rdi
+	013 Move [rbx+8], rax
+	014 LoadAddress rax, [rdi+rsi]
+	015 Move rsi, stack:0x38
+	016 Move [rbx+16], rax
+	017 Move rbx, stack:0x30
+	018 ShiftStack 32
+	019 Move rdi, stack:0x0
+	020 ShiftStack 8
+	021 Return 
+
+Method: T get_Current()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,[rcx]
+	mov edi,[rcx+8]
+	test rbx,rbx
+	je short 0000000180BDC079h
+	mov rax,[rdx+20h]
+	test byte ptr [rax+135h],1
+	jne short 0000000180BDC05Ah
+	mov rcx,rax
+	call 0000000180384C90h
+	mov r8,[rax+0C0h]
+	mov edx,edi
+	mov rcx,rbx
+	mov r8,[r8+10h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181175EE0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, [rcx]
+	006 Move rdi, [rcx+8]
+	007 Compare rbx, 0
+	008 JumpIfEqual {24}
+	009 Move rax, [rdx+32]
+	010 Compare [rax+309], 1
+	011 JumpIfNotEqual {14}
+	012 Move rcx, rax
+	013 Call 0x180384C90, rcx, rdx, r8, r9
+	014 Move r8, [rax+192]
+	015 Move rdx, rdi
+	016 Move rcx, rbx
+	017 Move r8, [r8+16]
+	018 Move rbx, stack:0x30
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Call 0x181175EE0, rcx, rdx
+	023 Return rax
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov eax,[rcx+8]
+	inc eax
+	cmp eax,[rcx+10h]
+	mov [rcx+8],eax
+	setl al
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Add rax, rax, 1
+	003 Compare rax, [rcx+16]
+	004 Move [rcx+8], rax
+	005 NotImplemented "setl al"
+	006 Return rax
+
+Method: System.Void Reset()
+
+Disassembly:
+	mov eax,[rcx+0Ch]
+	dec eax
+	mov [rcx+8],eax
+	ret
+
+ISIL:
+	001 Move rax, [rcx+12]
+	002 Subtract rax, rax, 1
+	003 Move [rcx+8], rax
+	004 Return 
+

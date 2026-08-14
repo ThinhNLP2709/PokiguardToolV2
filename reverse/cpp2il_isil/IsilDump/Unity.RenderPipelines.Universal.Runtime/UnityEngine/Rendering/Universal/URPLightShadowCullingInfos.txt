@@ -1,0 +1,28 @@
+Type: UnityEngine.Rendering.Universal.URPLightShadowCullingInfos
+
+Method: System.Boolean IsSliceValid(System.Int32 i)
+
+Disassembly:
+	and edx,1Fh
+	mov r8,rcx
+	movzx ecx,dl
+	mov eax,1
+	shl eax,cl
+	movsxd rdx,eax
+	mov eax,[r8+10h]
+	test rax,rdx
+	seta al
+	ret
+
+ISIL:
+	001 And rdx, rdx, 31
+	002 Move r8, rcx
+	003 Move rcx, rdx
+	004 Move rax, 1
+	005 ShiftLeft rax, rcx
+	006 Move rdx, rax
+	007 Move rax, [r8+16]
+	008 Compare rax, rdx
+	009 NotImplemented "seta al"
+	010 Return rax
+

@@ -1,0 +1,156 @@
+# Phase 2C.2A.4 report
+
+Status: Stage A PASS and Stage B live confirmed exit PASS. Automatic exit,
+re-entry and autonomous BASIC/farm remain disabled.
+
+## 1. Exact detection sources
+
+`FORCE_RESYNC`, structured `MATCH_REJECT` sequence gap, and structured
+sequence duplicate. Multiple sources aggregate to `MULTIPLE`; other rejects do
+not trigger the guard.
+
+## 2. Structured reject evidence
+
+Cpp2IL proves `ChatMessageDTO.rejectReason: System.String` at instance offset
+`0x100`. Payload code is preferred when present, then `rejectReason`; string
+fallback is only used if neither exists.
+
+## 3. Actionability integration
+
+`GateReason.SEQUENCE_DESYNC` is the highest gameplay gate. The single-step
+controller scans server DTOs before ACK/solver/PASS/card/Fusion/SWAP. Any
+proposal is invalidated; a pending input receives
+`REJECTED_SEQUENCE_DESYNC` immediately and remains non-retryable.
+
+## 4. Sticky/session semantics
+
+The state cannot time out or clear on turn/board changes. It clears only after
+old-session lifecycle invalidation followed by a different clean provider
+session. Old-match DTOs are ignored.
+
+## 5. Captured-log replay
+
+`reference/sequence_desync_m714b231e.jsonl` replays to
+`detected=true`, `source=MULTIPLE`, first turn 31, last fixture turn 35,
+`reject_count=4`, `terminal_for_session=true`. Stage A acceptance PASS.
+
+## 6. DEAD_BOARD vs DESYNC vs NO_SAFE_MOVE
+
+- DEAD_BOARD: raw exhaustive legal count is zero.
+- SEQUENCE_DESYNC: legal count may be positive, server refuses sequence.
+- POLICY_NO_SAFE_MOVE: legal count positive but BASIC safety count zero.
+
+They have separate production enum values and tests.
+
+## 7. Root-cause telemetry
+
+Runtime records `_localSeqNum`, current published `srvSeq`, highest `_ackedSeqs`,
+`LastMoveSeqNum`, sent action source and the recent server messages. The
+captured fixture lacks server-expected sequence, so computed expected/gap/
+duplicate remain UNKNOWN. Fusion attempts occurred earlier in the same match;
+correlation is retained, causation is not claimed.
+
+## 8. Exit control/locator
+
+The normal combat `<<` control and the two-button leave modal are proven by V1
+references. V2 uses fresh client screenshots and normalized anchor/layout
+validation, not V1's estimated confirm coordinate. Ambiguity yields
+`RECOVERY_BLOCKED` with no click.
+
+## 9. Single-step exit acceptance
+
+PASS in match `M_d7c6d1ce`, evidence
+`logs/phase2c2a4_live_calibrated_20260813_114552.jsonl`. Separate F10 presses
+sent one Exit/Back click and one re-proven confirm click. The blinking Exit
+locator was temporally consistent; the modal locator passed 3/3 frames. No
+automatic exit has been enabled.
+
+## 10. Lifecycle after exit
+
+Completion requires hardened local rig/scene/Hub/ownership lifecycle, not only
+a null Board. Direct transition to lobby or a stale-server-match state with no
+local rig proves the old local combat UI exited.
+
+Live result: `ACTIVE_COMBAT -> POSTMATCH -> LOBBY`, with
+`staleServerMatch=false`, `localCombatUiExited=true`, and
+`noStrayGameplayClick=true`.
+
+## 11. Stale server match
+
+`STALE_SERVER_MATCH` stays non-actionable. It can complete the local UI-exit
+portion but never proves a clean server session.
+
+## 12. New-session reset
+
+The old proposal/action, Board/session/match/sequence/hash, desync ring and
+provider transients are session-scoped. A new combat becomes usable only after
+the provider's complete clean-state validation. Tests prove early/new/stale
+session behavior.
+
+## 13. Auto-exit readiness
+
+The single-step prerequisite is now PASS. The exit control is ready for a
+separate future review of automatic recovery, but automatic exit was not
+enabled in this phase. There is no automatic re-entry implementation.
+
+## 14. PASS blocker
+
+Unchanged. BASIC PASS still requires fresh authoritative game-owned idle
+evidence. Sequence recovery neither counts nor resets PASS.
+
+## 15. Files changed
+
+Created:
+
+- `docs/sequence_desync_resolution.md`
+- `docs/safe_ui_recovery.md`
+- `docs/phase2c2a4_report.md`
+- `reference/sequence_desync_m714b231e.jsonl`
+- `src/pokiguard_v2/sequence_desync.py`
+- `src/pokiguard_v2/sequence_desync_artifacts.py`
+- `src/pokiguard_v2/recovery_ui.py`
+- `tools/replay_sequence_desync.py`
+- `tools/sequence_desync_runtime.py`
+- `tools/sequence_recovery.py`
+- `tests/test_sequence_desync.py`
+- `tests/test_recovery_ui.py`
+- `logs/phase2c2a4_no_input_smoke.jsonl`
+- `reference/exit_ui_live_calibration.json`
+- `logs/phase2c2a4_live_calibrated_20260813_114552.jsonl`
+
+Modified:
+
+- `docs/actionability_signals.md`
+- `docs/dead_board_resolution.md`
+- `src/pokiguard_v2/actionability.py`
+- `src/pokiguard_v2/action_control.py`
+- `src/pokiguard_v2/win32_input.py`
+- `src/pokiguard_v2/win32_screenshot.py`
+- `tools/idle_state_watch.py`
+- `tools/combat_diagnostic_watch.py`
+- `tools/single_step_bot.py`
+- `tests/test_win32_input.py`
+
+Python bytecode caches generated by compilation/tests are not project
+deliverables. All authored writes are inside `PokiguardToolV2`;
+`PokiguardAuto` and `pc` were read only.
+
+## 16. Tests
+
+New coverage includes captured replay, FORCE_RESYNC, gap, duplicate, unrelated
+reject, structured precedence, sticky state, clean new-session reset, stale
+old-match rejection, gate priority, pending-action invalidation/no retry, three
+board conditions, stale-server recovery transitions, four-file artifact and
+positive/negative UI locators. Full regression result is recorded in the final
+handoff: `python -m unittest discover -s tests -v` passed all 155 tests.
+
+No-input lobby smoke also passed its safety assertions in
+`logs/phase2c2a4_no_input_smoke.jsonl`: x64 PID 2184, lifecycle `LOBBY`, no
+session, no recovery arming, no `recovery_ui_step`, no gameplay input and a
+controlled timeout. This is not the live Stage B exit acceptance.
+
+## Safety boundary
+
+No memory write, injection, remote thread, game method call, RequestResync,
+SendMove, WebSocket manipulation, packet repair, binary patch, automatic exit,
+automatic re-entry, or autonomous gameplay was added.

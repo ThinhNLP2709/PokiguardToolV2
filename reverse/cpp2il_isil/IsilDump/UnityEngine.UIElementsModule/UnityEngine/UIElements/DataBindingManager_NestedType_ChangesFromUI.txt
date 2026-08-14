@@ -1,0 +1,93 @@
+Type: UnityEngine.UIElements.DataBindingManager+ChangesFromUI
+
+Method: System.Void .ctor(UnityEngine.UIElements.DataBindingManager+BindingData bindingData)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rcx
+	mov [rcx+10h],rdx
+	add rcx,10h
+	mov rdi,rdx
+	call 000000018037ACB0h
+	test rdi,rdi
+	je short 000000018277F227h
+	mov rax,[rdi+10h]
+	lea rcx,[rbx+8]
+	mov [rbx],rax
+	mov rdx,[rdi+0B8h]
+	mov [rbx+8],rdx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rcx
+	006 Move [rcx+16], rdx
+	007 Add rcx, rcx, 16
+	008 Move rdi, rdx
+	009 Call 0x18037ACB0, rcx, rdx, r8, r9
+	010 Compare rdi, 0
+	011 JumpIfEqual {23}
+	012 Move rax, [rdi+16]
+	013 LoadAddress rcx, [rbx+8]
+	014 Move [rbx], rax
+	015 Move rdx, [rdi+184]
+	016 Move [rbx+8], rdx
+	017 Move rbx, stack:0x30
+	018 ShiftStack 32
+	019 Move rdi, stack:0x0
+	020 ShiftStack 8
+	021 Call 0x18037ACB0, rcx, rdx, r8, r9
+	022 Return 
+	023 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean get_IsValid()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+10h]
+	mov rdx,rcx
+	test rax,rax
+	je short 000000018277F267h
+	mov rax,[rax+10h]
+	cmp [rcx],rax
+	je short 000000018277F250h
+	xor eax,eax
+	add rsp,28h
+	ret
+	mov rcx,[rcx+10h]
+	mov rcx,[rcx+0B8h]
+	cmp [rdx+8],rcx
+	sete al
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+16]
+	003 Move rdx, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {18}
+	006 Move rax, [rax+16]
+	007 Compare [rcx], rax
+	008 JumpIfEqual {12}
+	009 Move rax, 0
+	010 ShiftStack 40
+	011 Return rax
+	012 Move rcx, [rcx+16]
+	013 Move rcx, [rcx+184]
+	014 Compare [rdx+8], rcx
+	015 NotImplemented "sete al"
+	016 ShiftStack 40
+	017 Return rax
+	018 Call 0x18037BE30, rcx, rdx, r8, r9
+

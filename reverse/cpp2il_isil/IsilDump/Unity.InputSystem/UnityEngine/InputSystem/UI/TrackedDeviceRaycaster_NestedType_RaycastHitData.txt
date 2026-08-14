@@ -1,0 +1,110 @@
+Type: UnityEngine.InputSystem.UI.TrackedDeviceRaycaster+RaycastHitData
+
+Method: System.Void .ctor(UnityEngine.UI.Graphic graphic, UnityEngine.Vector3 worldHitPosition, UnityEngine.Vector2 screenPosition, System.Single distance)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	movaps [rsp+20h],xmm6
+	mov rbx,r8
+	movq xmm6,r9
+	mov [rcx],rdx
+	mov rdi,rcx
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rbx]
+	mov eax,[rbx+8]
+	mov rbx,[rsp+40h]
+	movsd qword ptr [rdi+8],xmm0
+	movss xmm0,dword ptr [rsp+60h]
+	movsd qword ptr [rdi+14h],xmm6
+	movaps xmm6,[rsp+20h]
+	movss dword ptr [rdi+1Ch],xmm0
+	mov [rdi+10h],eax
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Move stack:0x20, xmm6
+	006 Move rbx, r8
+	007 Move xmm6, r9
+	008 Move [rcx], rdx
+	009 Move rdi, rcx
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 Move xmm0, [rbx]
+	012 Move rax, [rbx+8]
+	013 Move rbx, stack:0x40
+	014 Move [rdi+8], xmm0
+	015 Move xmm0, stack:0x60
+	016 Move [rdi+20], xmm6
+	017 Move xmm6, stack:0x20
+	018 Move [rdi+28], xmm0
+	019 Move [rdi+16], rax
+	020 ShiftStack 48
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Return 
+
+Method: UnityEngine.UI.Graphic get_graphic()
+
+Disassembly:
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: UnityEngine.Vector3 get_worldHitPosition()
+
+Disassembly:
+	mov eax,[rdx+10h]
+	movsd xmm0,qword ptr [rdx+8]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx+16]
+	002 Move xmm0, [rdx+8]
+	003 Move [rcx], xmm0
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Return rax
+
+Method: UnityEngine.Vector2 get_screenPosition()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+18h]
+	movss xmm1,dword ptr [rcx+14h]
+	unpcklps xmm1,xmm0
+	movq rax,xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+24]
+	002 Move xmm1, [rcx+20]
+	003 Move XMM_TEMP.S[0], xmm1.S[0]
+	004 Move XMM_TEMP.S[1], xmm0.S[0]
+	005 Move XMM_TEMP.S[2], xmm1.S[1]
+	006 Move XMM_TEMP.S[3], xmm0.S[1]
+	007 Move xmm1, XMM_TEMP
+	008 Move rax, xmm1
+	009 Return rax
+
+Method: System.Single get_distance()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+1Ch]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+28]
+	002 Return xmm0
+

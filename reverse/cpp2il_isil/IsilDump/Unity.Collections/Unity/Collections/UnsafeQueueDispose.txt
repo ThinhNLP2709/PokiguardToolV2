@@ -1,0 +1,89 @@
+Type: Unity.Collections.UnsafeQueueDispose
+
+Method: System.Void Dispose()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rbp
+	push rsi
+	sub rsp,20h
+	cmp byte ptr [183752C0Dh],0
+	mov rsi,[rcx]
+	mov rbp,[rcx+8]
+	mov ebx,[rcx+10h]
+	jne short 0000000181F05C05h
+	lea rcx,[1834FA708h]
+	call 000000018037BB90h
+	mov byte ptr [183752C0Dh],1
+	test rsi,rsi
+	je short 0000000181F05C5Eh
+	mov rcx,[rsi]
+	xor edx,edx
+	call 00000001804D4100h
+	test rax,rax
+	je short 0000000181F05C3Eh
+	mov [rsp+30h],rdi
+	xchg ax,ax
+	mov rdi,[rax]
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rbp
+	call 0000000181F053F0h
+	mov rax,rdi
+	test rdi,rdi
+	jne short 0000000181F05C20h
+	mov rdi,[rsp+30h]
+	mov r8,[1834FA708h]
+	mov edx,ebx
+	mov rcx,rsi
+	mov rbx,[rsp+38h]
+	mov rbp,[rsp+40h]
+	add rsp,20h
+	pop rsi
+	jmp near ptr 0000000180A42B00h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rsi
+	005 ShiftStack -32
+	006 Compare [0x183752C0D], 0
+	007 Move rsi, [rcx]
+	008 Move rbp, [rcx+8]
+	009 Move rbx, [rcx+16]
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x1834FA708]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183752C0D], 1
+	014 Compare rsi, 0
+	015 JumpIfEqual {42}
+	016 Move rcx, [rsi]
+	017 Move rdx, 0
+	018 Call 0x1804D4100, rcx, rdx, r8, r9
+	019 Compare rax, 0
+	020 JumpIfEqual {32}
+	021 Move stack:0x30, rdi
+	022 Nop 
+	023 Move rdi, [rax]
+	024 Move r8, 0
+	025 Move rdx, rax
+	026 Move rcx, rbp
+	027 Call UnsafeQueueBlockPoolData.FreeBlock, rcx, rdx
+	028 Move rax, rdi
+	029 Compare rdi, 0
+	030 JumpIfNotEqual {23}
+	031 Move rdi, stack:0x30
+	032 Move r8, [0x1834FA708]
+	033 Move rdx, rbx
+	034 Move rcx, rsi
+	035 Move rbx, stack:0x38
+	036 Move rbp, stack:0x40
+	037 ShiftStack 32
+	038 Move rsi, stack:0x0
+	039 ShiftStack 8
+	040 Call 0x180A42B00, rcx, rdx, r8
+	041 Return 
+	042 Call 0x18037BE30, rcx, rdx, r8, r9
+

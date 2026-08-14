@@ -1,0 +1,75 @@
+Type: DG.Tweening.DOVirtual+<>c__DisplayClass4_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.Color <Color>b__0()
+
+Disassembly:
+	movups xmm0,[rdx+10h]
+	mov rax,rcx
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+16]
+	002 Move rax, rcx
+	003 Move [rcx], xmm0
+	004 Return rax
+
+Method: System.Void <Color>b__1(UnityEngine.Color x)
+
+Disassembly:
+	movups xmm0,[rdx]
+	movups [rcx+10h],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move [rcx+16], xmm0
+	003 Return 
+
+Method: System.Void <Color>b__2()
+
+Disassembly:
+	sub rsp,38h
+	mov rax,rcx
+	mov rcx,[rcx+20h]
+	test rcx,rcx
+	je short 000000018076FFD1h
+	movups xmm0,[rax+10h]
+	mov rax,[rcx+18h]
+	lea rdx,[rsp+20h]
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	movaps [rsp+20h],xmm0
+	call rax
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rax, rcx
+	003 Move rcx, [rcx+32]
+	004 Compare rcx, 0
+	005 JumpIfEqual {15}
+	006 Move xmm0, [rax+16]
+	007 Move rax, [rcx+24]
+	008 LoadAddress rdx, stack:0x20
+	009 Move r8, [rcx+40]
+	010 Move rcx, [rcx+64]
+	011 Move stack:0x20, xmm0
+	012 Call rax
+	013 ShiftStack 56
+	014 Return 
+	015 Call 0x18037BE30, rcx, rdx, r8, r9
+

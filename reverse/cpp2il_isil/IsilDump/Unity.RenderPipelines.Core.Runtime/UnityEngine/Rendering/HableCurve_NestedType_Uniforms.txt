@@ -1,0 +1,533 @@
+Type: UnityEngine.Rendering.HableCurve+Uniforms
+
+Method: System.Void .ctor(UnityEngine.Rendering.HableCurve parent)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 LoadAddress rcx, [rbx+16]
+	010 Move [rbx+16], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+
+Method: UnityEngine.Vector4 get_curve()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	test rax,rax
+	je short 0000000182216BF2h
+	mov r8,rax
+	mov dword ptr [rcx+0Ch],0
+	mov eax,[rax+14h]
+	mov [rcx],eax
+	mov eax,[r8+18h]
+	mov edx,[r8+1Ch]
+	mov [rcx+4],eax
+	mov rax,rcx
+	mov [rcx+8],edx
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Compare rax, 0
+	004 JumpIfEqual {16}
+	005 Move r8, rax
+	006 Move [rcx+12], 0
+	007 Move rax, [rax+20]
+	008 Move [rcx], rax
+	009 Move rax, [r8+24]
+	010 Move rdx, [r8+28]
+	011 Move [rcx+4], rax
+	012 Move rax, rcx
+	013 Move [rcx+8], rdx
+	014 ShiftStack 40
+	015 Return rax
+	016 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 get_toeSegmentA()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	mov r8,rcx
+	test rax,rax
+	je short 0000000182216EA5h
+	mov rax,[rax+20h]
+	test rax,rax
+	je short 0000000182216EA5h
+	cmp dword ptr [rax+18h],0
+	jbe short 0000000182216EABh
+	mov rcx,[rax+20h]
+	test rcx,rcx
+	je short 0000000182216EA5h
+	mov rax,[rdx+10h]
+	movss xmm1,dword ptr [rcx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+20h]
+	movss xmm2,dword ptr [rax+14h]
+	mov rax,[rdx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+20h]
+	test rax,rax
+	je short 0000000182216EA5h
+	movss xmm0,dword ptr [rax+18h]
+	mov rax,[rdx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+20h]
+	test rax,rax
+	je short 0000000182216EA5h
+	mov eax,[rax+1Ch]
+	mov [r8+0Ch],eax
+	mov rax,r8
+	movss dword ptr [r8],xmm1
+	movss dword ptr [r8+4],xmm2
+	movss dword ptr [r8+8],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Move r8, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {38}
+	006 Move rax, [rax+32]
+	007 Compare rax, 0
+	008 JumpIfEqual {38}
+	009 Compare [rax+24], 0
+	010 JumpIfLessOrEqual {40}
+	011 Move rcx, [rax+32]
+	012 Compare rcx, 0
+	013 JumpIfEqual {38}
+	014 Move rax, [rdx+16]
+	015 Move xmm1, [rcx+16]
+	016 Move rcx, [rax+32]
+	017 Move rax, [rcx+32]
+	018 Move xmm2, [rax+20]
+	019 Move rax, [rdx+16]
+	020 Move rcx, [rax+32]
+	021 Move rax, [rcx+32]
+	022 Compare rax, 0
+	023 JumpIfEqual {38}
+	024 Move xmm0, [rax+24]
+	025 Move rax, [rdx+16]
+	026 Move rcx, [rax+32]
+	027 Move rax, [rcx+32]
+	028 Compare rax, 0
+	029 JumpIfEqual {38}
+	030 Move rax, [rax+28]
+	031 Move [r8+12], rax
+	032 Move rax, r8
+	033 Move [r8], xmm1
+	034 Move [r8+4], xmm2
+	035 Move [r8+8], xmm0
+	036 ShiftStack 40
+	037 Return rax
+	038 Call 0x18037BE30, rcx, rdx, r8, r9
+	039 Interrupt 
+	040 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 get_toeSegmentB()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	mov r8,rcx
+	test rax,rax
+	je short 0000000182216F18h
+	mov rax,[rax+20h]
+	test rax,rax
+	je short 0000000182216F18h
+	cmp dword ptr [rax+18h],0
+	jbe short 0000000182216F1Eh
+	mov rcx,[rax+20h]
+	test rcx,rcx
+	je short 0000000182216F18h
+	mov rax,[rdx+10h]
+	movss xmm0,dword ptr [rcx+20h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+20h]
+	test rax,rax
+	je short 0000000182216F18h
+	mov eax,[rax+24h]
+	mov [r8+4],eax
+	xor eax,eax
+	mov [r8+8],rax
+	mov rax,r8
+	movss dword ptr [r8],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Move r8, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {28}
+	006 Move rax, [rax+32]
+	007 Compare rax, 0
+	008 JumpIfEqual {28}
+	009 Compare [rax+24], 0
+	010 JumpIfLessOrEqual {30}
+	011 Move rcx, [rax+32]
+	012 Compare rcx, 0
+	013 JumpIfEqual {28}
+	014 Move rax, [rdx+16]
+	015 Move xmm0, [rcx+32]
+	016 Move rcx, [rax+32]
+	017 Move rax, [rcx+32]
+	018 Compare rax, 0
+	019 JumpIfEqual {28}
+	020 Move rax, [rax+36]
+	021 Move [r8+4], rax
+	022 Move rax, 0
+	023 Move [r8+8], rax
+	024 Move rax, r8
+	025 Move [r8], xmm0
+	026 ShiftStack 40
+	027 Return rax
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+	029 Interrupt 
+	030 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 get_midSegmentA()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	mov r8,rcx
+	test rax,rax
+	je short 0000000182216C85h
+	mov rax,[rax+20h]
+	test rax,rax
+	je short 0000000182216C85h
+	cmp dword ptr [rax+18h],1
+	jbe short 0000000182216C8Bh
+	mov rcx,[rax+28h]
+	test rcx,rcx
+	je short 0000000182216C85h
+	mov rax,[rdx+10h]
+	movss xmm1,dword ptr [rcx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+28h]
+	movss xmm2,dword ptr [rax+14h]
+	mov rax,[rdx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+28h]
+	test rax,rax
+	je short 0000000182216C85h
+	movss xmm0,dword ptr [rax+18h]
+	mov rax,[rdx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+28h]
+	test rax,rax
+	je short 0000000182216C85h
+	mov eax,[rax+1Ch]
+	mov [r8+0Ch],eax
+	mov rax,r8
+	movss dword ptr [r8],xmm1
+	movss dword ptr [r8+4],xmm2
+	movss dword ptr [r8+8],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Move r8, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {38}
+	006 Move rax, [rax+32]
+	007 Compare rax, 0
+	008 JumpIfEqual {38}
+	009 Compare [rax+24], 1
+	010 JumpIfLessOrEqual {40}
+	011 Move rcx, [rax+40]
+	012 Compare rcx, 0
+	013 JumpIfEqual {38}
+	014 Move rax, [rdx+16]
+	015 Move xmm1, [rcx+16]
+	016 Move rcx, [rax+32]
+	017 Move rax, [rcx+40]
+	018 Move xmm2, [rax+20]
+	019 Move rax, [rdx+16]
+	020 Move rcx, [rax+32]
+	021 Move rax, [rcx+40]
+	022 Compare rax, 0
+	023 JumpIfEqual {38}
+	024 Move xmm0, [rax+24]
+	025 Move rax, [rdx+16]
+	026 Move rcx, [rax+32]
+	027 Move rax, [rcx+40]
+	028 Compare rax, 0
+	029 JumpIfEqual {38}
+	030 Move rax, [rax+28]
+	031 Move [r8+12], rax
+	032 Move rax, r8
+	033 Move [r8], xmm1
+	034 Move [r8+4], xmm2
+	035 Move [r8+8], xmm0
+	036 ShiftStack 40
+	037 Return rax
+	038 Call 0x18037BE30, rcx, rdx, r8, r9
+	039 Interrupt 
+	040 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 get_midSegmentB()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	mov r8,rcx
+	test rax,rax
+	je short 0000000182216CF8h
+	mov rax,[rax+20h]
+	test rax,rax
+	je short 0000000182216CF8h
+	cmp dword ptr [rax+18h],1
+	jbe short 0000000182216CFEh
+	mov rcx,[rax+28h]
+	test rcx,rcx
+	je short 0000000182216CF8h
+	mov rax,[rdx+10h]
+	movss xmm0,dword ptr [rcx+20h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+28h]
+	test rax,rax
+	je short 0000000182216CF8h
+	mov eax,[rax+24h]
+	mov [r8+4],eax
+	xor eax,eax
+	mov [r8+8],rax
+	mov rax,r8
+	movss dword ptr [r8],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Move r8, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {28}
+	006 Move rax, [rax+32]
+	007 Compare rax, 0
+	008 JumpIfEqual {28}
+	009 Compare [rax+24], 1
+	010 JumpIfLessOrEqual {30}
+	011 Move rcx, [rax+40]
+	012 Compare rcx, 0
+	013 JumpIfEqual {28}
+	014 Move rax, [rdx+16]
+	015 Move xmm0, [rcx+32]
+	016 Move rcx, [rax+32]
+	017 Move rax, [rcx+40]
+	018 Compare rax, 0
+	019 JumpIfEqual {28}
+	020 Move rax, [rax+36]
+	021 Move [r8+4], rax
+	022 Move rax, 0
+	023 Move [r8+8], rax
+	024 Move rax, r8
+	025 Move [r8], xmm0
+	026 ShiftStack 40
+	027 Return rax
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+	029 Interrupt 
+	030 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 get_shoSegmentA()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	mov r8,rcx
+	test rax,rax
+	je short 0000000182216D95h
+	mov rax,[rax+20h]
+	test rax,rax
+	je short 0000000182216D95h
+	cmp dword ptr [rax+18h],2
+	jbe short 0000000182216D9Bh
+	mov rcx,[rax+30h]
+	test rcx,rcx
+	je short 0000000182216D95h
+	mov rax,[rdx+10h]
+	movss xmm1,dword ptr [rcx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+30h]
+	movss xmm2,dword ptr [rax+14h]
+	mov rax,[rdx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+30h]
+	test rax,rax
+	je short 0000000182216D95h
+	movss xmm0,dword ptr [rax+18h]
+	mov rax,[rdx+10h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+30h]
+	test rax,rax
+	je short 0000000182216D95h
+	mov eax,[rax+1Ch]
+	mov [r8+0Ch],eax
+	mov rax,r8
+	movss dword ptr [r8],xmm1
+	movss dword ptr [r8+4],xmm2
+	movss dword ptr [r8+8],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Move r8, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {38}
+	006 Move rax, [rax+32]
+	007 Compare rax, 0
+	008 JumpIfEqual {38}
+	009 Compare [rax+24], 2
+	010 JumpIfLessOrEqual {40}
+	011 Move rcx, [rax+48]
+	012 Compare rcx, 0
+	013 JumpIfEqual {38}
+	014 Move rax, [rdx+16]
+	015 Move xmm1, [rcx+16]
+	016 Move rcx, [rax+32]
+	017 Move rax, [rcx+48]
+	018 Move xmm2, [rax+20]
+	019 Move rax, [rdx+16]
+	020 Move rcx, [rax+32]
+	021 Move rax, [rcx+48]
+	022 Compare rax, 0
+	023 JumpIfEqual {38}
+	024 Move xmm0, [rax+24]
+	025 Move rax, [rdx+16]
+	026 Move rcx, [rax+32]
+	027 Move rax, [rcx+48]
+	028 Compare rax, 0
+	029 JumpIfEqual {38}
+	030 Move rax, [rax+28]
+	031 Move [r8+12], rax
+	032 Move rax, r8
+	033 Move [r8], xmm1
+	034 Move [r8+4], xmm2
+	035 Move [r8+8], xmm0
+	036 ShiftStack 40
+	037 Return rax
+	038 Call 0x18037BE30, rcx, rdx, r8, r9
+	039 Interrupt 
+	040 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.Vector4 get_shoSegmentB()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rdx+10h]
+	mov r8,rcx
+	test rax,rax
+	je short 0000000182216E08h
+	mov rax,[rax+20h]
+	test rax,rax
+	je short 0000000182216E08h
+	cmp dword ptr [rax+18h],2
+	jbe short 0000000182216E0Eh
+	mov rcx,[rax+30h]
+	test rcx,rcx
+	je short 0000000182216E08h
+	mov rax,[rdx+10h]
+	movss xmm0,dword ptr [rcx+20h]
+	mov rcx,[rax+20h]
+	mov rax,[rcx+30h]
+	test rax,rax
+	je short 0000000182216E08h
+	mov eax,[rax+24h]
+	mov [r8+4],eax
+	xor eax,eax
+	mov [r8+8],rax
+	mov rax,r8
+	movss dword ptr [r8],xmm0
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx+16]
+	003 Move r8, rcx
+	004 Compare rax, 0
+	005 JumpIfEqual {28}
+	006 Move rax, [rax+32]
+	007 Compare rax, 0
+	008 JumpIfEqual {28}
+	009 Compare [rax+24], 2
+	010 JumpIfLessOrEqual {30}
+	011 Move rcx, [rax+48]
+	012 Compare rcx, 0
+	013 JumpIfEqual {28}
+	014 Move rax, [rdx+16]
+	015 Move xmm0, [rcx+32]
+	016 Move rcx, [rax+32]
+	017 Move rax, [rcx+48]
+	018 Compare rax, 0
+	019 JumpIfEqual {28}
+	020 Move rax, [rax+36]
+	021 Move [r8+4], rax
+	022 Move rax, 0
+	023 Move [r8+8], rax
+	024 Move rax, r8
+	025 Move [r8], xmm0
+	026 ShiftStack 40
+	027 Return rax
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+	029 Interrupt 
+	030 Call 0x18037BE20, rcx, rdx, r8, r9
+

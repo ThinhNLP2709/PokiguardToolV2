@@ -1,0 +1,27 @@
+Type: Unity.Collections.NativeStream+ConstructJobList
+
+Method: System.Void Execute()
+
+Disassembly:
+	sub rsp,28h
+	mov rdx,[rcx+20h]
+	test rdx,rdx
+	je short 0000000181EF87ECh
+	mov edx,[rdx+8]
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 0000000181F06160h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rdx, [rcx+32]
+	003 Compare rdx, 0
+	004 JumpIfEqual {10}
+	005 Move rdx, [rdx+8]
+	006 Move r8, 0
+	007 ShiftStack 40
+	008 Call UnsafeStream.AllocateForEach, rcx, rdx
+	009 Return 
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+

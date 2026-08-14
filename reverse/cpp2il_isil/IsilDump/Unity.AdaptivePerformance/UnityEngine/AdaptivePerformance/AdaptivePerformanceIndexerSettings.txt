@@ -1,0 +1,83 @@
+Type: UnityEngine.AdaptivePerformance.AdaptivePerformanceIndexerSettings
+
+Method: System.Boolean get_active()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_active(System.Boolean value)
+
+Disassembly:
+	cmp [rcx+10h],dl
+	je short 0000000181E5D098h
+	mov [rcx+10h],dl
+	ret
+
+ISIL:
+	001 Compare [rcx+16], rdx
+	002 JumpIfEqual {4}
+	003 Move [rcx+16], rdx
+	004 Return 
+
+Method: System.Single get_thermalActionDelay()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+14h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+20]
+	002 Return xmm0
+
+Method: System.Void set_thermalActionDelay(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+14h],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+20], xmm1
+	002 Return 
+
+Method: System.Single get_performanceActionDelay()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+18h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+24]
+	002 Return xmm0
+
+Method: System.Void set_performanceActionDelay(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+18h],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+24], xmm1
+	002 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	mov byte ptr [rcx+10h],1
+	mov dword ptr [rcx+14h],41200000h
+	mov dword ptr [rcx+18h],40800000h
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Move [rcx+16], 1
+	003 Move [rcx+20], 0x41200000
+	004 Move [rcx+24], 0x40800000
+	005 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	006 Return 
+

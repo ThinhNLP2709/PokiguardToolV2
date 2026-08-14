@@ -1,0 +1,227 @@
+Type: UnityEngine.AdaptivePerformance.BottleneckUtil
+
+Method: UnityEngine.AdaptivePerformance.PerformanceBottleneck DetermineBottleneck(UnityEngine.AdaptivePerformance.PerformanceBottleneck prevBottleneck, System.Single averageCpuFrameTime, System.Single averageGpuFrametime, System.Single averageOverallFrametime, System.Single targetFrameTime)
+
+Disassembly:
+	sub rsp,18h
+	cmp ecx,3
+	jne short 0000000181E69753h
+	movss xmm4,dword ptr [182A50168h]
+	jmp short 0000000181E6975Bh
+	movss xmm4,dword ptr [182A50164h]
+	movss xmm5,dword ptr [rsp+40h]
+	xorps xmm0,xmm0
+	comiss xmm0,xmm5
+	jae short 0000000181E69788h
+	comiss xmm5,xmm3
+	jae short 0000000181E6977Eh
+	movaps xmm0,xmm3
+	mulss xmm4,xmm5
+	subss xmm0,xmm5
+	comiss xmm4,xmm0
+	jbe short 0000000181E69788h
+	mov eax,3
+	add rsp,18h
+	ret
+	movaps [rsp],xmm6
+	comiss xmm2,xmm3
+	jae near ptr 0000000181E69869h
+	comiss xmm1,xmm3
+	jae near ptr 0000000181E69825h
+	movss xmm4,dword ptr [182A4FEA0h]
+	movaps xmm6,xmm2
+	movss xmm0,dword ptr [182B1E6D0h]
+	movaps xmm5,xmm1
+	divss xmm6,xmm3
+	divss xmm5,xmm3
+	cmp ecx,1
+	jne short 0000000181E697C6h
+	movaps xmm3,xmm0
+	jmp short 0000000181E697C9h
+	movaps xmm3,xmm4
+	comiss xmm5,xmm3
+	ja short 0000000181E69825h
+	cmp ecx,2
+	je short 0000000181E697D6h
+	movaps xmm0,xmm4
+	comiss xmm2,xmm0
+	ja near ptr 0000000181E69869h
+	comiss xmm2,xmm1
+	ja short 0000000181E69833h
+	cmp ecx,1
+	jne short 0000000181E697F3h
+	movss xmm0,dword ptr [182A4FBA0h]
+	jmp short 0000000181E697FBh
+	movss xmm0,dword ptr [182A50754h]
+	comiss xmm5,xmm0
+	jbe short 0000000181E6985Eh
+	comiss xmm1,xmm2
+	jbe short 0000000181E6985Eh
+	cmp ecx,1
+	jne short 0000000181E69814h
+	movss xmm0,dword ptr [182A50454h]
+	jmp short 0000000181E6981Ch
+	movss xmm0,dword ptr [182A4FE24h]
+	mulss xmm0,xmm1
+	comiss xmm0,xmm2
+	jbe short 0000000181E6985Eh
+	movaps xmm6,[rsp]
+	mov eax,1
+	add rsp,18h
+	ret
+	movss xmm0,dword ptr [182A501C4h]
+	cmp ecx,2
+	jne short 0000000181E69845h
+	movaps xmm3,xmm4
+	jmp short 0000000181E69848h
+	movaps xmm3,xmm0
+	comiss xmm6,xmm3
+	jbe short 0000000181E6985Eh
+	cmp ecx,2
+	je short 0000000181E69855h
+	movaps xmm0,xmm4
+	mulss xmm0,xmm2
+	comiss xmm0,xmm1
+	ja short 0000000181E69869h
+	movaps xmm6,[rsp]
+	xor eax,eax
+	add rsp,18h
+	ret
+	movaps xmm6,[rsp]
+	mov eax,2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Compare rcx, 3
+	003 JumpIfNotEqual {6}
+	004 Move xmm4, [0x182A50168]
+	005 Goto {7}
+	006 Move xmm4, [0x182A50164]
+	007 Move xmm5, stack:0x40
+	008 Move xmm0, 0
+	009 Compare xmm0, xmm5
+	010 JumpIfGreaterOrEqual {21}
+	011 Compare xmm5, xmm3
+	012 JumpIfGreaterOrEqual {18}
+	013 Move xmm0, xmm3
+	014 Multiply xmm4, xmm4, xmm5
+	015 Subtract xmm0, xmm0, xmm5
+	016 Compare xmm4, xmm0
+	017 JumpIfLessOrEqual {21}
+	018 Move rax, 3
+	019 ShiftStack 24
+	020 Return rax
+	021 Move stack:0x0, xmm6
+	022 Compare xmm2, xmm3
+	023 JumpIfGreaterOrEqual {85}
+	024 Compare xmm1, xmm3
+	025 JumpIfGreaterOrEqual {63}
+	026 Move xmm4, [0x182A4FEA0]
+	027 Move xmm6, xmm2
+	028 Move xmm0, [0x182B1E6D0]
+	029 Move xmm5, xmm1
+	030 Divide xmm6, xmm6, xmm3
+	031 Divide xmm5, xmm5, xmm3
+	032 Compare rcx, 1
+	033 JumpIfNotEqual {36}
+	034 Move xmm3, xmm0
+	035 Goto {37}
+	036 Move xmm3, xmm4
+	037 Compare xmm5, xmm3
+	038 JumpIfGreater {63}
+	039 Compare rcx, 2
+	040 JumpIfEqual {42}
+	041 Move xmm0, xmm4
+	042 Compare xmm2, xmm0
+	043 JumpIfGreater {85}
+	044 Compare xmm2, xmm1
+	045 JumpIfGreater {67}
+	046 Compare rcx, 1
+	047 JumpIfNotEqual {50}
+	048 Move xmm0, [0x182A4FBA0]
+	049 Goto {51}
+	050 Move xmm0, [0x182A50754]
+	051 Compare xmm5, xmm0
+	052 JumpIfLessOrEqual {81}
+	053 Compare xmm1, xmm2
+	054 JumpIfLessOrEqual {81}
+	055 Compare rcx, 1
+	056 JumpIfNotEqual {59}
+	057 Move xmm0, [0x182A50454]
+	058 Goto {60}
+	059 Move xmm0, [0x182A4FE24]
+	060 Multiply xmm0, xmm0, xmm1
+	061 Compare xmm0, xmm2
+	062 JumpIfLessOrEqual {81}
+	063 Move xmm6, stack:0x0
+	064 Move rax, 1
+	065 ShiftStack 24
+	066 Return rax
+	067 Move xmm0, [0x182A501C4]
+	068 Compare rcx, 2
+	069 JumpIfNotEqual {72}
+	070 Move xmm3, xmm4
+	071 Goto {73}
+	072 Move xmm3, xmm0
+	073 Compare xmm6, xmm3
+	074 JumpIfLessOrEqual {81}
+	075 Compare rcx, 2
+	076 JumpIfEqual {78}
+	077 Move xmm0, xmm4
+	078 Multiply xmm0, xmm0, xmm2
+	079 Compare xmm0, xmm1
+	080 JumpIfGreater {85}
+	081 Move xmm6, stack:0x0
+	082 Move rax, 0
+	083 ShiftStack 24
+	084 Return rax
+	085 Move xmm6, stack:0x0
+	086 Move rax, 2
+	087 ShiftStack 24
+	088 Return rax
+
+Method: System.Boolean HittingFrameRateLimit(System.Single actualFrameTime, System.Single thresholdFactor, System.Single targetFrameTime)
+
+Disassembly:
+	xorps xmm3,xmm3
+	comiss xmm3,xmm2
+	jae short 0000000181E6989Dh
+	comiss xmm2,xmm0
+	jae short 0000000181E6989Ah
+	subss xmm0,xmm2
+	mulss xmm1,xmm2
+	comiss xmm1,xmm0
+	jbe short 0000000181E6989Dh
+	mov al,1
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Move xmm3, 0
+	002 Compare xmm3, xmm2
+	003 JumpIfGreaterOrEqual {12}
+	004 Compare xmm2, xmm0
+	005 JumpIfGreaterOrEqual {10}
+	006 Subtract xmm0, xmm0, xmm2
+	007 Multiply xmm1, xmm1, xmm2
+	008 Compare xmm1, xmm0
+	009 JumpIfLessOrEqual {12}
+	010 Move rax, 1
+	011 Return rax
+	012 Move rax, 0
+	013 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

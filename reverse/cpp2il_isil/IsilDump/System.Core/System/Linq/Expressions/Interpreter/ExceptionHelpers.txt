@@ -1,0 +1,25 @@
+Type: System.Linq.Expressions.Interpreter.ExceptionHelpers
+
+Method: System.Void UnwrapAndRethrow(System.Reflection.TargetInvocationException exception)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 0000000181A03C78h
+	mov rcx,[rcx+28h]
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 0000000181713B20h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {9}
+	004 Move rcx, [rcx+40]
+	005 Move rdx, 0
+	006 ShiftStack 40
+	007 Call ExceptionDispatchInfo.Throw, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+

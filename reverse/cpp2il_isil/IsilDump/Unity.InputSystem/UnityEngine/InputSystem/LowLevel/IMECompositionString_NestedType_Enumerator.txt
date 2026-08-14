@@ -1,0 +1,132 @@
+Type: UnityEngine.InputSystem.LowLevel.IMECompositionString+Enumerator
+
+Method: System.Void .ctor(UnityEngine.InputSystem.LowLevel.IMECompositionString compositionString)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov eax,[rdx+80h]
+	movups xmm1,[rdx+10h]
+	mov dword ptr [rcx+88h],0FFFFFFFFh
+	movups [rcx],xmm0
+	movups xmm0,[rdx+20h]
+	movups [rcx+10h],xmm1
+	movups xmm1,[rdx+30h]
+	movups [rcx+20h],xmm0
+	movups xmm0,[rdx+40h]
+	movups [rcx+30h],xmm1
+	movups xmm1,[rdx+50h]
+	movups [rcx+40h],xmm0
+	movups xmm0,[rdx+60h]
+	movups [rcx+50h],xmm1
+	movups xmm1,[rdx+70h]
+	movups [rcx+60h],xmm0
+	movups [rcx+70h],xmm1
+	mov [rcx+80h],eax
+	xor eax,eax
+	mov [rcx+84h],ax
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, [rdx+128]
+	003 Move xmm1, [rdx+16]
+	004 Move [rcx+136], 0xFFFFFFFF
+	005 Move [rcx], xmm0
+	006 Move xmm0, [rdx+32]
+	007 Move [rcx+16], xmm1
+	008 Move xmm1, [rdx+48]
+	009 Move [rcx+32], xmm0
+	010 Move xmm0, [rdx+64]
+	011 Move [rcx+48], xmm1
+	012 Move xmm1, [rdx+80]
+	013 Move [rcx+64], xmm0
+	014 Move xmm0, [rdx+96]
+	015 Move [rcx+80], xmm1
+	016 Move xmm1, [rdx+112]
+	017 Move [rcx+96], xmm0
+	018 Move [rcx+112], xmm1
+	019 Move [rcx+128], rax
+	020 Move rax, 0
+	021 Move [rcx+132], rax
+	022 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	movsxd r8,dword ptr [rcx+88h]
+	lea eax,[r8+1]
+	mov [rcx+88h],eax
+	lea eax,[r8+1]
+	cmp eax,[rcx]
+	je short 0000000182021429h
+	movzx edx,word ptr [rcx+r8*2+6]
+	mov al,1
+	mov [rcx+84h],dx
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Move r8, [rcx+136]
+	002 LoadAddress rax, [r8+1]
+	003 Move [rcx+136], rax
+	004 LoadAddress rax, [r8+1]
+	005 Compare rax, [rcx]
+	006 JumpIfEqual {11}
+	007 Move rdx, [rcx+6+r8*2]
+	008 Move rax, 1
+	009 Move [rcx+132], rdx
+	010 Return rax
+	011 Move rax, 0
+	012 Return rax
+
+Method: System.Void Reset()
+
+Disassembly:
+	mov dword ptr [rcx+88h],0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move [rcx+136], 0xFFFFFFFF
+	002 Return 
+
+Method: System.Void Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Char get_Current()
+
+Disassembly:
+	movzx eax,word ptr [rcx+84h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+132]
+	002 Return rax
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	sub rsp,28h
+	movzx eax,word ptr [rcx+84h]
+	lea rdx,[rsp+30h]
+	mov rcx,[18375C128h]
+	mov [rsp+30h],ax
+	call 000000018037AC90h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+132]
+	003 LoadAddress rdx, stack:0x30
+	004 Move rcx, [0x18375C128]
+	005 Move stack:0x30, rax
+	006 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	007 ShiftStack 40
+	008 Return rax
+

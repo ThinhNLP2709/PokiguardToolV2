@@ -1,0 +1,72 @@
+Type: DG.Tweening.Plugins.Options.QuaternionOptions
+
+Method: System.Void Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xor eax,eax
+	mov rbx,rcx
+	mov [rcx],rax
+	cmp [18374A31Eh],al
+	jne short 000000018077DA79h
+	lea rcx,[18352FDA8h]
+	call 000000018037BB90h
+	mov byte ptr [18374A31Eh],1
+	mov rax,[18352FDA8h]
+	mov rdx,[rax+0B8h]
+	movsd xmm0,qword ptr [rdx]
+	mov eax,[rdx+8]
+	movsd qword ptr [rbx+8],xmm0
+	mov [rbx+10h],eax
+	mov byte ptr [rbx+14h],0
+	cmp byte ptr [18374A31Eh],0
+	jne short 000000018077DAB6h
+	lea rcx,[18352FDA8h]
+	call 000000018037BB90h
+	mov byte ptr [18374A31Eh],1
+	mov rax,[18352FDA8h]
+	mov rcx,[rax+0B8h]
+	movsd xmm0,qword ptr [rcx]
+	mov eax,[rcx+8]
+	movsd qword ptr [rbx+18h],xmm0
+	mov [rbx+20h],eax
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, 0
+	005 Move rbx, rcx
+	006 Move [rcx], rax
+	007 Compare [0x18374A31E], rax
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x18352FDA8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18374A31E], 1
+	012 Move rax, typeof(UnityEngine.Vector3)
+	013 Move rdx, [rax+184]
+	014 Move xmm0, [rdx]
+	015 Move rax, [rdx+8]
+	016 Move [rbx+8], xmm0
+	017 Move [rbx+16], rax
+	018 Move [rbx+20], 0
+	019 Compare [0x18374A31E], 0
+	020 JumpIfNotEqual {24}
+	021 LoadAddress rcx, [0x18352FDA8]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 Move [0x18374A31E], 1
+	024 Move rax, typeof(UnityEngine.Vector3)
+	025 Move rcx, [rax+184]
+	026 Move xmm0, [rcx]
+	027 Move rax, [rcx+8]
+	028 Move [rbx+24], xmm0
+	029 Move [rbx+32], rax
+	030 ShiftStack 32
+	031 Move rbx, stack:0x0
+	032 ShiftStack 8
+	033 Return 
+

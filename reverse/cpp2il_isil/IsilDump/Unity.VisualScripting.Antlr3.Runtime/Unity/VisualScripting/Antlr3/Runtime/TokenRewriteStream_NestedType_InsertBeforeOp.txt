@@ -1,0 +1,151 @@
+Type: Unity.VisualScripting.Antlr3.Runtime.TokenRewriteStream+InsertBeforeOp
+
+Method: System.Void .ctor(System.Int32 index, System.Object text, Unity.VisualScripting.Antlr3.Runtime.TokenRewriteStream parent)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov rbp,r9
+	xor edx,edx
+	mov rdi,r8
+	mov rsi,rcx
+	call 0000000180456D90h
+	lea rcx,[rsi+18h]
+	mov [rsi+14h],ebx
+	mov rdx,rdi
+	mov [rsi+18h],rdi
+	call 000000018037ACB0h
+	lea rcx,[rsi+20h]
+	mov [rsi+20h],rbp
+	mov rdx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbx, rdx
+	008 Move rbp, r9
+	009 Move rdx, 0
+	010 Move rdi, r8
+	011 Move rsi, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 LoadAddress rcx, [rsi+24]
+	014 Move [rsi+20], rbx
+	015 Move rdx, rdi
+	016 Move [rsi+24], rdi
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 LoadAddress rcx, [rsi+32]
+	019 Move [rsi+32], rbp
+	020 Move rdx, rbp
+	021 Move rbx, stack:0x30
+	022 Move rbp, stack:0x38
+	023 Move rsi, stack:0x40
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Return 
+
+Method: System.Int32 Execute(System.Text.StringBuilder buf)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183754C5Fh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018245AE9Ch
+	lea rcx,[18354A668h]
+	call 000000018037BB90h
+	mov byte ptr [183754C5Fh],1
+	test rdi,rdi
+	je short 000000018245AF06h
+	mov rdx,[rbx+18h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 000000018166EA10h
+	mov rcx,[rbx+20h]
+	test rcx,rcx
+	je short 000000018245AF06h
+	mov r8,[rcx]
+	mov edx,[rbx+14h]
+	mov rax,[r8+288h]
+	mov r8,[r8+290h]
+	call rax
+	test rax,rax
+	je short 000000018245AF06h
+	mov rdx,[18354A668h]
+	mov ecx,0Ah
+	mov r8,rax
+	call 00000001800025F0h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018166E870h
+	mov eax,[rbx+14h]
+	mov rbx,[rsp+30h]
+	inc eax
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183754C5F], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x18354A668]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183754C5F], 1
+	012 Compare rdi, 0
+	013 JumpIfEqual {43}
+	014 Move rdx, [rbx+24]
+	015 Move r8, 0
+	016 Move rcx, rdi
+	017 Call StringBuilder.Append, rcx, rdx
+	018 Move rcx, [rbx+32]
+	019 Compare rcx, 0
+	020 JumpIfEqual {43}
+	021 Move r8, [rcx]
+	022 Move rdx, [rbx+20]
+	023 Move rax, [r8+648]
+	024 Move r8, [r8+656]
+	025 Call rax
+	026 Compare rax, 0
+	027 JumpIfEqual {43}
+	028 Move rdx, typeof(Unity.VisualScripting.Antlr3.Runtime.IToken)
+	029 Move rcx, 10
+	030 Move r8, rax
+	031 Call 0x1800025F0, rcx, rdx, r8, r9
+	032 Move r8, 0
+	033 Move rdx, rax
+	034 Move rcx, rdi
+	035 Call StringBuilder.Append, rcx, rdx
+	036 Move rax, [rbx+20]
+	037 Move rbx, stack:0x30
+	038 Add rax, rax, 1
+	039 ShiftStack 32
+	040 Move rdi, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Call 0x18037BE30, rcx, rdx, r8, r9
+

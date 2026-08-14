@@ -1,0 +1,173 @@
+Type: UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler.LoadAudit
+
+Method: System.Void .ctor(UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler.LoadReason setReason, System.Int32 setPassId = -1)
+
+Disassembly:
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+4], r8
+	003 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183753E32h],0
+	jne short 000000018224A146h
+	lea rcx,[18355DA90h]
+	call 000000018037BB90h
+	lea rcx,[1834F1A48h]
+	call 000000018037BB90h
+	lea rcx,[183566730h]
+	call 000000018037BB90h
+	lea rcx,[183535008h]
+	call 000000018037BB90h
+	lea rcx,[183535188h]
+	call 000000018037BB90h
+	lea rcx,[183535548h]
+	call 000000018037BB90h
+	lea rcx,[183535248h]
+	call 000000018037BB90h
+	lea rcx,[183532490h]
+	call 000000018037BB90h
+	mov byte ptr [183753E32h],1
+	mov rcx,[1834F1A48h]
+	mov edx,6
+	call 000000018037AD30h
+	mov rbx,rax
+	test rax,rax
+	je near ptr 000000018224A237h
+	cmp dword ptr [rax+18h],0
+	mov rdx,[183566730h]
+	jbe near ptr 000000018224A23Dh
+	lea rcx,[rax+20h]
+	mov [rax+20h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],1
+	mov rdx,[183535188h]
+	jbe near ptr 000000018224A23Dh
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],2
+	mov rdx,[183535548h]
+	jbe near ptr 000000018224A23Dh
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],3
+	mov rdx,[183535248h]
+	jbe short 000000018224A23Dh
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],4
+	mov rdx,[183535008h]
+	jbe short 000000018224A23Dh
+	lea rcx,[rbx+40h]
+	mov [rbx+40h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],5
+	mov rdx,[183532490h]
+	jbe short 000000018224A23Dh
+	lea rcx,[rbx+48h]
+	mov [rbx+48h],rdx
+	call 000000018037ACB0h
+	mov rax,[18355DA90h]
+	mov rdx,rbx
+	mov rcx,[rax+0B8h]
+	mov [rcx],rbx
+	mov rcx,[18355DA90h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183753E32], 0
+	005 JumpIfNotEqual {23}
+	006 LoadAddress rcx, [0x18355DA90]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x1834F1A48]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183566730]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183535008]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x183535188]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x183535548]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x183535248]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 LoadAddress rcx, [0x183532490]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 Move [0x183753E32], 1
+	023 Move rcx, typeof(System.String[1])
+	024 Move rdx, 6
+	025 Call "SzArrayNew", rcx, rdx, r8, r9
+	026 Move rbx, rax
+	027 Compare rax, 0
+	028 JumpIfEqual {76}
+	029 Compare [rax+24], 0
+	030 Move rdx, "Invalid reason"
+	031 JumpIfLessOrEqual {78}
+	032 LoadAddress rcx, [rax+32]
+	033 Move [rax+32], rdx
+	034 Call 0x18037ACB0, rcx, rdx, r8, r9
+	035 Compare [rbx+24], 1
+	036 Move rdx, "The resource is imported in the graph and loaded to retrieve the existing buffer contents."
+	037 JumpIfLessOrEqual {78}
+	038 LoadAddress rcx, [rbx+40]
+	039 Move [rbx+40], rdx
+	040 Call 0x18037ACB0, rcx, rdx, r8, r9
+	041 Compare [rbx+24], 2
+	042 Move rdx, "The resource is written by {pass} executed previously in the graph. The data is loaded."
+	043 JumpIfLessOrEqual {78}
+	044 LoadAddress rcx, [rbx+48]
+	045 Move [rbx+48], rdx
+	046 Call 0x18037ACB0, rcx, rdx, r8, r9
+	047 Compare [rbx+24], 3
+	048 Move rdx, "The resource is imported in the graph but was imported with the 'clear on first use' option enabled. The data is cleared."
+	049 JumpIfLessOrEqual {78}
+	050 LoadAddress rcx, [rbx+56]
+	051 Move [rbx+56], rdx
+	052 Call 0x18037ACB0, rcx, rdx, r8, r9
+	053 Compare [rbx+24], 4
+	054 Move rdx, "The resource is created in this pass and cleared on first use."
+	055 JumpIfLessOrEqual {78}
+	056 LoadAddress rcx, [rbx+64]
+	057 Move [rbx+64], rdx
+	058 Call 0x18037ACB0, rcx, rdx, r8, r9
+	059 Compare [rbx+24], 5
+	060 Move rdx, "The pass indicated it will rewrite the full resource contents. Existing contents are not loaded or cleared."
+	061 JumpIfLessOrEqual {78}
+	062 LoadAddress rcx, [rbx+72]
+	063 Move [rbx+72], rdx
+	064 Call 0x18037ACB0, rcx, rdx, r8, r9
+	065 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler.LoadAudit)
+	066 Move rdx, rbx
+	067 Move rcx, [rax+184]
+	068 Move [rcx], rbx
+	069 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler.LoadAudit)
+	070 Move rcx, [rcx+184]
+	071 ShiftStack 32
+	072 Move rbx, stack:0x0
+	073 ShiftStack 8
+	074 Call 0x18037ACB0, rcx, rdx, r8, r9
+	075 Return 
+	076 Call 0x18037BE30, rcx, rdx, r8, r9
+	077 Interrupt 
+	078 Call 0x18037BE20, rcx, rdx, r8, r9
+

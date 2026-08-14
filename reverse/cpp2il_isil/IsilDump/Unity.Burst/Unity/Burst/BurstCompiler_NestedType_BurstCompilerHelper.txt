@@ -1,0 +1,232 @@
+Type: Unity.Burst.BurstCompiler+BurstCompilerHelper
+
+Method: System.Boolean IsBurstEnabled()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837529B0h],0
+	jne short 0000000181E97230h
+	lea rcx,[183558C18h]
+	call 000000018037BB90h
+	mov byte ptr [1837529B0h],1
+	mov rcx,[183558C18h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181E97245h
+	call 000000018037BED0h
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837529B0], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183558C18]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837529B0], 1
+	007 Move rcx, typeof(Unity.Burst.BurstCompiler+BurstCompilerHelper)
+	008 Compare [rcx+228], 0
+	009 JumpIfNotEqual {11}
+	010 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	011 Move rax, 0
+	012 ShiftStack 40
+	013 Return rax
+
+Method: System.Void DiscardedMethod(ref System.Boolean value)
+
+Disassembly:
+	mov byte ptr [rcx],0
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Return 
+
+Method: System.Boolean IsCompiledByBurst(System.Delegate del)
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[18375C130h]
+	xor r8d,r8d
+	mov rdx,[rax+0B8h]
+	mov rdx,[rdx]
+	call 00000001825C4F30h
+	xor edx,edx
+	mov ecx,eax
+	call 00000001825C50C0h
+	test rax,rax
+	setne al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x18375C130]
+	003 Move r8, 0
+	004 Move rdx, [rax+184]
+	005 Move rdx, [rdx]
+	006 Call BurstCompilerService.CompileAsyncDelegateMethod, rcx, rdx, r8
+	007 Move rdx, 0
+	008 Move rcx, rax
+	009 Call BurstCompilerService.GetAsyncCompiledAsyncDelegateMethod, rcx, rdx
+	010 Compare rax, 0
+	011 NotImplemented "setne al"
+	012 ShiftStack 40
+	013 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837529B1h],0
+	jne short 0000000181E972D3h
+	lea rcx,[183505198h]
+	call 000000018037BB90h
+	lea rcx,[183558C18h]
+	call 000000018037BB90h
+	lea rcx,[183556858h]
+	call 000000018037BB90h
+	mov byte ptr [1837529B1h],1
+	mov rcx,[183556858h]
+	call 000000018037BDE0h
+	mov rbx,[183505198h]
+	mov rdi,rax
+	lea rcx,[rax+20h]
+	mov rdx,[rbx+8]
+	mov [rax+10h],rdx
+	xor edx,edx
+	mov [rax+28h],rbx
+	mov qword ptr [rax+20h],0
+	call 000000018037ACB0h
+	movzx esi,byte ptr [rbx+52h]
+	mov rcx,rbx
+	mov [rdi+40h],rdi
+	call 000000018037ACE0h
+	test al,al
+	je near ptr 0000000181E973CAh
+	test sil,sil
+	jne short 0000000181E9732Eh
+	lea rax,[180005B60h]
+	jmp short 0000000181E9733Ah
+	mov rax,[rdi+20h]
+	mov [rdi+40h],rax
+	mov rax,[rdi+10h]
+	mov [rdi+18h],rax
+	mov rdx,rdi
+	lea rax,[1801524A0h]
+	mov [rdi+38h],rax
+	mov rax,[183558C18h]
+	mov rcx,[rax+0B8h]
+	mov [rcx],rdi
+	mov rcx,[183558C18h]
+	mov rcx,[rcx+0B8h]
+	call 000000018037ACB0h
+	mov rax,[18375C130h]
+	xor r8d,r8d
+	mov rdx,[rax+0B8h]
+	mov rax,[183558C18h]
+	mov rdx,[rdx]
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx]
+	call 00000001825C4F30h
+	xor edx,edx
+	mov ecx,eax
+	call 00000001825C50C0h
+	mov rbx,[rsp+30h]
+	test rax,rax
+	mov rax,[183558C18h]
+	mov rsi,[rsp+38h]
+	setne dl
+	mov rcx,[rax+0B8h]
+	mov [rcx+8],dl
+	add rsp,20h
+	pop rdi
+	ret
+	lea rdx,[182A50388h]
+	xor ecx,ecx
+	call 000000018037B790h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x1837529B1], 0
+	007 JumpIfNotEqual {15}
+	008 LoadAddress rcx, [0x183505198]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183558C18]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183556858]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x1837529B1], 1
+	015 Move rcx, typeof(Unity.Burst.BurstCompiler+BurstCompilerHelper+IsBurstEnabledDelegate)
+	016 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	017 Move rbx, [0x183505198]
+	018 Move rdi, rax
+	019 LoadAddress rcx, [rax+32]
+	020 Move rdx, [rbx+8]
+	021 Move [rax+16], rdx
+	022 Move rdx, 0
+	023 Move [rax+40], rbx
+	024 Move [rax+32], 0
+	025 Call 0x18037ACB0, rcx, rdx, r8, r9
+	026 Move rsi, [rbx+82]
+	027 Move rcx, rbx
+	028 Move [rdi+64], rdi
+	029 Call 0x18037ACE0, rcx, rdx, r8, r9
+	030 Compare rax, 0
+	031 JumpIfEqual {71}
+	032 Compare rsi, 0
+	033 JumpIfNotEqual {36}
+	034 LoadAddress rax, [0x180005B60]
+	035 Goto {39}
+	036 Move rax, [rdi+32]
+	037 Move [rdi+64], rax
+	038 Move rax, [rdi+16]
+	039 Move [rdi+24], rax
+	040 Move rdx, rdi
+	041 LoadAddress rax, [0x1801524A0]
+	042 Move [rdi+56], rax
+	043 Move rax, typeof(Unity.Burst.BurstCompiler+BurstCompilerHelper)
+	044 Move rcx, [rax+184]
+	045 Move [rcx], rdi
+	046 Move rcx, typeof(Unity.Burst.BurstCompiler+BurstCompilerHelper)
+	047 Move rcx, [rcx+184]
+	048 Call 0x18037ACB0, rcx, rdx, r8, r9
+	049 Move rax, [0x18375C130]
+	050 Move r8, 0
+	051 Move rdx, [rax+184]
+	052 Move rax, typeof(Unity.Burst.BurstCompiler+BurstCompilerHelper)
+	053 Move rdx, [rdx]
+	054 Move rcx, [rax+184]
+	055 Move rcx, [rcx]
+	056 Call BurstCompilerService.CompileAsyncDelegateMethod, rcx, rdx, r8
+	057 Move rdx, 0
+	058 Move rcx, rax
+	059 Call BurstCompilerService.GetAsyncCompiledAsyncDelegateMethod, rcx, rdx
+	060 Move rbx, stack:0x30
+	061 Compare rax, 0
+	062 Move rax, typeof(Unity.Burst.BurstCompiler+BurstCompilerHelper)
+	063 Move rsi, stack:0x38
+	064 NotImplemented "setne dl"
+	065 Move rcx, [rax+184]
+	066 Move [rcx+8], rdx
+	067 ShiftStack 32
+	068 Move rdi, stack:0x0
+	069 ShiftStack 8
+	070 Return 
+	071 LoadAddress rdx, [0x182A50388]
+	072 Move rcx, 0
+	073 Call 0x18037B790, rcx, rdx, r8, r9
+	074 Move rcx, rax
+	075 Move rdx, 0
+	076 Call 0x18037BDF0, rcx, rdx, r8, r9
+

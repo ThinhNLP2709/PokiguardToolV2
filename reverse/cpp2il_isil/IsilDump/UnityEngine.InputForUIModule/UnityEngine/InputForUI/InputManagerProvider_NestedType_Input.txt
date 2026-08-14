@@ -1,0 +1,272 @@
+Type: UnityEngine.InputForUI.InputManagerProvider+Input
+
+Method: System.String get_compositionString()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 00000001826BAE30h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call Input.get_compositionString, rcx
+	003 Return rax
+
+Method: System.Boolean GetKey(UnityEngine.KeyCode key)
+
+Disassembly:
+	mov ecx,edx
+	xor edx,edx
+	jmp near ptr 00000001826BAA40h
+
+ISIL:
+	001 Move rcx, rdx
+	002 Move rdx, 0
+	003 Call 0x1826BAA40, rcx, rdx
+	004 Return rax
+
+Method: System.Boolean GetButtonDown(System.String button)
+
+Disassembly:
+	mov rcx,rdx
+	xor edx,edx
+	jmp near ptr 00000001826BA9D0h
+
+ISIL:
+	001 Move rcx, rdx
+	002 Move rdx, 0
+	003 Call Input.GetButtonDown, rcx, rdx
+	004 Return rax
+
+Method: System.Single GetAxisRaw(System.String axis)
+
+Disassembly:
+	mov rcx,rdx
+	xor edx,edx
+	jmp near ptr 00000001826BA9B0h
+
+ISIL:
+	001 Move rcx, rdx
+	002 Move rdx, 0
+	003 Call Input.GetAxisRaw, rcx, rdx
+	004 Return xmm0
+
+Method: UnityEngine.PenData GetLastPenContactEvent()
+
+Disassembly:
+	push rbx
+	sub rsp,50h
+	mov rbx,rcx
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 00000001826BAB00h
+	movups xmm0,[rax]
+	movups xmm1,[rax+10h]
+	movups [rbx],xmm0
+	movsd xmm0,qword ptr [rax+20h]
+	mov rax,rbx
+	movups [rbx+10h],xmm1
+	movsd qword ptr [rbx+20h],xmm0
+	add rsp,50h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -80
+	004 Move rbx, rcx
+	005 Move rdx, 0
+	006 LoadAddress rcx, stack:0x20
+	007 Call Input.GetLastPenContactEvent, rcx
+	008 Move xmm0, [rax]
+	009 Move xmm1, [rax+16]
+	010 Move [rbx], xmm0
+	011 Move xmm0, [rax+32]
+	012 Move rax, rbx
+	013 Move [rbx+16], xmm1
+	014 Move [rbx+32], xmm0
+	015 ShiftStack 80
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+
+Method: System.Boolean get_touchSupported()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 00000001826BB0F0h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call Input.get_touchSupported, rcx
+	003 Return rax
+
+Method: System.Int32 get_touchCount()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 00000001826BB0C0h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call Input.get_touchCount, rcx
+	003 Return rax
+
+Method: UnityEngine.Touch GetTouch(System.Int32 index)
+
+Disassembly:
+	push rbx
+	sub rsp,70h
+	mov edx,r8d
+	mov rbx,rcx
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	call 00000001826BACB0h
+	movups xmm0,[rax]
+	movups xmm1,[rax+10h]
+	movups [rbx],xmm0
+	movups xmm0,[rax+20h]
+	movups [rbx+10h],xmm1
+	movups xmm1,[rax+30h]
+	mov eax,[rax+40h]
+	movups [rbx+20h],xmm0
+	movups [rbx+30h],xmm1
+	mov [rbx+40h],eax
+	mov rax,rbx
+	add rsp,70h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -112
+	004 Move rdx, r8
+	005 Move rbx, rcx
+	006 Move r8, 0
+	007 LoadAddress rcx, stack:0x20
+	008 Call Input.GetTouch, rcx, rdx
+	009 Move xmm0, [rax]
+	010 Move xmm1, [rax+16]
+	011 Move [rbx], xmm0
+	012 Move xmm0, [rax+32]
+	013 Move [rbx+16], xmm1
+	014 Move xmm1, [rax+48]
+	015 Move rax, [rax+64]
+	016 Move [rbx+32], xmm0
+	017 Move [rbx+48], xmm1
+	018 Move [rbx+64], rax
+	019 Move rax, rbx
+	020 ShiftStack 112
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+
+Method: System.Boolean get_mousePresent()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 00000001826BAF90h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call Input.get_mousePresent, rcx
+	003 Return rax
+
+Method: System.Boolean GetMouseButton(System.Int32 button)
+
+Disassembly:
+	mov ecx,edx
+	xor edx,edx
+	jmp near ptr 00000001826BABD0h
+
+ISIL:
+	001 Move rcx, rdx
+	002 Move rdx, 0
+	003 Call Input.GetMouseButton, rcx, rdx
+	004 Return rax
+
+Method: System.Boolean GetMouseButtonDown(System.Int32 button)
+
+Disassembly:
+	mov ecx,edx
+	xor edx,edx
+	jmp near ptr 00000001826BAB50h
+
+ISIL:
+	001 Move rcx, rdx
+	002 Move rdx, 0
+	003 Call Input.GetMouseButtonDown, rcx, rdx
+	004 Return rax
+
+Method: System.Boolean GetMouseButtonUp(System.Int32 button)
+
+Disassembly:
+	mov ecx,edx
+	xor edx,edx
+	jmp near ptr 00000001826BAB90h
+
+ISIL:
+	001 Move rcx, rdx
+	002 Move rdx, 0
+	003 Call Input.GetMouseButtonUp, rcx, rdx
+	004 Return rax
+
+Method: UnityEngine.Vector3 get_mousePosition()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rbx,rcx
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 00000001826BAF50h
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rbx],xmm0
+	mov [rbx+8],eax
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rbx, rcx
+	005 Move rdx, 0
+	006 LoadAddress rcx, stack:0x20
+	007 Call Input.get_mousePosition, rcx
+	008 Move xmm0, [rax]
+	009 Move rax, [rax+8]
+	010 Move [rbx], xmm0
+	011 Move [rbx+8], rax
+	012 Move rax, rbx
+	013 ShiftStack 48
+	014 Move rbx, stack:0x0
+	015 ShiftStack 8
+	016 Return rax
+
+Method: UnityEngine.Vector2 get_mouseScrollDelta()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 00000001826BB040h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call Input.get_mouseScrollDelta, rcx
+	003 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

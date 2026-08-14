@@ -1,0 +1,177 @@
+Type: UnityEngine.Rendering.RenderGraphModule.TexturePool
+
+Method: System.Void ReleaseInternalResource(UnityEngine.Rendering.RTHandle res)
+
+Disassembly:
+	sub rsp,28h
+	mov rax,rdx
+	test rdx,rdx
+	je short 000000018223CD4Ah
+	xor edx,edx
+	mov rcx,rax
+	add rsp,28h
+	jmp near ptr 00000001821F6A30h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, rdx
+	003 Compare rdx, 0
+	004 JumpIfEqual {10}
+	005 Move rdx, 0
+	006 Move rcx, rax
+	007 ShiftStack 40
+	008 Call RTHandle.Release, rcx, rdx
+	009 Return 
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.String GetResourceName(in UnityEngine.Rendering.RTHandle res)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rdx]
+	test rcx,rcx
+	je short 000000018223CCA0h
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 000000018223CCA0h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 0000000182628470h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rdx]
+	003 Compare rcx, 0
+	004 JumpIfEqual {12}
+	005 Move rcx, [rcx+24]
+	006 Compare rcx, 0
+	007 JumpIfEqual {12}
+	008 Move rdx, 0
+	009 ShiftStack 40
+	010 Call Object.get_name, rcx, rdx
+	011 Return rax
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Int64 GetResourceSize(in UnityEngine.Rendering.RTHandle res)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rdx]
+	test rcx,rcx
+	je short 000000018223CCCBh
+	mov rcx,[rcx+18h]
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 000000018262DCA0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rdx]
+	003 Compare rcx, 0
+	004 JumpIfEqual {10}
+	005 Move rcx, [rcx+24]
+	006 Move rdx, 0
+	007 ShiftStack 40
+	008 Call Profiler.GetRuntimeMemorySizeLong, rcx, rdx
+	009 Return rax
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.String GetResourceTypeName()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183753DBAh],0
+	jne short 000000018223CD00h
+	lea rcx,[18351AAD8h]
+	call 000000018037BB90h
+	mov byte ptr [183753DBAh],1
+	mov rax,[18351AAD8h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183753DBA], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x18351AAD8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183753DBA], 1
+	007 Move rax, "Texture"
+	008 ShiftStack 40
+	009 Return rax
+
+Method: System.Int32 GetSortIndex(UnityEngine.Rendering.RTHandle res)
+
+Disassembly:
+	sub rsp,28h
+	mov rax,rdx
+	test rdx,rdx
+	je short 000000018223CD2Ah
+	xor edx,edx
+	mov rcx,rax
+	add rsp,28h
+	jmp near ptr 00000001821F6830h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, rdx
+	003 Compare rdx, 0
+	004 JumpIfEqual {10}
+	005 Move rdx, 0
+	006 Move rcx, rax
+	007 ShiftStack 40
+	008 Call RTHandle.GetInstanceID, rcx, rdx
+	009 Return rax
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183753DBBh],0
+	mov rbx,rcx
+	jne short 000000018223CD81h
+	lea rcx,[18351E170h]
+	call 000000018037BB90h
+	lea rcx,[18354C968h]
+	call 000000018037BB90h
+	mov byte ptr [183753DBBh],1
+	mov rcx,[18354C968h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223CD96h
+	call 000000018037BED0h
+	mov rdx,[18351E170h]
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180C84990h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183753DBB], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {12}
+	007 LoadAddress rcx, [0x18351E170]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x18354C968]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183753DBB], 1
+	012 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.RenderGraphResourcePool`1<RTHandle>)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move rdx, [0x18351E170]
+	017 Move rcx, rbx
+	018 ShiftStack 32
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Call 0x180C84990, rcx, rdx
+	022 Return 
+

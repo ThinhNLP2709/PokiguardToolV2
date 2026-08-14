@@ -1,0 +1,90 @@
+Type: UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDInputReport
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_format()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837534B4h],0
+	jne short 000000018201E8B0h
+	lea rcx,[183527820h]
+	call 000000018037BB90h
+	mov byte ptr [1837534B4h],1
+	mov rax,[183527820h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 000000018201E8CFh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183527820h]
+	mov rax,[rax+0B8h]
+	mov eax,[rax]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837534B4], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183527820]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837534B4], 1
+	007 Move rax, typeof(UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDInputReport)
+	008 Compare [rax+228], 0
+	009 JumpIfNotEqual {13}
+	010 Move rcx, rax
+	011 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	012 Move rax, typeof(UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDInputReport)
+	013 Move rax, [rax+184]
+	014 Move rax, [rax]
+	015 ShiftStack 40
+	016 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [1837534B5h],0
+	jne short 000000018201E840h
+	lea rcx,[183527820h]
+	call 000000018037BB90h
+	mov byte ptr [1837534B5h],1
+	xor ecx,ecx
+	mov eax,53h
+	mov [rsp+28h],rcx
+	mov r9d,56h
+	mov [rsp+48h],ecx
+	mov r8d,eax
+	lea rcx,[rsp+48h]
+	mov [rsp+20h],ax
+	mov edx,44h
+	call 0000000181F41F80h
+	mov rax,[183527820h]
+	mov rcx,[rax+0B8h]
+	mov eax,[rsp+48h]
+	mov [rcx],eax
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x1837534B5], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183527820]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837534B5], 1
+	007 Move rcx, 0
+	008 Move rax, 83
+	009 Move stack:0x28, rcx
+	010 Move r9, 86
+	011 Move stack:0x48, rcx
+	012 Move r8, rax
+	013 LoadAddress rcx, stack:0x48
+	014 Move stack:0x20, rax
+	015 Move rdx, 68
+	016 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	017 Move rax, typeof(UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDInputReport)
+	018 Move rcx, [rax+184]
+	019 Move rax, stack:0x48
+	020 Move [rcx], rax
+	021 ShiftStack 56
+	022 Return 
+

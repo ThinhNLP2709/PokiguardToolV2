@@ -1,0 +1,56 @@
+Type: UnityEngine.Rendering.HDROutputUtils+ShaderPropertyId
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183753C1Dh],0
+	jne short 00000001822140D8h
+	lea rcx,[1834FA678h]
+	call 000000018037BB90h
+	lea rcx,[18354F418h]
+	call 000000018037BB90h
+	lea rcx,[18354F658h]
+	call 000000018037BB90h
+	mov byte ptr [183753C1Dh],1
+	mov rcx,[18354F418h]
+	xor edx,edx
+	call 00000001825FD6D0h
+	mov rcx,[1834FA678h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],eax
+	xor edx,edx
+	mov rcx,[18354F658h]
+	call 00000001825FD6D0h
+	mov rcx,[1834FA678h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx+4],eax
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183753C1D], 0
+	003 JumpIfNotEqual {11}
+	004 LoadAddress rcx, [0x1834FA678]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x18354F418]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18354F658]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183753C1D], 1
+	011 Move rcx, "_HDRColorspace"
+	012 Move rdx, 0
+	013 Call Shader.PropertyToID, rcx, rdx
+	014 Move rcx, typeof(UnityEngine.Rendering.HDROutputUtils+ShaderPropertyId)
+	015 Move rdx, [rcx+184]
+	016 Move [rdx], rax
+	017 Move rdx, 0
+	018 Move rcx, "_HDREncoding"
+	019 Call Shader.PropertyToID, rcx, rdx
+	020 Move rcx, typeof(UnityEngine.Rendering.HDROutputUtils+ShaderPropertyId)
+	021 Move rdx, [rcx+184]
+	022 Move [rdx+4], rax
+	023 ShiftStack 40
+	024 Return 
+

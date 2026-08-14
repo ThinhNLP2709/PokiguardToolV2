@@ -1,0 +1,44 @@
+Type: Unity.Collections.StreamCompressionModel+SharedStaticCompressionModel
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183752C06h],0
+	jne short 0000000181EFF49Ch
+	lea rcx,[18353C0D8h]
+	call 000000018037BB90h
+	lea rcx,[183521EF0h]
+	call 000000018037BB90h
+	mov byte ptr [183752C06h],1
+	mov r9,[183521EF0h]
+	xor r8d,r8d
+	mov rdx,5B185A4259DC5958h
+	xor ecx,ecx
+	call 0000000180C99E60h
+	mov rcx,[18353C0D8h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rax
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183752C06], 0
+	003 JumpIfNotEqual {9}
+	004 LoadAddress rcx, [0x18353C0D8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x183521EF0]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183752C06], 1
+	009 Move r9, [0x183521EF0]
+	010 Move r8, 0
+	011 Move rdx, 0x5B185A4259DC5958
+	012 Move rcx, 0
+	013 Call SharedStatic`1<StreamCompressionModel>.GetOrCreateUnsafe, rcx, rdx, r8, r9
+	014 Move rcx, typeof(Unity.Collections.StreamCompressionModel+SharedStaticCompressionModel)
+	015 Move rdx, [rcx+184]
+	016 Move [rdx], rax
+	017 ShiftStack 40
+	018 Return 
+

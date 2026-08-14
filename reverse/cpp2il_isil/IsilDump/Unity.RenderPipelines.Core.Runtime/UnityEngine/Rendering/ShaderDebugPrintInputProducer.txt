@@ -1,0 +1,166 @@
+Type: UnityEngine.Rendering.ShaderDebugPrintInputProducer
+
+Method: UnityEngine.Rendering.ShaderDebugPrintInput Get()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753944h],0
+	mov rbx,rcx
+	jne short 000000018218EF99h
+	lea rcx,[18353F5E0h]
+	call 000000018037BB90h
+	mov byte ptr [183753944h],1
+	xor eax,eax
+	lea rcx,[rsp+20h]
+	mov [rbx],rax
+	xor edx,edx
+	mov [rbx+8],eax
+	call 00000001826BAF50h
+	movsd xmm1,qword ptr [rax]
+	movaps xmm0,xmm1
+	shufps xmm0,xmm0,55h
+	xor edx,edx
+	movss dword ptr [rbx],xmm1
+	xor ecx,ecx
+	movss dword ptr [rbx+4],xmm0
+	call 00000001826BABD0h
+	xor edx,edx
+	mov [rbx+8],al
+	mov ecx,1
+	call 00000001826BABD0h
+	xor edx,edx
+	mov [rbx+9],al
+	mov ecx,2
+	call 00000001826BABD0h
+	cmp byte ptr [183752D31h],0
+	mov [rbx+0Ah],al
+	jne short 000000018218F007h
+	lea rcx,[1835695C0h]
+	call 000000018037BB90h
+	mov byte ptr [183752D31h],1
+	mov rax,[1835695C0h]
+	mov rcx,[rax+0B8h]
+	mov rdi,[rcx]
+	test rdi,rdi
+	je near ptr 000000018218F0A3h
+	mov rcx,[rdi+190h]
+	test rcx,rcx
+	je short 000000018218F0A3h
+	mov rdx,[18353F5E0h]
+	call 0000000181403C20h
+	mov rcx,[rdi+1C8h]
+	mov [rsp+40h],rax
+	movss xmm0,dword ptr [rsp+40h]
+	movss xmm1,dword ptr [rsp+44h]
+	movss dword ptr [rbx],xmm0
+	movss dword ptr [rbx+4],xmm1
+	test rcx,rcx
+	je short 000000018218F0A3h
+	xor edx,edx
+	call 0000000181F3FC30h
+	mov rcx,[rdi+1D8h]
+	mov [rbx+8],al
+	test rcx,rcx
+	je short 000000018218F0A3h
+	xor edx,edx
+	call 0000000181F3FC30h
+	mov rcx,[rdi+1D0h]
+	mov [rbx+9],al
+	test rcx,rcx
+	je short 000000018218F0A3h
+	xor edx,edx
+	call 0000000181F3FC30h
+	mov [rbx+0Ah],al
+	mov rax,rbx
+	mov rbx,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183753944], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x18353F5E0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183753944], 1
+	011 Move rax, 0
+	012 LoadAddress rcx, stack:0x20
+	013 Move [rbx], rax
+	014 Move rdx, 0
+	015 Move [rbx+8], rax
+	016 Call Input.get_mousePosition, rcx
+	017 Move xmm1, [rax]
+	018 Move xmm0, xmm1
+	019 Move XMM_TEMP.S[0], xmm0.S[1]
+	020 Move XMM_TEMP.S[1], xmm0.S[1]
+	021 Move XMM_TEMP.S[2], xmm0.S[1]
+	022 Move XMM_TEMP.S[3], xmm0.S[1]
+	023 Move xmm0, XMM_TEMP
+	024 Move rdx, 0
+	025 Move [rbx], xmm1
+	026 Move rcx, 0
+	027 Move [rbx+4], xmm0
+	028 Call Input.GetMouseButton, rcx, rdx
+	029 Move rdx, 0
+	030 Move [rbx+8], rax
+	031 Move rcx, 1
+	032 Call Input.GetMouseButton, rcx, rdx
+	033 Move rdx, 0
+	034 Move [rbx+9], rax
+	035 Move rcx, 2
+	036 Call Input.GetMouseButton, rcx, rdx
+	037 Compare [0x183752D31], 0
+	038 Move [rbx+10], rax
+	039 JumpIfNotEqual {43}
+	040 LoadAddress rcx, [0x1835695C0]
+	041 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	042 Move [0x183752D31], 1
+	043 Move rax, typeof(UnityEngine.InputSystem.Mouse)
+	044 Move rcx, [rax+184]
+	045 Move rdi, [rcx]
+	046 Compare rdi, 0
+	047 JumpIfEqual {82}
+	048 Move rcx, [rdi+400]
+	049 Compare rcx, 0
+	050 JumpIfEqual {82}
+	051 Move rdx, [0x18353F5E0]
+	052 Call InputControl`1<Vector2>.ReadValue, rcx, rdx
+	053 Move rcx, [rdi+456]
+	054 Move stack:0x40, rax
+	055 Move xmm0, stack:0x40
+	056 Move xmm1, stack:0x44
+	057 Move [rbx], xmm0
+	058 Move [rbx+4], xmm1
+	059 Compare rcx, 0
+	060 JumpIfEqual {82}
+	061 Move rdx, 0
+	062 Call ButtonControl.get_isPressed, rcx, rdx
+	063 Move rcx, [rdi+472]
+	064 Move [rbx+8], rax
+	065 Compare rcx, 0
+	066 JumpIfEqual {82}
+	067 Move rdx, 0
+	068 Call ButtonControl.get_isPressed, rcx, rdx
+	069 Move rcx, [rdi+464]
+	070 Move [rbx+9], rax
+	071 Compare rcx, 0
+	072 JumpIfEqual {82}
+	073 Move rdx, 0
+	074 Call ButtonControl.get_isPressed, rcx, rdx
+	075 Move [rbx+10], rax
+	076 Move rax, rbx
+	077 Move rbx, stack:0x48
+	078 ShiftStack 48
+	079 Move rdi, stack:0x0
+	080 ShiftStack 8
+	081 Return rax
+	082 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,233 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafePtrList`1+ParallelWriter
+
+Method: System.Void .ctor(T* ptr, Unity.Collections.LowLevel.Unsafe.UnsafeList`1<System.IntPtr>* listData)
+
+Disassembly:
+	mov [rcx],rdx
+	mov [rcx+8],r8
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+8], r8
+	003 Return 
+
+Method: System.Void AddNoResize(T* value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374BE9Dh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 0000000180B7F216h
+	lea rcx,[183551568h]
+	call 000000018037BB90h
+	mov byte ptr [18374BE9Dh],1
+	mov rbx,[rbx+8]
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001804D4100h
+	mov rcx,[183551568h]
+	mov rdi,rax
+	mov rsi,[rbx]
+	movsxd rbp,dword ptr [rbx+8]
+	mov rcx,[rcx+20h]
+	test byte ptr [rcx+135h],1
+	jne short 0000000180B7F247h
+	call 0000000180384C90h
+	mov [rsi+rbp*8],rdi
+	inc dword ptr [rbx+8]
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x18374BE9D], 0
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183551568]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18374BE9D], 1
+	014 Move rbx, [rbx+8]
+	015 Move rdx, 0
+	016 Move rcx, rdi
+	017 Call 0x1804D4100, rcx, rdx, r8, r9
+	018 Move rcx, [0x183551568]
+	019 Move rdi, rax
+	020 Move rsi, [rbx]
+	021 Move rbp, [rbx+8]
+	022 Move rcx, [rcx+32]
+	023 Compare [rcx+309], 1
+	024 JumpIfNotEqual {26}
+	025 Call 0x180384C90, rcx, rdx, r8, r9
+	026 Move [rsi+rbp*8], rdi
+	027 Add [rbx+8], [rbx+8], 1
+	028 Move rbx, stack:0x30
+	029 Move rbp, stack:0x38
+	030 Move rsi, stack:0x40
+	031 ShiftStack 32
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 Return 
+
+Method: System.Void AddRangeNoResize(T* ptr, System.Int32 count)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374BE9Eh],0
+	mov ebx,r8d
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 0000000180B80E44h
+	lea rcx,[1835517A8h]
+	call 000000018037BB90h
+	mov byte ptr [18374BE9Eh],1
+	mov r9,[1835517A8h]
+	mov r8d,ebx
+	mov rcx,[rsi+8]
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000180E46E20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374BE9E], 0
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x1835517A8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18374BE9E], 1
+	014 Move r9, [0x1835517A8]
+	015 Move r8, rbx
+	016 Move rcx, [rsi+8]
+	017 Move rdx, rdi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call 0x180E46E20, rcx, rdx, r8
+	024 Return 
+
+Method: System.Void AddRangeNoResize(Unity.Collections.LowLevel.Unsafe.UnsafePtrList`1<T> list)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,50h
+	cmp byte ptr [18374BE9Fh],0
+	mov rdi,r8
+	mov rbx,rdx
+	mov rsi,rcx
+	jne short 0000000180B81759h
+	lea rcx,[1835517A8h]
+	call 000000018037BB90h
+	mov byte ptr [18374BE9Fh],1
+	mov rax,[rdi+20h]
+	movups xmm0,[rbx]
+	mov rbp,[rsi+8]
+	test byte ptr [rax+135h],1
+	movups [rsp+20h],xmm0
+	jne short 0000000180B8177Ah
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rax,[rax+0C0h]
+	mov rcx,[rax+20h]
+	mov rax,[rdi+20h]
+	mov rsi,[rcx]
+	test byte ptr [rax+135h],1
+	jne short 0000000180B8179Dh
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rdx,[rax+0C0h]
+	mov rcx,rbx
+	mov rdx,[rdx+20h]
+	call rsi
+	mov r9,[1835517A8h]
+	mov r8d,eax
+	mov rdx,[rsp+20h]
+	mov rcx,rbp
+	call 0000000180E46E20h
+	mov rbx,[rsp+60h]
+	mov rbp,[rsp+68h]
+	mov rsi,[rsp+70h]
+	add rsp,50h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -80
+	007 Compare [0x18374BE9F], 0
+	008 Move rdi, r8
+	009 Move rbx, rdx
+	010 Move rsi, rcx
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x1835517A8]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x18374BE9F], 1
+	015 Move rax, [rdi+32]
+	016 Move xmm0, [rbx]
+	017 Move rbp, [rsi+8]
+	018 Compare [rax+309], 1
+	019 Move stack:0x20, xmm0
+	020 JumpIfNotEqual {23}
+	021 Move rcx, rax
+	022 Call 0x180384C90, rcx, rdx, r8, r9
+	023 Move rax, [rax+192]
+	024 Move rcx, [rax+32]
+	025 Move rax, [rdi+32]
+	026 Move rsi, [rcx]
+	027 Compare [rax+309], 1
+	028 JumpIfNotEqual {31}
+	029 Move rcx, rax
+	030 Call 0x180384C90, rcx, rdx, r8, r9
+	031 Move rdx, [rax+192]
+	032 Move rcx, rbx
+	033 Move rdx, [rdx+32]
+	034 Call rsi
+	035 Move r9, [0x1835517A8]
+	036 Move r8, rax
+	037 Move rdx, stack:0x20
+	038 Move rcx, rbp
+	039 Call 0x180E46E20, rcx, rdx, r8
+	040 Move rbx, stack:0x60
+	041 Move rbp, stack:0x68
+	042 Move rsi, stack:0x70
+	043 ShiftStack 80
+	044 Move rdi, stack:0x0
+	045 ShiftStack 8
+	046 Return 
+

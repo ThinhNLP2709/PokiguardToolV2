@@ -1,0 +1,201 @@
+Type: System.Security.Cryptography.SHA1CryptoServiceProvider
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374EA77h],0
+	mov rdi,rcx
+	jne short 00000001816CD2F9h
+	lea rcx,[183508948h]
+	call 000000018037BB90h
+	mov byte ptr [18374EA77h],1
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001816AD860h
+	mov rcx,[183508948h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001816ACBD0h
+	lea rcx,[rdi+28h]
+	mov [rdi+28h],rbx
+	mov rdx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374EA77], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183508948]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374EA77], 1
+	011 Move rdx, 0
+	012 Move rcx, rdi
+	013 Call SHA1..ctor, rcx, rdx
+	014 Move rcx, typeof(System.Security.Cryptography.SHA1Internal)
+	015 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	016 Move rdx, 0
+	017 Move rcx, rax
+	018 Move rbx, rax
+	019 Call SHA1Internal..ctor, rcx, rdx
+	020 LoadAddress rcx, [rdi+40]
+	021 Move [rdi+40], rbx
+	022 Move rdx, rbx
+	023 Move rbx, stack:0x30
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Return 
+
+Method: System.Void Finalize()
+
+Disassembly:
+	mov [rsp+8],rcx
+	sub rsp,48h
+	mov qword ptr [rsp+28h],0
+	lea rax,[rsp+50h]
+	mov [rsp+30h],rax
+	mov rcx,[rsp+50h]
+	mov r8,[rcx]
+	mov rax,[r8+1F8h]
+	mov r8,[r8+200h]
+	xor edx,edx
+	call rax
+	nop
+	xor edx,edx
+	mov rcx,[rsp+50h]
+	call 0000000180456D90h
+	jmp short 00000001816A7F1Bh
+	xor edx,edx
+	mov rcx,[rsp+50h]
+	call 0000000180456D90h
+	mov rcx,[rsp+28h]
+	test rcx,rcx
+	jne short 00000001816A7F20h
+	add rsp,48h
+	ret
+	call 000000018037BEC0h
+
+ISIL:
+	001 Move stack:0x8, rcx
+	002 ShiftStack -72
+	003 Move stack:0x28, 0
+	004 LoadAddress rax, stack:0x50
+	005 Move stack:0x30, rax
+	006 Move rcx, stack:0x50
+	007 Move r8, [rcx]
+	008 Move rax, [r8+504]
+	009 Move r8, [r8+512]
+	010 Move rdx, 0
+	011 Call rax
+	012 Nop 
+	013 Move rdx, 0
+	014 Move rcx, stack:0x50
+	015 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	016 Goto {23}
+	017 Move rdx, 0
+	018 Move rcx, stack:0x50
+	019 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	020 Move rcx, stack:0x28
+	021 Compare rcx, 0
+	022 JumpIfNotEqual {25}
+	023 ShiftStack 72
+	024 Return 
+	025 Call 0x18037BEC0, rcx, rdx, r8, r9
+
+Method: System.Void Dispose(System.Boolean disposing)
+
+Disassembly:
+	xor r8d,r8d
+	jmp near ptr 0000000181697D80h
+
+ISIL:
+	001 Move r8, 0
+	002 Call HashAlgorithm.Dispose, rcx, rdx
+	003 Return 
+
+Method: System.Void HashCore(System.Byte[] rgb, System.Int32 ibStart, System.Int32 cbSize)
+
+Disassembly:
+	sub rsp,38h
+	mov dword ptr [rcx+20h],1
+	mov rcx,[rcx+28h]
+	test rcx,rcx
+	je short 00000001816CD276h
+	mov qword ptr [rsp+60h],0
+	add rsp,38h
+	jmp near ptr 00000001816AB7D0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move [rcx+32], 1
+	003 Move rcx, [rcx+40]
+	004 Compare rcx, 0
+	005 JumpIfEqual {10}
+	006 Move stack:0x60, 0
+	007 ShiftStack 56
+	008 Call SHA1Internal.HashCore, rcx, rdx, r8, r9
+	009 Return 
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Byte[] HashFinal()
+
+Disassembly:
+	sub rsp,28h
+	mov dword ptr [rcx+20h],0
+	mov rcx,[rcx+28h]
+	test rcx,rcx
+	je short 00000001816CD29Fh
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 00000001816AB910h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move [rcx+32], 0
+	003 Move rcx, [rcx+40]
+	004 Compare rcx, 0
+	005 JumpIfEqual {10}
+	006 Move rdx, 0
+	007 ShiftStack 40
+	008 Call SHA1Internal.HashFinal, rcx, rdx
+	009 Return rax
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Initialize()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+28h]
+	test rcx,rcx
+	je short 00000001816CD2C8h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 00000001816AC180h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+40]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move rdx, 0
+	006 ShiftStack 40
+	007 Call SHA1Internal.Initialize, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+

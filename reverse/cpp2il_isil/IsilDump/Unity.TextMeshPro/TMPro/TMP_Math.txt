@@ -1,0 +1,101 @@
+Type: TMPro.TMP_Math
+
+Method: System.Boolean Approximately(System.Single a, System.Single b)
+
+Disassembly:
+	movss xmm3,dword ptr [182A506D0h]
+	movaps xmm2,xmm1
+	subss xmm2,xmm3
+	comiss xmm0,xmm2
+	ja short 00000001823DD677h
+	xor al,al
+	ret
+	addss xmm1,xmm3
+	comiss xmm1,xmm0
+	seta al
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A506D0]
+	002 Move xmm2, xmm1
+	003 Subtract xmm2, xmm2, xmm3
+	004 Compare xmm0, xmm2
+	005 JumpIfGreater {8}
+	006 Move rax, 0
+	007 Return rax
+	008 Add xmm1, xmm1, xmm3
+	009 Compare xmm1, xmm0
+	010 NotImplemented "seta al"
+	011 Return rax
+
+Method: System.Int32 Mod(System.Int32 a, System.Int32 b)
+
+Disassembly:
+	mov r8d,edx
+	mov eax,ecx
+	cdq
+	idiv r8d
+	test edx,edx
+	lea ecx,[rdx+r8]
+	cmovs edx,ecx
+	mov eax,edx
+	ret
+
+ISIL:
+	001 Move r8, rdx
+	002 Move rax, rcx
+	003 Move TEMP, rax
+	004 ShiftRight TEMP, 31
+	005 Compare TEMP, 1
+	006 JumpIfNotEqual {9}
+	007 Move rdx, 0xFFFFFFFF
+	008 Goto {10}
+	009 Move rdx, 0
+	010 Nop 
+	011 NotImplemented "idiv r8d"
+	012 Compare rdx, 0
+	013 LoadAddress rcx, [rdx+r8]
+	014 JumpIfNotSign {16}
+	015 Move rdx, rcx
+	016 Nop 
+	017 Move rax, rdx
+	018 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837548A9h],0
+	jne short 00000001823DD6D0h
+	lea rcx,[18351A730h]
+	call 000000018037BB90h
+	mov byte ptr [1837548A9h],1
+	mov rax,[18351A730h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx],46FFFE00h
+	mov dword ptr [rcx+4],46FFFE00h
+	mov rax,[18351A730h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx+8],0C6FFFE00h
+	mov dword ptr [rcx+0Ch],0C6FFFE00h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837548A9], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x18351A730]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837548A9], 1
+	007 Move rax, typeof(TMPro.TMP_Math)
+	008 Move rcx, [rax+184]
+	009 Move [rcx], 0x46FFFE00
+	010 Move [rcx+4], 0x46FFFE00
+	011 Move rax, typeof(TMPro.TMP_Math)
+	012 Move rcx, [rax+184]
+	013 Move [rcx+8], 0xC6FFFE00
+	014 Move [rcx+12], 0xC6FFFE00
+	015 ShiftStack 40
+	016 Return 
+

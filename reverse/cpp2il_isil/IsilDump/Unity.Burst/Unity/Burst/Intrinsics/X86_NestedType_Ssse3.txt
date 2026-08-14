@@ -1,0 +1,1118 @@
+Type: Unity.Burst.Intrinsics.X86+Ssse3
+
+Method: System.Boolean get_IsSsse3Supported()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 abs_epi8(Unity.Burst.Intrinsics.v128 a)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	cmp byte ptr [183752A7Bh],0
+	mov rbp,rdx
+	mov r14,rcx
+	jne short 0000000181EDA90Ch
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183752A7Bh],1
+	xorps xmm0,xmm0
+	mov rbx,r14
+	movups [r14],xmm0
+	sub rbp,r14
+	mov esi,10h
+	xchg ax,ax
+	mov rcx,[183562D00h]
+	movsx edi,byte ptr [rbx+rbp]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181EDA939h
+	call 000000018037BED0h
+	mov eax,edi
+	neg eax
+	cmovs eax,edi
+	mov [rbx],al
+	inc rbx
+	sub rsi,1
+	jne short 0000000181EDA920h
+	mov rbx,[rsp+30h]
+	mov rax,r14
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Compare [0x183752A7B], 0
+	009 Move rbp, rdx
+	010 Move r14, rcx
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x183562D00]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x183752A7B], 1
+	015 Move xmm0, 0
+	016 Move rbx, r14
+	017 Move [r14], xmm0
+	018 Subtract rbp, rbp, r14
+	019 Move rsi, 16
+	020 Nop 
+	021 Move rcx, typeof(System.Math)
+	022 Move rdi, [rbx+rbp]
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move rax, rdi
+	027 Neg rax
+	028 JumpIfNotSign {30}
+	029 Move rax, rdi
+	030 Nop 
+	031 Move [rbx], rax
+	032 Add rbx, rbx, 1
+	033 Subtract rsi, rsi, 1
+	034 JumpIfNotEqual {21}
+	035 Move rbx, stack:0x30
+	036 Move rax, r14
+	037 Move rbp, stack:0x38
+	038 Move rsi, stack:0x40
+	039 Move rdi, stack:0x48
+	040 ShiftStack 32
+	041 Move r14, stack:0x0
+	042 ShiftStack 8
+	043 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 abs_epi16(Unity.Burst.Intrinsics.v128 a)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	cmp byte ptr [183752A7Ch],0
+	mov rbp,rdx
+	mov r14,rcx
+	jne short 0000000181EDA7CCh
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183752A7Ch],1
+	xorps xmm0,xmm0
+	mov rbx,r14
+	movups [r14],xmm0
+	sub rbp,r14
+	mov esi,8
+	xchg ax,ax
+	mov rcx,[183562D00h]
+	movsx edi,word ptr [rbx+rbp]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181EDA7F9h
+	call 000000018037BED0h
+	mov eax,edi
+	neg eax
+	cmovs eax,edi
+	mov [rbx],ax
+	add rbx,2
+	sub rsi,1
+	jne short 0000000181EDA7E0h
+	mov rbx,[rsp+30h]
+	mov rax,r14
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Compare [0x183752A7C], 0
+	009 Move rbp, rdx
+	010 Move r14, rcx
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x183562D00]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x183752A7C], 1
+	015 Move xmm0, 0
+	016 Move rbx, r14
+	017 Move [r14], xmm0
+	018 Subtract rbp, rbp, r14
+	019 Move rsi, 8
+	020 Nop 
+	021 Move rcx, typeof(System.Math)
+	022 Move rdi, [rbx+rbp]
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move rax, rdi
+	027 Neg rax
+	028 JumpIfNotSign {30}
+	029 Move rax, rdi
+	030 Nop 
+	031 Move [rbx], rax
+	032 Add rbx, rbx, 2
+	033 Subtract rsi, rsi, 1
+	034 JumpIfNotEqual {21}
+	035 Move rbx, stack:0x30
+	036 Move rax, r14
+	037 Move rbp, stack:0x38
+	038 Move rsi, stack:0x40
+	039 Move rdi, stack:0x48
+	040 ShiftStack 32
+	041 Move r14, stack:0x0
+	042 ShiftStack 8
+	043 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 abs_epi32(Unity.Burst.Intrinsics.v128 a)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183752A7Dh],0
+	mov rdi,rdx
+	mov rbp,rcx
+	jne short 0000000181EDA866h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183752A7Dh],1
+	xorps xmm0,xmm0
+	mov rbx,rbp
+	movups [rbp],xmm0
+	sub rdi,rbp
+	mov esi,4
+	nop dword ptr [rax+rax]
+	mov rcx,[183562D00h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181EDA895h
+	call 000000018037BED0h
+	movsxd rax,dword ptr [rbx+rdi]
+	mov rcx,rax
+	neg rcx
+	cmovs rcx,rax
+	mov [rbx],ecx
+	add rbx,4
+	sub rsi,1
+	jne short 0000000181EDA880h
+	mov rbx,[rsp+30h]
+	mov rax,rbp
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183752A7D], 0
+	008 Move rdi, rdx
+	009 Move rbp, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183562D00]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183752A7D], 1
+	014 Move xmm0, 0
+	015 Move rbx, rbp
+	016 Move [rbp], xmm0
+	017 Subtract rdi, rdi, rbp
+	018 Move rsi, 4
+	019 Nop 
+	020 Move rcx, typeof(System.Math)
+	021 Compare [rcx+228], 0
+	022 JumpIfNotEqual {24}
+	023 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	024 Move rax, [rbx+rdi]
+	025 Move rcx, rax
+	026 Neg rcx
+	027 JumpIfNotSign {29}
+	028 Move rcx, rax
+	029 Nop 
+	030 Move [rbx], rcx
+	031 Add rbx, rbx, 4
+	032 Subtract rsi, rsi, 1
+	033 JumpIfNotEqual {20}
+	034 Move rbx, stack:0x30
+	035 Move rax, rbp
+	036 Move rbp, stack:0x38
+	037 Move rsi, stack:0x40
+	038 ShiftStack 32
+	039 Move rdi, stack:0x0
+	040 ShiftStack 8
+	041 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 shuffle_epi8(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	xorps xmm0,xmm0
+	mov r11,rcx
+	movups [rcx],xmm0
+	mov r9,rcx
+	mov r10d,10h
+	cmp byte ptr [r8],0
+	jl short 0000000181EDADF5h
+	movzx eax,byte ptr [r8]
+	and eax,0Fh
+	movzx ecx,byte ptr [rax+rdx]
+	jmp short 0000000181EDADF7h
+	xor cl,cl
+	mov [r9],cl
+	inc r8
+	inc r9
+	sub r10,1
+	jne short 0000000181EDADE2h
+	mov rax,r11
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Move r11, rcx
+	003 Move [rcx], xmm0
+	004 Move r9, rcx
+	005 Move r10, 16
+	006 Compare [r8], 0
+	007 JumpIfLess {12}
+	008 Move rax, [r8]
+	009 And rax, rax, 15
+	010 Move rcx, [rax+rdx]
+	011 Goto {13}
+	012 Move rcx, 0
+	013 Move [r9], rcx
+	014 Add r8, r8, 1
+	015 Add r9, r9, 1
+	016 Subtract r10, r10, 1
+	017 JumpIfNotEqual {6}
+	018 Move rax, r11
+	019 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 alignr_epi8(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, System.Int32 count)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rdi
+	movsxd r10,r9d
+	mov r11d,10h
+	add r10,rdx
+	xor ebx,ebx
+	mov edx,r11d
+	xorps xmm0,xmm0
+	sub edx,r9d
+	mov rdi,rcx
+	mov rax,rcx
+	movups [rcx],xmm0
+	test edx,edx
+	jle short 0000000181EDA9CBh
+	mov r9d,edx
+	mov ebx,edx
+	nop dword ptr [rax]
+	nop word ptr [rax+rax]
+	movzx ecx,byte ptr [r10]
+	lea r10,[r10+1]
+	mov rdx,rax
+	inc rax
+	mov [rdx],cl
+	sub r9,1
+	jne short 0000000181EDA9B0h
+	cmp ebx,r11d
+	jge short 0000000181EDA9F6h
+	sub r11d,ebx
+	mov r9d,r11d
+	nop dword ptr [rax]
+	nop word ptr [rax+rax]
+	movzx ecx,byte ptr [r8]
+	lea r8,[r8+1]
+	mov rdx,rax
+	inc rax
+	mov [rdx],cl
+	sub r9,1
+	jne short 0000000181EDA9E0h
+	mov rbx,[rsp+8]
+	mov rax,rdi
+	mov rdi,[rsp+10h]
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rdi
+	003 Move r10, r9
+	004 Move r11, 16
+	005 Add r10, r10, rdx
+	006 Move rbx, 0
+	007 Move rdx, r11
+	008 Move xmm0, 0
+	009 Subtract rdx, rdx, r9
+	010 Move rdi, rcx
+	011 Move rax, rcx
+	012 Move [rcx], xmm0
+	013 Compare rdx, 0
+	014 JumpIfLessOrEqual {28}
+	015 Move r9, rdx
+	016 Move rbx, rdx
+	017 Nop 
+	018 Nop 
+	019 Move rcx, [r10]
+	020 LoadAddress r10, [r10+1]
+	021 Move rdx, rax
+	022 Add rax, rax, 1
+	023 Move [rdx], rcx
+	024 Subtract r9, r9, 1
+	025 JumpIfNotEqual {19}
+	026 Compare rbx, r11
+	027 JumpIfGreaterOrEqual {39}
+	028 Subtract r11, r11, rbx
+	029 Move r9, r11
+	030 Nop 
+	031 Nop 
+	032 Move rcx, [r8]
+	033 LoadAddress r8, [r8+1]
+	034 Move rdx, rax
+	035 Add rax, rax, 1
+	036 Move [rdx], rcx
+	037 Subtract r9, r9, 1
+	038 JumpIfNotEqual {32}
+	039 Move rbx, stack:0x8
+	040 Move rax, rdi
+	041 Move rdi, stack:0x10
+	042 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hadd_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	xchg ax,ax
+	nop dword ptr [rax]
+	nop word ptr [rax+rax]
+	movzx eax,word ptr [rdx+2]
+	add ax,[rdx]
+	mov [rcx],ax
+	movzx eax,word ptr [r8+2]
+	add ax,[r8]
+	mov [rcx+8],ax
+	movzx eax,word ptr [rdx+6]
+	add ax,[rdx+4]
+	mov [rcx+2],ax
+	movzx eax,word ptr [r8+6]
+	add ax,[r8+4]
+	mov [rcx+0Ah],ax
+	movzx eax,word ptr [rdx+0Ah]
+	add ax,[rdx+8]
+	mov [rcx+4],ax
+	movzx eax,word ptr [r8+0Ah]
+	add ax,[r8+8]
+	mov [rcx+0Ch],ax
+	movzx eax,word ptr [rdx+0Eh]
+	add ax,[rdx+0Ch]
+	mov [rcx+6],ax
+	movzx eax,word ptr [r8+0Eh]
+	add ax,[r8+0Ch]
+	mov [rcx+0Eh],ax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Nop 
+	002 Nop 
+	003 Nop 
+	004 Move rax, [rdx+2]
+	005 Add rax, rax, [rdx]
+	006 Move [rcx], rax
+	007 Move rax, [r8+2]
+	008 Add rax, rax, [r8]
+	009 Move [rcx+8], rax
+	010 Move rax, [rdx+6]
+	011 Add rax, rax, [rdx+4]
+	012 Move [rcx+2], rax
+	013 Move rax, [r8+6]
+	014 Add rax, rax, [r8+4]
+	015 Move [rcx+10], rax
+	016 Move rax, [rdx+10]
+	017 Add rax, rax, [rdx+8]
+	018 Move [rcx+4], rax
+	019 Move rax, [r8+10]
+	020 Add rax, rax, [r8+8]
+	021 Move [rcx+12], rax
+	022 Move rax, [rdx+14]
+	023 Add rax, rax, [rdx+12]
+	024 Move [rcx+6], rax
+	025 Move rax, [r8+14]
+	026 Add rax, rax, [r8+12]
+	027 Move [rcx+14], rax
+	028 Move rax, rcx
+	029 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hadds_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbp,rdx
+	lea rbx,[r8+2]
+	xorps xmm0,xmm0
+	xor edi,edi
+	movups [rcx],xmm0
+	sub rbp,r8
+	mov rsi,rcx
+	nop dword ptr [rax]
+	movsx ecx,word ptr [rbx+rbp-2]
+	xor edx,edx
+	movsx eax,word ptr [rbx+rbp]
+	add ecx,eax
+	call 0000000181ED2F90h
+	movsx ecx,word ptr [rbx-2]
+	xor edx,edx
+	mov [rsi+rdi*2],ax
+	movsx eax,word ptr [rbx]
+	add ecx,eax
+	call 0000000181ED2F90h
+	mov [rsi+rdi*2+8],ax
+	lea rbx,[rbx+4]
+	inc rdi
+	cmp rdi,3
+	jle short 0000000181EDAAF0h
+	mov rbx,[rsp+30h]
+	mov rax,rsi
+	mov rsi,[rsp+40h]
+	mov rbp,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbp, rdx
+	008 LoadAddress rbx, [r8+2]
+	009 Move xmm0, 0
+	010 Move rdi, 0
+	011 Move [rcx], xmm0
+	012 Subtract rbp, rbp, r8
+	013 Move rsi, rcx
+	014 Nop 
+	015 Move rcx, [rbx+0xFFFFFFFE+rbp]
+	016 Move rdx, 0
+	017 Move rax, [rbx+rbp]
+	018 Add rcx, rcx, rax
+	019 Call X86.Saturate_To_Int16, rcx, rdx
+	020 Move rcx, [rbx-2]
+	021 Move rdx, 0
+	022 Move [rsi+rdi*2], rax
+	023 Move rax, [rbx]
+	024 Add rcx, rcx, rax
+	025 Call X86.Saturate_To_Int16, rcx, rdx
+	026 Move [rsi+8+rdi*2], rax
+	027 LoadAddress rbx, [rbx+4]
+	028 Add rdi, rdi, 1
+	029 Compare rdi, 3
+	030 JumpIfLessOrEqual {15}
+	031 Move rbx, stack:0x30
+	032 Move rax, rsi
+	033 Move rsi, stack:0x40
+	034 Move rbp, stack:0x38
+	035 ShiftStack 32
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hadd_epi32(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	mov eax,[rdx+4]
+	add eax,[rdx]
+	mov [rcx],eax
+	mov eax,[rdx+0Ch]
+	add eax,[rdx+8]
+	mov [rcx+4],eax
+	mov eax,[r8+4]
+	add eax,[r8]
+	mov [rcx+8],eax
+	mov eax,[r8+0Ch]
+	add eax,[r8+8]
+	mov [rcx+0Ch],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx+4]
+	002 Add rax, rax, [rdx]
+	003 Move [rcx], rax
+	004 Move rax, [rdx+12]
+	005 Add rax, rax, [rdx+8]
+	006 Move [rcx+4], rax
+	007 Move rax, [r8+4]
+	008 Add rax, rax, [r8]
+	009 Move [rcx+8], rax
+	010 Move rax, [r8+12]
+	011 Add rax, rax, [r8+8]
+	012 Move [rcx+12], rax
+	013 Move rax, rcx
+	014 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hsub_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	xchg ax,ax
+	movzx eax,word ptr [rdx]
+	sub ax,[rdx+2]
+	mov [rcx],ax
+	movzx eax,word ptr [r8]
+	sub ax,[r8+2]
+	mov [rcx+8],ax
+	movzx eax,word ptr [rdx+4]
+	sub ax,[rdx+6]
+	mov [rcx+2],ax
+	movzx eax,word ptr [r8+4]
+	sub ax,[r8+6]
+	mov [rcx+0Ah],ax
+	movzx eax,word ptr [rdx+8]
+	sub ax,[rdx+0Ah]
+	mov [rcx+4],ax
+	movzx eax,word ptr [r8+8]
+	sub ax,[r8+0Ah]
+	mov [rcx+0Ch],ax
+	movzx eax,word ptr [rdx+0Ch]
+	sub ax,[rdx+0Eh]
+	mov [rcx+6],ax
+	movzx eax,word ptr [r8+0Ch]
+	sub ax,[r8+0Eh]
+	mov [rcx+0Eh],ax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rdx]
+	003 Subtract rax, rax, [rdx+2]
+	004 Move [rcx], rax
+	005 Move rax, [r8]
+	006 Subtract rax, rax, [r8+2]
+	007 Move [rcx+8], rax
+	008 Move rax, [rdx+4]
+	009 Subtract rax, rax, [rdx+6]
+	010 Move [rcx+2], rax
+	011 Move rax, [r8+4]
+	012 Subtract rax, rax, [r8+6]
+	013 Move [rcx+10], rax
+	014 Move rax, [rdx+8]
+	015 Subtract rax, rax, [rdx+10]
+	016 Move [rcx+4], rax
+	017 Move rax, [r8+8]
+	018 Subtract rax, rax, [r8+10]
+	019 Move [rcx+12], rax
+	020 Move rax, [rdx+12]
+	021 Subtract rax, rax, [rdx+14]
+	022 Move [rcx+6], rax
+	023 Move rax, [r8+12]
+	024 Subtract rax, rax, [r8+14]
+	025 Move [rcx+14], rax
+	026 Move rax, rcx
+	027 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hsubs_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbp,rdx
+	lea rbx,[r8+2]
+	xorps xmm0,xmm0
+	xor edi,edi
+	movups [rcx],xmm0
+	sub rbp,r8
+	mov rsi,rcx
+	nop dword ptr [rax]
+	movsx ecx,word ptr [rbx+rbp-2]
+	xor edx,edx
+	movsx eax,word ptr [rbx+rbp]
+	sub ecx,eax
+	call 0000000181ED2F90h
+	movsx ecx,word ptr [rbx-2]
+	xor edx,edx
+	mov [rsi+rdi*2],ax
+	movsx eax,word ptr [rbx]
+	sub ecx,eax
+	call 0000000181ED2F90h
+	mov [rsi+rdi*2+8],ax
+	lea rbx,[rbx+4]
+	inc rdi
+	cmp rdi,3
+	jle short 0000000181EDAC10h
+	mov rbx,[rsp+30h]
+	mov rax,rsi
+	mov rsi,[rsp+40h]
+	mov rbp,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbp, rdx
+	008 LoadAddress rbx, [r8+2]
+	009 Move xmm0, 0
+	010 Move rdi, 0
+	011 Move [rcx], xmm0
+	012 Subtract rbp, rbp, r8
+	013 Move rsi, rcx
+	014 Nop 
+	015 Move rcx, [rbx+0xFFFFFFFE+rbp]
+	016 Move rdx, 0
+	017 Move rax, [rbx+rbp]
+	018 Subtract rcx, rcx, rax
+	019 Call X86.Saturate_To_Int16, rcx, rdx
+	020 Move rcx, [rbx-2]
+	021 Move rdx, 0
+	022 Move [rsi+rdi*2], rax
+	023 Move rax, [rbx]
+	024 Subtract rcx, rcx, rax
+	025 Call X86.Saturate_To_Int16, rcx, rdx
+	026 Move [rsi+8+rdi*2], rax
+	027 LoadAddress rbx, [rbx+4]
+	028 Add rdi, rdi, 1
+	029 Compare rdi, 3
+	030 JumpIfLessOrEqual {15}
+	031 Move rbx, stack:0x30
+	032 Move rax, rsi
+	033 Move rsi, stack:0x40
+	034 Move rbp, stack:0x38
+	035 ShiftStack 32
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hsub_epi32(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	mov eax,[rdx]
+	sub eax,[rdx+4]
+	mov [rcx],eax
+	mov eax,[rdx+8]
+	sub eax,[rdx+0Ch]
+	mov [rcx+4],eax
+	mov eax,[r8]
+	sub eax,[r8+4]
+	mov [rcx+8],eax
+	mov eax,[r8+8]
+	sub eax,[r8+0Ch]
+	mov [rcx+0Ch],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Subtract rax, rax, [rdx+4]
+	003 Move [rcx], rax
+	004 Move rax, [rdx+8]
+	005 Subtract rax, rax, [rdx+12]
+	006 Move [rcx+4], rax
+	007 Move rax, [r8]
+	008 Subtract rax, rax, [r8+4]
+	009 Move [rcx+8], rax
+	010 Move rax, [r8+8]
+	011 Subtract rax, rax, [r8+12]
+	012 Move [rcx+12], rax
+	013 Move rax, rcx
+	014 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 maddubs_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	mov rdi,r8
+	lea rbx,[rdx+1]
+	sub rdi,rdx
+	xorps xmm0,xmm0
+	mov rbp,rcx
+	mov r14,rcx
+	sub rbp,rdx
+	mov esi,8
+	movups [rcx],xmm0
+	nop dword ptr [rax+rax]
+	movzx eax,byte ptr [rbx-1]
+	movsx ecx,byte ptr [rdi+rbx-1]
+	movsx edx,byte ptr [rdi+rbx]
+	imul ecx,eax
+	movzx eax,byte ptr [rbx]
+	imul edx,eax
+	add ecx,edx
+	xor edx,edx
+	call 0000000181ED2F90h
+	mov [rbx+rbp-1],ax
+	lea rbx,[rbx+2]
+	sub rsi,1
+	jne short 0000000181EDACA0h
+	mov rbx,[rsp+30h]
+	mov rax,r14
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Move rdi, r8
+	009 LoadAddress rbx, [rdx+1]
+	010 Subtract rdi, rdi, rdx
+	011 Move xmm0, 0
+	012 Move rbp, rcx
+	013 Move r14, rcx
+	014 Subtract rbp, rbp, rdx
+	015 Move rsi, 8
+	016 Move [rcx], xmm0
+	017 Nop 
+	018 Move rax, [rbx-1]
+	019 Move rcx, [rdi+0xFFFFFFFF+rbx]
+	020 Move rdx, [rdi+rbx]
+	021 Multiply rcx, rcx, rax
+	022 Move rax, [rbx]
+	023 Multiply rdx, rdx, rax
+	024 Add rcx, rcx, rdx
+	025 Move rdx, 0
+	026 Call X86.Saturate_To_Int16, rcx, rdx
+	027 Move [rbx+0xFFFFFFFF+rbp], rax
+	028 LoadAddress rbx, [rbx+2]
+	029 Subtract rsi, rsi, 1
+	030 JumpIfNotEqual {18}
+	031 Move rbx, stack:0x30
+	032 Move rax, r14
+	033 Move rbp, stack:0x38
+	034 Move rsi, stack:0x40
+	035 Move rdi, stack:0x48
+	036 ShiftStack 32
+	037 Move r14, stack:0x0
+	038 ShiftStack 8
+	039 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 mulhrs_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	mov r10,rcx
+	nop dword ptr [rax]
+	nop word ptr [rax+rax]
+	movsx r9d,word ptr [rdx]
+	movsx eax,word ptr [r8]
+	imul r9d,eax
+	sar r9d,0Eh
+	inc r9d
+	sar r9d,1
+	mov [rcx],r9w
+	movsx ecx,word ptr [rdx+2]
+	movsx eax,word ptr [r8+2]
+	imul ecx,eax
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+2],cx
+	movsx ecx,word ptr [rdx+4]
+	movsx eax,word ptr [r8+4]
+	imul ecx,eax
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+4],cx
+	movsx ecx,word ptr [rdx+6]
+	movsx eax,word ptr [r8+6]
+	imul ecx,eax
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+6],cx
+	movsx ecx,word ptr [rdx+8]
+	movsx eax,word ptr [r8+8]
+	imul ecx,eax
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+8],cx
+	movsx ecx,word ptr [rdx+0Ah]
+	movsx eax,word ptr [r8+0Ah]
+	imul ecx,eax
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+0Ah],cx
+	movsx ecx,word ptr [rdx+0Ch]
+	movsx eax,word ptr [r8+0Ch]
+	imul ecx,eax
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+0Ch],cx
+	movsx eax,word ptr [r8+0Eh]
+	movsx ecx,word ptr [rdx+0Eh]
+	imul ecx,eax
+	mov rax,r10
+	sar ecx,0Eh
+	inc ecx
+	sar ecx,1
+	mov [r10+0Eh],cx
+	ret
+
+ISIL:
+	001 Move r10, rcx
+	002 Nop 
+	003 Nop 
+	004 Move r9, [rdx]
+	005 Move rax, [r8]
+	006 Multiply r9, r9, rax
+	007 ShiftRight r9, 14
+	008 Add r9, r9, 1
+	009 ShiftRight r9, 1
+	010 Move [rcx], r9
+	011 Move rcx, [rdx+2]
+	012 Move rax, [r8+2]
+	013 Multiply rcx, rcx, rax
+	014 ShiftRight rcx, 14
+	015 Add rcx, rcx, 1
+	016 ShiftRight rcx, 1
+	017 Move [r10+2], rcx
+	018 Move rcx, [rdx+4]
+	019 Move rax, [r8+4]
+	020 Multiply rcx, rcx, rax
+	021 ShiftRight rcx, 14
+	022 Add rcx, rcx, 1
+	023 ShiftRight rcx, 1
+	024 Move [r10+4], rcx
+	025 Move rcx, [rdx+6]
+	026 Move rax, [r8+6]
+	027 Multiply rcx, rcx, rax
+	028 ShiftRight rcx, 14
+	029 Add rcx, rcx, 1
+	030 ShiftRight rcx, 1
+	031 Move [r10+6], rcx
+	032 Move rcx, [rdx+8]
+	033 Move rax, [r8+8]
+	034 Multiply rcx, rcx, rax
+	035 ShiftRight rcx, 14
+	036 Add rcx, rcx, 1
+	037 ShiftRight rcx, 1
+	038 Move [r10+8], rcx
+	039 Move rcx, [rdx+10]
+	040 Move rax, [r8+10]
+	041 Multiply rcx, rcx, rax
+	042 ShiftRight rcx, 14
+	043 Add rcx, rcx, 1
+	044 ShiftRight rcx, 1
+	045 Move [r10+10], rcx
+	046 Move rcx, [rdx+12]
+	047 Move rax, [r8+12]
+	048 Multiply rcx, rcx, rax
+	049 ShiftRight rcx, 14
+	050 Add rcx, rcx, 1
+	051 ShiftRight rcx, 1
+	052 Move [r10+12], rcx
+	053 Move rax, [r8+14]
+	054 Move rcx, [rdx+14]
+	055 Multiply rcx, rcx, rax
+	056 Move rax, r10
+	057 ShiftRight rcx, 14
+	058 Add rcx, rcx, 1
+	059 ShiftRight rcx, 1
+	060 Move [r10+14], rcx
+	061 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 sign_epi8(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	xorps xmm0,xmm0
+	mov r9,rcx
+	movups [rcx],xmm0
+	sub r8,rdx
+	mov r10d,10h
+	cmp byte ptr [r8+rdx],0
+	jl short 0000000181EDAEC9h
+	cmp byte ptr [rdx+r8],0
+	je short 0000000181EDAEC5h
+	movzx eax,byte ptr [rdx]
+	jmp short 0000000181EDAECEh
+	xor al,al
+	jmp short 0000000181EDAECEh
+	movzx eax,byte ptr [rdx]
+	neg al
+	mov [r9],al
+	inc rdx
+	inc r9
+	sub r10,1
+	jne short 0000000181EDAEB2h
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Move r9, rcx
+	003 Move [rcx], xmm0
+	004 Subtract r8, r8, rdx
+	005 Move r10, 16
+	006 Compare [r8+rdx], 0
+	007 JumpIfLess {14}
+	008 Compare [rdx+r8], 0
+	009 JumpIfEqual {12}
+	010 Move rax, [rdx]
+	011 Goto {16}
+	012 Move rax, 0
+	013 Goto {16}
+	014 Move rax, [rdx]
+	015 Neg rax
+	016 Move [r9], rax
+	017 Add rdx, rdx, 1
+	018 Add r9, r9, 1
+	019 Subtract r10, r10, 1
+	020 JumpIfNotEqual {6}
+	021 Move rax, rcx
+	022 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 sign_epi16(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	xorps xmm0,xmm0
+	mov r9,rcx
+	movups [rcx],xmm0
+	sub r8,rdx
+	mov r10d,8
+	movzx eax,word ptr [r8+rdx]
+	test ax,ax
+	js short 0000000181EDAE37h
+	je short 0000000181EDAE33h
+	movzx eax,word ptr [rdx]
+	jmp short 0000000181EDAE3Dh
+	xor eax,eax
+	jmp short 0000000181EDAE3Dh
+	movzx eax,word ptr [rdx]
+	neg ax
+	mov [r9],ax
+	add rdx,2
+	add r9,2
+	sub r10,1
+	jne short 0000000181EDAE22h
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Move r9, rcx
+	003 Move [rcx], xmm0
+	004 Subtract r8, r8, rdx
+	005 Move r10, 8
+	006 Move rax, [r8+rdx]
+	007 Compare rax, 0
+	008 JumpIfSign {14}
+	009 JumpIfEqual {12}
+	010 Move rax, [rdx]
+	011 Goto {16}
+	012 Move rax, 0
+	013 Goto {16}
+	014 Move rax, [rdx]
+	015 Neg rax
+	016 Move [r9], rax
+	017 Add rdx, rdx, 2
+	018 Add r9, r9, 2
+	019 Subtract r10, r10, 1
+	020 JumpIfNotEqual {6}
+	021 Move rax, rcx
+	022 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 sign_epi32(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	xorps xmm0,xmm0
+	mov r9,rcx
+	movups [rcx],xmm0
+	sub r8,rdx
+	mov r10d,4
+	mov eax,[r8+rdx]
+	test eax,eax
+	js short 0000000181EDAE84h
+	je short 0000000181EDAE80h
+	mov eax,[rdx]
+	jmp short 0000000181EDAE88h
+	xor eax,eax
+	jmp short 0000000181EDAE88h
+	mov eax,[rdx]
+	neg eax
+	mov [r9],eax
+	add rdx,4
+	add r9,4
+	sub r10,1
+	jne short 0000000181EDAE72h
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Move r9, rcx
+	003 Move [rcx], xmm0
+	004 Subtract r8, r8, rdx
+	005 Move r10, 4
+	006 Move rax, [r8+rdx]
+	007 Compare rax, 0
+	008 JumpIfSign {14}
+	009 JumpIfEqual {12}
+	010 Move rax, [rdx]
+	011 Goto {16}
+	012 Move rax, 0
+	013 Goto {16}
+	014 Move rax, [rdx]
+	015 Neg rax
+	016 Move [r9], rax
+	017 Add rdx, rdx, 4
+	018 Add r9, r9, 4
+	019 Subtract r10, r10, 1
+	020 JumpIfNotEqual {6}
+	021 Move rax, rcx
+	022 Return rax
+

@@ -1,0 +1,934 @@
+Type: Unity.Jobs.LowLevel.Unsafe.JobsUtility
+
+Method: System.Void GetJobRange(ref Unity.Jobs.LowLevel.Unsafe.JobRanges ranges, System.Int32 jobIndex, out System.Int32 beginIndex, out System.Int32 endIndex)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rcx,[rcx+10h]
+	mov edi,edx
+	xor edx,edx
+	mov rsi,r9
+	mov rbx,r8
+	call 00000001804D4100h
+	lea ecx,[rdi+rdi]
+	movsxd r10,ecx
+	mov ecx,[rax+r10*4]
+	mov [rbx],ecx
+	lea ecx,[rdi+rdi]
+	mov rbx,[rsp+30h]
+	movsxd rdx,ecx
+	mov eax,[rax+rdx*4+4]
+	mov [rsi],eax
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rcx, [rcx+16]
+	007 Move rdi, rdx
+	008 Move rdx, 0
+	009 Move rsi, r9
+	010 Move rbx, r8
+	011 Call 0x1804D4100, rcx, rdx, r8, r9
+	012 LoadAddress rcx, [rdi+rdi]
+	013 Move r10, rcx
+	014 Move rcx, [rax+r10*4]
+	015 Move [rbx], rcx
+	016 LoadAddress rcx, [rdi+rdi]
+	017 Move rbx, stack:0x30
+	018 Move rdx, rcx
+	019 Move rax, [rax+4+rdx*4]
+	020 Move [rsi], rax
+	021 Move rsi, stack:0x38
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Return 
+
+Method: System.Boolean GetWorkStealingRange(ref Unity.Jobs.LowLevel.Unsafe.JobRanges ranges, System.Int32 jobIndex, out System.Int32 beginIndex, out System.Int32 endIndex)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183755D48h]
+	mov rbx,r9
+	mov rdi,r8
+	mov esi,edx
+	mov rbp,rcx
+	test rax,rax
+	jne short 00000001825D4B1Eh
+	lea rcx,[182B22260h]
+	call 000000018037BE90h
+	mov [183755D48h],rax
+	mov r9,rbx
+	mov r8,rdi
+	mov edx,esi
+	mov rcx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rax, [0x183755D48]
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B22260]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755D48], rax
+	017 Move r9, rbx
+	018 Move r8, rdi
+	019 Move rdx, rsi
+	020 Move rcx, rbp
+	021 Move rbx, stack:0x30
+	022 Move rbp, stack:0x38
+	023 Move rsi, stack:0x40
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 CallNoReturn rax
+
+Method: Unity.Jobs.JobHandle Schedule(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183755D88h]
+	xorps xmm0,xmm0
+	mov rdi,rdx
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rax,rax
+	jne short 00000001825D4E85h
+	lea rcx,[182B224E0h]
+	call 000000018037BE90h
+	mov [183755D88h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	call rax
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183755D88]
+	006 Move xmm0, 0
+	007 Move rdi, rdx
+	008 Move rbx, rcx
+	009 Move [rcx], xmm0
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B224E0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183755D88], rax
+	015 Move rdx, rbx
+	016 Move rcx, rdi
+	017 Call rax
+	018 Move rax, rbx
+	019 Move rbx, stack:0x30
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+
+Method: Unity.Jobs.JobHandle ScheduleParallelFor(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, System.Int32 arrayLength, System.Int32 innerloopBatchCount)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183755D90h]
+	xorps xmm0,xmm0
+	mov edi,r9d
+	mov esi,r8d
+	mov rbp,rdx
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rax,rax
+	jne short 00000001825D4DD5h
+	lea rcx,[182B22570h]
+	call 000000018037BE90h
+	mov [183755D90h],rax
+	mov r9,rbx
+	mov r8d,edi
+	mov edx,esi
+	mov rcx,rbp
+	call rax
+	mov rbp,[rsp+38h]
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rax, [0x183755D90]
+	008 Move xmm0, 0
+	009 Move rdi, r9
+	010 Move rsi, r8
+	011 Move rbp, rdx
+	012 Move rbx, rcx
+	013 Move [rcx], xmm0
+	014 Compare rax, 0
+	015 JumpIfNotEqual {19}
+	016 LoadAddress rcx, [0x182B22570]
+	017 Call 0x18037BE90, rcx, rdx, r8, r9
+	018 Move [0x183755D90], rax
+	019 Move r9, rbx
+	020 Move r8, rdi
+	021 Move rdx, rsi
+	022 Move rcx, rbp
+	023 Call rax
+	024 Move rbp, stack:0x38
+	025 Move rax, rbx
+	026 Move rbx, stack:0x30
+	027 Move rsi, stack:0x40
+	028 ShiftStack 32
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+
+Method: Unity.Jobs.JobHandle ScheduleParallelForDeferArraySize(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, System.Int32 innerloopBatchCount, System.Void* listData, System.Void* listDataAtomicSafetyHandle)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[183755D98h]
+	xorps xmm0,xmm0
+	mov rdi,r9
+	mov esi,r8d
+	mov rbp,rdx
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rax,rax
+	jne short 00000001825D4C35h
+	lea rcx,[182B22630h]
+	call 000000018037BE90h
+	mov [183755D98h],rax
+	mov r9,[rsp+60h]
+	mov r8,rdi
+	mov edx,esi
+	mov [rsp+20h],rbx
+	mov rcx,rbp
+	call rax
+	mov rbp,[rsp+48h]
+	mov rax,rbx
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rax, [0x183755D98]
+	008 Move xmm0, 0
+	009 Move rdi, r9
+	010 Move rsi, r8
+	011 Move rbp, rdx
+	012 Move rbx, rcx
+	013 Move [rcx], xmm0
+	014 Compare rax, 0
+	015 JumpIfNotEqual {19}
+	016 LoadAddress rcx, [0x182B22630]
+	017 Call 0x18037BE90, rcx, rdx, r8, r9
+	018 Move [0x183755D98], rax
+	019 Move r9, stack:0x60
+	020 Move r8, rdi
+	021 Move rdx, rsi
+	022 Move stack:0x20, rbx
+	023 Move rcx, rbp
+	024 Call rax
+	025 Move rbp, stack:0x48
+	026 Move rax, rbx
+	027 Move rbx, stack:0x40
+	028 Move rsi, stack:0x50
+	029 ShiftStack 48
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return rax
+
+Method: Unity.Jobs.JobHandle ScheduleParallelForTransform(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, System.IntPtr transfromAccesssArray)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183755DA0h]
+	xorps xmm0,xmm0
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbx,rcx
+	movups [rcx],xmm0
+	test rax,rax
+	jne short 00000001825D4D0Dh
+	lea rcx,[182B22700h]
+	call 000000018037BE90h
+	mov [183755DA0h],rax
+	mov r8,rbx
+	mov rdx,rdi
+	mov rcx,rsi
+	call rax
+	mov rsi,[rsp+38h]
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [0x183755DA0]
+	007 Move xmm0, 0
+	008 Move rdi, r8
+	009 Move rsi, rdx
+	010 Move rbx, rcx
+	011 Move [rcx], xmm0
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B22700]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755DA0], rax
+	017 Move r8, rbx
+	018 Move rdx, rdi
+	019 Move rcx, rsi
+	020 Call rax
+	021 Move rsi, stack:0x38
+	022 Move rax, rbx
+	023 Move rbx, stack:0x30
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Return rax
+
+Method: System.IntPtr CreateJobReflectionData(System.Type wrapperJobType, System.Type userJobType, System.Object managedJobFunction0, System.Object managedJobFunction1, System.Object managedJobFunction2)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[183755D50h]
+	mov rbx,r9
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbp,rcx
+	test rax,rax
+	jne short 00000001825D49CFh
+	lea rcx,[182B222F0h]
+	call 000000018037BE90h
+	mov [183755D50h],rax
+	mov r9,rbx
+	mov rdx,rsi
+	mov r8,rdi
+	mov rcx,rbp
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rax, [0x183755D50]
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B222F0]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755D50], rax
+	017 Move r9, rbx
+	018 Move rdx, rsi
+	019 Move r8, rdi
+	020 Move rcx, rbp
+	021 Move rbx, stack:0x40
+	022 Move rbp, stack:0x48
+	023 Move rsi, stack:0x50
+	024 ShiftStack 48
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 CallNoReturn rax
+
+Method: System.IntPtr CreateJobReflectionData(System.Type type, System.Object managedJobFunction0, System.Object managedJobFunction1 = null, System.Object managedJobFunction2 = null)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[183755D50h]
+	mov rdi,r9
+	mov rsi,r8
+	mov rbp,rdx
+	mov rbx,rcx
+	test rax,rax
+	jne short 00000001825D495Fh
+	lea rcx,[182B222F0h]
+	call 000000018037BE90h
+	mov [183755D50h],rax
+	mov r9,rsi
+	mov [rsp+60h],rdi
+	mov r8,rbp
+	mov rdx,rbx
+	mov rcx,rbx
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rax, [0x183755D50]
+	008 Move rdi, r9
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B222F0]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755D50], rax
+	017 Move r9, rsi
+	018 Move stack:0x60, rdi
+	019 Move r8, rbp
+	020 Move rdx, rbx
+	021 Move rcx, rbx
+	022 Move rbx, stack:0x40
+	023 Move rbp, stack:0x48
+	024 Move rsi, stack:0x50
+	025 ShiftStack 48
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 CallNoReturn rax
+
+Method: System.IntPtr CreateJobReflectionData(System.Type wrapperJobType, System.Type userJobType, System.Object managedJobFunction0)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[183755D50h]
+	mov rbx,r8
+	mov rdi,rdx
+	mov rsi,rcx
+	test rax,rax
+	jne short 00000001825D4A37h
+	lea rcx,[182B222F0h]
+	call 000000018037BE90h
+	mov [183755D50h],rax
+	xor r9d,r9d
+	mov qword ptr [rsp+20h],0
+	mov r8,rbx
+	mov rdx,rdi
+	mov rcx,rsi
+	call rax
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Move rax, [0x183755D50]
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B222F0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183755D50], rax
+	015 Move r9, 0
+	016 Move stack:0x20, 0
+	017 Move r8, rbx
+	018 Move rdx, rdi
+	019 Move rcx, rsi
+	020 Call rax
+	021 Move rbx, stack:0x40
+	022 Move rsi, stack:0x48
+	023 ShiftStack 48
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Return rax
+
+Method: System.Boolean get_IsExecutingJob()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183755D58h]
+	test rax,rax
+	jne short 00000001825D4EC3h
+	lea rcx,[182B22378h]
+	call 000000018037BE90h
+	mov [183755D58h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183755D58]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B22378]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183755D58], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Void set_JobCompilerEnabled(System.Boolean value)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183755D60h]
+	movzx ebx,cl
+	test rax,rax
+	jne short 00000001825D4F58h
+	lea rcx,[182B223C0h]
+	call 000000018037BE90h
+	mov [183755D60h],rax
+	movzx ecx,bl
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183755D60]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B223C0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183755D60], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Int32 GetJobQueueWorkerThreadCount()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183755D68h]
+	test rax,rax
+	jne short 00000001825D4A83h
+	lea rcx,[182B22410h]
+	call 000000018037BE90h
+	mov [183755D68h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183755D68]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B22410]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183755D68], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Int32 get_JobWorkerCount()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183755D68h]
+	test rax,rax
+	jne short 00000001825D4A83h
+	lea rcx,[182B22410h]
+	call 000000018037BE90h
+	mov [183755D68h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183755D68]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B22410]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183755D68], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Int32 get_ThreadIndex()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183755D70h]
+	test rax,rax
+	jne short 00000001825D4F23h
+	lea rcx,[182B22458h]
+	call 000000018037BE90h
+	mov [183755D70h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183755D70]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B22458]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183755D70], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Int32 get_ThreadIndexCount()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183755D78h]
+	test rax,rax
+	jne short 00000001825D4EF3h
+	lea rcx,[182B22498h]
+	call 000000018037BE90h
+	mov [183755D78h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183755D78]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B22498]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183755D78], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Void InvokePanicFunction()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183755D80h],0
+	jne short 00000001825D4B60h
+	lea rcx,[183555090h]
+	call 000000018037BB90h
+	mov byte ptr [183755D80h],1
+	mov rax,[183555090h]
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 00000001825D4B89h
+	mov rax,[rcx+18h]
+	mov rdx,[rcx+28h]
+	mov rcx,[rcx+40h]
+	add rsp,28h
+	jmp rax
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183755D80], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183555090]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183755D80], 1
+	007 Move rax, typeof(Unity.Jobs.LowLevel.Unsafe.JobsUtility)
+	008 Move rcx, [rax+184]
+	009 Move rcx, [rcx]
+	010 Compare rcx, 0
+	011 JumpIfEqual {17}
+	012 Move rax, [rcx+24]
+	013 Move rdx, [rcx+40]
+	014 Move rcx, [rcx+64]
+	015 ShiftStack 40
+	016 CallNoReturn rax
+	017 ShiftStack 40
+	018 Return 
+
+Method: System.Void Schedule_Injected(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, out Unity.Jobs.JobHandle ret)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183755D88h]
+	mov rbx,rdx
+	mov rdi,rcx
+	test rax,rax
+	jne short 00000001825D4E2Fh
+	lea rcx,[182B224E0h]
+	call 000000018037BE90h
+	mov [183755D88h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183755D88]
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B224E0]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183755D88], rax
+	013 Move rdx, rbx
+	014 Move rcx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+
+Method: System.Void ScheduleParallelFor_Injected(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, System.Int32 arrayLength, System.Int32 innerloopBatchCount, out Unity.Jobs.JobHandle ret)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183755D90h]
+	mov rbx,r9
+	mov edi,r8d
+	mov esi,edx
+	mov rbp,rcx
+	test rax,rax
+	jne short 00000001825D4D6Eh
+	lea rcx,[182B22570h]
+	call 000000018037BE90h
+	mov [183755D90h],rax
+	mov r9,rbx
+	mov r8d,edi
+	mov edx,esi
+	mov rcx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rax, [0x183755D90]
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B22570]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755D90], rax
+	017 Move r9, rbx
+	018 Move r8, rdi
+	019 Move rdx, rsi
+	020 Move rcx, rbp
+	021 Move rbx, stack:0x30
+	022 Move rbp, stack:0x38
+	023 Move rsi, stack:0x40
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 CallNoReturn rax
+
+Method: System.Void ScheduleParallelForDeferArraySize_Injected(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, System.Int32 innerloopBatchCount, System.Void* listData, System.Void* listDataAtomicSafetyHandle, out Unity.Jobs.JobHandle ret)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[183755D98h]
+	mov rbx,r9
+	mov rdi,r8
+	mov esi,edx
+	mov rbp,rcx
+	test rax,rax
+	jne short 00000001825D4BCEh
+	lea rcx,[182B22630h]
+	call 000000018037BE90h
+	mov [183755D98h],rax
+	mov r8,rdi
+	mov edx,esi
+	mov r9,rbx
+	mov rcx,rbp
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rax, [0x183755D98]
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x182B22630]
+	015 Call 0x18037BE90, rcx, rdx, r8, r9
+	016 Move [0x183755D98], rax
+	017 Move r8, rdi
+	018 Move rdx, rsi
+	019 Move r9, rbx
+	020 Move rcx, rbp
+	021 Move rbx, stack:0x40
+	022 Move rbp, stack:0x48
+	023 Move rsi, stack:0x50
+	024 ShiftStack 48
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 CallNoReturn rax
+
+Method: System.Void ScheduleParallelForTransform_Injected(ref Unity.Jobs.LowLevel.Unsafe.JobsUtility+JobScheduleParameters parameters, System.IntPtr transfromAccesssArray, out Unity.Jobs.JobHandle ret)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183755DA0h]
+	mov rbx,r8
+	mov rdi,rdx
+	mov rsi,rcx
+	test rax,rax
+	jne short 00000001825D4CA7h
+	lea rcx,[182B22700h]
+	call 000000018037BE90h
+	mov [183755DA0h],rax
+	mov r8,rbx
+	mov rdx,rdi
+	mov rcx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [0x183755DA0]
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B22700]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183755DA0], rax
+	015 Move r8, rbx
+	016 Move rdx, rdi
+	017 Move rcx, rsi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 CallNoReturn rax
+

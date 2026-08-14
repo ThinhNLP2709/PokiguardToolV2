@@ -1,0 +1,113 @@
+Type: Unity.VisualScripting.Antlr3.Runtime.Tree.TreeWizard+TreePattern
+
+Method: System.Void .ctor(Unity.VisualScripting.Antlr3.Runtime.IToken payload)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov qword ptr [rcx+18h],0FFFFFFFFFFFFFFFFh
+	xor edx,edx
+	mov dword ptr [rcx+30h],0FFFFFFFFh
+	mov rbx,rcx
+	call 0000000180456D90h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move [rcx+24], 18446744073709551615
+	007 Move rdx, 0
+	008 Move [rcx+48], 0xFFFFFFFF
+	009 Move rbx, rcx
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rbx+32]
+	012 Move [rbx+32], rdi
+	013 Move rdx, rdi
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Return 
+
+Method: System.String ToString()
+
+Disassembly:
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183754BE4h],0
+	mov rdi,rcx
+	jne short 0000000182456BE1h
+	lea rcx,[183543828h]
+	call 000000018037BB90h
+	lea rcx,[1834FBBE0h]
+	call 000000018037BB90h
+	mov byte ptr [183754BE4h],1
+	xor edx,edx
+	mov rcx,rdi
+	cmp [rdi+38h],rdx
+	jne short 0000000182456BF6h
+	add rsp,30h
+	pop rdi
+	jmp near ptr 000000018244AA20h
+	mov [rsp+40h],rbx
+	mov rbx,[rdi+38h]
+	call 000000018244AA20h
+	mov r8,[1834FBBE0h]
+	mov r9,rax
+	mov rcx,[183543828h]
+	mov rdx,rbx
+	mov qword ptr [rsp+20h],0
+	call 000000018165A920h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rdi
+	003 ShiftStack -48
+	004 Compare [0x183754BE4], 0
+	005 Move rdi, rcx
+	006 JumpIfNotEqual {12}
+	007 LoadAddress rcx, [0x183543828]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x1834FBBE0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183754BE4], 1
+	012 Move rdx, 0
+	013 Move rcx, rdi
+	014 Compare [rdi+56], rdx
+	015 JumpIfNotEqual {21}
+	016 ShiftStack 48
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 Call CommonTree.ToString, rcx, rdx
+	020 Return rax
+	021 Move stack:0x40, rbx
+	022 Move rbx, [rdi+56]
+	023 Call CommonTree.ToString, rcx, rdx
+	024 Move r8, ":"
+	025 Move r9, rax
+	026 Move rcx, "%"
+	027 Move rdx, rbx
+	028 Move stack:0x20, 0
+	029 Call String.Concat, rcx, rdx, r8, r9, stack:0x0
+	030 Move rbx, stack:0x40
+	031 ShiftStack 48
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 Return rax
+

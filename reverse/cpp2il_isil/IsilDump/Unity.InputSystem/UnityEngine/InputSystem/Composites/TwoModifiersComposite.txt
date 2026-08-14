@@ -1,0 +1,444 @@
+Type: UnityEngine.InputSystem.Composites.TwoModifiersComposite
+
+Method: System.Type get_valueType()
+
+Disassembly:
+	mov rax,[rcx+28h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+40]
+	002 Return rax
+
+Method: System.Int32 get_valueSizeInBytes()
+
+Disassembly:
+	mov eax,[rcx+24h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+36]
+	002 Return rax
+
+Method: System.Single EvaluateMagnitude(ref UnityEngine.InputSystem.InputBindingCompositeContext context)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	xor r8d,r8d
+	mov rbx,rdx
+	mov rdi,rcx
+	call 0000000181F5BB60h
+	test al,al
+	jne short 0000000181F5BA8Ah
+	xorps xmm0,xmm0
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov edx,[rdi+18h]
+	xor r8d,r8d
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181F60610h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move r8, 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Call TwoModifiersComposite.ModifiersArePressed, rcx, rdx
+	009 Compare rax, 0
+	010 JumpIfNotEqual {17}
+	011 Move xmm0, 0
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Return xmm0
+	017 Move rdx, [rdi+24]
+	018 Move r8, 0
+	019 Move rcx, rbx
+	020 Move rbx, stack:0x30
+	021 ShiftStack 32
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Call InputBindingCompositeContext.EvaluateMagnitude, rcx, rdx
+	025 Return xmm0
+
+Method: System.Void ReadValue(ref UnityEngine.InputSystem.InputBindingCompositeContext context, System.Void* buffer, System.Int32 bufferSize)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rdi,r8
+	mov ebp,r9d
+	xor r8d,r8d
+	mov rsi,rdx
+	mov rbx,rcx
+	call 0000000181F5BB60h
+	test al,al
+	jne short 0000000181F5BCBDh
+	movsxd rdx,dword ptr [rbx+24h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 00000001825E0820h
+	jmp short 0000000181F5BCD7h
+	mov edx,[rbx+18h]
+	mov r9d,ebp
+	mov r8,rdi
+	mov qword ptr [rsp+20h],0
+	mov rcx,rsi
+	call 0000000181F60740h
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rdi, r8
+	008 Move rbp, r9
+	009 Move r8, 0
+	010 Move rsi, rdx
+	011 Move rbx, rcx
+	012 Call TwoModifiersComposite.ModifiersArePressed, rcx, rdx
+	013 Compare rax, 0
+	014 JumpIfNotEqual {20}
+	015 Move rdx, [rbx+36]
+	016 Move r8, 0
+	017 Move rcx, rdi
+	018 Call UnsafeUtility.MemClear, rcx, rdx, r8
+	019 Goto {26}
+	020 Move rdx, [rbx+24]
+	021 Move r9, rbp
+	022 Move r8, rdi
+	023 Move stack:0x20, 0
+	024 Move rcx, rsi
+	025 Call InputBindingCompositeContext.ReadValue, rcx, rdx, r8, r9
+	026 Move rbx, stack:0x40
+	027 Move rbp, stack:0x48
+	028 Move rsi, stack:0x50
+	029 ShiftStack 48
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return 
+
+Method: System.Boolean ModifiersArePressed(ref UnityEngine.InputSystem.InputBindingCompositeContext context)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	mov rdi,rdx
+	mov rbx,rcx
+	mov edx,[rcx+10h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 0000000181F60670h
+	test al,al
+	jne short 0000000181F5BB8Dh
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+	mov edx,[rbx+14h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 0000000181F60670h
+	test al,al
+	je short 0000000181F5BC0Eh
+	cmp byte ptr [rbx+30h],0
+	je short 0000000181F5BC0Eh
+	cmp dword ptr [rbx+20h],1
+	jne short 0000000181F5BC0Eh
+	mov edx,[rbx+18h]
+	xor r8d,r8d
+	movaps [rsp+30h],xmm6
+	mov rcx,rdi
+	movaps [rsp+20h],xmm7
+	call 0000000181F60640h
+	mov edx,[rbx+10h]
+	xor r8d,r8d
+	mov rcx,rdi
+	movaps xmm7,xmm0
+	call 0000000181F60640h
+	mov edx,[rbx+14h]
+	xor r8d,r8d
+	mov rcx,rdi
+	movaps xmm6,xmm0
+	call 0000000181F60640h
+	comisd xmm7,xmm6
+	movaps xmm6,[rsp+30h]
+	jae short 0000000181F5BC02h
+	movaps xmm7,[rsp+20h]
+	xor al,al
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+	comisd xmm7,xmm0
+	movaps xmm7,[rsp+20h]
+	setae al
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, [rcx+16]
+	008 Move r8, 0
+	009 Move rcx, rdi
+	010 Call InputBindingCompositeContext.ReadValueAsButton, rcx, rdx
+	011 Compare rax, 0
+	012 JumpIfNotEqual {18}
+	013 Move rbx, stack:0x50
+	014 ShiftStack 64
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return rax
+	018 Move rdx, [rbx+20]
+	019 Move r8, 0
+	020 Move rcx, rdi
+	021 Call InputBindingCompositeContext.ReadValueAsButton, rcx, rdx
+	022 Compare rax, 0
+	023 JumpIfEqual {57}
+	024 Compare [rbx+48], 0
+	025 JumpIfEqual {57}
+	026 Compare [rbx+32], 1
+	027 JumpIfNotEqual {57}
+	028 Move rdx, [rbx+24]
+	029 Move r8, 0
+	030 Move stack:0x30, xmm6
+	031 Move rcx, rdi
+	032 Move stack:0x20, xmm7
+	033 Call InputBindingCompositeContext.GetPressTime, rcx, rdx
+	034 Move rdx, [rbx+16]
+	035 Move r8, 0
+	036 Move rcx, rdi
+	037 Move xmm7, xmm0
+	038 Call InputBindingCompositeContext.GetPressTime, rcx, rdx
+	039 Move rdx, [rbx+20]
+	040 Move r8, 0
+	041 Move rcx, rdi
+	042 Move xmm6, xmm0
+	043 Call InputBindingCompositeContext.GetPressTime, rcx, rdx
+	044 NotImplemented "comisd xmm7,xmm6"
+	045 Move xmm6, stack:0x30
+	046 JumpIfGreaterOrEqual {54}
+	047 Move xmm7, stack:0x20
+	048 Move rax, 0
+	049 Move rbx, stack:0x50
+	050 ShiftStack 64
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+	054 NotImplemented "comisd xmm7,xmm0"
+	055 Move xmm7, stack:0x20
+	056 NotImplemented "setae al"
+	057 Move rbx, stack:0x50
+	058 ShiftStack 64
+	059 Move rdi, stack:0x0
+	060 ShiftStack 8
+	061 Return rax
+
+Method: System.Void FinishSetup(ref UnityEngine.InputSystem.InputBindingCompositeContext context)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183752E9Ah],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 0000000181F5BADCh
+	lea rcx,[183550058h]
+	call 000000018037BB90h
+	mov byte ptr [183752E9Ah],1
+	mov edx,[rbx+18h]
+	lea rax,[rbx+30h]
+	lea r9,[rbx+24h]
+	mov qword ptr [rsp+28h],0
+	lea r8,[rbx+28h]
+	mov [rsp+20h],rax
+	mov rcx,rdi
+	call 0000000181F56E40h
+	cmp dword ptr [rbx+20h],0
+	jne short 0000000181F5BB4Eh
+	cmp byte ptr [rbx+1Ch],0
+	jne short 0000000181F5BB47h
+	mov rcx,[183550058h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181F5BB22h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 0000000181F72760h
+	test rax,rax
+	je short 0000000181F5BB59h
+	movzx eax,byte ptr [rax+65h]
+	neg al
+	sbb ecx,ecx
+	add ecx,2
+	mov [rbx+20h],ecx
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	mov dword ptr [rbx+20h],2
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183752E9A], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183550058]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183752E9A], 1
+	012 Move rdx, [rbx+24]
+	013 LoadAddress rax, [rbx+48]
+	014 LoadAddress r9, [rbx+36]
+	015 Move stack:0x28, 0
+	016 LoadAddress r8, [rbx+40]
+	017 Move stack:0x20, rax
+	018 Move rcx, rdi
+	019 Call OneModifierComposite.DetermineValueTypeAndSize, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	020 Compare [rbx+32], 0
+	021 JumpIfNotEqual {43}
+	022 Compare [rbx+28], 0
+	023 JumpIfNotEqual {42}
+	024 Move rcx, typeof(UnityEngine.InputSystem.InputSystem)
+	025 Compare [rcx+228], 0
+	026 JumpIfNotEqual {28}
+	027 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	028 Move rcx, 0
+	029 Call InputSystem.get_settings, rcx
+	030 Compare rax, 0
+	031 JumpIfEqual {48}
+	032 Move rax, [rax+101]
+	033 Neg rax
+	034 NotImplemented "sbb ecx,ecx"
+	035 Add rcx, rcx, 2
+	036 Move [rbx+32], rcx
+	037 Move rbx, stack:0x40
+	038 ShiftStack 48
+	039 Move rdi, stack:0x0
+	040 ShiftStack 8
+	041 Return 
+	042 Move [rbx+32], 2
+	043 Move rbx, stack:0x40
+	044 ShiftStack 48
+	045 Move rdi, stack:0x0
+	046 ShiftStack 8
+	047 Return 
+	048 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object ReadValueAsObject(ref UnityEngine.InputSystem.InputBindingCompositeContext context)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	mov edx,[rcx+10h]
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181F60670h
+	test al,al
+	je short 0000000181F5BC6Ch
+	mov edx,[rdi+14h]
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181F60670h
+	test al,al
+	je short 0000000181F5BC6Ch
+	mov edx,[rdi+18h]
+	xor r8d,r8d
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181F60710h
+	mov rbx,[rsp+30h]
+	xor eax,eax
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, [rcx+16]
+	008 Move r8, 0
+	009 Move rcx, rbx
+	010 Call InputBindingCompositeContext.ReadValueAsButton, rcx, rdx
+	011 Compare rax, 0
+	012 JumpIfEqual {28}
+	013 Move rdx, [rdi+20]
+	014 Move r8, 0
+	015 Move rcx, rbx
+	016 Call InputBindingCompositeContext.ReadValueAsButton, rcx, rdx
+	017 Compare rax, 0
+	018 JumpIfEqual {28}
+	019 Move rdx, [rdi+24]
+	020 Move r8, 0
+	021 Move rcx, rbx
+	022 Move rbx, stack:0x30
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Call InputBindingCompositeContext.ReadValueAsObject, rcx, rdx
+	027 Return rax
+	028 Move rbx, stack:0x30
+	029 Move rax, 0
+	030 ShiftStack 32
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 00000001804552D0h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x1804552D0, rcx, rdx, r8
+	003 Return 
+

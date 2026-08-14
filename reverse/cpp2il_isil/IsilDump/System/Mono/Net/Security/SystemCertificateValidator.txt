@@ -1,0 +1,46 @@
+Type: Mono.Net.Security.SystemCertificateValidator
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183750760h],0
+	jne short 0000000181A37E30h
+	lea rcx,[1835199B0h]
+	call 000000018037BB90h
+	mov byte ptr [183750760h],1
+	mov rax,[1835199B0h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx+4],0A8h
+	mov rax,[1835199B0h]
+	mov rcx,[rax+0B8h]
+	mov byte ptr [rcx],0
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183750760], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1835199B0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183750760], 1
+	007 Move rax, typeof(Mono.Net.Security.SystemCertificateValidator)
+	008 Move rcx, [rax+184]
+	009 Move [rcx+4], 168
+	010 Move rax, typeof(Mono.Net.Security.SystemCertificateValidator)
+	011 Move rcx, [rax+184]
+	012 Move [rcx], 0
+	013 ShiftStack 40
+	014 Return 
+
+Method: System.Boolean NeedsChain(Mono.Security.Interface.MonoTlsSettings settings)
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+

@@ -1,0 +1,321 @@
+Type: WsPvpContext
+
+Method: System.Boolean IsPvpRoom(System.String roomId, System.String roomType)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374A4DCh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 00000001804BA414h
+	lea rcx,[183545C28h]
+	call 000000018037BB90h
+	lea rcx,[183545DA8h]
+	call 000000018037BB90h
+	lea rcx,[18356A000h]
+	call 000000018037BB90h
+	mov byte ptr [18374A4DCh],1
+	xor edx,edx
+	mov rcx,rdi
+	call 000000018165FE70h
+	test al,al
+	jne short 00000001804BA450h
+	test rdi,rdi
+	je short 00000001804BA4A2h
+	mov rdx,[183545C28h]
+	xor r9d,r9d
+	mov r8d,5
+	mov rcx,rdi
+	call 000000018165D620h
+	test al,al
+	je short 00000001804BA450h
+	mov al,1
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018165FE70h
+	test al,al
+	je short 00000001804BA46Bh
+	xor al,al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	test rbx,rbx
+	je short 00000001804BA4A2h
+	mov rdx,[183545DA8h]
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181663EB0h
+	test al,al
+	jne short 00000001804BA443h
+	mov rdx,[18356A000h]
+	xor r8d,r8d
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181663EB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374A4DC], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x183545C28]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183545DA8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18356A000]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18374A4DC], 1
+	016 Move rdx, 0
+	017 Move rcx, rdi
+	018 Call String.IsNullOrEmpty, rcx, rdx
+	019 Compare rax, 0
+	020 JumpIfNotEqual {36}
+	021 Compare rdi, 0
+	022 JumpIfEqual {64}
+	023 Move rdx, "PVP"
+	024 Move r9, 0
+	025 Move r8, 5
+	026 Move rcx, rdi
+	027 Call String.Equals, rcx, rdx, r8
+	028 Compare rax, 0
+	029 JumpIfEqual {36}
+	030 Move rax, 1
+	031 Move rbx, stack:0x30
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+	036 Move rdx, 0
+	037 Move rcx, rbx
+	038 Call String.IsNullOrEmpty, rcx, rdx
+	039 Compare rax, 0
+	040 JumpIfEqual {47}
+	041 Move rax, 0
+	042 Move rbx, stack:0x30
+	043 ShiftStack 32
+	044 Move rdi, stack:0x0
+	045 ShiftStack 8
+	046 Return rax
+	047 Compare rbx, 0
+	048 JumpIfEqual {64}
+	049 Move rdx, "PVP_"
+	050 Move r8, 0
+	051 Move rcx, rbx
+	052 Call String.StartsWith, rcx, rdx
+	053 Compare rax, 0
+	054 JumpIfNotEqual {30}
+	055 Move rdx, "mm_"
+	056 Move r8, 0
+	057 Move rcx, rbx
+	058 Move rbx, stack:0x30
+	059 ShiftStack 32
+	060 Move rdi, stack:0x0
+	061 ShiftStack 8
+	062 Call String.StartsWith, rcx, rdx
+	063 Return rax
+	064 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean get_InWsPvpMatch()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A4DDh],0
+	jne short 00000001804BA502h
+	lea rcx,[183562280h]
+	call 000000018037BB90h
+	lea rcx,[183562340h]
+	call 000000018037BB90h
+	lea rcx,[1834F11B8h]
+	call 000000018037BB90h
+	lea rcx,[183545C28h]
+	call 000000018037BB90h
+	lea rcx,[183513E30h]
+	call 000000018037BB90h
+	mov byte ptr [18374A4DDh],1
+	mov rcx,[183562340h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804BA517h
+	call 000000018037BED0h
+	mov rcx,[183562340h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804BA52Ch
+	call 000000018037BED0h
+	cmp byte ptr [18374A254h],0
+	jne short 00000001804BA548h
+	lea rcx,[183562340h]
+	call 000000018037BB90h
+	mov byte ptr [18374A254h],1
+	mov rcx,[183562340h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804BA55Dh
+	call 000000018037BED0h
+	mov rax,[183562340h]
+	mov rcx,[rax+0B8h]
+	mov rbx,[rcx]
+	mov rcx,[1834F11B8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804BA583h
+	call 000000018037BED0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000182628610h
+	test al,al
+	je short 00000001804BA5EDh
+	test rbx,rbx
+	je short 00000001804BA5F5h
+	mov rcx,[rbx+20h]
+	xor edx,edx
+	call 000000018165FE70h
+	test al,al
+	jne short 00000001804BA5EDh
+	mov rdx,[183545C28h]
+	xor r9d,r9d
+	mov rcx,[rbx+28h]
+	mov r8d,5
+	call 000000018165D930h
+	test al,al
+	je short 00000001804BA5EDh
+	mov rcx,[183562280h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804BA5DAh
+	call 000000018037BED0h
+	mov rcx,[183513E30h]
+	xor edx,edx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180501CC0h
+	xor al,al
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	sub rsp,28h
+	cmp byte ptr [18374A6DBh],0
+	jne short 00000001804BA620h
+	lea rcx,[183529908h]
+	call 000000018037BB90h
+	mov byte ptr [18374A6DBh],1
+	mov rax,[183529908h]
+	mov rax,[rax+0B8h]
+	mov rax,[rax]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A4DD], 0
+	005 JumpIfNotEqual {17}
+	006 LoadAddress rcx, [0x183562280]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183562340]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x1834F11B8]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183545C28]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x183513E30]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 Move [0x18374A4DD], 1
+	017 Move rcx, typeof(MatchService)
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Move rcx, typeof(MatchService)
+	022 Compare [rcx+228], 0
+	023 JumpIfNotEqual {25}
+	024 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	025 Compare [0x18374A254], 0
+	026 JumpIfNotEqual {30}
+	027 LoadAddress rcx, [0x183562340]
+	028 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	029 Move [0x18374A254], 1
+	030 Move rcx, typeof(MatchService)
+	031 Compare [rcx+228], 0
+	032 JumpIfNotEqual {34}
+	033 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	034 Move rax, typeof(MatchService)
+	035 Move rcx, [rax+184]
+	036 Move rbx, [rcx]
+	037 Move rcx, typeof(UnityEngine.Object)
+	038 Compare [rcx+228], 0
+	039 JumpIfNotEqual {41}
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Move r8, 0
+	042 Move rdx, 0
+	043 Move rcx, rbx
+	044 Call Object.op_Inequality, rcx, rdx, r8
+	045 Compare rax, 0
+	046 JumpIfEqual {72}
+	047 Compare rbx, 0
+	048 JumpIfEqual {77}
+	049 Move rcx, [rbx+32]
+	050 Move rdx, 0
+	051 Call String.IsNullOrEmpty, rcx, rdx
+	052 Compare rax, 0
+	053 JumpIfNotEqual {72}
+	054 Move rdx, "PVP"
+	055 Move r9, 0
+	056 Move rcx, [rbx+40]
+	057 Move r8, 5
+	058 Call String.Equals, rcx, rdx, r8, r9
+	059 Compare rax, 0
+	060 JumpIfEqual {72}
+	061 Move rcx, typeof(MatchSceneLoader)
+	062 Compare [rcx+228], 0
+	063 JumpIfNotEqual {65}
+	064 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	065 Move rcx, "MatchPVP"
+	066 Move rdx, 0
+	067 ShiftStack 32
+	068 Move rbx, stack:0x0
+	069 ShiftStack 8
+	070 Call MatchSceneLoader.IsMatchAdditiveLoaded, rcx, rdx
+	071 Return rax
+	072 Move rax, 0
+	073 ShiftStack 32
+	074 Move rbx, stack:0x0
+	075 ShiftStack 8
+	076 Return rax
+	077 Call 0x18037BE30, rcx, rdx, r8, r9
+	078 Interrupt 
+	079 Interrupt 
+	080 Interrupt 
+	081 Interrupt 
+	082 Interrupt 
+	083 Interrupt 
+	084 ShiftStack -40
+	085 Compare [0x18374A6DB], 0
+	086 JumpIfNotEqual {90}
+	087 LoadAddress rcx, [0x183529908]
+	088 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	089 Move [0x18374A6DB], 1
+	090 Move rax, typeof(EnergyManager)
+	091 Move rax, [rax+184]
+	092 Move rax, [rax]
+	093 ShiftStack 40
+	094 Return rax
+

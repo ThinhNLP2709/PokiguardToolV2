@@ -1,0 +1,68 @@
+Type: UnityEngine.Rendering.ParallelSortExtensions+RadixSortPrefixSumJob
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rdi
+	mov rax,[rcx+8]
+	mov r9d,edx
+	shl r9d,4
+	mov rdi,rcx
+	cmp dword ptr [rcx],0
+	movsxd rdx,edx
+	mov r8d,[rax+rdx*4]
+	lea eax,[r9+10h]
+	movsxd r11,eax
+	jle short 000000018228468Ah
+	movsxd r10,r9d
+	mov r9d,[rcx]
+	lea rdx,[r10*4]
+	cmp r10,r11
+	jge short 000000018228467Dh
+	mov rax,[rdi+18h]
+	mov rcx,r11
+	add rax,rdx
+	sub rcx,r10
+	nop word ptr [rax+rax]
+	add [rax],r8d
+	lea rax,[rax+4]
+	sub rcx,1
+	jne short 0000000182284670h
+	add rdx,400h
+	sub r9,1
+	jne short 0000000182284654h
+	mov rdi,[rsp+8]
+	ret
+
+ISIL:
+	001 Move stack:0x8, rdi
+	002 Move rax, [rcx+8]
+	003 Move r9, rdx
+	004 ShiftLeft r9, 4
+	005 Move rdi, rcx
+	006 Compare [rcx], 0
+	007 Move rdx, rdx
+	008 Move r8, [rax+rdx*4]
+	009 LoadAddress rax, [r9+16]
+	010 Move r11, rax
+	011 JumpIfLessOrEqual {29}
+	012 Move r10, r9
+	013 Move r9, [rcx]
+	014 LoadAddress rdx, []
+	015 Compare r10, r11
+	016 JumpIfGreaterOrEqual {26}
+	017 Move rax, [rdi+24]
+	018 Move rcx, r11
+	019 Add rax, rax, rdx
+	020 Subtract rcx, rcx, r10
+	021 Nop 
+	022 Add [rax], [rax], r8
+	023 LoadAddress rax, [rax+4]
+	024 Subtract rcx, rcx, 1
+	025 JumpIfNotEqual {22}
+	026 Add rdx, rdx, 1024
+	027 Subtract r9, r9, 1
+	028 JumpIfNotEqual {15}
+	029 Move rdi, stack:0x8
+	030 Return 
+

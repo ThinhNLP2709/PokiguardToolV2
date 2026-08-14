@@ -1,0 +1,48 @@
+Type: UnityEngine.Rendering.Universal.LightCookieManager+Settings+AtlasSettings
+
+Method: System.Boolean get_isPow2()
+
+Disassembly:
+	xchg ax,ax
+	mov edx,[rcx]
+	lea eax,[rdx-1]
+	test edx,eax
+	je short 00000001822C795Eh
+	xor al,al
+	ret
+	mov ecx,[rcx+4]
+	lea eax,[rcx-1]
+	test ecx,eax
+	sete al
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rdx, [rcx]
+	003 LoadAddress rax, [rdx-1]
+	004 Compare rdx, rax
+	005 JumpIfEqual {8}
+	006 Move rax, 0
+	007 Return rax
+	008 Move rcx, [rcx+4]
+	009 LoadAddress rax, [rcx-1]
+	010 Compare rcx, rax
+	011 NotImplemented "sete al"
+	012 Return rax
+
+Method: System.Boolean get_isSquare()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+4]
+	cmp [rcx],eax
+	sete al
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+4]
+	003 Compare [rcx], rax
+	004 NotImplemented "sete al"
+	005 Return rax
+

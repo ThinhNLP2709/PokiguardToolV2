@@ -1,0 +1,2716 @@
+Type: Unity.Burst.Intrinsics.X86+Fma
+
+Method: System.Boolean get_IsFmaSupported()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Single FmaHelper(System.Single a, System.Single b, System.Single c)
+
+Disassembly:
+	xorps xmm3,xmm3
+	cvtss2sd xmm3,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	xorps xmm1,xmm1
+	mulsd xmm3,xmm0
+	cvtss2sd xmm1,xmm2
+	addsd xmm3,xmm1
+	cvtpd2ps xmm0,xmm3
+	ret
+
+ISIL:
+	001 Move xmm3, 0
+	002 NotImplemented "cvtss2sd xmm3,xmm0"
+	003 Move xmm0, 0
+	004 NotImplemented "cvtss2sd xmm0,xmm1"
+	005 Move xmm1, 0
+	006 NotImplemented "mulsd xmm3,xmm0"
+	007 NotImplemented "cvtss2sd xmm1,xmm2"
+	008 NotImplemented "addsd xmm3,xmm1"
+	009 NotImplemented "cvtpd2ps xmm0,xmm3"
+	010 Return xmm0
+
+Method: System.Single FnmaHelper(System.Single a, System.Single b, System.Single c)
+
+Disassembly:
+	xorps xmm0,[182A500A0h]
+	xorps xmm3,xmm3
+	cvtss2sd xmm3,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	xorps xmm1,xmm1
+	mulsd xmm3,xmm0
+	cvtss2sd xmm1,xmm2
+	addsd xmm3,xmm1
+	cvtpd2ps xmm0,xmm3
+	ret
+
+ISIL:
+	001 Xor xmm0, xmm0, [0x182A500A0]
+	002 Move xmm3, 0
+	003 NotImplemented "cvtss2sd xmm3,xmm0"
+	004 Move xmm0, 0
+	005 NotImplemented "cvtss2sd xmm0,xmm1"
+	006 Move xmm1, 0
+	007 NotImplemented "mulsd xmm3,xmm0"
+	008 NotImplemented "cvtss2sd xmm1,xmm2"
+	009 NotImplemented "addsd xmm3,xmm1"
+	010 NotImplemented "cvtpd2ps xmm0,xmm3"
+	011 Return xmm0
+
+Method: Unity.Burst.Intrinsics.v128 fmadd_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B390h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B390]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmadd_pd(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BB10h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BB10]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fmadd_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movss xmm2,dword ptr [rdx]
+	mov rax,rcx
+	movss xmm0,dword ptr [r8]
+	movss xmm1,dword ptr [r9]
+	movss xmm3,dword ptr [rdx+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+4]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	mulsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+8]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+0Ch]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	mulsd xmm3,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	cvtps2pd xmm0,xmm0
+	addsd xmm3,xmm0
+	cvtpd2ps xmm0,xmm3
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm2, [rdx]
+	002 Move rax, rcx
+	003 Move xmm0, [r8]
+	004 Move xmm1, [r9]
+	005 Move xmm3, [rdx+4]
+	006 Move xmm0, xmm0
+	007 Move xmm2, xmm2
+	008 Move xmm1, xmm1
+	009 NotImplemented "mulsd xmm2,xmm0"
+	010 Move xmm3, xmm3
+	011 NotImplemented "addsd xmm2,xmm1"
+	012 Move xmm1, [r8+4]
+	013 Move xmm1, xmm1
+	014 NotImplemented "cvtpd2ps xmm0,xmm2"
+	015 Move xmm2, [rdx+8]
+	016 NotImplemented "mulsd xmm3,xmm1"
+	017 Move xmm1, [r8+8]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Move xmm0, xmm0
+	021 Move xmm2, xmm2
+	022 NotImplemented "addsd xmm3,xmm0"
+	023 Move xmm1, xmm1
+	024 NotImplemented "cvtpd2ps xmm0,xmm3"
+	025 Move xmm3, [rdx+12]
+	026 Move [rcx+4], xmm0
+	027 Move xmm0, [r9+8]
+	028 Move xmm0, xmm0
+	029 NotImplemented "mulsd xmm2,xmm1"
+	030 Move xmm1, [r8+12]
+	031 Move xmm3, xmm3
+	032 NotImplemented "addsd xmm2,xmm0"
+	033 Move xmm1, xmm1
+	034 NotImplemented "cvtpd2ps xmm0,xmm2"
+	035 NotImplemented "mulsd xmm3,xmm1"
+	036 Move [rcx+8], xmm0
+	037 Move xmm0, [r9+12]
+	038 Move xmm0, xmm0
+	039 NotImplemented "addsd xmm3,xmm0"
+	040 NotImplemented "cvtpd2ps xmm0,xmm3"
+	041 Move [rcx+12], xmm0
+	042 Return rax
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmadd_ps(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	movss xmm2,dword ptr [rdx]
+	mov rax,rcx
+	movss xmm0,dword ptr [r8]
+	movss xmm1,dword ptr [r9]
+	movss xmm3,dword ptr [rdx+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+4]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	mulsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+8]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+0Ch]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+10h]
+	mulsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+10h]
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+14h]
+	movss dword ptr [rcx+0Ch],xmm0
+	movss xmm0,dword ptr [r9+10h]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+14h]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+18h]
+	mulsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+18h]
+	movss dword ptr [rcx+10h],xmm0
+	movss xmm0,dword ptr [r9+14h]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+1Ch]
+	movss dword ptr [rcx+14h],xmm0
+	movss xmm0,dword ptr [r9+18h]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+1Ch]
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	mulsd xmm3,xmm1
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm0,dword ptr [r9+1Ch]
+	cvtps2pd xmm0,xmm0
+	addsd xmm3,xmm0
+	cvtpd2ps xmm0,xmm3
+	movss dword ptr [rcx+1Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm2, [rdx]
+	002 Move rax, rcx
+	003 Move xmm0, [r8]
+	004 Move xmm1, [r9]
+	005 Move xmm3, [rdx+4]
+	006 Move xmm0, xmm0
+	007 Move xmm2, xmm2
+	008 Move xmm1, xmm1
+	009 NotImplemented "mulsd xmm2,xmm0"
+	010 Move xmm3, xmm3
+	011 NotImplemented "addsd xmm2,xmm1"
+	012 Move xmm1, [r8+4]
+	013 Move xmm1, xmm1
+	014 NotImplemented "cvtpd2ps xmm0,xmm2"
+	015 Move xmm2, [rdx+8]
+	016 NotImplemented "mulsd xmm3,xmm1"
+	017 Move xmm1, [r8+8]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Move xmm0, xmm0
+	021 Move xmm2, xmm2
+	022 NotImplemented "addsd xmm3,xmm0"
+	023 Move xmm1, xmm1
+	024 NotImplemented "cvtpd2ps xmm0,xmm3"
+	025 Move xmm3, [rdx+12]
+	026 NotImplemented "mulsd xmm2,xmm1"
+	027 Move xmm1, [r8+12]
+	028 Move [rcx+4], xmm0
+	029 Move xmm0, [r9+8]
+	030 Move xmm0, xmm0
+	031 Move xmm3, xmm3
+	032 NotImplemented "addsd xmm2,xmm0"
+	033 Move xmm1, xmm1
+	034 NotImplemented "cvtpd2ps xmm0,xmm2"
+	035 Move xmm2, [rdx+16]
+	036 NotImplemented "mulsd xmm3,xmm1"
+	037 Move xmm1, [r8+16]
+	038 Move [rcx+8], xmm0
+	039 Move xmm0, [r9+12]
+	040 Move xmm0, xmm0
+	041 Move xmm2, xmm2
+	042 NotImplemented "addsd xmm3,xmm0"
+	043 Move xmm1, xmm1
+	044 NotImplemented "cvtpd2ps xmm0,xmm3"
+	045 Move xmm3, [rdx+20]
+	046 Move [rcx+12], xmm0
+	047 Move xmm0, [r9+16]
+	048 NotImplemented "mulsd xmm2,xmm1"
+	049 Move xmm1, [r8+20]
+	050 Move xmm0, xmm0
+	051 Move xmm3, xmm3
+	052 NotImplemented "addsd xmm2,xmm0"
+	053 Move xmm1, xmm1
+	054 NotImplemented "cvtpd2ps xmm0,xmm2"
+	055 Move xmm2, [rdx+24]
+	056 NotImplemented "mulsd xmm3,xmm1"
+	057 Move xmm1, [r8+24]
+	058 Move [rcx+16], xmm0
+	059 Move xmm0, [r9+20]
+	060 Move xmm0, xmm0
+	061 Move xmm2, xmm2
+	062 NotImplemented "addsd xmm3,xmm0"
+	063 Move xmm1, xmm1
+	064 NotImplemented "cvtpd2ps xmm0,xmm3"
+	065 Move xmm3, [rdx+28]
+	066 Move [rcx+20], xmm0
+	067 Move xmm0, [r9+24]
+	068 Move xmm0, xmm0
+	069 NotImplemented "mulsd xmm2,xmm1"
+	070 Move xmm1, [r8+28]
+	071 Move xmm3, xmm3
+	072 NotImplemented "addsd xmm2,xmm0"
+	073 Move xmm1, xmm1
+	074 NotImplemented "cvtpd2ps xmm0,xmm2"
+	075 NotImplemented "mulsd xmm3,xmm1"
+	076 Move [rcx+24], xmm0
+	077 Move xmm0, [r9+28]
+	078 Move xmm0, xmm0
+	079 NotImplemented "addsd xmm3,xmm0"
+	080 NotImplemented "cvtpd2ps xmm0,xmm3"
+	081 Move [rcx+28], xmm0
+	082 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fmadd_sd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B450h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B450]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fmadd_ss(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov rax,rcx
+	movss xmm2,dword ptr [rdx]
+	movss xmm1,dword ptr [r8]
+	movups [rcx],xmm0
+	movss xmm0,dword ptr [r9]
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm1
+	addsd xmm2,xmm0
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move xmm2, [rdx]
+	004 Move xmm1, [r8]
+	005 Move [rcx], xmm0
+	006 Move xmm0, [r9]
+	007 Move xmm2, xmm2
+	008 Move xmm0, xmm0
+	009 Move xmm1, xmm1
+	010 NotImplemented "mulsd xmm2,xmm1"
+	011 NotImplemented "addsd xmm2,xmm0"
+	012 NotImplemented "cvtpd2ps xmm0,xmm2"
+	013 Move [rcx], xmm0
+	014 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fmaddsub_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B510h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B510]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmaddsub_pd(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BBD0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BBD0]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fmaddsub_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movss xmm1,dword ptr [r9]
+	mov rax,rcx
+	xorps xmm1,[182A500A0h]
+	movss xmm2,dword ptr [rdx]
+	movss xmm0,dword ptr [r8]
+	movss xmm3,dword ptr [rdx+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm3,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [r8+4]
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+8]
+	cvtps2pd xmm1,xmm1
+	addsd xmm2,xmm0
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+0Ch]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	xorps xmm0,[182A500A0h]
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	mulsd xmm2,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	cvtps2pd xmm0,xmm0
+	addsd xmm2,xmm0
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm1, [r9]
+	002 Move rax, rcx
+	003 Xor xmm1, xmm1, [0x182A500A0]
+	004 Move xmm2, [rdx]
+	005 Move xmm0, [r8]
+	006 Move xmm3, [rdx+8]
+	007 Move xmm0, xmm0
+	008 Move xmm2, xmm2
+	009 Move xmm3, xmm3
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 Move xmm0, 0
+	012 NotImplemented "cvtss2sd xmm0,xmm1"
+	013 Move xmm1, [r8+4]
+	014 NotImplemented "addsd xmm2,xmm0"
+	015 Move xmm1, xmm1
+	016 NotImplemented "cvtpd2ps xmm0,xmm2"
+	017 Move xmm2, [rdx+4]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Move xmm0, xmm0
+	021 Move xmm2, xmm2
+	022 NotImplemented "mulsd xmm2,xmm1"
+	023 Move xmm1, [r8+8]
+	024 Move xmm1, xmm1
+	025 NotImplemented "addsd xmm2,xmm0"
+	026 NotImplemented "mulsd xmm3,xmm1"
+	027 Move xmm1, 0
+	028 NotImplemented "cvtpd2ps xmm0,xmm2"
+	029 Move xmm2, [rdx+12]
+	030 Move [rcx+4], xmm0
+	031 Move xmm0, [r9+8]
+	032 Xor xmm0, xmm0, [0x182A500A0]
+	033 NotImplemented "cvtss2sd xmm1,xmm0"
+	034 Move xmm2, xmm2
+	035 NotImplemented "addsd xmm3,xmm1"
+	036 Move xmm1, [r8+12]
+	037 Move xmm1, xmm1
+	038 NotImplemented "cvtpd2ps xmm0,xmm3"
+	039 NotImplemented "mulsd xmm2,xmm1"
+	040 Move [rcx+8], xmm0
+	041 Move xmm0, [r9+12]
+	042 Move xmm0, xmm0
+	043 NotImplemented "addsd xmm2,xmm0"
+	044 NotImplemented "cvtpd2ps xmm0,xmm2"
+	045 Move [rcx+12], xmm0
+	046 Return rax
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmaddsub_ps(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	movss xmm4,dword ptr [182A500A0h]
+	movss xmm1,dword ptr [r9]
+	movss xmm2,dword ptr [rdx]
+	xorps xmm1,xmm4
+	movss xmm0,dword ptr [r8]
+	movss xmm3,dword ptr [rdx+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm3,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [r8+4]
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+8]
+	cvtps2pd xmm1,xmm1
+	addsd xmm2,xmm0
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+0Ch]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+10h]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+10h]
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	addsd xmm2,xmm0
+	cvtps2pd xmm3,xmm3
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+14h]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+0Ch],xmm0
+	movss xmm0,dword ptr [r9+10h]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+14h]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+18h]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+18h]
+	movss dword ptr [rcx+10h],xmm0
+	movss xmm0,dword ptr [r9+14h]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+1Ch]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+14h],xmm0
+	movss xmm0,dword ptr [r9+18h]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm1,dword ptr [r8+1Ch]
+	mov rax,rcx
+	movss xmm0,dword ptr [r9+1Ch]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm1
+	addsd xmm2,xmm0
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+1Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm4, [0x182A500A0]
+	002 Move xmm1, [r9]
+	003 Move xmm2, [rdx]
+	004 Xor xmm1, xmm1, xmm4
+	005 Move xmm0, [r8]
+	006 Move xmm3, [rdx+8]
+	007 Move xmm0, xmm0
+	008 Move xmm2, xmm2
+	009 Move xmm3, xmm3
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 Move xmm0, 0
+	012 NotImplemented "cvtss2sd xmm0,xmm1"
+	013 Move xmm1, [r8+4]
+	014 NotImplemented "addsd xmm2,xmm0"
+	015 Move xmm1, xmm1
+	016 NotImplemented "cvtpd2ps xmm0,xmm2"
+	017 Move xmm2, [rdx+4]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Move xmm0, xmm0
+	021 Move xmm2, xmm2
+	022 NotImplemented "mulsd xmm2,xmm1"
+	023 Move xmm1, [r8+8]
+	024 Move xmm1, xmm1
+	025 NotImplemented "addsd xmm2,xmm0"
+	026 NotImplemented "mulsd xmm3,xmm1"
+	027 Move xmm1, 0
+	028 NotImplemented "cvtpd2ps xmm0,xmm2"
+	029 Move xmm2, [rdx+12]
+	030 Move [rcx+4], xmm0
+	031 Move xmm0, [r9+8]
+	032 Xor xmm0, xmm0, xmm4
+	033 NotImplemented "cvtss2sd xmm1,xmm0"
+	034 Move xmm2, xmm2
+	035 NotImplemented "addsd xmm3,xmm1"
+	036 Move xmm1, [r8+12]
+	037 Move xmm1, xmm1
+	038 NotImplemented "cvtpd2ps xmm0,xmm3"
+	039 Move xmm3, [rdx+16]
+	040 NotImplemented "mulsd xmm2,xmm1"
+	041 Move xmm1, [r8+16]
+	042 Move [rcx+8], xmm0
+	043 Move xmm0, [r9+12]
+	044 Move xmm0, xmm0
+	045 Move xmm1, xmm1
+	046 NotImplemented "addsd xmm2,xmm0"
+	047 Move xmm3, xmm3
+	048 NotImplemented "cvtpd2ps xmm0,xmm2"
+	049 Move xmm2, [rdx+20]
+	050 NotImplemented "mulsd xmm3,xmm1"
+	051 Move xmm1, 0
+	052 Move [rcx+12], xmm0
+	053 Move xmm0, [r9+16]
+	054 Xor xmm0, xmm0, xmm4
+	055 NotImplemented "cvtss2sd xmm1,xmm0"
+	056 Move xmm2, xmm2
+	057 NotImplemented "addsd xmm3,xmm1"
+	058 Move xmm1, [r8+20]
+	059 Move xmm1, xmm1
+	060 NotImplemented "cvtpd2ps xmm0,xmm3"
+	061 Move xmm3, [rdx+24]
+	062 NotImplemented "mulsd xmm2,xmm1"
+	063 Move xmm1, [r8+24]
+	064 Move [rcx+16], xmm0
+	065 Move xmm0, [r9+20]
+	066 Move xmm0, xmm0
+	067 Move xmm3, xmm3
+	068 NotImplemented "addsd xmm2,xmm0"
+	069 Move xmm1, xmm1
+	070 NotImplemented "cvtpd2ps xmm0,xmm2"
+	071 Move xmm2, [rdx+28]
+	072 NotImplemented "mulsd xmm3,xmm1"
+	073 Move xmm1, 0
+	074 Move [rcx+20], xmm0
+	075 Move xmm0, [r9+24]
+	076 Xor xmm0, xmm0, xmm4
+	077 NotImplemented "cvtss2sd xmm1,xmm0"
+	078 Move xmm2, xmm2
+	079 NotImplemented "addsd xmm3,xmm1"
+	080 NotImplemented "cvtpd2ps xmm0,xmm3"
+	081 Move [rcx+24], xmm0
+	082 Move xmm1, [r8+28]
+	083 Move rax, rcx
+	084 Move xmm0, [r9+28]
+	085 Move xmm0, xmm0
+	086 Move xmm1, xmm1
+	087 NotImplemented "mulsd xmm2,xmm1"
+	088 NotImplemented "addsd xmm2,xmm0"
+	089 NotImplemented "cvtpd2ps xmm0,xmm2"
+	090 Move [rcx+28], xmm0
+	091 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fmsub_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B5D0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B5D0]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmsub_pd(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BC90h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BC90]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fmsub_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movss xmm4,dword ptr [182A500A0h]
+	mov rax,rcx
+	movss xmm1,dword ptr [r9]
+	movss xmm2,dword ptr [rdx]
+	xorps xmm1,xmm4
+	movss xmm0,dword ptr [r8]
+	movss xmm3,dword ptr [rdx+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm3,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [r8+4]
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	xorps xmm0,xmm4
+	cvtps2pd xmm2,xmm2
+	mulsd xmm2,xmm1
+	xorps xmm1,xmm1
+	cvtss2sd xmm1,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+8]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+0Ch]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	mulsd xmm2,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	addsd xmm2,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm4, [0x182A500A0]
+	002 Move rax, rcx
+	003 Move xmm1, [r9]
+	004 Move xmm2, [rdx]
+	005 Xor xmm1, xmm1, xmm4
+	006 Move xmm0, [r8]
+	007 Move xmm3, [rdx+8]
+	008 Move xmm0, xmm0
+	009 Move xmm2, xmm2
+	010 Move xmm3, xmm3
+	011 NotImplemented "mulsd xmm2,xmm0"
+	012 Move xmm0, 0
+	013 NotImplemented "cvtss2sd xmm0,xmm1"
+	014 Move xmm1, [r8+4]
+	015 NotImplemented "addsd xmm2,xmm0"
+	016 Move xmm1, xmm1
+	017 NotImplemented "cvtpd2ps xmm0,xmm2"
+	018 Move xmm2, [rdx+4]
+	019 Move [rcx], xmm0
+	020 Move xmm0, [r9+4]
+	021 Xor xmm0, xmm0, xmm4
+	022 Move xmm2, xmm2
+	023 NotImplemented "mulsd xmm2,xmm1"
+	024 Move xmm1, 0
+	025 NotImplemented "cvtss2sd xmm1,xmm0"
+	026 NotImplemented "addsd xmm2,xmm1"
+	027 Move xmm1, [r8+8]
+	028 Move xmm1, xmm1
+	029 NotImplemented "cvtpd2ps xmm0,xmm2"
+	030 Move xmm2, [rdx+12]
+	031 NotImplemented "mulsd xmm3,xmm1"
+	032 Move xmm1, 0
+	033 Move [rcx+4], xmm0
+	034 Move xmm0, [r9+8]
+	035 Xor xmm0, xmm0, xmm4
+	036 NotImplemented "cvtss2sd xmm1,xmm0"
+	037 Move xmm2, xmm2
+	038 NotImplemented "addsd xmm3,xmm1"
+	039 Move xmm1, [r8+12]
+	040 Move xmm1, xmm1
+	041 NotImplemented "cvtpd2ps xmm0,xmm3"
+	042 NotImplemented "mulsd xmm2,xmm1"
+	043 Move xmm1, 0
+	044 Move [rcx+8], xmm0
+	045 Move xmm0, [r9+12]
+	046 Xor xmm0, xmm0, xmm4
+	047 NotImplemented "cvtss2sd xmm1,xmm0"
+	048 NotImplemented "addsd xmm2,xmm1"
+	049 NotImplemented "cvtpd2ps xmm0,xmm2"
+	050 Move [rcx+12], xmm0
+	051 Return rax
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmsub_ps(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	movss xmm4,dword ptr [182A500A0h]
+	movss xmm1,dword ptr [r9]
+	movss xmm2,dword ptr [rdx]
+	xorps xmm1,xmm4
+	movss xmm0,dword ptr [r8]
+	movss xmm3,dword ptr [rdx+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm3,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [r8+4]
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	xorps xmm0,xmm4
+	cvtps2pd xmm2,xmm2
+	mulsd xmm2,xmm1
+	xorps xmm1,xmm1
+	cvtss2sd xmm1,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+8]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+0Ch]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+10h]
+	mulsd xmm2,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+10h]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+14h]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+0Ch],xmm0
+	movss xmm0,dword ptr [r9+10h]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+14h]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+18h]
+	mulsd xmm2,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+10h],xmm0
+	movss xmm0,dword ptr [r9+14h]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+18h]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+14h],xmm0
+	movss xmm0,dword ptr [r9+18h]
+	xorps xmm0,xmm4
+	movss xmm2,dword ptr [rdx+1Ch]
+	mov rax,rcx
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+1Ch]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	mulsd xmm2,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm0,dword ptr [r9+1Ch]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	addsd xmm2,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+1Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm4, [0x182A500A0]
+	002 Move xmm1, [r9]
+	003 Move xmm2, [rdx]
+	004 Xor xmm1, xmm1, xmm4
+	005 Move xmm0, [r8]
+	006 Move xmm3, [rdx+8]
+	007 Move xmm0, xmm0
+	008 Move xmm2, xmm2
+	009 Move xmm3, xmm3
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 Move xmm0, 0
+	012 NotImplemented "cvtss2sd xmm0,xmm1"
+	013 Move xmm1, [r8+4]
+	014 NotImplemented "addsd xmm2,xmm0"
+	015 Move xmm1, xmm1
+	016 NotImplemented "cvtpd2ps xmm0,xmm2"
+	017 Move xmm2, [rdx+4]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Xor xmm0, xmm0, xmm4
+	021 Move xmm2, xmm2
+	022 NotImplemented "mulsd xmm2,xmm1"
+	023 Move xmm1, 0
+	024 NotImplemented "cvtss2sd xmm1,xmm0"
+	025 NotImplemented "addsd xmm2,xmm1"
+	026 Move xmm1, [r8+8]
+	027 Move xmm1, xmm1
+	028 NotImplemented "cvtpd2ps xmm0,xmm2"
+	029 Move xmm2, [rdx+12]
+	030 NotImplemented "mulsd xmm3,xmm1"
+	031 Move xmm1, 0
+	032 Move [rcx+4], xmm0
+	033 Move xmm0, [r9+8]
+	034 Xor xmm0, xmm0, xmm4
+	035 NotImplemented "cvtss2sd xmm1,xmm0"
+	036 Move xmm2, xmm2
+	037 NotImplemented "addsd xmm3,xmm1"
+	038 Move xmm1, [r8+12]
+	039 Move xmm1, xmm1
+	040 NotImplemented "cvtpd2ps xmm0,xmm3"
+	041 Move xmm3, [rdx+16]
+	042 NotImplemented "mulsd xmm2,xmm1"
+	043 Move xmm1, 0
+	044 Move [rcx+8], xmm0
+	045 Move xmm0, [r9+12]
+	046 Xor xmm0, xmm0, xmm4
+	047 NotImplemented "cvtss2sd xmm1,xmm0"
+	048 Move xmm3, xmm3
+	049 NotImplemented "addsd xmm2,xmm1"
+	050 Move xmm1, [r8+16]
+	051 Move xmm1, xmm1
+	052 NotImplemented "cvtpd2ps xmm0,xmm2"
+	053 Move xmm2, [rdx+20]
+	054 NotImplemented "mulsd xmm3,xmm1"
+	055 Move xmm1, 0
+	056 Move [rcx+12], xmm0
+	057 Move xmm0, [r9+16]
+	058 Xor xmm0, xmm0, xmm4
+	059 NotImplemented "cvtss2sd xmm1,xmm0"
+	060 Move xmm2, xmm2
+	061 NotImplemented "addsd xmm3,xmm1"
+	062 Move xmm1, [r8+20]
+	063 Move xmm1, xmm1
+	064 NotImplemented "cvtpd2ps xmm0,xmm3"
+	065 Move xmm3, [rdx+24]
+	066 NotImplemented "mulsd xmm2,xmm1"
+	067 Move xmm1, 0
+	068 Move [rcx+16], xmm0
+	069 Move xmm0, [r9+20]
+	070 Xor xmm0, xmm0, xmm4
+	071 NotImplemented "cvtss2sd xmm1,xmm0"
+	072 Move xmm3, xmm3
+	073 NotImplemented "addsd xmm2,xmm1"
+	074 Move xmm1, [r8+24]
+	075 Move xmm1, xmm1
+	076 NotImplemented "cvtpd2ps xmm0,xmm2"
+	077 NotImplemented "mulsd xmm3,xmm1"
+	078 Move xmm1, 0
+	079 Move [rcx+20], xmm0
+	080 Move xmm0, [r9+24]
+	081 Xor xmm0, xmm0, xmm4
+	082 Move xmm2, [rdx+28]
+	083 Move rax, rcx
+	084 NotImplemented "cvtss2sd xmm1,xmm0"
+	085 Move xmm2, xmm2
+	086 NotImplemented "addsd xmm3,xmm1"
+	087 Move xmm1, [r8+28]
+	088 Move xmm1, xmm1
+	089 NotImplemented "cvtpd2ps xmm0,xmm3"
+	090 NotImplemented "mulsd xmm2,xmm1"
+	091 Move xmm1, 0
+	092 Move [rcx+24], xmm0
+	093 Move xmm0, [r9+28]
+	094 Xor xmm0, xmm0, xmm4
+	095 NotImplemented "cvtss2sd xmm1,xmm0"
+	096 NotImplemented "addsd xmm2,xmm1"
+	097 NotImplemented "cvtpd2ps xmm0,xmm2"
+	098 Move [rcx+28], xmm0
+	099 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fmsub_sd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B690h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B690]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fmsub_ss(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov rax,rcx
+	movss xmm2,dword ptr [rdx]
+	movss xmm1,dword ptr [r8]
+	movups [rcx],xmm0
+	movss xmm0,dword ptr [r9]
+	xorps xmm0,[182A500A0h]
+	cvtps2pd xmm2,xmm2
+	cvtss2sd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm1
+	addsd xmm2,xmm0
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move xmm2, [rdx]
+	004 Move xmm1, [r8]
+	005 Move [rcx], xmm0
+	006 Move xmm0, [r9]
+	007 Xor xmm0, xmm0, [0x182A500A0]
+	008 Move xmm2, xmm2
+	009 NotImplemented "cvtss2sd xmm0,xmm0"
+	010 Move xmm1, xmm1
+	011 NotImplemented "mulsd xmm2,xmm1"
+	012 NotImplemented "addsd xmm2,xmm0"
+	013 NotImplemented "cvtpd2ps xmm0,xmm2"
+	014 Move [rcx], xmm0
+	015 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fmsubadd_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B750h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B750]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmsubadd_pd(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BD50h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BD50]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fmsubadd_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movss xmm2,dword ptr [rdx]
+	mov rax,rcx
+	movss xmm0,dword ptr [r8]
+	movss xmm1,dword ptr [r9]
+	movss xmm3,dword ptr [rdx+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm3,xmm3
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+4]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	mulsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+8]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	xorps xmm0,[182A500A0h]
+	cvtss2sd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	addsd xmm3,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+0Ch]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	xorps xmm0,[182A500A0h]
+	cvtss2sd xmm1,xmm0
+	addsd xmm3,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm2, [rdx]
+	002 Move rax, rcx
+	003 Move xmm0, [r8]
+	004 Move xmm1, [r9]
+	005 Move xmm3, [rdx+4]
+	006 Move xmm0, xmm0
+	007 Move xmm1, xmm1
+	008 Move xmm2, xmm2
+	009 Move xmm3, xmm3
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 NotImplemented "addsd xmm2,xmm1"
+	012 Move xmm1, [r8+4]
+	013 Move xmm1, xmm1
+	014 NotImplemented "cvtpd2ps xmm0,xmm2"
+	015 Move xmm2, [rdx+8]
+	016 NotImplemented "mulsd xmm3,xmm1"
+	017 Move xmm1, [r8+8]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Xor xmm0, xmm0, [0x182A500A0]
+	021 NotImplemented "cvtss2sd xmm0,xmm0"
+	022 Move xmm1, xmm1
+	023 NotImplemented "addsd xmm3,xmm0"
+	024 Move xmm2, xmm2
+	025 NotImplemented "cvtpd2ps xmm0,xmm3"
+	026 Move xmm3, [rdx+12]
+	027 Move [rcx+4], xmm0
+	028 Move xmm0, [r9+8]
+	029 NotImplemented "mulsd xmm2,xmm1"
+	030 Move xmm1, [r8+12]
+	031 Move xmm0, xmm0
+	032 Move xmm3, xmm3
+	033 NotImplemented "addsd xmm2,xmm0"
+	034 Move xmm1, xmm1
+	035 NotImplemented "cvtpd2ps xmm0,xmm2"
+	036 NotImplemented "mulsd xmm3,xmm1"
+	037 Move xmm1, 0
+	038 Move [rcx+8], xmm0
+	039 Move xmm0, [r9+12]
+	040 Xor xmm0, xmm0, [0x182A500A0]
+	041 NotImplemented "cvtss2sd xmm1,xmm0"
+	042 NotImplemented "addsd xmm3,xmm1"
+	043 NotImplemented "cvtpd2ps xmm0,xmm3"
+	044 Move [rcx+12], xmm0
+	045 Return rax
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fmsubadd_ps(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	movss xmm4,dword ptr [182A500A0h]
+	movss xmm2,dword ptr [rdx]
+	movss xmm0,dword ptr [r8]
+	movss xmm1,dword ptr [r9]
+	movss xmm3,dword ptr [rdx+4]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtps2pd xmm2,xmm2
+	cvtps2pd xmm3,xmm3
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+4]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	mulsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+8]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r9+4]
+	xorps xmm0,xmm4
+	cvtss2sd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	addsd xmm3,xmm0
+	cvtps2pd xmm2,xmm2
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+0Ch]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r9+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	addsd xmm2,xmm0
+	cvtps2pd xmm3,xmm3
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+10h]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r9+0Ch]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+10h]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+14h]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+14h]
+	movss dword ptr [rcx+0Ch],xmm0
+	movss xmm0,dword ptr [r9+10h]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	addsd xmm2,xmm0
+	cvtps2pd xmm3,xmm3
+	cvtpd2ps xmm0,xmm2
+	movss xmm2,dword ptr [rdx+18h]
+	mulsd xmm3,xmm1
+	xorps xmm1,xmm1
+	movss dword ptr [rcx+10h],xmm0
+	movss xmm0,dword ptr [r9+14h]
+	xorps xmm0,xmm4
+	cvtss2sd xmm1,xmm0
+	cvtps2pd xmm2,xmm2
+	addsd xmm3,xmm1
+	movss xmm1,dword ptr [r8+18h]
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss xmm3,dword ptr [rdx+1Ch]
+	mulsd xmm2,xmm1
+	movss xmm1,dword ptr [r8+1Ch]
+	movss dword ptr [rcx+14h],xmm0
+	movss xmm0,dword ptr [r9+18h]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm3,xmm3
+	addsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	cvtpd2ps xmm0,xmm2
+	mulsd xmm3,xmm1
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm0,dword ptr [r9+1Ch]
+	xorps xmm1,xmm1
+	xorps xmm0,xmm4
+	mov rax,rcx
+	cvtss2sd xmm1,xmm0
+	addsd xmm3,xmm1
+	cvtpd2ps xmm0,xmm3
+	movss dword ptr [rcx+1Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm4, [0x182A500A0]
+	002 Move xmm2, [rdx]
+	003 Move xmm0, [r8]
+	004 Move xmm1, [r9]
+	005 Move xmm3, [rdx+4]
+	006 Move xmm0, xmm0
+	007 Move xmm1, xmm1
+	008 Move xmm2, xmm2
+	009 Move xmm3, xmm3
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 NotImplemented "addsd xmm2,xmm1"
+	012 Move xmm1, [r8+4]
+	013 Move xmm1, xmm1
+	014 NotImplemented "cvtpd2ps xmm0,xmm2"
+	015 Move xmm2, [rdx+8]
+	016 NotImplemented "mulsd xmm3,xmm1"
+	017 Move xmm1, [r8+8]
+	018 Move [rcx], xmm0
+	019 Move xmm0, [r9+4]
+	020 Xor xmm0, xmm0, xmm4
+	021 NotImplemented "cvtss2sd xmm0,xmm0"
+	022 Move xmm1, xmm1
+	023 NotImplemented "addsd xmm3,xmm0"
+	024 Move xmm2, xmm2
+	025 NotImplemented "cvtpd2ps xmm0,xmm3"
+	026 Move xmm3, [rdx+12]
+	027 NotImplemented "mulsd xmm2,xmm1"
+	028 Move xmm1, [r8+12]
+	029 Move [rcx+4], xmm0
+	030 Move xmm0, [r9+8]
+	031 Move xmm0, xmm0
+	032 Move xmm1, xmm1
+	033 NotImplemented "addsd xmm2,xmm0"
+	034 Move xmm3, xmm3
+	035 NotImplemented "cvtpd2ps xmm0,xmm2"
+	036 Move xmm2, [rdx+16]
+	037 NotImplemented "mulsd xmm3,xmm1"
+	038 Move xmm1, 0
+	039 Move [rcx+8], xmm0
+	040 Move xmm0, [r9+12]
+	041 Xor xmm0, xmm0, xmm4
+	042 NotImplemented "cvtss2sd xmm1,xmm0"
+	043 Move xmm2, xmm2
+	044 NotImplemented "addsd xmm3,xmm1"
+	045 Move xmm1, [r8+16]
+	046 Move xmm1, xmm1
+	047 NotImplemented "cvtpd2ps xmm0,xmm3"
+	048 Move xmm3, [rdx+20]
+	049 NotImplemented "mulsd xmm2,xmm1"
+	050 Move xmm1, [r8+20]
+	051 Move [rcx+12], xmm0
+	052 Move xmm0, [r9+16]
+	053 Move xmm0, xmm0
+	054 Move xmm1, xmm1
+	055 NotImplemented "addsd xmm2,xmm0"
+	056 Move xmm3, xmm3
+	057 NotImplemented "cvtpd2ps xmm0,xmm2"
+	058 Move xmm2, [rdx+24]
+	059 NotImplemented "mulsd xmm3,xmm1"
+	060 Move xmm1, 0
+	061 Move [rcx+16], xmm0
+	062 Move xmm0, [r9+20]
+	063 Xor xmm0, xmm0, xmm4
+	064 NotImplemented "cvtss2sd xmm1,xmm0"
+	065 Move xmm2, xmm2
+	066 NotImplemented "addsd xmm3,xmm1"
+	067 Move xmm1, [r8+24]
+	068 Move xmm1, xmm1
+	069 NotImplemented "cvtpd2ps xmm0,xmm3"
+	070 Move xmm3, [rdx+28]
+	071 NotImplemented "mulsd xmm2,xmm1"
+	072 Move xmm1, [r8+28]
+	073 Move [rcx+20], xmm0
+	074 Move xmm0, [r9+24]
+	075 Move xmm0, xmm0
+	076 Move xmm3, xmm3
+	077 NotImplemented "addsd xmm2,xmm0"
+	078 Move xmm1, xmm1
+	079 NotImplemented "cvtpd2ps xmm0,xmm2"
+	080 NotImplemented "mulsd xmm3,xmm1"
+	081 Move [rcx+24], xmm0
+	082 Move xmm0, [r9+28]
+	083 Move xmm1, 0
+	084 Xor xmm0, xmm0, xmm4
+	085 Move rax, rcx
+	086 NotImplemented "cvtss2sd xmm1,xmm0"
+	087 NotImplemented "addsd xmm3,xmm1"
+	088 NotImplemented "cvtpd2ps xmm0,xmm3"
+	089 Move [rcx+28], xmm0
+	090 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fnmadd_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B810h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B810]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fnmadd_pd(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BE10h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BE10]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fnmadd_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movss xmm3,dword ptr [182A500A0h]
+	xorps xmm2,xmm2
+	movss xmm0,dword ptr [rdx]
+	mov rax,rcx
+	movss xmm1,dword ptr [r9]
+	xorps xmm0,xmm3
+	cvtss2sd xmm2,xmm0
+	movss xmm0,dword ptr [r8]
+	cvtps2pd xmm1,xmm1
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+4]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r8+4]
+	cvtps2pd xmm1,xmm1
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+8]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+8]
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r8+8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+0Ch]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+0Ch]
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r8+0Ch]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A500A0]
+	002 Move xmm2, 0
+	003 Move xmm0, [rdx]
+	004 Move rax, rcx
+	005 Move xmm1, [r9]
+	006 Xor xmm0, xmm0, xmm3
+	007 NotImplemented "cvtss2sd xmm2,xmm0"
+	008 Move xmm0, [r8]
+	009 Move xmm1, xmm1
+	010 Move xmm0, xmm0
+	011 NotImplemented "mulsd xmm2,xmm0"
+	012 NotImplemented "addsd xmm2,xmm1"
+	013 Move xmm1, [rdx+4]
+	014 Xor xmm1, xmm1, xmm3
+	015 NotImplemented "cvtpd2ps xmm0,xmm2"
+	016 Move xmm2, 0
+	017 NotImplemented "cvtss2sd xmm2,xmm1"
+	018 Move xmm1, [r9+4]
+	019 Move [rcx], xmm0
+	020 Move xmm0, [r8+4]
+	021 Move xmm1, xmm1
+	022 Move xmm0, xmm0
+	023 NotImplemented "mulsd xmm2,xmm0"
+	024 NotImplemented "addsd xmm2,xmm1"
+	025 Move xmm1, [rdx+8]
+	026 Xor xmm1, xmm1, xmm3
+	027 NotImplemented "cvtpd2ps xmm0,xmm2"
+	028 Move xmm2, 0
+	029 NotImplemented "cvtss2sd xmm2,xmm1"
+	030 Move xmm1, [r9+8]
+	031 Move [rcx+4], xmm0
+	032 Move xmm0, [r8+8]
+	033 Move xmm0, xmm0
+	034 Move xmm1, xmm1
+	035 NotImplemented "mulsd xmm2,xmm0"
+	036 NotImplemented "addsd xmm2,xmm1"
+	037 Move xmm1, [rdx+12]
+	038 Xor xmm1, xmm1, xmm3
+	039 NotImplemented "cvtpd2ps xmm0,xmm2"
+	040 Move xmm2, 0
+	041 NotImplemented "cvtss2sd xmm2,xmm1"
+	042 Move xmm1, [r9+12]
+	043 Move [rcx+8], xmm0
+	044 Move xmm0, [r8+12]
+	045 Move xmm0, xmm0
+	046 Move xmm1, xmm1
+	047 NotImplemented "mulsd xmm2,xmm0"
+	048 NotImplemented "addsd xmm2,xmm1"
+	049 NotImplemented "cvtpd2ps xmm0,xmm2"
+	050 Move [rcx+12], xmm0
+	051 Return rax
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fnmadd_ps(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	movss xmm3,dword ptr [182A500A0h]
+	xorps xmm2,xmm2
+	movss xmm0,dword ptr [rdx]
+	movss xmm1,dword ptr [r9]
+	xorps xmm0,xmm3
+	cvtss2sd xmm2,xmm0
+	movss xmm0,dword ptr [r8]
+	cvtps2pd xmm1,xmm1
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+4]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+4]
+	cvtps2pd xmm1,xmm1
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r8+4]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+8]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+8]
+	cvtps2pd xmm1,xmm1
+	movss dword ptr [rcx+4],xmm0
+	movss xmm0,dword ptr [r8+8]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+0Ch]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+0Ch]
+	cvtps2pd xmm1,xmm1
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r8+0Ch]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+10h]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+10h]
+	movss dword ptr [rcx+0Ch],xmm0
+	movss xmm0,dword ptr [r8+10h]
+	cvtps2pd xmm1,xmm1
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+14h]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+14h]
+	movss dword ptr [rcx+10h],xmm0
+	movss xmm0,dword ptr [r8+14h]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+18h]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	movss dword ptr [rcx+14h],xmm0
+	movss xmm0,dword ptr [r8+18h]
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+18h]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	cvtps2pd xmm1,xmm1
+	mov rax,rcx
+	addsd xmm2,xmm1
+	movss xmm1,dword ptr [rdx+1Ch]
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+1Ch]
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm0,dword ptr [r8+1Ch]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+1Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A500A0]
+	002 Move xmm2, 0
+	003 Move xmm0, [rdx]
+	004 Move xmm1, [r9]
+	005 Xor xmm0, xmm0, xmm3
+	006 NotImplemented "cvtss2sd xmm2,xmm0"
+	007 Move xmm0, [r8]
+	008 Move xmm1, xmm1
+	009 Move xmm0, xmm0
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 NotImplemented "addsd xmm2,xmm1"
+	012 Move xmm1, [rdx+4]
+	013 Xor xmm1, xmm1, xmm3
+	014 NotImplemented "cvtpd2ps xmm0,xmm2"
+	015 Move xmm2, 0
+	016 NotImplemented "cvtss2sd xmm2,xmm1"
+	017 Move xmm1, [r9+4]
+	018 Move xmm1, xmm1
+	019 Move [rcx], xmm0
+	020 Move xmm0, [r8+4]
+	021 Move xmm0, xmm0
+	022 NotImplemented "mulsd xmm2,xmm0"
+	023 NotImplemented "addsd xmm2,xmm1"
+	024 Move xmm1, [rdx+8]
+	025 Xor xmm1, xmm1, xmm3
+	026 NotImplemented "cvtpd2ps xmm0,xmm2"
+	027 Move xmm2, 0
+	028 NotImplemented "cvtss2sd xmm2,xmm1"
+	029 Move xmm1, [r9+8]
+	030 Move xmm1, xmm1
+	031 Move [rcx+4], xmm0
+	032 Move xmm0, [r8+8]
+	033 Move xmm0, xmm0
+	034 NotImplemented "mulsd xmm2,xmm0"
+	035 NotImplemented "addsd xmm2,xmm1"
+	036 Move xmm1, [rdx+12]
+	037 Xor xmm1, xmm1, xmm3
+	038 NotImplemented "cvtpd2ps xmm0,xmm2"
+	039 Move xmm2, 0
+	040 NotImplemented "cvtss2sd xmm2,xmm1"
+	041 Move xmm1, [r9+12]
+	042 Move xmm1, xmm1
+	043 Move [rcx+8], xmm0
+	044 Move xmm0, [r8+12]
+	045 Move xmm0, xmm0
+	046 NotImplemented "mulsd xmm2,xmm0"
+	047 NotImplemented "addsd xmm2,xmm1"
+	048 Move xmm1, [rdx+16]
+	049 Xor xmm1, xmm1, xmm3
+	050 NotImplemented "cvtpd2ps xmm0,xmm2"
+	051 Move xmm2, 0
+	052 NotImplemented "cvtss2sd xmm2,xmm1"
+	053 Move xmm1, [r9+16]
+	054 Move [rcx+12], xmm0
+	055 Move xmm0, [r8+16]
+	056 Move xmm1, xmm1
+	057 Move xmm0, xmm0
+	058 NotImplemented "mulsd xmm2,xmm0"
+	059 NotImplemented "addsd xmm2,xmm1"
+	060 Move xmm1, [rdx+20]
+	061 Xor xmm1, xmm1, xmm3
+	062 NotImplemented "cvtpd2ps xmm0,xmm2"
+	063 Move xmm2, 0
+	064 NotImplemented "cvtss2sd xmm2,xmm1"
+	065 Move xmm1, [r9+20]
+	066 Move [rcx+16], xmm0
+	067 Move xmm0, [r8+20]
+	068 Move xmm0, xmm0
+	069 Move xmm1, xmm1
+	070 NotImplemented "mulsd xmm2,xmm0"
+	071 NotImplemented "addsd xmm2,xmm1"
+	072 Move xmm1, [rdx+24]
+	073 Xor xmm1, xmm1, xmm3
+	074 NotImplemented "cvtpd2ps xmm0,xmm2"
+	075 Move xmm2, 0
+	076 Move [rcx+20], xmm0
+	077 Move xmm0, [r8+24]
+	078 NotImplemented "cvtss2sd xmm2,xmm1"
+	079 Move xmm1, [r9+24]
+	080 Move xmm0, xmm0
+	081 NotImplemented "mulsd xmm2,xmm0"
+	082 Move xmm1, xmm1
+	083 Move rax, rcx
+	084 NotImplemented "addsd xmm2,xmm1"
+	085 Move xmm1, [rdx+28]
+	086 Xor xmm1, xmm1, xmm3
+	087 NotImplemented "cvtpd2ps xmm0,xmm2"
+	088 Move xmm2, 0
+	089 NotImplemented "cvtss2sd xmm2,xmm1"
+	090 Move xmm1, [r9+28]
+	091 Move [rcx+24], xmm0
+	092 Move xmm0, [r8+28]
+	093 Move xmm0, xmm0
+	094 Move xmm1, xmm1
+	095 NotImplemented "mulsd xmm2,xmm0"
+	096 NotImplemented "addsd xmm2,xmm1"
+	097 NotImplemented "cvtpd2ps xmm0,xmm2"
+	098 Move [rcx+28], xmm0
+	099 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fnmadd_sd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B8D0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B8D0]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fnmadd_ss(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov rax,rcx
+	movss xmm1,dword ptr [rdx]
+	xorps xmm2,xmm2
+	xorps xmm1,[182A500A0h]
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9]
+	movups [rcx],xmm0
+	movss xmm0,dword ptr [r8]
+	cvtps2pd xmm0,xmm0
+	cvtps2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move xmm1, [rdx]
+	004 Move xmm2, 0
+	005 Xor xmm1, xmm1, [0x182A500A0]
+	006 NotImplemented "cvtss2sd xmm2,xmm1"
+	007 Move xmm1, [r9]
+	008 Move [rcx], xmm0
+	009 Move xmm0, [r8]
+	010 Move xmm0, xmm0
+	011 Move xmm1, xmm1
+	012 NotImplemented "mulsd xmm2,xmm0"
+	013 NotImplemented "addsd xmm2,xmm1"
+	014 NotImplemented "cvtpd2ps xmm0,xmm2"
+	015 Move [rcx], xmm0
+	016 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fnmsub_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354B990h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354B990]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fnmsub_pd(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BED0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BED0]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fnmsub_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movss xmm3,dword ptr [182A500A0h]
+	xorps xmm2,xmm2
+	movss xmm0,dword ptr [rdx]
+	mov rax,rcx
+	movss xmm1,dword ptr [r9]
+	xorps xmm0,xmm3
+	cvtss2sd xmm2,xmm0
+	movss xmm0,dword ptr [r8]
+	xorps xmm1,xmm3
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+4]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+4]
+	movss dword ptr [rcx],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+4]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+8]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+8]
+	movss dword ptr [rcx+4],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+8]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+0Ch]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	movss dword ptr [rcx+8],xmm0
+	movss xmm0,dword ptr [r8+0Ch]
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+0Ch]
+	cvtps2pd xmm0,xmm0
+	xorps xmm1,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	addsd xmm2,xmm0
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A500A0]
+	002 Move xmm2, 0
+	003 Move xmm0, [rdx]
+	004 Move rax, rcx
+	005 Move xmm1, [r9]
+	006 Xor xmm0, xmm0, xmm3
+	007 NotImplemented "cvtss2sd xmm2,xmm0"
+	008 Move xmm0, [r8]
+	009 Xor xmm1, xmm1, xmm3
+	010 Move xmm0, xmm0
+	011 NotImplemented "mulsd xmm2,xmm0"
+	012 Move xmm0, 0
+	013 NotImplemented "cvtss2sd xmm0,xmm1"
+	014 Move xmm1, [rdx+4]
+	015 NotImplemented "addsd xmm2,xmm0"
+	016 Xor xmm1, xmm1, xmm3
+	017 NotImplemented "cvtpd2ps xmm0,xmm2"
+	018 Move xmm2, 0
+	019 NotImplemented "cvtss2sd xmm2,xmm1"
+	020 Move xmm1, [r9+4]
+	021 Move [rcx], xmm0
+	022 Xor xmm1, xmm1, xmm3
+	023 Move xmm0, [r8+4]
+	024 Move xmm0, xmm0
+	025 NotImplemented "mulsd xmm2,xmm0"
+	026 Move xmm0, 0
+	027 NotImplemented "cvtss2sd xmm0,xmm1"
+	028 Move xmm1, [rdx+8]
+	029 NotImplemented "addsd xmm2,xmm0"
+	030 Xor xmm1, xmm1, xmm3
+	031 NotImplemented "cvtpd2ps xmm0,xmm2"
+	032 Move xmm2, 0
+	033 NotImplemented "cvtss2sd xmm2,xmm1"
+	034 Move xmm1, [r9+8]
+	035 Move [rcx+4], xmm0
+	036 Xor xmm1, xmm1, xmm3
+	037 Move xmm0, [r8+8]
+	038 Move xmm0, xmm0
+	039 NotImplemented "mulsd xmm2,xmm0"
+	040 Move xmm0, 0
+	041 NotImplemented "cvtss2sd xmm0,xmm1"
+	042 Move xmm1, [rdx+12]
+	043 NotImplemented "addsd xmm2,xmm0"
+	044 Xor xmm1, xmm1, xmm3
+	045 NotImplemented "cvtpd2ps xmm0,xmm2"
+	046 Move xmm2, 0
+	047 Move [rcx+8], xmm0
+	048 Move xmm0, [r8+12]
+	049 NotImplemented "cvtss2sd xmm2,xmm1"
+	050 Move xmm1, [r9+12]
+	051 Move xmm0, xmm0
+	052 Xor xmm1, xmm1, xmm3
+	053 NotImplemented "mulsd xmm2,xmm0"
+	054 Move xmm0, 0
+	055 NotImplemented "cvtss2sd xmm0,xmm1"
+	056 NotImplemented "addsd xmm2,xmm0"
+	057 NotImplemented "cvtpd2ps xmm0,xmm2"
+	058 Move [rcx+12], xmm0
+	059 Return rax
+
+Method: Unity.Burst.Intrinsics.v256 mm256_fnmsub_ps(Unity.Burst.Intrinsics.v256 a, Unity.Burst.Intrinsics.v256 b, Unity.Burst.Intrinsics.v256 c)
+
+Disassembly:
+	movss xmm3,dword ptr [182A500A0h]
+	xorps xmm2,xmm2
+	movss xmm0,dword ptr [rdx]
+	movss xmm1,dword ptr [r9]
+	xorps xmm0,xmm3
+	cvtss2sd xmm2,xmm0
+	movss xmm0,dword ptr [r8]
+	xorps xmm1,xmm3
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+4]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+4]
+	movss dword ptr [rcx],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+4]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+8]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+8]
+	movss dword ptr [rcx+4],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+8]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+0Ch]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+0Ch]
+	movss dword ptr [rcx+8],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+0Ch]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+10h]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+10h]
+	movss dword ptr [rcx+0Ch],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+10h]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+14h]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	movss dword ptr [rcx+10h],xmm0
+	movss xmm0,dword ptr [r8+14h]
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+14h]
+	cvtps2pd xmm0,xmm0
+	xorps xmm1,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	mov rax,rcx
+	movss xmm1,dword ptr [rdx+18h]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+18h]
+	movss dword ptr [rcx+14h],xmm0
+	xorps xmm1,xmm3
+	movss xmm0,dword ptr [r8+18h]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	movss xmm1,dword ptr [rdx+1Ch]
+	addsd xmm2,xmm0
+	xorps xmm1,xmm3
+	cvtpd2ps xmm0,xmm2
+	xorps xmm2,xmm2
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm0,dword ptr [r8+1Ch]
+	cvtss2sd xmm2,xmm1
+	movss xmm1,dword ptr [r9+1Ch]
+	cvtps2pd xmm0,xmm0
+	xorps xmm1,xmm3
+	mulsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	addsd xmm2,xmm0
+	cvtpd2ps xmm0,xmm2
+	movss dword ptr [rcx+1Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A500A0]
+	002 Move xmm2, 0
+	003 Move xmm0, [rdx]
+	004 Move xmm1, [r9]
+	005 Xor xmm0, xmm0, xmm3
+	006 NotImplemented "cvtss2sd xmm2,xmm0"
+	007 Move xmm0, [r8]
+	008 Xor xmm1, xmm1, xmm3
+	009 Move xmm0, xmm0
+	010 NotImplemented "mulsd xmm2,xmm0"
+	011 Move xmm0, 0
+	012 NotImplemented "cvtss2sd xmm0,xmm1"
+	013 Move xmm1, [rdx+4]
+	014 NotImplemented "addsd xmm2,xmm0"
+	015 Xor xmm1, xmm1, xmm3
+	016 NotImplemented "cvtpd2ps xmm0,xmm2"
+	017 Move xmm2, 0
+	018 NotImplemented "cvtss2sd xmm2,xmm1"
+	019 Move xmm1, [r9+4]
+	020 Move [rcx], xmm0
+	021 Xor xmm1, xmm1, xmm3
+	022 Move xmm0, [r8+4]
+	023 Move xmm0, xmm0
+	024 NotImplemented "mulsd xmm2,xmm0"
+	025 Move xmm0, 0
+	026 NotImplemented "cvtss2sd xmm0,xmm1"
+	027 Move xmm1, [rdx+8]
+	028 NotImplemented "addsd xmm2,xmm0"
+	029 Xor xmm1, xmm1, xmm3
+	030 NotImplemented "cvtpd2ps xmm0,xmm2"
+	031 Move xmm2, 0
+	032 NotImplemented "cvtss2sd xmm2,xmm1"
+	033 Move xmm1, [r9+8]
+	034 Move [rcx+4], xmm0
+	035 Xor xmm1, xmm1, xmm3
+	036 Move xmm0, [r8+8]
+	037 Move xmm0, xmm0
+	038 NotImplemented "mulsd xmm2,xmm0"
+	039 Move xmm0, 0
+	040 NotImplemented "cvtss2sd xmm0,xmm1"
+	041 Move xmm1, [rdx+12]
+	042 NotImplemented "addsd xmm2,xmm0"
+	043 Xor xmm1, xmm1, xmm3
+	044 NotImplemented "cvtpd2ps xmm0,xmm2"
+	045 Move xmm2, 0
+	046 NotImplemented "cvtss2sd xmm2,xmm1"
+	047 Move xmm1, [r9+12]
+	048 Move [rcx+8], xmm0
+	049 Xor xmm1, xmm1, xmm3
+	050 Move xmm0, [r8+12]
+	051 Move xmm0, xmm0
+	052 NotImplemented "mulsd xmm2,xmm0"
+	053 Move xmm0, 0
+	054 NotImplemented "cvtss2sd xmm0,xmm1"
+	055 Move xmm1, [rdx+16]
+	056 NotImplemented "addsd xmm2,xmm0"
+	057 Xor xmm1, xmm1, xmm3
+	058 NotImplemented "cvtpd2ps xmm0,xmm2"
+	059 Move xmm2, 0
+	060 NotImplemented "cvtss2sd xmm2,xmm1"
+	061 Move xmm1, [r9+16]
+	062 Move [rcx+12], xmm0
+	063 Xor xmm1, xmm1, xmm3
+	064 Move xmm0, [r8+16]
+	065 Move xmm0, xmm0
+	066 NotImplemented "mulsd xmm2,xmm0"
+	067 Move xmm0, 0
+	068 NotImplemented "cvtss2sd xmm0,xmm1"
+	069 Move xmm1, [rdx+20]
+	070 NotImplemented "addsd xmm2,xmm0"
+	071 Xor xmm1, xmm1, xmm3
+	072 NotImplemented "cvtpd2ps xmm0,xmm2"
+	073 Move xmm2, 0
+	074 Move [rcx+16], xmm0
+	075 Move xmm0, [r8+20]
+	076 NotImplemented "cvtss2sd xmm2,xmm1"
+	077 Move xmm1, [r9+20]
+	078 Move xmm0, xmm0
+	079 Xor xmm1, xmm1, xmm3
+	080 NotImplemented "mulsd xmm2,xmm0"
+	081 Move xmm0, 0
+	082 NotImplemented "cvtss2sd xmm0,xmm1"
+	083 Move rax, rcx
+	084 Move xmm1, [rdx+24]
+	085 NotImplemented "addsd xmm2,xmm0"
+	086 Xor xmm1, xmm1, xmm3
+	087 NotImplemented "cvtpd2ps xmm0,xmm2"
+	088 Move xmm2, 0
+	089 NotImplemented "cvtss2sd xmm2,xmm1"
+	090 Move xmm1, [r9+24]
+	091 Move [rcx+20], xmm0
+	092 Xor xmm1, xmm1, xmm3
+	093 Move xmm0, [r8+24]
+	094 Move xmm0, xmm0
+	095 NotImplemented "mulsd xmm2,xmm0"
+	096 Move xmm0, 0
+	097 NotImplemented "cvtss2sd xmm0,xmm1"
+	098 Move xmm1, [rdx+28]
+	099 NotImplemented "addsd xmm2,xmm0"
+	100 Xor xmm1, xmm1, xmm3
+	101 NotImplemented "cvtpd2ps xmm0,xmm2"
+	102 Move xmm2, 0
+	103 Move [rcx+24], xmm0
+	104 Move xmm0, [r8+28]
+	105 NotImplemented "cvtss2sd xmm2,xmm1"
+	106 Move xmm1, [r9+28]
+	107 Move xmm0, xmm0
+	108 Xor xmm1, xmm1, xmm3
+	109 NotImplemented "mulsd xmm2,xmm0"
+	110 Move xmm0, 0
+	111 NotImplemented "cvtss2sd xmm0,xmm1"
+	112 NotImplemented "addsd xmm2,xmm0"
+	113 NotImplemented "cvtpd2ps xmm0,xmm2"
+	114 Move [rcx+28], xmm0
+	115 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 fnmsub_sd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[18352CBE8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[18350BD50h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181844530h
+	lea rcx,[18354BA50h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x18352CBE8]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350BD50]
+	009 Move rbx, rax
+	010 Call 0x18037BBB0, rcx, rdx, r8, r9
+	011 Move rdx, rax
+	012 Move r8, 0
+	013 Move rcx, rbx
+	014 Call Exception..ctor, rcx, rdx
+	015 LoadAddress rcx, [0x18354BA50]
+	016 Call 0x18037BBB0, rcx, rdx, r8, r9
+	017 Move rdx, rax
+	018 Move rcx, rbx
+	019 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: Unity.Burst.Intrinsics.v128 fnmsub_ss(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b, Unity.Burst.Intrinsics.v128 c)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov rax,rcx
+	movss xmm1,dword ptr [rdx]
+	xorps xmm3,xmm3
+	xorps xmm1,[182A500A0h]
+	movups [rcx],xmm0
+	movss xmm0,dword ptr [r8]
+	cvtss2sd xmm3,xmm1
+	movss xmm1,dword ptr [r9]
+	xorps xmm1,[182A500A0h]
+	cvtps2pd xmm0,xmm0
+	mulsd xmm3,xmm0
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm1
+	addsd xmm3,xmm0
+	cvtpd2ps xmm0,xmm3
+	movss dword ptr [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move xmm1, [rdx]
+	004 Move xmm3, 0
+	005 Xor xmm1, xmm1, [0x182A500A0]
+	006 Move [rcx], xmm0
+	007 Move xmm0, [r8]
+	008 NotImplemented "cvtss2sd xmm3,xmm1"
+	009 Move xmm1, [r9]
+	010 Xor xmm1, xmm1, [0x182A500A0]
+	011 Move xmm0, xmm0
+	012 NotImplemented "mulsd xmm3,xmm0"
+	013 Move xmm0, 0
+	014 NotImplemented "cvtss2sd xmm0,xmm1"
+	015 NotImplemented "addsd xmm3,xmm0"
+	016 NotImplemented "cvtpd2ps xmm0,xmm3"
+	017 Move [rcx], xmm0
+	018 Return rax
+

@@ -1,0 +1,52 @@
+Type: UnityEngine.XR.XRDisplaySubsystem+XRMirrorViewBlitDesc
+
+Method: System.Void GetBlitParameter(System.Int32 blitParameterIndex, out UnityEngine.XR.XRDisplaySubsystem+XRBlitParams blitParameter)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[18375BDB8h]
+	mov rbx,r8
+	mov edi,edx
+	mov rsi,rcx
+	test rax,rax
+	jne short 00000001829C29B6h
+	lea rcx,[182B502A0h]
+	call 000000018037BE90h
+	mov [18375BDB8h],rax
+	mov r8,rbx
+	mov edx,edi
+	mov rcx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [0x18375BDB8]
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B502A0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x18375BDB8], rax
+	015 Move r8, rbx
+	016 Move rdx, rdi
+	017 Move rcx, rsi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 CallNoReturn rax
+

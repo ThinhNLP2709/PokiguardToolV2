@@ -1,0 +1,213 @@
+Type: UnityEngine.Rendering.DebugOverlay
+
+Method: System.Int32 get_x()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_x(System.Int32 value)
+
+Disassembly:
+	mov [rcx+10h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+
+Method: System.Int32 get_y()
+
+Disassembly:
+	mov eax,[rcx+14h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+20]
+	002 Return rax
+
+Method: System.Void set_y(System.Int32 value)
+
+Disassembly:
+	mov [rcx+14h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+20], rdx
+	002 Return 
+
+Method: System.Int32 get_overlaySize()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_overlaySize(System.Int32 value)
+
+Disassembly:
+	mov [rcx+18h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+24], rdx
+	002 Return 
+
+Method: System.Void StartOverlay(System.Int32 initialX, System.Int32 initialY, System.Int32 overlaySize, System.Int32 screenWidth)
+
+Disassembly:
+	mov eax,[rsp+28h]
+	mov [rcx+20h],eax
+	mov [rcx+10h],edx
+	mov [rcx+14h],r8d
+	mov [rcx+18h],r9d
+	mov [rcx+1Ch],edx
+	ret
+
+ISIL:
+	001 Move rax, stack:0x28
+	002 Move [rcx+32], rax
+	003 Move [rcx+16], rdx
+	004 Move [rcx+20], r8
+	005 Move [rcx+24], r9
+	006 Move [rcx+28], rdx
+	007 Return 
+
+Method: UnityEngine.Rect Next(System.Single aspect = 1)
+
+Disassembly:
+	movd xmm0,dword ptr [rdx+18h]
+	mov r9,rcx
+	mov r8d,[rdx+10h]
+	cvtdq2ps xmm0,xmm0
+	mulss xmm0,xmm2
+	cvttss2si ecx,xmm0
+	add r8d,ecx
+	cmp r8d,[rdx+20h]
+	jle short 00000001821872D4h
+	mov eax,[rdx+1Ch]
+	cmp [rdx+10h],eax
+	jle short 00000001821872D4h
+	mov [rdx+10h],eax
+	mov eax,[rdx+14h]
+	sub eax,[rdx+18h]
+	mov [rdx+14h],eax
+	movd xmm0,dword ptr [rdx+10h]
+	mov rax,r9
+	movd xmm1,dword ptr [rdx+14h]
+	add [rdx+10h],ecx
+	cvtdq2ps xmm0,xmm0
+	cvtdq2ps xmm1,xmm1
+	movss dword ptr [r9],xmm0
+	movss dword ptr [r9+4],xmm1
+	movd xmm1,dword ptr [rdx+18h]
+	movd xmm0,ecx
+	cvtdq2ps xmm0,xmm0
+	cvtdq2ps xmm1,xmm1
+	movss dword ptr [r9+8],xmm0
+	movss dword ptr [r9+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+24]
+	002 Move r9, rcx
+	003 Move r8, [rdx+16]
+	004 Move xmm0, xmm0
+	005 Multiply xmm0, xmm0, xmm2
+	006 NotImplemented "cvttss2si ecx,xmm0"
+	007 Add r8, r8, rcx
+	008 Compare r8, [rdx+32]
+	009 JumpIfLessOrEqual {17}
+	010 Move rax, [rdx+28]
+	011 Compare [rdx+16], rax
+	012 JumpIfLessOrEqual {17}
+	013 Move [rdx+16], rax
+	014 Move rax, [rdx+20]
+	015 Subtract rax, rax, [rdx+24]
+	016 Move [rdx+20], rax
+	017 Move xmm0, [rdx+16]
+	018 Move rax, r9
+	019 Move xmm1, [rdx+20]
+	020 Add [rdx+16], [rdx+16], rcx
+	021 Move xmm0, xmm0
+	022 Move xmm1, xmm1
+	023 Move [r9], xmm0
+	024 Move [r9+4], xmm1
+	025 Move xmm1, [rdx+24]
+	026 Move xmm0, rcx
+	027 Move xmm0, xmm0
+	028 Move xmm1, xmm1
+	029 Move [r9+8], xmm0
+	030 Move [r9+12], xmm1
+	031 Return rax
+
+Method: System.Void SetViewport(UnityEngine.Rendering.CommandBuffer cmd)
+
+Disassembly:
+	sub rsp,38h
+	movd xmm0,dword ptr [rcx+10h]
+	mov rax,rdx
+	movd xmm1,dword ptr [rcx+14h]
+	movd xmm2,dword ptr [rcx+18h]
+	movd xmm3,dword ptr [rcx+18h]
+	cvtdq2ps xmm0,xmm0
+	cvtdq2ps xmm1,xmm1
+	cvtdq2ps xmm2,xmm2
+	cvtdq2ps xmm3,xmm3
+	test rdx,rdx
+	je short 0000000182187379h
+	xor r8d,r8d
+	movss dword ptr [rsp+20h],xmm0
+	lea rdx,[rsp+20h]
+	movss dword ptr [rsp+24h],xmm1
+	mov rcx,rax
+	movss dword ptr [rsp+28h],xmm2
+	movss dword ptr [rsp+2Ch],xmm3
+	call 000000018265A6E0h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm0, [rcx+16]
+	003 Move rax, rdx
+	004 Move xmm1, [rcx+20]
+	005 Move xmm2, [rcx+24]
+	006 Move xmm3, [rcx+24]
+	007 Move xmm0, xmm0
+	008 Move xmm1, xmm1
+	009 Move xmm2, xmm2
+	010 Move xmm3, xmm3
+	011 Compare rdx, 0
+	012 JumpIfEqual {23}
+	013 Move r8, 0
+	014 Move stack:0x20, xmm0
+	015 LoadAddress rdx, stack:0x20
+	016 Move stack:0x24, xmm1
+	017 Move rcx, rax
+	018 Move stack:0x28, xmm2
+	019 Move stack:0x2C, xmm3
+	020 Call CommandBuffer.SetViewport, rcx, rdx
+	021 ShiftStack 56
+	022 Return 
+	023 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

@@ -1,0 +1,131 @@
+Type: System.Data.DataViewSetting
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[18375C130h]
+	mov rbx,rcx
+	mov rdx,[rax+0B8h]
+	mov rdx,[rdx]
+	mov [rcx+20h],rdx
+	add rcx,20h
+	call 000000018037ACB0h
+	mov rax,[18375C130h]
+	lea rcx,[rbx+28h]
+	mov rdx,[rax+0B8h]
+	mov rdx,[rdx]
+	mov [rbx+28h],rdx
+	call 000000018037ACB0h
+	xor edx,edx
+	mov dword ptr [rbx+30h],16h
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x18375C130]
+	005 Move rbx, rcx
+	006 Move rdx, [rax+184]
+	007 Move rdx, [rdx]
+	008 Move [rcx+32], rdx
+	009 Add rcx, rcx, 32
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 Move rax, [0x18375C130]
+	012 LoadAddress rcx, [rbx+40]
+	013 Move rdx, [rax+184]
+	014 Move rdx, [rdx]
+	015 Move [rbx+40], rdx
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Move rdx, 0
+	018 Move [rbx+48], 22
+	019 Move rcx, rbx
+	020 ShiftStack 32
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	024 Return 
+
+Method: System.Boolean get_ApplyDefaultSort()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+34h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+52]
+	002 Return rax
+
+Method: System.Void SetDataViewManager(System.Data.DataViewManager dataViewManager)
+
+Disassembly:
+	cmp [rcx+10h],rdx
+	je short 0000000181A8A923h
+	mov [rcx+10h],rdx
+	add rcx,10h
+	jmp near ptr 000000018037ACB0h
+	ret
+
+ISIL:
+	001 Compare [rcx+16], rdx
+	002 JumpIfEqual {7}
+	003 Move [rcx+16], rdx
+	004 Add rcx, rcx, 16
+	005 Call 0x18037ACB0, rcx, rdx, r8, r9
+	006 Return 
+	007 Return 
+
+Method: System.Void SetDataTable(System.Data.DataTable table)
+
+Disassembly:
+	cmp [rcx+18h],rdx
+	je short 0000000181AA2823h
+	mov [rcx+18h],rdx
+	add rcx,18h
+	jmp near ptr 000000018037ACB0h
+	ret
+
+ISIL:
+	001 Compare [rcx+24], rdx
+	002 JumpIfEqual {7}
+	003 Move [rcx+24], rdx
+	004 Add rcx, rcx, 24
+	005 Call 0x18037ACB0, rcx, rdx, r8, r9
+	006 Return 
+	007 Return 
+
+Method: System.String get_RowFilter()
+
+Disassembly:
+	mov rax,[rcx+28h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+40]
+	002 Return rax
+
+Method: System.Data.DataViewRowState get_RowStateFilter()
+
+Disassembly:
+	mov eax,[rcx+30h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+48]
+	002 Return rax
+
+Method: System.String get_Sort()
+
+Disassembly:
+	mov rax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+

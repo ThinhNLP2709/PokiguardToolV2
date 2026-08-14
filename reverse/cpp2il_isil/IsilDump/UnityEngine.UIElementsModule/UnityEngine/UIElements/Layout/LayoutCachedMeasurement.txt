@@ -1,0 +1,42 @@
+Type: UnityEngine.UIElements.Layout.LayoutCachedMeasurement
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,48h
+	cmp byte ptr [18375AC80h],0
+	jne short 000000018286E4E0h
+	lea rcx,[183559950h]
+	call 000000018037BB90h
+	mov byte ptr [18375AC80h],1
+	mov rax,[183559950h]
+	xorps xmm1,xmm1
+	mov qword ptr [rsp+30h],0FFFFFFFFFFFFFFFFh
+	mov dword ptr [rsp+38h],0BF800000h
+	mov dword ptr [rsp+3Ch],0BF800000h
+	mov rcx,[rax+0B8h]
+	movups xmm0,[rsp+30h]
+	movups [rcx],xmm1
+	movups [rcx+10h],xmm0
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare [0x18375AC80], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183559950]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18375AC80], 1
+	007 Move rax, typeof(UnityEngine.UIElements.Layout.LayoutCachedMeasurement)
+	008 Move xmm1, 0
+	009 Move stack:0x30, 18446744073709551615
+	010 Move stack:0x38, 0xBF800000
+	011 Move stack:0x3C, 0xBF800000
+	012 Move rcx, [rax+184]
+	013 Move xmm0, stack:0x30
+	014 Move [rcx], xmm1
+	015 Move [rcx+16], xmm0
+	016 ShiftStack 72
+	017 Return 
+

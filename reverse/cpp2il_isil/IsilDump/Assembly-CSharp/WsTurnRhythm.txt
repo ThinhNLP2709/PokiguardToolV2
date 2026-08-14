@@ -1,0 +1,70 @@
+Type: WsTurnRhythm
+
+Method: System.Single FallSettleSec(System.Int32 width)
+
+Disassembly:
+	xchg ax,ax
+	cmp ecx,1
+	mov eax,8
+	cmovg eax,ecx
+	dec eax
+	movd xmm0,eax
+	cvtdq2ps xmm0,xmm0
+	mulss xmm0,dword ptr [182A500B0h]
+	addss xmm0,dword ptr [182A500B8h]
+	addss xmm0,dword ptr [182A500B4h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Compare rcx, 1
+	003 Move rax, 8
+	004 JumpIfLessOrEqual {6}
+	005 Move rax, rcx
+	006 Nop 
+	007 Subtract rax, rax, 1
+	008 Move xmm0, rax
+	009 Move xmm0, xmm0
+	010 Multiply xmm0, xmm0, [0x182A500B0]
+	011 Add xmm0, xmm0, [0x182A500B8]
+	012 Add xmm0, xmm0, [0x182A500B4]
+	013 Return xmm0
+
+Method: System.Single SpeedFactor(System.Single phaseStartedRealtime)
+
+Disassembly:
+	sub rsp,38h
+	movaps [rsp+20h],xmm6
+	xor ecx,ecx
+	movaps xmm6,xmm0
+	call 00000001826355A0h
+	subss xmm0,xmm6
+	comiss xmm0,dword ptr [182A4FBD4h]
+	jbe short 00000001804DAB32h
+	movss xmm0,dword ptr [182A4FBB8h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+	movss xmm0,dword ptr [182A4FBA4h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move stack:0x20, xmm6
+	003 Move rcx, 0
+	004 Move xmm6, xmm0
+	005 Call Time.get_realtimeSinceStartup, rcx
+	006 Subtract xmm0, xmm0, xmm6
+	007 Compare xmm0, [0x182A4FBD4]
+	008 JumpIfLessOrEqual {13}
+	009 Move xmm0, [0x182A4FBB8]
+	010 Move xmm6, stack:0x20
+	011 ShiftStack 56
+	012 Return xmm0
+	013 Move xmm0, [0x182A4FBA4]
+	014 Move xmm6, stack:0x20
+	015 ShiftStack 56
+	016 Return xmm0
+

@@ -1,0 +1,72 @@
+Type: Unity.Collections.FixedList4096BytesDebugView`1
+
+Method: System.Void .ctor(Unity.Collections.FixedList4096Bytes`1<T> list)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	mov eax,1020h
+	call 0000000180410930h
+	sub rsp,rax
+	mov rbx,rdx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov r8d,1000h
+	lea rcx,[rsp+20h]
+	mov rdx,rbx
+	call 0000000180445210h
+	lea rcx,[rdi+10h]
+	mov r8d,1000h
+	lea rdx,[rsp+20h]
+	call 0000000180445210h
+	mov rbx,[rsp+1030h]
+	add rsp,1020h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 Move rax, 0x1020
+	005 Call 0x180410930, rcx, rdx, r8, r9
+	006 Subtract rsp, rsp, rax
+	007 Move rbx, rdx
+	008 Move rdi, rcx
+	009 Move rdx, 0
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 Move r8, 4096
+	012 LoadAddress rcx, stack:0x20
+	013 Move rdx, rbx
+	014 Call 0x180445210, rcx, rdx, r8, r9
+	015 LoadAddress rcx, [rdi+16]
+	016 Move r8, 4096
+	017 LoadAddress rdx, stack:0x20
+	018 Call 0x180445210, rcx, rdx, r8, r9
+	019 Move rbx, stack:0x1030
+	020 ShiftStack 0x1020
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Return 
+
+Method: T[] get_Items()
+
+Disassembly:
+	mov rax,[rdx+20h]
+	add rcx,10h
+	mov r9,[rax+0C0h]
+	mov rax,[r9+10h]
+	mov rdx,rax
+	mov r8,[rax]
+	jmp r8
+
+ISIL:
+	001 Move rax, [rdx+32]
+	002 Add rcx, rcx, 16
+	003 Move r9, [rax+192]
+	004 Move rax, [r9+16]
+	005 Move rdx, rax
+	006 Move r8, [rax]
+	007 CallNoReturn r8
+

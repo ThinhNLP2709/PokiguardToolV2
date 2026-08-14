@@ -1,0 +1,182 @@
+Type: System.Linq.Expressions.Interpreter.BranchTrueInstruction
+
+Method: System.Linq.Expressions.Interpreter.Instruction[] get_Cache()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183750499h],0
+	jne short 00000001819C0BCCh
+	lea rcx,[18350A040h]
+	call 000000018037BB90h
+	lea rcx,[18356A7D8h]
+	call 000000018037BB90h
+	mov byte ptr [183750499h],1
+	mov rcx,[18350A040h]
+	mov rax,[rcx+0B8h]
+	cmp qword ptr [rax],0
+	jne short 00000001819C0C26h
+	mov rcx,[18356A7D8h]
+	mov edx,20h
+	call 000000018037AD30h
+	mov rcx,[18350A040h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rax
+	mov rdx,rax
+	mov rcx,[18350A040h]
+	mov rcx,[rcx+0B8h]
+	call 000000018037ACB0h
+	mov rax,[18350A040h]
+	mov rax,[rax+0B8h]
+	mov rax,[rax]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183750499], 0
+	003 JumpIfNotEqual {9}
+	004 LoadAddress rcx, [0x18350A040]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x18356A7D8]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183750499], 1
+	009 Move rcx, typeof(System.Linq.Expressions.Interpreter.BranchTrueInstruction)
+	010 Move rax, [rcx+184]
+	011 Compare [rax], 0
+	012 JumpIfNotEqual {25}
+	013 Move rcx, typeof(System.Linq.Expressions.Interpreter.Instruction[1])
+	014 Move rdx, 32
+	015 Call "SzArrayNew", rcx, rdx, r8, r9
+	016 Move rcx, typeof(System.Linq.Expressions.Interpreter.BranchTrueInstruction)
+	017 Move rdx, [rcx+184]
+	018 Move [rdx], rax
+	019 Move rdx, rax
+	020 Move rcx, typeof(System.Linq.Expressions.Interpreter.BranchTrueInstruction)
+	021 Move rcx, [rcx+184]
+	022 Call 0x18037ACB0, rcx, rdx, r8, r9
+	023 Move rax, typeof(System.Linq.Expressions.Interpreter.BranchTrueInstruction)
+	024 Move rax, [rax+184]
+	025 Move rax, [rax]
+	026 ShiftStack 40
+	027 Return rax
+
+Method: System.String get_InstructionName()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18375049Ah],0
+	jne short 00000001819C0C50h
+	lea rcx,[183538A80h]
+	call 000000018037BB90h
+	mov byte ptr [18375049Ah],1
+	mov rax,[183538A80h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18375049A], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183538A80]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18375049A], 1
+	007 Move rax, "BranchTrue"
+	008 ShiftStack 40
+	009 Return rax
+
+Method: System.Int32 get_ConsumedStack()
+
+Disassembly:
+	mov eax,1
+	ret
+
+ISIL:
+	001 Move rax, 1
+	002 Return rax
+
+Method: System.Int32 Run(System.Linq.Expressions.Interpreter.InterpretedFrame frame)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,rdx
+	mov rbx,rcx
+	test rdx,rdx
+	je short 00000001819C0B85h
+	xor edx,edx
+	mov rcx,rax
+	call 00000001819E6270h
+	mov r9,[18375C0C8h]
+	test rax,rax
+	je short 00000001819C0B85h
+	mov r8,[rax]
+	mov rcx,rax
+	mov rdx,[r9+40h]
+	cmp [r8+40h],rdx
+	jne short 00000001819C0B8Bh
+	call 000000018037AE90h
+	cmp byte ptr [rax],0
+	jne short 00000001819C0B7Ch
+	mov eax,1
+	add rsp,20h
+	pop rbx
+	ret
+	mov eax,[rbx+10h]
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+	int 3
+	mov rdx,r9
+	call 000000018037ACF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, rdx
+	005 Move rbx, rcx
+	006 Compare rdx, 0
+	007 JumpIfEqual {32}
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Call InterpretedFrame.Pop, rcx, rdx
+	011 Move r9, [0x18375C0C8]
+	012 Compare rax, 0
+	013 JumpIfEqual {32}
+	014 Move r8, [rax]
+	015 Move rcx, rax
+	016 Move rdx, [r9+64]
+	017 Compare [r8+64], rdx
+	018 JumpIfNotEqual {34}
+	019 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	020 Compare [rax], 0
+	021 JumpIfNotEqual {27}
+	022 Move rax, 1
+	023 ShiftStack 32
+	024 Move rbx, stack:0x0
+	025 ShiftStack 8
+	026 Return rax
+	027 Move rax, [rbx+16]
+	028 ShiftStack 32
+	029 Move rbx, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+	032 Call 0x18037BE30, rcx, rdx, r8, r9
+	033 Interrupt 
+	034 Move rdx, r9
+	035 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	mov dword ptr [rcx+10h],80000000h
+	jmp near ptr 00000001804552D0h
+
+ISIL:
+	001 Move rdx, 0
+	002 Move [rcx+16], 0x80000000
+	003 Call 0x1804552D0, rcx, rdx, r8
+	004 Return 
+

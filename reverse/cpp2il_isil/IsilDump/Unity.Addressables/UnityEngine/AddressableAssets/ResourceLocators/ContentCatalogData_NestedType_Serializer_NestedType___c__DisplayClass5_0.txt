@@ -1,0 +1,45 @@
+Type: UnityEngine.AddressableAssets.ResourceLocators.ContentCatalogData+Serializer+<>c__DisplayClass5_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.UInt32 <Serialize>b__0(System.Int32 i)
+
+Disassembly:
+	sub rsp,28h
+	mov r8,[rcx+10h]
+	test r8,r8
+	je short 0000000181E92930h
+	cmp edx,[r8+18h]
+	jae short 0000000181E92936h
+	movsxd rax,edx
+	mov eax,[r8+rax*4+20h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r8, [rcx+16]
+	003 Compare r8, 0
+	004 JumpIfEqual {11}
+	005 Compare rdx, [r8+24]
+	006 JumpIfGreaterOrEqual {13}
+	007 Move rax, rdx
+	008 Move rax, [r8+32+rax*4]
+	009 ShiftStack 40
+	010 Return rax
+	011 Call 0x18037BE30, rcx, rdx, r8, r9
+	012 Interrupt 
+	013 Call 0x18037BE20, rcx, rdx, r8, r9
+

@@ -1,0 +1,62 @@
+Type: UnityEngine.Rendering.DebugDisplaySettingsPanel`1
+
+Method: T get_data()
+
+Disassembly:
+	mov rax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+
+Method: System.Void set_data(T value)
+
+Disassembly:
+	mov [rcx+20h],rdx
+	add rcx,20h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+32], rdx
+	002 Add rcx, rcx, 32
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: System.Void .ctor(T data)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 000000018217F770h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call DebugDisplaySettingsPanel..ctor, rcx, rdx
+	009 LoadAddress rcx, [rbx+32]
+	010 Move [rbx+32], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+

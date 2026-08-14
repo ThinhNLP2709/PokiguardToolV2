@@ -1,0 +1,146 @@
+Type: UnityEngine.AdaptivePerformance.GpuTimeProvider
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183752733h],0
+	mov rbx,rcx
+	jne short 0000000181E6BDF5h
+	lea rcx,[183568180h]
+	call 000000018037BB90h
+	mov byte ptr [183752733h],1
+	mov rcx,[183568180h]
+	mov edx,1
+	call 000000018037AD30h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	xor edx,edx
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183752733], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183568180]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183752733], 1
+	010 Move rcx, typeof(UnityEngine.FrameTiming[1])
+	011 Move rdx, 1
+	012 Call "SzArrayNew", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [rbx+16]
+	014 Move [rbx+16], rax
+	015 Move rdx, rax
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Move rdx, 0
+	018 Move rcx, rbx
+	019 ShiftStack 32
+	020 Move rbx, stack:0x0
+	021 ShiftStack 8
+	022 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	023 Return 
+
+Method: System.Single get_GpuFrameTime()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rdx,[rcx]
+	mov rbx,rcx
+	mov rax,[rdx+178h]
+	mov rdx,[rdx+180h]
+	call rax
+	cmp eax,1
+	jb short 0000000181E6BE80h
+	mov rax,[rbx+10h]
+	test rax,rax
+	je short 0000000181E6BE94h
+	cmp dword ptr [rax+18h],0
+	jbe short 0000000181E6BE8Eh
+	movsd xmm1,qword ptr [rax+40h]
+	xorps xmm0,xmm0
+	comisd xmm1,xmm0
+	jbe short 0000000181E6BE80h
+	mulsd xmm1,qword ptr [182B1E6C8h]
+	cvtpd2ps xmm0,xmm1
+	add rsp,20h
+	pop rbx
+	ret
+	movss xmm0,dword ptr [182A4FBA8h]
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rdx, [rcx]
+	005 Move rbx, rcx
+	006 Move rax, [rdx+376]
+	007 Move rdx, [rdx+384]
+	008 Call rax
+	009 Compare rax, 1
+	010 JumpIfLess {26}
+	011 Move rax, [rbx+16]
+	012 Compare rax, 0
+	013 JumpIfEqual {33}
+	014 Compare [rax+24], 0
+	015 JumpIfLessOrEqual {31}
+	016 Move xmm1, [rax+64]
+	017 Move xmm0, 0
+	018 NotImplemented "comisd xmm1,xmm0"
+	019 JumpIfLessOrEqual {26}
+	020 NotImplemented "mulsd xmm1,qword ptr [182B1E6C8h]"
+	021 NotImplemented "cvtpd2ps xmm0,xmm1"
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Return xmm0
+	026 Move xmm0, [0x182A4FBA8]
+	027 ShiftStack 32
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Return xmm0
+	031 Call 0x18037BE20, rcx, rdx, r8, r9
+	032 Interrupt 
+	033 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.UInt32 GetLatestTimings()
+
+Disassembly:
+	mov rdx,[rcx+10h]
+	xor r8d,r8d
+	mov ecx,1
+	jmp near ptr 00000001825CFEC0h
+
+ISIL:
+	001 Move rdx, [rcx+16]
+	002 Move r8, 0
+	003 Move rcx, 1
+	004 Call FrameTimingManager.GetLatestTimings, rcx, rdx, r8
+	005 Return rax
+
+Method: System.Void Measure()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 00000001825CFE50h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call FrameTimingManager.CaptureFrameTimings, rcx
+	003 Return 
+

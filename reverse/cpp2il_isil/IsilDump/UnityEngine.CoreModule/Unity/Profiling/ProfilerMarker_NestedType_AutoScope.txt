@@ -1,0 +1,91 @@
+Type: Unity.Profiling.ProfilerMarker+AutoScope
+
+Method: System.Void .ctor(System.IntPtr markerPtr)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov [rcx],rdx
+	mov rbx,rdx
+	test rdx,rdx
+	je short 00000001825C348Bh
+	mov rax,[183755E28h]
+	test rax,rax
+	jne short 00000001825C3480h
+	lea rcx,[182B22FC0h]
+	call 000000018037BE90h
+	mov [183755E28h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move [rcx], rdx
+	005 Move rbx, rdx
+	006 Compare rdx, 0
+	007 JumpIfEqual {19}
+	008 Move rax, [0x183755E28]
+	009 Compare rax, 0
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x182B22FC0]
+	012 Call 0x18037BE90, rcx, rdx, r8, r9
+	013 Move [0x183755E28], rax
+	014 Move rcx, rbx
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 CallNoReturn rax
+	019 ShiftStack 32
+	020 Move rbx, stack:0x0
+	021 ShiftStack 8
+	022 Return 
+
+Method: System.Void Dispose()
+
+Disassembly:
+	sub rsp,28h
+	cmp qword ptr [rcx],0
+	je short 00000001825C3445h
+	mov rax,[183755E38h]
+	mov [rsp+20h],rbx
+	mov rbx,[rcx]
+	test rax,rax
+	jne short 00000001825C3431h
+	lea rcx,[182B230A0h]
+	call 000000018037BE90h
+	mov [183755E38h],rax
+	mov rcx,rbx
+	mov rbx,[rsp+20h]
+	add rsp,28h
+	jmp rax
+	mov rbx,[rsp+20h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx], 0
+	003 JumpIfEqual {17}
+	004 Move rax, [0x183755E38]
+	005 Move stack:0x20, rbx
+	006 Move rbx, [rcx]
+	007 Compare rax, 0
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x182B230A0]
+	010 Call 0x18037BE90, rcx, rdx, r8, r9
+	011 Move [0x183755E38], rax
+	012 Move rcx, rbx
+	013 Move rbx, stack:0x20
+	014 ShiftStack 40
+	015 CallNoReturn rax
+	016 Move rbx, stack:0x20
+	017 ShiftStack 40
+	018 Return 
+

@@ -1,0 +1,73 @@
+Type: Unity.VisualScripting.MissingValuePortInputException
+
+Method: System.Void .ctor(System.String key)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837555C9h],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 0000000182569B04h
+	lea rcx,[18352CBE8h]
+	call 000000018037BB90h
+	lea rcx,[18351D258h]
+	call 000000018037BB90h
+	lea rcx,[18354D4D0h]
+	call 000000018037BB90h
+	mov byte ptr [1837555C9h],1
+	mov r8,[18354D4D0h]
+	xor r9d,r9d
+	mov rcx,[18351D258h]
+	mov rdx,rdi
+	call 000000018165AF00h
+	mov rcx,[18352CBE8h]
+	mov rdi,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182569B35h
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181844530h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837555C9], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x18352CBE8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x18351D258]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18354D4D0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837555C9], 1
+	016 Move r8, "'."
+	017 Move r9, 0
+	018 Move rcx, "Missing input value for '"
+	019 Move rdx, rdi
+	020 Call String.Concat, rcx, rdx, r8, r9
+	021 Move rcx, typeof(System.Exception)
+	022 Move rdi, rax
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move r8, 0
+	027 Move rdx, rdi
+	028 Move rcx, rbx
+	029 Move rbx, stack:0x30
+	030 ShiftStack 32
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Call Exception..ctor, rcx, rdx
+	034 Return 
+

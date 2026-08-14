@@ -1,0 +1,72 @@
+Type: UnityEngine.AssetBundleRequest+BindingsMarshaller
+
+Method: UnityEngine.AssetBundleRequest ConvertToManaged(System.IntPtr ptr)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183755BE8h],0
+	mov rdi,rcx
+	jne short 00000001825BAE99h
+	lea rcx,[183500BE0h]
+	call 000000018037BB90h
+	mov byte ptr [183755BE8h],1
+	mov rcx,[183500BE0h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001826070B0h
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183755BE8], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183500BE0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183755BE8], 1
+	011 Move rcx, typeof(UnityEngine.AssetBundleRequest)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move r8, 0
+	014 Move rdx, rdi
+	015 Move rcx, rax
+	016 Move rbx, rax
+	017 Call 0x1826070B0, rcx, rdx
+	018 Move rax, rbx
+	019 Move rbx, stack:0x30
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+
+Method: System.IntPtr ConvertToNative(UnityEngine.AssetBundleRequest request)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 0000000180A39E82h
+	mov rax,[rcx+10h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {7}
+	004 Move rax, [rcx+16]
+	005 ShiftStack 40
+	006 Return rax
+	007 Call 0x18037BE30, rcx, rdx, r8, r9
+

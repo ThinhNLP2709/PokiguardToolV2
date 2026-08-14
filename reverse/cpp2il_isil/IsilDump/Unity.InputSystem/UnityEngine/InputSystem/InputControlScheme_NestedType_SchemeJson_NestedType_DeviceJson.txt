@@ -1,0 +1,115 @@
+Type: UnityEngine.InputSystem.InputControlScheme+SchemeJson+DeviceJson
+
+Method: UnityEngine.InputSystem.InputControlScheme+DeviceRequirement ToDeviceEntry()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	xorps xmm0,xmm0
+	mov rdi,rdx
+	movups [rcx],xmm0
+	mov rdx,[rdx]
+	mov rbx,rcx
+	mov [rcx],rdx
+	call 000000018037ACB0h
+	cmp byte ptr [rdi+8],0
+	jne short 0000000181F5F6EDh
+	and dword ptr [rbx+8],0FFFFFFFEh
+	jmp short 0000000181F5F6F1h
+	or dword ptr [rbx+8],1
+	cmp byte ptr [rdi+9],0
+	mov rax,rbx
+	jne short 0000000181F5F709h
+	and dword ptr [rbx+8],0FFFFFFFDh
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	or dword ptr [rbx+8],2
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move xmm0, 0
+	006 Move rdi, rdx
+	007 Move [rcx], xmm0
+	008 Move rdx, [rdx]
+	009 Move rbx, rcx
+	010 Move [rcx], rdx
+	011 Call 0x18037ACB0, rcx, rdx, r8, r9
+	012 Compare [rdi+8], 0
+	013 JumpIfNotEqual {16}
+	014 And [rbx+8], [rbx+8], 18446744073709551614
+	015 Goto {17}
+	016 Or [rbx+8], [rbx+8], 1
+	017 Compare [rdi+9], 0
+	018 Move rax, rbx
+	019 JumpIfNotEqual {26}
+	020 And [rbx+8], [rbx+8], 18446744073709551613
+	021 Move rbx, stack:0x30
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Return rax
+	026 Or [rbx+8], [rbx+8], 2
+	027 Move rbx, stack:0x30
+	028 ShiftStack 32
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+
+Method: UnityEngine.InputSystem.InputControlScheme+SchemeJson+DeviceJson From(UnityEngine.InputSystem.InputControlScheme+DeviceRequirement requirement)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov qword ptr [rcx+8],0
+	mov rbx,rdx
+	mov rdx,[rdx]
+	mov rdi,rcx
+	mov [rcx],rdx
+	call 000000018037ACB0h
+	test byte ptr [rbx+8],1
+	seta al
+	test byte ptr [rbx+8],2
+	mov rbx,[rsp+30h]
+	mov [rdi+8],al
+	seta al
+	mov [rdi+9],al
+	mov rax,rdi
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move [rcx+8], 0
+	006 Move rbx, rdx
+	007 Move rdx, [rdx]
+	008 Move rdi, rcx
+	009 Move [rcx], rdx
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 Compare [rbx+8], 1
+	012 NotImplemented "seta al"
+	013 Compare [rbx+8], 2
+	014 Move rbx, stack:0x30
+	015 Move [rdi+8], rax
+	016 NotImplemented "seta al"
+	017 Move [rdi+9], rax
+	018 Move rax, rdi
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Return rax
+

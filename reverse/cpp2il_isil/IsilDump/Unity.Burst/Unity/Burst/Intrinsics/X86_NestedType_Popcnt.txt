@@ -1,0 +1,87 @@
+Type: Unity.Burst.Intrinsics.X86+Popcnt
+
+Method: System.Boolean get_IsPopcntSupported()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183752A33h],0
+	jne short 0000000181ED0090h
+	lea rcx,[183551460h]
+	call 000000018037BB90h
+	mov byte ptr [183752A33h],1
+	mov rcx,[183551460h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181ED00A5h
+	call 000000018037BED0h
+	xor ecx,ecx
+	add rsp,28h
+	jmp near ptr 0000000180456F10h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183752A33], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183551460]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183752A33], 1
+	007 Move rcx, typeof(Unity.Burst.Intrinsics.X86+Sse4_2)
+	008 Compare [rcx+228], 0
+	009 JumpIfNotEqual {11}
+	010 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	011 Move rcx, 0
+	012 ShiftStack 40
+	013 Call 0x180456F10, rcx, rdx, r8, r9, stack:0x0
+	014 Return rax
+
+Method: System.Int32 popcnt_u32(System.UInt32 v)
+
+Disassembly:
+	xor eax,eax
+	mov r8d,80000000h
+	nop dword ptr [rax+rax]
+	test ecx,r8d
+	mov edx,0
+	setne dl
+	add eax,edx
+	shr r8d,1
+	jne short 0000000181ED00C0h
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move r8, 0x80000000
+	003 Nop 
+	004 Compare rcx, r8
+	005 Move rdx, 0
+	006 NotImplemented "setne dl"
+	007 Add rax, rax, rdx
+	008 ShiftRight r8, 1
+	009 JumpIfNotEqual {4}
+	010 Return rax
+
+Method: System.Int32 popcnt_u64(System.UInt64 v)
+
+Disassembly:
+	xor eax,eax
+	mov r8,8000000000000000h
+	nop dword ptr [rax]
+	test rcx,r8
+	mov edx,0
+	setne dl
+	add eax,edx
+	shr r8,1
+	jne short 0000000181ED00F0h
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move r8, 9223372036854775808
+	003 Nop 
+	004 Compare rcx, r8
+	005 Move rdx, 0
+	006 NotImplemented "setne dl"
+	007 Add rax, rax, rdx
+	008 ShiftRight r8, 1
+	009 JumpIfNotEqual {4}
+	010 Return rax
+

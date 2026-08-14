@@ -1,0 +1,458 @@
+Type: WebViewController
+
+Method: System.Void Start()
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374B24Ch],0
+	mov rdi,rcx
+	mov rsi,[rcx+20h]
+	jne short 000000018067E5F2h
+	lea rcx,[183550260h]
+	call 000000018037BB90h
+	mov byte ptr [18374B24Ch],1
+	mov rcx,[183550260h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	lea rcx,[rbx+20h]
+	mov dword ptr [rbx+10h],0
+	mov rdx,rdi
+	mov [rbx+20h],rdi
+	call 000000018037ACB0h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rdi
+	call 0000000182611AB0h
+	lea rcx,[rdi+40h]
+	mov [rdi+40h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rcx,[rdi+38h]
+	test rcx,rcx
+	je short 000000018067E672h
+	xor r8d,r8d
+	mov dl,1
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001804570F0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374B24C], 0
+	007 Move rdi, rcx
+	008 Move rsi, [rcx+32]
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183550260]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374B24C], 1
+	013 Move rcx, typeof(WebViewController+<LoadWebView>d__11)
+	014 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	015 Move rdx, 0
+	016 Move rcx, rax
+	017 Move rbx, rax
+	018 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	019 LoadAddress rcx, [rbx+32]
+	020 Move [rbx+16], 0
+	021 Move rdx, rdi
+	022 Move [rbx+32], rdi
+	023 Call 0x18037ACB0, rcx, rdx, r8, r9
+	024 LoadAddress rcx, [rbx+40]
+	025 Move [rbx+40], rsi
+	026 Move rdx, rsi
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Move r8, 0
+	029 Move rdx, rbx
+	030 Move rcx, rdi
+	031 Call 0x182611AB0, rcx, rdx
+	032 LoadAddress rcx, [rdi+64]
+	033 Move [rdi+64], rax
+	034 Move rdx, rax
+	035 Call 0x18037ACB0, rcx, rdx, r8, r9
+	036 Move rcx, [rdi+56]
+	037 Compare rcx, 0
+	038 JumpIfEqual {48}
+	039 Move r8, 0
+	040 Move rdx, 1
+	041 Move rbx, stack:0x30
+	042 Move rsi, stack:0x38
+	043 ShiftStack 32
+	044 Move rdi, stack:0x0
+	045 ShiftStack 8
+	046 Call WebViewObject.SetVisibility, rcx, rdx
+	047 Return 
+	048 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void OnDisable()
+
+Disassembly:
+	cmp qword ptr [rcx+40h],0
+	je short 000000018067E593h
+	mov rdx,[rcx+40h]
+	xor r8d,r8d
+	jmp near ptr 00000001826123F0h
+	ret
+
+ISIL:
+	001 Compare [rcx+64], 0
+	002 JumpIfEqual {7}
+	003 Move rdx, [rcx+64]
+	004 Move r8, 0
+	005 Call MonoBehaviour.StopCoroutine, rcx, rdx
+	006 Return 
+	007 Return 
+
+Method: System.Void SetVisibility(System.Boolean visibility)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+38h]
+	test rcx,rcx
+	je short 000000018067E5B9h
+	xor r8d,r8d
+	add rsp,28h
+	jmp near ptr 00000001804570F0h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+56]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move r8, 0
+	006 ShiftStack 40
+	007 Call WebViewObject.SetVisibility, rcx, rdx
+	008 Return 
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean GetVisibility()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+38h]
+	test rax,rax
+	je short 000000018067E4E6h
+	movzx eax,byte ptr [rax+59h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+56]
+	003 Compare rax, 0
+	004 JumpIfEqual {8}
+	005 Move rax, [rax+89]
+	006 ShiftStack 40
+	007 Return rax
+	008 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Collections.IEnumerator LoadWebView(System.String Url)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374B24Ch],0
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 000000018067E521h
+	lea rcx,[183550260h]
+	call 000000018037BB90h
+	mov byte ptr [18374B24Ch],1
+	mov rcx,[183550260h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	lea rcx,[rbx+20h]
+	mov dword ptr [rbx+10h],0
+	mov rdx,rsi
+	mov [rbx+20h],rsi
+	call 000000018037ACB0h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rsi,[rsp+38h]
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374B24C], 0
+	007 Move rdi, rdx
+	008 Move rsi, rcx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183550260]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374B24C], 1
+	013 Move rcx, typeof(WebViewController+<LoadWebView>d__11)
+	014 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	015 Move rdx, 0
+	016 Move rcx, rax
+	017 Move rbx, rax
+	018 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	019 LoadAddress rcx, [rbx+32]
+	020 Move [rbx+16], 0
+	021 Move rdx, rsi
+	022 Move [rbx+32], rsi
+	023 Call 0x18037ACB0, rcx, rdx, r8, r9
+	024 LoadAddress rcx, [rbx+40]
+	025 Move [rbx+40], rdi
+	026 Move rdx, rdi
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Move rsi, stack:0x38
+	029 Move rax, rbx
+	030 Move rbx, stack:0x30
+	031 ShiftStack 32
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 00000001826092A0h
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rcx
+	mov rbx,[rcx+8]
+	mov rcx,[rcx]
+	mov rdx,[183540548h]
+	mov rcx,[rcx]
+	call 000000018037ACD0h
+	mov [rbx],rax
+	mov rax,[rdi+8]
+	cmp qword ptr [rax],0
+	je short 0000000180457191h
+	mov r8,[rax]
+	xor ecx,ecx
+	mov rdx,[183540548h]
+	call 00000001800025F0h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	int 3
+	int 3
+	int 3
+	int 3
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A1DBh],0
+	mov rax,[rcx]
+	mov rbx,[rax]
+	jne short 00000001804571C8h
+	lea rcx,[183540548h]
+	call 000000018037BB90h
+	mov byte ptr [18374A1DBh],1
+	cmp qword ptr [rbx+30h],0
+	mov dword ptr [rbx+10h],0FFFFFFFFh
+	je short 00000001804571EDh
+	mov r8,[rbx+30h]
+	xor ecx,ecx
+	mov rdx,[183540548h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 00000001800025F0h
+	add rsp,20h
+	pop rbx
+	ret
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	xchg ax,ax
+	mov rcx,[rcx]
+	xor edx,edx
+	mov rcx,[rcx]
+	jmp near ptr 000000018046CF60h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x1826092A0, rcx, rdx
+	003 Return 
+	004 Interrupt 
+	005 Interrupt 
+	006 Interrupt 
+	007 Interrupt 
+	008 Interrupt 
+	009 Interrupt 
+	010 Interrupt 
+	011 Interrupt 
+	012 Interrupt 
+	013 Move stack:0x8, rbx
+	014 ShiftStack -8
+	015 Move stack:0x0, rdi
+	016 ShiftStack -32
+	017 Move rdi, rcx
+	018 Move rbx, [rcx+8]
+	019 Move rcx, [rcx]
+	020 Move rdx, typeof(System.IDisposable)
+	021 Move rcx, [rcx]
+	022 Call 0x18037ACD0, rcx, rdx, r8, r9
+	023 Move [rbx], rax
+	024 Move rax, [rdi+8]
+	025 Compare [rax], 0
+	026 JumpIfEqual {31}
+	027 Move r8, [rax]
+	028 Move rcx, 0
+	029 Move rdx, typeof(System.IDisposable)
+	030 Call 0x1800025F0, rcx, rdx, r8, r9
+	031 Move rbx, stack:0x30
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return 
+	036 Interrupt 
+	037 Interrupt 
+	038 Interrupt 
+	039 Interrupt 
+	040 ShiftStack -8
+	041 Move stack:0x0, rbx
+	042 ShiftStack -32
+	043 Compare [0x18374A1DB], 0
+	044 Move rax, [rcx]
+	045 Move rbx, [rax]
+	046 JumpIfNotEqual {50}
+	047 LoadAddress rcx, [0x183540548]
+	048 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	049 Move [0x18374A1DB], 1
+	050 Compare [rbx+48], 0
+	051 Move [rbx+16], 0xFFFFFFFF
+	052 JumpIfEqual {61}
+	053 Move r8, [rbx+48]
+	054 Move rcx, 0
+	055 Move rdx, typeof(System.IDisposable)
+	056 ShiftStack 32
+	057 Move rbx, stack:0x0
+	058 ShiftStack 8
+	059 Call 0x1800025F0, rcx, rdx, r8, r9
+	060 Return 
+	061 ShiftStack 32
+	062 Move rbx, stack:0x0
+	063 ShiftStack 8
+	064 Return 
+	065 Interrupt 
+	066 Interrupt 
+	067 Interrupt 
+	068 Interrupt 
+	069 Interrupt 
+	070 Interrupt 
+	071 Interrupt 
+	072 Interrupt 
+	073 Interrupt 
+	074 Interrupt 
+	075 Interrupt 
+	076 Interrupt 
+	077 Interrupt 
+	078 Nop 
+	079 Move rcx, [rcx]
+	080 Move rdx, 0
+	081 Move rcx, [rcx]
+	082 Call <FetchUserInfo>d__11.System.IDisposable.Dispose, rcx, rdx
+	083 Return 
+
+Method: System.Void <LoadWebView>b__11_3(System.String msg)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374B24Dh],0
+	mov rbx,rcx
+	jne short 000000018067E6B1h
+	lea rcx,[183567BF0h]
+	call 000000018037BB90h
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [18374B24Dh],1
+	mov rdx,[183567BF0h]
+	xor r8d,r8d
+	mov rcx,[18351D790h]
+	mov rbx,[rbx+38h]
+	call 000000018165B1F0h
+	test rbx,rbx
+	je short 000000018067E6E3h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180456D90h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374B24D], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {12}
+	007 LoadAddress rcx, [0x183567BF0]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x18351D790]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18374B24D], 1
+	012 Move rdx, "Unity.call('ua=' + navigator.userAgent)"
+	013 Move r8, 0
+	014 Move rcx, ""
+	015 Move rbx, [rbx+56]
+	016 Call String.Concat, rcx, rdx, r8
+	017 Compare rbx, 0
+	018 JumpIfEqual {27}
+	019 Move r8, 0
+	020 Move rdx, rax
+	021 Move rcx, rbx
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	026 Return 
+	027 Call 0x18037BE30, rcx, rdx, r8, r9
+

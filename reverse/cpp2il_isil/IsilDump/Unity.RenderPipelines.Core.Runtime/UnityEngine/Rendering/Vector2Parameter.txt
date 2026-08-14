@@ -1,0 +1,89 @@
+Type: UnityEngine.Rendering.Vector2Parameter
+
+Method: System.Void .ctor(UnityEngine.Vector2 value, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753C69h],0
+	movzx ebx,r8b
+	movaps [rsp+20h],xmm6
+	mov rdi,rcx
+	movq xmm6,rdx
+	jne short 0000000182216F67h
+	lea rcx,[183560320h]
+	call 000000018037BB90h
+	mov byte ptr [183753C69h],1
+	mov r9,[183560320h]
+	movzx r8d,bl
+	movq rdx,xmm6
+	mov rcx,rdi
+	mov rbx,[rsp+40h]
+	movaps xmm6,[rsp+20h]
+	add rsp,30h
+	pop rdi
+	jmp near ptr 0000000180F6FCF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183753C69], 0
+	006 Move rbx, r8
+	007 Move stack:0x20, xmm6
+	008 Move rdi, rcx
+	009 Move xmm6, rdx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183560320]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183753C69], 1
+	014 Move r9, [0x183560320]
+	015 Move r8, rbx
+	016 Move rdx, xmm6
+	017 Move rcx, rdi
+	018 Move rbx, stack:0x40
+	019 Move xmm6, stack:0x20
+	020 ShiftStack 48
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call VolumeParameter`1<Vector2>..ctor, rcx, rdx, r8
+	024 Return 
+
+Method: System.Void Interp(UnityEngine.Vector2 from, UnityEngine.Vector2 to, System.Single t)
+
+Disassembly:
+	sub rsp,18h
+	mov [rsp],rdx
+	mov [rsp+20h],r8
+	movss xmm1,dword ptr [rsp+20h]
+	subss xmm1,dword ptr [rsp]
+	movss xmm2,dword ptr [rsp+24h]
+	subss xmm2,dword ptr [rsp+4]
+	mulss xmm1,xmm3
+	mulss xmm2,xmm3
+	addss xmm1,dword ptr [rsp]
+	addss xmm2,dword ptr [rsp+4]
+	movss dword ptr [rcx+18h],xmm1
+	movss dword ptr [rcx+1Ch],xmm2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move stack:0x0, rdx
+	003 Move stack:0x20, r8
+	004 Move xmm1, stack:0x20
+	005 Subtract xmm1, xmm1, stack:0x0
+	006 Move xmm2, stack:0x24
+	007 Subtract xmm2, xmm2, stack:0x4
+	008 Multiply xmm1, xmm1, xmm3
+	009 Multiply xmm2, xmm2, xmm3
+	010 Add xmm1, xmm1, stack:0x0
+	011 Add xmm2, xmm2, stack:0x4
+	012 Move [rcx+24], xmm1
+	013 Move [rcx+28], xmm2
+	014 ShiftStack 24
+	015 Return 
+

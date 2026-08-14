@@ -1,0 +1,84 @@
+Type: Unity.Collections.FixedList128BytesDebugView`1
+
+Method: System.Void .ctor(Unity.Collections.FixedList128Bytes`1<T> list)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	movups xmm0,[rbx]
+	movups xmm1,[rbx+10h]
+	movups [rdi+10h],xmm0
+	movups xmm0,[rbx+20h]
+	movups [rdi+20h],xmm1
+	movups xmm1,[rbx+30h]
+	movups [rdi+30h],xmm0
+	movups xmm0,[rbx+40h]
+	movups [rdi+40h],xmm1
+	movups xmm1,[rbx+50h]
+	movups [rdi+50h],xmm0
+	movups xmm0,[rbx+60h]
+	movups [rdi+60h],xmm1
+	movups xmm1,[rbx+70h]
+	mov rbx,[rsp+30h]
+	movups [rdi+70h],xmm0
+	movups [rdi+80h],xmm1
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move xmm0, [rbx]
+	010 Move xmm1, [rbx+16]
+	011 Move [rdi+16], xmm0
+	012 Move xmm0, [rbx+32]
+	013 Move [rdi+32], xmm1
+	014 Move xmm1, [rbx+48]
+	015 Move [rdi+48], xmm0
+	016 Move xmm0, [rbx+64]
+	017 Move [rdi+64], xmm1
+	018 Move xmm1, [rbx+80]
+	019 Move [rdi+80], xmm0
+	020 Move xmm0, [rbx+96]
+	021 Move [rdi+96], xmm1
+	022 Move xmm1, [rbx+112]
+	023 Move rbx, stack:0x30
+	024 Move [rdi+112], xmm0
+	025 Move [rdi+128], xmm1
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return 
+
+Method: T[] get_Items()
+
+Disassembly:
+	mov rax,[rdx+20h]
+	add rcx,10h
+	mov r9,[rax+0C0h]
+	mov rax,[r9+10h]
+	mov rdx,rax
+	mov r8,[rax]
+	jmp r8
+
+ISIL:
+	001 Move rax, [rdx+32]
+	002 Add rcx, rcx, 16
+	003 Move r9, [rax+192]
+	004 Move rax, [r9+16]
+	005 Move rdx, rax
+	006 Move r8, [rax]
+	007 CallNoReturn r8
+

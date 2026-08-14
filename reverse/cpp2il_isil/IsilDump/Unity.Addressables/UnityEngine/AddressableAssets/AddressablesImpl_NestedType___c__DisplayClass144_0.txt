@@ -1,0 +1,83 @@
+Type: UnityEngine.AddressableAssets.AddressablesImpl+<>c__DisplayClass144_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1<System.Collections.Generic.List`1<UnityEngine.AddressableAssets.ResourceLocators.IResourceLocator>> <UpdateCatalogs>b__0(UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1<System.Collections.Generic.List`1<System.String>> depOp)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,50h
+	mov rsi,[rdx+10h]
+	mov rdi,rcx
+	mov rbx,rdx
+	mov rcx,rsi
+	test rsi,rsi
+	je short 0000000181E92843h
+	xor edx,edx
+	call 0000000181E7BA80h
+	movzx r8d,byte ptr [rbx+19h]
+	lea rcx,[rsp+30h]
+	movzx r9d,byte ptr [rbx+18h]
+	mov rdx,rsi
+	mov qword ptr [rsp+28h],0
+	mov [rsp+20h],r8b
+	mov r8,rax
+	call 0000000181E7B2A0h
+	mov rbx,[rsp+60h]
+	mov rsi,[rsp+68h]
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rdi
+	movups [rdi],xmm0
+	movsd qword ptr [rdi+10h],xmm1
+	add rsp,50h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -80
+	006 Move rsi, [rdx+16]
+	007 Move rdi, rcx
+	008 Move rbx, rdx
+	009 Move rcx, rsi
+	010 Compare rsi, 0
+	011 JumpIfEqual {33}
+	012 Move rdx, 0
+	013 Call AddressablesImpl.get_CatalogsWithAvailableUpdates, rcx, rdx
+	014 Move r8, [rbx+25]
+	015 LoadAddress rcx, stack:0x30
+	016 Move r9, [rbx+24]
+	017 Move rdx, rsi
+	018 Move stack:0x28, 0
+	019 Move stack:0x20, r8
+	020 Move r8, rax
+	021 Call AddressablesImpl.UpdateCatalogs, rcx, rdx, r8, r9
+	022 Move rbx, stack:0x60
+	023 Move rsi, stack:0x68
+	024 Move xmm0, [rax]
+	025 Move xmm1, [rax+16]
+	026 Move rax, rdi
+	027 Move [rdi], xmm0
+	028 Move [rdi+16], xmm1
+	029 ShiftStack 80
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return rax
+	033 Call 0x18037BE30, rcx, rdx, r8, r9
+

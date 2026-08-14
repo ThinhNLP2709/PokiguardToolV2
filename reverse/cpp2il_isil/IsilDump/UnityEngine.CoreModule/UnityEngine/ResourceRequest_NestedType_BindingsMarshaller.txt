@@ -1,0 +1,70 @@
+Type: UnityEngine.ResourceRequest+BindingsMarshaller
+
+Method: UnityEngine.ResourceRequest ConvertToManaged(System.IntPtr ptr)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837576B2h],0
+	mov rdi,rcx
+	jne short 00000001826095F9h
+	lea rcx,[183505AE0h]
+	call 000000018037BB90h
+	mov byte ptr [1837576B2h],1
+	mov rcx,[183505AE0h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001804552D0h
+	mov rax,[183757710h]
+	test rax,rax
+	jne short 0000000182609631h
+	lea rcx,[182B317C0h]
+	call 000000018037BE90h
+	mov [183757710h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	call rax
+	mov rax,rbx
+	mov [rbx+10h],rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837576B2], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183505AE0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x1837576B2], 1
+	011 Move rcx, typeof(UnityEngine.ResourceRequest)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call 0x1804552D0, rcx, rdx, r8
+	017 Move rax, [0x183757710]
+	018 Compare rax, 0
+	019 JumpIfNotEqual {23}
+	020 LoadAddress rcx, [0x182B317C0]
+	021 Call 0x18037BE90, rcx, rdx, r8, r9
+	022 Move [0x183757710], rax
+	023 Move rdx, rbx
+	024 Move rcx, rdi
+	025 Call rax
+	026 Move rax, rbx
+	027 Move [rbx+16], rdi
+	028 Move rbx, stack:0x30
+	029 ShiftStack 32
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return rax
+

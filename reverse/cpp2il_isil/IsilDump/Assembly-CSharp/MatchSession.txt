@@ -1,0 +1,117 @@
+Type: MatchSession
+
+Method: System.String get_MatchId()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A974h],0
+	jne short 000000018052F7EAh
+	lea rcx,[183562340h]
+	call 000000018037BB90h
+	lea rcx,[1834F11B8h]
+	call 000000018037BB90h
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [18374A974h],1
+	mov rcx,[183562340h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018052F7FFh
+	call 000000018037BED0h
+	cmp byte ptr [18374A254h],0
+	jne short 000000018052F81Bh
+	lea rcx,[183562340h]
+	call 000000018037BB90h
+	mov byte ptr [18374A254h],1
+	mov rcx,[183562340h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018052F830h
+	call 000000018037BED0h
+	mov rax,[183562340h]
+	mov rcx,[rax+0B8h]
+	mov rbx,[rcx]
+	mov rcx,[1834F11B8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018052F856h
+	call 000000018037BED0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000182628610h
+	test al,al
+	je short 000000018052F885h
+	test rbx,rbx
+	je short 000000018052F892h
+	mov rcx,[rbx+20h]
+	xor edx,edx
+	call 000000018165FE70h
+	test al,al
+	jne short 000000018052F885h
+	mov rax,[rbx+20h]
+	add rsp,20h
+	pop rbx
+	ret
+	mov rax,[18351D790h]
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A974], 0
+	005 JumpIfNotEqual {13}
+	006 LoadAddress rcx, [0x183562340]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x1834F11B8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18351D790]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374A974], 1
+	013 Move rcx, typeof(MatchService)
+	014 Compare [rcx+228], 0
+	015 JumpIfNotEqual {17}
+	016 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	017 Compare [0x18374A254], 0
+	018 JumpIfNotEqual {22}
+	019 LoadAddress rcx, [0x183562340]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 Move [0x18374A254], 1
+	022 Move rcx, typeof(MatchService)
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move rax, typeof(MatchService)
+	027 Move rcx, [rax+184]
+	028 Move rbx, [rcx]
+	029 Move rcx, typeof(UnityEngine.Object)
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move r8, 0
+	034 Move rdx, 0
+	035 Move rcx, rbx
+	036 Call Object.op_Inequality, rcx, rdx, r8
+	037 Compare rax, 0
+	038 JumpIfEqual {51}
+	039 Compare rbx, 0
+	040 JumpIfEqual {56}
+	041 Move rcx, [rbx+32]
+	042 Move rdx, 0
+	043 Call String.IsNullOrEmpty, rcx, rdx
+	044 Compare rax, 0
+	045 JumpIfNotEqual {51}
+	046 Move rax, [rbx+32]
+	047 ShiftStack 32
+	048 Move rbx, stack:0x0
+	049 ShiftStack 8
+	050 Return rax
+	051 Move rax, ""
+	052 ShiftStack 32
+	053 Move rbx, stack:0x0
+	054 ShiftStack 8
+	055 Return rax
+	056 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,87 @@
+Type: UnityEngine.Rendering.ProbeReferenceVolume+CellDesc
+
+Method: System.String ToString()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753A04h],0
+	mov rdi,rcx
+	jne short 00000001821B5AE5h
+	lea rcx,[18352FFE8h]
+	call 000000018037BB90h
+	lea rcx,[183553000h]
+	call 000000018037BB90h
+	mov byte ptr [183753A04h],1
+	mov eax,[rdi+1Ch]
+	lea rdx,[rsp+40h]
+	mov rcx,[18375C0E8h]
+	mov [rsp+40h],eax
+	call 000000018037AC90h
+	mov ecx,[rdi+18h]
+	lea rdx,[rsp+20h]
+	movsd xmm0,qword ptr [rdi+10h]
+	mov rbx,rax
+	mov [rsp+28h],ecx
+	mov rcx,[18352FFE8h]
+	movsd qword ptr [rsp+20h],xmm0
+	call 000000018037AC90h
+	mov rcx,[183553000h]
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	call 000000018165E830h
+	mov rbx,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183753A04], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x18352FFE8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183553000]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183753A04], 1
+	013 Move rax, [rdi+28]
+	014 LoadAddress rdx, stack:0x40
+	015 Move rcx, [0x18375C0E8]
+	016 Move stack:0x40, rax
+	017 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	018 Move rcx, [rdi+24]
+	019 LoadAddress rdx, stack:0x20
+	020 Move xmm0, [rdi+16]
+	021 Move rbx, rax
+	022 Move stack:0x28, rcx
+	023 Move rcx, typeof(UnityEngine.Vector3Int)
+	024 Move stack:0x20, xmm0
+	025 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	026 Move rcx, "Index = {0} position = {1}"
+	027 Move r9, 0
+	028 Move r8, rax
+	029 Move rdx, rbx
+	030 Call String.Format, rcx, rdx, r8, r9
+	031 Move rbx, stack:0x48
+	032 ShiftStack 48
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

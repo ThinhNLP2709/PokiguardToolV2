@@ -1,0 +1,61 @@
+Type: UnityEngine.AddressableAssets.AddressablesImpl+<>c__DisplayClass140_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1<System.Collections.Generic.List`1<System.String>> <CheckForCatalogUpdatesWithChain>b__0(UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle op)
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	mov rax,[rdx+10h]
+	mov rbx,rcx
+	test rax,rax
+	je short 0000000181E927C0h
+	movzx r8d,byte ptr [rdx+18h]
+	lea rcx,[rsp+20h]
+	mov rdx,rax
+	xor r9d,r9d
+	call 0000000181E71910h
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rbx
+	movups [rbx],xmm0
+	movsd qword ptr [rbx+10h],xmm1
+	add rsp,40h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Move rax, [rdx+16]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfEqual {22}
+	008 Move r8, [rdx+24]
+	009 LoadAddress rcx, stack:0x20
+	010 Move rdx, rax
+	011 Move r9, 0
+	012 Call AddressablesImpl.CheckForCatalogUpdates, rcx, rdx
+	013 Move xmm0, [rax]
+	014 Move xmm1, [rax+16]
+	015 Move rax, rbx
+	016 Move [rbx], xmm0
+	017 Move [rbx+16], xmm1
+	018 ShiftStack 64
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Return rax
+	022 Call 0x18037BE30, rcx, rdx, r8, r9
+

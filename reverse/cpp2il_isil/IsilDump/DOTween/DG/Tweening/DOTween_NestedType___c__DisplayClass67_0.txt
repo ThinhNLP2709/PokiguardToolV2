@@ -1,0 +1,51 @@
+Type: DG.Tweening.DOTween+<>c__DisplayClass67_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Single <To>b__0()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+16]
+	002 Return xmm0
+
+Method: System.Void <To>b__1(System.Single x)
+
+Disassembly:
+	sub rsp,28h
+	movss dword ptr [rcx+10h],xmm1
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 00000001807704F5h
+	mov rax,[rcx+18h]
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	add rsp,28h
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move [rcx+16], xmm1
+	003 Move rcx, [rcx+24]
+	004 Compare rcx, 0
+	005 JumpIfEqual {11}
+	006 Move rax, [rcx+24]
+	007 Move r8, [rcx+40]
+	008 Move rcx, [rcx+64]
+	009 ShiftStack 40
+	010 CallNoReturn rax
+	011 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,80 @@
+Type: UnityEngine.Rendering.RenderGraphModule.BufferDesc
+
+Method: System.Void .ctor(System.Int32 count, System.Int32 stride)
+
+Disassembly:
+	xor eax,eax
+	mov [rcx+8],rax
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	mov qword ptr [rcx+10h],10h
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx+8], rax
+	003 Move [rcx], rdx
+	004 Move [rcx+4], r8
+	005 Move [rcx+16], 16
+	006 Return 
+
+Method: System.Void .ctor(System.Int32 count, System.Int32 stride, UnityEngine.GraphicsBuffer+Target target)
+
+Disassembly:
+	xor eax,eax
+	mov [rcx+8],rax
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	mov [rcx+10h],r9d
+	mov [rcx+14h],eax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx+8], rax
+	003 Move [rcx], rdx
+	004 Move [rcx+4], r8
+	005 Move [rcx+16], r9
+	006 Move [rcx+20], rax
+	007 Return 
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	xor ecx,ecx
+	call 0000000182202C60h
+	xor eax,[rbx]
+	imul eax,1000193h
+	xor eax,[rbx+4]
+	imul edx,eax,1000193h
+	xor edx,[rbx+10h]
+	imul eax,edx,1000193h
+	xor eax,[rbx+14h]
+	imul eax,1000193h
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Move rcx, 0
+	006 Call HashFNV1A32.Create, rcx
+	007 Xor rax, rax, [rbx]
+	008 Multiply rax, rax, 0x1000193
+	009 Xor rax, rax, [rbx+4]
+	010 Multiply rdx, rax, 0x1000193
+	011 Xor rdx, rdx, [rbx+16]
+	012 Multiply rax, rdx, 0x1000193
+	013 Xor rax, rax, [rbx+20]
+	014 Multiply rax, rax, 0x1000193
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+

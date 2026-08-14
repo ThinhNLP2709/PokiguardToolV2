@@ -1,0 +1,77 @@
+Type: UnityEngine.AddressableAssets.AddressablesImpl+<>c__DisplayClass129_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1<UnityEngine.ResourceManagement.ResourceProviders.SceneInstance> <LoadSceneWithChain>b__0(UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle op)
+
+Disassembly:
+	push rbx
+	sub rsp,70h
+	mov rax,[rdx+10h]
+	mov rbx,rcx
+	mov ecx,[rdx+28h]
+	movzx r8d,byte ptr [rdx+2Ch]
+	mov r9d,[rdx+30h]
+	test rax,rax
+	je short 0000000181E92548h
+	mov qword ptr [rsp+40h],0
+	mov byte ptr [rsp+38h],0
+	mov [rsp+30h],r9d
+	mov r9,[rdx+20h]
+	mov [rsp+28h],r8b
+	mov r8,[rdx+18h]
+	mov rdx,rax
+	mov [rsp+20h],ecx
+	lea rcx,[rsp+50h]
+	call 0000000181E792B0h
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rbx
+	movups [rbx],xmm0
+	movsd qword ptr [rbx+10h],xmm1
+	add rsp,70h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -112
+	004 Move rax, [rdx+16]
+	005 Move rbx, rcx
+	006 Move rcx, [rdx+40]
+	007 Move r8, [rdx+44]
+	008 Move r9, [rdx+48]
+	009 Compare rax, 0
+	010 JumpIfEqual {30}
+	011 Move stack:0x40, 0
+	012 Move stack:0x38, 0
+	013 Move stack:0x30, r9
+	014 Move r9, [rdx+32]
+	015 Move stack:0x28, r8
+	016 Move r8, [rdx+24]
+	017 Move rdx, rax
+	018 Move stack:0x20, rcx
+	019 LoadAddress rcx, stack:0x50
+	020 Call AddressablesImpl.LoadSceneAsync, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	021 Move xmm0, [rax]
+	022 Move xmm1, [rax+16]
+	023 Move rax, rbx
+	024 Move [rbx], xmm0
+	025 Move [rbx+16], xmm1
+	026 ShiftStack 112
+	027 Move rbx, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+	030 Call 0x18037BE30, rcx, rdx, r8, r9
+

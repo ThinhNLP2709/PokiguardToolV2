@@ -1,0 +1,69 @@
+Type: Unity.Collections.NativeArrayDisposeJob
+
+Method: System.Void Execute()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183755EE8h]
+	mov rbx,[rcx]
+	mov edi,[rcx+8]
+	test rax,rax
+	jne short 00000001825D83CFh
+	lea rcx,[182B23AA0h]
+	call 000000018037BE90h
+	mov [183755EE8h],rax
+	mov edx,edi
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183755EE8]
+	006 Move rbx, [rcx]
+	007 Move rdi, [rcx+8]
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B23AA0]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183755EE8], rax
+	013 Move rdx, rdi
+	014 Move rcx, rbx
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+
+Method: System.Void RegisterNativeArrayDisposeJobReflectionData()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183755EC9h],0
+	jne short 00000001825D8410h
+	lea rcx,[183546BD0h]
+	call 000000018037BB90h
+	mov byte ptr [183755EC9h],1
+	mov rcx,[183546BD0h]
+	add rsp,28h
+	jmp near ptr 00000001808F7520h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183755EC9], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183546BD0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183755EC9], 1
+	007 Move rcx, [0x183546BD0]
+	008 ShiftStack 40
+	009 Call IJobExtensions.EarlyJobInit, rcx
+	010 Return 
+

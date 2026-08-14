@@ -1,0 +1,1212 @@
+Type: UnityEngine.UIElements.Experimental.Easing
+
+Method: System.Single Linear(System.Single t)
+
+Disassembly:
+	xchg ax,ax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Return xmm0
+
+Method: System.Single InSine(System.Single t)
+
+Disassembly:
+	sub rsp,28h
+	subss xmm0,dword ptr [182A4FBA4h]
+	mulss xmm0,dword ptr [182A510DCh]
+	call 0000000180416DA0h
+	addss xmm0,dword ptr [182A4FBA4h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Subtract xmm0, xmm0, [0x182A4FBA4]
+	003 Multiply xmm0, xmm0, [0x182A510DC]
+	004 Call 0x180416DA0, rcx, rdx, r8, r9
+	005 Add xmm0, xmm0, [0x182A4FBA4]
+	006 ShiftStack 40
+	007 Return xmm0
+
+Method: System.Single OutSine(System.Single t)
+
+Disassembly:
+	xchg ax,ax
+	mulss xmm0,dword ptr [182A510DCh]
+	jmp near ptr 0000000180416DA0h
+
+ISIL:
+	001 Nop 
+	002 Multiply xmm0, xmm0, [0x182A510DC]
+	003 Call 0x180416DA0, rcx, rdx, r8, r9
+	004 Return xmm0
+
+Method: System.Single InOutSine(System.Single t)
+
+Disassembly:
+	sub rsp,28h
+	subss xmm0,dword ptr [182A4FBA0h]
+	mulss xmm0,dword ptr [182A505F0h]
+	call 0000000180416DA0h
+	addss xmm0,dword ptr [182A4FBA4h]
+	mulss xmm0,dword ptr [182A4FBA0h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Subtract xmm0, xmm0, [0x182A4FBA0]
+	003 Multiply xmm0, xmm0, [0x182A505F0]
+	004 Call 0x180416DA0, rcx, rdx, r8, r9
+	005 Add xmm0, xmm0, [0x182A4FBA4]
+	006 Multiply xmm0, xmm0, [0x182A4FBA0]
+	007 ShiftStack 40
+	008 Return xmm0
+
+Method: System.Single InQuad(System.Single t)
+
+Disassembly:
+	xchg ax,ax
+	mulss xmm0,xmm0
+	ret
+
+ISIL:
+	001 Nop 
+	002 Multiply xmm0, xmm0, xmm0
+	003 Return xmm0
+
+Method: System.Single OutQuad(System.Single t)
+
+Disassembly:
+	movaps xmm1,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	subss xmm0,xmm1
+	mulss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Move xmm1, xmm0
+	002 Move xmm0, typeof(T)
+	003 Subtract xmm0, xmm0, xmm1
+	004 Multiply xmm0, xmm0, xmm1
+	005 Return xmm0
+
+Method: System.Single InOutQuad(System.Single t)
+
+Disassembly:
+	movss xmm2,dword ptr [182A4FBA4h]
+	movaps xmm1,xmm0
+	addss xmm1,xmm1
+	comiss xmm2,xmm1
+	ja short 0000000182883324h
+	movaps xmm0,xmm1
+	subss xmm1,xmm2
+	subss xmm0,dword ptr [182A4FBD0h]
+	mulss xmm0,xmm1
+	subss xmm0,xmm2
+	mulss xmm0,dword ptr [182A50A00h]
+	ret
+	mulss xmm1,xmm1
+	mulss xmm1,dword ptr [182A4FBA0h]
+	movaps xmm0,xmm1
+	ret
+
+ISIL:
+	001 Move xmm2, [0x182A4FBA4]
+	002 Move xmm1, xmm0
+	003 Add xmm1, xmm1, xmm1
+	004 Compare xmm2, xmm1
+	005 JumpIfGreater {13}
+	006 Move xmm0, xmm1
+	007 Subtract xmm1, xmm1, xmm2
+	008 Subtract xmm0, xmm0, [0x182A4FBD0]
+	009 Multiply xmm0, xmm0, xmm1
+	010 Subtract xmm0, xmm0, xmm2
+	011 Multiply xmm0, xmm0, [0x182A50A00]
+	012 Return xmm0
+	013 Multiply xmm1, xmm1, xmm1
+	014 Multiply xmm1, xmm1, [0x182A4FBA0]
+	015 Move xmm0, xmm1
+	016 Return xmm0
+
+Method: System.Single InCubic(System.Single t)
+
+Disassembly:
+	xchg ax,ax
+	movss xmm1,dword ptr [182A4FBD0h]
+	jmp near ptr 00000001804171B0h
+
+ISIL:
+	001 Nop 
+	002 Move xmm1, [0x182A4FBD0]
+	003 Call 0x1804171B0, rcx, rdx, r8, r9
+	004 Return xmm0
+
+Method: System.Single OutCubic(System.Single t)
+
+Disassembly:
+	sub rsp,28h
+	subss xmm0,dword ptr [182A4FBA4h]
+	movss xmm1,dword ptr [182A4FBD0h]
+	call 00000001804171B0h
+	addss xmm0,dword ptr [182A4FBA4h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Subtract xmm0, xmm0, [0x182A4FBA4]
+	003 Move xmm1, [0x182A4FBD0]
+	004 Call 0x1804171B0, rcx, rdx, r8, r9
+	005 Add xmm0, xmm0, [0x182A4FBA4]
+	006 ShiftStack 40
+	007 Return xmm0
+
+Method: System.Single InOutCubic(System.Single t)
+
+Disassembly:
+	sub rsp,28h
+	movss xmm1,dword ptr [182A4FBA4h]
+	addss xmm0,xmm0
+	comiss xmm1,xmm0
+	movss xmm1,dword ptr [182A4FBD0h]
+	ja short 000000018288310Fh
+	subss xmm0,dword ptr [182A4FBC8h]
+	call 00000001804171B0h
+	addss xmm0,dword ptr [182A4FBC8h]
+	mulss xmm0,dword ptr [182A4FBA0h]
+	add rsp,28h
+	ret
+	call 00000001804171B0h
+	mulss xmm0,dword ptr [182A4FBA0h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm1, [0x182A4FBA4]
+	003 Add xmm0, xmm0, xmm0
+	004 Compare xmm1, xmm0
+	005 Move xmm1, [0x182A4FBD0]
+	006 JumpIfGreater {13}
+	007 Subtract xmm0, xmm0, [0x182A4FBC8]
+	008 Call 0x1804171B0, rcx, rdx, r8, r9
+	009 Add xmm0, xmm0, [0x182A4FBC8]
+	010 Multiply xmm0, xmm0, [0x182A4FBA0]
+	011 ShiftStack 40
+	012 Return xmm0
+	013 Call 0x1804171B0, rcx, rdx, r8, r9
+	014 Multiply xmm0, xmm0, [0x182A4FBA0]
+	015 ShiftStack 40
+	016 Return xmm0
+
+Method: System.Single InPower(System.Single t, System.Int32 power)
+
+Disassembly:
+	xchg ax,ax
+	movd xmm1,edx
+	cvtdq2ps xmm1,xmm1
+	jmp near ptr 00000001804171B0h
+
+ISIL:
+	001 Nop 
+	002 Move xmm1, rdx
+	003 Move xmm1, xmm1
+	004 Call 0x1804171B0, rcx, rdx, r8, r9
+	005 Return xmm0
+
+Method: System.Single OutPower(System.Single t, System.Int32 power)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov eax,edx
+	and eax,1
+	lea ebx,[rax*2-1]
+	subss xmm0,dword ptr [182A4FBA4h]
+	movd xmm1,edx
+	cvtdq2ps xmm1,xmm1
+	call 00000001804171B0h
+	movd xmm1,ebx
+	cvtdq2ps xmm1,xmm1
+	movd xmm2,ebx
+	cvtdq2ps xmm2,xmm2
+	addss xmm0,xmm1
+	mulss xmm0,xmm2
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, rdx
+	005 And rax, rax, 1
+	006 LoadAddress rbx, [1]
+	007 Subtract xmm0, xmm0, [0x182A4FBA4]
+	008 Move xmm1, rdx
+	009 Move xmm1, xmm1
+	010 Call 0x1804171B0, rcx, rdx, r8, r9
+	011 Move xmm1, rbx
+	012 Move xmm1, xmm1
+	013 Move xmm2, rbx
+	014 Move xmm2, xmm2
+	015 Add xmm0, xmm0, xmm1
+	016 Multiply xmm0, xmm0, xmm2
+	017 ShiftStack 32
+	018 Move rbx, stack:0x0
+	019 ShiftStack 8
+	020 Return xmm0
+
+Method: System.Single InOutPower(System.Single t, System.Int32 power)
+
+Disassembly:
+	sub rsp,28h
+	movss xmm2,dword ptr [182A4FBA4h]
+	addss xmm0,xmm0
+	movd xmm1,edx
+	cvtdq2ps xmm1,xmm1
+	comiss xmm2,xmm0
+	ja short 00000001828832D3h
+	mov [rsp+20h],rbx
+	subss xmm0,dword ptr [182A4FBC8h]
+	and edx,1
+	lea ebx,[rdx*2-1]
+	call 00000001804171B0h
+	lea eax,[rbx+rbx]
+	movd xmm2,ebx
+	mov rbx,[rsp+20h]
+	movd xmm1,eax
+	cvtdq2ps xmm1,xmm1
+	cvtdq2ps xmm2,xmm2
+	addss xmm0,xmm1
+	mulss xmm2,dword ptr [182A4FBA0h]
+	mulss xmm0,xmm2
+	add rsp,28h
+	ret
+	call 00000001804171B0h
+	mulss xmm0,dword ptr [182A4FBA0h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm2, [0x182A4FBA4]
+	003 Add xmm0, xmm0, xmm0
+	004 Move xmm1, rdx
+	005 Move xmm1, xmm1
+	006 Compare xmm2, xmm0
+	007 JumpIfGreater {24}
+	008 Move stack:0x20, rbx
+	009 Subtract xmm0, xmm0, [0x182A4FBC8]
+	010 And rdx, rdx, 1
+	011 LoadAddress rbx, [1]
+	012 Call 0x1804171B0, rcx, rdx, r8, r9
+	013 LoadAddress rax, [rbx+rbx]
+	014 Move xmm2, rbx
+	015 Move rbx, stack:0x20
+	016 Move xmm1, rax
+	017 Move xmm1, xmm1
+	018 Move xmm2, xmm2
+	019 Add xmm0, xmm0, xmm1
+	020 Multiply xmm2, xmm2, [0x182A4FBA0]
+	021 Multiply xmm0, xmm0, xmm2
+	022 ShiftStack 40
+	023 Return xmm0
+	024 Call 0x1804171B0, rcx, rdx, r8, r9
+	025 Multiply xmm0, xmm0, [0x182A4FBA0]
+	026 ShiftStack 40
+	027 Return xmm0
+
+Method: System.Single InBounce(System.Single t)
+
+Disassembly:
+	movss xmm2,dword ptr [182A4FBA4h]
+	movaps xmm1,xmm2
+	subss xmm1,xmm0
+	movss xmm0,dword ptr [182A510A4h]
+	comiss xmm0,xmm1
+	ja near ptr 0000000182882CCFh
+	movss xmm0,dword ptr [182A510B8h]
+	comiss xmm0,xmm1
+	ja short 0000000182882CA8h
+	movss xmm0,dword ptr [182A511B8h]
+	comiss xmm0,xmm1
+	ja short 0000000182882C81h
+	subss xmm1,dword ptr [182A510CCh]
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	addss xmm0,dword ptr [182A510D0h]
+	subss xmm2,xmm0
+	movaps xmm0,xmm2
+	ret
+	subss xmm1,dword ptr [182A510C0h]
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	addss xmm0,dword ptr [182A510C8h]
+	subss xmm2,xmm0
+	movaps xmm0,xmm2
+	ret
+	subss xmm1,dword ptr [182A510ACh]
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	addss xmm0,dword ptr [182A5085Ch]
+	subss xmm2,xmm0
+	movaps xmm0,xmm2
+	ret
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	subss xmm2,xmm0
+	movaps xmm0,xmm2
+	ret
+
+ISIL:
+	001 Move xmm2, [0x182A4FBA4]
+	002 Move xmm1, xmm2
+	003 Subtract xmm1, xmm1, xmm0
+	004 Move xmm0, [0x182A510A4]
+	005 Compare xmm0, xmm1
+	006 JumpIfGreater {37}
+	007 Move xmm0, [0x182A510B8]
+	008 Compare xmm0, xmm1
+	009 JumpIfGreater {29}
+	010 Move xmm0, [0x182A511B8]
+	011 Compare xmm0, xmm1
+	012 JumpIfGreater {21}
+	013 Subtract xmm1, xmm1, [0x182A510CC]
+	014 Move xmm0, xmm1
+	015 Multiply xmm0, xmm0, [0x182A510F8]
+	016 Multiply xmm0, xmm0, xmm1
+	017 Add xmm0, xmm0, [0x182A510D0]
+	018 Subtract xmm2, xmm2, xmm0
+	019 Move xmm0, xmm2
+	020 Return xmm0
+	021 Subtract xmm1, xmm1, [0x182A510C0]
+	022 Move xmm0, xmm1
+	023 Multiply xmm0, xmm0, [0x182A510F8]
+	024 Multiply xmm0, xmm0, xmm1
+	025 Add xmm0, xmm0, [0x182A510C8]
+	026 Subtract xmm2, xmm2, xmm0
+	027 Move xmm0, xmm2
+	028 Return xmm0
+	029 Subtract xmm1, xmm1, [0x182A510AC]
+	030 Move xmm0, xmm1
+	031 Multiply xmm0, xmm0, [0x182A510F8]
+	032 Multiply xmm0, xmm0, xmm1
+	033 Add xmm0, xmm0, [0x182A5085C]
+	034 Subtract xmm2, xmm2, xmm0
+	035 Move xmm0, xmm2
+	036 Return xmm0
+	037 Move xmm0, xmm1
+	038 Multiply xmm0, xmm0, [0x182A510F8]
+	039 Multiply xmm0, xmm0, xmm1
+	040 Subtract xmm2, xmm2, xmm0
+	041 Move xmm0, xmm2
+	042 Return xmm0
+
+Method: System.Single OutBounce(System.Single t)
+
+Disassembly:
+	movss xmm1,dword ptr [182A510A4h]
+	movaps xmm2,xmm0
+	comiss xmm1,xmm2
+	ja short 000000018288348Ah
+	movss xmm1,dword ptr [182A510B8h]
+	comiss xmm1,xmm2
+	ja short 000000018288346Ah
+	movss xmm1,dword ptr [182A511B8h]
+	comiss xmm1,xmm2
+	ja short 000000018288344Ah
+	subss xmm2,dword ptr [182A510CCh]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	addss xmm0,dword ptr [182A510D0h]
+	ret
+	subss xmm2,dword ptr [182A510C0h]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	addss xmm0,dword ptr [182A510C8h]
+	ret
+	subss xmm2,dword ptr [182A510ACh]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	addss xmm0,dword ptr [182A5085Ch]
+	ret
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	ret
+
+ISIL:
+	001 Move xmm1, [0x182A510A4]
+	002 Move xmm2, xmm0
+	003 Compare xmm1, xmm2
+	004 JumpIfGreater {29}
+	005 Move xmm1, [0x182A510B8]
+	006 Compare xmm1, xmm2
+	007 JumpIfGreater {23}
+	008 Move xmm1, [0x182A511B8]
+	009 Compare xmm1, xmm2
+	010 JumpIfGreater {17}
+	011 Subtract xmm2, xmm2, [0x182A510CC]
+	012 Move xmm0, xmm2
+	013 Multiply xmm0, xmm0, [0x182A510F8]
+	014 Multiply xmm0, xmm0, xmm2
+	015 Add xmm0, xmm0, [0x182A510D0]
+	016 Return xmm0
+	017 Subtract xmm2, xmm2, [0x182A510C0]
+	018 Move xmm0, xmm2
+	019 Multiply xmm0, xmm0, [0x182A510F8]
+	020 Multiply xmm0, xmm0, xmm2
+	021 Add xmm0, xmm0, [0x182A510C8]
+	022 Return xmm0
+	023 Subtract xmm2, xmm2, [0x182A510AC]
+	024 Move xmm0, xmm2
+	025 Multiply xmm0, xmm0, [0x182A510F8]
+	026 Multiply xmm0, xmm0, xmm2
+	027 Add xmm0, xmm0, [0x182A5085C]
+	028 Return xmm0
+	029 Multiply xmm0, xmm0, [0x182A510F8]
+	030 Multiply xmm0, xmm0, xmm2
+	031 Return xmm0
+
+Method: System.Single InOutBounce(System.Single t)
+
+Disassembly:
+	movss xmm4,dword ptr [182A4FBA0h]
+	movaps xmm1,xmm0
+	comiss xmm4,xmm1
+	movss xmm0,dword ptr [182A510A4h]
+	ja near ptr 0000000182882F47h
+	subss xmm1,xmm4
+	addss xmm1,xmm1
+	comiss xmm0,xmm1
+	ja near ptr 0000000182882F2Fh
+	movss xmm0,dword ptr [182A510B8h]
+	comiss xmm0,xmm1
+	ja short 0000000182882F07h
+	movss xmm0,dword ptr [182A511B8h]
+	comiss xmm0,xmm1
+	ja short 0000000182882EDFh
+	subss xmm1,dword ptr [182A510CCh]
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	addss xmm0,dword ptr [182A510D0h]
+	mulss xmm0,xmm4
+	addss xmm0,xmm4
+	ret
+	subss xmm1,dword ptr [182A510C0h]
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	addss xmm0,dword ptr [182A510C8h]
+	mulss xmm0,xmm4
+	addss xmm0,xmm4
+	ret
+	subss xmm1,dword ptr [182A510ACh]
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	addss xmm0,dword ptr [182A5085Ch]
+	mulss xmm0,xmm4
+	addss xmm0,xmm4
+	ret
+	movaps xmm0,xmm1
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm1
+	mulss xmm0,xmm4
+	addss xmm0,xmm4
+	ret
+	movss xmm3,dword ptr [182A4FBA4h]
+	addss xmm1,xmm1
+	movaps xmm2,xmm3
+	subss xmm2,xmm1
+	comiss xmm0,xmm2
+	ja near ptr 0000000182882FFEh
+	movss xmm0,dword ptr [182A510B8h]
+	comiss xmm0,xmm2
+	ja short 0000000182882FD3h
+	movss xmm0,dword ptr [182A511B8h]
+	comiss xmm0,xmm2
+	ja short 0000000182882FA8h
+	subss xmm2,dword ptr [182A510CCh]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	addss xmm0,dword ptr [182A510D0h]
+	subss xmm3,xmm0
+	mulss xmm3,xmm4
+	movaps xmm0,xmm3
+	ret
+	subss xmm2,dword ptr [182A510C0h]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	addss xmm0,dword ptr [182A510C8h]
+	subss xmm3,xmm0
+	mulss xmm3,xmm4
+	movaps xmm0,xmm3
+	ret
+	subss xmm2,dword ptr [182A510ACh]
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	addss xmm0,dword ptr [182A5085Ch]
+	subss xmm3,xmm0
+	mulss xmm3,xmm4
+	movaps xmm0,xmm3
+	ret
+	movaps xmm0,xmm2
+	mulss xmm0,dword ptr [182A510F8h]
+	mulss xmm0,xmm2
+	subss xmm3,xmm0
+	mulss xmm3,xmm4
+	movaps xmm0,xmm3
+	ret
+
+ISIL:
+	001 Move xmm4, [0x182A4FBA0]
+	002 Move xmm1, xmm0
+	003 Compare xmm4, xmm1
+	004 Move xmm0, [0x182A510A4]
+	005 JumpIfGreater {46}
+	006 Subtract xmm1, xmm1, xmm4
+	007 Add xmm1, xmm1, xmm1
+	008 Compare xmm0, xmm1
+	009 JumpIfGreater {40}
+	010 Move xmm0, [0x182A510B8]
+	011 Compare xmm0, xmm1
+	012 JumpIfGreater {32}
+	013 Move xmm0, [0x182A511B8]
+	014 Compare xmm0, xmm1
+	015 JumpIfGreater {24}
+	016 Subtract xmm1, xmm1, [0x182A510CC]
+	017 Move xmm0, xmm1
+	018 Multiply xmm0, xmm0, [0x182A510F8]
+	019 Multiply xmm0, xmm0, xmm1
+	020 Add xmm0, xmm0, [0x182A510D0]
+	021 Multiply xmm0, xmm0, xmm4
+	022 Add xmm0, xmm0, xmm4
+	023 Return xmm0
+	024 Subtract xmm1, xmm1, [0x182A510C0]
+	025 Move xmm0, xmm1
+	026 Multiply xmm0, xmm0, [0x182A510F8]
+	027 Multiply xmm0, xmm0, xmm1
+	028 Add xmm0, xmm0, [0x182A510C8]
+	029 Multiply xmm0, xmm0, xmm4
+	030 Add xmm0, xmm0, xmm4
+	031 Return xmm0
+	032 Subtract xmm1, xmm1, [0x182A510AC]
+	033 Move xmm0, xmm1
+	034 Multiply xmm0, xmm0, [0x182A510F8]
+	035 Multiply xmm0, xmm0, xmm1
+	036 Add xmm0, xmm0, [0x182A5085C]
+	037 Multiply xmm0, xmm0, xmm4
+	038 Add xmm0, xmm0, xmm4
+	039 Return xmm0
+	040 Move xmm0, xmm1
+	041 Multiply xmm0, xmm0, [0x182A510F8]
+	042 Multiply xmm0, xmm0, xmm1
+	043 Multiply xmm0, xmm0, xmm4
+	044 Add xmm0, xmm0, xmm4
+	045 Return xmm0
+	046 Move xmm3, [0x182A4FBA4]
+	047 Add xmm1, xmm1, xmm1
+	048 Move xmm2, xmm3
+	049 Subtract xmm2, xmm2, xmm1
+	050 Compare xmm0, xmm2
+	051 JumpIfGreater {85}
+	052 Move xmm0, [0x182A510B8]
+	053 Compare xmm0, xmm2
+	054 JumpIfGreater {76}
+	055 Move xmm0, [0x182A511B8]
+	056 Compare xmm0, xmm2
+	057 JumpIfGreater {67}
+	058 Subtract xmm2, xmm2, [0x182A510CC]
+	059 Move xmm0, xmm2
+	060 Multiply xmm0, xmm0, [0x182A510F8]
+	061 Multiply xmm0, xmm0, xmm2
+	062 Add xmm0, xmm0, [0x182A510D0]
+	063 Subtract xmm3, xmm3, xmm0
+	064 Multiply xmm3, xmm3, xmm4
+	065 Move xmm0, xmm3
+	066 Return xmm0
+	067 Subtract xmm2, xmm2, [0x182A510C0]
+	068 Move xmm0, xmm2
+	069 Multiply xmm0, xmm0, [0x182A510F8]
+	070 Multiply xmm0, xmm0, xmm2
+	071 Add xmm0, xmm0, [0x182A510C8]
+	072 Subtract xmm3, xmm3, xmm0
+	073 Multiply xmm3, xmm3, xmm4
+	074 Move xmm0, xmm3
+	075 Return xmm0
+	076 Subtract xmm2, xmm2, [0x182A510AC]
+	077 Move xmm0, xmm2
+	078 Multiply xmm0, xmm0, [0x182A510F8]
+	079 Multiply xmm0, xmm0, xmm2
+	080 Add xmm0, xmm0, [0x182A5085C]
+	081 Subtract xmm3, xmm3, xmm0
+	082 Multiply xmm3, xmm3, xmm4
+	083 Move xmm0, xmm3
+	084 Return xmm0
+	085 Move xmm0, xmm2
+	086 Multiply xmm0, xmm0, [0x182A510F8]
+	087 Multiply xmm0, xmm0, xmm2
+	088 Subtract xmm3, xmm3, xmm0
+	089 Multiply xmm3, xmm3, xmm4
+	090 Move xmm0, xmm3
+	091 Return xmm0
+
+Method: System.Single InElastic(System.Single t)
+
+Disassembly:
+	sub rsp,48h
+	movaps [rsp+20h],xmm7
+	movaps xmm7,xmm0
+	xorps xmm0,xmm0
+	ucomiss xmm7,xmm0
+	jp short 0000000182882D76h
+	je short 0000000182882DDCh
+	movss xmm0,dword ptr [182A4FBA4h]
+	ucomiss xmm7,xmm0
+	jp short 0000000182882D85h
+	je short 0000000182882DDCh
+	movaps [rsp+30h],xmm6
+	subss xmm7,xmm0
+	movaps xmm0,xmm7
+	subss xmm0,dword ptr [182A50170h]
+	mulss xmm0,dword ptr [182A510F4h]
+	divss xmm0,dword ptr [182A4FBB0h]
+	call 0000000180416DA0h
+	mulss xmm7,dword ptr [182A4FBE0h]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	movaps xmm1,xmm7
+	call 00000001804171B0h
+	mulss xmm6,xmm0
+	xorps xmm6,[182A500A0h]
+	movaps xmm0,xmm6
+	movaps xmm6,[rsp+30h]
+	movaps xmm7,[rsp+20h]
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move stack:0x20, xmm7
+	003 Move xmm7, xmm0
+	004 Move xmm0, 0
+	005 Compare xmm7, xmm0
+	006 NotImplemented "jp short 0000000182882D76h"
+	007 JumpIfEqual {28}
+	008 Move xmm0, [0x182A4FBA4]
+	009 Compare xmm7, xmm0
+	010 NotImplemented "jp short 0000000182882D85h"
+	011 JumpIfEqual {28}
+	012 Move stack:0x30, xmm6
+	013 Subtract xmm7, xmm7, xmm0
+	014 Move xmm0, xmm7
+	015 Subtract xmm0, xmm0, [0x182A50170]
+	016 Multiply xmm0, xmm0, [0x182A510F4]
+	017 Divide xmm0, xmm0, [0x182A4FBB0]
+	018 Call 0x180416DA0, rcx, rdx, r8, r9
+	019 Multiply xmm7, xmm7, [0x182A4FBE0]
+	020 Move xmm6, xmm0
+	021 Move xmm0, typeof(T)
+	022 Move xmm1, xmm7
+	023 Call 0x1804171B0, rcx, rdx, r8, r9
+	024 Multiply xmm6, xmm6, xmm0
+	025 Xor xmm6, xmm6, [0x182A500A0]
+	026 Move xmm0, xmm6
+	027 Move xmm6, stack:0x30
+	028 Move xmm7, stack:0x20
+	029 ShiftStack 72
+	030 Return xmm0
+
+Method: System.Single OutElastic(System.Single t)
+
+Disassembly:
+	sub rsp,48h
+	movaps [rsp+20h],xmm7
+	movaps xmm7,xmm0
+	xorps xmm0,xmm0
+	ucomiss xmm7,xmm0
+	jp short 0000000182883516h
+	je short 0000000182883587h
+	ucomiss xmm7,dword ptr [182A4FBA4h]
+	jp short 0000000182883533h
+	jne short 0000000182883533h
+	movss xmm0,dword ptr [182A4FBA4h]
+	movaps xmm7,[rsp+20h]
+	add rsp,48h
+	ret
+	movaps [rsp+30h],xmm6
+	movaps xmm0,xmm7
+	subss xmm0,dword ptr [182A50170h]
+	mulss xmm0,dword ptr [182A510F4h]
+	divss xmm0,dword ptr [182A4FBB0h]
+	call 0000000180416DA0h
+	mulss xmm7,dword ptr [182A50208h]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	movaps xmm1,xmm7
+	call 00000001804171B0h
+	mulss xmm6,xmm0
+	addss xmm6,dword ptr [182A4FBA4h]
+	movaps xmm0,xmm6
+	movaps xmm6,[rsp+30h]
+	movaps xmm7,[rsp+20h]
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move stack:0x20, xmm7
+	003 Move xmm7, xmm0
+	004 Move xmm0, 0
+	005 Compare xmm7, xmm0
+	006 NotImplemented "jp short 0000000182883516h"
+	007 JumpIfEqual {30}
+	008 Compare xmm7, [0x182A4FBA4]
+	009 NotImplemented "jp short 0000000182883533h"
+	010 JumpIfNotEqual {15}
+	011 Move xmm0, [0x182A4FBA4]
+	012 Move xmm7, stack:0x20
+	013 ShiftStack 72
+	014 Return xmm0
+	015 Move stack:0x30, xmm6
+	016 Move xmm0, xmm7
+	017 Subtract xmm0, xmm0, [0x182A50170]
+	018 Multiply xmm0, xmm0, [0x182A510F4]
+	019 Divide xmm0, xmm0, [0x182A4FBB0]
+	020 Call 0x180416DA0, rcx, rdx, r8, r9
+	021 Multiply xmm7, xmm7, [0x182A50208]
+	022 Move xmm6, xmm0
+	023 Move xmm0, typeof(T)
+	024 Move xmm1, xmm7
+	025 Call 0x1804171B0, rcx, rdx, r8, r9
+	026 Multiply xmm6, xmm6, xmm0
+	027 Add xmm6, xmm6, [0x182A4FBA4]
+	028 Move xmm0, xmm6
+	029 Move xmm6, stack:0x30
+	030 Move xmm7, stack:0x20
+	031 ShiftStack 72
+	032 Return xmm0
+
+Method: System.Single InOutElastic(System.Single t)
+
+Disassembly:
+	sub rsp,68h
+	movaps [rsp+50h],xmm6
+	movaps [rsp+40h],xmm7
+	movaps xmm7,xmm0
+	movaps [rsp+20h],xmm9
+	movss xmm9,dword ptr [182A4FBA0h]
+	comiss xmm9,xmm7
+	ja near ptr 00000001828831E4h
+	movaps [rsp+30h],xmm8
+	subss xmm7,xmm9
+	xorps xmm8,xmm8
+	addss xmm7,xmm7
+	ucomiss xmm7,xmm8
+	jp short 0000000182883175h
+	je short 00000001828831CEh
+	movss xmm8,dword ptr [182A4FBA4h]
+	ucomiss xmm7,xmm8
+	jp short 0000000182883186h
+	je short 00000001828831CEh
+	movaps xmm0,xmm7
+	subss xmm0,dword ptr [182A50170h]
+	mulss xmm0,dword ptr [182A510F4h]
+	divss xmm0,dword ptr [182A4FBB0h]
+	call 0000000180416DA0h
+	mulss xmm7,dword ptr [182A50208h]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	movaps xmm1,xmm7
+	call 00000001804171B0h
+	mulss xmm6,xmm0
+	addss xmm6,xmm8
+	movaps xmm8,xmm6
+	mulss xmm8,xmm9
+	addss xmm8,xmm9
+	movaps xmm0,xmm8
+	movaps xmm8,[rsp+30h]
+	jmp short 0000000182883253h
+	addss xmm7,xmm7
+	xorps xmm6,xmm6
+	ucomiss xmm7,xmm6
+	jp short 00000001828831F2h
+	je short 000000018288324Bh
+	movss xmm6,dword ptr [182A4FBA4h]
+	ucomiss xmm7,xmm6
+	jp short 0000000182883201h
+	je short 000000018288324Bh
+	subss xmm7,xmm6
+	movaps xmm0,xmm7
+	subss xmm0,dword ptr [182A50170h]
+	mulss xmm0,dword ptr [182A510F4h]
+	divss xmm0,dword ptr [182A4FBB0h]
+	call 0000000180416DA0h
+	mulss xmm7,dword ptr [182A4FBE0h]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	movaps xmm1,xmm7
+	call 00000001804171B0h
+	mulss xmm6,xmm0
+	xorps xmm6,[182A500A0h]
+	mulss xmm6,xmm9
+	movaps xmm0,xmm6
+	movaps xmm6,[rsp+50h]
+	movaps xmm7,[rsp+40h]
+	movaps xmm9,[rsp+20h]
+	add rsp,68h
+	ret
+
+ISIL:
+	001 ShiftStack -104
+	002 Move stack:0x50, xmm6
+	003 Move stack:0x40, xmm7
+	004 Move xmm7, xmm0
+	005 Move stack:0x20, xmm9
+	006 Move xmm9, [0x182A4FBA0]
+	007 Compare xmm9, xmm7
+	008 JumpIfGreater {38}
+	009 Move stack:0x30, xmm8
+	010 Subtract xmm7, xmm7, xmm9
+	011 Move xmm8, 0
+	012 Add xmm7, xmm7, xmm7
+	013 Compare xmm7, xmm8
+	014 NotImplemented "jp short 0000000182883175h"
+	015 JumpIfEqual {33}
+	016 Move xmm8, [0x182A4FBA4]
+	017 Compare xmm7, xmm8
+	018 NotImplemented "jp short 0000000182883186h"
+	019 JumpIfEqual {33}
+	020 Move xmm0, xmm7
+	021 Subtract xmm0, xmm0, [0x182A50170]
+	022 Multiply xmm0, xmm0, [0x182A510F4]
+	023 Divide xmm0, xmm0, [0x182A4FBB0]
+	024 Call 0x180416DA0, rcx, rdx, r8, r9
+	025 Multiply xmm7, xmm7, [0x182A50208]
+	026 Move xmm6, xmm0
+	027 Move xmm0, typeof(T)
+	028 Move xmm1, xmm7
+	029 Call 0x1804171B0, rcx, rdx, r8, r9
+	030 Multiply xmm6, xmm6, xmm0
+	031 Add xmm6, xmm6, xmm8
+	032 Move xmm8, xmm6
+	033 Multiply xmm8, xmm8, xmm9
+	034 Add xmm8, xmm8, xmm9
+	035 Move xmm0, xmm8
+	036 Move xmm8, stack:0x30
+	037 Goto {62}
+	038 Add xmm7, xmm7, xmm7
+	039 Move xmm6, 0
+	040 Compare xmm7, xmm6
+	041 NotImplemented "jp short 00000001828831F2h"
+	042 JumpIfEqual {60}
+	043 Move xmm6, [0x182A4FBA4]
+	044 Compare xmm7, xmm6
+	045 NotImplemented "jp short 0000000182883201h"
+	046 JumpIfEqual {60}
+	047 Subtract xmm7, xmm7, xmm6
+	048 Move xmm0, xmm7
+	049 Subtract xmm0, xmm0, [0x182A50170]
+	050 Multiply xmm0, xmm0, [0x182A510F4]
+	051 Divide xmm0, xmm0, [0x182A4FBB0]
+	052 Call 0x180416DA0, rcx, rdx, r8, r9
+	053 Multiply xmm7, xmm7, [0x182A4FBE0]
+	054 Move xmm6, xmm0
+	055 Move xmm0, typeof(T)
+	056 Move xmm1, xmm7
+	057 Call 0x1804171B0, rcx, rdx, r8, r9
+	058 Multiply xmm6, xmm6, xmm0
+	059 Xor xmm6, xmm6, [0x182A500A0]
+	060 Multiply xmm6, xmm6, xmm9
+	061 Move xmm0, xmm6
+	062 Move xmm6, stack:0x50
+	063 Move xmm7, stack:0x40
+	064 Move xmm9, stack:0x20
+	065 ShiftStack 104
+	066 Return xmm0
+
+Method: System.Single InBack(System.Single t)
+
+Disassembly:
+	movaps xmm1,xmm0
+	mulss xmm0,dword ptr [182B4C340h]
+	mulss xmm1,xmm1
+	subss xmm0,dword ptr [182A510E0h]
+	mulss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Move xmm1, xmm0
+	002 Multiply xmm0, xmm0, [0x182B4C340]
+	003 Multiply xmm1, xmm1, xmm1
+	004 Subtract xmm0, xmm0, [0x182A510E0]
+	005 Multiply xmm0, xmm0, xmm1
+	006 Return xmm0
+
+Method: System.Single OutBack(System.Single t)
+
+Disassembly:
+	movss xmm3,dword ptr [182A4FBA4h]
+	movaps xmm2,xmm3
+	subss xmm2,xmm0
+	movaps xmm1,xmm2
+	mulss xmm2,xmm2
+	mulss xmm1,dword ptr [182B4C340h]
+	subss xmm1,dword ptr [182A510E0h]
+	mulss xmm1,xmm2
+	subss xmm3,xmm1
+	movaps xmm0,xmm3
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A4FBA4]
+	002 Move xmm2, xmm3
+	003 Subtract xmm2, xmm2, xmm0
+	004 Move xmm1, xmm2
+	005 Multiply xmm2, xmm2, xmm2
+	006 Multiply xmm1, xmm1, [0x182B4C340]
+	007 Subtract xmm1, xmm1, [0x182A510E0]
+	008 Multiply xmm1, xmm1, xmm2
+	009 Subtract xmm3, xmm3, xmm1
+	010 Move xmm0, xmm3
+	011 Return xmm0
+
+Method: System.Single InOutBack(System.Single t)
+
+Disassembly:
+	movss xmm3,dword ptr [182A4FBA0h]
+	movaps xmm1,xmm0
+	comiss xmm3,xmm1
+	ja short 0000000182882E3Fh
+	movss xmm0,dword ptr [182A4FBA4h]
+	subss xmm1,xmm3
+	movaps xmm2,xmm0
+	addss xmm1,xmm1
+	subss xmm2,xmm1
+	movaps xmm1,xmm2
+	mulss xmm2,xmm2
+	mulss xmm1,dword ptr [182B4C340h]
+	subss xmm1,dword ptr [182A510E0h]
+	mulss xmm1,xmm2
+	subss xmm0,xmm1
+	mulss xmm0,xmm3
+	addss xmm0,xmm3
+	ret
+	addss xmm1,xmm1
+	movaps xmm0,xmm1
+	mulss xmm1,xmm1
+	mulss xmm0,dword ptr [182B4C340h]
+	subss xmm0,dword ptr [182A510E0h]
+	mulss xmm0,xmm1
+	mulss xmm0,xmm3
+	ret
+
+ISIL:
+	001 Move xmm3, [0x182A4FBA0]
+	002 Move xmm1, xmm0
+	003 Compare xmm3, xmm1
+	004 JumpIfGreater {19}
+	005 Move xmm0, [0x182A4FBA4]
+	006 Subtract xmm1, xmm1, xmm3
+	007 Move xmm2, xmm0
+	008 Add xmm1, xmm1, xmm1
+	009 Subtract xmm2, xmm2, xmm1
+	010 Move xmm1, xmm2
+	011 Multiply xmm2, xmm2, xmm2
+	012 Multiply xmm1, xmm1, [0x182B4C340]
+	013 Subtract xmm1, xmm1, [0x182A510E0]
+	014 Multiply xmm1, xmm1, xmm2
+	015 Subtract xmm0, xmm0, xmm1
+	016 Multiply xmm0, xmm0, xmm3
+	017 Add xmm0, xmm0, xmm3
+	018 Return xmm0
+	019 Add xmm1, xmm1, xmm1
+	020 Move xmm0, xmm1
+	021 Multiply xmm1, xmm1, xmm1
+	022 Multiply xmm0, xmm0, [0x182B4C340]
+	023 Subtract xmm0, xmm0, [0x182A510E0]
+	024 Multiply xmm0, xmm0, xmm1
+	025 Multiply xmm0, xmm0, xmm3
+	026 Return xmm0
+
+Method: System.Single InCirc(System.Single t)
+
+Disassembly:
+	sub rsp,28h
+	movss xmm1,dword ptr [182A4FBA4h]
+	mulss xmm0,xmm0
+	subss xmm1,xmm0
+	xorps xmm0,xmm0
+	ucomiss xmm0,xmm1
+	ja short 0000000182882D27h
+	xorps xmm0,xmm0
+	sqrtss xmm0,xmm1
+	subss xmm0,dword ptr [182A4FBA4h]
+	xorps xmm0,[182A500A0h]
+	add rsp,28h
+	ret
+	movaps xmm0,xmm1
+	call 0000000180419020h
+	subss xmm0,dword ptr [182A4FBA4h]
+	xorps xmm0,[182A500A0h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm1, [0x182A4FBA4]
+	003 Multiply xmm0, xmm0, xmm0
+	004 Subtract xmm1, xmm1, xmm0
+	005 Move xmm0, 0
+	006 Compare xmm0, xmm1
+	007 JumpIfGreater {14}
+	008 Move xmm0, 0
+	009 NotImplemented "sqrtss xmm0,xmm1"
+	010 Subtract xmm0, xmm0, [0x182A4FBA4]
+	011 Xor xmm0, xmm0, [0x182A500A0]
+	012 ShiftStack 40
+	013 Return xmm0
+	014 Move xmm0, xmm1
+	015 Call 0x180419020, rcx, rdx, r8, r9
+	016 Subtract xmm0, xmm0, [0x182A4FBA4]
+	017 Xor xmm0, xmm0, [0x182A500A0]
+	018 ShiftStack 40
+	019 Return xmm0
+
+Method: System.Single OutCirc(System.Single t)
+
+Disassembly:
+	movss xmm1,dword ptr [182A4FBA4h]
+	subss xmm0,xmm1
+	mulss xmm0,xmm0
+	subss xmm1,xmm0
+	xorps xmm0,xmm0
+	ucomiss xmm0,xmm1
+	ja short 00000001828834C4h
+	xorps xmm0,xmm0
+	sqrtss xmm0,xmm1
+	ret
+	movaps xmm0,xmm1
+	jmp near ptr 0000000180419020h
+
+ISIL:
+	001 Move xmm1, [0x182A4FBA4]
+	002 Subtract xmm0, xmm0, xmm1
+	003 Multiply xmm0, xmm0, xmm0
+	004 Subtract xmm1, xmm1, xmm0
+	005 Move xmm0, 0
+	006 Compare xmm0, xmm1
+	007 JumpIfGreater {11}
+	008 Move xmm0, 0
+	009 NotImplemented "sqrtss xmm0,xmm1"
+	010 Return xmm0
+	011 Move xmm0, xmm1
+	012 Call 0x180419020, rcx, rdx, r8, r9
+	013 Return xmm0
+
+Method: System.Single InOutCirc(System.Single t)
+
+Disassembly:
+	sub rsp,38h
+	addss xmm0,xmm0
+	movaps [rsp+20h],xmm6
+	movss xmm6,dword ptr [182A4FBA4h]
+	movaps xmm1,xmm6
+	comiss xmm6,xmm0
+	ja short 0000000182883090h
+	subss xmm0,dword ptr [182A4FBC8h]
+	mulss xmm0,xmm0
+	subss xmm1,xmm0
+	xorps xmm0,xmm0
+	ucomiss xmm0,xmm1
+	ja short 0000000182883072h
+	xorps xmm0,xmm0
+	sqrtss xmm0,xmm1
+	addss xmm0,xmm6
+	mulss xmm0,dword ptr [182A4FBA0h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+	movaps xmm0,xmm1
+	call 0000000180419020h
+	addss xmm0,xmm6
+	mulss xmm0,dword ptr [182A4FBA0h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+	mulss xmm0,xmm0
+	subss xmm1,xmm0
+	xorps xmm0,xmm0
+	ucomiss xmm0,xmm1
+	ja short 00000001828830A9h
+	xorps xmm0,xmm0
+	sqrtss xmm0,xmm1
+	jmp short 00000001828830B1h
+	movaps xmm0,xmm1
+	call 0000000180419020h
+	subss xmm0,xmm6
+	mulss xmm0,dword ptr [182A50A00h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Add xmm0, xmm0, xmm0
+	003 Move stack:0x20, xmm6
+	004 Move xmm6, [0x182A4FBA4]
+	005 Move xmm1, xmm6
+	006 Compare xmm6, xmm0
+	007 JumpIfGreater {28}
+	008 Subtract xmm0, xmm0, [0x182A4FBC8]
+	009 Multiply xmm0, xmm0, xmm0
+	010 Subtract xmm1, xmm1, xmm0
+	011 Move xmm0, 0
+	012 Compare xmm0, xmm1
+	013 JumpIfGreater {21}
+	014 Move xmm0, 0
+	015 NotImplemented "sqrtss xmm0,xmm1"
+	016 Add xmm0, xmm0, xmm6
+	017 Multiply xmm0, xmm0, [0x182A4FBA0]
+	018 Move xmm6, stack:0x20
+	019 ShiftStack 56
+	020 Return xmm0
+	021 Move xmm0, xmm1
+	022 Call 0x180419020, rcx, rdx, r8, r9
+	023 Add xmm0, xmm0, xmm6
+	024 Multiply xmm0, xmm0, [0x182A4FBA0]
+	025 Move xmm6, stack:0x20
+	026 ShiftStack 56
+	027 Return xmm0
+	028 Multiply xmm0, xmm0, xmm0
+	029 Subtract xmm1, xmm1, xmm0
+	030 Move xmm0, 0
+	031 Compare xmm0, xmm1
+	032 JumpIfGreater {36}
+	033 Move xmm0, 0
+	034 NotImplemented "sqrtss xmm0,xmm1"
+	035 Goto {38}
+	036 Move xmm0, xmm1
+	037 Call 0x180419020, rcx, rdx, r8, r9
+	038 Subtract xmm0, xmm0, xmm6
+	039 Multiply xmm0, xmm0, [0x182A50A00]
+	040 Move xmm6, stack:0x20
+	041 ShiftStack 56
+	042 Return xmm0
+

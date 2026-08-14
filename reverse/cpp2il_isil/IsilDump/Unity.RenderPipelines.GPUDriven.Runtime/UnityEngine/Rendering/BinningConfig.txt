@@ -1,0 +1,34 @@
+Type: UnityEngine.Rendering.BinningConfig
+
+Method: System.Int32 get_visibilityConfigCount()
+
+Disassembly:
+	mov rdx,rcx
+	xor eax,eax
+	cmp [rdx+5],al
+	mov ecx,eax
+	setne cl
+	inc ecx
+	cmp [rdx+4],al
+	setne al
+	add ecx,eax
+	mov eax,1
+	add ecx,[rdx]
+	shl eax,cl
+	ret
+
+ISIL:
+	001 Move rdx, rcx
+	002 Move rax, 0
+	003 Compare [rdx+5], rax
+	004 Move rcx, rax
+	005 NotImplemented "setne cl"
+	006 Add rcx, rcx, 1
+	007 Compare [rdx+4], rax
+	008 NotImplemented "setne al"
+	009 Add rcx, rcx, rax
+	010 Move rax, 1
+	011 Add rcx, rcx, [rdx]
+	012 ShiftLeft rax, rcx
+	013 Return rax
+

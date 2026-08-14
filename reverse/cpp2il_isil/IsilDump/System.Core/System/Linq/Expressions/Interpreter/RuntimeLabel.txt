@@ -1,0 +1,128 @@
+Type: System.Linq.Expressions.Interpreter.RuntimeLabel
+
+Method: System.Void .ctor(System.Int32 index, System.Int32 continuationStackDepth, System.Int32 stackDepth)
+
+Disassembly:
+	mov [rcx],edx
+	mov [rcx+8],r8d
+	mov [rcx+4],r9d
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+8], r8
+	003 Move [rcx+4], r9
+	004 Return 
+
+Method: System.String ToString()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	push rdi
+	push r14
+	sub rsp,30h
+	cmp byte ptr [18375048Bh],0
+	mov r14,rcx
+	jne short 00000001819D58A8h
+	lea rcx,[183518768h]
+	call 000000018037BB90h
+	lea rcx,[183562E68h]
+	call 000000018037BB90h
+	mov byte ptr [18375048Bh],1
+	mov rcx,[183518768h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001819D58BDh
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 000000018178E390h
+	mov ecx,[r14]
+	lea rdx,[rsp+50h]
+	mov [rsp+50h],ecx
+	mov rsi,rax
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov ecx,[r14+8]
+	lea rdx,[rsp+60h]
+	mov [rsp+60h],ecx
+	mov rdi,rax
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov ecx,[r14+4]
+	lea rdx,[rsp+68h]
+	mov [rsp+68h],ecx
+	mov rbx,rax
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov rdx,[183562E68h]
+	mov r9,rbx
+	mov r8,rdi
+	mov qword ptr [rsp+28h],0
+	mov rcx,rsi
+	mov [rsp+20h],rax
+	call 000000018165E6C0h
+	mov rbx,[rsp+58h]
+	add rsp,30h
+	pop r14
+	pop rdi
+	pop rsi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r14
+	008 ShiftStack -48
+	009 Compare [0x18375048B], 0
+	010 Move r14, rcx
+	011 JumpIfNotEqual {17}
+	012 LoadAddress rcx, [0x183518768]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x183562E68]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 Move [0x18375048B], 1
+	017 Move rcx, typeof(System.Globalization.CultureInfo)
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Move rcx, 0
+	022 Call CultureInfo.get_InvariantCulture, rcx
+	023 Move rcx, [r14]
+	024 LoadAddress rdx, stack:0x50
+	025 Move stack:0x50, rcx
+	026 Move rsi, rax
+	027 Move rcx, [0x18375C0E8]
+	028 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	029 Move rcx, [r14+8]
+	030 LoadAddress rdx, stack:0x60
+	031 Move stack:0x60, rcx
+	032 Move rdi, rax
+	033 Move rcx, [0x18375C0E8]
+	034 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	035 Move rcx, [r14+4]
+	036 LoadAddress rdx, stack:0x68
+	037 Move stack:0x68, rcx
+	038 Move rbx, rax
+	039 Move rcx, [0x18375C0E8]
+	040 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	041 Move rdx, "->{0} C({1}) S({2})"
+	042 Move r9, rbx
+	043 Move r8, rdi
+	044 Move stack:0x28, 0
+	045 Move rcx, rsi
+	046 Move stack:0x20, rax
+	047 Call String.Format, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	048 Move rbx, stack:0x58
+	049 ShiftStack 48
+	050 Move r14, stack:0x0
+	051 ShiftStack 8
+	052 Move rdi, stack:0x0
+	053 ShiftStack 8
+	054 Move rsi, stack:0x0
+	055 ShiftStack 8
+	056 Return rax
+

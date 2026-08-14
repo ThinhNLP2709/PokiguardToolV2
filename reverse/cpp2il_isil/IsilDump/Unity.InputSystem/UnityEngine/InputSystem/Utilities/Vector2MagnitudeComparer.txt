@@ -1,0 +1,54 @@
+Type: UnityEngine.InputSystem.Utilities.Vector2MagnitudeComparer
+
+Method: System.Int32 Compare(UnityEngine.Vector2 x, UnityEngine.Vector2 y)
+
+Disassembly:
+	sub rsp,18h
+	mov [rsp+8],r8
+	mov [rsp],rdx
+	movss xmm1,dword ptr [rsp+4]
+	movss xmm0,dword ptr [rsp]
+	mulss xmm1,xmm1
+	mulss xmm0,xmm0
+	addss xmm1,xmm0
+	movss xmm2,dword ptr [rsp+0Ch]
+	movss xmm0,dword ptr [rsp+8]
+	mulss xmm2,xmm2
+	mulss xmm0,xmm0
+	addss xmm2,xmm0
+	comiss xmm2,xmm1
+	ja short 0000000181F5313Eh
+	xor eax,eax
+	comiss xmm1,xmm2
+	seta al
+	add rsp,18h
+	ret
+	mov eax,0FFFFFFFFh
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move stack:0x8, r8
+	003 Move stack:0x0, rdx
+	004 Move xmm1, stack:0x4
+	005 Move xmm0, stack:0x0
+	006 Multiply xmm1, xmm1, xmm1
+	007 Multiply xmm0, xmm0, xmm0
+	008 Add xmm1, xmm1, xmm0
+	009 Move xmm2, stack:0xC
+	010 Move xmm0, stack:0x8
+	011 Multiply xmm2, xmm2, xmm2
+	012 Multiply xmm0, xmm0, xmm0
+	013 Add xmm2, xmm2, xmm0
+	014 Compare xmm2, xmm1
+	015 JumpIfGreater {21}
+	016 Move rax, 0
+	017 Compare xmm1, xmm2
+	018 NotImplemented "seta al"
+	019 ShiftStack 24
+	020 Return rax
+	021 Move rax, 0xFFFFFFFF
+	022 ShiftStack 24
+	023 Return rax
+

@@ -1,0 +1,97 @@
+Type: MS.Internal.Xml.XPath.XPathParser+ParamInfo
+
+Method: MS.Internal.Xml.XPath.Function+FunctionType get_FType()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Int32 get_Minargs()
+
+Disassembly:
+	mov eax,[rcx+14h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+20]
+	002 Return rax
+
+Method: System.Int32 get_Maxargs()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Xml.XPath.XPathResultType[] get_ArgTypes()
+
+Disassembly:
+	mov rax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+
+Method: System.Void .ctor(MS.Internal.Xml.XPath.Function+FunctionType ftype, System.Int32 minargs, System.Int32 maxargs, System.Xml.XPath.XPathResultType[] argTypes)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov esi,r9d
+	xor edx,edx
+	mov edi,r8d
+	mov rbp,rcx
+	call 0000000180456D90h
+	mov rdx,[rsp+50h]
+	lea rcx,[rbp+20h]
+	mov [rbp+20h],rdx
+	mov [rbp+10h],ebx
+	mov [rbp+14h],edi
+	mov [rbp+18h],esi
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbx, rdx
+	008 Move rsi, r9
+	009 Move rdx, 0
+	010 Move rdi, r8
+	011 Move rbp, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 Move rdx, stack:0x50
+	014 LoadAddress rcx, [rbp+32]
+	015 Move [rbp+32], rdx
+	016 Move [rbp+16], rbx
+	017 Move [rbp+20], rdi
+	018 Move [rbp+24], rsi
+	019 Move rbx, stack:0x30
+	020 Move rbp, stack:0x38
+	021 Move rsi, stack:0x40
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Call 0x18037ACB0, rcx, rdx, r8, r9
+	026 Return 
+

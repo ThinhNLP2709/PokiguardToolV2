@@ -1,0 +1,35 @@
+Type: UnityEngine.UIElements.RuntimeEventDispatcher
+
+Method: UnityEngine.UIElements.EventDispatcher Create()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18375B37Ch],0
+	jne short 000000018293C590h
+	lea rcx,[18352C228h]
+	call 000000018037BB90h
+	mov byte ptr [18375B37Ch],1
+	mov rcx,[18352C228h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018293C5A5h
+	call 000000018037BED0h
+	xor ecx,ecx
+	add rsp,28h
+	jmp near ptr 0000000182917DA0h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18375B37C], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x18352C228]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18375B37C], 1
+	007 Move rcx, typeof(UnityEngine.UIElements.EventDispatcher)
+	008 Compare [rcx+228], 0
+	009 JumpIfNotEqual {11}
+	010 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	011 Move rcx, 0
+	012 ShiftStack 40
+	013 Call EventDispatcher.CreateDefault, rcx
+	014 Return rax
+

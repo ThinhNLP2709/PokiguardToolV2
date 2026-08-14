@@ -1,0 +1,114 @@
+Type: UnityEngine.GraphicsBufferHandle
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	xchg ax,ax
+	xor edx,edx
+	jmp near ptr 000000018078A5F0h
+
+ISIL:
+	001 Nop 
+	002 Move rdx, 0
+	003 Call 0x18078A5F0, rcx, rdx
+	004 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183756D10h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 00000001825E5F2Ch
+	lea rcx,[183537198h]
+	call 000000018037BB90h
+	mov byte ptr [183756D10h],1
+	test rbx,rbx
+	je short 00000001825E5F6Dh
+	mov rdx,[183537198h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 00000001825E5F6Dh
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 00000001825E5F7Ah
+	call 000000018037AE90h
+	mov eax,[rax]
+	cmp [rdi],eax
+	sete al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	xor al,al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183756D10], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183537198]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183756D10], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {36}
+	014 Move rdx, typeof(UnityEngine.GraphicsBufferHandle)
+	015 Move rax, 0
+	016 Compare [rbx], rdx
+	017 JumpIfNotEqual {19}
+	018 Move rax, rbx
+	019 Nop 
+	020 Compare rax, 0
+	021 JumpIfEqual {36}
+	022 Move rcx, [rbx]
+	023 Move rax, [rdx+64]
+	024 Compare [rcx+64], rax
+	025 Move rcx, rbx
+	026 JumpIfNotEqual {42}
+	027 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	028 Move rax, [rax]
+	029 Compare [rdi], rax
+	030 NotImplemented "sete al"
+	031 Move rbx, stack:0x30
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+	036 Move rax, 0
+	037 Move rbx, stack:0x30
+	038 ShiftStack 32
+	039 Move rdi, stack:0x0
+	040 ShiftStack 8
+	041 Return rax
+	042 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Boolean Equals(UnityEngine.GraphicsBufferHandle other)
+
+Disassembly:
+	xchg ax,ax
+	cmp [rcx],edx
+	sete al
+	ret
+
+ISIL:
+	001 Nop 
+	002 Compare [rcx], rdx
+	003 NotImplemented "sete al"
+	004 Return rax
+

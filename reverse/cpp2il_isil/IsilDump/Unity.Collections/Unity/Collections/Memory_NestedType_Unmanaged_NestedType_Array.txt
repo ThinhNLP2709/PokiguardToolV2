@@ -1,0 +1,522 @@
+Type: Unity.Collections.Memory+Unmanaged+Array
+
+Method: System.Boolean IsCustom(Unity.Collections.AllocatorManager+AllocatorHandle allocator)
+
+Disassembly:
+	cmp cx,40h
+	setae al
+	ret
+
+ISIL:
+	001 Compare rcx, 64
+	002 NotImplemented "setae al"
+	003 Return rax
+
+Method: System.Void* CustomResize(System.Void* oldPointer, System.Int64 oldCount, System.Int64 newCount, Unity.Collections.AllocatorManager+AllocatorHandle allocator, System.Int64 size, System.Int32 align)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,60h
+	cmp byte ptr [183752BC2h],0
+	mov ebx,r9d
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbp,rcx
+	jne short 0000000181EF858Ch
+	lea rcx,[1834FC918h]
+	call 000000018037BB90h
+	mov byte ptr [183752BC2h],1
+	xor eax,eax
+	mov [rsp+2Ch],ebx
+	xor edx,edx
+	mov [rsp+34h],rax
+	mov rcx,rbp
+	mov [rsp+3Ch],eax
+	mov [rsp+28h],edi
+	call 00000001804D4100h
+	mov edx,[rsp+98h]
+	lea rcx,[rsp+20h]
+	mov [rsp+20h],rax
+	xor r8d,r8d
+	mov eax,[rsp+90h]
+	mov [rsp+30h],eax
+	call 0000000181EDEE00h
+	mov rcx,[1834FC918h]
+	mov [rsp+34h],esi
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181EF85E6h
+	call 000000018037BED0h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000181EDBFB0h
+	mov rcx,[rsp+20h]
+	xor edx,edx
+	call 00000001804D4100h
+	mov rbx,[rsp+70h]
+	mov rbp,[rsp+78h]
+	mov rsi,[rsp+80h]
+	add rsp,60h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -96
+	007 Compare [0x183752BC2], 0
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x1834FC918]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183752BC2], 1
+	016 Move rax, 0
+	017 Move stack:0x2C, rbx
+	018 Move rdx, 0
+	019 Move stack:0x34, rax
+	020 Move rcx, rbp
+	021 Move stack:0x3C, rax
+	022 Move stack:0x28, rdi
+	023 Call 0x1804D4100, rcx, rdx, r8, r9
+	024 Move rdx, stack:0x98
+	025 LoadAddress rcx, stack:0x20
+	026 Move stack:0x20, rax
+	027 Move r8, 0
+	028 Move rax, stack:0x90
+	029 Move stack:0x30, rax
+	030 Call Block.set_Alignment, rcx, rdx
+	031 Move rcx, typeof(Unity.Collections.AllocatorManager)
+	032 Move stack:0x34, rsi
+	033 Compare [rcx+228], 0
+	034 JumpIfNotEqual {36}
+	035 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	036 Move rdx, 0
+	037 LoadAddress rcx, stack:0x20
+	038 Call AllocatorManager.Try, rcx, rdx
+	039 Move rcx, stack:0x20
+	040 Move rdx, 0
+	041 Call 0x1804D4100, rcx, rdx, r8, r9
+	042 Move rbx, stack:0x70
+	043 Move rbp, stack:0x78
+	044 Move rsi, stack:0x80
+	045 ShiftStack 96
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return rax
+
+Method: System.Void* Resize(System.Void* oldPointer, System.Int64 oldCount, System.Int64 newCount, Unity.Collections.AllocatorManager+AllocatorHandle allocator, System.Int64 size, System.Int32 align)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	mov [rax+20h],r9d
+	push rdi
+	push r14
+	push r15
+	sub rsp,80h
+	mov ebx,r9d
+	mov rbp,r8
+	mov rsi,rdx
+	mov r15,rcx
+	mov r14d,40h
+	cmp [rsp+0C8h],r14d
+	cmovge r14d,[rsp+0C8h]
+	cmp r9w,40h
+	jae near ptr 0000000181EF86F2h
+	test r8,r8
+	jle short 0000000181EF86C7h
+	xor edx,edx
+	lea rcx,[rax+20h]
+	call 0000000181EDB420h
+	mov rbx,[rsp+0C0h]
+	mov rcx,rbp
+	imul rcx,rbx
+	xor edi,edi
+	xor r9d,r9d
+	mov r8d,eax
+	mov [rsp+20h],rdi
+	mov edx,r14d
+	call 00000001825E0770h
+	mov rdi,rax
+	test rsi,rsi
+	jle short 0000000181EF86EAh
+	cmp rsi,rbp
+	mov rdx,r15
+	mov rcx,rax
+	cmovge rsi,rbp
+	xor r9d,r9d
+	imul rsi,rbx
+	mov r8,rsi
+	call 00000001825E09A0h
+	jmp short 0000000181EF86CEh
+	xor edi,edi
+	test rsi,rsi
+	jle short 0000000181EF86EAh
+	xor edx,edx
+	lea rcx,[rsp+0B8h]
+	call 0000000181EDB420h
+	xor r8d,r8d
+	mov edx,eax
+	mov rcx,r15
+	call 00000001825E0270h
+	mov rax,rdi
+	jmp near ptr 0000000181EF877Bh
+	cmp byte ptr [183752BC2h],0
+	jne short 0000000181EF870Eh
+	lea rcx,[1834FC918h]
+	call 000000018037BB90h
+	mov byte ptr [183752BC2h],1
+	xor edi,edi
+	mov [rsp+44h],ebx
+	xor edx,edx
+	mov [rsp+4Ch],rdi
+	mov rcx,r15
+	mov [rsp+54h],edi
+	mov [rsp+40h],ebp
+	call 00000001804D4100h
+	mov [rsp+38h],rax
+	lea rcx,[rsp+38h]
+	mov eax,[rsp+0C0h]
+	xor r8d,r8d
+	mov edx,r14d
+	mov [rsp+48h],eax
+	call 0000000181EDEE00h
+	mov rcx,[1834FC918h]
+	mov [rsp+4Ch],esi
+	cmp [rcx+0E4h],edi
+	jne short 0000000181EF8763h
+	call 000000018037BED0h
+	xor edx,edx
+	lea rcx,[rsp+38h]
+	call 0000000181EDBFB0h
+	mov rcx,[rsp+38h]
+	xor edx,edx
+	call 00000001804D4100h
+	lea r11,[rsp+80h]
+	mov rbx,[r11+20h]
+	mov rbp,[r11+28h]
+	mov rsi,[r11+30h]
+	mov rsp,r11
+	pop r15
+	pop r14
+	pop rdi
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 Move [rax+32], r9
+	006 ShiftStack -8
+	007 Move stack:0x0, rdi
+	008 ShiftStack -8
+	009 Move stack:0x0, r14
+	010 ShiftStack -8
+	011 Move stack:0x0, r15
+	012 ShiftStack -128
+	013 Move rbx, r9
+	014 Move rbp, r8
+	015 Move rsi, rdx
+	016 Move r15, rcx
+	017 Move r14, 64
+	018 Compare stack:0xC8, r14
+	019 JumpIfLess {21}
+	020 Move r14, stack:0xC8
+	021 Nop 
+	022 Compare r9, 64
+	023 JumpIfGreaterOrEqual {64}
+	024 Compare r8, 0
+	025 JumpIfLessOrEqual {52}
+	026 Move rdx, 0
+	027 LoadAddress rcx, [rax+32]
+	028 Call 0x181EDB420, rcx, rdx
+	029 Move rbx, stack:0xC0
+	030 Move rcx, rbp
+	031 Multiply rcx, rcx, rbx
+	032 Move rdi, 0
+	033 Move r9, 0
+	034 Move r8, rax
+	035 Move stack:0x20, rdi
+	036 Move rdx, r14
+	037 Call UnsafeUtility.MallocTracked, rcx, rdx, r8, r9, stack:0x0
+	038 Move rdi, rax
+	039 Compare rsi, 0
+	040 JumpIfLessOrEqual {62}
+	041 Compare rsi, rbp
+	042 Move rdx, r15
+	043 Move rcx, rax
+	044 JumpIfLess {46}
+	045 Move rsi, rbp
+	046 Nop 
+	047 Move r9, 0
+	048 Multiply rsi, rsi, rbx
+	049 Move r8, rsi
+	050 Call UnsafeUtility.MemCpy, rcx, rdx, r8, r9
+	051 Goto {55}
+	052 Move rdi, 0
+	053 Compare rsi, 0
+	054 JumpIfLessOrEqual {62}
+	055 Move rdx, 0
+	056 LoadAddress rcx, stack:0xB8
+	057 Call 0x181EDB420, rcx, rdx
+	058 Move r8, 0
+	059 Move rdx, rax
+	060 Move rcx, r15
+	061 Call UnsafeUtility.FreeTracked, rcx, rdx, r8
+	062 Move rax, rdi
+	063 Goto {95}
+	064 Compare [0x183752BC2], 0
+	065 JumpIfNotEqual {69}
+	066 LoadAddress rcx, [0x1834FC918]
+	067 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	068 Move [0x183752BC2], 1
+	069 Move rdi, 0
+	070 Move stack:0x44, rbx
+	071 Move rdx, 0
+	072 Move stack:0x4C, rdi
+	073 Move rcx, r15
+	074 Move stack:0x54, rdi
+	075 Move stack:0x40, rbp
+	076 Call 0x1804D4100, rcx, rdx, r8, r9
+	077 Move stack:0x38, rax
+	078 LoadAddress rcx, stack:0x38
+	079 Move rax, stack:0xC0
+	080 Move r8, 0
+	081 Move rdx, r14
+	082 Move stack:0x48, rax
+	083 Call Block.set_Alignment, rcx, rdx
+	084 Move rcx, typeof(Unity.Collections.AllocatorManager)
+	085 Move stack:0x4C, rsi
+	086 Compare [rcx+228], rdi
+	087 JumpIfNotEqual {89}
+	088 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	089 Move rdx, 0
+	090 LoadAddress rcx, stack:0x38
+	091 Call AllocatorManager.Try, rcx, rdx
+	092 Move rcx, stack:0x38
+	093 Move rdx, 0
+	094 Call 0x1804D4100, rcx, rdx, r8, r9
+	095 LoadAddress r11, stack:0x80
+	096 Move rbx, [r11+32]
+	097 Move rbp, [r11+40]
+	098 Move rsi, [r11+48]
+	099 Move rsp, r11
+	100 Move r15, stack:0x0
+	101 ShiftStack 8
+	102 Move r14, stack:0x0
+	103 ShiftStack 8
+	104 Move rdi, stack:0x0
+	105 ShiftStack 8
+	106 Return rax
+
+Method: T* Resize(T* oldPointer, System.Int64 oldCount, System.Int64 newCount, Unity.Collections.AllocatorManager+AllocatorHandle allocator)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,40h
+	mov rdi,[rsp+70h]
+	mov ebx,r9d
+	mov rsi,r8
+	mov rbp,rdx
+	mov r14,rcx
+	cmp qword ptr [rdi+38h],0
+	jne short 0000000180A372EAh
+	mov rcx,rdi
+	call 0000000180384D10h
+	mov rcx,[rdi+38h]
+	mov rcx,[rcx+10h]
+	call 000000018085C090h
+	mov qword ptr [rsp+30h],0
+	mov r9d,ebx
+	mov [rsp+28h],eax
+	mov r8,rsi
+	mov rdx,rbp
+	mov qword ptr [rsp+20h],40h
+	mov rcx,r14
+	call 0000000181EF8620h
+	mov rbx,[rsp+50h]
+	mov rbp,[rsp+58h]
+	mov rsi,[rsp+60h]
+	mov rdi,[rsp+68h]
+	add rsp,40h
+	pop r14
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -64
+	008 Move rdi, stack:0x70
+	009 Move rbx, r9
+	010 Move rsi, r8
+	011 Move rbp, rdx
+	012 Move r14, rcx
+	013 Compare [rdi+56], 0
+	014 JumpIfNotEqual {17}
+	015 Move rcx, rdi
+	016 Call 0x180384D10, rcx, rdx, r8, r9
+	017 Move rcx, [rdi+56]
+	018 Move rcx, [rcx+16]
+	019 Call 0x18085C090, rcx
+	020 Move stack:0x30, 0
+	021 Move r9, rbx
+	022 Move stack:0x28, rax
+	023 Move r8, rsi
+	024 Move rdx, rbp
+	025 Move stack:0x20, 64
+	026 Move rcx, r14
+	027 Call Array.Resize, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	028 Move rbx, stack:0x50
+	029 Move rbp, stack:0x58
+	030 Move rsi, stack:0x60
+	031 Move rdi, stack:0x68
+	032 ShiftStack 64
+	033 Move r14, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+
+Method: T* Allocate(System.Int64 count, Unity.Collections.AllocatorManager+AllocatorHandle allocator)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp qword ptr [r8+38h],0
+	mov rdi,r8
+	mov ebx,edx
+	mov rsi,rcx
+	jne short 0000000180A37046h
+	mov rcx,r8
+	call 0000000180384D10h
+	mov r9,[rdi+38h]
+	mov r8,rsi
+	xor ecx,ecx
+	mov rdx,[r9]
+	mov r9d,ebx
+	mov [rsp+20h],rdx
+	mov r10,[rdx]
+	xor edx,edx
+	call r10
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [r8+56], 0
+	007 Move rdi, r8
+	008 Move rbx, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {13}
+	011 Move rcx, r8
+	012 Call 0x180384D10, rcx, rdx, r8, r9
+	013 Move r9, [rdi+56]
+	014 Move r8, rsi
+	015 Move rcx, 0
+	016 Move rdx, [r9]
+	017 Move r9, rbx
+	018 Move stack:0x20, rdx
+	019 Move r10, [rdx]
+	020 Move rdx, 0
+	021 Call r10
+	022 Move rbx, stack:0x40
+	023 Move rsi, stack:0x48
+	024 ShiftStack 48
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Return rax
+
+Method: System.Void Free(T* pointer, System.Int64 count, Unity.Collections.AllocatorManager+AllocatorHandle allocator)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	cmp qword ptr [r9+38h],0
+	mov rdi,r9
+	mov ebx,r8d
+	mov rbp,rdx
+	mov rsi,rcx
+	jne short 0000000180A371DFh
+	mov rcx,r9
+	call 0000000180384D10h
+	test rsi,rsi
+	je short 0000000180A37202h
+	mov rax,[rdi+38h]
+	mov r9d,ebx
+	xor r8d,r8d
+	mov rcx,rsi
+	mov rdx,[rax+8]
+	mov [rsp+20h],rdx
+	mov rax,[rdx]
+	mov rdx,rbp
+	call rax
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Compare [r9+56], 0
+	008 Move rdi, r9
+	009 Move rbx, r8
+	010 Move rbp, rdx
+	011 Move rsi, rcx
+	012 JumpIfNotEqual {15}
+	013 Move rcx, r9
+	014 Call 0x180384D10, rcx, rdx, r8, r9
+	015 Compare rsi, 0
+	016 JumpIfEqual {26}
+	017 Move rax, [rdi+56]
+	018 Move r9, rbx
+	019 Move r8, 0
+	020 Move rcx, rsi
+	021 Move rdx, [rax+8]
+	022 Move stack:0x20, rdx
+	023 Move rax, [rdx]
+	024 Move rdx, rbp
+	025 Call rax
+	026 Move rbx, stack:0x40
+	027 Move rbp, stack:0x48
+	028 Move rsi, stack:0x50
+	029 ShiftStack 48
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return 
+

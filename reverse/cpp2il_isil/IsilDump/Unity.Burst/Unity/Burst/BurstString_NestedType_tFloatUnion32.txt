@@ -1,0 +1,40 @@
+Type: Unity.Burst.BurstString+tFloatUnion32
+
+Method: System.Boolean IsNegative()
+
+Disassembly:
+	mov eax,[rcx]
+	shr eax,1Fh
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 31
+	003 Return rax
+
+Method: System.UInt32 GetExponent()
+
+Disassembly:
+	mov eax,[rcx]
+	shr eax,17h
+	movzx eax,al
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 23
+	003 Move rax, rax
+	004 Return rax
+
+Method: System.UInt32 GetMantissa()
+
+Disassembly:
+	mov eax,[rcx]
+	and eax,7FFFFFh
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 And rax, rax, 0x7FFFFF
+	003 Return rax
+

@@ -1,0 +1,123 @@
+Type: UnityEngine.Rendering.DebugDisplaySettingsStats`1
+
+Method: UnityEngine.Rendering.DebugDisplayStats`1<TProfileId> get_debugDisplayStats()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void .ctor(UnityEngine.Rendering.DebugDisplayStats`1<TProfileId> debugDisplayStats)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 LoadAddress rcx, [rbx+16]
+	010 Move [rbx+16], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+
+Method: System.Boolean get_AreAnySettingsActive()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: UnityEngine.Rendering.IDebugDisplaySettingsPanelDisposable CreatePanel()
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[rdx+20h]
+	mov rdi,rdx
+	mov rsi,rcx
+	mov r8,[rax+0C0h]
+	mov rax,[r8+10h]
+	test byte ptr [rax+135h],1
+	jne short 0000000181022975h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rcx,rax
+	call 000000018037BDE0h
+	mov rcx,[rdi+20h]
+	mov rdx,rsi
+	mov rbx,rax
+	mov r8,[rcx+0C0h]
+	mov rcx,rax
+	mov r8,[r8+18h]
+	call 0000000180CF6360h
+	mov rsi,[rsp+38h]
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [rdx+32]
+	007 Move rdi, rdx
+	008 Move rsi, rcx
+	009 Move r8, [rax+192]
+	010 Move rax, [r8+16]
+	011 Compare [rax+309], 1
+	012 JumpIfNotEqual {15}
+	013 Move rcx, rax
+	014 Call 0x180384C90, rcx, rdx, r8, r9
+	015 Move rcx, rax
+	016 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	017 Move rcx, [rdi+32]
+	018 Move rdx, rsi
+	019 Move rbx, rax
+	020 Move r8, [rcx+192]
+	021 Move rcx, rax
+	022 Move r8, [r8+24]
+	023 Call 0x180CF6360, rcx, rdx
+	024 Move rsi, stack:0x38
+	025 Move rax, rbx
+	026 Move rbx, stack:0x30
+	027 ShiftStack 32
+	028 Move rdi, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+

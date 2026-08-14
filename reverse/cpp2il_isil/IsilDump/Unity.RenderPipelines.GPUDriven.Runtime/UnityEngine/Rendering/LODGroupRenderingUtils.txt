@@ -1,0 +1,457 @@
+Type: UnityEngine.Rendering.LODGroupRenderingUtils
+
+Method: System.Single CalculateFOVHalfAngle(System.Single fieldOfView)
+
+Disassembly:
+	mulss xmm0,dword ptr [182A50AF0h]
+	mulss xmm0,dword ptr [182A4FBA0h]
+	jmp near ptr 000000018041DA80h
+
+ISIL:
+	001 Multiply xmm0, xmm0, [0x182A50AF0]
+	002 Multiply xmm0, xmm0, [0x182A4FBA0]
+	003 Call 0x18041DA80, rcx, rdx, r8, r9
+	004 Return xmm0
+
+Method: System.Single CalculateScreenRelativeMetric(UnityEngine.Rendering.LODParameters lodParams, System.Single lodBias)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	movaps [rsp+20h],xmm6
+	xor edx,edx
+	movaps xmm6,xmm1
+	mov rbx,rcx
+	call 0000000182662490h
+	xor edx,edx
+	mov rcx,rbx
+	test al,al
+	jne short 000000018227D3DEh
+	call 000000018070CA50h
+	mulss xmm0,dword ptr [182A50AF0h]
+	mulss xmm0,dword ptr [182A4FBA0h]
+	call 000000018041DA80h
+	addss xmm0,xmm0
+	divss xmm0,xmm6
+	movaps xmm6,[rsp+20h]
+	add rsp,30h
+	pop rbx
+	ret
+	call 000000018070CA60h
+	addss xmm0,xmm0
+	divss xmm0,xmm6
+	movaps xmm6,[rsp+20h]
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move stack:0x20, xmm6
+	005 Move rdx, 0
+	006 Move xmm6, xmm1
+	007 Move rbx, rcx
+	008 Call LODParameters.get_isOrthographic, rcx, rdx
+	009 Move rdx, 0
+	010 Move rcx, rbx
+	011 Compare rax, 0
+	012 JumpIfNotEqual {24}
+	013 Call 0x18070CA50, rcx, rdx
+	014 Multiply xmm0, xmm0, [0x182A50AF0]
+	015 Multiply xmm0, xmm0, [0x182A4FBA0]
+	016 Call 0x18041DA80, rcx, rdx, r8, r9
+	017 Add xmm0, xmm0, xmm0
+	018 Divide xmm0, xmm0, xmm6
+	019 Move xmm6, stack:0x20
+	020 ShiftStack 48
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return xmm0
+	024 Call 0x18070CA60, rcx, rdx
+	025 Add xmm0, xmm0, xmm0
+	026 Divide xmm0, xmm0, xmm6
+	027 Move xmm6, stack:0x20
+	028 ShiftStack 48
+	029 Move rbx, stack:0x0
+	030 ShiftStack 8
+	031 Return xmm0
+
+Method: System.Single CalculatePerspectiveDistance(UnityEngine.Vector3 objPosition, UnityEngine.Vector3 camPosition, System.Single sqrScreenRelativeMetric)
+
+Disassembly:
+	sub rsp,38h
+	movsd xmm1,qword ptr [rdx]
+	movsd xmm3,qword ptr [rcx]
+	movaps xmm0,xmm1
+	movsd xmm4,qword ptr [rcx]
+	subss xmm3,xmm1
+	movss xmm1,dword ptr [rcx+8]
+	subss xmm1,dword ptr [rdx+8]
+	shufps xmm0,xmm0,55h
+	shufps xmm4,xmm4,55h
+	subss xmm4,xmm0
+	mulss xmm4,xmm4
+	xorps xmm0,xmm0
+	mulss xmm3,xmm3
+	mulss xmm1,xmm1
+	addss xmm4,xmm3
+	addss xmm4,xmm1
+	mulss xmm4,xmm2
+	ucomiss xmm0,xmm4
+	ja short 000000018227D379h
+	xorps xmm0,xmm0
+	sqrtss xmm0,xmm4
+	add rsp,38h
+	ret
+	movaps xmm0,xmm4
+	add rsp,38h
+	jmp near ptr 0000000180419020h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm1, [rdx]
+	003 Move xmm3, [rcx]
+	004 Move xmm0, xmm1
+	005 Move xmm4, [rcx]
+	006 Subtract xmm3, xmm3, xmm1
+	007 Move xmm1, [rcx+8]
+	008 Subtract xmm1, xmm1, [rdx+8]
+	009 Move XMM_TEMP.S[0], xmm0.S[1]
+	010 Move XMM_TEMP.S[1], xmm0.S[1]
+	011 Move XMM_TEMP.S[2], xmm0.S[1]
+	012 Move XMM_TEMP.S[3], xmm0.S[1]
+	013 Move xmm0, XMM_TEMP
+	014 Move XMM_TEMP.S[0], xmm4.S[1]
+	015 Move XMM_TEMP.S[1], xmm4.S[1]
+	016 Move XMM_TEMP.S[2], xmm4.S[1]
+	017 Move XMM_TEMP.S[3], xmm4.S[1]
+	018 Move xmm4, XMM_TEMP
+	019 Subtract xmm4, xmm4, xmm0
+	020 Multiply xmm4, xmm4, xmm4
+	021 Move xmm0, 0
+	022 Multiply xmm3, xmm3, xmm3
+	023 Multiply xmm1, xmm1, xmm1
+	024 Add xmm4, xmm4, xmm3
+	025 Add xmm4, xmm4, xmm1
+	026 Multiply xmm4, xmm4, xmm2
+	027 Compare xmm0, xmm4
+	028 JumpIfGreater {33}
+	029 Move xmm0, 0
+	030 NotImplemented "sqrtss xmm0,xmm4"
+	031 ShiftStack 56
+	032 Return xmm0
+	033 Move xmm0, xmm4
+	034 ShiftStack 56
+	035 Call 0x180419020, rcx, rdx, r8, r9
+	036 Return xmm0
+
+Method: System.Single CalculateSqrPerspectiveDistance(UnityEngine.Vector3 objPosition, UnityEngine.Vector3 camPosition, System.Single sqrScreenRelativeMetric)
+
+Disassembly:
+	sub rsp,18h
+	movsd xmm1,qword ptr [rdx]
+	movaps xmm4,xmm2
+	movsd xmm3,qword ptr [rcx]
+	movaps xmm0,xmm1
+	movsd xmm2,qword ptr [rcx]
+	subss xmm3,xmm1
+	movss xmm1,dword ptr [rcx+8]
+	subss xmm1,dword ptr [rdx+8]
+	shufps xmm0,xmm0,55h
+	shufps xmm2,xmm2,55h
+	subss xmm2,xmm0
+	mulss xmm2,xmm2
+	mulss xmm3,xmm3
+	mulss xmm1,xmm1
+	addss xmm2,xmm3
+	addss xmm2,xmm1
+	mulss xmm2,xmm4
+	movaps xmm0,xmm2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm1, [rdx]
+	003 Move xmm4, xmm2
+	004 Move xmm3, [rcx]
+	005 Move xmm0, xmm1
+	006 Move xmm2, [rcx]
+	007 Subtract xmm3, xmm3, xmm1
+	008 Move xmm1, [rcx+8]
+	009 Subtract xmm1, xmm1, [rdx+8]
+	010 Move XMM_TEMP.S[0], xmm0.S[1]
+	011 Move XMM_TEMP.S[1], xmm0.S[1]
+	012 Move XMM_TEMP.S[2], xmm0.S[1]
+	013 Move XMM_TEMP.S[3], xmm0.S[1]
+	014 Move xmm0, XMM_TEMP
+	015 Move XMM_TEMP.S[0], xmm2.S[1]
+	016 Move XMM_TEMP.S[1], xmm2.S[1]
+	017 Move XMM_TEMP.S[2], xmm2.S[1]
+	018 Move XMM_TEMP.S[3], xmm2.S[1]
+	019 Move xmm2, XMM_TEMP
+	020 Subtract xmm2, xmm2, xmm0
+	021 Multiply xmm2, xmm2, xmm2
+	022 Multiply xmm3, xmm3, xmm3
+	023 Multiply xmm1, xmm1, xmm1
+	024 Add xmm2, xmm2, xmm3
+	025 Add xmm2, xmm2, xmm1
+	026 Multiply xmm2, xmm2, xmm4
+	027 Move xmm0, xmm2
+	028 ShiftStack 24
+	029 Return xmm0
+
+Method: UnityEngine.Vector3 GetWorldReferencePoint(UnityEngine.LODGroup lodGroup)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,40h
+	mov rbx,rdx
+	mov rdi,rcx
+	test rdx,rdx
+	je short 000000018227D4D3h
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018260A930h
+	xor r8d,r8d
+	lea rcx,[rsp+30h]
+	mov rdx,rbx
+	mov rsi,rax
+	call 00000001825E7F10h
+	test rsi,rsi
+	je short 000000018227D4D3h
+	mov ecx,[rax+8]
+	lea r8,[rsp+20h]
+	movsd xmm0,qword ptr [rax]
+	xor r9d,r9d
+	mov [rsp+28h],ecx
+	mov rdx,rsi
+	lea rcx,[rsp+30h]
+	movsd qword ptr [rsp+20h],xmm0
+	call 0000000182639400h
+	mov rbx,[rsp+50h]
+	mov rsi,[rsp+58h]
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rdi],xmm0
+	mov [rdi+8],eax
+	mov rax,rdi
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -64
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rdx, 0
+	009 JumpIfEqual {40}
+	010 Move rdx, 0
+	011 Move rcx, rbx
+	012 Call Component.get_transform, rcx, rdx
+	013 Move r8, 0
+	014 LoadAddress rcx, stack:0x30
+	015 Move rdx, rbx
+	016 Move rsi, rax
+	017 Call LODGroup.get_localReferencePoint, rcx, rdx
+	018 Compare rsi, 0
+	019 JumpIfEqual {40}
+	020 Move rcx, [rax+8]
+	021 LoadAddress r8, stack:0x20
+	022 Move xmm0, [rax]
+	023 Move r9, 0
+	024 Move stack:0x28, rcx
+	025 Move rdx, rsi
+	026 LoadAddress rcx, stack:0x30
+	027 Move stack:0x20, xmm0
+	028 Call Transform.TransformPoint, rcx, rdx
+	029 Move rbx, stack:0x50
+	030 Move rsi, stack:0x58
+	031 Move xmm0, [rax]
+	032 Move rax, [rax+8]
+	033 Move [rdi], xmm0
+	034 Move [rdi+8], rax
+	035 Move rax, rdi
+	036 ShiftStack 64
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Return rax
+	040 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Single GetWorldSpaceScale(UnityEngine.LODGroup lodGroup)
+
+Disassembly:
+	sub rsp,48h
+	test rcx,rcx
+	je short 000000018227D534h
+	xor edx,edx
+	call 000000018260A930h
+	test rax,rax
+	je short 000000018227D534h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	mov rdx,rax
+	call 000000018263A040h
+	movdqa xmm2,[182A4FE10h]
+	movsd xmm1,qword ptr [rax]
+	movsd xmm0,qword ptr [rax]
+	shufps xmm1,xmm1,55h
+	andps xmm0,xmm2
+	andps xmm1,xmm2
+	maxss xmm0,xmm1
+	movss xmm1,dword ptr [rax+8]
+	andps xmm1,xmm2
+	maxss xmm0,xmm1
+	add rsp,48h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare rcx, 0
+	003 JumpIfEqual {34}
+	004 Move rdx, 0
+	005 Call Component.get_transform, rcx, rdx
+	006 Compare rax, 0
+	007 JumpIfEqual {34}
+	008 Move r8, 0
+	009 LoadAddress rcx, stack:0x20
+	010 Move rdx, rax
+	011 Call Transform.get_lossyScale, rcx, rdx
+	012 Move xmm2, [0x182A4FE10]
+	013 Move xmm1, [rax]
+	014 Move xmm0, [rax]
+	015 Move XMM_TEMP.S[0], xmm1.S[1]
+	016 Move XMM_TEMP.S[1], xmm1.S[1]
+	017 Move XMM_TEMP.S[2], xmm1.S[1]
+	018 Move XMM_TEMP.S[3], xmm1.S[1]
+	019 Move xmm1, XMM_TEMP
+	020 And xmm0, xmm0, xmm2
+	021 And xmm1, xmm1, xmm2
+	022 Compare xmm0, xmm1
+	023 JumpIfGreaterOrEqual {25}
+	024 Move xmm0, xmm1
+	025 Nop 
+	026 Move xmm1, [rax+8]
+	027 And xmm1, xmm1, xmm2
+	028 Compare xmm0, xmm1
+	029 JumpIfGreaterOrEqual {31}
+	030 Move xmm0, xmm1
+	031 Nop 
+	032 ShiftStack 72
+	033 Return xmm0
+	034 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Single GetWorldSpaceSize(UnityEngine.LODGroup lodGroup)
+
+Disassembly:
+	push rdi
+	sub rsp,40h
+	mov rdi,rcx
+	test rcx,rcx
+	je short 000000018227D5C0h
+	xor edx,edx
+	call 000000018260A930h
+	test rax,rax
+	je short 000000018227D5C0h
+	mov [rsp+50h],rbx
+	lea rcx,[rsp+20h]
+	xor r8d,r8d
+	movaps [rsp+30h],xmm6
+	mov rdx,rax
+	call 000000018263A040h
+	movsd xmm6,qword ptr [rax]
+	mov ebx,[rax+8]
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001825E7FF0h
+	movdqa xmm2,[182A4FE10h]
+	movaps xmm1,xmm6
+	shufps xmm1,xmm1,55h
+	movaps xmm3,xmm6
+	movaps xmm6,[rsp+30h]
+	andps xmm1,xmm2
+	andps xmm3,xmm2
+	maxss xmm3,xmm1
+	movd xmm1,ebx
+	mov rbx,[rsp+50h]
+	andps xmm1,xmm2
+	maxss xmm3,xmm1
+	mulss xmm0,xmm3
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rdi
+	003 ShiftStack -64
+	004 Move rdi, rcx
+	005 Compare rcx, 0
+	006 JumpIfEqual {49}
+	007 Move rdx, 0
+	008 Call Component.get_transform, rcx, rdx
+	009 Compare rax, 0
+	010 JumpIfEqual {49}
+	011 Move stack:0x50, rbx
+	012 LoadAddress rcx, stack:0x20
+	013 Move r8, 0
+	014 Move stack:0x30, xmm6
+	015 Move rdx, rax
+	016 Call Transform.get_lossyScale, rcx, rdx
+	017 Move xmm6, [rax]
+	018 Move rbx, [rax+8]
+	019 Move rdx, 0
+	020 Move rcx, rdi
+	021 Call LODGroup.get_size, rcx, rdx
+	022 Move xmm2, [0x182A4FE10]
+	023 Move xmm1, xmm6
+	024 Move XMM_TEMP.S[0], xmm1.S[1]
+	025 Move XMM_TEMP.S[1], xmm1.S[1]
+	026 Move XMM_TEMP.S[2], xmm1.S[1]
+	027 Move XMM_TEMP.S[3], xmm1.S[1]
+	028 Move xmm1, XMM_TEMP
+	029 Move xmm3, xmm6
+	030 Move xmm6, stack:0x30
+	031 And xmm1, xmm1, xmm2
+	032 And xmm3, xmm3, xmm2
+	033 Compare xmm3, xmm1
+	034 JumpIfGreaterOrEqual {36}
+	035 Move xmm3, xmm1
+	036 Nop 
+	037 Move xmm1, rbx
+	038 Move rbx, stack:0x50
+	039 And xmm1, xmm1, xmm2
+	040 Compare xmm3, xmm1
+	041 JumpIfGreaterOrEqual {43}
+	042 Move xmm3, xmm1
+	043 Nop 
+	044 Multiply xmm0, xmm0, xmm3
+	045 ShiftStack 64
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return xmm0
+	049 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Single CalculateLODDistance(System.Single relativeScreenHeight, System.Single size)
+
+Disassembly:
+	divss xmm1,xmm0
+	movaps xmm0,xmm1
+	ret
+
+ISIL:
+	001 Divide xmm1, xmm1, xmm0
+	002 Move xmm0, xmm1
+	003 Return xmm0
+

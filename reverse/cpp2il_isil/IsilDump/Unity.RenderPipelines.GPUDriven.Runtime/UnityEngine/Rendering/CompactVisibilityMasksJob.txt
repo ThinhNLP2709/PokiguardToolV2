@@ -1,0 +1,72 @@
+Type: UnityEngine.Rendering.CompactVisibilityMasksJob
+
+Method: System.Void Execute(System.Int32 startIndex, System.Int32 count)
+
+Disassembly:
+	push rbx
+	mov ebx,r8d
+	xor r8d,r8d
+	test ebx,ebx
+	jle short 00000001822513B4h
+	movsxd r10,edx
+	mov r11d,r8d
+	add r10,[rcx]
+	mov r9d,ebx
+	cmp byte ptr [r10],0
+	je short 00000001822513A8h
+	mov rax,r11
+	and eax,3Fh
+	bts r8,rax
+	inc r11
+	inc r10
+	sub r9,1
+	jne short 0000000182251398h
+	mov eax,edx
+	add rcx,10h
+	cdq
+	xor r9d,r9d
+	and edx,3Fh
+	add edx,eax
+	sar edx,6
+	pop rbx
+	jmp near ptr 0000000182283520h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 Move rbx, r8
+	004 Move r8, 0
+	005 Compare rbx, 0
+	006 JumpIfLessOrEqual {20}
+	007 Move r10, rdx
+	008 Move r11, r8
+	009 Add r10, r10, [rcx]
+	010 Move r9, rbx
+	011 Compare [r10], 0
+	012 JumpIfEqual {16}
+	013 Move rax, r11
+	014 And rax, rax, 63
+	015 NotImplemented "bts r8,rax"
+	016 Add r11, r11, 1
+	017 Add r10, r10, 1
+	018 Subtract r9, r9, 1
+	019 JumpIfNotEqual {11}
+	020 Move rax, rdx
+	021 Add rcx, rcx, 16
+	022 Move TEMP, rax
+	023 ShiftRight TEMP, 31
+	024 Compare TEMP, 1
+	025 JumpIfNotEqual {28}
+	026 Move rdx, 0xFFFFFFFF
+	027 Goto {29}
+	028 Move rdx, 0
+	029 Nop 
+	030 Move r9, 0
+	031 And rdx, rdx, 63
+	032 Add rdx, rdx, rax
+	033 ShiftRight rdx, 6
+	034 Move rbx, stack:0x0
+	035 ShiftStack 8
+	036 Call ParallelBitArray.InterlockedOrChunk, rcx, rdx, r8
+	037 Return 
+

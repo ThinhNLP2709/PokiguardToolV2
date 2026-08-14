@@ -1,0 +1,137 @@
+Type: DG.Tweening.ShortcutExtensions+<>c__DisplayClass58_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.Vector3 <DOShakeRotation>b__0()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rdx,[rdx+10h]
+	mov rbx,rcx
+	test rdx,rdx
+	je short 0000000180770056h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	call 0000000182639B20h
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rbx],xmm0
+	mov [rbx+8],eax
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rdx, [rdx+16]
+	005 Move rbx, rcx
+	006 Compare rdx, 0
+	007 JumpIfEqual {20}
+	008 Move r8, 0
+	009 LoadAddress rcx, stack:0x20
+	010 Call Transform.get_localEulerAngles, rcx, rdx
+	011 Move xmm0, [rax]
+	012 Move rax, [rax+8]
+	013 Move [rbx], xmm0
+	014 Move [rbx+8], rax
+	015 Move rax, rbx
+	016 ShiftStack 48
+	017 Move rbx, stack:0x0
+	018 ShiftStack 8
+	019 Return rax
+	020 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void <DOShakeRotation>b__1(UnityEngine.Vector3 x)
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	movsd xmm0,qword ptr [rdx]
+	movss xmm2,dword ptr [182A50AF0h]
+	movaps xmm3,xmm0
+	movss xmm1,dword ptr [rdx+8]
+	movaps xmm4,xmm0
+	mov rbx,[rcx+10h]
+	shufps xmm3,xmm3,55h
+	mulss xmm3,xmm2
+	mulss xmm4,xmm2
+	movsd qword ptr [rsp+20h],xmm0
+	mulss xmm1,xmm2
+	unpcklps xmm4,xmm3
+	lea rdx,[rsp+20h]
+	xor r8d,r8d
+	movsd qword ptr [rsp+20h],xmm4
+	lea rcx,[rsp+30h]
+	movss dword ptr [rsp+28h],xmm1
+	call 0000000182616B00h
+	test rbx,rbx
+	je short 00000001807700DBh
+	movups xmm0,[rax]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	mov rcx,rbx
+	movaps [rsp+20h],xmm0
+	call 000000018263AA40h
+	add rsp,40h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Move xmm0, [rdx]
+	005 Move xmm2, [0x182A50AF0]
+	006 Move xmm3, xmm0
+	007 Move xmm1, [rdx+8]
+	008 Move xmm4, xmm0
+	009 Move rbx, [rcx+16]
+	010 Move XMM_TEMP.S[0], xmm3.S[1]
+	011 Move XMM_TEMP.S[1], xmm3.S[1]
+	012 Move XMM_TEMP.S[2], xmm3.S[1]
+	013 Move XMM_TEMP.S[3], xmm3.S[1]
+	014 Move xmm3, XMM_TEMP
+	015 Multiply xmm3, xmm3, xmm2
+	016 Multiply xmm4, xmm4, xmm2
+	017 Move stack:0x20, xmm0
+	018 Multiply xmm1, xmm1, xmm2
+	019 Move XMM_TEMP.S[0], xmm4.S[0]
+	020 Move XMM_TEMP.S[1], xmm3.S[0]
+	021 Move XMM_TEMP.S[2], xmm4.S[1]
+	022 Move XMM_TEMP.S[3], xmm3.S[1]
+	023 Move xmm4, XMM_TEMP
+	024 LoadAddress rdx, stack:0x20
+	025 Move r8, 0
+	026 Move stack:0x20, xmm4
+	027 LoadAddress rcx, stack:0x30
+	028 Move stack:0x28, xmm1
+	029 Call Quaternion.Internal_FromEulerRad, rcx, rdx
+	030 Compare rbx, 0
+	031 JumpIfEqual {42}
+	032 Move xmm0, [rax]
+	033 Move r8, 0
+	034 LoadAddress rdx, stack:0x20
+	035 Move rcx, rbx
+	036 Move stack:0x20, xmm0
+	037 Call Transform.set_localRotation, rcx, rdx
+	038 ShiftStack 64
+	039 Move rbx, stack:0x0
+	040 ShiftStack 8
+	041 Return 
+	042 Call 0x18037BE30, rcx, rdx, r8, r9
+

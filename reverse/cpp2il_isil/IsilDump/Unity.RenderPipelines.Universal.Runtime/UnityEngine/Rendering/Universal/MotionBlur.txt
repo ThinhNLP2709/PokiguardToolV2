@@ -1,0 +1,217 @@
+Type: UnityEngine.Rendering.Universal.MotionBlur
+
+Method: System.Boolean IsActive()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+48h]
+	test rcx,rcx
+	je short 00000001822C79DEh
+	mov rdx,[rcx]
+	mov rax,[rdx+218h]
+	mov rdx,[rdx+220h]
+	call rax
+	xorps xmm1,xmm1
+	comiss xmm0,xmm1
+	seta al
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+72]
+	003 Compare rcx, 0
+	004 JumpIfEqual {14}
+	005 Move rdx, [rcx]
+	006 Move rax, [rdx+536]
+	007 Move rdx, [rdx+544]
+	008 Call rax
+	009 Move xmm1, 0
+	010 Compare xmm0, xmm1
+	011 NotImplemented "seta al"
+	012 ShiftStack 40
+	013 Return rax
+	014 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean IsTileCompatible()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837542E2h],0
+	mov rdi,rcx
+	jne short 00000001822D4291h
+	lea rcx,[183510298h]
+	call 000000018037BB90h
+	lea rcx,[1835692D0h]
+	call 000000018037BB90h
+	lea rcx,[183569388h]
+	call 000000018037BB90h
+	mov byte ptr [1837542E2h],1
+	mov rcx,[1835692D0h]
+	call 000000018037BDE0h
+	cmp byte ptr [1837542E3h],0
+	mov rbx,rax
+	jne short 00000001822D42BCh
+	lea rcx,[18355F8A0h]
+	call 000000018037BB90h
+	mov byte ptr [1837542E3h],1
+	mov r9,[18355F8A0h]
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180F6FC50h
+	lea rcx,[rdi+38h]
+	mov [rdi+38h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rcx,[183569388h]
+	call 000000018037BDE0h
+	cmp byte ptr [1837542E4h],0
+	mov rbx,rax
+	jne short 00000001822D430Bh
+	lea rcx,[18355F960h]
+	call 000000018037BB90h
+	mov byte ptr [1837542E4h],1
+	mov r9,[18355F960h]
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180F6FC50h
+	lea rcx,[rdi+40h]
+	mov [rdi+40h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rcx,[183510298h]
+	call 000000018037BDE0h
+	movss xmm3,dword ptr [182A4FBA4h]
+	xorps xmm2,xmm2
+	xorps xmm1,xmm1
+	mov qword ptr [rsp+28h],0
+	mov rcx,rax
+	mov byte ptr [rsp+20h],0
+	mov rbx,rax
+	call 00000001821FEFF0h
+	lea rcx,[rdi+48h]
+	mov [rdi+48h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rcx,[183510298h]
+	call 000000018037BDE0h
+	movss xmm3,dword ptr [182A4FBACh]
+	xorps xmm2,xmm2
+	movss xmm1,dword ptr [182A50424h]
+	mov rcx,rax
+	mov qword ptr [rsp+28h],0
+	mov rbx,rax
+	mov byte ptr [rsp+20h],0
+	call 00000001821FEFF0h
+	lea rcx,[rdi+50h]
+	mov [rdi+50h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	xor edx,edx
+	mov rcx,rdi
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	jmp near ptr 0000000182218E10h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x1837542E2], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {15}
+	008 LoadAddress rcx, [0x183510298]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x1835692D0]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183569388]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x1837542E2], 1
+	015 Move rcx, typeof(UnityEngine.Rendering.Universal.MotionBlurModeParameter)
+	016 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	017 Compare [0x1837542E3], 0
+	018 Move rbx, rax
+	019 JumpIfNotEqual {23}
+	020 LoadAddress rcx, [0x18355F8A0]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 Move [0x1837542E3], 1
+	023 Move r9, [0x18355F8A0]
+	024 Move r8, 0
+	025 Move rdx, 0
+	026 Move rcx, rbx
+	027 Call 0x180F6FC50, rcx, rdx, r8
+	028 LoadAddress rcx, [rdi+56]
+	029 Move [rdi+56], rbx
+	030 Move rdx, rbx
+	031 Call 0x18037ACB0, rcx, rdx, r8, r9
+	032 Move rcx, typeof(UnityEngine.Rendering.Universal.MotionBlurQualityParameter)
+	033 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	034 Compare [0x1837542E4], 0
+	035 Move rbx, rax
+	036 JumpIfNotEqual {40}
+	037 LoadAddress rcx, [0x18355F960]
+	038 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	039 Move [0x1837542E4], 1
+	040 Move r9, [0x18355F960]
+	041 Move r8, 0
+	042 Move rdx, 0
+	043 Move rcx, rbx
+	044 Call 0x180F6FC50, rcx, rdx, r8
+	045 LoadAddress rcx, [rdi+64]
+	046 Move [rdi+64], rbx
+	047 Move rdx, rbx
+	048 Call 0x18037ACB0, rcx, rdx, r8, r9
+	049 Move rcx, typeof(UnityEngine.Rendering.ClampedFloatParameter)
+	050 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	051 Move xmm3, [0x182A4FBA4]
+	052 Move xmm2, 0
+	053 Move xmm1, 0
+	054 Move stack:0x28, 0
+	055 Move rcx, rax
+	056 Move stack:0x20, 0
+	057 Move rbx, rax
+	058 Call ClampedFloatParameter..ctor, rcx, xmm1, xmm2, r9, stack:0x0
+	059 LoadAddress rcx, [rdi+72]
+	060 Move [rdi+72], rbx
+	061 Move rdx, rbx
+	062 Call 0x18037ACB0, rcx, rdx, r8, r9
+	063 Move rcx, typeof(UnityEngine.Rendering.ClampedFloatParameter)
+	064 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	065 Move xmm3, [0x182A4FBAC]
+	066 Move xmm2, 0
+	067 Move xmm1, [0x182A50424]
+	068 Move rcx, rax
+	069 Move stack:0x28, 0
+	070 Move rbx, rax
+	071 Move stack:0x20, 0
+	072 Call ClampedFloatParameter..ctor, rcx, xmm1, xmm2, r9, stack:0x0
+	073 LoadAddress rcx, [rdi+80]
+	074 Move [rdi+80], rbx
+	075 Move rdx, rbx
+	076 Call 0x18037ACB0, rcx, rdx, r8, r9
+	077 Move rdx, 0
+	078 Move rcx, rdi
+	079 Move rbx, stack:0x40
+	080 ShiftStack 48
+	081 Move rdi, stack:0x0
+	082 ShiftStack 8
+	083 Call VolumeComponent..ctor, rcx, rdx
+	084 Return 
+

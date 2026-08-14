@@ -1,0 +1,78 @@
+Type: UnityEngine.Rendering.Universal.NativeArrayExtensions
+
+Method: T UnsafeElementAt(Unity.Collections.NativeArray`1<T> array, System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp qword ptr [r8+38h],0
+	mov rdi,rcx
+	movsxd rbx,edx
+	jne short 000000018094524Fh
+	mov rcx,r8
+	call 0000000180384D10h
+	imul rax,rbx,1C8h
+	mov rbx,[rsp+30h]
+	add rax,[rdi]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [r8+56], 0
+	006 Move rdi, rcx
+	007 Move rbx, rdx
+	008 JumpIfNotEqual {11}
+	009 Move rcx, r8
+	010 Call 0x180384D10, rcx, rdx, r8, r9
+	011 Multiply rax, rbx, 456
+	012 Move rbx, stack:0x30
+	013 Add rax, rax, [rdi]
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return rax
+
+Method: T UnsafeElementAtMutable(Unity.Collections.NativeArray`1<T> array, System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp qword ptr [r8+38h],0
+	mov rdi,rcx
+	movsxd rbx,edx
+	jne short 000000018094520Fh
+	mov rcx,r8
+	call 0000000180384D10h
+	imul rax,rbx,74h
+	mov rbx,[rsp+30h]
+	add rax,[rdi]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [r8+56], 0
+	006 Move rdi, rcx
+	007 Move rbx, rdx
+	008 JumpIfNotEqual {11}
+	009 Move rcx, r8
+	010 Call 0x180384D10, rcx, rdx, r8, r9
+	011 Multiply rax, rbx, 116
+	012 Move rbx, stack:0x30
+	013 Add rax, rax, [rdi]
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return rax
+

@@ -1,0 +1,193 @@
+Type: System.Xml.XmlWellFormedWriter+Namespace
+
+Method: System.Void Set(System.String prefix, System.String namespaceUri, System.Xml.XmlWellFormedWriter+NamespaceKind kind)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov esi,r9d
+	mov [rcx],rdx
+	mov rbx,r8
+	mov rdi,rcx
+	call 000000018037ACB0h
+	lea rcx,[rdi+8]
+	mov [rdi+8],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	mov [rdi+10h],esi
+	mov rsi,[rsp+38h]
+	mov dword ptr [rdi+14h],0FFFFFFFFh
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rsi, r9
+	007 Move [rcx], rdx
+	008 Move rbx, r8
+	009 Move rdi, rcx
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 LoadAddress rcx, [rdi+8]
+	012 Move [rdi+8], rbx
+	013 Move rdx, rbx
+	014 Call 0x18037ACB0, rcx, rdx, r8, r9
+	015 Move rbx, stack:0x30
+	016 Move [rdi+16], rsi
+	017 Move rsi, stack:0x38
+	018 Move [rdi+20], 0xFFFFFFFF
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Return 
+
+Method: System.Void WriteDecl(System.Xml.XmlWriter writer, System.Xml.XmlRawWriter rawWriter)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837516F4h],0
+	mov rsi,r8
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181C6B800h
+	lea rcx,[183541BB8h]
+	call 000000018037BB90h
+	lea rcx,[1835529C8h]
+	call 000000018037BB90h
+	mov byte ptr [1837516F4h],1
+	test rsi,rsi
+	jne near ptr 0000000181C6B8BBh
+	mov rax,[rdi]
+	test rax,rax
+	je near ptr 0000000181C6B8E8h
+	test rbx,rbx
+	je near ptr 0000000181C6B8E8h
+	mov r9,[183541BB8h]
+	cmp [rax+10h],esi
+	je short 0000000181C6B847h
+	mov rax,[rbx]
+	mov r8,[rdi]
+	mov rdx,[1835529C8h]
+	mov r10,[rax+1F8h]
+	mov rax,[rax+200h]
+	jmp short 0000000181C6B870h
+	mov rax,[18375C130h]
+	mov rcx,[rbx]
+	mov r8,[1835529C8h]
+	mov rdx,[rax+0B8h]
+	mov r10,[rcx+1F8h]
+	mov rax,[rcx+200h]
+	mov rdx,[rdx]
+	mov rcx,rbx
+	mov [rsp+20h],rax
+	call r10
+	mov r8,[rbx]
+	mov rcx,rbx
+	mov rdx,[rdi+8]
+	mov rax,[r8+278h]
+	mov r8,[r8+280h]
+	call rax
+	mov rdx,[rbx]
+	mov rcx,rbx
+	mov rax,[rdx+208h]
+	mov rdx,[rdx+210h]
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	jmp rax
+	mov r9,[rsi]
+	mov rcx,rsi
+	mov r8,[rdi+8]
+	mov rdx,[rdi]
+	mov rax,[r9+3D8h]
+	mov r9,[r9+3E0h]
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [0x1837516F4], 0
+	007 Move rsi, r8
+	008 Move rbx, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x183541BB8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x1835529C8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837516F4], 1
+	016 Compare rsi, 0
+	017 JumpIfNotEqual {58}
+	018 Move rax, [rdi]
+	019 Compare rax, 0
+	020 JumpIfEqual {70}
+	021 Compare rbx, 0
+	022 JumpIfEqual {70}
+	023 Move r9, "http://www.w3.org/2000/xmlns/"
+	024 Compare [rax+16], rsi
+	025 JumpIfEqual {32}
+	026 Move rax, [rbx]
+	027 Move r8, [rdi]
+	028 Move rdx, "xmlns"
+	029 Move r10, [rax+504]
+	030 Move rax, [rax+512]
+	031 Goto {39}
+	032 Move rax, [0x18375C130]
+	033 Move rcx, [rbx]
+	034 Move r8, "xmlns"
+	035 Move rdx, [rax+184]
+	036 Move r10, [rcx+504]
+	037 Move rax, [rcx+512]
+	038 Move rdx, [rdx]
+	039 Move rcx, rbx
+	040 Move stack:0x20, rax
+	041 Call r10
+	042 Move r8, [rbx]
+	043 Move rcx, rbx
+	044 Move rdx, [rdi+8]
+	045 Move rax, [r8+632]
+	046 Move r8, [r8+640]
+	047 Call rax
+	048 Move rdx, [rbx]
+	049 Move rcx, rbx
+	050 Move rax, [rdx+520]
+	051 Move rdx, [rdx+528]
+	052 Move rbx, stack:0x40
+	053 Move rsi, stack:0x48
+	054 ShiftStack 48
+	055 Move rdi, stack:0x0
+	056 ShiftStack 8
+	057 CallNoReturn rax
+	058 Move r9, [rsi]
+	059 Move rcx, rsi
+	060 Move r8, [rdi+8]
+	061 Move rdx, [rdi]
+	062 Move rax, [r9+984]
+	063 Move r9, [r9+992]
+	064 Move rbx, stack:0x40
+	065 Move rsi, stack:0x48
+	066 ShiftStack 48
+	067 Move rdi, stack:0x0
+	068 ShiftStack 8
+	069 CallNoReturn rax
+	070 Call 0x18037BE30, rcx, rdx, r8, r9
+

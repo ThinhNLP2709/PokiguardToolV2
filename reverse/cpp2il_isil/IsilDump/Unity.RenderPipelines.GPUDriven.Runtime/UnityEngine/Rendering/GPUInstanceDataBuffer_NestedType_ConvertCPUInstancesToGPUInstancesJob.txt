@@ -1,0 +1,40 @@
+Type: UnityEngine.Rendering.GPUInstanceDataBuffer+ConvertCPUInstancesToGPUInstancesJob
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	movsxd rbx,edx
+	xor r8d,r8d
+	mov rdx,[rcx+10h]
+	mov rdi,rcx
+	mov edx,[rdx+rbx*4]
+	call 000000018226C640h
+	mov rcx,[rdi+20h]
+	mov [rcx+rbx*4],eax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move r8, 0
+	007 Move rdx, [rcx+16]
+	008 Move rdi, rcx
+	009 Move rdx, [rdx+rbx*4]
+	010 Call GPUInstanceDataBuffer.CPUInstanceToGPUInstance, rcx, rdx, r8
+	011 Move rcx, [rdi+32]
+	012 Move [rcx+rbx*4], rax
+	013 Move rbx, stack:0x30
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+

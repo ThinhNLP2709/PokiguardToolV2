@@ -1,0 +1,99 @@
+Type: BootLoader+<>c
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374AB89h],0
+	jne short 000000018057ACA2h
+	lea rcx,[183556758h]
+	call 000000018037BB90h
+	mov byte ptr [18374AB89h],1
+	mov rcx,[183556758h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	mov rcx,[183556758h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[183556758h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374AB89], 0
+	005 JumpIfNotEqual {9}
+	006 LoadAddress rcx, [0x183556758]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x18374AB89], 1
+	009 Move rcx, typeof(BootLoader+<>c)
+	010 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	011 Move rdx, 0
+	012 Move rcx, rax
+	013 Move rbx, rax
+	014 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	015 Move rcx, typeof(BootLoader+<>c)
+	016 Move rdx, [rcx+184]
+	017 Move [rdx], rbx
+	018 Move rdx, rbx
+	019 Move rcx, typeof(BootLoader+<>c)
+	020 Move rcx, [rcx+184]
+	021 ShiftStack 32
+	022 Move rbx, stack:0x0
+	023 ShiftStack 8
+	024 Call 0x18037ACB0, rcx, rdx, r8, r9
+	025 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <ShowSoftUpdatePrompt>b__39_0()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18374AB8Ah],0
+	jne short 000000018057A750h
+	lea rcx,[1834FF3F8h]
+	call 000000018037BB90h
+	mov byte ptr [18374AB8Ah],1
+	mov rcx,[1834FF3F8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018057A765h
+	call 000000018037BED0h
+	xor ecx,ecx
+	add rsp,28h
+	jmp near ptr 0000000180521E90h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18374AB8A], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834FF3F8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374AB8A], 1
+	007 Move rcx, typeof(AppVersionGate)
+	008 Compare [rcx+228], 0
+	009 JumpIfNotEqual {11}
+	010 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	011 Move rcx, 0
+	012 ShiftStack 40
+	013 Call AppVersionGate.OpenUpdateUrl, rcx
+	014 Return 
+

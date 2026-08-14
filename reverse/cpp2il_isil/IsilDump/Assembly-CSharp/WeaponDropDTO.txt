@@ -1,0 +1,29 @@
+Type: WeaponDropDTO
+
+Method: System.Boolean get_HasDrop()
+
+Disassembly:
+	cmp qword ptr [rcx+10h],0
+	mov al,1
+	jg short 000000018065EC1Dh
+	movzx eax,byte ptr [rcx+64h]
+	ret
+
+ISIL:
+	001 Compare [rcx+16], 0
+	002 Move rax, 1
+	003 JumpIfGreater {5}
+	004 Move rax, [rcx+100]
+	005 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

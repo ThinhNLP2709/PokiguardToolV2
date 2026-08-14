@@ -1,0 +1,57 @@
+Type: WebSocketSharp.WebSocketFrame+<>c__DisplayClass71_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <readHeaderAsync>b__0(System.Byte[] bytes)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,rdx
+	mov rbx,rcx
+	mov rcx,rax
+	xor edx,edx
+	call 00000001829EE1B0h
+	mov rcx,[rbx+10h]
+	test rcx,rcx
+	je short 00000001829EB7C6h
+	mov r9,[rcx+18h]
+	mov rdx,rax
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	add rsp,20h
+	pop rbx
+	jmp r9
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, rdx
+	005 Move rbx, rcx
+	006 Move rcx, rax
+	007 Move rdx, 0
+	008 Call WebSocketFrame.processHeader, rcx, rdx
+	009 Move rcx, [rbx+16]
+	010 Compare rcx, 0
+	011 JumpIfEqual {20}
+	012 Move r9, [rcx+24]
+	013 Move rdx, rax
+	014 Move r8, [rcx+40]
+	015 Move rcx, [rcx+64]
+	016 ShiftStack 32
+	017 Move rbx, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn r9
+	020 Call 0x18037BE30, rcx, rdx, r8, r9
+

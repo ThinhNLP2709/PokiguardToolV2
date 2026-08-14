@@ -1,0 +1,66 @@
+Type: UnityEngine.Networking.DownloadedTextureParams
+
+Method: UnityEngine.Networking.DownloadedTextureParams get_Default()
+
+Disassembly:
+	mov dword ptr [rsp+10h],3
+	mov dword ptr [rsp+14h],0FFFFFFFFh
+	mov rax,[rsp+10h]
+	ret
+
+ISIL:
+	001 Move stack:0x10, 3
+	002 Move stack:0x14, 0xFFFFFFFF
+	003 Move rax, stack:0x10
+	004 Return rax
+
+Method: System.Void set_readable(System.Boolean value)
+
+Disassembly:
+	mov r8d,[rcx]
+	mov eax,r8d
+	and r8d,0FFFFFFFEh
+	or eax,1
+	test dl,dl
+	cmovne r8d,eax
+	mov [rcx],r8d
+	ret
+
+ISIL:
+	001 Move r8, [rcx]
+	002 Move rax, r8
+	003 And r8, r8, 18446744073709551614
+	004 Or rax, rax, 1
+	005 Compare rdx, 0
+	006 JumpIfEqual {8}
+	007 Move r8, rax
+	008 Nop 
+	009 Move [rcx], r8
+	010 Return 
+
+Method: System.Void SetFlags(UnityEngine.Networking.DownloadedTextureFlags flgs, System.Boolean add)
+
+Disassembly:
+	mov eax,[rcx]
+	test r8b,r8b
+	jne short 0000000181DEAF2Eh
+	not edx
+	and edx,eax
+	mov [rcx],edx
+	ret
+	or eax,edx
+	mov [rcx],eax
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Compare r8, 0
+	003 JumpIfNotEqual {8}
+	004 Neg rdx
+	005 And rdx, rdx, rax
+	006 Move [rcx], rdx
+	007 Return 
+	008 Or rax, rax, rdx
+	009 Move [rcx], rax
+	010 Return 
+

@@ -1,0 +1,78 @@
+Type: BoardPVP+<>c__DisplayClass268_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Boolean <CreateLocalReward>b__0(BoardPVP+StoneRewardInfo s)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	test rdx,rdx
+	je short 000000018069C9D4h
+	mov rdx,[rcx+18h]
+	test rdx,rdx
+	je short 000000018069C9D4h
+	mov rdx,[rdx+250h]
+	xor r8d,r8d
+	mov rcx,[rbx+10h]
+	call 000000018165D590h
+	test al,al
+	jne short 000000018069C9C0h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov eax,[rdi+10h]
+	cmp [rbx+18h],eax
+	mov rbx,[rsp+30h]
+	sete al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Compare rdx, 0
+	008 JumpIfEqual {31}
+	009 Move rdx, [rcx+24]
+	010 Compare rdx, 0
+	011 JumpIfEqual {31}
+	012 Move rdx, [rdx+592]
+	013 Move r8, 0
+	014 Move rcx, [rbx+16]
+	015 Call 0x18165D590, rcx, rdx, r8
+	016 Compare rax, 0
+	017 JumpIfNotEqual {23}
+	018 Move rbx, stack:0x30
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Return rax
+	023 Move rax, [rdi+16]
+	024 Compare [rbx+24], rax
+	025 Move rbx, stack:0x30
+	026 NotImplemented "sete al"
+	027 ShiftStack 32
+	028 Move rdi, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+	031 Call 0x18037BE30, rcx, rdx, r8, r9
+

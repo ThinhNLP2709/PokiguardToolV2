@@ -1,0 +1,67 @@
+Type: System.IO.FileSystem+UnitySafeFindHandle
+
+Method: System.Void .ctor(System.IntPtr handle)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000181658C70h
+	mov [rbx+20h],rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x181658C70, rcx, rdx
+	009 Move [rbx+32], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Boolean get_IsInvalid()
+
+Disassembly:
+	cmp qword ptr [rcx+20h],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+32], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Void Dispose(System.Boolean disposing)
+
+Disassembly:
+	test dl,dl
+	je short 00000001817CAFE4h
+	cmp qword ptr [rcx+20h],0
+	je short 00000001817CAFE4h
+	mov rcx,[rcx+20h]
+	jmp near ptr 00000001803A0700h
+	ret
+
+ISIL:
+	001 Compare rdx, 0
+	002 JumpIfEqual {8}
+	003 Compare [rcx+32], 0
+	004 JumpIfEqual {8}
+	005 Move rcx, [rcx+32]
+	006 Call 0x1803A0700, rcx, rdx, r8, r9
+	007 Return 
+	008 Return 
+

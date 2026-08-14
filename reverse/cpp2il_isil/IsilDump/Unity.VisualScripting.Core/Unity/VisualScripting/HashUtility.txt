@@ -1,0 +1,1686 @@
+Type: Unity.VisualScripting.HashUtility
+
+Method: System.Int32 GetHashCode(T a)
+
+Disassembly:
+	test rcx,rcx
+	je short 00000001808F51B9h
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	jmp rax
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Compare rcx, 0
+	002 JumpIfEqual {7}
+	003 Move rdx, [rcx]
+	004 Move rax, [rdx+344]
+	005 Move rdx, [rdx+352]
+	006 CallNoReturn rax
+	007 Move rax, 0
+	008 Return rax
+
+Method: System.Int32 GetHashCode(T1 a, T2 b)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	xor ebx,ebx
+	mov rdi,rdx
+	test rcx,rcx
+	je short 00000001808F5160h
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	call rax
+	mov esi,eax
+	jmp short 00000001808F5162h
+	mov esi,ebx
+	test rdi,rdi
+	je short 00000001808F517Fh
+	mov rdx,[rdi]
+	mov rcx,rdi
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	call rax
+	mov ebx,eax
+	lea eax,[rsi+187h]
+	mov rsi,[rsp+38h]
+	imul eax,17h
+	add eax,ebx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, 0
+	007 Move rdi, rdx
+	008 Compare rcx, 0
+	009 JumpIfEqual {16}
+	010 Move rdx, [rcx]
+	011 Move rax, [rdx+344]
+	012 Move rdx, [rdx+352]
+	013 Call rax
+	014 Move rsi, rax
+	015 Goto {17}
+	016 Move rsi, rbx
+	017 Compare rdi, 0
+	018 JumpIfEqual {25}
+	019 Move rdx, [rdi]
+	020 Move rcx, rdi
+	021 Move rax, [rdx+344]
+	022 Move rdx, [rdx+352]
+	023 Call rax
+	024 Move rbx, rax
+	025 LoadAddress rax, [rsi+391]
+	026 Move rsi, stack:0x38
+	027 Multiply rax, rax, 23
+	028 Add rax, rax, rbx
+	029 Move rbx, stack:0x30
+	030 ShiftStack 32
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+
+Method: System.Int32 GetHashCode(T1 a, T2 b, T3 c)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	xor ebx,ebx
+	mov rsi,r8
+	mov rdi,rdx
+	test rcx,rcx
+	je short 00000001808F50C8h
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	call rax
+	mov ebp,eax
+	jmp short 00000001808F50CAh
+	mov ebp,ebx
+	test rdi,rdi
+	je short 00000001808F50E9h
+	mov rdx,[rdi]
+	mov rcx,rdi
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	call rax
+	mov edi,eax
+	jmp short 00000001808F50EBh
+	mov edi,ebx
+	test rsi,rsi
+	je short 00000001808F5108h
+	mov rdx,[rsi]
+	mov rcx,rsi
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	call rax
+	mov ebx,eax
+	mov rsi,[rsp+40h]
+	lea eax,[rbp+187h]
+	mov rbp,[rsp+38h]
+	imul ecx,eax,17h
+	add ecx,edi
+	imul eax,ecx,17h
+	add eax,ebx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbx, 0
+	008 Move rsi, r8
+	009 Move rdi, rdx
+	010 Compare rcx, 0
+	011 JumpIfEqual {18}
+	012 Move rdx, [rcx]
+	013 Move rax, [rdx+344]
+	014 Move rdx, [rdx+352]
+	015 Call rax
+	016 Move rbp, rax
+	017 Goto {19}
+	018 Move rbp, rbx
+	019 Compare rdi, 0
+	020 JumpIfEqual {28}
+	021 Move rdx, [rdi]
+	022 Move rcx, rdi
+	023 Move rax, [rdx+344]
+	024 Move rdx, [rdx+352]
+	025 Call rax
+	026 Move rdi, rax
+	027 Goto {29}
+	028 Move rdi, rbx
+	029 Compare rsi, 0
+	030 JumpIfEqual {37}
+	031 Move rdx, [rsi]
+	032 Move rcx, rsi
+	033 Move rax, [rdx+344]
+	034 Move rdx, [rdx+352]
+	035 Call rax
+	036 Move rbx, rax
+	037 Move rsi, stack:0x40
+	038 LoadAddress rax, [rbp+391]
+	039 Move rbp, stack:0x38
+	040 Multiply rcx, rax, 23
+	041 Add rcx, rcx, rdi
+	042 Multiply rax, rcx, 23
+	043 Add rax, rax, rbx
+	044 Move rbx, stack:0x30
+	045 ShiftStack 32
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return rax
+
+Method: System.Int32 GetHashCode(T1 a, T2 b, T3 c, T4 d)
+
+Disassembly:
+	mov [rsp+20h],r9
+	mov [rsp+18h],r8
+	mov [rsp+10h],rdx
+	mov [rsp+8],rcx
+	push rbp
+	push rbx
+	push rsi
+	push rdi
+	push r12
+	push r13
+	push r14
+	push r15
+	sub rsp,68h
+	lea rbp,[rsp+30h]
+	mov rbx,[rbp+0A0h]
+	cmp qword ptr [rbx+38h],0
+	jne short 00000001808F456Fh
+	mov rcx,rbx
+	call 0000000180384D10h
+	mov rax,[rbx+38h]
+	mov rcx,[rax]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov edi,[rcx+0FCh]
+	jne short 00000001808F458Dh
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	mov r13,0FFFFFFFFFFFFFF0h
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F45AEh
+	mov rax,r13
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+10h]
+	lea r12,[rsp+30h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov esi,[rcx+0FCh]
+	mov [rbp+4],esi
+	jne short 00000001808F45E1h
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F45F8h
+	mov rax,r13
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rax,[rsp+30h]
+	mov [rbp+10h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+20h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov r14d,[rcx+0FCh]
+	mov [rbp+8],r14d
+	jne short 00000001808F4631h
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F4648h
+	mov rax,r13
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rax,[rsp+30h]
+	mov [rbp+18h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+30h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov edx,[rcx+0FCh]
+	mov [rbp+0A0h],edx
+	jne short 00000001808F4688h
+	call 0000000180384C90h
+	mov edx,[rbp+0A0h]
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F469Fh
+	mov rax,r13
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	mov r8,rdi
+	lea rax,[rsp+30h]
+	mov [rbp+28h],rax
+	lea rax,[rdi+0Fh]
+	cmp rax,rdi
+	ja short 00000001808F46C3h
+	mov rax,r13
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rcx,[rsi+0Fh]
+	lea rdi,[rsp+30h]
+	cmp rcx,rsi
+	ja short 00000001808F46E0h
+	mov rcx,r13
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	lea rcx,[r14+0Fh]
+	lea r15,[rsp+30h]
+	cmp rcx,r14
+	ja short 00000001808F4700h
+	mov rcx,r13
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	mov eax,edx
+	lea rcx,[rax+0Fh]
+	lea r13,[rsp+30h]
+	cmp rcx,rax
+	ja short 00000001808F4729h
+	mov rcx,0FFFFFFFFFFFFFF0h
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	lea rdx,[rbp+80h]
+	lea rax,[rsp+30h]
+	mov [rbp+20h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,rdi
+	cmovl rdx,[rbp+80h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,rdi
+	mov rcx,[rcx]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F47CFh
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+80h]
+	mov rcx,[rax]
+	mov r14,[rax+8]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+80h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F47A5h
+	call 0000000180384C90h
+	lea rcx,[rbp]
+	xor edi,edi
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov r8,r12
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r12d,[rbp]
+	mov esi,[rbp+4]
+	jmp short 00000001808F47D4h
+	xor edi,edi
+	mov r12d,edi
+	mov rax,[rbx+38h]
+	lea rdx,[rbp+88h]
+	mov r8d,esi
+	mov rcx,[rax+10h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,r15
+	cmovl rdx,[rbp+88h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,r15
+	mov rcx,[rcx+10h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F4864h
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+88h]
+	mov rcx,[rax+10h]
+	mov r14,[rax+18h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+88h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F483Eh
+	call 0000000180384C90h
+	mov r8,[rbp+10h]
+	lea rcx,[rbp+4]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r15d,[rbp+4]
+	jmp short 00000001808F4867h
+	mov r15d,edi
+	mov rax,[rbx+38h]
+	lea rdx,[rbp+90h]
+	mov r8d,[rbp+8]
+	mov rcx,[rax+20h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,r13
+	cmovl rdx,[rbp+90h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,r13
+	mov rcx,[rcx+20h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F48F8h
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+90h]
+	mov rcx,[rax+20h]
+	mov r14,[rax+28h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+90h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F48D2h
+	call 0000000180384C90h
+	mov r8,[rbp+18h]
+	lea rcx,[rbp+8]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r14d,[rbp+8]
+	jmp short 00000001808F48FBh
+	mov r14d,edi
+	mov rax,[rbx+38h]
+	lea rdx,[rbp+98h]
+	mov r8d,[rbp+0A0h]
+	imul r13d,r12d,17h
+	mov rcx,[rax+30h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,[rbp+20h]
+	cmovl rdx,[rbp+98h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,[rbp+20h]
+	mov rcx,[rcx+30h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F4998h
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+98h]
+	mov rcx,[rax+30h]
+	mov r12,[rax+38h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+98h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F496Fh
+	call 0000000180384C90h
+	mov r8,[rbp+28h]
+	lea rcx,[rbp+0A0h]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r12
+	call 000000018037BEE0h
+	mov edi,[rbp+0A0h]
+	lea eax,[r15+2321h]
+	add eax,r13d
+	imul ecx,eax,17h
+	add ecx,r14d
+	imul eax,ecx,17h
+	add eax,edi
+	lea rsp,[rbp+38h]
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop rdi
+	pop rsi
+	pop rbx
+	pop rbp
+	ret
+
+ISIL:
+	001 Move stack:0x20, r9
+	002 Move stack:0x18, r8
+	003 Move stack:0x10, rdx
+	004 Move stack:0x8, rcx
+	005 ShiftStack -8
+	006 Move stack:0x0, rbp
+	007 ShiftStack -8
+	008 Move stack:0x0, rbx
+	009 ShiftStack -8
+	010 Move stack:0x0, rsi
+	011 ShiftStack -8
+	012 Move stack:0x0, rdi
+	013 ShiftStack -8
+	014 Move stack:0x0, r12
+	015 ShiftStack -8
+	016 Move stack:0x0, r13
+	017 ShiftStack -8
+	018 Move stack:0x0, r14
+	019 ShiftStack -8
+	020 Move stack:0x0, r15
+	021 ShiftStack -104
+	022 LoadAddress rbp, stack:0x30
+	023 Move rbx, [rbp+160]
+	024 Compare [rbx+56], 0
+	025 JumpIfNotEqual {28}
+	026 Move rcx, rbx
+	027 Call 0x180384D10, rcx, rdx, r8, r9
+	028 Move rax, [rbx+56]
+	029 Move rcx, [rax]
+	030 Move rax, rcx
+	031 Compare [rcx+309], 1
+	032 Move rdi, [rcx+252]
+	033 JumpIfNotEqual {35}
+	034 Call 0x180384C90, rcx, rdx, r8, r9
+	035 Move rax, [rax+252]
+	036 Move r13, 0xFFFFFFFFFFFFFF0
+	037 Add rax, rax, 16
+	038 Move rcx, rax
+	039 Add rax, rax, 15
+	040 Compare rax, rcx
+	041 JumpIfGreater {43}
+	042 Move rax, r13
+	043 And rax, rax, 18446744073709551600
+	044 Call 0x180410930, rcx, rdx, r8, r9
+	045 Subtract rsp, rsp, rax
+	046 Move rax, [rbx+56]
+	047 Move rcx, [rax+16]
+	048 LoadAddress r12, stack:0x30
+	049 Move rax, rcx
+	050 Compare [rcx+309], 1
+	051 Move rsi, [rcx+252]
+	052 Move [rbp+4], rsi
+	053 JumpIfNotEqual {55}
+	054 Call 0x180384C90, rcx, rdx, r8, r9
+	055 Move rax, [rax+252]
+	056 Add rax, rax, 16
+	057 Move rcx, rax
+	058 Add rax, rax, 15
+	059 Compare rax, rcx
+	060 JumpIfGreater {62}
+	061 Move rax, r13
+	062 And rax, rax, 18446744073709551600
+	063 Call 0x180410930, rcx, rdx, r8, r9
+	064 Subtract rsp, rsp, rax
+	065 LoadAddress rax, stack:0x30
+	066 Move [rbp+16], rax
+	067 Move rax, [rbx+56]
+	068 Move rcx, [rax+32]
+	069 Move rax, rcx
+	070 Compare [rcx+309], 1
+	071 Move r14, [rcx+252]
+	072 Move [rbp+8], r14
+	073 JumpIfNotEqual {75}
+	074 Call 0x180384C90, rcx, rdx, r8, r9
+	075 Move rax, [rax+252]
+	076 Add rax, rax, 16
+	077 Move rcx, rax
+	078 Add rax, rax, 15
+	079 Compare rax, rcx
+	080 JumpIfGreater {82}
+	081 Move rax, r13
+	082 And rax, rax, 18446744073709551600
+	083 Call 0x180410930, rcx, rdx, r8, r9
+	084 Subtract rsp, rsp, rax
+	085 LoadAddress rax, stack:0x30
+	086 Move [rbp+24], rax
+	087 Move rax, [rbx+56]
+	088 Move rcx, [rax+48]
+	089 Move rax, rcx
+	090 Compare [rcx+309], 1
+	091 Move rdx, [rcx+252]
+	092 Move [rbp+160], rdx
+	093 JumpIfNotEqual {96}
+	094 Call 0x180384C90, rcx, rdx, r8, r9
+	095 Move rdx, [rbp+160]
+	096 Move rax, [rax+252]
+	097 Add rax, rax, 16
+	098 Move rcx, rax
+	099 Add rax, rax, 15
+	100 Compare rax, rcx
+	101 JumpIfGreater {103}
+	102 Move rax, r13
+	103 And rax, rax, 18446744073709551600
+	104 Call 0x180410930, rcx, rdx, r8, r9
+	105 Subtract rsp, rsp, rax
+	106 Move r8, rdi
+	107 LoadAddress rax, stack:0x30
+	108 Move [rbp+40], rax
+	109 LoadAddress rax, [rdi+15]
+	110 Compare rax, rdi
+	111 JumpIfGreater {113}
+	112 Move rax, r13
+	113 And rax, rax, 18446744073709551600
+	114 Call 0x180410930, rcx, rdx, r8, r9
+	115 Subtract rsp, rsp, rax
+	116 LoadAddress rcx, [rsi+15]
+	117 LoadAddress rdi, stack:0x30
+	118 Compare rcx, rsi
+	119 JumpIfGreater {121}
+	120 Move rcx, r13
+	121 And rcx, rcx, 18446744073709551600
+	122 Move rax, rcx
+	123 Call 0x180410930, rcx, rdx, r8, r9
+	124 Subtract rsp, rsp, rcx
+	125 LoadAddress rcx, [r14+15]
+	126 LoadAddress r15, stack:0x30
+	127 Compare rcx, r14
+	128 JumpIfGreater {130}
+	129 Move rcx, r13
+	130 And rcx, rcx, 18446744073709551600
+	131 Move rax, rcx
+	132 Call 0x180410930, rcx, rdx, r8, r9
+	133 Subtract rsp, rsp, rcx
+	134 Move rax, rdx
+	135 LoadAddress rcx, [rax+15]
+	136 LoadAddress r13, stack:0x30
+	137 Compare rcx, rax
+	138 JumpIfGreater {140}
+	139 Move rcx, 0xFFFFFFFFFFFFFF0
+	140 And rcx, rcx, 18446744073709551600
+	141 Move rax, rcx
+	142 Call 0x180410930, rcx, rdx, r8, r9
+	143 Subtract rsp, rsp, rcx
+	144 LoadAddress rdx, [rbp+128]
+	145 LoadAddress rax, stack:0x30
+	146 Move [rbp+32], rax
+	147 Move rax, [rbx+56]
+	148 Move rcx, [rax]
+	149 Compare [rcx+40], 0
+	150 Move rcx, rdi
+	151 JumpIfGreaterOrEqual {153}
+	152 Move rdx, [rbp+128]
+	153 Nop 
+	154 Call 0x180445210, rcx, rdx, r8, r9
+	155 Move rcx, [rbx+56]
+	156 Move rdx, rdi
+	157 Move rcx, [rcx]
+	158 Call 0x18037BFF0, rcx, rdx, r8, r9
+	159 Compare rax, 0
+	160 JumpIfEqual {185}
+	161 Move rax, [rbx+56]
+	162 LoadAddress rsi, [rbp+128]
+	163 Move rcx, [rax]
+	164 Move r14, [rax+8]
+	165 Move rax, rcx
+	166 Compare [rcx+40], 0
+	167 JumpIfGreaterOrEqual {169}
+	168 Move rsi, [rbp+128]
+	169 Nop 
+	170 Compare [rcx+309], 1
+	171 JumpIfNotEqual {173}
+	172 Call 0x180384C90, rcx, rdx, r8, r9
+	173 LoadAddress rcx, [rbp]
+	174 Move rdi, 0
+	175 Move stack:0x28, rcx
+	176 Move r9, rsi
+	177 Move rcx, rax
+	178 Move stack:0x20, rdi
+	179 Move r8, r12
+	180 Move rdx, r14
+	181 Call 0x18037BEE0, rcx, rdx, r8, r9
+	182 Move r12, [rbp]
+	183 Move rsi, [rbp+4]
+	184 Goto {187}
+	185 Move rdi, 0
+	186 Move r12, rdi
+	187 Move rax, [rbx+56]
+	188 LoadAddress rdx, [rbp+136]
+	189 Move r8, rsi
+	190 Move rcx, [rax+16]
+	191 Compare [rcx+40], 0
+	192 Move rcx, r15
+	193 JumpIfGreaterOrEqual {195}
+	194 Move rdx, [rbp+136]
+	195 Nop 
+	196 Call 0x180445210, rcx, rdx, r8, r9
+	197 Move rcx, [rbx+56]
+	198 Move rdx, r15
+	199 Move rcx, [rcx+16]
+	200 Call 0x18037BFF0, rcx, rdx, r8, r9
+	201 Compare rax, 0
+	202 JumpIfEqual {225}
+	203 Move rax, [rbx+56]
+	204 LoadAddress rsi, [rbp+136]
+	205 Move rcx, [rax+16]
+	206 Move r14, [rax+24]
+	207 Move rax, rcx
+	208 Compare [rcx+40], 0
+	209 JumpIfGreaterOrEqual {211}
+	210 Move rsi, [rbp+136]
+	211 Nop 
+	212 Compare [rcx+309], 1
+	213 JumpIfNotEqual {215}
+	214 Call 0x180384C90, rcx, rdx, r8, r9
+	215 Move r8, [rbp+16]
+	216 LoadAddress rcx, [rbp+4]
+	217 Move stack:0x28, rcx
+	218 Move r9, rsi
+	219 Move rcx, rax
+	220 Move stack:0x20, rdi
+	221 Move rdx, r14
+	222 Call 0x18037BEE0, rcx, rdx, r8, r9
+	223 Move r15, [rbp+4]
+	224 Goto {226}
+	225 Move r15, rdi
+	226 Move rax, [rbx+56]
+	227 LoadAddress rdx, [rbp+144]
+	228 Move r8, [rbp+8]
+	229 Move rcx, [rax+32]
+	230 Compare [rcx+40], 0
+	231 Move rcx, r13
+	232 JumpIfGreaterOrEqual {234}
+	233 Move rdx, [rbp+144]
+	234 Nop 
+	235 Call 0x180445210, rcx, rdx, r8, r9
+	236 Move rcx, [rbx+56]
+	237 Move rdx, r13
+	238 Move rcx, [rcx+32]
+	239 Call 0x18037BFF0, rcx, rdx, r8, r9
+	240 Compare rax, 0
+	241 JumpIfEqual {264}
+	242 Move rax, [rbx+56]
+	243 LoadAddress rsi, [rbp+144]
+	244 Move rcx, [rax+32]
+	245 Move r14, [rax+40]
+	246 Move rax, rcx
+	247 Compare [rcx+40], 0
+	248 JumpIfGreaterOrEqual {250}
+	249 Move rsi, [rbp+144]
+	250 Nop 
+	251 Compare [rcx+309], 1
+	252 JumpIfNotEqual {254}
+	253 Call 0x180384C90, rcx, rdx, r8, r9
+	254 Move r8, [rbp+24]
+	255 LoadAddress rcx, [rbp+8]
+	256 Move stack:0x28, rcx
+	257 Move r9, rsi
+	258 Move rcx, rax
+	259 Move stack:0x20, rdi
+	260 Move rdx, r14
+	261 Call 0x18037BEE0, rcx, rdx, r8, r9
+	262 Move r14, [rbp+8]
+	263 Goto {265}
+	264 Move r14, rdi
+	265 Move rax, [rbx+56]
+	266 LoadAddress rdx, [rbp+152]
+	267 Move r8, [rbp+160]
+	268 Multiply r13, r12, 23
+	269 Move rcx, [rax+48]
+	270 Compare [rcx+40], 0
+	271 Move rcx, [rbp+32]
+	272 JumpIfGreaterOrEqual {274}
+	273 Move rdx, [rbp+152]
+	274 Nop 
+	275 Call 0x180445210, rcx, rdx, r8, r9
+	276 Move rcx, [rbx+56]
+	277 Move rdx, [rbp+32]
+	278 Move rcx, [rcx+48]
+	279 Call 0x18037BFF0, rcx, rdx, r8, r9
+	280 Compare rax, 0
+	281 JumpIfEqual {303}
+	282 Move rax, [rbx+56]
+	283 LoadAddress rsi, [rbp+152]
+	284 Move rcx, [rax+48]
+	285 Move r12, [rax+56]
+	286 Move rax, rcx
+	287 Compare [rcx+40], 0
+	288 JumpIfGreaterOrEqual {290}
+	289 Move rsi, [rbp+152]
+	290 Nop 
+	291 Compare [rcx+309], 1
+	292 JumpIfNotEqual {294}
+	293 Call 0x180384C90, rcx, rdx, r8, r9
+	294 Move r8, [rbp+40]
+	295 LoadAddress rcx, [rbp+160]
+	296 Move stack:0x28, rcx
+	297 Move r9, rsi
+	298 Move rcx, rax
+	299 Move stack:0x20, rdi
+	300 Move rdx, r12
+	301 Call 0x18037BEE0, rcx, rdx, r8, r9
+	302 Move rdi, [rbp+160]
+	303 LoadAddress rax, [r15+8993]
+	304 Add rax, rax, r13
+	305 Multiply rcx, rax, 23
+	306 Add rcx, rcx, r14
+	307 Multiply rax, rcx, 23
+	308 Add rax, rax, rdi
+	309 LoadAddress rsp, [rbp+56]
+	310 Move r15, stack:0x0
+	311 ShiftStack 8
+	312 Move r14, stack:0x0
+	313 ShiftStack 8
+	314 Move r13, stack:0x0
+	315 ShiftStack 8
+	316 Move r12, stack:0x0
+	317 ShiftStack 8
+	318 Move rdi, stack:0x0
+	319 ShiftStack 8
+	320 Move rsi, stack:0x0
+	321 ShiftStack 8
+	322 Move rbx, stack:0x0
+	323 ShiftStack 8
+	324 Move rbp, stack:0x0
+	325 ShiftStack 8
+	326 Return rax
+
+Method: System.Int32 GetHashCode(T1 a, T2 b, T3 c, T4 d, T5 e)
+
+Disassembly:
+	mov [rsp+20h],r9
+	mov [rsp+18h],r8
+	mov [rsp+10h],rdx
+	mov [rsp+8],rcx
+	push rbp
+	push rbx
+	push rsi
+	push rdi
+	push r12
+	push r13
+	push r14
+	push r15
+	sub rsp,88h
+	lea rbp,[rsp+30h]
+	mov rbx,[rbp+0C8h]
+	cmp qword ptr [rbx+38h],0
+	jne short 00000001808F3FC2h
+	mov rcx,rbx
+	call 0000000180384D10h
+	mov rax,[rbx+38h]
+	mov rcx,[rax]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov edi,[rcx+0FCh]
+	jne short 00000001808F3FE0h
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	mov r15,0FFFFFFFFFFFFFF0h
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F4001h
+	mov rax,r15
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+10h]
+	lea r13,[rsp+30h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov r12d,[rcx+0FCh]
+	jne short 00000001808F4032h
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F4049h
+	mov rax,r15
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rax,[rsp+30h]
+	mov [rbp+10h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+20h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov esi,[rcx+0FCh]
+	mov [rbp+4],esi
+	jne short 00000001808F4080h
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F4097h
+	mov rax,r15
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rax,[rsp+30h]
+	mov [rbp+20h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+30h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov r14d,[rcx+0FCh]
+	mov [rbp+8],r14d
+	jne short 00000001808F40D0h
+	call 0000000180384C90h
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F40E7h
+	mov rax,r15
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rax,[rsp+30h]
+	mov [rbp+30h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax+40h]
+	mov rax,rcx
+	test byte ptr [rcx+135h],1
+	mov edx,[rcx+0FCh]
+	mov [rbp+0C8h],edx
+	jne short 00000001808F4127h
+	call 0000000180384C90h
+	mov edx,[rbp+0C8h]
+	mov eax,[rax+0FCh]
+	add eax,10h
+	mov ecx,eax
+	add rax,0Fh
+	cmp rax,rcx
+	ja short 00000001808F413Eh
+	mov rax,r15
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	mov r8,rdi
+	lea rax,[rsp+30h]
+	mov [rbp+40h],rax
+	lea rax,[rdi+0Fh]
+	cmp rax,rdi
+	ja short 00000001808F4162h
+	mov rax,r15
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	lea rcx,[r12+0Fh]
+	lea rdi,[rsp+30h]
+	cmp rcx,r12
+	ja short 00000001808F4180h
+	mov rcx,r15
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	mov r9,0FFFFFFFFFFFFFF0h
+	lea rcx,[rsi+0Fh]
+	lea r15,[rsp+30h]
+	cmp rcx,rsi
+	ja short 00000001808F41AAh
+	mov rcx,r9
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	lea rcx,[r14+0Fh]
+	lea rax,[rsp+30h]
+	mov [rbp+18h],rax
+	cmp rcx,r14
+	ja short 00000001808F41CEh
+	mov rcx,r9
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	lea rax,[rsp+30h]
+	mov [rbp+28h],rax
+	mov eax,edx
+	lea rcx,[rax+0Fh]
+	cmp rcx,rax
+	ja short 00000001808F41F4h
+	mov rcx,r9
+	and rcx,0FFFFFFFFFFFFFFF0h
+	mov rax,rcx
+	call 0000000180410930h
+	sub rsp,rcx
+	lea rdx,[rbp+0A0h]
+	lea rax,[rsp+30h]
+	mov [rbp+38h],rax
+	mov rax,[rbx+38h]
+	mov rcx,[rax]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,rdi
+	cmovl rdx,[rbp+0A0h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,rdi
+	mov rcx,[rcx]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F4297h
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+0A0h]
+	mov rcx,[rax]
+	mov r14,[rax+8]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+0A0h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F4270h
+	call 0000000180384C90h
+	lea rcx,[rbp]
+	xor edi,edi
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov r8,r13
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r13d,[rbp]
+	jmp short 00000001808F429Ch
+	xor edi,edi
+	mov r13d,edi
+	mov rax,[rbx+38h]
+	lea rdx,[rbp+0A8h]
+	mov r8,r12
+	mov rcx,[rax+10h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,r15
+	cmovl rdx,[rbp+0A8h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,r15
+	mov rcx,[rcx+10h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F432Ch
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+0A8h]
+	mov rcx,[rax+10h]
+	mov r14,[rax+18h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+0A8h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F4306h
+	call 0000000180384C90h
+	mov r8,[rbp+10h]
+	lea rcx,[rbp]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r12d,[rbp]
+	jmp short 00000001808F432Fh
+	mov r12d,edi
+	mov rax,[rbx+38h]
+	lea rdx,[rbp+0B0h]
+	mov r8d,[rbp+4]
+	mov rcx,[rax+20h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,[rbp+18h]
+	cmovl rdx,[rbp+0B0h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,[rbp+18h]
+	mov rcx,[rcx+20h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F43C2h
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+0B0h]
+	mov rcx,[rax+20h]
+	mov r14,[rax+28h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+0B0h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F439Ch
+	call 0000000180384C90h
+	mov r8,[rbp+20h]
+	lea rcx,[rbp+4]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r15d,[rbp+4]
+	jmp short 00000001808F43C5h
+	mov r15d,edi
+	mov rax,[rbx+38h]
+	lea rdx,[rbp+0B8h]
+	mov r8d,[rbp+8]
+	imul r13d,17h
+	mov rcx,[rax+30h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,[rbp+28h]
+	cmovl rdx,[rbp+0B8h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,[rbp+28h]
+	mov rcx,[rcx+30h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F445Ch
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+0B8h]
+	mov rcx,[rax+30h]
+	mov r14,[rax+38h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+0B8h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F4436h
+	call 0000000180384C90h
+	mov r8,[rbp+30h]
+	lea rcx,[rbp+8]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r14
+	call 000000018037BEE0h
+	mov r14d,[rbp+8]
+	jmp short 00000001808F445Fh
+	mov r14d,edi
+	mov r8d,[rbp+0C8h]
+	lea eax,[r12+r13]
+	imul r13d,eax,17h
+	lea rdx,[rbp+0C0h]
+	mov rax,[rbx+38h]
+	mov rcx,[rax+40h]
+	cmp dword ptr [rcx+28h],0
+	mov rcx,[rbp+38h]
+	cmovl rdx,[rbp+0C0h]
+	call 0000000180445210h
+	mov rcx,[rbx+38h]
+	mov rdx,[rbp+38h]
+	mov rcx,[rcx+40h]
+	call 000000018037BFF0h
+	test al,al
+	je short 00000001808F4500h
+	mov rax,[rbx+38h]
+	lea rsi,[rbp+0C0h]
+	mov rcx,[rax+40h]
+	mov r12,[rax+48h]
+	mov rax,rcx
+	cmp dword ptr [rcx+28h],0
+	cmovl rsi,[rbp+0C0h]
+	test byte ptr [rcx+135h],1
+	jne short 00000001808F44D7h
+	call 0000000180384C90h
+	mov r8,[rbp+40h]
+	lea rcx,[rbp+0C8h]
+	mov [rsp+28h],rcx
+	mov r9,rsi
+	mov rcx,rax
+	mov [rsp+20h],rdi
+	mov rdx,r12
+	call 000000018037BEE0h
+	mov edi,[rbp+0C8h]
+	lea eax,[r15+327F7h]
+	add eax,r13d
+	imul ecx,eax,17h
+	add ecx,r14d
+	imul eax,ecx,17h
+	add eax,edi
+	lea rsp,[rbp+58h]
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop rdi
+	pop rsi
+	pop rbx
+	pop rbp
+	ret
+
+ISIL:
+	001 Move stack:0x20, r9
+	002 Move stack:0x18, r8
+	003 Move stack:0x10, rdx
+	004 Move stack:0x8, rcx
+	005 ShiftStack -8
+	006 Move stack:0x0, rbp
+	007 ShiftStack -8
+	008 Move stack:0x0, rbx
+	009 ShiftStack -8
+	010 Move stack:0x0, rsi
+	011 ShiftStack -8
+	012 Move stack:0x0, rdi
+	013 ShiftStack -8
+	014 Move stack:0x0, r12
+	015 ShiftStack -8
+	016 Move stack:0x0, r13
+	017 ShiftStack -8
+	018 Move stack:0x0, r14
+	019 ShiftStack -8
+	020 Move stack:0x0, r15
+	021 ShiftStack -136
+	022 LoadAddress rbp, stack:0x30
+	023 Move rbx, [rbp+200]
+	024 Compare [rbx+56], 0
+	025 JumpIfNotEqual {28}
+	026 Move rcx, rbx
+	027 Call 0x180384D10, rcx, rdx, r8, r9
+	028 Move rax, [rbx+56]
+	029 Move rcx, [rax]
+	030 Move rax, rcx
+	031 Compare [rcx+309], 1
+	032 Move rdi, [rcx+252]
+	033 JumpIfNotEqual {35}
+	034 Call 0x180384C90, rcx, rdx, r8, r9
+	035 Move rax, [rax+252]
+	036 Move r15, 0xFFFFFFFFFFFFFF0
+	037 Add rax, rax, 16
+	038 Move rcx, rax
+	039 Add rax, rax, 15
+	040 Compare rax, rcx
+	041 JumpIfGreater {43}
+	042 Move rax, r15
+	043 And rax, rax, 18446744073709551600
+	044 Call 0x180410930, rcx, rdx, r8, r9
+	045 Subtract rsp, rsp, rax
+	046 Move rax, [rbx+56]
+	047 Move rcx, [rax+16]
+	048 LoadAddress r13, stack:0x30
+	049 Move rax, rcx
+	050 Compare [rcx+309], 1
+	051 Move r12, [rcx+252]
+	052 JumpIfNotEqual {54}
+	053 Call 0x180384C90, rcx, rdx, r8, r9
+	054 Move rax, [rax+252]
+	055 Add rax, rax, 16
+	056 Move rcx, rax
+	057 Add rax, rax, 15
+	058 Compare rax, rcx
+	059 JumpIfGreater {61}
+	060 Move rax, r15
+	061 And rax, rax, 18446744073709551600
+	062 Call 0x180410930, rcx, rdx, r8, r9
+	063 Subtract rsp, rsp, rax
+	064 LoadAddress rax, stack:0x30
+	065 Move [rbp+16], rax
+	066 Move rax, [rbx+56]
+	067 Move rcx, [rax+32]
+	068 Move rax, rcx
+	069 Compare [rcx+309], 1
+	070 Move rsi, [rcx+252]
+	071 Move [rbp+4], rsi
+	072 JumpIfNotEqual {74}
+	073 Call 0x180384C90, rcx, rdx, r8, r9
+	074 Move rax, [rax+252]
+	075 Add rax, rax, 16
+	076 Move rcx, rax
+	077 Add rax, rax, 15
+	078 Compare rax, rcx
+	079 JumpIfGreater {81}
+	080 Move rax, r15
+	081 And rax, rax, 18446744073709551600
+	082 Call 0x180410930, rcx, rdx, r8, r9
+	083 Subtract rsp, rsp, rax
+	084 LoadAddress rax, stack:0x30
+	085 Move [rbp+32], rax
+	086 Move rax, [rbx+56]
+	087 Move rcx, [rax+48]
+	088 Move rax, rcx
+	089 Compare [rcx+309], 1
+	090 Move r14, [rcx+252]
+	091 Move [rbp+8], r14
+	092 JumpIfNotEqual {94}
+	093 Call 0x180384C90, rcx, rdx, r8, r9
+	094 Move rax, [rax+252]
+	095 Add rax, rax, 16
+	096 Move rcx, rax
+	097 Add rax, rax, 15
+	098 Compare rax, rcx
+	099 JumpIfGreater {101}
+	100 Move rax, r15
+	101 And rax, rax, 18446744073709551600
+	102 Call 0x180410930, rcx, rdx, r8, r9
+	103 Subtract rsp, rsp, rax
+	104 LoadAddress rax, stack:0x30
+	105 Move [rbp+48], rax
+	106 Move rax, [rbx+56]
+	107 Move rcx, [rax+64]
+	108 Move rax, rcx
+	109 Compare [rcx+309], 1
+	110 Move rdx, [rcx+252]
+	111 Move [rbp+200], rdx
+	112 JumpIfNotEqual {115}
+	113 Call 0x180384C90, rcx, rdx, r8, r9
+	114 Move rdx, [rbp+200]
+	115 Move rax, [rax+252]
+	116 Add rax, rax, 16
+	117 Move rcx, rax
+	118 Add rax, rax, 15
+	119 Compare rax, rcx
+	120 JumpIfGreater {122}
+	121 Move rax, r15
+	122 And rax, rax, 18446744073709551600
+	123 Call 0x180410930, rcx, rdx, r8, r9
+	124 Subtract rsp, rsp, rax
+	125 Move r8, rdi
+	126 LoadAddress rax, stack:0x30
+	127 Move [rbp+64], rax
+	128 LoadAddress rax, [rdi+15]
+	129 Compare rax, rdi
+	130 JumpIfGreater {132}
+	131 Move rax, r15
+	132 And rax, rax, 18446744073709551600
+	133 Call 0x180410930, rcx, rdx, r8, r9
+	134 Subtract rsp, rsp, rax
+	135 LoadAddress rcx, [r12+15]
+	136 LoadAddress rdi, stack:0x30
+	137 Compare rcx, r12
+	138 JumpIfGreater {140}
+	139 Move rcx, r15
+	140 And rcx, rcx, 18446744073709551600
+	141 Move rax, rcx
+	142 Call 0x180410930, rcx, rdx, r8, r9
+	143 Subtract rsp, rsp, rcx
+	144 Move r9, 0xFFFFFFFFFFFFFF0
+	145 LoadAddress rcx, [rsi+15]
+	146 LoadAddress r15, stack:0x30
+	147 Compare rcx, rsi
+	148 JumpIfGreater {150}
+	149 Move rcx, r9
+	150 And rcx, rcx, 18446744073709551600
+	151 Move rax, rcx
+	152 Call 0x180410930, rcx, rdx, r8, r9
+	153 Subtract rsp, rsp, rcx
+	154 LoadAddress rcx, [r14+15]
+	155 LoadAddress rax, stack:0x30
+	156 Move [rbp+24], rax
+	157 Compare rcx, r14
+	158 JumpIfGreater {160}
+	159 Move rcx, r9
+	160 And rcx, rcx, 18446744073709551600
+	161 Move rax, rcx
+	162 Call 0x180410930, rcx, rdx, r8, r9
+	163 Subtract rsp, rsp, rcx
+	164 LoadAddress rax, stack:0x30
+	165 Move [rbp+40], rax
+	166 Move rax, rdx
+	167 LoadAddress rcx, [rax+15]
+	168 Compare rcx, rax
+	169 JumpIfGreater {171}
+	170 Move rcx, r9
+	171 And rcx, rcx, 18446744073709551600
+	172 Move rax, rcx
+	173 Call 0x180410930, rcx, rdx, r8, r9
+	174 Subtract rsp, rsp, rcx
+	175 LoadAddress rdx, [rbp+160]
+	176 LoadAddress rax, stack:0x30
+	177 Move [rbp+56], rax
+	178 Move rax, [rbx+56]
+	179 Move rcx, [rax]
+	180 Compare [rcx+40], 0
+	181 Move rcx, rdi
+	182 JumpIfGreaterOrEqual {184}
+	183 Move rdx, [rbp+160]
+	184 Nop 
+	185 Call 0x180445210, rcx, rdx, r8, r9
+	186 Move rcx, [rbx+56]
+	187 Move rdx, rdi
+	188 Move rcx, [rcx]
+	189 Call 0x18037BFF0, rcx, rdx, r8, r9
+	190 Compare rax, 0
+	191 JumpIfEqual {215}
+	192 Move rax, [rbx+56]
+	193 LoadAddress rsi, [rbp+160]
+	194 Move rcx, [rax]
+	195 Move r14, [rax+8]
+	196 Move rax, rcx
+	197 Compare [rcx+40], 0
+	198 JumpIfGreaterOrEqual {200}
+	199 Move rsi, [rbp+160]
+	200 Nop 
+	201 Compare [rcx+309], 1
+	202 JumpIfNotEqual {204}
+	203 Call 0x180384C90, rcx, rdx, r8, r9
+	204 LoadAddress rcx, [rbp]
+	205 Move rdi, 0
+	206 Move stack:0x28, rcx
+	207 Move r9, rsi
+	208 Move rcx, rax
+	209 Move stack:0x20, rdi
+	210 Move r8, r13
+	211 Move rdx, r14
+	212 Call 0x18037BEE0, rcx, rdx, r8, r9
+	213 Move r13, [rbp]
+	214 Goto {217}
+	215 Move rdi, 0
+	216 Move r13, rdi
+	217 Move rax, [rbx+56]
+	218 LoadAddress rdx, [rbp+168]
+	219 Move r8, r12
+	220 Move rcx, [rax+16]
+	221 Compare [rcx+40], 0
+	222 Move rcx, r15
+	223 JumpIfGreaterOrEqual {225}
+	224 Move rdx, [rbp+168]
+	225 Nop 
+	226 Call 0x180445210, rcx, rdx, r8, r9
+	227 Move rcx, [rbx+56]
+	228 Move rdx, r15
+	229 Move rcx, [rcx+16]
+	230 Call 0x18037BFF0, rcx, rdx, r8, r9
+	231 Compare rax, 0
+	232 JumpIfEqual {255}
+	233 Move rax, [rbx+56]
+	234 LoadAddress rsi, [rbp+168]
+	235 Move rcx, [rax+16]
+	236 Move r14, [rax+24]
+	237 Move rax, rcx
+	238 Compare [rcx+40], 0
+	239 JumpIfGreaterOrEqual {241}
+	240 Move rsi, [rbp+168]
+	241 Nop 
+	242 Compare [rcx+309], 1
+	243 JumpIfNotEqual {245}
+	244 Call 0x180384C90, rcx, rdx, r8, r9
+	245 Move r8, [rbp+16]
+	246 LoadAddress rcx, [rbp]
+	247 Move stack:0x28, rcx
+	248 Move r9, rsi
+	249 Move rcx, rax
+	250 Move stack:0x20, rdi
+	251 Move rdx, r14
+	252 Call 0x18037BEE0, rcx, rdx, r8, r9
+	253 Move r12, [rbp]
+	254 Goto {256}
+	255 Move r12, rdi
+	256 Move rax, [rbx+56]
+	257 LoadAddress rdx, [rbp+176]
+	258 Move r8, [rbp+4]
+	259 Move rcx, [rax+32]
+	260 Compare [rcx+40], 0
+	261 Move rcx, [rbp+24]
+	262 JumpIfGreaterOrEqual {264}
+	263 Move rdx, [rbp+176]
+	264 Nop 
+	265 Call 0x180445210, rcx, rdx, r8, r9
+	266 Move rcx, [rbx+56]
+	267 Move rdx, [rbp+24]
+	268 Move rcx, [rcx+32]
+	269 Call 0x18037BFF0, rcx, rdx, r8, r9
+	270 Compare rax, 0
+	271 JumpIfEqual {294}
+	272 Move rax, [rbx+56]
+	273 LoadAddress rsi, [rbp+176]
+	274 Move rcx, [rax+32]
+	275 Move r14, [rax+40]
+	276 Move rax, rcx
+	277 Compare [rcx+40], 0
+	278 JumpIfGreaterOrEqual {280}
+	279 Move rsi, [rbp+176]
+	280 Nop 
+	281 Compare [rcx+309], 1
+	282 JumpIfNotEqual {284}
+	283 Call 0x180384C90, rcx, rdx, r8, r9
+	284 Move r8, [rbp+32]
+	285 LoadAddress rcx, [rbp+4]
+	286 Move stack:0x28, rcx
+	287 Move r9, rsi
+	288 Move rcx, rax
+	289 Move stack:0x20, rdi
+	290 Move rdx, r14
+	291 Call 0x18037BEE0, rcx, rdx, r8, r9
+	292 Move r15, [rbp+4]
+	293 Goto {295}
+	294 Move r15, rdi
+	295 Move rax, [rbx+56]
+	296 LoadAddress rdx, [rbp+184]
+	297 Move r8, [rbp+8]
+	298 Multiply r13, r13, 23
+	299 Move rcx, [rax+48]
+	300 Compare [rcx+40], 0
+	301 Move rcx, [rbp+40]
+	302 JumpIfGreaterOrEqual {304}
+	303 Move rdx, [rbp+184]
+	304 Nop 
+	305 Call 0x180445210, rcx, rdx, r8, r9
+	306 Move rcx, [rbx+56]
+	307 Move rdx, [rbp+40]
+	308 Move rcx, [rcx+48]
+	309 Call 0x18037BFF0, rcx, rdx, r8, r9
+	310 Compare rax, 0
+	311 JumpIfEqual {334}
+	312 Move rax, [rbx+56]
+	313 LoadAddress rsi, [rbp+184]
+	314 Move rcx, [rax+48]
+	315 Move r14, [rax+56]
+	316 Move rax, rcx
+	317 Compare [rcx+40], 0
+	318 JumpIfGreaterOrEqual {320}
+	319 Move rsi, [rbp+184]
+	320 Nop 
+	321 Compare [rcx+309], 1
+	322 JumpIfNotEqual {324}
+	323 Call 0x180384C90, rcx, rdx, r8, r9
+	324 Move r8, [rbp+48]
+	325 LoadAddress rcx, [rbp+8]
+	326 Move stack:0x28, rcx
+	327 Move r9, rsi
+	328 Move rcx, rax
+	329 Move stack:0x20, rdi
+	330 Move rdx, r14
+	331 Call 0x18037BEE0, rcx, rdx, r8, r9
+	332 Move r14, [rbp+8]
+	333 Goto {335}
+	334 Move r14, rdi
+	335 Move r8, [rbp+200]
+	336 LoadAddress rax, [r12+r13]
+	337 Multiply r13, rax, 23
+	338 LoadAddress rdx, [rbp+192]
+	339 Move rax, [rbx+56]
+	340 Move rcx, [rax+64]
+	341 Compare [rcx+40], 0
+	342 Move rcx, [rbp+56]
+	343 JumpIfGreaterOrEqual {345}
+	344 Move rdx, [rbp+192]
+	345 Nop 
+	346 Call 0x180445210, rcx, rdx, r8, r9
+	347 Move rcx, [rbx+56]
+	348 Move rdx, [rbp+56]
+	349 Move rcx, [rcx+64]
+	350 Call 0x18037BFF0, rcx, rdx, r8, r9
+	351 Compare rax, 0
+	352 JumpIfEqual {374}
+	353 Move rax, [rbx+56]
+	354 LoadAddress rsi, [rbp+192]
+	355 Move rcx, [rax+64]
+	356 Move r12, [rax+72]
+	357 Move rax, rcx
+	358 Compare [rcx+40], 0
+	359 JumpIfGreaterOrEqual {361}
+	360 Move rsi, [rbp+192]
+	361 Nop 
+	362 Compare [rcx+309], 1
+	363 JumpIfNotEqual {365}
+	364 Call 0x180384C90, rcx, rdx, r8, r9
+	365 Move r8, [rbp+64]
+	366 LoadAddress rcx, [rbp+200]
+	367 Move stack:0x28, rcx
+	368 Move r9, rsi
+	369 Move rcx, rax
+	370 Move stack:0x20, rdi
+	371 Move rdx, r12
+	372 Call 0x18037BEE0, rcx, rdx, r8, r9
+	373 Move rdi, [rbp+200]
+	374 LoadAddress rax, [r15+0x327F7]
+	375 Add rax, rax, r13
+	376 Multiply rcx, rax, 23
+	377 Add rcx, rcx, r14
+	378 Multiply rax, rcx, 23
+	379 Add rax, rax, rdi
+	380 LoadAddress rsp, [rbp+88]
+	381 Move r15, stack:0x0
+	382 ShiftStack 8
+	383 Move r14, stack:0x0
+	384 ShiftStack 8
+	385 Move r13, stack:0x0
+	386 ShiftStack 8
+	387 Move r12, stack:0x0
+	388 ShiftStack 8
+	389 Move rdi, stack:0x0
+	390 ShiftStack 8
+	391 Move rsi, stack:0x0
+	392 ShiftStack 8
+	393 Move rbx, stack:0x0
+	394 ShiftStack 8
+	395 Move rbp, stack:0x0
+	396 ShiftStack 8
+	397 Return rax
+
+Method: System.Int32 GetHashCodeAlloc(System.Object[] values)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	xor ebx,ebx
+	xor eax,eax
+	mov rsi,rcx
+	mov edi,11h
+	test rcx,rcx
+	je short 000000018251C86Ch
+	mov [rsp+30h],r14
+	lea r14,[rcx+20h]
+	nop dword ptr [rax]
+	cmp eax,[rsi+18h]
+	jge short 000000018251C855h
+	cmp ebx,[rsi+18h]
+	jae short 000000018251C872h
+	mov rcx,[r14]
+	test rcx,rcx
+	je short 000000018251C844h
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	call rax
+	imul edi,17h
+	inc ebx
+	add edi,eax
+	mov eax,ebx
+	add r14,8
+	jmp short 000000018251C810h
+	xor eax,eax
+	imul edi,17h
+	inc ebx
+	add edi,eax
+	mov eax,ebx
+	add r14,8
+	jmp short 000000018251C810h
+	mov r14,[rsp+30h]
+	mov eax,edi
+	mov rbx,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, 0
+	007 Move rax, 0
+	008 Move rsi, rcx
+	009 Move rdi, 17
+	010 Compare rcx, 0
+	011 JumpIfEqual {47}
+	012 Move stack:0x30, r14
+	013 LoadAddress r14, [rcx+32]
+	014 Nop 
+	015 Compare rax, [rsi+24]
+	016 JumpIfGreaterOrEqual {39}
+	017 Compare rbx, [rsi+24]
+	018 JumpIfGreaterOrEqual {49}
+	019 Move rcx, [r14]
+	020 Compare rcx, 0
+	021 JumpIfEqual {32}
+	022 Move rdx, [rcx]
+	023 Move rax, [rdx+344]
+	024 Move rdx, [rdx+352]
+	025 Call rax
+	026 Multiply rdi, rdi, 23
+	027 Add rbx, rbx, 1
+	028 Add rdi, rdi, rax
+	029 Move rax, rbx
+	030 Add r14, r14, 8
+	031 Goto {15}
+	032 Move rax, 0
+	033 Multiply rdi, rdi, 23
+	034 Add rbx, rbx, 1
+	035 Add rdi, rdi, rax
+	036 Move rax, rbx
+	037 Add r14, r14, 8
+	038 Goto {15}
+	039 Move r14, stack:0x30
+	040 Move rax, rdi
+	041 Move rbx, stack:0x38
+	042 Move rsi, stack:0x40
+	043 ShiftStack 32
+	044 Move rdi, stack:0x0
+	045 ShiftStack 8
+	046 Return rax
+	047 Call 0x18037BE30, rcx, rdx, r8, r9
+	048 Interrupt 
+	049 Call 0x18037BE20, rcx, rdx, r8, r9
+

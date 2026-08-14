@@ -1,0 +1,169 @@
+Type: UnityEngine.Rendering.CoreCameraValues
+
+Method: System.Boolean Equals(UnityEngine.Rendering.CoreCameraValues other)
+
+Disassembly:
+	mov eax,[rdx]
+	cmp [rcx],eax
+	jne short 000000018265B378h
+	mov eax,[rdx+4]
+	cmp [rcx+4],eax
+	jne short 000000018265B378h
+	mov edx,[rdx+8]
+	cmp [rcx+8],edx
+	sete al
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Compare [rcx], rax
+	003 JumpIfNotEqual {11}
+	004 Move rax, [rdx+4]
+	005 Compare [rcx+4], rax
+	006 JumpIfNotEqual {11}
+	007 Move rdx, [rdx+8]
+	008 Compare [rcx+8], rdx
+	009 NotImplemented "sete al"
+	010 Return rax
+	011 Move rax, 0
+	012 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183758907h],0
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 000000018265B3ACh
+	lea rcx,[183517568h]
+	call 000000018037BB90h
+	mov byte ptr [183758907h],1
+	mov [rsp+40h],rbx
+	test rdi,rdi
+	je short 000000018265B427h
+	mov rdx,[183517568h]
+	xor ebx,ebx
+	cmp [rdi],rdx
+	mov eax,ebx
+	cmove rax,rdi
+	test rax,rax
+	je short 000000018265B429h
+	mov rcx,[rdi]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rdi
+	jne short 000000018265B43Ch
+	call 000000018037AE90h
+	mov rcx,rax
+	movsd xmm0,qword ptr [rax]
+	movsd qword ptr [rsp+20h],xmm0
+	mov eax,[rsp+20h]
+	cmp [rsi],eax
+	jne short 000000018265B429h
+	movsd qword ptr [rsp+20h],xmm0
+	mov rax,[rsp+20h]
+	shr rax,20h
+	cmp [rsi+4],eax
+	jne short 000000018265B429h
+	mov eax,[rcx+8]
+	cmp [rsi+8],eax
+	sete bl
+	movzx eax,bl
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+	xor bl,bl
+	mov rsi,[rsp+48h]
+	movzx eax,bl
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x10, rsi
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183758907], 0
+	006 Move rdi, rdx
+	007 Move rsi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183517568]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183758907], 1
+	012 Move stack:0x40, rbx
+	013 Compare rdi, 0
+	014 JumpIfEqual {51}
+	015 Move rdx, typeof(UnityEngine.Rendering.CoreCameraValues)
+	016 Move rbx, 0
+	017 Compare [rdi], rdx
+	018 Move rax, rbx
+	019 JumpIfNotEqual {21}
+	020 Move rax, rdi
+	021 Nop 
+	022 Compare rax, 0
+	023 JumpIfEqual {52}
+	024 Move rcx, [rdi]
+	025 Move rax, [rdx+64]
+	026 Compare [rcx+64], rax
+	027 Move rcx, rdi
+	028 JumpIfNotEqual {59}
+	029 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	030 Move rcx, rax
+	031 Move xmm0, [rax]
+	032 Move stack:0x20, xmm0
+	033 Move rax, stack:0x20
+	034 Compare [rsi], rax
+	035 JumpIfNotEqual {52}
+	036 Move stack:0x20, xmm0
+	037 Move rax, stack:0x20
+	038 ShiftRight rax, 32
+	039 Compare [rsi+4], rax
+	040 JumpIfNotEqual {52}
+	041 Move rax, [rcx+8]
+	042 Compare [rsi+8], rax
+	043 NotImplemented "sete bl"
+	044 Move rax, rbx
+	045 Move rbx, stack:0x40
+	046 Move rsi, stack:0x48
+	047 ShiftStack 48
+	048 Move rdi, stack:0x0
+	049 ShiftStack 8
+	050 Return rax
+	051 Move rbx, 0
+	052 Move rsi, stack:0x48
+	053 Move rax, rbx
+	054 Move rbx, stack:0x40
+	055 ShiftStack 48
+	056 Move rdi, stack:0x0
+	057 ShiftStack 8
+	058 Return rax
+	059 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	xchg ax,ax
+	imul eax,[rcx],18Dh
+	xor eax,[rcx+4]
+	imul eax,18Dh
+	xor eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Multiply rax, [rcx], 397
+	003 Xor rax, rax, [rcx+4]
+	004 Multiply rax, rax, 397
+	005 Xor rax, rax, [rcx+8]
+	006 Return rax
+

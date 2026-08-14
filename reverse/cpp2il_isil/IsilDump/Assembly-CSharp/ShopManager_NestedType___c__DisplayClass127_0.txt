@@ -1,0 +1,83 @@
+Type: ShopManager+<>c__DisplayClass127_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <DisplayPackagesAnimated>b__0()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,[rcx+18h]
+	mov rbx,[rcx+10h]
+	test rdi,rdi
+	je short 000000018054D110h
+	cmp byte ptr [18374AA2Eh],0
+	jne short 000000018054D0D3h
+	lea rcx,[18353CDF8h]
+	call 000000018037BB90h
+	mov byte ptr [18374AA2Eh],1
+	test rbx,rbx
+	je short 000000018054D0EFh
+	xor r8d,r8d
+	mov rcx,rdi
+	cmp [rbx+0E4h],r8b
+	je short 000000018054D0FAh
+	mov rdx,rbx
+	call 00000001805416E0h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rdx,[18353CDF8h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000180541430h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, [rcx+24]
+	006 Move rbx, [rcx+16]
+	007 Compare rdi, 0
+	008 JumpIfEqual {34}
+	009 Compare [0x18374AA2E], 0
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x18353CDF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18374AA2E], 1
+	014 Compare rbx, 0
+	015 JumpIfEqual {22}
+	016 Move r8, 0
+	017 Move rcx, rdi
+	018 Compare [rbx+228], r8
+	019 JumpIfEqual {27}
+	020 Move rdx, rbx
+	021 Call ShopManager.ShowPackageDetail, rcx, rdx
+	022 Move rbx, stack:0x30
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Return 
+	027 Move rdx, "Bạn đã mua đủ số lượng gói này trong ngày!"
+	028 Move rbx, stack:0x30
+	029 ShiftStack 32
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Call ShopManager.ShowNotice, rcx, rdx
+	033 Return 
+	034 Call 0x18037BE30, rcx, rdx, r8, r9
+

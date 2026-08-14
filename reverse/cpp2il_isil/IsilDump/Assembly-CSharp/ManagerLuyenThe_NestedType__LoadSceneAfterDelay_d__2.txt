@@ -1,0 +1,262 @@
+Type: ManagerLuyenThe+<LoadSceneAfterDelay>d__2
+
+Method: System.Void .ctor(System.Int32 <>1__state)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov [rbx+10h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Void System.IDisposable.Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374B02Eh],0
+	mov rdi,rcx
+	jne short 0000000180639DD5h
+	lea rcx,[183560910h]
+	call 000000018037BB90h
+	lea rcx,[183532C28h]
+	call 000000018037BB90h
+	mov byte ptr [18374B02Eh],1
+	mov eax,[rdi+10h]
+	mov rbx,[rdi+20h]
+	test eax,eax
+	jne near ptr 0000000180639E9Eh
+	mov dword ptr [rdi+10h],0FFFFFFFFh
+	mov rax,[183560910h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000180639E0Ah
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183560910h]
+	test rbx,rbx
+	je near ptr 0000000180639EECh
+	mov rax,[rax+0B8h]
+	mov rdx,[rbx+20h]
+	mov rcx,[rax]
+	test rcx,rcx
+	je near ptr 0000000180639EECh
+	mov [rcx+20h],rdx
+	add rcx,20h
+	call 000000018037ACB0h
+	mov rax,[183560910h]
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx]
+	test rcx,rcx
+	je near ptr 0000000180639EECh
+	xor edx,edx
+	call 000000018060C310h
+	mov rcx,[183532C28h]
+	call 000000018037BDE0h
+	movss xmm1,dword ptr [182A4FBC8h]
+	xor r8d,r8d
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018263EAA0h
+	lea rcx,[rdi+18h]
+	mov [rdi+18h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov al,1
+	mov dword ptr [rdi+10h],1
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp eax,1
+	jne short 0000000180639EDFh
+	mov dword ptr [rdi+10h],0FFFFFFFFh
+	mov rax,[183560910h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000180639EC9h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183560910h]
+	mov rax,[rax+0B8h]
+	mov rcx,[rax]
+	test rcx,rcx
+	je short 0000000180639EECh
+	xor edx,edx
+	call 000000018060BC20h
+	mov rbx,[rsp+30h]
+	xor al,al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374B02E], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x183560910]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183532C28]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374B02E], 1
+	013 Move rax, [rdi+16]
+	014 Move rbx, [rdi+32]
+	015 Compare rax, 0
+	016 JumpIfNotEqual {59}
+	017 Move [rdi+16], 0xFFFFFFFF
+	018 Move rax, typeof(ManagerGame)
+	019 Compare [rax+228], 0
+	020 JumpIfNotEqual {24}
+	021 Move rcx, rax
+	022 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	023 Move rax, typeof(ManagerGame)
+	024 Compare rbx, 0
+	025 JumpIfEqual {80}
+	026 Move rax, [rax+184]
+	027 Move rdx, [rbx+32]
+	028 Move rcx, [rax]
+	029 Compare rcx, 0
+	030 JumpIfEqual {80}
+	031 Move [rcx+32], rdx
+	032 Add rcx, rcx, 32
+	033 Call 0x18037ACB0, rcx, rdx, r8, r9
+	034 Move rax, typeof(ManagerGame)
+	035 Move rcx, [rax+184]
+	036 Move rcx, [rcx]
+	037 Compare rcx, 0
+	038 JumpIfEqual {80}
+	039 Move rdx, 0
+	040 Call ManagerGame.ShowLoading, rcx, rdx
+	041 Move rcx, typeof(UnityEngine.WaitForSeconds)
+	042 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	043 Move xmm1, typeof(T)
+	044 Move r8, 0
+	045 Move rcx, rax
+	046 Move rbx, rax
+	047 Call WaitForSeconds..ctor, rcx, rdx
+	048 LoadAddress rcx, [rdi+24]
+	049 Move [rdi+24], rbx
+	050 Move rdx, rbx
+	051 Call 0x18037ACB0, rcx, rdx, r8, r9
+	052 Move rax, 1
+	053 Move [rdi+16], 1
+	054 Move rbx, stack:0x30
+	055 ShiftStack 32
+	056 Move rdi, stack:0x0
+	057 ShiftStack 8
+	058 Return rax
+	059 Compare rax, 1
+	060 JumpIfNotEqual {74}
+	061 Move [rdi+16], 0xFFFFFFFF
+	062 Move rax, typeof(ManagerGame)
+	063 Compare [rax+228], 0
+	064 JumpIfNotEqual {68}
+	065 Move rcx, rax
+	066 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	067 Move rax, typeof(ManagerGame)
+	068 Move rax, [rax+184]
+	069 Move rcx, [rax]
+	070 Compare rcx, 0
+	071 JumpIfEqual {80}
+	072 Move rdx, 0
+	073 Call ManagerGame.HideLoading, rcx, rdx
+	074 Move rbx, stack:0x30
+	075 Move rax, 0
+	076 ShiftStack 32
+	077 Move rdi, stack:0x0
+	078 ShiftStack 8
+	079 Return rax
+	080 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.Generic.IEnumerator<System.Object>.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void System.Collections.IEnumerator.Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[1834F0018h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001818083D0h
+	lea rcx,[18356A9B0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x1834F0018]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Move rbx, rax
+	011 Call NotSupportedException..ctor, rcx, rdx
+	012 LoadAddress rcx, [0x18356A9B0]
+	013 Call 0x18037BBB0, rcx, rdx, r8, r9
+	014 Move rdx, rax
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+

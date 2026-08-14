@@ -1,0 +1,142 @@
+Type: UnityEngine.Rendering.SpeedTreeWindManager
+
+Method: System.Void UpdateWindAndWriteBufferWindParams(System.ReadOnlySpan`1<System.Int32> renderersID, UnityEngine.Rendering.SpeedTreeWindParamsBufferIterator windParams, System.Boolean history)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183759BEAh],0
+	movzx ebx,r8b
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 00000001826EE5B1h
+	lea rcx,[18351BCB8h]
+	call 000000018037BB90h
+	lea rcx,[18351BEF8h]
+	call 000000018037BB90h
+	mov byte ptr [183759BEAh],1
+	movups xmm1,[rsi]
+	mov rdx,[18351BCB8h]
+	lea rcx,[rsp+20h]
+	xorps xmm0,xmm0
+	movups [rsp+20h],xmm1
+	movups [rsp+30h],xmm0
+	call 0000000180C62060h
+	mov r8d,[rsp+28h]
+	lea rcx,[rsp+30h]
+	xor r9d,r9d
+	mov rdx,rax
+	call 0000000180B7EA90h
+	mov rax,[183759BF0h]
+	test rax,rax
+	jne short 00000001826EE606h
+	lea rcx,[182B48AF0h]
+	call 000000018037BE90h
+	mov [183759BF0h],rax
+	movzx r8d,bl
+	lea rcx,[rsp+30h]
+	mov rdx,rdi
+	call rax
+	mov rbx,[rsp+50h]
+	mov rsi,[rsp+58h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -64
+	006 Compare [0x183759BEA], 0
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x18351BCB8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18351BEF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183759BEA], 1
+	016 Move xmm1, [rsi]
+	017 Move rdx, [0x18351BCB8]
+	018 LoadAddress rcx, stack:0x20
+	019 Move xmm0, 0
+	020 Move stack:0x20, xmm1
+	021 Move stack:0x30, xmm0
+	022 Call 0x180C62060, rcx, rdx
+	023 Move r8, stack:0x28
+	024 LoadAddress rcx, stack:0x30
+	025 Move r9, 0
+	026 Move rdx, rax
+	027 Call 0x180B7EA90, rcx, rdx, r8
+	028 Move rax, [0x183759BF0]
+	029 Compare rax, 0
+	030 JumpIfNotEqual {34}
+	031 LoadAddress rcx, [0x182B48AF0]
+	032 Call 0x18037BE90, rcx, rdx, r8, r9
+	033 Move [0x183759BF0], rax
+	034 Move r8, rbx
+	035 LoadAddress rcx, stack:0x30
+	036 Move rdx, rdi
+	037 Call rax
+	038 Move rbx, stack:0x50
+	039 Move rsi, stack:0x58
+	040 ShiftStack 64
+	041 Move rdi, stack:0x0
+	042 ShiftStack 8
+	043 Return 
+
+Method: System.Void UpdateWindAndWriteBufferWindParams_Injected(ref UnityEngine.Bindings.ManagedSpanWrapper renderersID, in UnityEngine.Rendering.SpeedTreeWindParamsBufferIterator windParams, System.Boolean history)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[183759BF0h]
+	movzx ebx,r8b
+	mov rdi,rdx
+	mov rsi,rcx
+	test rax,rax
+	jne short 00000001826EE548h
+	lea rcx,[182B48AF0h]
+	call 000000018037BE90h
+	mov [183759BF0h],rax
+	movzx r8d,bl
+	mov rdx,rdi
+	mov rcx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [0x183759BF0]
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B48AF0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183759BF0], rax
+	015 Move r8, rbx
+	016 Move rdx, rdi
+	017 Move rcx, rsi
+	018 Move rbx, stack:0x30
+	019 Move rsi, stack:0x38
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 CallNoReturn rax
+

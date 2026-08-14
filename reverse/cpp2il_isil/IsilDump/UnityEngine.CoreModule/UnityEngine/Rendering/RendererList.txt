@@ -1,0 +1,98 @@
+Type: UnityEngine.Rendering.RendererList
+
+Method: System.Boolean get_isValid()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758980h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 000000018266A948h
+	lea rcx,[182B3F1F0h]
+	call 000000018037BE90h
+	mov [183758980h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758980]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B3F1F0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758980], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Void .ctor(System.UIntPtr ctx, System.UInt32 indx)
+
+Disassembly:
+	xor eax,eax
+	mov [rcx],rdx
+	mov [rcx+0Ch],rax
+	mov [rcx+14h],eax
+	mov [rcx+8],r8d
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx], rdx
+	003 Move [rcx+12], rax
+	004 Move [rcx+20], rax
+	005 Move [rcx+8], r8
+	006 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,48h
+	cmp byte ptr [183758988h],0
+	jne short 000000018266A8C0h
+	lea rcx,[183504680h]
+	call 000000018037BB90h
+	mov byte ptr [183758988h],1
+	xor eax,eax
+	mov dword ptr [rsp+28h],0FFFFFFFFh
+	mov [rsp+2Ch],rax
+	mov [rsp+20h],rax
+	movups xmm0,[rsp+20h]
+	mov [rsp+34h],eax
+	mov rax,[183504680h]
+	movsd xmm1,qword ptr [rsp+30h]
+	mov rcx,[rax+0B8h]
+	movups [rcx],xmm0
+	movsd qword ptr [rcx+10h],xmm1
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare [0x183758988], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183504680]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183758988], 1
+	007 Move rax, 0
+	008 Move stack:0x28, 0xFFFFFFFF
+	009 Move stack:0x2C, rax
+	010 Move stack:0x20, rax
+	011 Move xmm0, stack:0x20
+	012 Move stack:0x34, rax
+	013 Move rax, typeof(UnityEngine.Rendering.RendererList)
+	014 Move xmm1, stack:0x30
+	015 Move rcx, [rax+184]
+	016 Move [rcx], xmm0
+	017 Move [rcx+16], xmm1
+	018 ShiftStack 72
+	019 Return 
+

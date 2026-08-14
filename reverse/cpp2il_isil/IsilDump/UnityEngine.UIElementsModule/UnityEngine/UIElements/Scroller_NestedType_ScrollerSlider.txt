@@ -1,0 +1,184 @@
+Type: UnityEngine.UIElements.Scroller+ScrollerSlider
+
+Method: System.Void .ctor(System.Single start, System.Single end, UnityEngine.UIElements.SliderDirection direction, System.Single pageSize)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,60h
+	cmp byte ptr [18375B064h],0
+	mov ebx,r9d
+	movaps [rsp+50h],xmm6
+	mov rdi,rcx
+	movaps [rsp+40h],xmm7
+	movaps xmm6,xmm2
+	movaps xmm7,xmm1
+	jne short 00000001828E665Ch
+	lea rcx,[18350FFF8h]
+	call 000000018037BB90h
+	mov byte ptr [18375B064h],1
+	mov rcx,[18350FFF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001828E6671h
+	call 000000018037BED0h
+	movss xmm0,dword ptr [rsp+90h]
+	movaps xmm3,xmm6
+	mov qword ptr [rsp+30h],0
+	movaps xmm2,xmm7
+	movss dword ptr [rsp+28h],xmm0
+	xor edx,edx
+	mov rcx,rdi
+	mov [rsp+20h],ebx
+	call 00000001828E9400h
+	mov rbx,[rsp+70h]
+	movaps xmm6,[rsp+50h]
+	movaps xmm7,[rsp+40h]
+	add rsp,60h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -96
+	005 Compare [0x18375B064], 0
+	006 Move rbx, r9
+	007 Move stack:0x50, xmm6
+	008 Move rdi, rcx
+	009 Move stack:0x40, xmm7
+	010 Move xmm6, xmm2
+	011 Move xmm7, xmm1
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18350FFF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18375B064], 1
+	016 Move rcx, typeof(UnityEngine.UIElements.Slider)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move xmm0, stack:0x90
+	021 Move xmm3, xmm6
+	022 Move stack:0x30, 0
+	023 Move xmm2, xmm7
+	024 Move stack:0x28, xmm0
+	025 Move rdx, 0
+	026 Move rcx, rdi
+	027 Move stack:0x20, rbx
+	028 Call Slider..ctor, rcx, xmm1, xmm2, r9, stack:0x0, stack:0x8
+	029 Move rbx, stack:0x70
+	030 Move xmm6, stack:0x50
+	031 Move xmm7, stack:0x40
+	032 ShiftStack 96
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return 
+
+Method: System.Single SliderNormalizeValue(System.Single currentValue, System.Single lowerValue, System.Single higherValue)
+
+Disassembly:
+	sub rsp,58h
+	cmp byte ptr [18374A31Fh],0
+	movaps [rsp+40h],xmm6
+	movaps xmm6,xmm1
+	movaps [rsp+30h],xmm7
+	movaps xmm7,xmm3
+	movaps [rsp+20h],xmm8
+	movaps xmm8,xmm2
+	subss xmm7,xmm8
+	jne short 00000001828E658Fh
+	lea rcx,[183562DC0h]
+	call 000000018037BB90h
+	mov byte ptr [18374A31Fh],1
+	movdqa xmm1,[182A4FE10h]
+	xorps xmm0,xmm0
+	mov rax,[183562DC0h]
+	andps xmm0,xmm1
+	xorps xmm3,xmm3
+	movaps xmm2,xmm7
+	andps xmm2,xmm1
+	subss xmm3,xmm7
+	maxss xmm2,xmm0
+	xorps xmm4,xmm4
+	mov rcx,[rax+0B8h]
+	andps xmm3,xmm1
+	movss xmm0,dword ptr [rcx]
+	mulss xmm0,dword ptr [182A4FBDCh]
+	mulss xmm2,dword ptr [182A4FDA4h]
+	maxss xmm2,xmm0
+	movss xmm0,dword ptr [182A4FBA4h]
+	comiss xmm2,xmm3
+	ja short 00000001828E65F2h
+	subss xmm6,xmm8
+	divss xmm6,xmm7
+	jmp short 00000001828E65F5h
+	movaps xmm6,xmm0
+	comiss xmm4,xmm6
+	ja short 00000001828E6604h
+	comiss xmm6,xmm0
+	ja short 00000001828E6607h
+	movaps xmm0,xmm6
+	jmp short 00000001828E6607h
+	xorps xmm0,xmm0
+	movaps xmm6,[rsp+40h]
+	movaps xmm7,[rsp+30h]
+	movaps xmm8,[rsp+20h]
+	add rsp,58h
+	ret
+
+ISIL:
+	001 ShiftStack -88
+	002 Compare [0x18374A31F], 0
+	003 Move stack:0x40, xmm6
+	004 Move xmm6, xmm1
+	005 Move stack:0x30, xmm7
+	006 Move xmm7, xmm3
+	007 Move stack:0x20, xmm8
+	008 Move xmm8, xmm2
+	009 Subtract xmm7, xmm7, xmm8
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183562DC0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18374A31F], 1
+	014 Move xmm1, [0x182A4FE10]
+	015 Move xmm0, 0
+	016 Move rax, typeof(UnityEngine.Mathf)
+	017 And xmm0, xmm0, xmm1
+	018 Move xmm3, 0
+	019 Move xmm2, xmm7
+	020 And xmm2, xmm2, xmm1
+	021 Subtract xmm3, xmm3, xmm7
+	022 Compare xmm2, xmm0
+	023 JumpIfGreaterOrEqual {25}
+	024 Move xmm2, xmm0
+	025 Nop 
+	026 Move xmm4, 0
+	027 Move rcx, [rax+184]
+	028 And xmm3, xmm3, xmm1
+	029 Move xmm0, [rcx]
+	030 Multiply xmm0, xmm0, [0x182A4FBDC]
+	031 Multiply xmm2, xmm2, [0x182A4FDA4]
+	032 Compare xmm2, xmm0
+	033 JumpIfGreaterOrEqual {35}
+	034 Move xmm2, xmm0
+	035 Nop 
+	036 Move xmm0, [0x182A4FBA4]
+	037 Compare xmm2, xmm3
+	038 JumpIfGreater {42}
+	039 Subtract xmm6, xmm6, xmm8
+	040 Divide xmm6, xmm6, xmm7
+	041 Goto {43}
+	042 Move xmm6, xmm0
+	043 Compare xmm4, xmm6
+	044 JumpIfGreater {49}
+	045 Compare xmm6, xmm0
+	046 JumpIfGreater {50}
+	047 Move xmm0, xmm6
+	048 Goto {50}
+	049 Move xmm0, 0
+	050 Move xmm6, stack:0x40
+	051 Move xmm7, stack:0x30
+	052 Move xmm8, stack:0x20
+	053 ShiftStack 88
+	054 Return xmm0
+

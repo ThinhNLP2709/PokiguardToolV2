@@ -1,0 +1,114 @@
+Type: UnityEngine.Rendering.GPUDrivenPackedRendererData
+
+Method: System.Boolean get_staticShadowCaster()
+
+Disassembly:
+	test byte ptr [rcx],2
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx], 2
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Byte get_lodMask()
+
+Disassembly:
+	mov eax,[rcx]
+	shr eax,2
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 2
+	003 Return rax
+
+Method: UnityEngine.Rendering.ShadowCastingMode get_shadowCastingMode()
+
+Disassembly:
+	mov eax,[rcx]
+	shr eax,0Ah
+	and eax,3
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 10
+	003 And rax, rax, 3
+	004 Return rax
+
+Method: UnityEngine.Rendering.LightProbeUsage get_lightProbeUsage()
+
+Disassembly:
+	mov eax,[rcx]
+	shr eax,0Ch
+	and eax,7
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 12
+	003 And rax, rax, 7
+	004 Return rax
+
+Method: UnityEngine.MotionVectorGenerationMode get_motionVecGenMode()
+
+Disassembly:
+	mov eax,[rcx]
+	shr eax,0Fh
+	and eax,3
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 15
+	003 And rax, rax, 3
+	004 Return rax
+
+Method: System.Boolean get_isPartOfStaticBatch()
+
+Disassembly:
+	test dword ptr [rcx],20000h
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0x20000
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Boolean get_hasTree()
+
+Disassembly:
+	test dword ptr [rcx],80000h
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0x80000
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Boolean get_smallMeshCulling()
+
+Disassembly:
+	test dword ptr [rcx],100000h
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0x100000
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov dword ptr [rcx],0
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Return 
+

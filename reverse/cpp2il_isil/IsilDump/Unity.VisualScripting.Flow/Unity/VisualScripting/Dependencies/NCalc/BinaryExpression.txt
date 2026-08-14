@@ -1,0 +1,157 @@
+Type: Unity.VisualScripting.Dependencies.NCalc.BinaryExpression
+
+Method: System.Void .ctor(Unity.VisualScripting.Dependencies.NCalc.BinaryExpressionType type, Unity.VisualScripting.Dependencies.NCalc.LogicalExpression leftExpression, Unity.VisualScripting.Dependencies.NCalc.LogicalExpression rightExpression)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov rbp,r9
+	xor edx,edx
+	mov rdi,r8
+	mov rsi,rcx
+	call 0000000180456D90h
+	lea rcx,[rsi+10h]
+	mov [rsi+20h],ebx
+	mov rdx,rdi
+	mov [rsi+10h],rdi
+	call 000000018037ACB0h
+	lea rcx,[rsi+18h]
+	mov [rsi+18h],rbp
+	mov rdx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbx, rdx
+	008 Move rbp, r9
+	009 Move rdx, 0
+	010 Move rdi, r8
+	011 Move rsi, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 LoadAddress rcx, [rsi+16]
+	014 Move [rsi+32], rbx
+	015 Move rdx, rdi
+	016 Move [rsi+16], rdi
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 LoadAddress rcx, [rsi+24]
+	019 Move [rsi+24], rbp
+	020 Move rdx, rbp
+	021 Move rbx, stack:0x30
+	022 Move rbp, stack:0x38
+	023 Move rsi, stack:0x40
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Return 
+
+Method: Unity.VisualScripting.Dependencies.NCalc.LogicalExpression get_LeftExpression()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_LeftExpression(Unity.VisualScripting.Dependencies.NCalc.LogicalExpression value)
+
+Disassembly:
+	mov [rcx+10h],rdx
+	add rcx,10h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Add rcx, rcx, 16
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: Unity.VisualScripting.Dependencies.NCalc.LogicalExpression get_RightExpression()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_RightExpression(Unity.VisualScripting.Dependencies.NCalc.LogicalExpression value)
+
+Disassembly:
+	mov [rcx+18h],rdx
+	add rcx,18h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+24], rdx
+	002 Add rcx, rcx, 24
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: Unity.VisualScripting.Dependencies.NCalc.BinaryExpressionType get_Type()
+
+Disassembly:
+	mov eax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+32]
+	002 Return rax
+
+Method: System.Void set_Type(Unity.VisualScripting.Dependencies.NCalc.BinaryExpressionType value)
+
+Disassembly:
+	mov [rcx+20h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+32], rdx
+	002 Return 
+
+Method: System.Void Accept(Unity.VisualScripting.Dependencies.NCalc.LogicalExpressionVisitor visitor)
+
+Disassembly:
+	sub rsp,28h
+	mov r9,rdx
+	test rdx,rdx
+	je short 000000018199CBAAh
+	mov r8,[rdx]
+	mov rdx,rcx
+	mov rcx,r9
+	mov rax,[r8+188h]
+	mov r8,[r8+190h]
+	add rsp,28h
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r9, rdx
+	003 Compare rdx, 0
+	004 JumpIfEqual {12}
+	005 Move r8, [rdx]
+	006 Move rdx, rcx
+	007 Move rcx, r9
+	008 Move rax, [r8+392]
+	009 Move r8, [r8+400]
+	010 ShiftStack 40
+	011 CallNoReturn rax
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+

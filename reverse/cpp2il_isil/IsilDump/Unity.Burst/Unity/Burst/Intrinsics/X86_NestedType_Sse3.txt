@@ -1,0 +1,240 @@
+Type: Unity.Burst.Intrinsics.X86+Sse3
+
+Method: System.Boolean get_IsSse3Supported()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 addsub_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	movss xmm0,dword ptr [rdx]
+	mov rax,rcx
+	subss xmm0,dword ptr [r8]
+	movss xmm1,dword ptr [rdx+4]
+	addss xmm1,dword ptr [r8+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [rdx+8]
+	subss xmm0,dword ptr [r8+8]
+	movss dword ptr [rcx+4],xmm1
+	movss xmm1,dword ptr [rdx+0Ch]
+	addss xmm1,dword ptr [r8+0Ch]
+	movss dword ptr [rcx+8],xmm0
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Subtract xmm0, xmm0, [r8]
+	004 Move xmm1, [rdx+4]
+	005 Add xmm1, xmm1, [r8+4]
+	006 Move [rcx], xmm0
+	007 Move xmm0, [rdx+8]
+	008 Subtract xmm0, xmm0, [r8+8]
+	009 Move [rcx+4], xmm1
+	010 Move xmm1, [rdx+12]
+	011 Add xmm1, xmm1, [r8+12]
+	012 Move [rcx+8], xmm0
+	013 Move [rcx+12], xmm1
+	014 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 addsub_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx]
+	mov rax,rcx
+	movsd xmm1,qword ptr [rdx+8]
+	subsd xmm0,qword ptr [r8]
+	addsd xmm1,qword ptr [r8+8]
+	movsd qword ptr [rcx],xmm0
+	movsd qword ptr [rcx+8],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move xmm1, [rdx+8]
+	004 NotImplemented "subsd xmm0,qword ptr [r8]"
+	005 NotImplemented "addsd xmm1,qword ptr [r8+8]"
+	006 Move [rcx], xmm0
+	007 Move [rcx+8], xmm1
+	008 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hadd_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx+8]
+	mov rax,rcx
+	movsd xmm1,qword ptr [r8+8]
+	addsd xmm0,qword ptr [rdx]
+	addsd xmm1,qword ptr [r8]
+	movsd qword ptr [rcx],xmm0
+	movsd qword ptr [rcx+8],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+8]
+	002 Move rax, rcx
+	003 Move xmm1, [r8+8]
+	004 NotImplemented "addsd xmm0,qword ptr [rdx]"
+	005 NotImplemented "addsd xmm1,qword ptr [r8]"
+	006 Move [rcx], xmm0
+	007 Move [rcx+8], xmm1
+	008 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hadd_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	movss xmm0,dword ptr [rdx+4]
+	mov rax,rcx
+	addss xmm0,dword ptr [rdx]
+	movss xmm1,dword ptr [rdx+0Ch]
+	addss xmm1,dword ptr [rdx+8]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r8+4]
+	addss xmm0,dword ptr [r8]
+	movss dword ptr [rcx+4],xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	addss xmm1,dword ptr [r8+8]
+	movss dword ptr [rcx+8],xmm0
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+4]
+	002 Move rax, rcx
+	003 Add xmm0, xmm0, [rdx]
+	004 Move xmm1, [rdx+12]
+	005 Add xmm1, xmm1, [rdx+8]
+	006 Move [rcx], xmm0
+	007 Move xmm0, [r8+4]
+	008 Add xmm0, xmm0, [r8]
+	009 Move [rcx+4], xmm1
+	010 Move xmm1, [r8+12]
+	011 Add xmm1, xmm1, [r8+8]
+	012 Move [rcx+8], xmm0
+	013 Move [rcx+12], xmm1
+	014 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hsub_pd(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx]
+	mov rax,rcx
+	movsd xmm1,qword ptr [r8]
+	subsd xmm0,qword ptr [rdx+8]
+	subsd xmm1,qword ptr [r8+8]
+	movsd qword ptr [rcx],xmm0
+	movsd qword ptr [rcx+8],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move xmm1, [r8]
+	004 NotImplemented "subsd xmm0,qword ptr [rdx+8]"
+	005 NotImplemented "subsd xmm1,qword ptr [r8+8]"
+	006 Move [rcx], xmm0
+	007 Move [rcx+8], xmm1
+	008 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 hsub_ps(Unity.Burst.Intrinsics.v128 a, Unity.Burst.Intrinsics.v128 b)
+
+Disassembly:
+	movss xmm0,dword ptr [rdx]
+	mov rax,rcx
+	subss xmm0,dword ptr [rdx+4]
+	movss xmm1,dword ptr [rdx+8]
+	subss xmm1,dword ptr [rdx+0Ch]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [r8]
+	subss xmm0,dword ptr [r8+4]
+	movss dword ptr [rcx+4],xmm1
+	movss xmm1,dword ptr [r8+8]
+	subss xmm1,dword ptr [r8+0Ch]
+	movss dword ptr [rcx+8],xmm0
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Subtract xmm0, xmm0, [rdx+4]
+	004 Move xmm1, [rdx+8]
+	005 Subtract xmm1, xmm1, [rdx+12]
+	006 Move [rcx], xmm0
+	007 Move xmm0, [r8]
+	008 Subtract xmm0, xmm0, [r8+4]
+	009 Move [rcx+4], xmm1
+	010 Move xmm1, [r8+8]
+	011 Subtract xmm1, xmm1, [r8+12]
+	012 Move [rcx+8], xmm0
+	013 Move [rcx+12], xmm1
+	014 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 movedup_pd(Unity.Burst.Intrinsics.v128 a)
+
+Disassembly:
+	mov rax,[rdx]
+	mov [rcx],rax
+	mov [rcx+8],rax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move [rcx], rax
+	003 Move [rcx+8], rax
+	004 Move rax, rcx
+	005 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 movehdup_ps(Unity.Burst.Intrinsics.v128 a)
+
+Disassembly:
+	mov eax,[rdx+4]
+	mov [rcx],eax
+	mov [rcx+4],eax
+	mov eax,[rdx+0Ch]
+	mov [rcx+8],eax
+	mov [rcx+0Ch],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx+4]
+	002 Move [rcx], rax
+	003 Move [rcx+4], rax
+	004 Move rax, [rdx+12]
+	005 Move [rcx+8], rax
+	006 Move [rcx+12], rax
+	007 Move rax, rcx
+	008 Return rax
+
+Method: Unity.Burst.Intrinsics.v128 moveldup_ps(Unity.Burst.Intrinsics.v128 a)
+
+Disassembly:
+	mov eax,[rdx]
+	mov [rcx],eax
+	mov [rcx+4],eax
+	mov eax,[rdx+8]
+	mov [rcx+8],eax
+	mov [rcx+0Ch],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move [rcx], rax
+	003 Move [rcx+4], rax
+	004 Move rax, [rdx+8]
+	005 Move [rcx+8], rax
+	006 Move [rcx+12], rax
+	007 Move rax, rcx
+	008 Return rax
+

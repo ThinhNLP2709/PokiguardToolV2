@@ -1,0 +1,2987 @@
+Type: System.Data.SqlTypes.SqlInt16
+
+Method: System.Void .ctor(System.Boolean fNull)
+
+Disassembly:
+	xor eax,eax
+	mov byte ptr [rcx],0
+	mov [rcx+2],ax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx], 0
+	003 Move [rcx+2], rax
+	004 Return 
+
+Method: System.Void .ctor(System.Int16 value)
+
+Disassembly:
+	mov [rcx+2],dx
+	mov byte ptr [rcx],1
+	ret
+
+ISIL:
+	001 Move [rcx+2], rdx
+	002 Move [rcx], 1
+	003 Return 
+
+Method: System.Boolean get_IsNull()
+
+Disassembly:
+	cmp byte ptr [rcx],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Int16 get_Value()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [rcx],0
+	je short 0000000181B08192h
+	movzx eax,word ptr [rcx+2]
+	add rsp,28h
+	ret
+	mov [rsp+20h],rbx
+	lea rcx,[1835133B8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181B0F080h
+	lea rcx,[18350F600h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx], 0
+	003 JumpIfEqual {7}
+	004 Move rax, [rcx+2]
+	005 ShiftStack 40
+	006 Return rax
+	007 Move stack:0x20, rbx
+	008 LoadAddress rcx, [0x1835133B8]
+	009 Call 0x18037BBB0, rcx, rdx, r8, r9
+	010 Move rcx, rax
+	011 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	012 Move rdx, 0
+	013 Move rcx, rax
+	014 Move rbx, rax
+	015 Call SqlNullValueException..ctor, rcx, rdx
+	016 LoadAddress rcx, [0x18350F600]
+	017 Call 0x18037BBB0, rcx, rdx, r8, r9
+	018 Move rdx, rax
+	019 Move rcx, rbx
+	020 Call 0x18037BDF0, rcx, rdx, r8, r9
+	021 Move rbx, stack:0x20
+
+Method: System.Data.SqlTypes.SqlInt16 op_Implicit(System.Int16 x)
+
+Disassembly:
+	mov dword ptr [rsp+8],0
+	mov [rsp+0Ah],cx
+	mov byte ptr [rsp+8],1
+	mov eax,[rsp+8]
+	ret
+
+ISIL:
+	001 Move stack:0x8, 0
+	002 Move stack:0xA, rcx
+	003 Move stack:0x8, 1
+	004 Move rax, stack:0x8
+	005 Return rax
+
+Method: System.String ToString()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183750D93h],0
+	mov rbx,rcx
+	jne short 0000000181B08075h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D93h],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B0808Ah
+	call 000000018037BED0h
+	cmp byte ptr [rbx],0
+	jne short 0000000181B0809Bh
+	xor ecx,ecx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000181AE0B70h
+	lea rcx,[rbx+2]
+	xor r8d,r8d
+	xor edx,edx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000181803140h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183750D93], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183512DF8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183750D93], 1
+	010 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	011 Compare [rcx+228], 0
+	012 JumpIfNotEqual {14}
+	013 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	014 Compare [rbx], 0
+	015 JumpIfNotEqual {22}
+	016 Move rcx, 0
+	017 ShiftStack 32
+	018 Move rbx, stack:0x0
+	019 ShiftStack 8
+	020 Call SQLResource.get_NullString, rcx
+	021 Return rax
+	022 LoadAddress rcx, [rbx+2]
+	023 Move r8, 0
+	024 Move rdx, 0
+	025 ShiftStack 32
+	026 Move rbx, stack:0x0
+	027 ShiftStack 8
+	028 Call Int16.ToString, rcx, rdx
+	029 Return rax
+
+Method: System.Data.SqlTypes.SqlInt16 op_UnaryNegation(System.Data.SqlTypes.SqlInt16 x)
+
+Disassembly:
+	mov [rsp+8],ecx
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183750D94h],0
+	mov ebx,ecx
+	jne short 0000000181B08C07h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D94h],1
+	mov rax,[183512DF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08C26h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test bl,bl
+	jne short 0000000181B08C52h
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08C42h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	mov rax,[rax+0B8h]
+	mov eax,[rax+4]
+	add rsp,20h
+	pop rbx
+	ret
+	movzx eax,word ptr [rsp+32h]
+	mov dword ptr [rsp+40h],0
+	neg ax
+	mov [rsp+42h],ax
+	mov byte ptr [rsp+40h],1
+	mov eax,[rsp+40h]
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 Move stack:0x8, rcx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbx
+	004 ShiftStack -32
+	005 Compare [0x183750D94], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183512DF8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183750D94], 1
+	011 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	012 Compare [rax+228], 0
+	013 JumpIfNotEqual {17}
+	014 Move rcx, rax
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	017 Compare rbx, 0
+	018 JumpIfNotEqual {30}
+	019 Compare [rax+228], 0
+	020 JumpIfNotEqual {24}
+	021 Move rcx, rax
+	022 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	023 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	024 Move rax, [rax+184]
+	025 Move rax, [rax+4]
+	026 ShiftStack 32
+	027 Move rbx, stack:0x0
+	028 ShiftStack 8
+	029 Return rax
+	030 Move rax, stack:0x32
+	031 Move stack:0x40, 0
+	032 Neg rax
+	033 Move stack:0x42, rax
+	034 Move stack:0x40, 1
+	035 Move rax, stack:0x40
+	036 ShiftStack 32
+	037 Move rbx, stack:0x0
+	038 ShiftStack 8
+	039 Return rax
+
+Method: System.Data.SqlTypes.SqlInt16 op_Addition(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D95h],0
+	mov edi,edx
+	mov ebx,ecx
+	jne short 0000000181B08212h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D95h],1
+	mov rax,[183512DF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08231h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test bl,bl
+	je short 0000000181B0828Bh
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B0824Dh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test dil,dil
+	je short 0000000181B0828Bh
+	movsx eax,word ptr [rsp+32h]
+	movsx edx,word ptr [rsp+3Ah]
+	add edx,eax
+	mov eax,edx
+	sar eax,1
+	xor eax,edx
+	bt eax,0Fh
+	jb short 0000000181B082B8h
+	mov dword ptr [rsp+30h],0
+	mov [rsp+32h],dx
+	mov byte ptr [rsp+30h],1
+	mov eax,[rsp+30h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B082A3h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+40h]
+	mov eax,[rax+4]
+	add rsp,20h
+	pop rdi
+	ret
+	xor ecx,ecx
+	call 0000000181AE09F0h
+	lea rcx,[1834F38A0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018181F9A0h
+	lea rcx,[18350F6B8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D95], 0
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183512DF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750D95], 1
+	014 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Compare [rax+228], 0
+	016 JumpIfNotEqual {20}
+	017 Move rcx, rax
+	018 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	019 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	020 Compare rbx, 0
+	021 JumpIfEqual {46}
+	022 Compare [rax+228], 0
+	023 JumpIfNotEqual {27}
+	024 Move rcx, rax
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	027 Compare rdi, 0
+	028 JumpIfEqual {46}
+	029 Move rax, stack:0x32
+	030 Move rdx, stack:0x3A
+	031 Add rdx, rdx, rax
+	032 Move rax, rdx
+	033 ShiftRight rax, 1
+	034 Xor rax, rax, rdx
+	035 NotImplemented "bt eax,0Fh"
+	036 JumpIfLess {58}
+	037 Move stack:0x30, 0
+	038 Move stack:0x32, rdx
+	039 Move stack:0x30, 1
+	040 Move rax, stack:0x30
+	041 Move rbx, stack:0x40
+	042 ShiftStack 32
+	043 Move rdi, stack:0x0
+	044 ShiftStack 8
+	045 Return rax
+	046 Compare [rax+228], 0
+	047 JumpIfNotEqual {51}
+	048 Move rcx, rax
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	051 Move rax, [rax+184]
+	052 Move rbx, stack:0x40
+	053 Move rax, [rax+4]
+	054 ShiftStack 32
+	055 Move rdi, stack:0x0
+	056 ShiftStack 8
+	057 Return rax
+	058 Move rcx, 0
+	059 Call SQLResource.get_ArithOverflowMessage, rcx
+	060 LoadAddress rcx, [0x1834F38A0]
+	061 Move rbx, rax
+	062 Call 0x18037BBB0, rcx, rdx, r8, r9
+	063 Move rcx, rax
+	064 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	065 Move r8, 0
+	066 Move rdx, rbx
+	067 Move rcx, rax
+	068 Move rdi, rax
+	069 Call OverflowException..ctor, rcx, rdx
+	070 LoadAddress rcx, [0x18350F6B8]
+	071 Call 0x18037BBB0, rcx, rdx, r8, r9
+	072 Move rdx, rax
+	073 Move rcx, rdi
+	074 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Data.SqlTypes.SqlInt16 op_Subtraction(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D96h],0
+	mov edi,edx
+	mov ebx,ecx
+	jne short 0000000181B08AF2h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D96h],1
+	mov rax,[183512DF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08B11h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test bl,bl
+	je short 0000000181B08B6Bh
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08B2Dh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test dil,dil
+	je short 0000000181B08B6Bh
+	movsx eax,word ptr [rsp+3Ah]
+	movsx ecx,word ptr [rsp+32h]
+	sub ecx,eax
+	mov eax,ecx
+	sar eax,1
+	xor eax,ecx
+	bt eax,0Fh
+	jb short 0000000181B08B98h
+	mov dword ptr [rsp+30h],0
+	mov [rsp+32h],cx
+	mov byte ptr [rsp+30h],1
+	mov eax,[rsp+30h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08B83h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+40h]
+	mov eax,[rax+4]
+	add rsp,20h
+	pop rdi
+	ret
+	xor ecx,ecx
+	call 0000000181AE09F0h
+	lea rcx,[1834F38A0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018181F9A0h
+	lea rcx,[18350F998h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D96], 0
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183512DF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750D96], 1
+	014 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Compare [rax+228], 0
+	016 JumpIfNotEqual {20}
+	017 Move rcx, rax
+	018 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	019 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	020 Compare rbx, 0
+	021 JumpIfEqual {46}
+	022 Compare [rax+228], 0
+	023 JumpIfNotEqual {27}
+	024 Move rcx, rax
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	027 Compare rdi, 0
+	028 JumpIfEqual {46}
+	029 Move rax, stack:0x3A
+	030 Move rcx, stack:0x32
+	031 Subtract rcx, rcx, rax
+	032 Move rax, rcx
+	033 ShiftRight rax, 1
+	034 Xor rax, rax, rcx
+	035 NotImplemented "bt eax,0Fh"
+	036 JumpIfLess {58}
+	037 Move stack:0x30, 0
+	038 Move stack:0x32, rcx
+	039 Move stack:0x30, 1
+	040 Move rax, stack:0x30
+	041 Move rbx, stack:0x40
+	042 ShiftStack 32
+	043 Move rdi, stack:0x0
+	044 ShiftStack 8
+	045 Return rax
+	046 Compare [rax+228], 0
+	047 JumpIfNotEqual {51}
+	048 Move rcx, rax
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	051 Move rax, [rax+184]
+	052 Move rbx, stack:0x40
+	053 Move rax, [rax+4]
+	054 ShiftStack 32
+	055 Move rdi, stack:0x0
+	056 ShiftStack 8
+	057 Return rax
+	058 Move rcx, 0
+	059 Call SQLResource.get_ArithOverflowMessage, rcx
+	060 LoadAddress rcx, [0x1834F38A0]
+	061 Move rbx, rax
+	062 Call 0x18037BBB0, rcx, rdx, r8, r9
+	063 Move rcx, rax
+	064 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	065 Move r8, 0
+	066 Move rdx, rbx
+	067 Move rcx, rax
+	068 Move rdi, rax
+	069 Call OverflowException..ctor, rcx, rdx
+	070 LoadAddress rcx, [0x18350F998]
+	071 Call 0x18037BBB0, rcx, rdx, r8, r9
+	072 Move rdx, rax
+	073 Move rcx, rdi
+	074 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Data.SqlTypes.SqlInt16 op_Multiply(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D97h],0
+	mov edi,edx
+	mov ebx,ecx
+	jne short 0000000181B08992h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D97h],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B089AEh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test bl,bl
+	je near ptr 0000000181B08A40h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B089CBh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test dil,dil
+	je short 0000000181B08A40h
+	movsx ebx,word ptr [rsp+3Ah]
+	movsx eax,word ptr [rsp+32h]
+	imul ebx,eax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B089F2h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	mov rax,[rcx+0B8h]
+	mov edi,ebx
+	and edi,[rax]
+	je short 0000000181B08A1Fh
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B08A14h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	mov rax,[rcx+0B8h]
+	cmp edi,[rax]
+	jne short 0000000181B08A6Ah
+	mov dword ptr [rsp+30h],0
+	mov [rsp+32h],bx
+	mov byte ptr [rsp+30h],1
+	mov eax,[rsp+30h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B08A55h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	mov rax,[rcx+0B8h]
+	mov rbx,[rsp+40h]
+	mov eax,[rax+4]
+	add rsp,20h
+	pop rdi
+	ret
+	xor ecx,ecx
+	call 0000000181AE09F0h
+	lea rcx,[1834F38A0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018181F9A0h
+	lea rcx,[18350F8E0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D97], 0
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183512DF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750D97], 1
+	014 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Compare [rcx+228], 0
+	016 JumpIfNotEqual {19}
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	019 Compare rbx, 0
+	020 JumpIfEqual {54}
+	021 Compare [rcx+228], 0
+	022 JumpIfNotEqual {25}
+	023 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	024 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	025 Compare rdi, 0
+	026 JumpIfEqual {54}
+	027 Move rbx, stack:0x3A
+	028 Move rax, stack:0x32
+	029 Multiply rbx, rbx, rax
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {34}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	034 Move rax, [rcx+184]
+	035 Move rdi, rbx
+	036 And rdi, rdi, [rax]
+	037 JumpIfEqual {45}
+	038 Compare [rcx+228], 0
+	039 JumpIfNotEqual {42}
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	042 Move rax, [rcx+184]
+	043 Compare rdi, [rax]
+	044 JumpIfNotEqual {65}
+	045 Move stack:0x30, 0
+	046 Move stack:0x32, rbx
+	047 Move stack:0x30, 1
+	048 Move rax, stack:0x30
+	049 Move rbx, stack:0x40
+	050 ShiftStack 32
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+	054 Compare [rcx+228], 0
+	055 JumpIfNotEqual {58}
+	056 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	057 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	058 Move rax, [rcx+184]
+	059 Move rbx, stack:0x40
+	060 Move rax, [rax+4]
+	061 ShiftStack 32
+	062 Move rdi, stack:0x0
+	063 ShiftStack 8
+	064 Return rax
+	065 Move rcx, 0
+	066 Call SQLResource.get_ArithOverflowMessage, rcx
+	067 LoadAddress rcx, [0x1834F38A0]
+	068 Move rbx, rax
+	069 Call 0x18037BBB0, rcx, rdx, r8, r9
+	070 Move rcx, rax
+	071 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	072 Move r8, 0
+	073 Move rdx, rbx
+	074 Move rcx, rax
+	075 Move rdi, rax
+	076 Call OverflowException..ctor, rcx, rdx
+	077 LoadAddress rcx, [0x18350F8E0]
+	078 Call 0x18037BBB0, rcx, rdx, r8, r9
+	079 Move rdx, rax
+	080 Move rcx, rdi
+	081 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Data.SqlTypes.SqlInt16 op_Division(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D98h],0
+	mov edi,edx
+	mov ebx,ecx
+	jne short 0000000181B08332h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D98h],1
+	mov rax,[183512DF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08351h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test bl,bl
+	je short 0000000181B083C3h
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B0836Dh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	test dil,dil
+	je short 0000000181B083C3h
+	movsx ecx,word ptr [rsp+3Ah]
+	test cx,cx
+	je short 0000000181B083F0h
+	movsx edx,word ptr [rsp+32h]
+	mov r8d,8000h
+	cmp dx,r8w
+	jne short 0000000181B0839Dh
+	mov r8d,0FFFFh
+	cmp cx,r8w
+	je near ptr 0000000181B08437h
+	mov eax,edx
+	mov dword ptr [rsp+30h],0
+	cdq
+	mov byte ptr [rsp+30h],1
+	idiv ecx
+	mov [rsp+32h],ax
+	mov eax,[rsp+30h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B083DBh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+40h]
+	mov eax,[rax+4]
+	add rsp,20h
+	pop rdi
+	ret
+	xor ecx,ecx
+	call 0000000181AE0AE0h
+	lea rcx,[183525C60h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001817FC220h
+	lea rcx,[18350F770h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+	int 3
+	xor ecx,ecx
+	call 0000000181AE09F0h
+	lea rcx,[1834F38A0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018181F9A0h
+	lea rcx,[18350F770h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D98], 0
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183512DF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750D98], 1
+	014 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Compare [rax+228], 0
+	016 JumpIfNotEqual {20}
+	017 Move rcx, rax
+	018 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	019 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	020 Compare rbx, 0
+	021 JumpIfEqual {58}
+	022 Compare [rax+228], 0
+	023 JumpIfNotEqual {27}
+	024 Move rcx, rax
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	027 Compare rdi, 0
+	028 JumpIfEqual {58}
+	029 Move rcx, stack:0x3A
+	030 Compare rcx, 0
+	031 JumpIfEqual {70}
+	032 Move rdx, stack:0x32
+	033 Move r8, 0x8000
+	034 Compare rdx, r8
+	035 JumpIfNotEqual {39}
+	036 Move r8, 0xFFFF
+	037 Compare rcx, r8
+	038 JumpIfEqual {88}
+	039 Move rax, rdx
+	040 Move stack:0x30, 0
+	041 Move TEMP, rax
+	042 ShiftRight TEMP, 31
+	043 Compare TEMP, 1
+	044 JumpIfNotEqual {47}
+	045 Move rdx, 0xFFFFFFFF
+	046 Goto {48}
+	047 Move rdx, 0
+	048 Nop 
+	049 Move stack:0x30, 1
+	050 NotImplemented "idiv ecx"
+	051 Move stack:0x32, rax
+	052 Move rax, stack:0x30
+	053 Move rbx, stack:0x40
+	054 ShiftStack 32
+	055 Move rdi, stack:0x0
+	056 ShiftStack 8
+	057 Return rax
+	058 Compare [rax+228], 0
+	059 JumpIfNotEqual {63}
+	060 Move rcx, rax
+	061 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	062 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	063 Move rax, [rax+184]
+	064 Move rbx, stack:0x40
+	065 Move rax, [rax+4]
+	066 ShiftStack 32
+	067 Move rdi, stack:0x0
+	068 ShiftStack 8
+	069 Return rax
+	070 Move rcx, 0
+	071 Call SQLResource.get_DivideByZeroMessage, rcx
+	072 LoadAddress rcx, [0x183525C60]
+	073 Move rbx, rax
+	074 Call 0x18037BBB0, rcx, rdx, r8, r9
+	075 Move rcx, rax
+	076 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	077 Move r8, 0
+	078 Move rdx, rbx
+	079 Move rcx, rax
+	080 Move rdi, rax
+	081 Call DivideByZeroException..ctor, rcx, rdx
+	082 LoadAddress rcx, [0x18350F770]
+	083 Call 0x18037BBB0, rcx, rdx, r8, r9
+	084 Move rdx, rax
+	085 Move rcx, rdi
+	086 Call 0x18037BDF0, rcx, rdx, r8, r9
+	087 Interrupt 
+	088 Move rcx, 0
+	089 Call SQLResource.get_ArithOverflowMessage, rcx
+	090 LoadAddress rcx, [0x1834F38A0]
+	091 Move rbx, rax
+	092 Call 0x18037BBB0, rcx, rdx, r8, r9
+	093 Move rcx, rax
+	094 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	095 Move r8, 0
+	096 Move rdx, rbx
+	097 Move rcx, rax
+	098 Move rdi, rax
+	099 Call OverflowException..ctor, rcx, rdx
+	100 LoadAddress rcx, [0x18350F770]
+	101 Call 0x18037BBB0, rcx, rdx, r8, r9
+	102 Move rdx, rax
+	103 Move rcx, rdi
+	104 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Data.SqlTypes.SqlInt16 op_Implicit(System.Data.SqlTypes.SqlByte x)
+
+Disassembly:
+	mov [rsp+8],cx
+	sub rsp,28h
+	cmp byte ptr [183750D99h],0
+	jne short 0000000181B087C1h
+	lea rcx,[1835123E8h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D99h],1
+	mov rcx,[1835123E8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B087D6h
+	call 000000018037BED0h
+	xor edx,edx
+	lea rcx,[rsp+30h]
+	call 0000000180FC44F0h
+	test al,al
+	je short 0000000181B08814h
+	mov rax,[183512DF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08805h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	mov rax,[rax+0B8h]
+	mov eax,[rax+4]
+	add rsp,28h
+	ret
+	mov rcx,[1835123E8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B08829h
+	call 000000018037BED0h
+	xor edx,edx
+	mov dword ptr [rsp+40h],0
+	lea rcx,[rsp+30h]
+	call 0000000181AE39B0h
+	movzx eax,al
+	mov [rsp+42h],ax
+	mov byte ptr [rsp+40h],1
+	mov eax,[rsp+40h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 Move stack:0x8, rcx
+	002 ShiftStack -40
+	003 Compare [0x183750D99], 0
+	004 JumpIfNotEqual {10}
+	005 LoadAddress rcx, [0x1835123E8]
+	006 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	007 LoadAddress rcx, [0x183512DF8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183750D99], 1
+	010 Move rcx, typeof(System.Data.SqlTypes.SqlByte)
+	011 Compare [rcx+228], 0
+	012 JumpIfNotEqual {14}
+	013 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	014 Move rdx, 0
+	015 LoadAddress rcx, stack:0x30
+	016 Call 0x180FC44F0, rcx, rdx
+	017 Compare rax, 0
+	018 JumpIfEqual {29}
+	019 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	020 Compare [rax+228], 0
+	021 JumpIfNotEqual {25}
+	022 Move rcx, rax
+	023 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	024 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	025 Move rax, [rax+184]
+	026 Move rax, [rax+4]
+	027 ShiftStack 40
+	028 Return rax
+	029 Move rcx, typeof(System.Data.SqlTypes.SqlByte)
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move rdx, 0
+	034 Move stack:0x40, 0
+	035 LoadAddress rcx, stack:0x30
+	036 Call SqlByte.get_Value, rcx, rdx
+	037 Move rax, rax
+	038 Move stack:0x42, rax
+	039 Move stack:0x40, 1
+	040 Move rax, stack:0x40
+	041 ShiftStack 40
+	042 Return rax
+
+Method: System.Data.SqlTypes.SqlInt16 op_Explicit(System.Data.SqlTypes.SqlInt64 x)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183750D9Ah],0
+	mov rbx,rcx
+	jne short 0000000181B08591h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	lea rcx,[1835130D8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D9Ah],1
+	mov rcx,[1835130D8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B085ADh
+	call 000000018037BED0h
+	mov rcx,[1835130D8h]
+	cmp byte ptr [rbx],0
+	je short 0000000181B085F8h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B085C0h
+	call 000000018037BED0h
+	cmp byte ptr [rbx],0
+	je short 0000000181B08627h
+	mov rcx,[rbx+8]
+	lea rax,[rcx+8000h]
+	cmp rax,0FFFFh
+	ja near ptr 0000000181B08660h
+	mov dword ptr [rsp+30h],0
+	mov [rsp+32h],cx
+	mov byte ptr [rsp+30h],1
+	mov eax,[rsp+30h]
+	add rsp,20h
+	pop rbx
+	ret
+	mov rax,[183512DF8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B08617h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512DF8h]
+	mov rax,[rax+0B8h]
+	mov eax,[rax+4]
+	add rsp,20h
+	pop rbx
+	ret
+	lea rcx,[1835133B8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181B0F080h
+	lea rcx,[183510180h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	xor ecx,ecx
+	mov [rsp+38h],rdi
+	call 0000000181AE09F0h
+	lea rcx,[1834F38A0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018181F9A0h
+	lea rcx,[18350F828h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+	mov rdi,[rsp+38h]
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183750D9A], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {12}
+	007 LoadAddress rcx, [0x183512DF8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x1835130D8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750D9A], 1
+	012 Move rcx, typeof(System.Data.SqlTypes.SqlInt64)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {17}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move rcx, typeof(System.Data.SqlTypes.SqlInt64)
+	017 Compare [rbx], 0
+	018 JumpIfEqual {36}
+	019 Compare [rcx+228], 0
+	020 JumpIfNotEqual {22}
+	021 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	022 Compare [rbx], 0
+	023 JumpIfEqual {48}
+	024 Move rcx, [rbx+8]
+	025 LoadAddress rax, [rcx+32768]
+	026 Compare rax, 0xFFFF
+	027 JumpIfGreater {62}
+	028 Move stack:0x30, 0
+	029 Move stack:0x32, rcx
+	030 Move stack:0x30, 1
+	031 Move rax, stack:0x30
+	032 ShiftStack 32
+	033 Move rbx, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+	036 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	037 Compare [rax+228], 0
+	038 JumpIfNotEqual {42}
+	039 Move rcx, rax
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	042 Move rax, [rax+184]
+	043 Move rax, [rax+4]
+	044 ShiftStack 32
+	045 Move rbx, stack:0x0
+	046 ShiftStack 8
+	047 Return rax
+	048 LoadAddress rcx, [0x1835133B8]
+	049 Call 0x18037BBB0, rcx, rdx, r8, r9
+	050 Move rcx, rax
+	051 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	052 Move rdx, 0
+	053 Move rcx, rax
+	054 Move rbx, rax
+	055 Call SqlNullValueException..ctor, rcx, rdx
+	056 LoadAddress rcx, [0x183510180]
+	057 Call 0x18037BBB0, rcx, rdx, r8, r9
+	058 Move rdx, rax
+	059 Move rcx, rbx
+	060 Call 0x18037BDF0, rcx, rdx, r8, r9
+	061 Interrupt 
+	062 Move rcx, 0
+	063 Move stack:0x38, rdi
+	064 Call SQLResource.get_ArithOverflowMessage, rcx
+	065 LoadAddress rcx, [0x1834F38A0]
+	066 Move rbx, rax
+	067 Call 0x18037BBB0, rcx, rdx, r8, r9
+	068 Move rcx, rax
+	069 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	070 Move r8, 0
+	071 Move rdx, rbx
+	072 Move rcx, rax
+	073 Move rdi, rax
+	074 Call OverflowException..ctor, rcx, rdx
+	075 LoadAddress rcx, [0x18350F828]
+	076 Call 0x18037BBB0, rcx, rdx, r8, r9
+	077 Move rdx, rax
+	078 Move rcx, rdi
+	079 Call 0x18037BDF0, rcx, rdx, r8, r9
+	080 Move rdi, stack:0x38
+
+Method: System.Data.SqlTypes.SqlBoolean op_Equality(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D9Bh],0
+	mov ebx,edx
+	mov edi,ecx
+	jne short 0000000181B084BEh
+	lea rcx,[183512278h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D9Bh],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B084DAh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test dil,dil
+	je short 0000000181B08520h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B084EDh
+	call 000000018037BED0h
+	test bl,bl
+	je short 0000000181B08520h
+	movzx eax,word ptr [rsp+3Ah]
+	lea rcx,[rsp+48h]
+	cmp [rsp+32h],ax
+	mov byte ptr [rsp+48h],0
+	sete dl
+	xor r8d,r8d
+	call 0000000181AE2A70h
+	movzx eax,byte ptr [rsp+48h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rax,[183512278h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B0853Fh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512278h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+40h]
+	movzx eax,byte ptr [rax+2]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D9B], 0
+	008 Move rbx, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x183512278]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183512DF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183750D9B], 1
+	016 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {21}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	021 Compare rdi, 0
+	022 JumpIfEqual {41}
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Compare rbx, 0
+	027 JumpIfEqual {41}
+	028 Move rax, stack:0x3A
+	029 LoadAddress rcx, stack:0x48
+	030 Compare stack:0x32, rax
+	031 Move stack:0x48, 0
+	032 NotImplemented "sete dl"
+	033 Move r8, 0
+	034 Call SqlBoolean..ctor, rcx, rdx
+	035 Move rax, stack:0x48
+	036 Move rbx, stack:0x40
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return rax
+	041 Move rax, typeof(System.Data.SqlTypes.SqlBoolean)
+	042 Compare [rax+228], 0
+	043 JumpIfNotEqual {47}
+	044 Move rcx, rax
+	045 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	046 Move rax, typeof(System.Data.SqlTypes.SqlBoolean)
+	047 Move rax, [rax+184]
+	048 Move rbx, stack:0x40
+	049 Move rax, [rax+2]
+	050 ShiftStack 32
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+
+Method: System.Data.SqlTypes.SqlBoolean op_LessThan(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D9Ch],0
+	mov ebx,edx
+	mov edi,ecx
+	jne short 0000000181B088BEh
+	lea rcx,[183512278h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D9Ch],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B088DAh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test dil,dil
+	je short 0000000181B08920h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B088EDh
+	call 000000018037BED0h
+	test bl,bl
+	je short 0000000181B08920h
+	movzx eax,word ptr [rsp+3Ah]
+	lea rcx,[rsp+48h]
+	cmp [rsp+32h],ax
+	mov byte ptr [rsp+48h],0
+	setl dl
+	xor r8d,r8d
+	call 0000000181AE2A70h
+	movzx eax,byte ptr [rsp+48h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rax,[183512278h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B0893Fh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512278h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+40h]
+	movzx eax,byte ptr [rax+2]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D9C], 0
+	008 Move rbx, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x183512278]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183512DF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183750D9C], 1
+	016 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {21}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	021 Compare rdi, 0
+	022 JumpIfEqual {41}
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Compare rbx, 0
+	027 JumpIfEqual {41}
+	028 Move rax, stack:0x3A
+	029 LoadAddress rcx, stack:0x48
+	030 Compare stack:0x32, rax
+	031 Move stack:0x48, 0
+	032 NotImplemented "setl dl"
+	033 Move r8, 0
+	034 Call SqlBoolean..ctor, rcx, rdx
+	035 Move rax, stack:0x48
+	036 Move rbx, stack:0x40
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return rax
+	041 Move rax, typeof(System.Data.SqlTypes.SqlBoolean)
+	042 Compare [rax+228], 0
+	043 JumpIfNotEqual {47}
+	044 Move rcx, rax
+	045 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	046 Move rax, typeof(System.Data.SqlTypes.SqlBoolean)
+	047 Move rax, [rax+184]
+	048 Move rbx, stack:0x40
+	049 Move rax, [rax+2]
+	050 ShiftStack 32
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+
+Method: System.Data.SqlTypes.SqlBoolean op_GreaterThan(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	mov [rsp+10h],edx
+	mov [rsp+8],ecx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D9Dh],0
+	mov ebx,edx
+	mov edi,ecx
+	jne short 0000000181B086EEh
+	lea rcx,[183512278h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D9Dh],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B0870Ah
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test dil,dil
+	je short 0000000181B08750h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B0871Dh
+	call 000000018037BED0h
+	test bl,bl
+	je short 0000000181B08750h
+	movzx eax,word ptr [rsp+3Ah]
+	lea rcx,[rsp+48h]
+	cmp [rsp+32h],ax
+	mov byte ptr [rsp+48h],0
+	setg dl
+	xor r8d,r8d
+	call 0000000181AE2A70h
+	movzx eax,byte ptr [rsp+48h]
+	mov rbx,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rax,[183512278h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000181B0876Fh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512278h]
+	mov rax,[rax+0B8h]
+	mov rbx,[rsp+40h]
+	movzx eax,byte ptr [rax+2]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 Move stack:0x10, rdx
+	003 Move stack:0x8, rcx
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x183750D9D], 0
+	008 Move rbx, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x183512278]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183512DF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183750D9D], 1
+	016 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {21}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	021 Compare rdi, 0
+	022 JumpIfEqual {41}
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Compare rbx, 0
+	027 JumpIfEqual {41}
+	028 Move rax, stack:0x3A
+	029 LoadAddress rcx, stack:0x48
+	030 Compare stack:0x32, rax
+	031 Move stack:0x48, 0
+	032 NotImplemented "setg dl"
+	033 Move r8, 0
+	034 Call SqlBoolean..ctor, rcx, rdx
+	035 Move rax, stack:0x48
+	036 Move rbx, stack:0x40
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Return rax
+	041 Move rax, typeof(System.Data.SqlTypes.SqlBoolean)
+	042 Compare [rax+228], 0
+	043 JumpIfNotEqual {47}
+	044 Move rcx, rax
+	045 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	046 Move rax, typeof(System.Data.SqlTypes.SqlBoolean)
+	047 Move rax, [rax+184]
+	048 Move rbx, stack:0x40
+	049 Move rax, [rax+2]
+	050 ShiftStack 32
+	051 Move rdi, stack:0x0
+	052 ShiftStack 8
+	053 Return rax
+
+Method: System.Data.SqlTypes.SqlBoolean LessThan(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D9Eh],0
+	mov ebx,edx
+	mov edi,ecx
+	jne short 0000000181B07B5Ah
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D9Eh],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07B6Fh
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov ecx,edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181B08880h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183750D9E], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183512DF8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750D9E], 1
+	012 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move r8, 0
+	017 Move rdx, rbx
+	018 Move rcx, rdi
+	019 Move rbx, stack:0x30
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call SqlInt16.op_LessThan, rcx, rdx, r8
+	024 Return rax
+
+Method: System.Data.SqlTypes.SqlBoolean GreaterThan(System.Data.SqlTypes.SqlInt16 x, System.Data.SqlTypes.SqlInt16 y)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750D9Fh],0
+	mov ebx,edx
+	mov edi,ecx
+	jne short 0000000181B07AFAh
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D9Fh],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07B0Fh
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov ecx,edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181B086B0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183750D9F], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183512DF8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750D9F], 1
+	012 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move r8, 0
+	017 Move rdx, rbx
+	018 Move rcx, rdi
+	019 Move rbx, stack:0x30
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Call SqlInt16.op_GreaterThan, rcx, rdx, r8
+	024 Return rax
+
+Method: System.Data.SqlTypes.SqlDouble ToSqlDouble()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183750DA0h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181B07DFCh
+	lea rcx,[183512B18h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA0h],1
+	mov rcx,[183512B18h]
+	mov ebx,[rbx]
+	mov [rsp+40h],ebx
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07E17h
+	call 000000018037BED0h
+	cmp byte ptr [183750D71h],0
+	jne short 0000000181B07E3Fh
+	lea rcx,[183512B18h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750D71h],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07E5Bh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test bl,bl
+	jne short 0000000181B07E96h
+	mov rcx,[183512B18h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07E74h
+	call 000000018037BED0h
+	mov rax,[183512B18h]
+	mov rcx,[rax+0B8h]
+	mov rax,rdi
+	movups xmm0,[rcx]
+	movups [rdi],xmm0
+	mov rbx,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07EA4h
+	call 000000018037BED0h
+	movsx eax,word ptr [rsp+42h]
+	mov rcx,7FFFFFFFFFFFFFFFh
+	xorps xmm0,xmm0
+	movups [rsp+20h],xmm0
+	movd xmm1,eax
+	cvtdq2pd xmm1,xmm1
+	movq rax,xmm1
+	and rax,rcx
+	mov rcx,7FF0000000000000h
+	cmp rax,rcx
+	jae short 0000000181B07EF9h
+	mov rbx,[rsp+48h]
+	mov rax,rdi
+	mov byte ptr [rsp+20h],1
+	movups xmm0,[rsp+20h]
+	unpcklpd xmm0,xmm1
+	movups [rdi],xmm0
+	add rsp,30h
+	pop rdi
+	ret
+	xor ecx,ecx
+	call 0000000181AE09F0h
+	lea rcx,[1834F38A0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018181F9A0h
+	lea rcx,[18350ED60h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183750DA0], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183512B18]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750DA0], 1
+	012 Move rcx, typeof(System.Data.SqlTypes.SqlDouble)
+	013 Move rbx, [rbx]
+	014 Move stack:0x40, rbx
+	015 Compare [rcx+228], 0
+	016 JumpIfNotEqual {18}
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 Compare [0x183750D71], 0
+	019 JumpIfNotEqual {25}
+	020 LoadAddress rcx, [0x183512B18]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x183512DF8]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 Move [0x183750D71], 1
+	025 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	026 Compare [rcx+228], 0
+	027 JumpIfNotEqual {30}
+	028 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	029 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	030 Compare rbx, 0
+	031 JumpIfNotEqual {46}
+	032 Move rcx, typeof(System.Data.SqlTypes.SqlDouble)
+	033 Compare [rcx+228], 0
+	034 JumpIfNotEqual {36}
+	035 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	036 Move rax, typeof(System.Data.SqlTypes.SqlDouble)
+	037 Move rcx, [rax+184]
+	038 Move rax, rdi
+	039 Move xmm0, [rcx]
+	040 Move [rdi], xmm0
+	041 Move rbx, stack:0x48
+	042 ShiftStack 48
+	043 Move rdi, stack:0x0
+	044 ShiftStack 8
+	045 Return rax
+	046 Compare [rcx+228], 0
+	047 JumpIfNotEqual {49}
+	048 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	049 Move rax, stack:0x42
+	050 Move rcx, 9223372036854775807
+	051 Move xmm0, 0
+	052 Move stack:0x20, xmm0
+	053 Move xmm1, rax
+	054 NotImplemented "cvtdq2pd xmm1,xmm1"
+	055 Move rax, xmm1
+	056 And rax, rax, rcx
+	057 Move rcx, 0x7FF0000000000000
+	058 Compare rax, rcx
+	059 JumpIfGreaterOrEqual {70}
+	060 Move rbx, stack:0x48
+	061 Move rax, rdi
+	062 Move stack:0x20, 1
+	063 Move xmm0, stack:0x20
+	064 NotImplemented "unpcklpd xmm0,xmm1"
+	065 Move [rdi], xmm0
+	066 ShiftStack 48
+	067 Move rdi, stack:0x0
+	068 ShiftStack 8
+	069 Return rax
+	070 Move rcx, 0
+	071 Call SQLResource.get_ArithOverflowMessage, rcx
+	072 LoadAddress rcx, [0x1834F38A0]
+	073 Move rbx, rax
+	074 Call 0x18037BBB0, rcx, rdx, r8, r9
+	075 Move rcx, rax
+	076 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	077 Move r8, 0
+	078 Move rdx, rbx
+	079 Move rcx, rax
+	080 Move rdi, rax
+	081 Call OverflowException..ctor, rcx, rdx
+	082 LoadAddress rcx, [0x18350ED60]
+	083 Call 0x18037BBB0, rcx, rdx, r8, r9
+	084 Move rdx, rax
+	085 Move rcx, rdi
+	086 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Data.SqlTypes.SqlInt64 ToSqlInt64()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183750DA1h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181B07F6Ch
+	lea rcx,[1835130D8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA1h],1
+	mov rcx,[1835130D8h]
+	mov ebx,[rbx]
+	mov [rsp+40h],ebx
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07F87h
+	call 000000018037BED0h
+	cmp byte ptr [183750DCBh],0
+	jne short 0000000181B07FAFh
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	lea rcx,[1835130D8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DCBh],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07FCBh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test bl,bl
+	jne short 0000000181B08007h
+	mov rcx,[1835130D8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07FE4h
+	call 000000018037BED0h
+	mov rax,[1835130D8h]
+	mov rcx,[rax+0B8h]
+	mov rax,rdi
+	movups xmm0,[rcx+10h]
+	movups [rdi],xmm0
+	mov rbx,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B08015h
+	call 000000018037BED0h
+	movsx rax,word ptr [rsp+42h]
+	xorps xmm0,xmm0
+	mov rbx,[rsp+48h]
+	movups [rsp+20h],xmm0
+	mov [rsp+28h],rax
+	mov rax,rdi
+	mov byte ptr [rsp+20h],1
+	movups xmm0,[rsp+20h]
+	movups [rdi],xmm0
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183750DA1], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1835130D8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750DA1], 1
+	012 Move rcx, typeof(System.Data.SqlTypes.SqlInt64)
+	013 Move rbx, [rbx]
+	014 Move stack:0x40, rbx
+	015 Compare [rcx+228], 0
+	016 JumpIfNotEqual {18}
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 Compare [0x183750DCB], 0
+	019 JumpIfNotEqual {25}
+	020 LoadAddress rcx, [0x183512DF8]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x1835130D8]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 Move [0x183750DCB], 1
+	025 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	026 Compare [rcx+228], 0
+	027 JumpIfNotEqual {30}
+	028 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	029 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	030 Compare rbx, 0
+	031 JumpIfNotEqual {46}
+	032 Move rcx, typeof(System.Data.SqlTypes.SqlInt64)
+	033 Compare [rcx+228], 0
+	034 JumpIfNotEqual {36}
+	035 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	036 Move rax, typeof(System.Data.SqlTypes.SqlInt64)
+	037 Move rcx, [rax+184]
+	038 Move rax, rdi
+	039 Move xmm0, [rcx+16]
+	040 Move [rdi], xmm0
+	041 Move rbx, stack:0x48
+	042 ShiftStack 48
+	043 Move rdi, stack:0x0
+	044 ShiftStack 8
+	045 Return rax
+	046 Compare [rcx+228], 0
+	047 JumpIfNotEqual {49}
+	048 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	049 Move rax, stack:0x42
+	050 Move xmm0, 0
+	051 Move rbx, stack:0x48
+	052 Move stack:0x20, xmm0
+	053 Move stack:0x28, rax
+	054 Move rax, rdi
+	055 Move stack:0x20, 1
+	056 Move xmm0, stack:0x20
+	057 Move [rdi], xmm0
+	058 ShiftStack 48
+	059 Move rdi, stack:0x0
+	060 ShiftStack 8
+	061 Return rax
+
+Method: System.Int32 CompareTo(System.Object value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750DA2h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181B0754Ch
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA2h],1
+	test rbx,rbx
+	je short 0000000181B075ADh
+	mov rdx,[183512DF8h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 0000000181B075ADh
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne near ptr 0000000181B07627h
+	call 000000018037AE90h
+	mov rcx,[183512DF8h]
+	mov ebx,[rax]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07596h
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181B07630h
+	mov rcx,rbx
+	call 0000000180001E40h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001818613C0h
+	lea rcx,[183537118h]
+	mov rdi,rax
+	call 000000018037BBB0h
+	mov rcx,[18375C180h]
+	mov rbx,rax
+	call 0000000180001E70h
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018182C680h
+	lea rcx,[1834F9CD0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 0000000180001E70h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rdi
+	call 0000000181B16340h
+	lea rcx,[18350F548h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183750DA2], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183512DF8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750DA2], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {41}
+	014 Move rdx, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Move rax, 0
+	016 Compare [rbx], rdx
+	017 JumpIfNotEqual {19}
+	018 Move rax, rbx
+	019 Nop 
+	020 Compare rax, 0
+	021 JumpIfEqual {41}
+	022 Move rcx, [rbx]
+	023 Move rax, [rdx+64]
+	024 Compare [rcx+64], rax
+	025 Move rcx, rbx
+	026 JumpIfNotEqual {71}
+	027 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	028 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	029 Move rbx, [rax]
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move r8, 0
+	034 Move rdx, rbx
+	035 Move rcx, rdi
+	036 Move rbx, stack:0x30
+	037 ShiftStack 32
+	038 Move rdi, stack:0x0
+	039 ShiftStack 8
+	040 Invalid "Jump target not found in method."
+	041 Move rcx, rbx
+	042 Call 0x180001E40, rcx, rdx, r8, r9
+	043 Move rdx, 0
+	044 Move rcx, rbx
+	045 Call "il2cpp_vm_object_is_inst", rcx, rdx
+	046 LoadAddress rcx, [0x183537118]
+	047 Move rdi, rax
+	048 Call 0x18037BBB0, rcx, rdx, r8, r9
+	049 Move rcx, [0x18375C180]
+	050 Move rbx, rax
+	051 Call 0x180001E70, rcx, rdx, r8, r9
+	052 Move rdx, 0
+	053 Move rcx, rbx
+	054 Call Type.GetTypeFromHandle, rcx, rdx
+	055 LoadAddress rcx, [0x1834F9CD0]
+	056 Move rbx, rax
+	057 Call 0x18037BBB0, rcx, rdx, r8, r9
+	058 Move rcx, rax
+	059 Call 0x180001E70, rcx, rdx, r8, r9
+	060 Move r8, 0
+	061 Move rdx, rbx
+	062 Move rcx, rdi
+	063 Call ADP.WrongType, rcx, rdx, r8
+	064 LoadAddress rcx, [0x18350F548]
+	065 Move rbx, rax
+	066 Call 0x18037BBB0, rcx, rdx, r8, r9
+	067 Move rdx, rax
+	068 Move rcx, rbx
+	069 Call 0x18037BDF0, rcx, rdx, r8, r9
+	070 Interrupt 
+	071 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 CompareTo(System.Data.SqlTypes.SqlInt16 value)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	sub rsp,20h
+	cmp byte ptr [183750DA3h],0
+	mov ebx,edx
+	mov rsi,rcx
+	jne short 0000000181B07667h
+	lea rcx,[183512278h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA3h],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07683h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	cmp byte ptr [rsi],0
+	je near ptr 0000000181B07776h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B076A1h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	mov [rsp+30h],rdi
+	test bl,bl
+	je near ptr 0000000181B07761h
+	cmp dword ptr [rcx+0E4h],0
+	mov edi,[rsi]
+	jne short 0000000181B076BEh
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov ecx,edi
+	call 0000000181B08880h
+	mov rcx,[183512278h]
+	movzx edi,al
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B076E2h
+	call 000000018037BED0h
+	xor edx,edx
+	movzx ecx,dil
+	call 0000000181AE2E10h
+	test al,al
+	jne short 0000000181B0774Ch
+	mov rcx,[183512DF8h]
+	mov edi,[rsi]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07708h
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov ecx,edi
+	call 0000000181B086B0h
+	mov rcx,[183512278h]
+	movzx ebx,al
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B0772Ch
+	call 000000018037BED0h
+	xor edx,edx
+	movzx ecx,bl
+	call 0000000181AE2E10h
+	test al,al
+	jne short 0000000181B07761h
+	mov rdi,[rsp+30h]
+	xor eax,eax
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rsi
+	ret
+	mov rdi,[rsp+30h]
+	mov eax,0FFFFFFFFh
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rsi
+	ret
+	mov rdi,[rsp+30h]
+	mov eax,1
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rsi
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07784h
+	call 000000018037BED0h
+	neg bl
+	mov rbx,[rsp+38h]
+	sbb eax,eax
+	add rsp,20h
+	pop rsi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -32
+	005 Compare [0x183750DA3], 0
+	006 Move rbx, rdx
+	007 Move rsi, rcx
+	008 JumpIfNotEqual {14}
+	009 LoadAddress rcx, [0x183512278]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183512DF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750DA3], 1
+	014 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Compare [rcx+228], 0
+	016 JumpIfNotEqual {19}
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	019 Compare [rsi], 0
+	020 JumpIfEqual {86}
+	021 Compare [rcx+228], 0
+	022 JumpIfNotEqual {25}
+	023 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	024 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	025 Move stack:0x30, rdi
+	026 Compare rbx, 0
+	027 JumpIfEqual {79}
+	028 Compare [rcx+228], 0
+	029 Move rdi, [rsi]
+	030 JumpIfNotEqual {32}
+	031 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	032 Move r8, 0
+	033 Move rdx, rbx
+	034 Move rcx, rdi
+	035 Call SqlInt16.op_LessThan, rcx, rdx, r8
+	036 Move rcx, typeof(System.Data.SqlTypes.SqlBoolean)
+	037 Move rdi, rax
+	038 Compare [rcx+228], 0
+	039 JumpIfNotEqual {41}
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Move rdx, 0
+	042 Move rcx, rdi
+	043 Call SqlBoolean.op_True, rcx, rdx
+	044 Compare rax, 0
+	045 JumpIfNotEqual {72}
+	046 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	047 Move rdi, [rsi]
+	048 Compare [rcx+228], 0
+	049 JumpIfNotEqual {51}
+	050 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	051 Move r8, 0
+	052 Move rdx, rbx
+	053 Move rcx, rdi
+	054 Call SqlInt16.op_GreaterThan, rcx, rdx, r8
+	055 Move rcx, typeof(System.Data.SqlTypes.SqlBoolean)
+	056 Move rbx, rax
+	057 Compare [rcx+228], 0
+	058 JumpIfNotEqual {60}
+	059 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	060 Move rdx, 0
+	061 Move rcx, rbx
+	062 Call SqlBoolean.op_True, rcx, rdx
+	063 Compare rax, 0
+	064 JumpIfNotEqual {79}
+	065 Move rdi, stack:0x30
+	066 Move rax, 0
+	067 Move rbx, stack:0x38
+	068 ShiftStack 32
+	069 Move rsi, stack:0x0
+	070 ShiftStack 8
+	071 Return rax
+	072 Move rdi, stack:0x30
+	073 Move rax, 0xFFFFFFFF
+	074 Move rbx, stack:0x38
+	075 ShiftStack 32
+	076 Move rsi, stack:0x0
+	077 ShiftStack 8
+	078 Return rax
+	079 Move rdi, stack:0x30
+	080 Move rax, 1
+	081 Move rbx, stack:0x38
+	082 ShiftStack 32
+	083 Move rsi, stack:0x0
+	084 ShiftStack 8
+	085 Return rax
+	086 Compare [rcx+228], 0
+	087 JumpIfNotEqual {89}
+	088 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	089 Neg rbx
+	090 Move rbx, stack:0x38
+	091 NotImplemented "sbb eax,eax"
+	092 ShiftStack 32
+	093 Move rsi, stack:0x0
+	094 ShiftStack 8
+	095 Return rax
+
+Method: System.Boolean Equals(System.Object value)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183750DA4h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181B077D8h
+	lea rcx,[183512278h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA4h],1
+	test rbx,rbx
+	je near ptr 0000000181B07981h
+	mov rdx,[183512DF8h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je near ptr 0000000181B07981h
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne near ptr 0000000181B0798Eh
+	call 000000018037AE90h
+	mov rcx,[183512DF8h]
+	mov ebx,[rax]
+	cmp dword ptr [rcx+0E4h],0
+	mov [rsp+20h],ebx
+	jne short 0000000181B07835h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test bl,bl
+	je near ptr 0000000181B07949h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07852h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	cmp byte ptr [rdi],0
+	je near ptr 0000000181B07949h
+	cmp dword ptr [rcx+0E4h],0
+	mov ebx,[rdi]
+	mov [rsp+24h],ebx
+	jne short 0000000181B07876h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	cmp byte ptr [183750D9Bh],0
+	jne short 0000000181B078A5h
+	lea rcx,[183512278h]
+	call 000000018037BB90h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov rcx,[183512DF8h]
+	mov byte ptr [183750D9Bh],1
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B078BAh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test bl,bl
+	je short 0000000181B078F9h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B078CCh
+	call 000000018037BED0h
+	movzx eax,word ptr [rsp+22h]
+	lea rcx,[rsp+48h]
+	cmp [rsp+26h],ax
+	mov byte ptr [rsp+48h],0
+	sete dl
+	xor r8d,r8d
+	call 0000000181AE2A70h
+	movzx eax,byte ptr [rsp+48h]
+	mov rcx,[183512278h]
+	jmp short 0000000181B07920h
+	mov rcx,[183512278h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07915h
+	call 000000018037BED0h
+	mov rcx,[183512278h]
+	mov rax,[rcx+0B8h]
+	movzx eax,byte ptr [rax+2]
+	mov [rsp+58h],al
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07932h
+	call 000000018037BED0h
+	xor edx,edx
+	lea rcx,[rsp+58h]
+	call 0000000181AE2B30h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B0795Eh
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	test bl,bl
+	jne short 0000000181B07981h
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07970h
+	call 000000018037BED0h
+	cmp byte ptr [rdi],0
+	sete al
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	mov rbx,[rsp+40h]
+	xor al,al
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183750DA4], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {14}
+	009 LoadAddress rcx, [0x183512278]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183512DF8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750DA4], 1
+	014 Compare rbx, 0
+	015 JumpIfEqual {113}
+	016 Move rdx, typeof(System.Data.SqlTypes.SqlInt16)
+	017 Move rax, 0
+	018 Compare [rbx], rdx
+	019 JumpIfNotEqual {21}
+	020 Move rax, rbx
+	021 Nop 
+	022 Compare rax, 0
+	023 JumpIfEqual {113}
+	024 Move rcx, [rbx]
+	025 Move rax, [rdx+64]
+	026 Compare [rcx+64], rax
+	027 Move rcx, rbx
+	028 JumpIfNotEqual {119}
+	029 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	030 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	031 Move rbx, [rax]
+	032 Compare [rcx+228], 0
+	033 Move stack:0x20, rbx
+	034 JumpIfNotEqual {37}
+	035 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	036 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	037 Compare rbx, 0
+	038 JumpIfEqual {97}
+	039 Compare [rcx+228], 0
+	040 JumpIfNotEqual {43}
+	041 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	042 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	043 Compare [rdi], 0
+	044 JumpIfEqual {97}
+	045 Compare [rcx+228], 0
+	046 Move rbx, [rdi]
+	047 Move stack:0x24, rbx
+	048 JumpIfNotEqual {51}
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	051 Compare [0x183750D9B], 0
+	052 JumpIfNotEqual {59}
+	053 LoadAddress rcx, [0x183512278]
+	054 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	055 LoadAddress rcx, [0x183512DF8]
+	056 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	057 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	058 Move [0x183750D9B], 1
+	059 Compare [rcx+228], 0
+	060 JumpIfNotEqual {63}
+	061 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	062 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	063 Compare rbx, 0
+	064 JumpIfEqual {78}
+	065 Compare [rcx+228], 0
+	066 JumpIfNotEqual {68}
+	067 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	068 Move rax, stack:0x22
+	069 LoadAddress rcx, stack:0x48
+	070 Compare stack:0x26, rax
+	071 Move stack:0x48, 0
+	072 NotImplemented "sete dl"
+	073 Move r8, 0
+	074 Call SqlBoolean..ctor, rcx, rdx
+	075 Move rax, stack:0x48
+	076 Move rcx, typeof(System.Data.SqlTypes.SqlBoolean)
+	077 Goto {85}
+	078 Move rcx, typeof(System.Data.SqlTypes.SqlBoolean)
+	079 Compare [rcx+228], 0
+	080 JumpIfNotEqual {83}
+	081 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	082 Move rcx, typeof(System.Data.SqlTypes.SqlBoolean)
+	083 Move rax, [rcx+184]
+	084 Move rax, [rax+2]
+	085 Move stack:0x58, rax
+	086 Compare [rcx+228], 0
+	087 JumpIfNotEqual {89}
+	088 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	089 Move rdx, 0
+	090 LoadAddress rcx, stack:0x58
+	091 Call SqlBoolean.get_Value, rcx, rdx
+	092 Move rbx, stack:0x40
+	093 ShiftStack 48
+	094 Move rdi, stack:0x0
+	095 ShiftStack 8
+	096 Return rax
+	097 Compare [rcx+228], 0
+	098 JumpIfNotEqual {101}
+	099 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	100 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	101 Compare rbx, 0
+	102 JumpIfNotEqual {113}
+	103 Compare [rcx+228], 0
+	104 JumpIfNotEqual {106}
+	105 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	106 Compare [rdi], 0
+	107 NotImplemented "sete al"
+	108 Move rbx, stack:0x40
+	109 ShiftStack 48
+	110 Move rdi, stack:0x0
+	111 ShiftStack 8
+	112 Return rax
+	113 Move rbx, stack:0x40
+	114 Move rax, 0
+	115 ShiftStack 48
+	116 Move rdi, stack:0x0
+	117 ShiftStack 8
+	118 Return rax
+	119 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183750DA5h],0
+	mov rbx,rcx
+	jne short 0000000181B079C5h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA5h],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B079E1h
+	call 000000018037BED0h
+	mov rcx,[183512DF8h]
+	cmp byte ptr [rbx],0
+	jne short 0000000181B079EEh
+	xor eax,eax
+	add rsp,20h
+	pop rbx
+	ret
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B079FCh
+	call 000000018037BED0h
+	cmp byte ptr [rbx],0
+	je short 0000000181B07A1Ch
+	movzx eax,word ptr [rbx+2]
+	lea rcx,[rsp+30h]
+	xor edx,edx
+	mov [rsp+30h],ax
+	call 00000001818027A0h
+	add rsp,20h
+	pop rbx
+	ret
+	lea rcx,[1835133B8h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181B0F080h
+	lea rcx,[18350F600h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183750DA5], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183512DF8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183750DA5], 1
+	010 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	011 Compare [rcx+228], 0
+	012 JumpIfNotEqual {15}
+	013 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	014 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Compare [rbx], 0
+	016 JumpIfNotEqual {22}
+	017 Move rax, 0
+	018 ShiftStack 32
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Return rax
+	022 Compare [rcx+228], 0
+	023 JumpIfNotEqual {25}
+	024 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	025 Compare [rbx], 0
+	026 JumpIfEqual {36}
+	027 Move rax, [rbx+2]
+	028 LoadAddress rcx, stack:0x30
+	029 Move rdx, 0
+	030 Move stack:0x30, rax
+	031 Call Int16.GetHashCode, rcx, rdx
+	032 ShiftStack 32
+	033 Move rbx, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+	036 LoadAddress rcx, [0x1835133B8]
+	037 Call 0x18037BBB0, rcx, rdx, r8, r9
+	038 Move rcx, rax
+	039 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	040 Move rdx, 0
+	041 Move rcx, rax
+	042 Move rbx, rax
+	043 Call SqlNullValueException..ctor, rcx, rdx
+	044 LoadAddress rcx, [0x18350F600]
+	045 Call 0x18037BBB0, rcx, rdx, r8, r9
+	046 Move rdx, rax
+	047 Move rcx, rbx
+	048 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Xml.Schema.XmlSchema System.Xml.Serialization.IXmlSerializable.GetSchema()
+
+Disassembly:
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Void System.Xml.Serialization.IXmlSerializable.ReadXml(System.Xml.XmlReader reader)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750DA6h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181B07BD4h
+	lea rcx,[18353BB58h]
+	call 000000018037BB90h
+	lea rcx,[1834F1FA0h]
+	call 000000018037BB90h
+	lea rcx,[183542578h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA6h],1
+	test rbx,rbx
+	je near ptr 0000000181B07CA9h
+	mov r9,[rbx]
+	mov rcx,rbx
+	mov r8,[183542578h]
+	mov rdx,[1834F1FA0h]
+	mov [rsp+30h],rsi
+	mov rax,[r9+2A8h]
+	mov r9,[r9+2B0h]
+	call rax
+	mov rsi,rax
+	test rax,rax
+	je short 0000000181B07C5Ah
+	mov rcx,[18353BB58h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07C23h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rsi
+	call 0000000181CC1360h
+	test al,al
+	je short 0000000181B07C5Ah
+	mov rdx,[rbx]
+	mov rcx,rbx
+	mov rax,[rdx+408h]
+	mov rdx,[rdx+410h]
+	call rax
+	mov rsi,[rsp+30h]
+	mov byte ptr [rdi],0
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rdx,[rbx]
+	mov rcx,rbx
+	mov rax,[rdx+408h]
+	mov rdx,[rdx+410h]
+	call rax
+	mov rcx,[18353BB58h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07C88h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000181CC1DF0h
+	mov rsi,[rsp+30h]
+	mov rbx,[rsp+38h]
+	mov [rdi+2],ax
+	mov byte ptr [rdi],1
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183750DA6], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x18353BB58]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x1834F1FA0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183542578]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183750DA6], 1
+	016 Compare rbx, 0
+	017 JumpIfEqual {71}
+	018 Move r9, [rbx]
+	019 Move rcx, rbx
+	020 Move r8, "http://www.w3.org/2001/XMLSchema-instance"
+	021 Move rdx, "nil"
+	022 Move stack:0x30, rsi
+	023 Move rax, [r9+680]
+	024 Move r9, [r9+688]
+	025 Call rax
+	026 Move rsi, rax
+	027 Compare rax, 0
+	028 JumpIfEqual {50}
+	029 Move rcx, typeof(System.Xml.XmlConvert)
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move rdx, 0
+	034 Move rcx, rsi
+	035 Call XmlConvert.ToBoolean, rcx, rdx
+	036 Compare rax, 0
+	037 JumpIfEqual {50}
+	038 Move rdx, [rbx]
+	039 Move rcx, rbx
+	040 Move rax, [rdx+1032]
+	041 Move rdx, [rdx+1040]
+	042 Call rax
+	043 Move rsi, stack:0x30
+	044 Move [rdi], 0
+	045 Move rbx, stack:0x38
+	046 ShiftStack 32
+	047 Move rdi, stack:0x0
+	048 ShiftStack 8
+	049 Return 
+	050 Move rdx, [rbx]
+	051 Move rcx, rbx
+	052 Move rax, [rdx+1032]
+	053 Move rdx, [rdx+1040]
+	054 Call rax
+	055 Move rcx, typeof(System.Xml.XmlConvert)
+	056 Move rbx, rax
+	057 Compare [rcx+228], 0
+	058 JumpIfNotEqual {60}
+	059 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	060 Move rdx, 0
+	061 Move rcx, rbx
+	062 Call XmlConvert.ToInt16, rcx, rdx
+	063 Move rsi, stack:0x30
+	064 Move rbx, stack:0x38
+	065 Move [rdi+2], rax
+	066 Move [rdi], 1
+	067 ShiftStack 32
+	068 Move rdi, stack:0x0
+	069 ShiftStack 8
+	070 Return 
+	071 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void System.Xml.Serialization.IXmlSerializable.WriteXml(System.Xml.XmlWriter writer)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183750DA7h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181B07D18h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	lea rcx,[18353BB58h]
+	call 000000018037BB90h
+	lea rcx,[1834F1FA0h]
+	call 000000018037BB90h
+	lea rcx,[1835532C8h]
+	call 000000018037BB90h
+	lea rcx,[183542578h]
+	call 000000018037BB90h
+	lea rcx,[183532FD8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA7h],1
+	mov rcx,[183512DF8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07D2Dh
+	call 000000018037BED0h
+	cmp byte ptr [rdi],0
+	je short 0000000181B07D7Eh
+	mov rcx,[18353BB58h]
+	movzx edi,word ptr [rdi+2]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181B07D4Bh
+	call 000000018037BED0h
+	xor edx,edx
+	movzx ecx,di
+	call 0000000181CC22E0h
+	test rbx,rbx
+	je short 0000000181B07DC0h
+	mov r8,[rbx]
+	mov rdx,rax
+	mov rcx,rbx
+	mov r9,[r8+278h]
+	mov r8,[r8+280h]
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	jmp r9
+	test rbx,rbx
+	je short 0000000181B07DC0h
+	mov rax,[183532FD8h]
+	mov rcx,rbx
+	mov r9,[183542578h]
+	mov r8,[1834F1FA0h]
+	mov rdx,[1835532C8h]
+	mov qword ptr [rsp+28h],0
+	mov [rsp+20h],rax
+	call 0000000181C905F0h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183750DA7], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {22}
+	009 LoadAddress rcx, [0x183512DF8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x18353BB58]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x1834F1FA0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x1835532C8]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x183542578]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 LoadAddress rcx, [0x183532FD8]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 Move [0x183750DA7], 1
+	022 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Compare [rdi], 0
+	027 JumpIfEqual {48}
+	028 Move rcx, typeof(System.Xml.XmlConvert)
+	029 Move rdi, [rdi+2]
+	030 Compare [rcx+228], 0
+	031 JumpIfNotEqual {33}
+	032 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	033 Move rdx, 0
+	034 Move rcx, rdi
+	035 Call XmlConvert.ToString, rcx, rdx
+	036 Compare rbx, 0
+	037 JumpIfEqual {63}
+	038 Move r8, [rbx]
+	039 Move rdx, rax
+	040 Move rcx, rbx
+	041 Move r9, [r8+632]
+	042 Move r8, [r8+640]
+	043 Move rbx, stack:0x40
+	044 ShiftStack 48
+	045 Move rdi, stack:0x0
+	046 ShiftStack 8
+	047 CallNoReturn r9
+	048 Compare rbx, 0
+	049 JumpIfEqual {63}
+	050 Move rax, "true"
+	051 Move rcx, rbx
+	052 Move r9, "http://www.w3.org/2001/XMLSchema-instance"
+	053 Move r8, "nil"
+	054 Move rdx, "xsi"
+	055 Move stack:0x28, 0
+	056 Move stack:0x20, rax
+	057 Call XmlWriter.WriteAttributeString, rcx, rdx, r8, r9, stack:0x0
+	058 Move rbx, stack:0x40
+	059 ShiftStack 48
+	060 Move rdi, stack:0x0
+	061 ShiftStack 8
+	062 Return 
+	063 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Xml.XmlQualifiedName GetXsdType(System.Xml.Schema.XmlSchemaSet schemaSet)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183750DA8h],0
+	jne short 0000000181B07A9Ah
+	lea rcx,[18353E198h]
+	call 000000018037BB90h
+	lea rcx,[183519CA0h]
+	call 000000018037BB90h
+	lea rcx,[1835423F8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA8h],1
+	mov rcx,[18353E198h]
+	call 000000018037BDE0h
+	mov r8,[1835423F8h]
+	xor r9d,r9d
+	mov rdx,[183519CA0h]
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181CC9FA0h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183750DA8], 0
+	005 JumpIfNotEqual {13}
+	006 LoadAddress rcx, [0x18353E198]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183519CA0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x1835423F8]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183750DA8], 1
+	013 Move rcx, typeof(System.Xml.XmlQualifiedName)
+	014 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	015 Move r8, "http://www.w3.org/2001/XMLSchema"
+	016 Move r9, 0
+	017 Move rdx, "short"
+	018 Move rcx, rax
+	019 Move rbx, rax
+	020 Call XmlQualifiedName..ctor, rcx, rdx, r8
+	021 Move rax, rbx
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183750DA9h],0
+	jne short 0000000181B080D0h
+	lea rcx,[183512DF8h]
+	call 000000018037BB90h
+	mov byte ptr [183750DA9h],1
+	mov rax,[183512DF8h]
+	mov r8d,0FFFF8000h
+	mov rcx,[rax+0B8h]
+	xor eax,eax
+	mov [rsp+38h],eax
+	mov byte ptr [rsp+38h],1
+	mov [rcx],r8d
+	mov rcx,[183512DF8h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx+4],eax
+	mov rcx,[183512DF8h]
+	mov rdx,[rcx+0B8h]
+	mov ecx,[rsp+38h]
+	mov [rsp+38h],eax
+	mov [rsp+3Ah],r8w
+	mov [rdx+8],ecx
+	mov rcx,[183512DF8h]
+	mov byte ptr [rsp+38h],1
+	mov rdx,[rcx+0B8h]
+	mov ecx,[rsp+38h]
+	mov [rsp+38h],eax
+	mov eax,7FFFh
+	mov [rsp+3Ah],ax
+	mov [rdx+0Ch],ecx
+	mov rax,[183512DF8h]
+	mov byte ptr [rsp+38h],1
+	mov rcx,[rax+0B8h]
+	mov eax,[rsp+38h]
+	mov [rcx+10h],eax
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183750DA9], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183512DF8]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183750DA9], 1
+	007 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	008 Move r8, 0xFFFF8000
+	009 Move rcx, [rax+184]
+	010 Move rax, 0
+	011 Move stack:0x38, rax
+	012 Move stack:0x38, 1
+	013 Move [rcx], r8
+	014 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	015 Move rdx, [rcx+184]
+	016 Move [rdx+4], rax
+	017 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	018 Move rdx, [rcx+184]
+	019 Move rcx, stack:0x38
+	020 Move stack:0x38, rax
+	021 Move stack:0x3A, r8
+	022 Move [rdx+8], rcx
+	023 Move rcx, typeof(System.Data.SqlTypes.SqlInt16)
+	024 Move stack:0x38, 1
+	025 Move rdx, [rcx+184]
+	026 Move rcx, stack:0x38
+	027 Move stack:0x38, rax
+	028 Move rax, 0x7FFF
+	029 Move stack:0x3A, rax
+	030 Move [rdx+12], rcx
+	031 Move rax, typeof(System.Data.SqlTypes.SqlInt16)
+	032 Move stack:0x38, 1
+	033 Move rcx, [rax+184]
+	034 Move rax, stack:0x38
+	035 Move [rcx+16], rax
+	036 ShiftStack 40
+	037 Return 
+

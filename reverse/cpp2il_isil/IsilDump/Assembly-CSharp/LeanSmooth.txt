@@ -1,0 +1,1728 @@
+Type: LeanSmooth
+
+Method: System.Single damp(System.Single current, System.Single target, ref System.Single currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1)
+
+Disassembly:
+	push rbx
+	sub rsp,70h
+	movss xmm5,dword ptr [rsp+0A8h]
+	mov rbx,r8
+	movaps [rsp+60h],xmm6
+	movaps xmm6,xmm1
+	movaps [rsp+50h],xmm7
+	xorps xmm7,xmm7
+	comiss xmm7,xmm5
+	movaps [rsp+40h],xmm8
+	movaps xmm8,xmm0
+	movaps [rsp+30h],xmm9
+	movaps xmm9,xmm3
+	movaps [rsp+20h],xmm10
+	jbe short 00000001806FC8ABh
+	xor ecx,ecx
+	call 00000001826354B0h
+	movaps xmm5,xmm0
+	movss xmm4,dword ptr [182A506D0h]
+	maxss xmm4,xmm9
+	movss xmm9,dword ptr [182A4FBC8h]
+	movss xmm10,dword ptr [182A4FBA4h]
+	divss xmm9,xmm4
+	movaps xmm2,xmm9
+	mulss xmm2,xmm5
+	movaps xmm0,xmm2
+	movaps xmm3,xmm2
+	mulss xmm3,dword ptr [182A50858h]
+	addss xmm0,xmm10
+	movaps xmm1,xmm2
+	mulss xmm1,dword ptr [182A50EDCh]
+	mulss xmm3,xmm2
+	mulss xmm1,xmm2
+	addss xmm3,xmm0
+	movss xmm0,dword ptr [rsp+0A0h]
+	comiss xmm0,xmm7
+	mulss xmm1,xmm2
+	movaps xmm2,xmm8
+	subss xmm2,xmm6
+	addss xmm3,xmm1
+	divss xmm10,xmm3
+	jbe short 00000001806FC944h
+	mulss xmm4,xmm0
+	movaps xmm0,xmm4
+	xorps xmm0,[182A500A0h]
+	comiss xmm0,xmm2
+	ja short 00000001806FC941h
+	comiss xmm2,xmm4
+	jbe short 00000001806FC944h
+	movaps xmm2,xmm4
+	jmp short 00000001806FC944h
+	movaps xmm2,xmm0
+	movss xmm1,dword ptr [rbx]
+	xor ecx,ecx
+	movaps xmm3,xmm2
+	mov eax,ecx
+	mulss xmm3,xmm9
+	addss xmm3,dword ptr [rbx]
+	mulss xmm3,xmm5
+	movaps xmm0,xmm3
+	addss xmm3,xmm2
+	mulss xmm0,xmm9
+	subss xmm1,xmm0
+	mulss xmm3,xmm10
+	movaps xmm0,xmm8
+	subss xmm0,xmm2
+	mulss xmm1,xmm10
+	addss xmm3,xmm0
+	movss dword ptr [rbx],xmm1
+	movaps xmm1,xmm6
+	subss xmm1,xmm8
+	comiss xmm1,xmm7
+	seta al
+	comiss xmm3,xmm6
+	seta cl
+	cmp eax,ecx
+	jne short 00000001806FC9B2h
+	movaps xmm1,xmm6
+	movaps xmm0,xmm6
+	subss xmm1,xmm6
+	divss xmm1,xmm5
+	movss dword ptr [rbx],xmm1
+	jmp short 00000001806FC9B5h
+	movaps xmm0,xmm3
+	movaps xmm6,[rsp+60h]
+	movaps xmm7,[rsp+50h]
+	movaps xmm8,[rsp+40h]
+	movaps xmm9,[rsp+30h]
+	movaps xmm10,[rsp+20h]
+	add rsp,70h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -112
+	004 Move xmm5, stack:0xA8
+	005 Move rbx, r8
+	006 Move stack:0x60, xmm6
+	007 Move xmm6, xmm1
+	008 Move stack:0x50, xmm7
+	009 Move xmm7, 0
+	010 Compare xmm7, xmm5
+	011 Move stack:0x40, xmm8
+	012 Move xmm8, xmm0
+	013 Move stack:0x30, xmm9
+	014 Move xmm9, xmm3
+	015 Move stack:0x20, xmm10
+	016 JumpIfLessOrEqual {20}
+	017 Move rcx, 0
+	018 Call Time.get_deltaTime, rcx
+	019 Move xmm5, xmm0
+	020 Move xmm4, [0x182A506D0]
+	021 Compare xmm4, xmm9
+	022 JumpIfGreaterOrEqual {24}
+	023 Move xmm4, xmm9
+	024 Nop 
+	025 Move xmm9, typeof(T)
+	026 Move xmm10, [0x182A4FBA4]
+	027 Divide xmm9, xmm9, xmm4
+	028 Move xmm2, xmm9
+	029 Multiply xmm2, xmm2, xmm5
+	030 Move xmm0, xmm2
+	031 Move xmm3, xmm2
+	032 Multiply xmm3, xmm3, [0x182A50858]
+	033 Add xmm0, xmm0, xmm10
+	034 Move xmm1, xmm2
+	035 Multiply xmm1, xmm1, [0x182A50EDC]
+	036 Multiply xmm3, xmm3, xmm2
+	037 Multiply xmm1, xmm1, xmm2
+	038 Add xmm3, xmm3, xmm0
+	039 Move xmm0, stack:0xA0
+	040 Compare xmm0, xmm7
+	041 Multiply xmm1, xmm1, xmm2
+	042 Move xmm2, xmm8
+	043 Subtract xmm2, xmm2, xmm6
+	044 Add xmm3, xmm3, xmm1
+	045 Divide xmm10, xmm10, xmm3
+	046 JumpIfLessOrEqual {57}
+	047 Multiply xmm4, xmm4, xmm0
+	048 Move xmm0, xmm4
+	049 Xor xmm0, xmm0, [0x182A500A0]
+	050 Compare xmm0, xmm2
+	051 JumpIfGreater {56}
+	052 Compare xmm2, xmm4
+	053 JumpIfLessOrEqual {57}
+	054 Move xmm2, xmm4
+	055 Goto {57}
+	056 Move xmm2, xmm0
+	057 Move xmm1, [rbx]
+	058 Move rcx, 0
+	059 Move xmm3, xmm2
+	060 Move rax, rcx
+	061 Multiply xmm3, xmm3, xmm9
+	062 Add xmm3, xmm3, [rbx]
+	063 Multiply xmm3, xmm3, xmm5
+	064 Move xmm0, xmm3
+	065 Add xmm3, xmm3, xmm2
+	066 Multiply xmm0, xmm0, xmm9
+	067 Subtract xmm1, xmm1, xmm0
+	068 Multiply xmm3, xmm3, xmm10
+	069 Move xmm0, xmm8
+	070 Subtract xmm0, xmm0, xmm2
+	071 Multiply xmm1, xmm1, xmm10
+	072 Add xmm3, xmm3, xmm0
+	073 Move [rbx], xmm1
+	074 Move xmm1, xmm6
+	075 Subtract xmm1, xmm1, xmm8
+	076 Compare xmm1, xmm7
+	077 NotImplemented "seta al"
+	078 Compare xmm3, xmm6
+	079 NotImplemented "seta cl"
+	080 Compare rax, rcx
+	081 JumpIfNotEqual {88}
+	082 Move xmm1, xmm6
+	083 Move xmm0, xmm6
+	084 Subtract xmm1, xmm1, xmm6
+	085 Divide xmm1, xmm1, xmm5
+	086 Move [rbx], xmm1
+	087 Goto {89}
+	088 Move xmm0, xmm3
+	089 Move xmm6, stack:0x60
+	090 Move xmm7, stack:0x50
+	091 Move xmm8, stack:0x40
+	092 Move xmm9, stack:0x30
+	093 Move xmm10, stack:0x20
+	094 ShiftStack 112
+	095 Move rbx, stack:0x0
+	096 ShiftStack 8
+	097 Return xmm0
+
+Method: UnityEngine.Vector3 damp(UnityEngine.Vector3 current, UnityEngine.Vector3 target, ref UnityEngine.Vector3 currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	push rdi
+	sub rsp,80h
+	movss xmm3,dword ptr [rsp+0B0h]
+	mov rdi,r8
+	movss xmm0,dword ptr [rdx]
+	mov r8,r9
+	movaps [rax-18h],xmm6
+	mov rbx,r9
+	movaps [rax-28h],xmm7
+	mov rsi,rdx
+	movss xmm1,dword ptr [rdi]
+	mov rbp,rcx
+	movaps [rax-38h],xmm9
+	movss xmm9,dword ptr [rsp+0B8h]
+	mov qword ptr [rax-58h],0
+	movaps [rax-48h],xmm10
+	movss xmm10,dword ptr [rsp+0C0h]
+	movss dword ptr [rax-60h],xmm10
+	movss dword ptr [rax-68h],xmm9
+	call 00000001806FC860h
+	movss xmm3,dword ptr [rsp+0B0h]
+	lea r8,[rbx+4]
+	movss xmm1,dword ptr [rdi+4]
+	movaps xmm7,xmm0
+	movss xmm0,dword ptr [rsi+4]
+	mov qword ptr [rsp+30h],0
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FC860h
+	movss xmm3,dword ptr [rsp+0B0h]
+	lea r8,[rbx+8]
+	movss xmm1,dword ptr [rdi+8]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rsi+8]
+	mov qword ptr [rsp+30h],0
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FC860h
+	lea r11,[rsp+80h]
+	movss dword ptr [rbp],xmm7
+	mov rbx,[r11+10h]
+	mov rax,rbp
+	mov rsi,[r11+20h]
+	movaps xmm9,[r11-30h]
+	movaps xmm10,[r11-40h]
+	movaps xmm7,[rsp+60h]
+	movss dword ptr [rbp+4],xmm6
+	movaps xmm6,[rsp+70h]
+	movss dword ptr [rbp+8],xmm0
+	mov rbp,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 ShiftStack -8
+	006 Move stack:0x0, rdi
+	007 ShiftStack -128
+	008 Move xmm3, stack:0xB0
+	009 Move rdi, r8
+	010 Move xmm0, [rdx]
+	011 Move r8, r9
+	012 Move [rax-24], xmm6
+	013 Move rbx, r9
+	014 Move [rax-40], xmm7
+	015 Move rsi, rdx
+	016 Move xmm1, [rdi]
+	017 Move rbp, rcx
+	018 Move [rax-56], xmm9
+	019 Move xmm9, stack:0xB8
+	020 Move [rax-88], 0
+	021 Move [rax-72], xmm10
+	022 Move xmm10, stack:0xC0
+	023 Move [rax-96], xmm10
+	024 Move [rax-104], xmm9
+	025 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	026 Move xmm3, stack:0xB0
+	027 LoadAddress r8, [rbx+4]
+	028 Move xmm1, [rdi+4]
+	029 Move xmm7, xmm0
+	030 Move xmm0, [rsi+4]
+	031 Move stack:0x30, 0
+	032 Move stack:0x28, xmm10
+	033 Move stack:0x20, xmm9
+	034 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	035 Move xmm3, stack:0xB0
+	036 LoadAddress r8, [rbx+8]
+	037 Move xmm1, [rdi+8]
+	038 Move xmm6, xmm0
+	039 Move xmm0, [rsi+8]
+	040 Move stack:0x30, 0
+	041 Move stack:0x28, xmm10
+	042 Move stack:0x20, xmm9
+	043 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	044 LoadAddress r11, stack:0x80
+	045 Move [rbp], xmm7
+	046 Move rbx, [r11+16]
+	047 Move rax, rbp
+	048 Move rsi, [r11+32]
+	049 Move xmm9, [r11-48]
+	050 Move xmm10, [r11-64]
+	051 Move xmm7, stack:0x60
+	052 Move [rbp+4], xmm6
+	053 Move xmm6, stack:0x70
+	054 Move [rbp+8], xmm0
+	055 Move rbp, [r11+24]
+	056 Move rsp, r11
+	057 Move rdi, stack:0x0
+	058 ShiftStack 8
+	059 Return rax
+
+Method: UnityEngine.Color damp(UnityEngine.Color current, UnityEngine.Color target, ref UnityEngine.Color currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	mov [rax+20h],rdi
+	push r14
+	sub rsp,0A0h
+	movss xmm0,dword ptr [rdx]
+	mov rdi,r8
+	movaps [rax-18h],xmm6
+	xor r14d,r14d
+	movaps [rax-28h],xmm7
+	mov r8,r9
+	movaps [rax-38h],xmm8
+	mov rbx,r9
+	movss xmm1,dword ptr [rdi]
+	mov rsi,rdx
+	movaps [rax-48h],xmm9
+	mov rbp,rcx
+	movss xmm9,dword ptr [rsp+0D0h]
+	movaps [rax-58h],xmm10
+	movaps xmm3,xmm9
+	movss xmm10,dword ptr [rsp+0D8h]
+	mov [rax-78h],r14
+	movaps [rax-68h],xmm11
+	movss xmm11,dword ptr [rsp+0E0h]
+	movss dword ptr [rax-80h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC860h
+	movss xmm1,dword ptr [rdi+4]
+	lea r8,[rbx+4]
+	movaps xmm8,xmm0
+	mov [rsp+30h],r14
+	movss xmm0,dword ptr [rsi+4]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC860h
+	movss xmm1,dword ptr [rdi+8]
+	lea r8,[rbx+8]
+	movaps xmm7,xmm0
+	mov [rsp+30h],r14
+	movss xmm0,dword ptr [rsi+8]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC860h
+	movss xmm1,dword ptr [rdi+0Ch]
+	lea r8,[rbx+0Ch]
+	movaps xmm6,xmm0
+	mov [rsp+30h],r14
+	movss xmm0,dword ptr [rsi+0Ch]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC860h
+	lea r11,[rsp+0A0h]
+	movss dword ptr [rbp],xmm8
+	mov rbx,[r11+10h]
+	mov rax,rbp
+	mov rsi,[r11+20h]
+	mov rdi,[r11+28h]
+	movaps xmm8,[r11-30h]
+	movaps xmm9,[r11-40h]
+	movaps xmm10,[r11-50h]
+	movaps xmm11,[r11-60h]
+	movss dword ptr [rbp+4],xmm7
+	movaps xmm7,[r11-20h]
+	movss dword ptr [rbp+8],xmm6
+	movaps xmm6,[r11-10h]
+	movss dword ptr [rbp+0Ch],xmm0
+	mov rbp,[r11+18h]
+	mov rsp,r11
+	pop r14
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 Move [rax+32], rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r14
+	008 ShiftStack -160
+	009 Move xmm0, [rdx]
+	010 Move rdi, r8
+	011 Move [rax-24], xmm6
+	012 Move r14, 0
+	013 Move [rax-40], xmm7
+	014 Move r8, r9
+	015 Move [rax-56], xmm8
+	016 Move rbx, r9
+	017 Move xmm1, [rdi]
+	018 Move rsi, rdx
+	019 Move [rax-72], xmm9
+	020 Move rbp, rcx
+	021 Move xmm9, stack:0xD0
+	022 Move [rax-88], xmm10
+	023 Move xmm3, xmm9
+	024 Move xmm10, stack:0xD8
+	025 Move [rax-120], r14
+	026 Move [rax-104], xmm11
+	027 Move xmm11, stack:0xE0
+	028 Move [rax-128], xmm11
+	029 Move stack:0x20, xmm10
+	030 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	031 Move xmm1, [rdi+4]
+	032 LoadAddress r8, [rbx+4]
+	033 Move xmm8, xmm0
+	034 Move stack:0x30, r14
+	035 Move xmm0, [rsi+4]
+	036 Move xmm3, xmm9
+	037 Move stack:0x28, xmm11
+	038 Move stack:0x20, xmm10
+	039 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	040 Move xmm1, [rdi+8]
+	041 LoadAddress r8, [rbx+8]
+	042 Move xmm7, xmm0
+	043 Move stack:0x30, r14
+	044 Move xmm0, [rsi+8]
+	045 Move xmm3, xmm9
+	046 Move stack:0x28, xmm11
+	047 Move stack:0x20, xmm10
+	048 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	049 Move xmm1, [rdi+12]
+	050 LoadAddress r8, [rbx+12]
+	051 Move xmm6, xmm0
+	052 Move stack:0x30, r14
+	053 Move xmm0, [rsi+12]
+	054 Move xmm3, xmm9
+	055 Move stack:0x28, xmm11
+	056 Move stack:0x20, xmm10
+	057 Call LeanSmooth.damp, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10
+	058 LoadAddress r11, stack:0xA0
+	059 Move [rbp], xmm8
+	060 Move rbx, [r11+16]
+	061 Move rax, rbp
+	062 Move rsi, [r11+32]
+	063 Move rdi, [r11+40]
+	064 Move xmm8, [r11-48]
+	065 Move xmm9, [r11-64]
+	066 Move xmm10, [r11-80]
+	067 Move xmm11, [r11-96]
+	068 Move [rbp+4], xmm7
+	069 Move xmm7, [r11-32]
+	070 Move [rbp+8], xmm6
+	071 Move xmm6, [r11-16]
+	072 Move [rbp+12], xmm0
+	073 Move rbp, [r11+24]
+	074 Move rsp, r11
+	075 Move r14, stack:0x0
+	076 ShiftStack 8
+	077 Return rax
+
+Method: System.Single spring(System.Single current, System.Single target, ref System.Single currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1, System.Single friction = 2, System.Single accelRate = 0.5)
+
+Disassembly:
+	push rbx
+	sub rsp,60h
+	movss xmm4,dword ptr [rsp+98h]
+	mov rbx,r8
+	movaps [rsp+50h],xmm6
+	movaps xmm6,xmm0
+	movaps [rsp+40h],xmm7
+	xorps xmm7,xmm7
+	comiss xmm7,xmm4
+	movaps [rsp+30h],xmm8
+	movaps xmm8,xmm1
+	movaps [rsp+20h],xmm9
+	movaps xmm9,xmm3
+	jbe short 00000001806FCCB5h
+	xor ecx,ecx
+	call 00000001826354B0h
+	movaps xmm4,xmm0
+	movss xmm1,dword ptr [182A4FBA4h]
+	subss xmm8,xmm6
+	movss xmm3,dword ptr [rsp+90h]
+	movaps xmm2,xmm4
+	comiss xmm3,xmm7
+	mulss xmm4,dword ptr [rsp+0A0h]
+	movaps xmm0,xmm1
+	divss xmm2,xmm9
+	subss xmm0,xmm4
+	mulss xmm2,dword ptr [rsp+0A8h]
+	mulss xmm2,xmm8
+	addss xmm2,dword ptr [rbx]
+	mulss xmm2,xmm0
+	movss dword ptr [rbx],xmm2
+	jbe short 00000001806FCD26h
+	movaps xmm0,xmm2
+	andps xmm0,[182A4FE10h]
+	comiss xmm0,xmm3
+	jbe short 00000001806FCD26h
+	comiss xmm2,xmm7
+	jae short 00000001806FCD1Eh
+	movss xmm1,dword ptr [182A4FBA8h]
+	mulss xmm1,xmm3
+	movss dword ptr [rbx],xmm1
+	addss xmm6,dword ptr [rbx]
+	movaps xmm7,[rsp+40h]
+	movaps xmm8,[rsp+30h]
+	movaps xmm9,[rsp+20h]
+	movaps xmm0,xmm6
+	movaps xmm6,[rsp+50h]
+	add rsp,60h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -96
+	004 Move xmm4, stack:0x98
+	005 Move rbx, r8
+	006 Move stack:0x50, xmm6
+	007 Move xmm6, xmm0
+	008 Move stack:0x40, xmm7
+	009 Move xmm7, 0
+	010 Compare xmm7, xmm4
+	011 Move stack:0x30, xmm8
+	012 Move xmm8, xmm1
+	013 Move stack:0x20, xmm9
+	014 Move xmm9, xmm3
+	015 JumpIfLessOrEqual {19}
+	016 Move rcx, 0
+	017 Call Time.get_deltaTime, rcx
+	018 Move xmm4, xmm0
+	019 Move xmm1, [0x182A4FBA4]
+	020 Subtract xmm8, xmm8, xmm6
+	021 Move xmm3, stack:0x90
+	022 Move xmm2, xmm4
+	023 Compare xmm3, xmm7
+	024 Multiply xmm4, xmm4, stack:0xA0
+	025 Move xmm0, xmm1
+	026 Divide xmm2, xmm2, xmm9
+	027 Subtract xmm0, xmm0, xmm4
+	028 Multiply xmm2, xmm2, stack:0xA8
+	029 Multiply xmm2, xmm2, xmm8
+	030 Add xmm2, xmm2, [rbx]
+	031 Multiply xmm2, xmm2, xmm0
+	032 Move [rbx], xmm2
+	033 JumpIfLessOrEqual {43}
+	034 Move xmm0, xmm2
+	035 And xmm0, xmm0, [0x182A4FE10]
+	036 Compare xmm0, xmm3
+	037 JumpIfLessOrEqual {43}
+	038 Compare xmm2, xmm7
+	039 JumpIfGreaterOrEqual {41}
+	040 Move xmm1, [0x182A4FBA8]
+	041 Multiply xmm1, xmm1, xmm3
+	042 Move [rbx], xmm1
+	043 Add xmm6, xmm6, [rbx]
+	044 Move xmm7, stack:0x40
+	045 Move xmm8, stack:0x30
+	046 Move xmm9, stack:0x20
+	047 Move xmm0, xmm6
+	048 Move xmm6, stack:0x50
+	049 ShiftStack 96
+	050 Move rbx, stack:0x0
+	051 ShiftStack 8
+	052 Return xmm0
+
+Method: UnityEngine.Vector3 spring(UnityEngine.Vector3 current, UnityEngine.Vector3 target, ref UnityEngine.Vector3 currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1, System.Single friction = 2, System.Single accelRate = 0.5)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	push rdi
+	sub rsp,0B0h
+	movss xmm3,dword ptr [rsp+0E0h]
+	mov rdi,r8
+	movss xmm0,dword ptr [rdx]
+	mov r8,r9
+	movaps [rax-18h],xmm6
+	mov rbx,r9
+	movaps [rax-28h],xmm7
+	mov rsi,rdx
+	movss xmm1,dword ptr [rdi]
+	mov rbp,rcx
+	movaps [rax-38h],xmm9
+	movss xmm9,dword ptr [rsp+0E8h]
+	mov qword ptr [rax-78h],0
+	movaps [rax-48h],xmm10
+	movss xmm10,dword ptr [rsp+0F0h]
+	movaps [rax-58h],xmm11
+	movss xmm11,dword ptr [rsp+0F8h]
+	movaps [rax-68h],xmm12
+	movss xmm12,dword ptr [rsp+100h]
+	movss dword ptr [rax-80h],xmm12
+	movss dword ptr [rsp+30h],xmm11
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FCC70h
+	movss xmm3,dword ptr [rsp+0E0h]
+	lea r8,[rbx+4]
+	movss xmm1,dword ptr [rdi+4]
+	movaps xmm7,xmm0
+	movss xmm0,dword ptr [rsi+4]
+	mov qword ptr [rsp+40h],0
+	movss dword ptr [rsp+38h],xmm12
+	movss dword ptr [rsp+30h],xmm11
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FCC70h
+	movss xmm3,dword ptr [rsp+0E0h]
+	lea r8,[rbx+8]
+	movss xmm1,dword ptr [rdi+8]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rsi+8]
+	mov qword ptr [rsp+40h],0
+	movss dword ptr [rsp+38h],xmm12
+	movss dword ptr [rsp+30h],xmm11
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FCC70h
+	lea r11,[rsp+0B0h]
+	movss dword ptr [rbp],xmm7
+	mov rbx,[r11+10h]
+	mov rax,rbp
+	mov rsi,[r11+20h]
+	movaps xmm7,[r11-20h]
+	movaps xmm9,[r11-30h]
+	movaps xmm10,[r11-40h]
+	movaps xmm11,[r11-50h]
+	movaps xmm12,[r11-60h]
+	movss dword ptr [rbp+4],xmm6
+	movaps xmm6,[r11-10h]
+	movss dword ptr [rbp+8],xmm0
+	mov rbp,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 ShiftStack -8
+	006 Move stack:0x0, rdi
+	007 ShiftStack -176
+	008 Move xmm3, stack:0xE0
+	009 Move rdi, r8
+	010 Move xmm0, [rdx]
+	011 Move r8, r9
+	012 Move [rax-24], xmm6
+	013 Move rbx, r9
+	014 Move [rax-40], xmm7
+	015 Move rsi, rdx
+	016 Move xmm1, [rdi]
+	017 Move rbp, rcx
+	018 Move [rax-56], xmm9
+	019 Move xmm9, stack:0xE8
+	020 Move [rax-120], 0
+	021 Move [rax-72], xmm10
+	022 Move xmm10, stack:0xF0
+	023 Move [rax-88], xmm11
+	024 Move xmm11, stack:0xF8
+	025 Move [rax-104], xmm12
+	026 Move xmm12, stack:0x100
+	027 Move [rax-128], xmm12
+	028 Move stack:0x30, xmm11
+	029 Move stack:0x28, xmm10
+	030 Move stack:0x20, xmm9
+	031 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	032 Move xmm3, stack:0xE0
+	033 LoadAddress r8, [rbx+4]
+	034 Move xmm1, [rdi+4]
+	035 Move xmm7, xmm0
+	036 Move xmm0, [rsi+4]
+	037 Move stack:0x40, 0
+	038 Move stack:0x38, xmm12
+	039 Move stack:0x30, xmm11
+	040 Move stack:0x28, xmm10
+	041 Move stack:0x20, xmm9
+	042 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	043 Move xmm3, stack:0xE0
+	044 LoadAddress r8, [rbx+8]
+	045 Move xmm1, [rdi+8]
+	046 Move xmm6, xmm0
+	047 Move xmm0, [rsi+8]
+	048 Move stack:0x40, 0
+	049 Move stack:0x38, xmm12
+	050 Move stack:0x30, xmm11
+	051 Move stack:0x28, xmm10
+	052 Move stack:0x20, xmm9
+	053 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	054 LoadAddress r11, stack:0xB0
+	055 Move [rbp], xmm7
+	056 Move rbx, [r11+16]
+	057 Move rax, rbp
+	058 Move rsi, [r11+32]
+	059 Move xmm7, [r11-32]
+	060 Move xmm9, [r11-48]
+	061 Move xmm10, [r11-64]
+	062 Move xmm11, [r11-80]
+	063 Move xmm12, [r11-96]
+	064 Move [rbp+4], xmm6
+	065 Move xmm6, [r11-16]
+	066 Move [rbp+8], xmm0
+	067 Move rbp, [r11+24]
+	068 Move rsp, r11
+	069 Move rdi, stack:0x0
+	070 ShiftStack 8
+	071 Return rax
+
+Method: UnityEngine.Color spring(UnityEngine.Color current, UnityEngine.Color target, ref UnityEngine.Color currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1, System.Single friction = 2, System.Single accelRate = 0.5)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	mov [rax+20h],rdi
+	push r14
+	sub rsp,0D0h
+	movss xmm0,dword ptr [rdx]
+	mov rdi,r8
+	movaps [rax-18h],xmm6
+	xor r14d,r14d
+	movaps [rax-28h],xmm7
+	mov r8,r9
+	movaps [rax-38h],xmm8
+	mov rbx,r9
+	movss xmm1,dword ptr [rdi]
+	mov rsi,rdx
+	movaps [rax-48h],xmm9
+	mov rbp,rcx
+	movss xmm9,dword ptr [rsp+100h]
+	movaps [rax-58h],xmm10
+	movaps xmm3,xmm9
+	movss xmm10,dword ptr [rsp+108h]
+	movaps [rax-68h],xmm11
+	movss xmm11,dword ptr [rsp+110h]
+	mov [rsp+40h],r14
+	movaps [rax-78h],xmm12
+	movss xmm12,dword ptr [rsp+118h]
+	movaps [rsp+50h],xmm13
+	movss xmm13,dword ptr [rsp+120h]
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FCC70h
+	movss xmm1,dword ptr [rdi+4]
+	lea r8,[rbx+4]
+	mov [rsp+40h],r14
+	movaps xmm8,xmm0
+	movss xmm0,dword ptr [rsi+4]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FCC70h
+	movss xmm1,dword ptr [rdi+8]
+	lea r8,[rbx+8]
+	mov [rsp+40h],r14
+	movaps xmm7,xmm0
+	movss xmm0,dword ptr [rsi+8]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FCC70h
+	movss xmm1,dword ptr [rdi+0Ch]
+	lea r8,[rbx+0Ch]
+	mov [rsp+40h],r14
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rsi+0Ch]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FCC70h
+	lea r11,[rsp+0D0h]
+	movss dword ptr [rbp],xmm8
+	mov rbx,[r11+10h]
+	mov rax,rbp
+	mov rsi,[r11+20h]
+	mov rdi,[r11+28h]
+	movaps xmm8,[r11-30h]
+	movaps xmm9,[r11-40h]
+	movaps xmm10,[r11-50h]
+	movaps xmm11,[r11-60h]
+	movaps xmm12,[r11-70h]
+	movaps xmm13,[r11-80h]
+	movss dword ptr [rbp+4],xmm7
+	movaps xmm7,[r11-20h]
+	movss dword ptr [rbp+8],xmm6
+	movaps xmm6,[r11-10h]
+	movss dword ptr [rbp+0Ch],xmm0
+	mov rbp,[r11+18h]
+	mov rsp,r11
+	pop r14
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 Move [rax+32], rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r14
+	008 ShiftStack -208
+	009 Move xmm0, [rdx]
+	010 Move rdi, r8
+	011 Move [rax-24], xmm6
+	012 Move r14, 0
+	013 Move [rax-40], xmm7
+	014 Move r8, r9
+	015 Move [rax-56], xmm8
+	016 Move rbx, r9
+	017 Move xmm1, [rdi]
+	018 Move rsi, rdx
+	019 Move [rax-72], xmm9
+	020 Move rbp, rcx
+	021 Move xmm9, stack:0x100
+	022 Move [rax-88], xmm10
+	023 Move xmm3, xmm9
+	024 Move xmm10, stack:0x108
+	025 Move [rax-104], xmm11
+	026 Move xmm11, stack:0x110
+	027 Move stack:0x40, r14
+	028 Move [rax-120], xmm12
+	029 Move xmm12, stack:0x118
+	030 Move stack:0x50, xmm13
+	031 Move xmm13, stack:0x120
+	032 Move stack:0x38, xmm13
+	033 Move stack:0x30, xmm12
+	034 Move stack:0x28, xmm11
+	035 Move stack:0x20, xmm10
+	036 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	037 Move xmm1, [rdi+4]
+	038 LoadAddress r8, [rbx+4]
+	039 Move stack:0x40, r14
+	040 Move xmm8, xmm0
+	041 Move xmm0, [rsi+4]
+	042 Move xmm3, xmm9
+	043 Move stack:0x38, xmm13
+	044 Move stack:0x30, xmm12
+	045 Move stack:0x28, xmm11
+	046 Move stack:0x20, xmm10
+	047 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	048 Move xmm1, [rdi+8]
+	049 LoadAddress r8, [rbx+8]
+	050 Move stack:0x40, r14
+	051 Move xmm7, xmm0
+	052 Move xmm0, [rsi+8]
+	053 Move xmm3, xmm9
+	054 Move stack:0x38, xmm13
+	055 Move stack:0x30, xmm12
+	056 Move stack:0x28, xmm11
+	057 Move stack:0x20, xmm10
+	058 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	059 Move xmm1, [rdi+12]
+	060 LoadAddress r8, [rbx+12]
+	061 Move stack:0x40, r14
+	062 Move xmm6, xmm0
+	063 Move xmm0, [rsi+12]
+	064 Move xmm3, xmm9
+	065 Move stack:0x38, xmm13
+	066 Move stack:0x30, xmm12
+	067 Move stack:0x28, xmm11
+	068 Move stack:0x20, xmm10
+	069 Call LeanSmooth.spring, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20
+	070 LoadAddress r11, stack:0xD0
+	071 Move [rbp], xmm8
+	072 Move rbx, [r11+16]
+	073 Move rax, rbp
+	074 Move rsi, [r11+32]
+	075 Move rdi, [r11+40]
+	076 Move xmm8, [r11-48]
+	077 Move xmm9, [r11-64]
+	078 Move xmm10, [r11-80]
+	079 Move xmm11, [r11-96]
+	080 Move xmm12, [r11-112]
+	081 Move xmm13, [r11-128]
+	082 Move [rbp+4], xmm7
+	083 Move xmm7, [r11-32]
+	084 Move [rbp+8], xmm6
+	085 Move xmm6, [r11-16]
+	086 Move [rbp+12], xmm0
+	087 Move rbp, [r11+24]
+	088 Move rsp, r11
+	089 Move r14, stack:0x0
+	090 ShiftStack 8
+	091 Return rax
+
+Method: System.Single linear(System.Single current, System.Single target, System.Single moveSpeed, System.Single deltaTime = -1)
+
+Disassembly:
+	sub rsp,68h
+	movaps [rsp+50h],xmm6
+	movaps xmm6,xmm2
+	movaps [rsp+40h],xmm7
+	movaps xmm7,xmm1
+	movaps [rsp+30h],xmm8
+	movaps xmm8,xmm0
+	movaps [rsp+20h],xmm9
+	xorps xmm9,xmm9
+	comiss xmm9,xmm3
+	jbe short 00000001806FCAF8h
+	xor ecx,ecx
+	call 00000001826354B0h
+	movaps xmm3,xmm0
+	comiss xmm7,xmm8
+	mulss xmm6,xmm3
+	jbe short 00000001806FCB14h
+	addss xmm6,xmm8
+	movaps xmm0,xmm6
+	subss xmm0,xmm7
+	comiss xmm0,xmm9
+	jmp short 00000001806FCB2Ch
+	mulss xmm6,dword ptr [182A4FBA8h]
+	addss xmm6,xmm8
+	movaps xmm1,xmm6
+	subss xmm1,xmm7
+	comiss xmm9,xmm1
+	ja short 00000001806FCB33h
+	movaps xmm0,xmm6
+	jmp short 00000001806FCB36h
+	movaps xmm0,xmm7
+	movaps xmm6,[rsp+50h]
+	movaps xmm7,[rsp+40h]
+	movaps xmm8,[rsp+30h]
+	movaps xmm9,[rsp+20h]
+	add rsp,68h
+	ret
+
+ISIL:
+	001 ShiftStack -104
+	002 Move stack:0x50, xmm6
+	003 Move xmm6, xmm2
+	004 Move stack:0x40, xmm7
+	005 Move xmm7, xmm1
+	006 Move stack:0x30, xmm8
+	007 Move xmm8, xmm0
+	008 Move stack:0x20, xmm9
+	009 Move xmm9, 0
+	010 Compare xmm9, xmm3
+	011 JumpIfLessOrEqual {15}
+	012 Move rcx, 0
+	013 Call Time.get_deltaTime, rcx
+	014 Move xmm3, xmm0
+	015 Compare xmm7, xmm8
+	016 Multiply xmm6, xmm6, xmm3
+	017 JumpIfLessOrEqual {23}
+	018 Add xmm6, xmm6, xmm8
+	019 Move xmm0, xmm6
+	020 Subtract xmm0, xmm0, xmm7
+	021 Compare xmm0, xmm9
+	022 Goto {28}
+	023 Multiply xmm6, xmm6, [0x182A4FBA8]
+	024 Add xmm6, xmm6, xmm8
+	025 Move xmm1, xmm6
+	026 Subtract xmm1, xmm1, xmm7
+	027 Compare xmm9, xmm1
+	028 JumpIfGreater {31}
+	029 Move xmm0, xmm6
+	030 Goto {32}
+	031 Move xmm0, xmm7
+	032 Move xmm6, stack:0x50
+	033 Move xmm7, stack:0x40
+	034 Move xmm8, stack:0x30
+	035 Move xmm9, stack:0x20
+	036 ShiftStack 104
+	037 Return xmm0
+
+Method: UnityEngine.Vector3 linear(UnityEngine.Vector3 current, UnityEngine.Vector3 target, System.Single moveSpeed, System.Single deltaTime = -1)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,60h
+	movss xmm1,dword ptr [r8]
+	mov rbx,r8
+	movss xmm0,dword ptr [rdx]
+	mov rdi,rdx
+	movaps [rsp+50h],xmm6
+	mov rsi,rcx
+	movaps [rsp+40h],xmm8
+	movaps [rsp+30h],xmm9
+	movaps xmm9,xmm3
+	movss xmm3,dword ptr [rsp+90h]
+	movaps xmm2,xmm9
+	mov qword ptr [rsp+20h],0
+	call 00000001806FCAC0h
+	movss xmm3,dword ptr [rsp+90h]
+	movaps xmm8,xmm0
+	movss xmm0,dword ptr [rdi+4]
+	movaps xmm2,xmm9
+	movss xmm1,dword ptr [rbx+4]
+	mov qword ptr [rsp+20h],0
+	call 00000001806FCAC0h
+	movss xmm3,dword ptr [rsp+90h]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rdi+8]
+	movaps xmm2,xmm9
+	movss xmm1,dword ptr [rbx+8]
+	mov qword ptr [rsp+20h],0
+	call 00000001806FCAC0h
+	mov rbx,[rsp+70h]
+	mov rax,rsi
+	movaps xmm9,[rsp+30h]
+	movss dword ptr [rsi],xmm8
+	movaps xmm8,[rsp+40h]
+	movss dword ptr [rsi+4],xmm6
+	movaps xmm6,[rsp+50h]
+	movss dword ptr [rsi+8],xmm0
+	mov rsi,[rsp+78h]
+	add rsp,60h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -96
+	006 Move xmm1, [r8]
+	007 Move rbx, r8
+	008 Move xmm0, [rdx]
+	009 Move rdi, rdx
+	010 Move stack:0x50, xmm6
+	011 Move rsi, rcx
+	012 Move stack:0x40, xmm8
+	013 Move stack:0x30, xmm9
+	014 Move xmm9, xmm3
+	015 Move xmm3, stack:0x90
+	016 Move xmm2, xmm9
+	017 Move stack:0x20, 0
+	018 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	019 Move xmm3, stack:0x90
+	020 Move xmm8, xmm0
+	021 Move xmm0, [rdi+4]
+	022 Move xmm2, xmm9
+	023 Move xmm1, [rbx+4]
+	024 Move stack:0x20, 0
+	025 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	026 Move xmm3, stack:0x90
+	027 Move xmm6, xmm0
+	028 Move xmm0, [rdi+8]
+	029 Move xmm2, xmm9
+	030 Move xmm1, [rbx+8]
+	031 Move stack:0x20, 0
+	032 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	033 Move rbx, stack:0x70
+	034 Move rax, rsi
+	035 Move xmm9, stack:0x30
+	036 Move [rsi], xmm8
+	037 Move xmm8, stack:0x40
+	038 Move [rsi+4], xmm6
+	039 Move xmm6, stack:0x50
+	040 Move [rsi+8], xmm0
+	041 Move rsi, stack:0x78
+	042 ShiftStack 96
+	043 Move rdi, stack:0x0
+	044 ShiftStack 8
+	045 Return rax
+
+Method: UnityEngine.Color linear(UnityEngine.Color current, UnityEngine.Color target, System.Single moveSpeed)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	push rdi
+	sub rsp,80h
+	movss xmm1,dword ptr [r8]
+	xor ebp,ebp
+	movss xmm0,dword ptr [rdx]
+	mov rbx,r8
+	movaps [rax-18h],xmm6
+	mov rdi,rdx
+	movaps [rax-28h],xmm7
+	mov rsi,rcx
+	movaps [rax-38h],xmm8
+	movss xmm8,dword ptr [182A4FBA8h]
+	movaps [rax-48h],xmm9
+	movaps [rax-58h],xmm10
+	movaps xmm10,xmm3
+	movaps xmm2,xmm10
+	mov [rax-68h],rbp
+	movaps xmm3,xmm8
+	call 00000001806FCAC0h
+	movss xmm1,dword ptr [rbx+4]
+	movaps xmm9,xmm0
+	movss xmm0,dword ptr [rdi+4]
+	movaps xmm3,xmm8
+	movaps xmm2,xmm10
+	mov [rsp+20h],rbp
+	call 00000001806FCAC0h
+	movss xmm1,dword ptr [rbx+8]
+	movaps xmm7,xmm0
+	movss xmm0,dword ptr [rdi+8]
+	movaps xmm3,xmm8
+	movaps xmm2,xmm10
+	mov [rsp+20h],rbp
+	call 00000001806FCAC0h
+	movss xmm1,dword ptr [rbx+0Ch]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rdi+0Ch]
+	movaps xmm3,xmm8
+	movaps xmm2,xmm10
+	mov [rsp+20h],rbp
+	call 00000001806FCAC0h
+	lea r11,[rsp+80h]
+	movss dword ptr [rsi],xmm9
+	mov rbx,[r11+10h]
+	mov rax,rsi
+	mov rbp,[r11+18h]
+	movaps xmm8,[r11-30h]
+	movaps xmm9,[r11-40h]
+	movaps xmm10,[r11-50h]
+	movss dword ptr [rsi+4],xmm7
+	movaps xmm7,[rsp+60h]
+	movss dword ptr [rsi+8],xmm6
+	movaps xmm6,[rsp+70h]
+	movss dword ptr [rsi+0Ch],xmm0
+	mov rsi,[r11+20h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 ShiftStack -8
+	006 Move stack:0x0, rdi
+	007 ShiftStack -128
+	008 Move xmm1, [r8]
+	009 Move rbp, 0
+	010 Move xmm0, [rdx]
+	011 Move rbx, r8
+	012 Move [rax-24], xmm6
+	013 Move rdi, rdx
+	014 Move [rax-40], xmm7
+	015 Move rsi, rcx
+	016 Move [rax-56], xmm8
+	017 Move xmm8, [0x182A4FBA8]
+	018 Move [rax-72], xmm9
+	019 Move [rax-88], xmm10
+	020 Move xmm10, xmm3
+	021 Move xmm2, xmm10
+	022 Move [rax-104], rbp
+	023 Move xmm3, xmm8
+	024 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	025 Move xmm1, [rbx+4]
+	026 Move xmm9, xmm0
+	027 Move xmm0, [rdi+4]
+	028 Move xmm3, xmm8
+	029 Move xmm2, xmm10
+	030 Move stack:0x20, rbp
+	031 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	032 Move xmm1, [rbx+8]
+	033 Move xmm7, xmm0
+	034 Move xmm0, [rdi+8]
+	035 Move xmm3, xmm8
+	036 Move xmm2, xmm10
+	037 Move stack:0x20, rbp
+	038 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	039 Move xmm1, [rbx+12]
+	040 Move xmm6, xmm0
+	041 Move xmm0, [rdi+12]
+	042 Move xmm3, xmm8
+	043 Move xmm2, xmm10
+	044 Move stack:0x20, rbp
+	045 Call LeanSmooth.linear, xmm0, xmm1, xmm2, xmm3, stack:0x0
+	046 LoadAddress r11, stack:0x80
+	047 Move [rsi], xmm9
+	048 Move rbx, [r11+16]
+	049 Move rax, rsi
+	050 Move rbp, [r11+24]
+	051 Move xmm8, [r11-48]
+	052 Move xmm9, [r11-64]
+	053 Move xmm10, [r11-80]
+	054 Move [rsi+4], xmm7
+	055 Move xmm7, stack:0x60
+	056 Move [rsi+8], xmm6
+	057 Move xmm6, stack:0x70
+	058 Move [rsi+12], xmm0
+	059 Move rsi, [r11+32]
+	060 Move rsp, r11
+	061 Move rdi, stack:0x0
+	062 ShiftStack 8
+	063 Return rax
+
+Method: System.Single bounceOut(System.Single current, System.Single target, ref System.Single currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1, System.Single friction = 2, System.Single accelRate = 0.5, System.Single hitDamping = 0.9)
+
+Disassembly:
+	push rbx
+	sub rsp,60h
+	movss xmm4,dword ptr [rsp+98h]
+	mov rbx,r8
+	movaps [rsp+50h],xmm6
+	xorps xmm6,xmm6
+	comiss xmm6,xmm4
+	movaps [rsp+40h],xmm7
+	movaps xmm7,xmm0
+	movaps [rsp+30h],xmm8
+	movaps xmm8,xmm1
+	movaps [rsp+20h],xmm9
+	movaps xmm9,xmm3
+	jbe short 00000001806FC345h
+	xor ecx,ecx
+	call 00000001826354B0h
+	movaps xmm4,xmm0
+	movss xmm3,dword ptr [rsp+90h]
+	movaps xmm2,xmm4
+	comiss xmm3,xmm6
+	mulss xmm4,dword ptr [rsp+0A0h]
+	movaps xmm1,xmm8
+	divss xmm2,xmm9
+	subss xmm1,xmm7
+	mulss xmm2,dword ptr [rsp+0A8h]
+	mulss xmm2,xmm1
+	movss xmm1,dword ptr [182A4FBA4h]
+	movaps xmm0,xmm1
+	addss xmm2,dword ptr [rbx]
+	subss xmm0,xmm4
+	mulss xmm2,xmm0
+	movss dword ptr [rbx],xmm2
+	jbe short 00000001806FC3B8h
+	movaps xmm0,xmm2
+	andps xmm0,[182A4FE10h]
+	comiss xmm0,xmm3
+	jbe short 00000001806FC3B8h
+	comiss xmm2,xmm6
+	jae short 00000001806FC3B0h
+	movss xmm1,dword ptr [182A4FBA8h]
+	mulss xmm1,xmm3
+	movss dword ptr [rbx],xmm1
+	comiss xmm8,xmm7
+	movaps xmm0,xmm7
+	addss xmm0,dword ptr [rbx]
+	movaps xmm1,xmm0
+	subss xmm1,xmm8
+	jbe short 00000001806FC3D4h
+	comiss xmm1,xmm6
+	ja short 00000001806FC3D9h
+	jmp short 00000001806FC3F5h
+	comiss xmm6,xmm1
+	jbe short 00000001806FC3F5h
+	movss xmm0,dword ptr [rbx]
+	xorps xmm0,[182A500A0h]
+	mulss xmm0,dword ptr [rsp+0B0h]
+	movss dword ptr [rbx],xmm0
+	addss xmm0,xmm7
+	movaps xmm6,[rsp+50h]
+	movaps xmm7,[rsp+40h]
+	movaps xmm8,[rsp+30h]
+	movaps xmm9,[rsp+20h]
+	add rsp,60h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -96
+	004 Move xmm4, stack:0x98
+	005 Move rbx, r8
+	006 Move stack:0x50, xmm6
+	007 Move xmm6, 0
+	008 Compare xmm6, xmm4
+	009 Move stack:0x40, xmm7
+	010 Move xmm7, xmm0
+	011 Move stack:0x30, xmm8
+	012 Move xmm8, xmm1
+	013 Move stack:0x20, xmm9
+	014 Move xmm9, xmm3
+	015 JumpIfLessOrEqual {19}
+	016 Move rcx, 0
+	017 Call Time.get_deltaTime, rcx
+	018 Move xmm4, xmm0
+	019 Move xmm3, stack:0x90
+	020 Move xmm2, xmm4
+	021 Compare xmm3, xmm6
+	022 Multiply xmm4, xmm4, stack:0xA0
+	023 Move xmm1, xmm8
+	024 Divide xmm2, xmm2, xmm9
+	025 Subtract xmm1, xmm1, xmm7
+	026 Multiply xmm2, xmm2, stack:0xA8
+	027 Multiply xmm2, xmm2, xmm1
+	028 Move xmm1, [0x182A4FBA4]
+	029 Move xmm0, xmm1
+	030 Add xmm2, xmm2, [rbx]
+	031 Subtract xmm0, xmm0, xmm4
+	032 Multiply xmm2, xmm2, xmm0
+	033 Move [rbx], xmm2
+	034 JumpIfLessOrEqual {44}
+	035 Move xmm0, xmm2
+	036 And xmm0, xmm0, [0x182A4FE10]
+	037 Compare xmm0, xmm3
+	038 JumpIfLessOrEqual {44}
+	039 Compare xmm2, xmm6
+	040 JumpIfGreaterOrEqual {42}
+	041 Move xmm1, [0x182A4FBA8]
+	042 Multiply xmm1, xmm1, xmm3
+	043 Move [rbx], xmm1
+	044 Compare xmm8, xmm7
+	045 Move xmm0, xmm7
+	046 Add xmm0, xmm0, [rbx]
+	047 Move xmm1, xmm0
+	048 Subtract xmm1, xmm1, xmm8
+	049 JumpIfLessOrEqual {53}
+	050 Compare xmm1, xmm6
+	051 JumpIfGreater {55}
+	052 Goto {60}
+	053 Compare xmm6, xmm1
+	054 JumpIfLessOrEqual {60}
+	055 Move xmm0, [rbx]
+	056 Xor xmm0, xmm0, [0x182A500A0]
+	057 Multiply xmm0, xmm0, stack:0xB0
+	058 Move [rbx], xmm0
+	059 Add xmm0, xmm0, xmm7
+	060 Move xmm6, stack:0x50
+	061 Move xmm7, stack:0x40
+	062 Move xmm8, stack:0x30
+	063 Move xmm9, stack:0x20
+	064 ShiftStack 96
+	065 Move rbx, stack:0x0
+	066 ShiftStack 8
+	067 Return xmm0
+
+Method: UnityEngine.Vector3 bounceOut(UnityEngine.Vector3 current, UnityEngine.Vector3 target, ref UnityEngine.Vector3 currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1, System.Single friction = 2, System.Single accelRate = 0.5, System.Single hitDamping = 0.9)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	push rdi
+	sub rsp,0C0h
+	movss xmm3,dword ptr [rsp+0F0h]
+	mov rdi,r8
+	movss xmm0,dword ptr [rdx]
+	mov r8,r9
+	movaps [rax-18h],xmm6
+	mov rbx,r9
+	movaps [rax-28h],xmm7
+	mov rsi,rdx
+	movss xmm1,dword ptr [rdi]
+	mov rbp,rcx
+	movaps [rax-38h],xmm9
+	movss xmm9,dword ptr [rsp+0F8h]
+	mov qword ptr [rax-80h],0
+	movaps [rax-48h],xmm10
+	movss xmm10,dword ptr [rsp+100h]
+	movaps [rax-58h],xmm11
+	movss xmm11,dword ptr [rsp+108h]
+	movaps [rax-68h],xmm12
+	movss xmm12,dword ptr [rsp+110h]
+	movaps [rax-78h],xmm13
+	movss xmm13,dword ptr [rsp+118h]
+	movss dword ptr [rsp+40h],xmm13
+	movss dword ptr [rsp+38h],xmm12
+	movss dword ptr [rsp+30h],xmm11
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FC300h
+	movss xmm3,dword ptr [rsp+0F0h]
+	lea r8,[rbx+4]
+	movss xmm1,dword ptr [rdi+4]
+	movaps xmm7,xmm0
+	movss xmm0,dword ptr [rsi+4]
+	mov qword ptr [rsp+48h],0
+	movss dword ptr [rsp+40h],xmm13
+	movss dword ptr [rsp+38h],xmm12
+	movss dword ptr [rsp+30h],xmm11
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FC300h
+	movss xmm3,dword ptr [rsp+0F0h]
+	lea r8,[rbx+8]
+	movss xmm1,dword ptr [rdi+8]
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rsi+8]
+	mov qword ptr [rsp+48h],0
+	movss dword ptr [rsp+40h],xmm13
+	movss dword ptr [rsp+38h],xmm12
+	movss dword ptr [rsp+30h],xmm11
+	movss dword ptr [rsp+28h],xmm10
+	movss dword ptr [rsp+20h],xmm9
+	call 00000001806FC300h
+	lea r11,[rsp+0C0h]
+	movss dword ptr [rbp],xmm7
+	mov rbx,[r11+10h]
+	mov rax,rbp
+	mov rsi,[r11+20h]
+	movaps xmm7,[r11-20h]
+	movaps xmm9,[r11-30h]
+	movaps xmm10,[r11-40h]
+	movaps xmm11,[r11-50h]
+	movaps xmm12,[r11-60h]
+	movaps xmm13,[r11-70h]
+	movss dword ptr [rbp+4],xmm6
+	movaps xmm6,[r11-10h]
+	movss dword ptr [rbp+8],xmm0
+	mov rbp,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 ShiftStack -8
+	006 Move stack:0x0, rdi
+	007 ShiftStack -192
+	008 Move xmm3, stack:0xF0
+	009 Move rdi, r8
+	010 Move xmm0, [rdx]
+	011 Move r8, r9
+	012 Move [rax-24], xmm6
+	013 Move rbx, r9
+	014 Move [rax-40], xmm7
+	015 Move rsi, rdx
+	016 Move xmm1, [rdi]
+	017 Move rbp, rcx
+	018 Move [rax-56], xmm9
+	019 Move xmm9, stack:0xF8
+	020 Move [rax-128], 0
+	021 Move [rax-72], xmm10
+	022 Move xmm10, stack:0x100
+	023 Move [rax-88], xmm11
+	024 Move xmm11, stack:0x108
+	025 Move [rax-104], xmm12
+	026 Move xmm12, stack:0x110
+	027 Move [rax-120], xmm13
+	028 Move xmm13, stack:0x118
+	029 Move stack:0x40, xmm13
+	030 Move stack:0x38, xmm12
+	031 Move stack:0x30, xmm11
+	032 Move stack:0x28, xmm10
+	033 Move stack:0x20, xmm9
+	034 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	035 Move xmm3, stack:0xF0
+	036 LoadAddress r8, [rbx+4]
+	037 Move xmm1, [rdi+4]
+	038 Move xmm7, xmm0
+	039 Move xmm0, [rsi+4]
+	040 Move stack:0x48, 0
+	041 Move stack:0x40, xmm13
+	042 Move stack:0x38, xmm12
+	043 Move stack:0x30, xmm11
+	044 Move stack:0x28, xmm10
+	045 Move stack:0x20, xmm9
+	046 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	047 Move xmm3, stack:0xF0
+	048 LoadAddress r8, [rbx+8]
+	049 Move xmm1, [rdi+8]
+	050 Move xmm6, xmm0
+	051 Move xmm0, [rsi+8]
+	052 Move stack:0x48, 0
+	053 Move stack:0x40, xmm13
+	054 Move stack:0x38, xmm12
+	055 Move stack:0x30, xmm11
+	056 Move stack:0x28, xmm10
+	057 Move stack:0x20, xmm9
+	058 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	059 LoadAddress r11, stack:0xC0
+	060 Move [rbp], xmm7
+	061 Move rbx, [r11+16]
+	062 Move rax, rbp
+	063 Move rsi, [r11+32]
+	064 Move xmm7, [r11-32]
+	065 Move xmm9, [r11-48]
+	066 Move xmm10, [r11-64]
+	067 Move xmm11, [r11-80]
+	068 Move xmm12, [r11-96]
+	069 Move xmm13, [r11-112]
+	070 Move [rbp+4], xmm6
+	071 Move xmm6, [r11-16]
+	072 Move [rbp+8], xmm0
+	073 Move rbp, [r11+24]
+	074 Move rsp, r11
+	075 Move rdi, stack:0x0
+	076 ShiftStack 8
+	077 Return rax
+
+Method: UnityEngine.Color bounceOut(UnityEngine.Color current, UnityEngine.Color target, ref UnityEngine.Color currentVelocity, System.Single smoothTime, System.Single maxSpeed = -1, System.Single deltaTime = -1, System.Single friction = 2, System.Single accelRate = 0.5, System.Single hitDamping = 0.9)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+8],rbx
+	mov [rax+10h],rbp
+	mov [rax+18h],rsi
+	mov [rax+20h],rdi
+	push r14
+	sub rsp,0E0h
+	movss xmm0,dword ptr [rdx]
+	mov rdi,r8
+	movaps [rax-18h],xmm6
+	xor r14d,r14d
+	movaps [rax-28h],xmm7
+	mov r8,r9
+	movaps [rax-38h],xmm8
+	mov rbx,r9
+	movss xmm1,dword ptr [rdi]
+	mov rsi,rdx
+	movaps [rax-48h],xmm9
+	mov rbp,rcx
+	movss xmm9,dword ptr [rsp+110h]
+	movaps [rax-58h],xmm10
+	movaps xmm3,xmm9
+	movss xmm10,dword ptr [rsp+118h]
+	movaps [rax-68h],xmm11
+	movss xmm11,dword ptr [rsp+120h]
+	mov [rsp+48h],r14
+	movaps [rax-78h],xmm12
+	movss xmm12,dword ptr [rsp+128h]
+	movaps [rsp+60h],xmm13
+	movaps [rsp+50h],xmm14
+	movss xmm14,dword ptr [rsp+138h]
+	movss xmm13,dword ptr [rsp+130h]
+	movss dword ptr [rsp+40h],xmm14
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC300h
+	movss xmm1,dword ptr [rdi+4]
+	lea r8,[rbx+4]
+	mov [rsp+48h],r14
+	movaps xmm8,xmm0
+	movss xmm0,dword ptr [rsi+4]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+40h],xmm14
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC300h
+	movss xmm1,dword ptr [rdi+8]
+	lea r8,[rbx+8]
+	mov [rsp+48h],r14
+	movaps xmm7,xmm0
+	movss xmm0,dword ptr [rsi+8]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+40h],xmm14
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC300h
+	movss xmm1,dword ptr [rdi+0Ch]
+	lea r8,[rbx+0Ch]
+	mov [rsp+48h],r14
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rsi+0Ch]
+	movaps xmm3,xmm9
+	movss dword ptr [rsp+40h],xmm14
+	movss dword ptr [rsp+38h],xmm13
+	movss dword ptr [rsp+30h],xmm12
+	movss dword ptr [rsp+28h],xmm11
+	movss dword ptr [rsp+20h],xmm10
+	call 00000001806FC300h
+	lea r11,[rsp+0E0h]
+	movss dword ptr [rbp],xmm8
+	mov rbx,[r11+10h]
+	mov rax,rbp
+	mov rsi,[r11+20h]
+	mov rdi,[r11+28h]
+	movaps xmm8,[r11-30h]
+	movaps xmm9,[r11-40h]
+	movss dword ptr [rbp+4],xmm7
+	movaps xmm7,[r11-20h]
+	movss dword ptr [rbp+8],xmm6
+	movaps xmm6,[r11-10h]
+	movss dword ptr [rbp+0Ch],xmm0
+	mov rbp,[r11+18h]
+	movaps xmm10,[r11-50h]
+	movaps xmm11,[r11-60h]
+	movaps xmm12,[r11-70h]
+	movaps xmm13,[r11-80h]
+	movaps xmm14,[rsp+50h]
+	mov rsp,r11
+	pop r14
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+8], rbx
+	003 Move [rax+16], rbp
+	004 Move [rax+24], rsi
+	005 Move [rax+32], rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r14
+	008 ShiftStack -224
+	009 Move xmm0, [rdx]
+	010 Move rdi, r8
+	011 Move [rax-24], xmm6
+	012 Move r14, 0
+	013 Move [rax-40], xmm7
+	014 Move r8, r9
+	015 Move [rax-56], xmm8
+	016 Move rbx, r9
+	017 Move xmm1, [rdi]
+	018 Move rsi, rdx
+	019 Move [rax-72], xmm9
+	020 Move rbp, rcx
+	021 Move xmm9, stack:0x110
+	022 Move [rax-88], xmm10
+	023 Move xmm3, xmm9
+	024 Move xmm10, stack:0x118
+	025 Move [rax-104], xmm11
+	026 Move xmm11, stack:0x120
+	027 Move stack:0x48, r14
+	028 Move [rax-120], xmm12
+	029 Move xmm12, stack:0x128
+	030 Move stack:0x60, xmm13
+	031 Move stack:0x50, xmm14
+	032 Move xmm14, stack:0x138
+	033 Move xmm13, stack:0x130
+	034 Move stack:0x40, xmm14
+	035 Move stack:0x38, xmm13
+	036 Move stack:0x30, xmm12
+	037 Move stack:0x28, xmm11
+	038 Move stack:0x20, xmm10
+	039 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	040 Move xmm1, [rdi+4]
+	041 LoadAddress r8, [rbx+4]
+	042 Move stack:0x48, r14
+	043 Move xmm8, xmm0
+	044 Move xmm0, [rsi+4]
+	045 Move xmm3, xmm9
+	046 Move stack:0x40, xmm14
+	047 Move stack:0x38, xmm13
+	048 Move stack:0x30, xmm12
+	049 Move stack:0x28, xmm11
+	050 Move stack:0x20, xmm10
+	051 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	052 Move xmm1, [rdi+8]
+	053 LoadAddress r8, [rbx+8]
+	054 Move stack:0x48, r14
+	055 Move xmm7, xmm0
+	056 Move xmm0, [rsi+8]
+	057 Move xmm3, xmm9
+	058 Move stack:0x40, xmm14
+	059 Move stack:0x38, xmm13
+	060 Move stack:0x30, xmm12
+	061 Move stack:0x28, xmm11
+	062 Move stack:0x20, xmm10
+	063 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	064 Move xmm1, [rdi+12]
+	065 LoadAddress r8, [rbx+12]
+	066 Move stack:0x48, r14
+	067 Move xmm6, xmm0
+	068 Move xmm0, [rsi+12]
+	069 Move xmm3, xmm9
+	070 Move stack:0x40, xmm14
+	071 Move stack:0x38, xmm13
+	072 Move stack:0x30, xmm12
+	073 Move stack:0x28, xmm11
+	074 Move stack:0x20, xmm10
+	075 Call LeanSmooth.bounceOut, xmm0, xmm1, r8, xmm3, stack:0x0, stack:0x8, stack:0x10, stack:0x18, stack:0x20, stack:0x28
+	076 LoadAddress r11, stack:0xE0
+	077 Move [rbp], xmm8
+	078 Move rbx, [r11+16]
+	079 Move rax, rbp
+	080 Move rsi, [r11+32]
+	081 Move rdi, [r11+40]
+	082 Move xmm8, [r11-48]
+	083 Move xmm9, [r11-64]
+	084 Move [rbp+4], xmm7
+	085 Move xmm7, [r11-32]
+	086 Move [rbp+8], xmm6
+	087 Move xmm6, [r11-16]
+	088 Move [rbp+12], xmm0
+	089 Move rbp, [r11+24]
+	090 Move xmm10, [r11-80]
+	091 Move xmm11, [r11-96]
+	092 Move xmm12, [r11-112]
+	093 Move xmm13, [r11-128]
+	094 Move xmm14, stack:0x50
+	095 Move rsp, r11
+	096 Move r14, stack:0x0
+	097 ShiftStack 8
+	098 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

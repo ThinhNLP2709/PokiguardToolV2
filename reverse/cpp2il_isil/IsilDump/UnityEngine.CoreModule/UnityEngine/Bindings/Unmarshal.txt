@@ -1,0 +1,142 @@
+Type: UnityEngine.Bindings.Unmarshal
+
+Method: T UnmarshalUnityObject(System.IntPtr gcHandlePtr)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	sub rsp,20h
+	cmp qword ptr [rdx+38h],0
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 0000000180A1F11Fh
+	mov rcx,rdx
+	call 0000000180384D10h
+	mov [rsp+30h],rdi
+	test rbx,rbx
+	je short 0000000180A1F193h
+	cmp byte ptr [18374BB21h],0
+	jne short 0000000180A1F145h
+	lea rcx,[18354D9C8h]
+	call 000000018037BB90h
+	mov byte ptr [18374BB21h],1
+	xor edx,edx
+	mov rcx,rbx
+	test bl,1
+	je short 0000000180A1F159h
+	call 0000000181715610h
+	mov rdi,rax
+	jmp short 0000000180A1F161h
+	call 00000001804D4100h
+	mov rdi,[rax]
+	mov rax,[rsi+38h]
+	mov rbx,[rax]
+	test byte ptr [rbx+135h],1
+	jne short 0000000180A1F17Ch
+	mov rcx,rbx
+	call 0000000180384C90h
+	mov rbx,rax
+	test rdi,rdi
+	je short 0000000180A1F193h
+	mov rdx,rbx
+	mov rcx,rdi
+	call 000000018037ACD0h
+	test rax,rax
+	je short 0000000180A1F1A5h
+	jmp short 0000000180A1F195h
+	xor eax,eax
+	mov rdi,[rsp+30h]
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rsi
+	ret
+	mov rdx,rbx
+	mov rcx,rdi
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -32
+	005 Compare [rdx+56], 0
+	006 Move rsi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {11}
+	009 Move rcx, rdx
+	010 Call 0x180384D10, rcx, rdx, r8, r9
+	011 Move stack:0x30, rdi
+	012 Compare rbx, 0
+	013 JumpIfEqual {43}
+	014 Compare [0x18374BB21], 0
+	015 JumpIfNotEqual {19}
+	016 LoadAddress rcx, [0x18354D9C8]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 Move [0x18374BB21], 1
+	019 Move rdx, 0
+	020 Move rcx, rbx
+	021 Compare rbx, 1
+	022 JumpIfEqual {26}
+	023 Call GCHandle.GetTarget, rcx, rdx
+	024 Move rdi, rax
+	025 Goto {28}
+	026 Call 0x1804D4100, rcx, rdx, r8, r9
+	027 Move rdi, [rax]
+	028 Move rax, [rsi+56]
+	029 Move rbx, [rax]
+	030 Compare [rbx+309], 1
+	031 JumpIfNotEqual {35}
+	032 Move rcx, rbx
+	033 Call 0x180384C90, rcx, rdx, r8, r9
+	034 Move rbx, rax
+	035 Compare rdi, 0
+	036 JumpIfEqual {43}
+	037 Move rdx, rbx
+	038 Move rcx, rdi
+	039 Call 0x18037ACD0, rcx, rdx, r8, r9
+	040 Compare rax, 0
+	041 JumpIfEqual {50}
+	042 Goto {44}
+	043 Move rax, 0
+	044 Move rdi, stack:0x30
+	045 Move rbx, stack:0x38
+	046 ShiftStack 32
+	047 Move rsi, stack:0x0
+	048 ShiftStack 8
+	049 Return rax
+	050 Move rdx, rbx
+	051 Move rcx, rdi
+	052 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Runtime.InteropServices.GCHandle FromIntPtrUnsafe(System.IntPtr gcHandle)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [1837580B3h],0
+	mov rbx,rcx
+	jne short 000000018263E2A5h
+	lea rcx,[18354D9C8h]
+	call 000000018037BB90h
+	mov byte ptr [1837580B3h],1
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x1837580B3], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x18354D9C8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x1837580B3], 1
+	010 Move rax, rbx
+	011 ShiftStack 32
+	012 Move rbx, stack:0x0
+	013 ShiftStack 8
+	014 Return rax
+

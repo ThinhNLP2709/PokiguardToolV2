@@ -1,0 +1,107 @@
+Type: System.AppContextDefaultValues
+
+Method: System.Void PopulateDefaultValues()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Boolean TryGetSwitchOverride(System.String switchName, out System.Boolean overrideValue)
+
+Disassembly:
+	mov byte ptr [rdx],0
+	xor al,al
+	ret
+
+ISIL:
+	001 Move [rdx], 0
+	002 Move rax, 0
+	003 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18374F776h],0
+	jne short 0000000181854444h
+	lea rcx,[1834FF128h]
+	call 000000018037BB90h
+	lea rcx,[18350D1F0h]
+	call 000000018037BB90h
+	lea rcx,[18350D2A8h]
+	call 000000018037BB90h
+	lea rcx,[18350D138h]
+	call 000000018037BB90h
+	mov byte ptr [18374F776h],1
+	mov rax,[1834FF128h]
+	mov rcx,[rax+0B8h]
+	mov rax,[18350D138h]
+	mov [rcx],rax
+	mov rcx,[1834FF128h]
+	mov rdx,[18350D138h]
+	mov rcx,[rcx+0B8h]
+	call 000000018037ACB0h
+	mov rax,[1834FF128h]
+	mov rcx,[rax+0B8h]
+	mov rax,[18350D2A8h]
+	mov [rcx+8],rax
+	mov rax,[1834FF128h]
+	mov rdx,[18350D2A8h]
+	mov rcx,[rax+0B8h]
+	add rcx,8
+	call 000000018037ACB0h
+	mov rax,[1834FF128h]
+	mov rcx,[rax+0B8h]
+	mov rax,[18350D1F0h]
+	mov [rcx+10h],rax
+	mov rax,[1834FF128h]
+	mov rdx,[18350D1F0h]
+	mov rcx,[rax+0B8h]
+	add rcx,10h
+	add rsp,28h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18374F776], 0
+	003 JumpIfNotEqual {13}
+	004 LoadAddress rcx, [0x1834FF128]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x18350D1F0]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350D2A8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18350D138]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374F776], 1
+	013 Move rax, typeof(System.AppContextDefaultValues)
+	014 Move rcx, [rax+184]
+	015 Move rax, "Switch.System.Globalization.EnforceJapaneseEraYearRanges"
+	016 Move [rcx], rax
+	017 Move rcx, typeof(System.AppContextDefaultValues)
+	018 Move rdx, "Switch.System.Globalization.EnforceJapaneseEraYearRanges"
+	019 Move rcx, [rcx+184]
+	020 Call 0x18037ACB0, rcx, rdx, r8, r9
+	021 Move rax, typeof(System.AppContextDefaultValues)
+	022 Move rcx, [rax+184]
+	023 Move rax, "Switch.System.Globalization.FormatJapaneseFirstYearAsANumber"
+	024 Move [rcx+8], rax
+	025 Move rax, typeof(System.AppContextDefaultValues)
+	026 Move rdx, "Switch.System.Globalization.FormatJapaneseFirstYearAsANumber"
+	027 Move rcx, [rax+184]
+	028 Add rcx, rcx, 8
+	029 Call 0x18037ACB0, rcx, rdx, r8, r9
+	030 Move rax, typeof(System.AppContextDefaultValues)
+	031 Move rcx, [rax+184]
+	032 Move rax, "Switch.System.Globalization.EnforceLegacyJapaneseDateParsing"
+	033 Move [rcx+16], rax
+	034 Move rax, typeof(System.AppContextDefaultValues)
+	035 Move rdx, "Switch.System.Globalization.EnforceLegacyJapaneseDateParsing"
+	036 Move rcx, [rax+184]
+	037 Add rcx, rcx, 16
+	038 ShiftStack 40
+	039 Call 0x18037ACB0, rcx, rdx, r8, r9
+	040 Return 
+

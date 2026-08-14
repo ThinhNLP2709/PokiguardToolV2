@@ -1,0 +1,665 @@
+Type: UnityEngine.Rendering.AsyncGPUReadbackRequest
+
+Method: System.Void WaitForCompletion()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758238h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 0000000182620AF8h
+	lea rcx,[182B377B0h]
+	call 000000018037BE90h
+	mov [183758238h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758238]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B377B0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758238], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: Unity.Collections.NativeArray`1<T> GetData(System.Int32 layer = 0)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rbp
+	push rsi
+	push rdi
+	sub rsp,40h
+	cmp qword ptr [r9+38h],0
+	mov rbp,r9
+	mov ebx,r8d
+	mov rsi,rdx
+	mov rdi,rcx
+	jne short 0000000180819F07h
+	mov rcx,r9
+	call 0000000180384D10h
+	xorps xmm0,xmm0
+	xor edx,edx
+	mov rcx,rsi
+	movups [rdi],xmm0
+	call 0000000182620A40h
+	test al,al
+	je near ptr 0000000180819FB3h
+	xor edx,edx
+	mov rcx,rsi
+	call 00000001826209D0h
+	test al,al
+	jne near ptr 0000000180819FB3h
+	test ebx,ebx
+	js near ptr 0000000180819FF0h
+	xor edx,edx
+	mov rcx,rsi
+	call 0000000182620950h
+	cmp ebx,eax
+	jge near ptr 0000000180819FF0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov rcx,rsi
+	call 0000000182620910h
+	xor edx,edx
+	mov rcx,rax
+	call 00000001804D4100h
+	xor edx,edx
+	mov rcx,rsi
+	mov rbx,rax
+	call 0000000182620990h
+	mov rcx,[rbp+38h]
+	cdq
+	and edx,3
+	mov r9d,1
+	mov rcx,[rcx+8]
+	lea r8d,[rdx+rax]
+	mov [rsp+20h],rcx
+	sar r8d,2
+	lea rcx,[rsp+30h]
+	mov rdx,rbx
+	call 0000000180945ED0h
+	movups xmm0,[rsp+30h]
+	movups [rdi],xmm0
+	mov rbx,[rsp+68h]
+	mov rax,rdi
+	add rsp,40h
+	pop rdi
+	pop rsi
+	pop rbp
+	ret
+	lea rcx,[183553110h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[183547220h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181805710h
+	mov rdx,rbp
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	mov rcx,[18375C0E8h]
+	lea rdx,[rsp+60h]
+	mov [rsp+60h],ebx
+	call 000000018037AC90h
+	xor edx,edx
+	mov rcx,rsi
+	mov rdi,rax
+	call 0000000182620950h
+	mov rcx,[18375C0E8h]
+	lea rdx,[rsp+78h]
+	mov [rsp+78h],eax
+	call 000000018037AC90h
+	lea rcx,[1834FF770h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	xor r9d,r9d
+	mov r8,rbx
+	mov rdx,rdi
+	call 000000018165E830h
+	lea rcx,[1834FF8E8h]
+	mov rdi,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018176B4E0h
+	mov rdx,rbp
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbp
+	004 ShiftStack -8
+	005 Move stack:0x0, rsi
+	006 ShiftStack -8
+	007 Move stack:0x0, rdi
+	008 ShiftStack -64
+	009 Compare [r9+56], 0
+	010 Move rbp, r9
+	011 Move rbx, r8
+	012 Move rsi, rdx
+	013 Move rdi, rcx
+	014 JumpIfNotEqual {17}
+	015 Move rcx, r9
+	016 Call 0x180384D10, rcx, rdx, r8, r9
+	017 Move xmm0, 0
+	018 Move rdx, 0
+	019 Move rcx, rsi
+	020 Move [rdi], xmm0
+	021 Call 0x182620A40, rcx, rdx
+	022 Compare rax, 0
+	023 JumpIfEqual {77}
+	024 Move rdx, 0
+	025 Move rcx, rsi
+	026 Call 0x1826209D0, rcx, rdx
+	027 Compare rax, 0
+	028 JumpIfNotEqual {77}
+	029 Compare rbx, 0
+	030 JumpIfSign {92}
+	031 Move rdx, 0
+	032 Move rcx, rsi
+	033 Call 0x182620950, rcx, rdx
+	034 Compare rbx, rax
+	035 JumpIfGreaterOrEqual {92}
+	036 Move r8, 0
+	037 Move rdx, rbx
+	038 Move rcx, rsi
+	039 Call AsyncGPUReadbackRequest.GetDataRaw, rcx, rdx
+	040 Move rdx, 0
+	041 Move rcx, rax
+	042 Call 0x1804D4100, rcx, rdx, r8, r9
+	043 Move rdx, 0
+	044 Move rcx, rsi
+	045 Move rbx, rax
+	046 Call 0x182620990, rcx, rdx
+	047 Move rcx, [rbp+56]
+	048 Move TEMP, rax
+	049 ShiftRight TEMP, 31
+	050 Compare TEMP, 1
+	051 JumpIfNotEqual {54}
+	052 Move rdx, 0xFFFFFFFF
+	053 Goto {55}
+	054 Move rdx, 0
+	055 Nop 
+	056 And rdx, rdx, 3
+	057 Move r9, 1
+	058 Move rcx, [rcx+8]
+	059 LoadAddress r8, [rdx+rax]
+	060 Move stack:0x20, rcx
+	061 ShiftRight r8, 2
+	062 LoadAddress rcx, stack:0x30
+	063 Move rdx, rbx
+	064 Call 0x180945ED0, rcx, rdx, r8, r9
+	065 Move xmm0, stack:0x30
+	066 Move [rdi], xmm0
+	067 Move rbx, stack:0x68
+	068 Move rax, rdi
+	069 ShiftStack 64
+	070 Move rdi, stack:0x0
+	071 ShiftStack 8
+	072 Move rsi, stack:0x0
+	073 ShiftStack 8
+	074 Move rbp, stack:0x0
+	075 ShiftStack 8
+	076 Return rax
+	077 LoadAddress rcx, [0x183553110]
+	078 Call 0x18037BBB0, rcx, rdx, r8, r9
+	079 Move rcx, rax
+	080 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	081 LoadAddress rcx, [0x183547220]
+	082 Move rbx, rax
+	083 Call 0x18037BBB0, rcx, rdx, r8, r9
+	084 Move rdx, rax
+	085 Move r8, 0
+	086 Move rcx, rbx
+	087 Call InvalidOperationException..ctor, rcx, rdx
+	088 Move rdx, rbp
+	089 Move rcx, rbx
+	090 Call 0x18037BDF0, rcx, rdx, r8, r9
+	091 Interrupt 
+	092 Move rcx, [0x18375C0E8]
+	093 LoadAddress rdx, stack:0x60
+	094 Move stack:0x60, rbx
+	095 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	096 Move rdx, 0
+	097 Move rcx, rsi
+	098 Move rdi, rax
+	099 Call 0x182620950, rcx, rdx
+	100 Move rcx, [0x18375C0E8]
+	101 LoadAddress rdx, stack:0x78
+	102 Move stack:0x78, rax
+	103 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	104 LoadAddress rcx, [0x1834FF770]
+	105 Move rbx, rax
+	106 Call 0x18037BBB0, rcx, rdx, r8, r9
+	107 Move rcx, rax
+	108 Move r9, 0
+	109 Move r8, rbx
+	110 Move rdx, rdi
+	111 Call String.Format, rcx, rdx, r8, r9
+	112 LoadAddress rcx, [0x1834FF8E8]
+	113 Move rdi, rax
+	114 Call 0x18037BBB0, rcx, rdx, r8, r9
+	115 Move rcx, rax
+	116 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	117 Move r8, 0
+	118 Move rdx, rdi
+	119 Move rcx, rax
+	120 Move rbx, rax
+	121 Call ArgumentException..ctor, rcx, rdx
+	122 Move rdx, rbp
+	123 Move rcx, rbx
+	124 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Boolean get_done()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758240h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 0000000182620A68h
+	lea rcx,[182B377F8h]
+	call 000000018037BE90h
+	mov [183758240h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758240]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B377F8]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758240], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Boolean get_hasError()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758248h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 00000001826209F8h
+	lea rcx,[182B37830h]
+	call 000000018037BE90h
+	mov [183758248h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758248]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B37830]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758248], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Int32 get_layerCount()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758250h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 0000000182620978h
+	lea rcx,[182B37870h]
+	call 000000018037BE90h
+	mov [183758250h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758250]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B37870]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758250], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Int32 get_layerDataSize()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758258h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 00000001826209B8h
+	lea rcx,[182B378B0h]
+	call 000000018037BE90h
+	mov [183758258h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758258]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B378B0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758258], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Boolean IsDone()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758240h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 0000000182620A68h
+	lea rcx,[182B377F8h]
+	call 000000018037BE90h
+	mov [183758240h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758240]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B377F8]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758240], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Boolean HasError()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758248h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 00000001826209F8h
+	lea rcx,[182B37830h]
+	call 000000018037BE90h
+	mov [183758248h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758248]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B37830]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758248], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Int32 GetLayerCount()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758250h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 0000000182620978h
+	lea rcx,[182B37870h]
+	call 000000018037BE90h
+	mov [183758250h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758250]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B37870]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758250], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Int32 GetLayerDataSize()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[183758258h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 00000001826209B8h
+	lea rcx,[182B378B0h]
+	call 000000018037BE90h
+	mov [183758258h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x183758258]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B378B0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x183758258], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Void SetScriptingCallback(System.Action`1<UnityEngine.Rendering.AsyncGPUReadbackRequest> callback)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183758260h]
+	mov rbx,rdx
+	mov rdi,rcx
+	test rax,rax
+	jne short 0000000182620AAFh
+	lea rcx,[182B37900h]
+	call 000000018037BE90h
+	mov [183758260h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183758260]
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B37900]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183758260], rax
+	013 Move rdx, rbx
+	014 Move rcx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+
+Method: System.IntPtr GetDataRaw(System.Int32 layer)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[183758268h]
+	mov ebx,edx
+	mov rdi,rcx
+	test rax,rax
+	jne short 000000018262093Eh
+	lea rcx,[182B37990h]
+	call 000000018037BE90h
+	mov [183758268h],rax
+	mov edx,ebx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x183758268]
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B37990]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x183758268], rax
+	013 Move rdx, rbx
+	014 Move rcx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+
+Method: System.Void InvokeCallback(System.Action`1<UnityEngine.Rendering.AsyncGPUReadbackRequest> callback, UnityEngine.Rendering.AsyncGPUReadbackRequest obj)
+
+Disassembly:
+	sub rsp,38h
+	test rcx,rcx
+	je short 0000000182620A39h
+	movups xmm0,[rdx]
+	mov rax,[rcx+18h]
+	lea rdx,[rsp+20h]
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	movaps [rsp+20h],xmm0
+	call rax
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare rcx, 0
+	003 JumpIfEqual {13}
+	004 Move xmm0, [rdx]
+	005 Move rax, [rcx+24]
+	006 LoadAddress rdx, stack:0x20
+	007 Move r8, [rcx+40]
+	008 Move rcx, [rcx+64]
+	009 Move stack:0x20, xmm0
+	010 Call rax
+	011 ShiftStack 56
+	012 Return 
+	013 Call 0x18037BE30, rcx, rdx, r8, r9
+

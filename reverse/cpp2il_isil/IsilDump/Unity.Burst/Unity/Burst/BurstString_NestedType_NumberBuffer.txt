@@ -1,0 +1,34 @@
+Type: Unity.Burst.BurstString+NumberBuffer
+
+Method: System.Void .ctor(Unity.Burst.BurstString+NumberBufferKind kind, System.Byte* buffer, System.Int32 digitsCount, System.Int32 scale, System.Boolean isNegative)
+
+Disassembly:
+	mov eax,[rsp+28h]
+	mov [rcx+10h],eax
+	movzx eax,byte ptr [rsp+30h]
+	mov [rcx+14h],al
+	mov [rcx+8],edx
+	mov [rcx],r8
+	mov [rcx+0Ch],r9d
+	ret
+
+ISIL:
+	001 Move rax, stack:0x28
+	002 Move [rcx+16], rax
+	003 Move rax, stack:0x30
+	004 Move [rcx+20], rax
+	005 Move [rcx+8], rdx
+	006 Move [rcx], r8
+	007 Move [rcx+12], r9
+	008 Return 
+
+Method: System.Byte* GetDigitsPointer()
+
+Disassembly:
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+

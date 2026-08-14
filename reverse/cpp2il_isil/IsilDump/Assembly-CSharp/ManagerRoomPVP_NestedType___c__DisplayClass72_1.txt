@@ -1,0 +1,48 @@
+Type: ManagerRoomPVP+<>c__DisplayClass72_1
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <DisplayCurrentPetPage>b__1()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+20h]
+	test rax,rax
+	je short 00000001806DBEEDh
+	mov r10,[rax+10h]
+	test r10,r10
+	je short 00000001806DBEEDh
+	mov r8,[rcx+18h]
+	xor r9d,r9d
+	mov rdx,[rcx+10h]
+	mov rcx,r10
+	add rsp,28h
+	jmp near ptr 00000001806CDA70h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+32]
+	003 Compare rax, 0
+	004 JumpIfEqual {15}
+	005 Move r10, [rax+16]
+	006 Compare r10, 0
+	007 JumpIfEqual {15}
+	008 Move r8, [rcx+24]
+	009 Move r9, 0
+	010 Move rdx, [rcx+16]
+	011 Move rcx, r10
+	012 ShiftStack 40
+	013 Call ManagerRoomPVP.OnPetClicked, rcx, rdx, r8
+	014 Return 
+	015 Call 0x18037BE30, rcx, rdx, r8, r9
+

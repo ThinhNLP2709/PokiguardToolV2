@@ -1,0 +1,76 @@
+Type: UnityEngine.UIElements.Layout.LayoutNodeData
+
+Method: System.Boolean get_HasNewLayout()
+
+Disassembly:
+	mov eax,[rcx+50h]
+	shr eax,2
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+80]
+	002 ShiftRight rax, 2
+	003 And rax, rax, 1
+	004 Return rax
+
+Method: System.Void set_HasNewLayout(System.Boolean value)
+
+Disassembly:
+	mov r8d,[rcx+50h]
+	mov eax,r8d
+	or r8d,4
+	and eax,0FFFFFFFBh
+	test dl,dl
+	cmove r8d,eax
+	mov [rcx+50h],r8d
+	ret
+
+ISIL:
+	001 Move r8, [rcx+80]
+	002 Move rax, r8
+	003 Or r8, r8, 4
+	004 And rax, rax, 18446744073709551611
+	005 Compare rdx, 0
+	006 JumpIfNotEqual {8}
+	007 Move r8, rax
+	008 Nop 
+	009 Move [rcx+80], r8
+	010 Return 
+
+Method: System.Boolean get_IsDirty()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+50h]
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx+80]
+	002 And rax, rax, 1
+	003 Return rax
+
+Method: System.Void set_IsDirty(System.Boolean value)
+
+Disassembly:
+	mov r8d,[rcx+50h]
+	mov eax,r8d
+	or r8d,1
+	and eax,0FFFFFFFEh
+	test dl,dl
+	cmove r8d,eax
+	mov [rcx+50h],r8d
+	ret
+
+ISIL:
+	001 Move r8, [rcx+80]
+	002 Move rax, r8
+	003 Or r8, r8, 1
+	004 And rax, rax, 18446744073709551614
+	005 Compare rdx, 0
+	006 JumpIfNotEqual {8}
+	007 Move r8, rax
+	008 Nop 
+	009 Move [rcx+80], r8
+	010 Return 
+

@@ -1,0 +1,102 @@
+Type: UnityEngine.Rendering.ParallelSortExtensions+RadixSortBucketSortJob
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+18h],rbp
+	push rdi
+	mov r8d,[rcx+4]
+	mov edi,edx
+	imul edx,[rcx+4]
+	add r8d,edx
+	shl edi,8
+	cmp r8d,[rcx+10h]
+	movsxd rbp,edx
+	cmovge r8d,[rcx+10h]
+	movsxd r10,r8d
+	cmp rbp,r10
+	jge short 000000018228460Ch
+	mov rax,[rcx+8]
+	mov r11d,[rcx]
+	shl r11d,3
+	mov [rsp+10h],rbx
+	and r11d,1Fh
+	mov rbx,[rcx+18h]
+	lea r9,[rax+rbp*4]
+	movsxd rax,edx
+	mov [rsp+18h],rsi
+	sub r10,rax
+	mov rsi,[rcx+28h]
+	nop word ptr [rax+rax]
+	mov r8d,[r9]
+	lea r9,[r9+4]
+	mov eax,r8d
+	mov ecx,r11d
+	sar eax,cl
+	movzx eax,al
+	add eax,edi
+	cdqe
+	lea rcx,[rax*4]
+	movsxd rdx,dword ptr [rcx+rbx]
+	lea eax,[rdx+1]
+	mov [rcx+rbx],eax
+	mov [rsi+rdx*4],r8d
+	sub r10,1
+	jne short 00000001822845D0h
+	mov rsi,[rsp+18h]
+	mov rbx,[rsp+10h]
+	mov rbp,[rsp+20h]
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbp
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 Move r8, [rcx+4]
+	005 Move rdi, rdx
+	006 Multiply rdx, rdx, [rcx+4]
+	007 Add r8, r8, rdx
+	008 ShiftLeft rdi, 8
+	009 Compare r8, [rcx+16]
+	010 Move rbp, rdx
+	011 JumpIfLess {13}
+	012 Move r8, [rcx+16]
+	013 Nop 
+	014 Move r10, r8
+	015 Compare rbp, r10
+	016 JumpIfGreaterOrEqual {46}
+	017 Move rax, [rcx+8]
+	018 Move r11, [rcx]
+	019 ShiftLeft r11, 3
+	020 Move stack:0x10, rbx
+	021 And r11, r11, 31
+	022 Move rbx, [rcx+24]
+	023 LoadAddress r9, [rax+rbp*4]
+	024 Move rax, rdx
+	025 Move stack:0x18, rsi
+	026 Subtract r10, r10, rax
+	027 Move rsi, [rcx+40]
+	028 Nop 
+	029 Move r8, [r9]
+	030 LoadAddress r9, [r9+4]
+	031 Move rax, r8
+	032 Move rcx, r11
+	033 ShiftRight rax, rcx
+	034 Move rax, rax
+	035 Add rax, rax, rdi
+	036 Move rax, rax
+	037 LoadAddress rcx, []
+	038 Move rdx, [rcx+rbx]
+	039 LoadAddress rax, [rdx+1]
+	040 Move [rcx+rbx], rax
+	041 Move [rsi+rdx*4], r8
+	042 Subtract r10, r10, 1
+	043 JumpIfNotEqual {29}
+	044 Move rsi, stack:0x18
+	045 Move rbx, stack:0x10
+	046 Move rbp, stack:0x20
+	047 Move rdi, stack:0x0
+	048 ShiftStack 8
+	049 Return 
+

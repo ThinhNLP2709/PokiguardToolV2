@@ -1,0 +1,81 @@
+Type: UnityEngine.AddressableAssets.AddressablesImpl+<>c__DisplayClass89_0`1
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1<System.Collections.Generic.IList`1<TObject>> <LoadAssetsWithChain>b__0(UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle op)
+
+Disassembly:
+	mov [rsp+8],rsi
+	push rdi
+	sub rsp,60h
+	cmp qword ptr [rdx+10h],0
+	mov rdi,rcx
+	mov r8d,[rdx+28h]
+	movzx esi,byte ptr [rdx+2Ch]
+	je short 0000000180A8612Fh
+	mov rax,[r9+20h]
+	lea rcx,[rsp+40h]
+	mov r9,[rdx+20h]
+	mov r10,[rax+0C0h]
+	mov rax,[r10+10h]
+	mov [rsp+30h],rax
+	mov [rsp+28h],sil
+	mov [rsp+20h],r8d
+	mov r8,[rdx+18h]
+	mov rdx,[rdx+10h]
+	mov r11,[rax]
+	call r11
+	mov rsi,[rsp+70h]
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rdi
+	movups [rdi],xmm0
+	movsd qword ptr [rdi+10h],xmm1
+	add rsp,60h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rsi
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -96
+	005 Compare [rdx+16], 0
+	006 Move rdi, rcx
+	007 Move r8, [rdx+40]
+	008 Move rsi, [rdx+44]
+	009 JumpIfEqual {32}
+	010 Move rax, [r9+32]
+	011 LoadAddress rcx, stack:0x40
+	012 Move r9, [rdx+32]
+	013 Move r10, [rax+192]
+	014 Move rax, [r10+16]
+	015 Move stack:0x30, rax
+	016 Move stack:0x28, rsi
+	017 Move stack:0x20, r8
+	018 Move r8, [rdx+24]
+	019 Move rdx, [rdx+16]
+	020 Move r11, [rax]
+	021 Call r11
+	022 Move rsi, stack:0x70
+	023 Move xmm0, [rax]
+	024 Move xmm1, [rax+16]
+	025 Move rax, rdi
+	026 Move [rdi], xmm0
+	027 Move [rdi+16], xmm1
+	028 ShiftStack 96
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+	032 Call 0x18037BE30, rcx, rdx, r8, r9
+

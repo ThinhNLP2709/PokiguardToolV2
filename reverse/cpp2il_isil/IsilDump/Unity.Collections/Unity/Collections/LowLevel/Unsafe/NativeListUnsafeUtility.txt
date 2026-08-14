@@ -1,0 +1,52 @@
+Type: Unity.Collections.LowLevel.Unsafe.NativeListUnsafeUtility
+
+Method: T* GetUnsafePtr(Unity.Collections.NativeList`1<T> list)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 0000000180946A91h
+	mov rax,[rcx]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {7}
+	004 Move rax, [rcx]
+	005 ShiftStack 40
+	006 Return rax
+	007 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: T* GetUnsafeReadOnlyPtr(Unity.Collections.NativeList`1<T> list)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 0000000180946A91h
+	mov rax,[rcx]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {7}
+	004 Move rax, [rcx]
+	005 ShiftStack 40
+	006 Return rax
+	007 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void* GetInternalListDataPtrUnchecked(ref Unity.Collections.NativeList`1<T> list)
+
+Disassembly:
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+

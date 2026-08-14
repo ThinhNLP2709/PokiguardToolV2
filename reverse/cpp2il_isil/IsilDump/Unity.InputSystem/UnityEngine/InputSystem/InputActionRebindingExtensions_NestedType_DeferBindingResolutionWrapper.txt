@@ -1,0 +1,150 @@
+Type: UnityEngine.InputSystem.InputActionRebindingExtensions+DeferBindingResolutionWrapper
+
+Method: System.Void Acquire()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183752D32h],0
+	jne short 0000000181F2DA40h
+	lea rcx,[18354E568h]
+	call 000000018037BB90h
+	mov byte ptr [183752D32h],1
+	mov rdx,[18354E568h]
+	cmp dword ptr [rdx+0E4h],0
+	jne short 0000000181F2DA5Fh
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[18354E568h]
+	mov rax,[rdx+0B8h]
+	mov ecx,[rax+8]
+	inc ecx
+	mov [rax+8],ecx
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183752D32], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x18354E568]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x183752D32], 1
+	007 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	008 Compare [rdx+228], 0
+	009 JumpIfNotEqual {13}
+	010 Move rcx, rdx
+	011 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	012 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	013 Move rax, [rdx+184]
+	014 Move rcx, [rax+8]
+	015 Add rcx, rcx, 1
+	016 Move [rax+8], rcx
+	017 ShiftStack 40
+	018 Return 
+
+Method: System.Void Dispose()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183752D33h],0
+	jne short 0000000181F2DAACh
+	lea rcx,[18354E568h]
+	call 000000018037BB90h
+	lea rcx,[18354E868h]
+	call 000000018037BB90h
+	mov byte ptr [183752D33h],1
+	mov rdx,[18354E568h]
+	cmp dword ptr [rdx+0E4h],0
+	jne short 0000000181F2DACBh
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[18354E568h]
+	mov rax,[rdx+0B8h]
+	cmp dword ptr [rax+8],0
+	jle short 0000000181F2DB06h
+	cmp dword ptr [rdx+0E4h],0
+	jne short 0000000181F2DAF0h
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[18354E568h]
+	mov rax,[rdx+0B8h]
+	mov ecx,[rax+8]
+	dec ecx
+	mov [rax+8],ecx
+	mov rdx,[18354E568h]
+	cmp dword ptr [rdx+0E4h],0
+	jne short 0000000181F2DB1Eh
+	mov rcx,rdx
+	call 000000018037BED0h
+	mov rdx,[18354E568h]
+	mov rax,[rdx+0B8h]
+	cmp dword ptr [rax+8],0
+	jne short 0000000181F2DB4Bh
+	mov rcx,[18354E868h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181F2DB40h
+	call 000000018037BED0h
+	xor ecx,ecx
+	add rsp,28h
+	jmp near ptr 0000000181F34500h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183752D33], 0
+	003 JumpIfNotEqual {9}
+	004 LoadAddress rcx, [0x18354E568]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x18354E868]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183752D33], 1
+	009 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	010 Compare [rdx+228], 0
+	011 JumpIfNotEqual {15}
+	012 Move rcx, rdx
+	013 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	014 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	015 Move rax, [rdx+184]
+	016 Compare [rax+8], 0
+	017 JumpIfLessOrEqual {28}
+	018 Compare [rdx+228], 0
+	019 JumpIfNotEqual {23}
+	020 Move rcx, rdx
+	021 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	022 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	023 Move rax, [rdx+184]
+	024 Move rcx, [rax+8]
+	025 Subtract rcx, rcx, 1
+	026 Move [rax+8], rcx
+	027 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	028 Compare [rdx+228], 0
+	029 JumpIfNotEqual {33}
+	030 Move rcx, rdx
+	031 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	032 Move rdx, typeof(UnityEngine.InputSystem.InputActionMap)
+	033 Move rax, [rdx+184]
+	034 Compare [rax+8], 0
+	035 JumpIfNotEqual {44}
+	036 Move rcx, typeof(UnityEngine.InputSystem.InputActionState)
+	037 Compare [rcx+228], 0
+	038 JumpIfNotEqual {40}
+	039 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	040 Move rcx, 0
+	041 ShiftStack 40
+	042 Call InputActionState.DeferredResolutionOfBindings, rcx
+	043 Return 
+	044 ShiftStack 40
+	045 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

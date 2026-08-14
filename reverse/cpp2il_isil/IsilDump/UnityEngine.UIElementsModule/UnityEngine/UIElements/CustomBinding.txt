@@ -1,0 +1,44 @@
+Type: UnityEngine.UIElements.CustomBinding
+
+Method: UnityEngine.UIElements.BindingResult Update(in UnityEngine.UIElements.BindingContext context)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	xor eax,eax
+	xorps xmm0,xmm0
+	movups [rcx],xmm0
+	mov rbx,rcx
+	mov [rsp+20h],rax
+	lea rcx,[rsp+28h]
+	mov [rsp+28h],rax
+	xor edx,edx
+	call 000000018037ACB0h
+	movups xmm0,[rsp+20h]
+	movups [rbx],xmm0
+	mov rax,rbx
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rax, 0
+	005 Move xmm0, 0
+	006 Move [rcx], xmm0
+	007 Move rbx, rcx
+	008 Move stack:0x20, rax
+	009 LoadAddress rcx, stack:0x28
+	010 Move stack:0x28, rax
+	011 Move rdx, 0
+	012 Call 0x18037ACB0, rcx, rdx, r8, r9
+	013 Move xmm0, stack:0x20
+	014 Move [rbx], xmm0
+	015 Move rax, rbx
+	016 ShiftStack 48
+	017 Move rbx, stack:0x0
+	018 ShiftStack 8
+	019 Return rax
+

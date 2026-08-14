@@ -1,0 +1,110 @@
+Type: System.Linq.Expressions.Interpreter.CastReferenceToEnumInstruction
+
+Method: System.Void .ctor(System.Type t)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 00000001804552D0h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x1804552D0, rcx, rdx, r8
+	009 LoadAddress rcx, [rbx+16]
+	010 Move [rbx+16], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+
+Method: System.Int32 Run(System.Linq.Expressions.Interpreter.InterpretedFrame frame)
+
+Disassembly:
+	mov [rsp+20h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375063Bh],0
+	mov rsi,rdx
+	mov rdi,rcx
+	jne short 00000001819FF28Ch
+	lea rcx,[1835264E8h]
+	call 000000018037BB90h
+	mov byte ptr [18375063Bh],1
+	mov [rsp+30h],rbx
+	test rsi,rsi
+	je near ptr 00000001819FF668h
+	xor edx,edx
+	mov [rsp+40h],rbp
+	mov rcx,rsi
+	call 00000001819E6270h
+	mov rcx,[1835264E8h]
+	mov rbx,rax
+	mov rbp,[rdi+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001819FF2C5h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbp
+	call 0000000181A21080h
+	mov rbp,[rsp+40h]
+	add eax,0FFFFFFFCh
+	cmp eax,8
+	ja near ptr 00000001819FF5DAh
+	lea rdx,[180000000h]
+	cdqe
+
+ISIL:
+	001 Move stack:0x20, rsi
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18375063B], 0
+	006 Move rsi, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1835264E8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18375063B], 1
+	012 Move stack:0x30, rbx
+	013 Compare rsi, 0
+	014 Invalid "Jump target not found in method."
+	015 Move rdx, 0
+	016 Move stack:0x40, rbp
+	017 Move rcx, rsi
+	018 Call InterpretedFrame.Pop, rcx, rdx
+	019 Move rcx, typeof(System.Dynamic.Utils.TypeExtensions)
+	020 Move rbx, rax
+	021 Move rbp, [rdi+16]
+	022 Compare [rcx+228], 0
+	023 JumpIfNotEqual {25}
+	024 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	025 Move rdx, 0
+	026 Move rcx, rbp
+	027 Call TypeExtensions.GetTypeCode, rcx, rdx
+	028 Move rbp, stack:0x40
+	029 Add rax, rax, 18446744073709551612
+	030 Compare rax, 8
+	031 Invalid "Jump target not found in method."
+	032 LoadAddress rdx, [0x180000000]
+	033 Move rax, rax
+

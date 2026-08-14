@@ -1,0 +1,82 @@
+Type: Unity.VisualScripting.InspectorRangeAttribute
+
+Method: System.Void .ctor(System.Single min, System.Single max)
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	movaps [rsp+30h],xmm6
+	xor edx,edx
+	movaps [rsp+20h],xmm7
+	movaps xmm6,xmm1
+	movaps xmm7,xmm2
+	mov rbx,rcx
+	call 00000001804552D0h
+	movss dword ptr [rbx+10h],xmm6
+	movaps xmm6,[rsp+30h]
+	movss dword ptr [rbx+14h],xmm7
+	movaps xmm7,[rsp+20h]
+	add rsp,40h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Move stack:0x30, xmm6
+	005 Move rdx, 0
+	006 Move stack:0x20, xmm7
+	007 Move xmm6, xmm1
+	008 Move xmm7, xmm2
+	009 Move rbx, rcx
+	010 Call 0x1804552D0, rcx, rdx, r8
+	011 Move [rbx+16], xmm6
+	012 Move xmm6, stack:0x30
+	013 Move [rbx+20], xmm7
+	014 Move xmm7, stack:0x20
+	015 ShiftStack 64
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return 
+
+Method: System.Single get_min()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+16]
+	002 Return xmm0
+
+Method: System.Void set_min(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+10h],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+16], xmm1
+	002 Return 
+
+Method: System.Single get_max()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+14h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+20]
+	002 Return xmm0
+
+Method: System.Void set_max(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+14h],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+20], xmm1
+	002 Return 
+

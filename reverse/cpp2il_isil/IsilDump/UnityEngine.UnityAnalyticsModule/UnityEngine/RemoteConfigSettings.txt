@@ -1,0 +1,36 @@
+Type: UnityEngine.RemoteConfigSettings
+
+Method: System.Void RemoteConfigSettingsUpdated(UnityEngine.RemoteConfigSettings rcs, System.Boolean wasLastUpdatedFromServer)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 00000001829B6CCAh
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 00000001829B6CC5h
+	mov rax,[rcx+18h]
+	mov r8,[rcx+28h]
+	mov rcx,[rcx+40h]
+	add rsp,28h
+	jmp rax
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {14}
+	004 Move rcx, [rcx+24]
+	005 Compare rcx, 0
+	006 JumpIfEqual {12}
+	007 Move rax, [rcx+24]
+	008 Move r8, [rcx+40]
+	009 Move rcx, [rcx+64]
+	010 ShiftStack 40
+	011 CallNoReturn rax
+	012 ShiftStack 40
+	013 Return 
+	014 Call 0x18037BE30, rcx, rdx, r8, r9
+

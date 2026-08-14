@@ -1,0 +1,236 @@
+Type: System.Security.Cryptography.KeySizes
+
+Method: System.Int32 get_MinSize()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Int32 get_MaxSize()
+
+Disassembly:
+	mov eax,[rcx+14h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+20]
+	002 Return rax
+
+Method: System.Int32 get_SkipSize()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void .ctor(System.Int32 minSize, System.Int32 maxSize, System.Int32 skipSize)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov ebp,r9d
+	xor edx,edx
+	mov esi,r8d
+	mov rdi,rcx
+	call 0000000180456D90h
+	mov [rdi+10h],ebx
+	mov rbx,[rsp+30h]
+	mov [rdi+14h],esi
+	mov rsi,[rsp+40h]
+	mov [rdi+18h],ebp
+	mov rbp,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbx, rdx
+	008 Move rbp, r9
+	009 Move rdx, 0
+	010 Move rsi, r8
+	011 Move rdi, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 Move [rdi+16], rbx
+	014 Move rbx, stack:0x30
+	015 Move [rdi+20], rsi
+	016 Move rsi, stack:0x40
+	017 Move [rdi+24], rbp
+	018 Move rbp, stack:0x38
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Return 
+
+Method: System.Boolean IsLegal(System.Int32 keySize)
+
+Disassembly:
+	mov r8d,edx
+	sub r8d,[rcx+10h]
+	jns short 000000018169837Dh
+	xor eax,eax
+	jmp short 0000000181698383h
+	cmp edx,[rcx+14h]
+	setle al
+	cmp dword ptr [rcx+18h],0
+	je short 000000018169839Ah
+	test al,al
+	jne short 000000018169838Eh
+	ret
+	mov eax,r8d
+	cdq
+	idiv dword ptr [rcx+18h]
+	test edx,edx
+	sete al
+	ret
+
+ISIL:
+	001 Move r8, rdx
+	002 Subtract r8, r8, [rcx+16]
+	003 JumpIfNotSign {6}
+	004 Move rax, 0
+	005 Goto {8}
+	006 Compare rdx, [rcx+20]
+	007 NotImplemented "setle al"
+	008 Compare [rcx+24], 0
+	009 JumpIfEqual {25}
+	010 Compare rax, 0
+	011 JumpIfNotEqual {13}
+	012 Return rax
+	013 Move rax, r8
+	014 Move TEMP, rax
+	015 ShiftRight TEMP, 31
+	016 Compare TEMP, 1
+	017 JumpIfNotEqual {20}
+	018 Move rdx, 0xFFFFFFFF
+	019 Goto {21}
+	020 Move rdx, 0
+	021 Nop 
+	022 NotImplemented "idiv dword ptr [rcx+18h]"
+	023 Compare rdx, 0
+	024 NotImplemented "sete al"
+	025 Return rax
+
+Method: System.Boolean IsLegalKeySize(System.Security.Cryptography.KeySizes[] legalKeys, System.Int32 size)
+
+Disassembly:
+	sub rsp,28h
+	xor r8d,r8d
+	xor eax,eax
+	mov r11d,edx
+	test rcx,rcx
+	je short 0000000181698358h
+	mov r10d,[rcx+18h]
+	lea r9,[rcx+20h]
+	nop dword ptr [rax]
+	cmp eax,r10d
+	jge short 0000000181698351h
+	cmp r8d,r10d
+	jae short 000000018169835Eh
+	mov rcx,[r9]
+	test rcx,rcx
+	je short 0000000181698358h
+	mov edx,r11d
+	sub edx,[rcx+10h]
+	jns short 000000018169831Eh
+	xor eax,eax
+	jmp short 0000000181698325h
+	cmp r11d,[rcx+14h]
+	setle al
+	cmp dword ptr [rcx+18h],0
+	je short 000000018169833Ah
+	test al,al
+	je short 000000018169833Eh
+	mov eax,edx
+	cdq
+	idiv dword ptr [rcx+18h]
+	test edx,edx
+	sete al
+	test al,al
+	jne short 000000018169834Ah
+	inc r8d
+	add r9,8
+	mov eax,r8d
+	jmp short 0000000181698300h
+	mov al,1
+	add rsp,28h
+	ret
+	xor al,al
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r8, 0
+	003 Move rax, 0
+	004 Move r11, rdx
+	005 Compare rcx, 0
+	006 JumpIfEqual {52}
+	007 Move r10, [rcx+24]
+	008 LoadAddress r9, [rcx+32]
+	009 Nop 
+	010 Compare rax, r10
+	011 JumpIfGreaterOrEqual {49}
+	012 Compare r8, r10
+	013 JumpIfGreaterOrEqual {54}
+	014 Move rcx, [r9]
+	015 Compare rcx, 0
+	016 JumpIfEqual {52}
+	017 Move rdx, r11
+	018 Subtract rdx, rdx, [rcx+16]
+	019 JumpIfNotSign {22}
+	020 Move rax, 0
+	021 Goto {24}
+	022 Compare r11, [rcx+20]
+	023 NotImplemented "setle al"
+	024 Compare [rcx+24], 0
+	025 JumpIfEqual {40}
+	026 Compare rax, 0
+	027 JumpIfEqual {42}
+	028 Move rax, rdx
+	029 Move TEMP, rax
+	030 ShiftRight TEMP, 31
+	031 Compare TEMP, 1
+	032 JumpIfNotEqual {35}
+	033 Move rdx, 0xFFFFFFFF
+	034 Goto {36}
+	035 Move rdx, 0
+	036 Nop 
+	037 NotImplemented "idiv dword ptr [rcx+18h]"
+	038 Compare rdx, 0
+	039 NotImplemented "sete al"
+	040 Compare rax, 0
+	041 JumpIfNotEqual {46}
+	042 Add r8, r8, 1
+	043 Add r9, r9, 8
+	044 Move rax, r8
+	045 Goto {10}
+	046 Move rax, 1
+	047 ShiftStack 40
+	048 Return rax
+	049 Move rax, 0
+	050 ShiftStack 40
+	051 Return rax
+	052 Call 0x18037BE30, rcx, rdx, r8, r9
+	053 Interrupt 
+	054 Call 0x18037BE20, rcx, rdx, r8, r9
+

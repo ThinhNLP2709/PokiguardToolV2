@@ -1,0 +1,48 @@
+Type: UnityEngine.Rendering.GPUDrivenPackedMaterialData
+
+Method: System.Boolean get_isTransparent()
+
+Disassembly:
+	movzx eax,byte ptr [rcx]
+	and al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 And rax, rax, 1
+	003 Return rax
+
+Method: System.Boolean get_isMotionVectorsPassEnabled()
+
+Disassembly:
+	test byte ptr [rcx],2
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx], 2
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Boolean get_isIndirectSupported()
+
+Disassembly:
+	test byte ptr [rcx],4
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx], 4
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov dword ptr [rcx],0
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Return 
+

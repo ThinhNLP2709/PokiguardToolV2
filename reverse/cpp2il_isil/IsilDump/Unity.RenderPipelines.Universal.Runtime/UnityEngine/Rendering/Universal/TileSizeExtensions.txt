@@ -1,0 +1,28 @@
+Type: UnityEngine.Rendering.Universal.TileSizeExtensions
+
+Method: System.Boolean IsValid(UnityEngine.Rendering.Universal.TileSize tileSize)
+
+Disassembly:
+	lea eax,[rcx-8]
+	test eax,0FFFFFFE7h
+	jne short 0000000182326762h
+	cmp ecx,18h
+	je short 0000000182326762h
+	mov al,1
+	ret
+	cmp ecx,40h
+	sete al
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-8]
+	002 Compare rax, 0xFFFFFFE7
+	003 JumpIfNotEqual {8}
+	004 Compare rcx, 24
+	005 JumpIfEqual {8}
+	006 Move rax, 1
+	007 Return rax
+	008 Compare rcx, 64
+	009 NotImplemented "sete al"
+	010 Return rax
+

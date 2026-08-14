@@ -1,0 +1,132 @@
+Type: UnityEngine.InputSystem.InputActionAsset+ReadFileJson
+
+Method: System.Void ToAsset(UnityEngine.InputSystem.InputActionAsset asset)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	mov rsi,rdx
+	mov rdi,rcx
+	test rdx,rdx
+	je near ptr 0000000181F1FE68h
+	mov rdx,[rcx+8]
+	xor r8d,r8d
+	mov rcx,rsi
+	call 0000000182628800h
+	mov rdx,[rdi+10h]
+	lea rcx,[rsp+28h]
+	xor ebx,ebx
+	mov [rsp+28h],rdx
+	mov [rsp+20h],rbx
+	call 000000018037ACB0h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000181F1FE70h
+	lea rcx,[rsi+18h]
+	mov [rsi+18h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rcx,[rdi+18h]
+	xor edx,edx
+	call 0000000181F75810h
+	lea rcx,[rsi+20h]
+	mov [rsi+20h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	cmp [rsi+18h],rbx
+	je short 0000000181F1FE4Dh
+	mov rbp,[rsi+18h]
+	lea rdi,[rbp+20h]
+	mov eax,ebx
+	cmp ebx,[rbp+18h]
+	jge short 0000000181F1FE4Dh
+	cmp ebx,[rbp+18h]
+	jae short 0000000181F1FE62h
+	mov rcx,[rdi]
+	test rcx,rcx
+	je short 0000000181F1FE68h
+	mov [rcx+20h],rsi
+	mov rdx,rsi
+	add rcx,20h
+	call 000000018037ACB0h
+	inc ebx
+	add rdi,8
+	jmp short 0000000181F1FE21h
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Move rsi, rdx
+	008 Move rdi, rcx
+	009 Compare rdx, 0
+	010 JumpIfEqual {63}
+	011 Move rdx, [rcx+8]
+	012 Move r8, 0
+	013 Move rcx, rsi
+	014 Call Object.set_name, rcx, rdx
+	015 Move rdx, [rdi+16]
+	016 LoadAddress rcx, stack:0x28
+	017 Move rbx, 0
+	018 Move stack:0x28, rdx
+	019 Move stack:0x20, rbx
+	020 Call 0x18037ACB0, rcx, rdx, r8, r9
+	021 Move rdx, 0
+	022 LoadAddress rcx, stack:0x20
+	023 Call ReadFileJson.ToMaps, rcx, rdx
+	024 LoadAddress rcx, [rsi+24]
+	025 Move [rsi+24], rax
+	026 Move rdx, rax
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Move rcx, [rdi+24]
+	029 Move rdx, 0
+	030 Call SchemeJson.ToSchemes, rcx, rdx
+	031 LoadAddress rcx, [rsi+32]
+	032 Move [rsi+32], rax
+	033 Move rdx, rax
+	034 Call 0x18037ACB0, rcx, rdx, r8, r9
+	035 Compare [rsi+24], rbx
+	036 JumpIfEqual {54}
+	037 Move rbp, [rsi+24]
+	038 LoadAddress rdi, [rbp+32]
+	039 Move rax, rbx
+	040 Compare rbx, [rbp+24]
+	041 JumpIfGreaterOrEqual {54}
+	042 Compare rbx, [rbp+24]
+	043 JumpIfGreaterOrEqual {61}
+	044 Move rcx, [rdi]
+	045 Compare rcx, 0
+	046 JumpIfEqual {63}
+	047 Move [rcx+32], rsi
+	048 Move rdx, rsi
+	049 Add rcx, rcx, 32
+	050 Call 0x18037ACB0, rcx, rdx, r8, r9
+	051 Add rbx, rbx, 1
+	052 Add rdi, rdi, 8
+	053 Goto {39}
+	054 Move rbx, stack:0x40
+	055 Move rbp, stack:0x48
+	056 Move rsi, stack:0x50
+	057 ShiftStack 48
+	058 Move rdi, stack:0x0
+	059 ShiftStack 8
+	060 Return 
+	061 Call 0x18037BE20, rcx, rdx, r8, r9
+	062 Interrupt 
+	063 Call 0x18037BE30, rcx, rdx, r8, r9
+

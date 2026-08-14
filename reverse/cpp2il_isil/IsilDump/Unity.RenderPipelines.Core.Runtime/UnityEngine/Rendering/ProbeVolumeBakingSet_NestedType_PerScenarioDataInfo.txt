@@ -1,0 +1,212 @@
+Type: UnityEngine.Rendering.ProbeVolumeBakingSet+PerScenarioDataInfo
+
+Method: System.Void Initialize(UnityEngine.Rendering.ProbeVolumeSHBands shBands)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rcx
+	mov edi,edx
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 00000001821B81C6h
+	xor edx,edx
+	call 00000001821C7950h
+	test al,al
+	jne short 00000001821B8191h
+	mov [rbx+30h],al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp edi,1
+	jne short 00000001821B81A8h
+	movzx eax,dil
+	mov [rbx+30h],al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rcx,[rbx+20h]
+	test rcx,rcx
+	je short 00000001821B81C6h
+	xor edx,edx
+	call 00000001821C7950h
+	mov [rbx+30h],al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rcx
+	006 Move rdi, rdx
+	007 Move rcx, [rcx+24]
+	008 Compare rcx, 0
+	009 JumpIfEqual {40}
+	010 Move rdx, 0
+	011 Call ProbeVolumeStreamableAsset.FileExists, rcx, rdx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {20}
+	014 Move [rbx+48], rax
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 Return 
+	020 Compare rdi, 1
+	021 JumpIfNotEqual {29}
+	022 Move rax, rdi
+	023 Move [rbx+48], rax
+	024 Move rbx, stack:0x30
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+	029 Move rcx, [rbx+32]
+	030 Compare rcx, 0
+	031 JumpIfEqual {40}
+	032 Move rdx, 0
+	033 Call ProbeVolumeStreamableAsset.FileExists, rcx, rdx
+	034 Move [rbx+48], rax
+	035 Move rbx, stack:0x30
+	036 ShiftStack 32
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Return 
+	040 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean IsValid()
+
+Disassembly:
+	sub rsp,28h
+	cmp qword ptr [rcx+18h],0
+	jne short 00000001821B81E2h
+	xor al,al
+	add rsp,28h
+	ret
+	mov rcx,[rcx+18h]
+	xor edx,edx
+	mov rcx,[rcx+10h]
+	call 000000018165FE70h
+	xor al,1
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx+24], 0
+	003 JumpIfNotEqual {7}
+	004 Move rax, 0
+	005 ShiftStack 40
+	006 Return rax
+	007 Move rcx, [rcx+24]
+	008 Move rdx, 0
+	009 Move rcx, [rcx+16]
+	010 Call String.IsNullOrEmpty, rcx, rdx
+	011 Xor rax, rax, 1
+	012 ShiftStack 40
+	013 Return rax
+
+Method: System.Boolean HasValidData(UnityEngine.Rendering.ProbeVolumeSHBands shBands)
+
+Disassembly:
+	movzx eax,byte ptr [rcx+30h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+48]
+	002 Return rax
+
+Method: System.Boolean ComputeHasValidData(UnityEngine.Rendering.ProbeVolumeSHBands shBands)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rcx
+	mov edi,edx
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 00000001821B814Ch
+	xor edx,edx
+	call 00000001821C7950h
+	test al,al
+	jne short 00000001821B811Eh
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	cmp edi,1
+	jne short 00000001821B8132h
+	movzx eax,dil
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rcx,[rbx+20h]
+	test rcx,rcx
+	je short 00000001821B814Ch
+	xor edx,edx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001821C7950h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rcx
+	006 Move rdi, rdx
+	007 Move rcx, [rcx+24]
+	008 Compare rcx, 0
+	009 JumpIfEqual {37}
+	010 Move rdx, 0
+	011 Call ProbeVolumeStreamableAsset.FileExists, rcx, rdx
+	012 Compare rax, 0
+	013 JumpIfNotEqual {19}
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+	019 Compare rdi, 1
+	020 JumpIfNotEqual {27}
+	021 Move rax, rdi
+	022 Move rbx, stack:0x30
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Return rax
+	027 Move rcx, [rbx+32]
+	028 Compare rcx, 0
+	029 JumpIfEqual {37}
+	030 Move rdx, 0
+	031 Move rbx, stack:0x30
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Call ProbeVolumeStreamableAsset.FileExists, rcx, rdx
+	036 Return rax
+	037 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

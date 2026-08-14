@@ -1,0 +1,80 @@
+Type: UnityEngine.InputSystem.DualShock.DualShock4GamepadHID+DualShock4HIDGenericInputReport
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_Format()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,48h
+	mov [rsp+28h],rcx
+	mov r9d,44h
+	mov [rsp+48h],ecx
+	mov r8d,49h
+	lea rcx,[rsp+48h]
+	mov word ptr [rsp+20h],20h
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 72
+	004 Move stack:0x28, rcx
+	005 Move r9, 68
+	006 Move stack:0x48, rcx
+	007 Move r8, 73
+	008 LoadAddress rcx, stack:0x48
+	009 Move stack:0x20, 32
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x48
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.InputSystem.DualShock.LowLevel.DualShock4HIDInputReport ToHIDInputReport()
+
+Disassembly:
+	movzx eax,byte ptr [rdx]
+	mov [rcx],al
+	movzx eax,byte ptr [rdx+1]
+	mov [rcx+1],al
+	movzx eax,byte ptr [rdx+2]
+	mov [rcx+2],al
+	movzx eax,byte ptr [rdx+3]
+	mov [rcx+3],al
+	movzx eax,byte ptr [rdx+7]
+	mov [rcx+7],al
+	movzx eax,byte ptr [rdx+8]
+	mov [rcx+8],al
+	movzx eax,byte ptr [rdx+4]
+	mov [rcx+4],al
+	movzx eax,byte ptr [rdx+5]
+	mov [rcx+5],al
+	movzx eax,byte ptr [rdx+6]
+	mov [rcx+6],al
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move [rcx], rax
+	003 Move rax, [rdx+1]
+	004 Move [rcx+1], rax
+	005 Move rax, [rdx+2]
+	006 Move [rcx+2], rax
+	007 Move rax, [rdx+3]
+	008 Move [rcx+3], rax
+	009 Move rax, [rdx+7]
+	010 Move [rcx+7], rax
+	011 Move rax, [rdx+8]
+	012 Move [rcx+8], rax
+	013 Move rax, [rdx+4]
+	014 Move [rcx+4], rax
+	015 Move rax, [rdx+5]
+	016 Move [rcx+5], rax
+	017 Move rax, [rdx+6]
+	018 Move [rcx+6], rax
+	019 Move rax, rcx
+	020 Return rax
+

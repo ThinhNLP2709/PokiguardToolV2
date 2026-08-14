@@ -1,0 +1,1322 @@
+Type: Unity.Mathematics.Geometry.MinMaxAABB
+
+Method: System.Void .ctor(Unity.Mathematics.float3 min, Unity.Mathematics.float3 max)
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx]
+	mov eax,[rdx+8]
+	movsd qword ptr [rcx],xmm0
+	movsd xmm0,qword ptr [r8]
+	mov [rcx+8],eax
+	mov eax,[r8+8]
+	movsd qword ptr [rcx+0Ch],xmm0
+	mov [rcx+14h],eax
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, [rdx+8]
+	003 Move [rcx], xmm0
+	004 Move xmm0, [r8]
+	005 Move [rcx+8], rax
+	006 Move rax, [r8+8]
+	007 Move [rcx+12], xmm0
+	008 Move [rcx+20], rax
+	009 Return 
+
+Method: Unity.Mathematics.Geometry.MinMaxAABB CreateFromCenterAndExtents(Unity.Mathematics.float3 center, Unity.Mathematics.float3 extents)
+
+Disassembly:
+	sub rsp,48h
+	movsd xmm0,qword ptr [rdx]
+	mov rax,rcx
+	movss xmm1,dword ptr [182A4FBA0h]
+	movaps xmm4,xmm0
+	movss xmm5,dword ptr [r8+8]
+	movaps xmm2,xmm0
+	movss xmm3,dword ptr [rdx+8]
+	movaps [rsp+30h],xmm6
+	movsd xmm6,qword ptr [r8]
+	movaps [rsp+20h],xmm7
+	movss xmm7,dword ptr [r8+4]
+	mulss xmm7,xmm1
+	mulss xmm6,xmm1
+	mulss xmm5,xmm1
+	subss xmm4,xmm6
+	shufps xmm2,xmm2,55h
+	subss xmm2,xmm7
+	addss xmm6,xmm0
+	shufps xmm0,xmm0,55h
+	subss xmm3,xmm5
+	addss xmm5,dword ptr [rdx+8]
+	shufps xmm4,xmm4,0E1h
+	addss xmm7,xmm0
+	movss xmm4,xmm2
+	shufps xmm4,xmm4,0C6h
+	movss xmm4,xmm3
+	shufps xmm4,xmm4,27h
+	movss xmm4,xmm6
+	unpcklps xmm7,xmm5
+	movaps xmm6,[rsp+30h]
+	shufps xmm4,xmm4,39h
+	movups [rcx],xmm4
+	movsd qword ptr [rcx+10h],xmm7
+	movaps xmm7,[rsp+20h]
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move xmm0, [rdx]
+	003 Move rax, rcx
+	004 Move xmm1, [0x182A4FBA0]
+	005 Move xmm4, xmm0
+	006 Move xmm5, [r8+8]
+	007 Move xmm2, xmm0
+	008 Move xmm3, [rdx+8]
+	009 Move stack:0x30, xmm6
+	010 Move xmm6, [r8]
+	011 Move stack:0x20, xmm7
+	012 Move xmm7, [r8+4]
+	013 Multiply xmm7, xmm7, xmm1
+	014 Multiply xmm6, xmm6, xmm1
+	015 Multiply xmm5, xmm5, xmm1
+	016 Subtract xmm4, xmm4, xmm6
+	017 Move XMM_TEMP.S[0], xmm2.S[1]
+	018 Move XMM_TEMP.S[1], xmm2.S[1]
+	019 Move XMM_TEMP.S[2], xmm2.S[1]
+	020 Move XMM_TEMP.S[3], xmm2.S[1]
+	021 Move xmm2, XMM_TEMP
+	022 Subtract xmm2, xmm2, xmm7
+	023 Add xmm6, xmm6, xmm0
+	024 Move XMM_TEMP.S[0], xmm0.S[1]
+	025 Move XMM_TEMP.S[1], xmm0.S[1]
+	026 Move XMM_TEMP.S[2], xmm0.S[1]
+	027 Move XMM_TEMP.S[3], xmm0.S[1]
+	028 Move xmm0, XMM_TEMP
+	029 Subtract xmm3, xmm3, xmm5
+	030 Add xmm5, xmm5, [rdx+8]
+	031 Move XMM_TEMP.S[0], xmm4.S[1]
+	032 Move XMM_TEMP.S[1], xmm4.S[0]
+	033 Move XMM_TEMP.S[2], xmm4.S[2]
+	034 Move XMM_TEMP.S[3], xmm4.S[3]
+	035 Move xmm4, XMM_TEMP
+	036 Add xmm7, xmm7, xmm0
+	037 Move xmm4, xmm2
+	038 Move XMM_TEMP.S[0], xmm4.S[2]
+	039 Move XMM_TEMP.S[1], xmm4.S[1]
+	040 Move XMM_TEMP.S[2], xmm4.S[0]
+	041 Move XMM_TEMP.S[3], xmm4.S[3]
+	042 Move xmm4, XMM_TEMP
+	043 Move xmm4, xmm3
+	044 Move XMM_TEMP.S[0], xmm4.S[3]
+	045 Move XMM_TEMP.S[1], xmm4.S[1]
+	046 Move XMM_TEMP.S[2], xmm4.S[2]
+	047 Move XMM_TEMP.S[3], xmm4.S[0]
+	048 Move xmm4, XMM_TEMP
+	049 Move xmm4, xmm6
+	050 Move XMM_TEMP.S[0], xmm7.S[0]
+	051 Move XMM_TEMP.S[1], xmm5.S[0]
+	052 Move XMM_TEMP.S[2], xmm7.S[1]
+	053 Move XMM_TEMP.S[3], xmm5.S[1]
+	054 Move xmm7, XMM_TEMP
+	055 Move xmm6, stack:0x30
+	056 Move XMM_TEMP.S[0], xmm4.S[1]
+	057 Move XMM_TEMP.S[1], xmm4.S[2]
+	058 Move XMM_TEMP.S[2], xmm4.S[3]
+	059 Move XMM_TEMP.S[3], xmm4.S[0]
+	060 Move xmm4, XMM_TEMP
+	061 Move [rcx], xmm4
+	062 Move [rcx+16], xmm7
+	063 Move xmm7, stack:0x20
+	064 ShiftStack 72
+	065 Return rax
+
+Method: Unity.Mathematics.Geometry.MinMaxAABB CreateFromCenterAndHalfExtents(Unity.Mathematics.float3 center, Unity.Mathematics.float3 halfExtents)
+
+Disassembly:
+	sub rsp,38h
+	movsd xmm1,qword ptr [r8]
+	mov rax,rcx
+	movss xmm5,dword ptr [rdx+8]
+	movaps xmm0,xmm1
+	movss xmm2,dword ptr [r8+8]
+	subss xmm5,dword ptr [r8+8]
+	addss xmm2,dword ptr [rdx+8]
+	movaps [rsp+20h],xmm6
+	movss xmm6,dword ptr [rdx+4]
+	movaps [rsp+10h],xmm7
+	movsd xmm7,qword ptr [rdx]
+	shufps xmm0,xmm0,55h
+	subss xmm7,xmm1
+	subss xmm6,xmm0
+	movaps xmm0,xmm1
+	movsd xmm1,qword ptr [rdx]
+	movaps xmm4,xmm0
+	movaps xmm3,xmm0
+	addss xmm4,xmm1
+	movaps xmm0,xmm1
+	shufps xmm3,xmm3,55h
+	shufps xmm0,xmm0,55h
+	unpcklps xmm7,xmm6
+	addss xmm3,xmm0
+	movaps xmm6,[rsp+20h]
+	movsd qword ptr [rcx],xmm7
+	movaps xmm7,[rsp+10h]
+	movss dword ptr [rcx+8],xmm5
+	unpcklps xmm4,xmm3
+	movsd qword ptr [rcx+0Ch],xmm4
+	movss dword ptr [rcx+14h],xmm2
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm1, [r8]
+	003 Move rax, rcx
+	004 Move xmm5, [rdx+8]
+	005 Move xmm0, xmm1
+	006 Move xmm2, [r8+8]
+	007 Subtract xmm5, xmm5, [r8+8]
+	008 Add xmm2, xmm2, [rdx+8]
+	009 Move stack:0x20, xmm6
+	010 Move xmm6, [rdx+4]
+	011 Move stack:0x10, xmm7
+	012 Move xmm7, [rdx]
+	013 Move XMM_TEMP.S[0], xmm0.S[1]
+	014 Move XMM_TEMP.S[1], xmm0.S[1]
+	015 Move XMM_TEMP.S[2], xmm0.S[1]
+	016 Move XMM_TEMP.S[3], xmm0.S[1]
+	017 Move xmm0, XMM_TEMP
+	018 Subtract xmm7, xmm7, xmm1
+	019 Subtract xmm6, xmm6, xmm0
+	020 Move xmm0, xmm1
+	021 Move xmm1, [rdx]
+	022 Move xmm4, xmm0
+	023 Move xmm3, xmm0
+	024 Add xmm4, xmm4, xmm1
+	025 Move xmm0, xmm1
+	026 Move XMM_TEMP.S[0], xmm3.S[1]
+	027 Move XMM_TEMP.S[1], xmm3.S[1]
+	028 Move XMM_TEMP.S[2], xmm3.S[1]
+	029 Move XMM_TEMP.S[3], xmm3.S[1]
+	030 Move xmm3, XMM_TEMP
+	031 Move XMM_TEMP.S[0], xmm0.S[1]
+	032 Move XMM_TEMP.S[1], xmm0.S[1]
+	033 Move XMM_TEMP.S[2], xmm0.S[1]
+	034 Move XMM_TEMP.S[3], xmm0.S[1]
+	035 Move xmm0, XMM_TEMP
+	036 Move XMM_TEMP.S[0], xmm7.S[0]
+	037 Move XMM_TEMP.S[1], xmm6.S[0]
+	038 Move XMM_TEMP.S[2], xmm7.S[1]
+	039 Move XMM_TEMP.S[3], xmm6.S[1]
+	040 Move xmm7, XMM_TEMP
+	041 Add xmm3, xmm3, xmm0
+	042 Move xmm6, stack:0x20
+	043 Move [rcx], xmm7
+	044 Move xmm7, stack:0x10
+	045 Move [rcx+8], xmm5
+	046 Move XMM_TEMP.S[0], xmm4.S[0]
+	047 Move XMM_TEMP.S[1], xmm3.S[0]
+	048 Move XMM_TEMP.S[2], xmm4.S[1]
+	049 Move XMM_TEMP.S[3], xmm3.S[1]
+	050 Move xmm4, XMM_TEMP
+	051 Move [rcx+12], xmm4
+	052 Move [rcx+20], xmm2
+	053 ShiftStack 56
+	054 Return rax
+
+Method: Unity.Mathematics.float3 get_Extents()
+
+Disassembly:
+	sub rsp,18h
+	movsd xmm2,qword ptr [rdx]
+	mov rax,rcx
+	movsd xmm3,qword ptr [rdx+0Ch]
+	movaps xmm0,xmm2
+	movss xmm1,dword ptr [rdx+10h]
+	subss xmm3,xmm2
+	movss xmm2,dword ptr [rdx+14h]
+	subss xmm2,dword ptr [rdx+8]
+	shufps xmm0,xmm0,55h
+	subss xmm1,xmm0
+	unpcklps xmm3,xmm1
+	movsd qword ptr [rcx],xmm3
+	movss dword ptr [rcx+8],xmm2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm2, [rdx]
+	003 Move rax, rcx
+	004 Move xmm3, [rdx+12]
+	005 Move xmm0, xmm2
+	006 Move xmm1, [rdx+16]
+	007 Subtract xmm3, xmm3, xmm2
+	008 Move xmm2, [rdx+20]
+	009 Subtract xmm2, xmm2, [rdx+8]
+	010 Move XMM_TEMP.S[0], xmm0.S[1]
+	011 Move XMM_TEMP.S[1], xmm0.S[1]
+	012 Move XMM_TEMP.S[2], xmm0.S[1]
+	013 Move XMM_TEMP.S[3], xmm0.S[1]
+	014 Move xmm0, XMM_TEMP
+	015 Subtract xmm1, xmm1, xmm0
+	016 Move XMM_TEMP.S[0], xmm3.S[0]
+	017 Move XMM_TEMP.S[1], xmm1.S[0]
+	018 Move XMM_TEMP.S[2], xmm3.S[1]
+	019 Move XMM_TEMP.S[3], xmm1.S[1]
+	020 Move xmm3, XMM_TEMP
+	021 Move [rcx], xmm3
+	022 Move [rcx+8], xmm2
+	023 ShiftStack 24
+	024 Return rax
+
+Method: Unity.Mathematics.float3 get_HalfExtents()
+
+Disassembly:
+	sub rsp,18h
+	movss xmm3,dword ptr [182A4FBA0h]
+	mov rax,rcx
+	movsd xmm1,qword ptr [rdx]
+	movsd xmm5,qword ptr [rdx+0Ch]
+	movaps xmm0,xmm1
+	movss xmm4,dword ptr [rdx+10h]
+	subss xmm5,xmm1
+	movss xmm2,dword ptr [rdx+14h]
+	subss xmm2,dword ptr [rdx+8]
+	shufps xmm0,xmm0,55h
+	subss xmm4,xmm0
+	mulss xmm5,xmm3
+	mulss xmm2,xmm3
+	mulss xmm4,xmm3
+	unpcklps xmm5,xmm4
+	movsd qword ptr [rcx],xmm5
+	movss dword ptr [rcx+8],xmm2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm3, [0x182A4FBA0]
+	003 Move rax, rcx
+	004 Move xmm1, [rdx]
+	005 Move xmm5, [rdx+12]
+	006 Move xmm0, xmm1
+	007 Move xmm4, [rdx+16]
+	008 Subtract xmm5, xmm5, xmm1
+	009 Move xmm2, [rdx+20]
+	010 Subtract xmm2, xmm2, [rdx+8]
+	011 Move XMM_TEMP.S[0], xmm0.S[1]
+	012 Move XMM_TEMP.S[1], xmm0.S[1]
+	013 Move XMM_TEMP.S[2], xmm0.S[1]
+	014 Move XMM_TEMP.S[3], xmm0.S[1]
+	015 Move xmm0, XMM_TEMP
+	016 Subtract xmm4, xmm4, xmm0
+	017 Multiply xmm5, xmm5, xmm3
+	018 Multiply xmm2, xmm2, xmm3
+	019 Multiply xmm4, xmm4, xmm3
+	020 Move XMM_TEMP.S[0], xmm5.S[0]
+	021 Move XMM_TEMP.S[1], xmm4.S[0]
+	022 Move XMM_TEMP.S[2], xmm5.S[1]
+	023 Move XMM_TEMP.S[3], xmm4.S[1]
+	024 Move xmm5, XMM_TEMP
+	025 Move [rcx], xmm5
+	026 Move [rcx+8], xmm2
+	027 ShiftStack 24
+	028 Return rax
+
+Method: Unity.Mathematics.float3 get_Center()
+
+Disassembly:
+	sub rsp,18h
+	movss xmm3,dword ptr [182A4FBA0h]
+	mov rax,rcx
+	movsd xmm1,qword ptr [rdx+0Ch]
+	movsd xmm5,qword ptr [rdx]
+	movaps xmm0,xmm1
+	movss xmm4,dword ptr [rdx+4]
+	addss xmm5,xmm1
+	movss xmm2,dword ptr [rdx+8]
+	addss xmm2,dword ptr [rdx+14h]
+	shufps xmm0,xmm0,55h
+	addss xmm4,xmm0
+	mulss xmm5,xmm3
+	mulss xmm2,xmm3
+	mulss xmm4,xmm3
+	unpcklps xmm5,xmm4
+	movsd qword ptr [rcx],xmm5
+	movss dword ptr [rcx+8],xmm2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm3, [0x182A4FBA0]
+	003 Move rax, rcx
+	004 Move xmm1, [rdx+12]
+	005 Move xmm5, [rdx]
+	006 Move xmm0, xmm1
+	007 Move xmm4, [rdx+4]
+	008 Add xmm5, xmm5, xmm1
+	009 Move xmm2, [rdx+8]
+	010 Add xmm2, xmm2, [rdx+20]
+	011 Move XMM_TEMP.S[0], xmm0.S[1]
+	012 Move XMM_TEMP.S[1], xmm0.S[1]
+	013 Move XMM_TEMP.S[2], xmm0.S[1]
+	014 Move XMM_TEMP.S[3], xmm0.S[1]
+	015 Move xmm0, XMM_TEMP
+	016 Add xmm4, xmm4, xmm0
+	017 Multiply xmm5, xmm5, xmm3
+	018 Multiply xmm2, xmm2, xmm3
+	019 Multiply xmm4, xmm4, xmm3
+	020 Move XMM_TEMP.S[0], xmm5.S[0]
+	021 Move XMM_TEMP.S[1], xmm4.S[0]
+	022 Move XMM_TEMP.S[2], xmm5.S[1]
+	023 Move XMM_TEMP.S[3], xmm4.S[1]
+	024 Move xmm5, XMM_TEMP
+	025 Move [rcx], xmm5
+	026 Move [rcx+8], xmm2
+	027 ShiftStack 24
+	028 Return rax
+
+Method: System.Boolean get_IsValid()
+
+Disassembly:
+	sub rsp,18h
+	movsd xmm3,qword ptr [rcx+0Ch]
+	movsd xmm2,qword ptr [rcx]
+	movaps xmm1,xmm3
+	shufps xmm1,xmm1,55h
+	movaps xmm0,xmm2
+	shufps xmm0,xmm0,55h
+	comiss xmm1,xmm0
+	movss xmm1,dword ptr [rcx+14h]
+	setae dl
+	comiss xmm1,dword ptr [rcx+8]
+	setae al
+	comiss xmm3,xmm2
+	jb short 00000001820C9C46h
+	test dl,dl
+	jne short 00000001820C9C48h
+	xor al,al
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm3, [rcx+12]
+	003 Move xmm2, [rcx]
+	004 Move xmm1, xmm3
+	005 Move XMM_TEMP.S[0], xmm1.S[1]
+	006 Move XMM_TEMP.S[1], xmm1.S[1]
+	007 Move XMM_TEMP.S[2], xmm1.S[1]
+	008 Move XMM_TEMP.S[3], xmm1.S[1]
+	009 Move xmm1, XMM_TEMP
+	010 Move xmm0, xmm2
+	011 Move XMM_TEMP.S[0], xmm0.S[1]
+	012 Move XMM_TEMP.S[1], xmm0.S[1]
+	013 Move XMM_TEMP.S[2], xmm0.S[1]
+	014 Move XMM_TEMP.S[3], xmm0.S[1]
+	015 Move xmm0, XMM_TEMP
+	016 Compare xmm1, xmm0
+	017 Move xmm1, [rcx+20]
+	018 NotImplemented "setae dl"
+	019 Compare xmm1, [rcx+8]
+	020 NotImplemented "setae al"
+	021 Compare xmm3, xmm2
+	022 JumpIfLess {25}
+	023 Compare rdx, 0
+	024 JumpIfNotEqual {26}
+	025 Move rax, 0
+	026 ShiftStack 24
+	027 Return rax
+
+Method: System.Single get_SurfaceArea()
+
+Disassembly:
+	sub rsp,18h
+	movsd xmm1,qword ptr [rcx]
+	movsd xmm3,qword ptr [rcx+0Ch]
+	movaps xmm0,xmm1
+	movss xmm2,dword ptr [rcx+10h]
+	subss xmm3,xmm1
+	movss xmm1,dword ptr [rcx+14h]
+	subss xmm1,dword ptr [rcx+8]
+	shufps xmm0,xmm0,55h
+	subss xmm2,xmm0
+	movaps xmm0,xmm1
+	mulss xmm1,xmm3
+	mulss xmm0,xmm2
+	mulss xmm2,xmm3
+	addss xmm0,xmm2
+	addss xmm0,xmm1
+	addss xmm0,xmm0
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm1, [rcx]
+	003 Move xmm3, [rcx+12]
+	004 Move xmm0, xmm1
+	005 Move xmm2, [rcx+16]
+	006 Subtract xmm3, xmm3, xmm1
+	007 Move xmm1, [rcx+20]
+	008 Subtract xmm1, xmm1, [rcx+8]
+	009 Move XMM_TEMP.S[0], xmm0.S[1]
+	010 Move XMM_TEMP.S[1], xmm0.S[1]
+	011 Move XMM_TEMP.S[2], xmm0.S[1]
+	012 Move XMM_TEMP.S[3], xmm0.S[1]
+	013 Move xmm0, XMM_TEMP
+	014 Subtract xmm2, xmm2, xmm0
+	015 Move xmm0, xmm1
+	016 Multiply xmm1, xmm1, xmm3
+	017 Multiply xmm0, xmm0, xmm2
+	018 Multiply xmm2, xmm2, xmm3
+	019 Add xmm0, xmm0, xmm2
+	020 Add xmm0, xmm0, xmm1
+	021 Add xmm0, xmm0, xmm0
+	022 ShiftStack 24
+	023 Return xmm0
+
+Method: System.Boolean Contains(Unity.Mathematics.float3 point)
+
+Disassembly:
+	sub rsp,28h
+	movsd xmm5,qword ptr [rdx]
+	movsd xmm4,qword ptr [rcx+0Ch]
+	movaps xmm0,xmm5
+	shufps xmm0,xmm0,55h
+	movaps xmm1,xmm4
+	shufps xmm1,xmm1,55h
+	movaps xmm2,xmm5
+	comiss xmm1,xmm0
+	movss xmm1,dword ptr [rcx+14h]
+	movaps [rsp+10h],xmm6
+	movsd xmm6,qword ptr [rcx]
+	setae r8b
+	movaps xmm0,xmm6
+	shufps xmm2,xmm2,55h
+	shufps xmm0,xmm0,55h
+	comiss xmm2,xmm0
+	movss xmm0,dword ptr [rdx+8]
+	setae al
+	and r8b,al
+	comiss xmm1,xmm0
+	setae r9b
+	comiss xmm0,dword ptr [rcx+8]
+	setae al
+	and r9b,al
+	comiss xmm4,xmm5
+	setae dl
+	comiss xmm5,xmm6
+	setae cl
+	test cl,dl
+	je short 00000001820C94F0h
+	test r8b,r8b
+	je short 00000001820C94F0h
+	movzx eax,r9b
+	movaps xmm6,[rsp+10h]
+	add rsp,28h
+	ret
+	movaps xmm6,[rsp+10h]
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm5, [rdx]
+	003 Move xmm4, [rcx+12]
+	004 Move xmm0, xmm5
+	005 Move XMM_TEMP.S[0], xmm0.S[1]
+	006 Move XMM_TEMP.S[1], xmm0.S[1]
+	007 Move XMM_TEMP.S[2], xmm0.S[1]
+	008 Move XMM_TEMP.S[3], xmm0.S[1]
+	009 Move xmm0, XMM_TEMP
+	010 Move xmm1, xmm4
+	011 Move XMM_TEMP.S[0], xmm1.S[1]
+	012 Move XMM_TEMP.S[1], xmm1.S[1]
+	013 Move XMM_TEMP.S[2], xmm1.S[1]
+	014 Move XMM_TEMP.S[3], xmm1.S[1]
+	015 Move xmm1, XMM_TEMP
+	016 Move xmm2, xmm5
+	017 Compare xmm1, xmm0
+	018 Move xmm1, [rcx+20]
+	019 Move stack:0x10, xmm6
+	020 Move xmm6, [rcx]
+	021 NotImplemented "setae r8b"
+	022 Move xmm0, xmm6
+	023 Move XMM_TEMP.S[0], xmm2.S[1]
+	024 Move XMM_TEMP.S[1], xmm2.S[1]
+	025 Move XMM_TEMP.S[2], xmm2.S[1]
+	026 Move XMM_TEMP.S[3], xmm2.S[1]
+	027 Move xmm2, XMM_TEMP
+	028 Move XMM_TEMP.S[0], xmm0.S[1]
+	029 Move XMM_TEMP.S[1], xmm0.S[1]
+	030 Move XMM_TEMP.S[2], xmm0.S[1]
+	031 Move XMM_TEMP.S[3], xmm0.S[1]
+	032 Move xmm0, XMM_TEMP
+	033 Compare xmm2, xmm0
+	034 Move xmm0, [rdx+8]
+	035 NotImplemented "setae al"
+	036 And r8, r8, rax
+	037 Compare xmm1, xmm0
+	038 NotImplemented "setae r9b"
+	039 Compare xmm0, [rcx+8]
+	040 NotImplemented "setae al"
+	041 And r9, r9, rax
+	042 Compare xmm4, xmm5
+	043 NotImplemented "setae dl"
+	044 Compare xmm5, xmm6
+	045 NotImplemented "setae cl"
+	046 Compare rcx, rdx
+	047 JumpIfEqual {54}
+	048 Compare r8, 0
+	049 JumpIfEqual {54}
+	050 Move rax, r9
+	051 Move xmm6, stack:0x10
+	052 ShiftStack 40
+	053 Return rax
+	054 Move xmm6, stack:0x10
+	055 Move rax, 0
+	056 ShiftStack 40
+	057 Return rax
+
+Method: System.Boolean Contains(Unity.Mathematics.Geometry.MinMaxAABB aabb)
+
+Disassembly:
+	sub rsp,28h
+	movsd xmm4,qword ptr [rdx+0Ch]
+	movsd xmm3,qword ptr [rcx+0Ch]
+	movaps xmm0,xmm4
+	movsd xmm5,qword ptr [rcx]
+	movaps xmm1,xmm3
+	shufps xmm0,xmm0,55h
+	shufps xmm1,xmm1,55h
+	comiss xmm1,xmm0
+	movss xmm1,dword ptr [rcx+14h]
+	movaps xmm0,xmm5
+	movaps [rsp+10h],xmm6
+	movsd xmm6,qword ptr [rdx]
+	setae r8b
+	movaps xmm2,xmm6
+	shufps xmm0,xmm0,55h
+	shufps xmm2,xmm2,55h
+	comiss xmm2,xmm0
+	movss xmm2,dword ptr [rdx+8]
+	setae al
+	and r8b,al
+	comiss xmm1,dword ptr [rdx+14h]
+	setae r9b
+	comiss xmm2,dword ptr [rcx+8]
+	setae al
+	and r9b,al
+	comiss xmm3,xmm4
+	setae dl
+	comiss xmm6,xmm5
+	setae cl
+	test cl,dl
+	je short 00000001820C9586h
+	test r8b,r8b
+	je short 00000001820C9586h
+	movzx eax,r9b
+	movaps xmm6,[rsp+10h]
+	add rsp,28h
+	ret
+	movaps xmm6,[rsp+10h]
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm4, [rdx+12]
+	003 Move xmm3, [rcx+12]
+	004 Move xmm0, xmm4
+	005 Move xmm5, [rcx]
+	006 Move xmm1, xmm3
+	007 Move XMM_TEMP.S[0], xmm0.S[1]
+	008 Move XMM_TEMP.S[1], xmm0.S[1]
+	009 Move XMM_TEMP.S[2], xmm0.S[1]
+	010 Move XMM_TEMP.S[3], xmm0.S[1]
+	011 Move xmm0, XMM_TEMP
+	012 Move XMM_TEMP.S[0], xmm1.S[1]
+	013 Move XMM_TEMP.S[1], xmm1.S[1]
+	014 Move XMM_TEMP.S[2], xmm1.S[1]
+	015 Move XMM_TEMP.S[3], xmm1.S[1]
+	016 Move xmm1, XMM_TEMP
+	017 Compare xmm1, xmm0
+	018 Move xmm1, [rcx+20]
+	019 Move xmm0, xmm5
+	020 Move stack:0x10, xmm6
+	021 Move xmm6, [rdx]
+	022 NotImplemented "setae r8b"
+	023 Move xmm2, xmm6
+	024 Move XMM_TEMP.S[0], xmm0.S[1]
+	025 Move XMM_TEMP.S[1], xmm0.S[1]
+	026 Move XMM_TEMP.S[2], xmm0.S[1]
+	027 Move XMM_TEMP.S[3], xmm0.S[1]
+	028 Move xmm0, XMM_TEMP
+	029 Move XMM_TEMP.S[0], xmm2.S[1]
+	030 Move XMM_TEMP.S[1], xmm2.S[1]
+	031 Move XMM_TEMP.S[2], xmm2.S[1]
+	032 Move XMM_TEMP.S[3], xmm2.S[1]
+	033 Move xmm2, XMM_TEMP
+	034 Compare xmm2, xmm0
+	035 Move xmm2, [rdx+8]
+	036 NotImplemented "setae al"
+	037 And r8, r8, rax
+	038 Compare xmm1, [rdx+20]
+	039 NotImplemented "setae r9b"
+	040 Compare xmm2, [rcx+8]
+	041 NotImplemented "setae al"
+	042 And r9, r9, rax
+	043 Compare xmm3, xmm4
+	044 NotImplemented "setae dl"
+	045 Compare xmm6, xmm5
+	046 NotImplemented "setae cl"
+	047 Compare rcx, rdx
+	048 JumpIfEqual {55}
+	049 Compare r8, 0
+	050 JumpIfEqual {55}
+	051 Move rax, r9
+	052 Move xmm6, stack:0x10
+	053 ShiftStack 40
+	054 Return rax
+	055 Move xmm6, stack:0x10
+	056 Move rax, 0
+	057 ShiftStack 40
+	058 Return rax
+
+Method: System.Boolean Overlaps(Unity.Mathematics.Geometry.MinMaxAABB aabb)
+
+Disassembly:
+	sub rsp,28h
+	movsd xmm4,qword ptr [rdx+0Ch]
+	movsd xmm3,qword ptr [rcx]
+	movaps xmm1,xmm4
+	movsd xmm5,qword ptr [rcx+0Ch]
+	movaps xmm0,xmm3
+	shufps xmm0,xmm0,55h
+	movaps xmm2,xmm5
+	shufps xmm1,xmm1,55h
+	comiss xmm1,xmm0
+	movss xmm1,dword ptr [rdx+14h]
+	shufps xmm2,xmm2,55h
+	setae r8b
+	movaps [rsp+10h],xmm6
+	movsd xmm6,qword ptr [rdx]
+	movaps xmm0,xmm6
+	shufps xmm0,xmm0,55h
+	comiss xmm2,xmm0
+	movss xmm2,dword ptr [rcx+14h]
+	setae al
+	and r8b,al
+	comiss xmm1,dword ptr [rcx+8]
+	setae r9b
+	comiss xmm2,dword ptr [rdx+8]
+	setae al
+	and r9b,al
+	comiss xmm4,xmm3
+	setae dl
+	comiss xmm5,xmm6
+	setae cl
+	test cl,dl
+	je short 00000001820C9A56h
+	test r8b,r8b
+	je short 00000001820C9A56h
+	movzx eax,r9b
+	movaps xmm6,[rsp+10h]
+	add rsp,28h
+	ret
+	movaps xmm6,[rsp+10h]
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm4, [rdx+12]
+	003 Move xmm3, [rcx]
+	004 Move xmm1, xmm4
+	005 Move xmm5, [rcx+12]
+	006 Move xmm0, xmm3
+	007 Move XMM_TEMP.S[0], xmm0.S[1]
+	008 Move XMM_TEMP.S[1], xmm0.S[1]
+	009 Move XMM_TEMP.S[2], xmm0.S[1]
+	010 Move XMM_TEMP.S[3], xmm0.S[1]
+	011 Move xmm0, XMM_TEMP
+	012 Move xmm2, xmm5
+	013 Move XMM_TEMP.S[0], xmm1.S[1]
+	014 Move XMM_TEMP.S[1], xmm1.S[1]
+	015 Move XMM_TEMP.S[2], xmm1.S[1]
+	016 Move XMM_TEMP.S[3], xmm1.S[1]
+	017 Move xmm1, XMM_TEMP
+	018 Compare xmm1, xmm0
+	019 Move xmm1, [rdx+20]
+	020 Move XMM_TEMP.S[0], xmm2.S[1]
+	021 Move XMM_TEMP.S[1], xmm2.S[1]
+	022 Move XMM_TEMP.S[2], xmm2.S[1]
+	023 Move XMM_TEMP.S[3], xmm2.S[1]
+	024 Move xmm2, XMM_TEMP
+	025 NotImplemented "setae r8b"
+	026 Move stack:0x10, xmm6
+	027 Move xmm6, [rdx]
+	028 Move xmm0, xmm6
+	029 Move XMM_TEMP.S[0], xmm0.S[1]
+	030 Move XMM_TEMP.S[1], xmm0.S[1]
+	031 Move XMM_TEMP.S[2], xmm0.S[1]
+	032 Move XMM_TEMP.S[3], xmm0.S[1]
+	033 Move xmm0, XMM_TEMP
+	034 Compare xmm2, xmm0
+	035 Move xmm2, [rcx+20]
+	036 NotImplemented "setae al"
+	037 And r8, r8, rax
+	038 Compare xmm1, [rcx+8]
+	039 NotImplemented "setae r9b"
+	040 Compare xmm2, [rdx+8]
+	041 NotImplemented "setae al"
+	042 And r9, r9, rax
+	043 Compare xmm4, xmm3
+	044 NotImplemented "setae dl"
+	045 Compare xmm5, xmm6
+	046 NotImplemented "setae cl"
+	047 Compare rcx, rdx
+	048 JumpIfEqual {55}
+	049 Compare r8, 0
+	050 JumpIfEqual {55}
+	051 Move rax, r9
+	052 Move xmm6, stack:0x10
+	053 ShiftStack 40
+	054 Return rax
+	055 Move xmm6, stack:0x10
+	056 Move rax, 0
+	057 ShiftStack 40
+	058 Return rax
+
+Method: System.Void Expand(System.Single signedDistance)
+
+Disassembly:
+	sub rsp,18h
+	movsd xmm4,qword ptr [rcx]
+	movaps xmm5,xmm1
+	movss xmm3,dword ptr [rcx+4]
+	subss xmm4,xmm5
+	movss xmm2,dword ptr [rcx+8]
+	subss xmm3,xmm5
+	movss xmm1,dword ptr [rcx+10h]
+	subss xmm2,xmm5
+	addss xmm1,xmm5
+	unpcklps xmm4,xmm3
+	movsd xmm3,qword ptr [rcx+0Ch]
+	movsd qword ptr [rcx],xmm4
+	addss xmm3,xmm5
+	movss dword ptr [rcx+8],xmm2
+	movss xmm2,dword ptr [rcx+14h]
+	addss xmm2,xmm5
+	unpcklps xmm3,xmm1
+	movsd qword ptr [rcx+0Ch],xmm3
+	movss dword ptr [rcx+14h],xmm2
+	add rsp,18h
+	ret
+
+ISIL:
+	001 ShiftStack -24
+	002 Move xmm4, [rcx]
+	003 Move xmm5, xmm1
+	004 Move xmm3, [rcx+4]
+	005 Subtract xmm4, xmm4, xmm5
+	006 Move xmm2, [rcx+8]
+	007 Subtract xmm3, xmm3, xmm5
+	008 Move xmm1, [rcx+16]
+	009 Subtract xmm2, xmm2, xmm5
+	010 Add xmm1, xmm1, xmm5
+	011 Move XMM_TEMP.S[0], xmm4.S[0]
+	012 Move XMM_TEMP.S[1], xmm3.S[0]
+	013 Move XMM_TEMP.S[2], xmm4.S[1]
+	014 Move XMM_TEMP.S[3], xmm3.S[1]
+	015 Move xmm4, XMM_TEMP
+	016 Move xmm3, [rcx+12]
+	017 Move [rcx], xmm4
+	018 Add xmm3, xmm3, xmm5
+	019 Move [rcx+8], xmm2
+	020 Move xmm2, [rcx+20]
+	021 Add xmm2, xmm2, xmm5
+	022 Move XMM_TEMP.S[0], xmm3.S[0]
+	023 Move XMM_TEMP.S[1], xmm1.S[0]
+	024 Move XMM_TEMP.S[2], xmm3.S[1]
+	025 Move XMM_TEMP.S[3], xmm1.S[1]
+	026 Move xmm3, XMM_TEMP
+	027 Move [rcx+12], xmm3
+	028 Move [rcx+20], xmm2
+	029 ShiftStack 24
+	030 Return 
+
+Method: System.Void Encapsulate(Unity.Mathematics.Geometry.MinMaxAABB aabb)
+
+Disassembly:
+	sub rsp,28h
+	movsd xmm0,qword ptr [rdx]
+	mov eax,[rcx+8]
+	movsd xmm1,qword ptr [rcx]
+	mov [rsp+8],eax
+	movd eax,xmm0
+	movsd qword ptr [rsp+10h],xmm0
+	movsd qword ptr [rsp],xmm1
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C9702h
+	comiss xmm0,xmm1
+	jbe short 00000001820C9705h
+	movaps xmm0,xmm1
+	movss xmm1,dword ptr [rsp+14h]
+	movss xmm2,dword ptr [rsp+4]
+	movd eax,xmm1
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C9725h
+	comiss xmm1,xmm2
+	jbe short 00000001820C9728h
+	movaps xmm1,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	movss xmm3,dword ptr [rsp+8]
+	movd eax,xmm2
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C9747h
+	comiss xmm2,xmm3
+	jbe short 00000001820C974Ah
+	movaps xmm2,xmm3
+	mov eax,[rcx+14h]
+	unpcklps xmm0,xmm1
+	movsd xmm1,qword ptr [rcx+0Ch]
+	movsd qword ptr [rcx],xmm0
+	movsd xmm0,qword ptr [rdx+0Ch]
+	mov [rsp+8],eax
+	movd eax,xmm0
+	movss dword ptr [rcx+8],xmm2
+	movsd qword ptr [rsp+10h],xmm0
+	btr eax,1Fh
+	movsd qword ptr [rsp],xmm1
+	cmp eax,7F800000h
+	ja short 00000001820C9786h
+	comiss xmm1,xmm0
+	jbe short 00000001820C9789h
+	movaps xmm0,xmm1
+	movss xmm1,dword ptr [rsp+14h]
+	movss xmm2,dword ptr [rsp+4]
+	movd eax,xmm1
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C97A9h
+	comiss xmm2,xmm1
+	jbe short 00000001820C97ACh
+	movaps xmm1,xmm2
+	movss xmm2,dword ptr [rdx+14h]
+	movss xmm3,dword ptr [rsp+8]
+	movd eax,xmm2
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C97CBh
+	comiss xmm3,xmm2
+	jbe short 00000001820C97CEh
+	movaps xmm2,xmm3
+	unpcklps xmm0,xmm1
+	movsd qword ptr [rcx+0Ch],xmm0
+	movss dword ptr [rcx+14h],xmm2
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm0, [rdx]
+	003 Move rax, [rcx+8]
+	004 Move xmm1, [rcx]
+	005 Move stack:0x8, rax
+	006 Move rax, xmm0
+	007 Move stack:0x10, xmm0
+	008 Move stack:0x0, xmm1
+	009 NotImplemented "btr eax,1Fh"
+	010 Compare rax, 0x7F800000
+	011 JumpIfGreater {14}
+	012 Compare xmm0, xmm1
+	013 JumpIfLessOrEqual {15}
+	014 Move xmm0, xmm1
+	015 Move xmm1, stack:0x14
+	016 Move xmm2, stack:0x4
+	017 Move rax, xmm1
+	018 NotImplemented "btr eax,1Fh"
+	019 Compare rax, 0x7F800000
+	020 JumpIfGreater {23}
+	021 Compare xmm1, xmm2
+	022 JumpIfLessOrEqual {24}
+	023 Move xmm1, xmm2
+	024 Move xmm2, [rdx+8]
+	025 Move xmm3, stack:0x8
+	026 Move rax, xmm2
+	027 NotImplemented "btr eax,1Fh"
+	028 Compare rax, 0x7F800000
+	029 JumpIfGreater {32}
+	030 Compare xmm2, xmm3
+	031 JumpIfLessOrEqual {33}
+	032 Move xmm2, xmm3
+	033 Move rax, [rcx+20]
+	034 Move XMM_TEMP.S[0], xmm0.S[0]
+	035 Move XMM_TEMP.S[1], xmm1.S[0]
+	036 Move XMM_TEMP.S[2], xmm0.S[1]
+	037 Move XMM_TEMP.S[3], xmm1.S[1]
+	038 Move xmm0, XMM_TEMP
+	039 Move xmm1, [rcx+12]
+	040 Move [rcx], xmm0
+	041 Move xmm0, [rdx+12]
+	042 Move stack:0x8, rax
+	043 Move rax, xmm0
+	044 Move [rcx+8], xmm2
+	045 Move stack:0x10, xmm0
+	046 NotImplemented "btr eax,1Fh"
+	047 Move stack:0x0, xmm1
+	048 Compare rax, 0x7F800000
+	049 JumpIfGreater {52}
+	050 Compare xmm1, xmm0
+	051 JumpIfLessOrEqual {53}
+	052 Move xmm0, xmm1
+	053 Move xmm1, stack:0x14
+	054 Move xmm2, stack:0x4
+	055 Move rax, xmm1
+	056 NotImplemented "btr eax,1Fh"
+	057 Compare rax, 0x7F800000
+	058 JumpIfGreater {61}
+	059 Compare xmm2, xmm1
+	060 JumpIfLessOrEqual {62}
+	061 Move xmm1, xmm2
+	062 Move xmm2, [rdx+20]
+	063 Move xmm3, stack:0x8
+	064 Move rax, xmm2
+	065 NotImplemented "btr eax,1Fh"
+	066 Compare rax, 0x7F800000
+	067 JumpIfGreater {70}
+	068 Compare xmm3, xmm2
+	069 JumpIfLessOrEqual {71}
+	070 Move xmm2, xmm3
+	071 Move XMM_TEMP.S[0], xmm0.S[0]
+	072 Move XMM_TEMP.S[1], xmm1.S[0]
+	073 Move XMM_TEMP.S[2], xmm0.S[1]
+	074 Move XMM_TEMP.S[3], xmm1.S[1]
+	075 Move xmm0, XMM_TEMP
+	076 Move [rcx+12], xmm0
+	077 Move [rcx+20], xmm2
+	078 ShiftStack 40
+	079 Return 
+
+Method: System.Void Encapsulate(Unity.Mathematics.float3 point)
+
+Disassembly:
+	sub rsp,28h
+	movsd xmm0,qword ptr [rdx]
+	mov eax,[rcx+8]
+	movsd xmm1,qword ptr [rcx]
+	mov [rsp+8],eax
+	movd eax,xmm0
+	movsd qword ptr [rsp+10h],xmm0
+	movsd qword ptr [rsp],xmm1
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C9812h
+	comiss xmm0,xmm1
+	jbe short 00000001820C9815h
+	movaps xmm0,xmm1
+	movss xmm1,dword ptr [rsp+14h]
+	movss xmm2,dword ptr [rsp+4]
+	movd eax,xmm1
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C9835h
+	comiss xmm1,xmm2
+	jbe short 00000001820C9838h
+	movaps xmm1,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	movss xmm3,dword ptr [rsp+8]
+	movd eax,xmm2
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C9857h
+	comiss xmm2,xmm3
+	jbe short 00000001820C985Ah
+	movaps xmm2,xmm3
+	mov eax,[rcx+14h]
+	unpcklps xmm0,xmm1
+	movsd xmm1,qword ptr [rcx+0Ch]
+	movsd qword ptr [rcx],xmm0
+	movsd xmm0,qword ptr [rdx]
+	mov [rsp+8],eax
+	movd eax,xmm0
+	movss dword ptr [rcx+8],xmm2
+	movsd qword ptr [rsp+10h],xmm0
+	btr eax,1Fh
+	movsd qword ptr [rsp],xmm1
+	cmp eax,7F800000h
+	ja short 00000001820C9895h
+	comiss xmm1,xmm0
+	jbe short 00000001820C9898h
+	movaps xmm0,xmm1
+	movss xmm1,dword ptr [rsp+14h]
+	movss xmm2,dword ptr [rsp+4]
+	movd eax,xmm1
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C98B8h
+	comiss xmm2,xmm1
+	jbe short 00000001820C98BBh
+	movaps xmm1,xmm2
+	movss xmm2,dword ptr [rdx+8]
+	movss xmm3,dword ptr [rsp+8]
+	movd eax,xmm2
+	btr eax,1Fh
+	cmp eax,7F800000h
+	ja short 00000001820C98DAh
+	comiss xmm3,xmm2
+	jbe short 00000001820C98DDh
+	movaps xmm2,xmm3
+	unpcklps xmm0,xmm1
+	movsd qword ptr [rcx+0Ch],xmm0
+	movss dword ptr [rcx+14h],xmm2
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm0, [rdx]
+	003 Move rax, [rcx+8]
+	004 Move xmm1, [rcx]
+	005 Move stack:0x8, rax
+	006 Move rax, xmm0
+	007 Move stack:0x10, xmm0
+	008 Move stack:0x0, xmm1
+	009 NotImplemented "btr eax,1Fh"
+	010 Compare rax, 0x7F800000
+	011 JumpIfGreater {14}
+	012 Compare xmm0, xmm1
+	013 JumpIfLessOrEqual {15}
+	014 Move xmm0, xmm1
+	015 Move xmm1, stack:0x14
+	016 Move xmm2, stack:0x4
+	017 Move rax, xmm1
+	018 NotImplemented "btr eax,1Fh"
+	019 Compare rax, 0x7F800000
+	020 JumpIfGreater {23}
+	021 Compare xmm1, xmm2
+	022 JumpIfLessOrEqual {24}
+	023 Move xmm1, xmm2
+	024 Move xmm2, [rdx+8]
+	025 Move xmm3, stack:0x8
+	026 Move rax, xmm2
+	027 NotImplemented "btr eax,1Fh"
+	028 Compare rax, 0x7F800000
+	029 JumpIfGreater {32}
+	030 Compare xmm2, xmm3
+	031 JumpIfLessOrEqual {33}
+	032 Move xmm2, xmm3
+	033 Move rax, [rcx+20]
+	034 Move XMM_TEMP.S[0], xmm0.S[0]
+	035 Move XMM_TEMP.S[1], xmm1.S[0]
+	036 Move XMM_TEMP.S[2], xmm0.S[1]
+	037 Move XMM_TEMP.S[3], xmm1.S[1]
+	038 Move xmm0, XMM_TEMP
+	039 Move xmm1, [rcx+12]
+	040 Move [rcx], xmm0
+	041 Move xmm0, [rdx]
+	042 Move stack:0x8, rax
+	043 Move rax, xmm0
+	044 Move [rcx+8], xmm2
+	045 Move stack:0x10, xmm0
+	046 NotImplemented "btr eax,1Fh"
+	047 Move stack:0x0, xmm1
+	048 Compare rax, 0x7F800000
+	049 JumpIfGreater {52}
+	050 Compare xmm1, xmm0
+	051 JumpIfLessOrEqual {53}
+	052 Move xmm0, xmm1
+	053 Move xmm1, stack:0x14
+	054 Move xmm2, stack:0x4
+	055 Move rax, xmm1
+	056 NotImplemented "btr eax,1Fh"
+	057 Compare rax, 0x7F800000
+	058 JumpIfGreater {61}
+	059 Compare xmm2, xmm1
+	060 JumpIfLessOrEqual {62}
+	061 Move xmm1, xmm2
+	062 Move xmm2, [rdx+8]
+	063 Move xmm3, stack:0x8
+	064 Move rax, xmm2
+	065 NotImplemented "btr eax,1Fh"
+	066 Compare rax, 0x7F800000
+	067 JumpIfGreater {70}
+	068 Compare xmm3, xmm2
+	069 JumpIfLessOrEqual {71}
+	070 Move xmm2, xmm3
+	071 Move XMM_TEMP.S[0], xmm0.S[0]
+	072 Move XMM_TEMP.S[1], xmm1.S[0]
+	073 Move XMM_TEMP.S[2], xmm0.S[1]
+	074 Move XMM_TEMP.S[3], xmm1.S[1]
+	075 Move xmm0, XMM_TEMP
+	076 Move [rcx+12], xmm0
+	077 Move [rcx+20], xmm2
+	078 ShiftStack 40
+	079 Return 
+
+Method: System.Boolean Equals(Unity.Mathematics.Geometry.MinMaxAABB other)
+
+Disassembly:
+	sub rsp,28h
+	movsd xmm1,qword ptr [rdx]
+	movss xmm0,dword ptr [rcx]
+	ucomiss xmm0,xmm1
+	movsd qword ptr [rsp],xmm1
+	jp short 00000001820C995Eh
+	jne short 00000001820C995Eh
+	movss xmm0,dword ptr [rcx+4]
+	ucomiss xmm0,dword ptr [rsp+4]
+	jp short 00000001820C995Eh
+	jne short 00000001820C995Eh
+	movss xmm1,dword ptr [rcx+8]
+	ucomiss xmm1,dword ptr [rdx+8]
+	jp short 00000001820C995Eh
+	jne short 00000001820C995Eh
+	movss xmm1,dword ptr [rcx+0Ch]
+	ucomiss xmm1,dword ptr [rdx+0Ch]
+	movsd xmm0,qword ptr [rdx+10h]
+	movsd qword ptr [rsp+10h],xmm0
+	jp short 00000001820C995Eh
+	jne short 00000001820C995Eh
+	movss xmm0,dword ptr [rcx+10h]
+	ucomiss xmm0,dword ptr [rsp+10h]
+	jp short 00000001820C995Eh
+	jne short 00000001820C995Eh
+	movss xmm0,dword ptr [rcx+14h]
+	ucomiss xmm0,dword ptr [rsp+14h]
+	jp short 00000001820C995Eh
+	jne short 00000001820C995Eh
+	mov al,1
+	add rsp,28h
+	ret
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm1, [rdx]
+	003 Move xmm0, [rcx]
+	004 Compare xmm0, xmm1
+	005 Move stack:0x0, xmm1
+	006 NotImplemented "jp short 00000001820C995Eh"
+	007 JumpIfNotEqual {33}
+	008 Move xmm0, [rcx+4]
+	009 Compare xmm0, stack:0x4
+	010 NotImplemented "jp short 00000001820C995Eh"
+	011 JumpIfNotEqual {33}
+	012 Move xmm1, [rcx+8]
+	013 Compare xmm1, [rdx+8]
+	014 NotImplemented "jp short 00000001820C995Eh"
+	015 JumpIfNotEqual {33}
+	016 Move xmm1, [rcx+12]
+	017 Compare xmm1, [rdx+12]
+	018 Move xmm0, [rdx+16]
+	019 Move stack:0x10, xmm0
+	020 NotImplemented "jp short 00000001820C995Eh"
+	021 JumpIfNotEqual {33}
+	022 Move xmm0, [rcx+16]
+	023 Compare xmm0, stack:0x10
+	024 NotImplemented "jp short 00000001820C995Eh"
+	025 JumpIfNotEqual {33}
+	026 Move xmm0, [rcx+20]
+	027 Compare xmm0, stack:0x14
+	028 NotImplemented "jp short 00000001820C995Eh"
+	029 JumpIfNotEqual {33}
+	030 Move rax, 1
+	031 ShiftStack 40
+	032 Return rax
+	033 Move rax, 0
+	034 ShiftStack 40
+	035 Return rax
+
+Method: System.String ToString()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183753676h],0
+	mov rdi,rcx
+	jne short 00000001820C9AA5h
+	lea rcx,[18351BBD8h]
+	call 000000018037BB90h
+	lea rcx,[183546580h]
+	call 000000018037BB90h
+	mov byte ptr [183753676h],1
+	movsd xmm0,qword ptr [rdi]
+	lea rdx,[rsp+20h]
+	mov eax,[rdi+8]
+	mov rcx,[183546580h]
+	movsd qword ptr [rsp+20h],xmm0
+	mov [rsp+28h],eax
+	call 000000018037AC90h
+	mov ecx,[rdi+14h]
+	lea rdx,[rsp+30h]
+	movsd xmm0,qword ptr [rdi+0Ch]
+	mov rbx,rax
+	mov [rsp+38h],ecx
+	mov rcx,[183546580h]
+	movsd qword ptr [rsp+30h],xmm0
+	call 000000018037AC90h
+	mov rcx,[18351BBD8h]
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	call 000000018165E830h
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183753676], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x18351BBD8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183546580]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183753676], 1
+	013 Move xmm0, [rdi]
+	014 LoadAddress rdx, stack:0x20
+	015 Move rax, [rdi+8]
+	016 Move rcx, typeof(Unity.Mathematics.float3)
+	017 Move stack:0x20, xmm0
+	018 Move stack:0x28, rax
+	019 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	020 Move rcx, [rdi+20]
+	021 LoadAddress rdx, stack:0x30
+	022 Move xmm0, [rdi+12]
+	023 Move rbx, rax
+	024 Move stack:0x38, rcx
+	025 Move rcx, typeof(Unity.Mathematics.float3)
+	026 Move stack:0x30, xmm0
+	027 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	028 Move rcx, "MinMaxAABB({0}, {1})"
+	029 Move r9, 0
+	030 Move r8, rax
+	031 Move rdx, rbx
+	032 Call String.Format, rcx, rdx, r8, r9
+	033 Move rbx, stack:0x50
+	034 ShiftStack 64
+	035 Move rdi, stack:0x0
+	036 ShiftStack 8
+	037 Return rax
+

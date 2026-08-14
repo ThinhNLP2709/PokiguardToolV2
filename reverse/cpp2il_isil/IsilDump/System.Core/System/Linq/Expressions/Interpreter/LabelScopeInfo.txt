@@ -1,0 +1,287 @@
+Type: System.Linq.Expressions.Interpreter.LabelScopeInfo
+
+Method: System.Void .ctor(System.Linq.Expressions.Interpreter.LabelScopeInfo parent, System.Linq.Expressions.Interpreter.LabelScopeKind kind)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov esi,r8d
+	xor edx,edx
+	mov rdi,rcx
+	call 0000000180456D90h
+	lea rcx,[rdi+20h]
+	mov [rdi+20h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	mov [rdi+18h],esi
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, rdx
+	007 Move rsi, r8
+	008 Move rdx, 0
+	009 Move rdi, rcx
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rdi+32]
+	012 Move [rdi+32], rbx
+	013 Move rdx, rbx
+	014 Call 0x18037ACB0, rcx, rdx, r8, r9
+	015 Move rbx, stack:0x30
+	016 Move [rdi+24], rsi
+	017 Move rsi, stack:0x38
+	018 ShiftStack 32
+	019 Move rdi, stack:0x0
+	020 ShiftStack 8
+	021 Return 
+
+Method: System.Boolean get_CanJumpInto()
+
+Disassembly:
+	cmp dword ptr [rcx+18h],3
+	setbe al
+	ret
+
+ISIL:
+	001 Compare [rcx+24], 3
+	002 NotImplemented "setbe al"
+	003 Return rax
+
+Method: System.Boolean ContainsTarget(System.Linq.Expressions.LabelTarget target)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750544h],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 00000001819E809Ch
+	lea rcx,[1835360A8h]
+	call 000000018037BB90h
+	mov byte ptr [183750544h],1
+	cmp qword ptr [rbx+10h],0
+	je short 00000001819E80C0h
+	mov r8,[1835360A8h]
+	mov rdx,rdi
+	mov rcx,[rbx+10h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001813C9D70h
+	mov rbx,[rsp+30h]
+	xor al,al
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183750544], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1835360A8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183750544], 1
+	012 Compare [rbx+16], 0
+	013 JumpIfEqual {23}
+	014 Move r8, [0x1835360A8]
+	015 Move rdx, rdi
+	016 Move rcx, [rbx+16]
+	017 Move rbx, stack:0x30
+	018 ShiftStack 32
+	019 Move rdi, stack:0x0
+	020 ShiftStack 8
+	021 Call 0x1813C9D70, rcx, rdx
+	022 Return rax
+	023 Move rbx, stack:0x30
+	024 Move rax, 0
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return rax
+
+Method: System.Boolean TryGetLabelInfo(System.Linq.Expressions.LabelTarget target, out System.Linq.Expressions.Interpreter.LabelInfo info)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183750545h],0
+	mov rbx,r8
+	mov rsi,rdx
+	mov rdi,rcx
+	jne short 00000001819E8104h
+	lea rcx,[183536228h]
+	call 000000018037BB90h
+	mov byte ptr [183750545h],1
+	cmp qword ptr [rdi+10h],0
+	je short 00000001819E8130h
+	mov r9,[183536228h]
+	mov r8,rbx
+	mov rcx,[rdi+10h]
+	mov rdx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001813CA340h
+	xor edx,edx
+	mov qword ptr [rbx],0
+	mov rcx,rbx
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	xor al,al
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x183750545], 0
+	007 Move rbx, r8
+	008 Move rsi, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183536228]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183750545], 1
+	014 Compare [rdi+16], 0
+	015 JumpIfEqual {27}
+	016 Move r9, [0x183536228]
+	017 Move r8, rbx
+	018 Move rcx, [rdi+16]
+	019 Move rdx, rsi
+	020 Move rbx, stack:0x30
+	021 Move rsi, stack:0x38
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Call 0x1813CA340, rcx, rdx, r8
+	026 Return rax
+	027 Move rdx, 0
+	028 Move [rbx], 0
+	029 Move rcx, rbx
+	030 Call 0x18037ACB0, rcx, rdx, r8, r9
+	031 Move rbx, stack:0x30
+	032 Move rax, 0
+	033 Move rsi, stack:0x38
+	034 ShiftStack 32
+	035 Move rdi, stack:0x0
+	036 ShiftStack 8
+	037 Return rax
+
+Method: System.Void AddLabelInfo(System.Linq.Expressions.LabelTarget target, System.Linq.Expressions.Interpreter.LabelInfo info)
+
+Disassembly:
+	mov [rsp+18h],rbp
+	push rsi
+	sub rsp,20h
+	cmp byte ptr [183750546h],0
+	mov rsi,r8
+	mov [rsp+38h],rdi
+	mov rbp,rdx
+	mov rdi,rcx
+	jne short 00000001819E7FFCh
+	lea rcx,[183535FE8h]
+	call 000000018037BB90h
+	lea rcx,[1835362E8h]
+	call 000000018037BB90h
+	lea rcx,[18351B2A8h]
+	call 000000018037BB90h
+	mov byte ptr [183750546h],1
+	cmp qword ptr [rdi+10h],0
+	jne short 00000001819E803Bh
+	mov rcx,[18351B2A8h]
+	mov [rsp+30h],rbx
+	call 000000018037BDE0h
+	mov rdx,[183535FE8h]
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001804552D0h
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	mov rcx,[rdi+10h]
+	mov rdi,[rsp+38h]
+	test rcx,rcx
+	je short 00000001819E8065h
+	mov r9,[1835362E8h]
+	mov r8,rsi
+	mov rdx,rbp
+	mov rbp,[rsp+40h]
+	add rsp,20h
+	pop rsi
+	jmp near ptr 00000001813CA880h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbp
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -32
+	005 Compare [0x183750546], 0
+	006 Move rsi, r8
+	007 Move stack:0x38, rdi
+	008 Move rbp, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {18}
+	011 LoadAddress rcx, [0x183535FE8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x1835362E8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18351B2A8]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 Move [0x183750546], 1
+	018 Compare [rdi+16], 0
+	019 JumpIfNotEqual {32}
+	020 Move rcx, typeof(System.Linq.Expressions.Interpreter.HybridReferenceDictionary`2<LabelTarget, LabelInfo>)
+	021 Move stack:0x30, rbx
+	022 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	023 Move rdx, [0x183535FE8]
+	024 Move rcx, rax
+	025 Move rbx, rax
+	026 Call 0x1804552D0, rcx, rdx, r8
+	027 LoadAddress rcx, [rdi+16]
+	028 Move [rdi+16], rbx
+	029 Move rdx, rbx
+	030 Call 0x18037ACB0, rcx, rdx, r8, r9
+	031 Move rbx, stack:0x30
+	032 Move rcx, [rdi+16]
+	033 Move rdi, stack:0x38
+	034 Compare rcx, 0
+	035 JumpIfEqual {45}
+	036 Move r9, [0x1835362E8]
+	037 Move r8, rsi
+	038 Move rdx, rbp
+	039 Move rbp, stack:0x40
+	040 ShiftStack 32
+	041 Move rsi, stack:0x0
+	042 ShiftStack 8
+	043 Call 0x1813CA880, rcx, rdx, r8
+	044 Return 
+	045 Call 0x18037BE30, rcx, rdx, r8, r9
+

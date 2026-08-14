@@ -1,0 +1,109 @@
+Type: MS.Internal.Xml.XPath.Operand
+
+Method: System.Void .ctor(System.String val)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	lea rcx,[rbx+18h]
+	mov dword ptr [rbx+10h],1
+	mov rdx,rdi
+	mov [rbx+18h],rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 LoadAddress rcx, [rbx+24]
+	010 Move [rbx+16], 1
+	011 Move rdx, rdi
+	012 Move [rbx+24], rdi
+	013 Move rbx, stack:0x30
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 Return 
+
+Method: System.Void .ctor(System.Double val)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	movaps [rsp+20h],xmm6
+	xor edx,edx
+	movaps xmm6,xmm1
+	mov rbx,rcx
+	call 0000000180456D90h
+	mov dword ptr [rbx+10h],0
+	lea rdx,[rsp+40h]
+	mov rcx,[18375C120h]
+	movsd qword ptr [rsp+40h],xmm6
+	call 000000018037AC90h
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	movaps xmm6,[rsp+20h]
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move stack:0x20, xmm6
+	005 Move rdx, 0
+	006 Move xmm6, xmm1
+	007 Move rbx, rcx
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], 0
+	010 LoadAddress rdx, stack:0x40
+	011 Move rcx, [0x18375C120]
+	012 Move stack:0x40, xmm6
+	013 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [rbx+24]
+	015 Move [rbx+24], rax
+	016 Move rdx, rax
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 Move xmm6, stack:0x20
+	019 ShiftStack 48
+	020 Move rbx, stack:0x0
+	021 ShiftStack 8
+	022 Return 
+
+Method: MS.Internal.Xml.XPath.AstNode+AstType get_Type()
+
+Disassembly:
+	mov eax,3
+	ret
+
+ISIL:
+	001 Move rax, 3
+	002 Return rax
+
+Method: System.Xml.XPath.XPathResultType get_ReturnType()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+

@@ -1,0 +1,84 @@
+Type: UnityEngine.HashUtilities
+
+Method: System.Void AppendHash(ref UnityEngine.Hash128 inHash, ref UnityEngine.Hash128 outHash)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	push rdi
+	sub rsp,40h
+	mov rbx,rdx
+	mov rdi,rcx
+	test rdx,rdx
+	je near ptr 00000001825E7EB2h
+	cmp byte ptr [183757368h],0
+	mov rax,[rdx]
+	mov [rsp+50h],rax
+	mov rax,[rdx+8]
+	mov [rsp+58h],rax
+	jne short 00000001825E7E56h
+	lea rcx,[183511868h]
+	call 000000018037BB90h
+	mov byte ptr [183757368h],1
+	mov rcx,[183511868h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001825E7E6Bh
+	call 000000018037BED0h
+	lea r9,[rsp+58h]
+	mov qword ptr [rsp+20h],0
+	lea r8,[rsp+50h]
+	mov edx,10h
+	mov rcx,rdi
+	call 00000001825FE830h
+	mov rax,[rsp+50h]
+	mov [rsp+30h],rax
+	mov rax,[rsp+58h]
+	mov [rsp+38h],rax
+	movups xmm0,[rsp+30h]
+	movups [rbx],xmm0
+	mov rbx,[rsp+60h]
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Compare rdx, 0
+	008 JumpIfEqual {39}
+	009 Compare [0x183757368], 0
+	010 Move rax, [rdx]
+	011 Move stack:0x50, rax
+	012 Move rax, [rdx+8]
+	013 Move stack:0x58, rax
+	014 JumpIfNotEqual {18}
+	015 LoadAddress rcx, [0x183511868]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 Move [0x183757368], 1
+	018 Move rcx, typeof(UnityEngine.SpookyHash)
+	019 Compare [rcx+228], 0
+	020 JumpIfNotEqual {22}
+	021 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	022 LoadAddress r9, stack:0x58
+	023 Move stack:0x20, 0
+	024 LoadAddress r8, stack:0x50
+	025 Move rdx, 16
+	026 Move rcx, rdi
+	027 Call SpookyHash.Hash, rcx, rdx, r8, r9, stack:0x0
+	028 Move rax, stack:0x50
+	029 Move stack:0x30, rax
+	030 Move rax, stack:0x58
+	031 Move stack:0x38, rax
+	032 Move xmm0, stack:0x30
+	033 Move [rbx], xmm0
+	034 Move rbx, stack:0x60
+	035 ShiftStack 64
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return 
+	039 Call 0x18037BE30, rcx, rdx, r8, r9
+

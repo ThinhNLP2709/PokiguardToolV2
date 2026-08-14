@@ -1,0 +1,139 @@
+Type: UnityEngine.Rendering.ProbeReferenceVolume+CellStreamingInfo
+
+Method: System.Boolean IsStreaming()
+
+Disassembly:
+	cmp qword ptr [rcx+10h],0
+	jne short 00000001821B5D5Ah
+	xor al,al
+	ret
+	mov rax,[rcx+10h]
+	cmp dword ptr [rax+18h],0
+	jne short 00000001821B5D67h
+	mov al,1
+	ret
+	cmp dword ptr [rax+18h],1
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+16], 0
+	002 JumpIfNotEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 Move rax, [rcx+16]
+	006 Compare [rax+24], 0
+	007 JumpIfNotEqual {10}
+	008 Move rax, 1
+	009 Return rax
+	010 Compare [rax+24], 1
+	011 NotImplemented "sete al"
+	012 Return rax
+
+Method: System.Boolean IsBlendingStreaming()
+
+Disassembly:
+	cmp qword ptr [rcx+18h],0
+	je short 00000001821B5D27h
+	mov rax,[rcx+18h]
+	cmp dword ptr [rax+18h],0
+	je short 00000001821B5D3Bh
+	cmp dword ptr [rax+18h],1
+	je short 00000001821B5D3Bh
+	cmp qword ptr [rcx+20h],0
+	jne short 00000001821B5D31h
+	xor al,al
+	ret
+	mov rax,[rcx+20h]
+	cmp dword ptr [rax+18h],0
+	jne short 00000001821B5D3Eh
+	mov al,1
+	ret
+	cmp dword ptr [rax+18h],1
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+24], 0
+	002 JumpIfEqual {8}
+	003 Move rax, [rcx+24]
+	004 Compare [rax+24], 0
+	005 JumpIfEqual {15}
+	006 Compare [rax+24], 1
+	007 JumpIfEqual {15}
+	008 Compare [rcx+32], 0
+	009 JumpIfNotEqual {12}
+	010 Move rax, 0
+	011 Return rax
+	012 Move rax, [rcx+32]
+	013 Compare [rax+24], 0
+	014 JumpIfNotEqual {17}
+	015 Move rax, 1
+	016 Return rax
+	017 Compare [rax+24], 1
+	018 NotImplemented "sete al"
+	019 Return rax
+
+Method: System.Void Clear()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rcx
+	xor edi,edi
+	mov [rcx+10h],rdi
+	xor edx,edx
+	add rcx,10h
+	call 000000018037ACB0h
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rdi
+	xor edx,edx
+	call 000000018037ACB0h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	xor edx,edx
+	call 000000018037ACB0h
+	mov [rbx+28h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rcx
+	006 Move rdi, 0
+	007 Move [rcx+16], rdi
+	008 Move rdx, 0
+	009 Add rcx, rcx, 16
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 LoadAddress rcx, [rbx+24]
+	012 Move [rbx+24], rdi
+	013 Move rdx, 0
+	014 Call 0x18037ACB0, rcx, rdx, r8, r9
+	015 LoadAddress rcx, [rbx+32]
+	016 Move [rbx+32], rdi
+	017 Move rdx, 0
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Move [rbx+40], rdi
+	020 Move rbx, stack:0x30
+	021 ShiftStack 32
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

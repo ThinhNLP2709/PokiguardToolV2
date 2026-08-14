@@ -1,0 +1,237 @@
+Type: TMPro.TMP_Dropdown+OptionData
+
+Method: System.String get_text()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_text(System.String value)
+
+Disassembly:
+	mov [rcx+10h],rdx
+	add rcx,10h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Add rcx, rcx, 16
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: UnityEngine.Sprite get_image()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_image(UnityEngine.Sprite value)
+
+Disassembly:
+	mov [rcx+18h],rdx
+	add rcx,18h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+24], rdx
+	002 Add rcx, rcx, 24
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: UnityEngine.Color get_color()
+
+Disassembly:
+	movups xmm0,[rdx+20h]
+	mov rax,rcx
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+32]
+	002 Move rax, rcx
+	003 Move [rcx], xmm0
+	004 Return rax
+
+Method: System.Void set_color(UnityEngine.Color value)
+
+Disassembly:
+	movups xmm0,[rdx]
+	movups [rcx+20h],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move [rcx+32], xmm0
+	003 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	movdqa xmm0,[182A4FD90h]
+	xor edx,edx
+	movups [rcx+20h],xmm0
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move xmm0, [0x182A4FD90]
+	002 Move rdx, 0
+	003 Move [rcx+32], xmm0
+	004 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	005 Return 
+
+Method: System.Void .ctor(System.String text)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	movdqa xmm0,[182A4FD90h]
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	movups [rcx+20h],xmm0
+	call 0000000180456D90h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move xmm0, [0x182A4FD90]
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 Move rdx, 0
+	009 Move [rcx+32], xmm0
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rbx+16]
+	012 Move [rbx+16], rdi
+	013 Move rdx, rdi
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Return 
+
+Method: System.Void .ctor(UnityEngine.Sprite image)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	movdqa xmm0,[182A4FD90h]
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	movups [rcx+20h],xmm0
+	call 0000000180456D90h
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move xmm0, [0x182A4FD90]
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 Move rdx, 0
+	009 Move [rcx+32], xmm0
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rbx+24]
+	012 Move [rbx+24], rdi
+	013 Move rdx, rdi
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Return 
+
+Method: System.Void .ctor(System.String text, UnityEngine.Sprite image, UnityEngine.Color color)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	movdqa xmm0,[182A4FD90h]
+	mov rbp,r9
+	mov rdi,r8
+	mov rbx,rdx
+	mov rsi,rcx
+	xor edx,edx
+	movups [rcx+20h],xmm0
+	call 0000000180456D90h
+	lea rcx,[rsi+10h]
+	mov [rsi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	lea rcx,[rsi+18h]
+	mov [rsi+18h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	movups xmm0,[rbp]
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	movups [rsi+20h],xmm0
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move xmm0, [0x182A4FD90]
+	008 Move rbp, r9
+	009 Move rdi, r8
+	010 Move rbx, rdx
+	011 Move rsi, rcx
+	012 Move rdx, 0
+	013 Move [rcx+32], xmm0
+	014 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	015 LoadAddress rcx, [rsi+16]
+	016 Move [rsi+16], rbx
+	017 Move rdx, rbx
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 LoadAddress rcx, [rsi+24]
+	020 Move [rsi+24], rdi
+	021 Move rdx, rdi
+	022 Call 0x18037ACB0, rcx, rdx, r8, r9
+	023 Move xmm0, [rbp]
+	024 Move rbx, stack:0x30
+	025 Move rbp, stack:0x38
+	026 Move [rsi+32], xmm0
+	027 Move rsi, stack:0x40
+	028 ShiftStack 32
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return 
+

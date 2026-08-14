@@ -1,0 +1,140 @@
+Type: WebSocketSharp.Net.Chunk
+
+Method: System.Void .ctor(System.Byte[] data)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 LoadAddress rcx, [rbx+16]
+	010 Move [rbx+16], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+
+Method: System.Int32 get_ReadLeft()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+10h]
+	test rax,rax
+	je short 00000001829F1CB8h
+	mov eax,[rax+18h]
+	sub eax,[rcx+18h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+16]
+	003 Compare rax, 0
+	004 JumpIfEqual {9}
+	005 Move rax, [rax+24]
+	006 Subtract rax, rax, [rcx+24]
+	007 ShiftStack 40
+	008 Return rax
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Int32 Read(System.Byte[] buffer, System.Int32 offset, System.Int32 count)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	mov rax,[rcx+10h]
+	mov ebx,r9d
+	mov rdi,rcx
+	test rax,rax
+	je short 00000001829F1C94h
+	mov eax,[rax+18h]
+	sub eax,[rcx+18h]
+	je short 00000001829F1C85h
+	cmp ebx,eax
+	cmovg ebx,eax
+	mov r9d,r8d
+	mov qword ptr [rsp+28h],0
+	mov r8,rdx
+	mov [rsp+20h],ebx
+	mov edx,[rcx+18h]
+	mov rcx,[rcx+10h]
+	call 00000001818370B0h
+	add [rdi+18h],ebx
+	mov eax,ebx
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	xor ebx,ebx
+	mov eax,ebx
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Move rax, [rcx+16]
+	006 Move rbx, r9
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfEqual {38}
+	010 Move rax, [rax+24]
+	011 Subtract rax, rax, [rcx+24]
+	012 JumpIfEqual {31}
+	013 Compare rbx, rax
+	014 JumpIfLessOrEqual {16}
+	015 Move rbx, rax
+	016 Nop 
+	017 Move r9, r8
+	018 Move stack:0x28, 0
+	019 Move r8, rdx
+	020 Move stack:0x20, rbx
+	021 Move rdx, [rcx+24]
+	022 Move rcx, [rcx+16]
+	023 Call Buffer.BlockCopy, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	024 Add [rdi+24], [rdi+24], rbx
+	025 Move rax, rbx
+	026 Move rbx, stack:0x40
+	027 ShiftStack 48
+	028 Move rdi, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+	031 Move rbx, 0
+	032 Move rax, rbx
+	033 Move rbx, stack:0x40
+	034 ShiftStack 48
+	035 Move rdi, stack:0x0
+	036 ShiftStack 8
+	037 Return rax
+	038 Call 0x18037BE30, rcx, rdx, r8, r9
+

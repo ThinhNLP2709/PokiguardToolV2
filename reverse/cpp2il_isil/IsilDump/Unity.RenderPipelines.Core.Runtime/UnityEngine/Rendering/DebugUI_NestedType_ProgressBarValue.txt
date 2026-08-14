@@ -1,0 +1,175 @@
+Type: UnityEngine.Rendering.DebugUI+ProgressBarValue
+
+Method: System.String FormatString(System.Object value)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [1837538F5h],0
+	mov rbx,rdx
+	movaps [rsp+30h],xmm6
+	mov rdi,rcx
+	movaps [rsp+20h],xmm7
+	jne short 000000018218E726h
+	lea rcx,[183558188h]
+	call 000000018037BB90h
+	mov byte ptr [1837538F5h],1
+	movss xmm7,dword ptr [rdi+60h]
+	movss xmm6,dword ptr [rdi+64h]
+	mov rdx,[18375C118h]
+	test rbx,rbx
+	je short 000000018218E7B8h
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 000000018218E7BEh
+	call 000000018037AE90h
+	movss xmm2,dword ptr [rax]
+	comiss xmm7,xmm2
+	ja short 000000018218E764h
+	comiss xmm2,xmm6
+	jbe short 000000018218E767h
+	movaps xmm2,xmm6
+	jmp short 000000018218E767h
+	movaps xmm2,xmm7
+	movss xmm0,dword ptr [rdi+64h]
+	lea rdx,[rsp+50h]
+	subss xmm0,dword ptr [rdi+60h]
+	subss xmm2,dword ptr [rdi+60h]
+	mov rcx,[18375C118h]
+	divss xmm2,xmm0
+	movss dword ptr [rsp+50h],xmm2
+	call 000000018037AC90h
+	mov rcx,[183558188h]
+	xor r8d,r8d
+	mov rdx,rax
+	call 000000018165E580h
+	mov rbx,[rsp+58h]
+	movaps xmm6,[rsp+30h]
+	movaps xmm7,[rsp+20h]
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x1837538F5], 0
+	006 Move rbx, rdx
+	007 Move stack:0x30, xmm6
+	008 Move rdi, rcx
+	009 Move stack:0x20, xmm7
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x183558188]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x1837538F5], 1
+	014 Move xmm7, [rdi+96]
+	015 Move xmm6, [rdi+100]
+	016 Move rdx, [0x18375C118]
+	017 Compare rbx, 0
+	018 JumpIfEqual {52}
+	019 Move rcx, [rbx]
+	020 Move rax, [rdx+64]
+	021 Compare [rcx+64], rax
+	022 Move rcx, rbx
+	023 JumpIfNotEqual {54}
+	024 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	025 Move xmm2, [rax]
+	026 Compare xmm7, xmm2
+	027 JumpIfGreater {32}
+	028 Compare xmm2, xmm6
+	029 JumpIfLessOrEqual {33}
+	030 Move xmm2, xmm6
+	031 Goto {33}
+	032 Move xmm2, xmm7
+	033 Move xmm0, [rdi+100]
+	034 LoadAddress rdx, stack:0x50
+	035 Subtract xmm0, xmm0, [rdi+96]
+	036 Subtract xmm2, xmm2, [rdi+96]
+	037 Move rcx, [0x18375C118]
+	038 Divide xmm2, xmm2, xmm0
+	039 Move stack:0x50, xmm2
+	040 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	041 Move rcx, "{0:P1}"
+	042 Move r8, 0
+	043 Move rdx, rax
+	044 Call String.Format, rcx, rdx, r8
+	045 Move rbx, stack:0x58
+	046 Move xmm6, stack:0x30
+	047 Move xmm7, stack:0x20
+	048 ShiftStack 64
+	049 Move rdi, stack:0x0
+	050 ShiftStack 8
+	051 Return rax
+	052 Call 0x18037BE30, rcx, rdx, r8, r9
+	053 Interrupt 
+	054 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [1837538F3h],0
+	mov rbx,rcx
+	mov dword ptr [rcx+64h],3F800000h
+	jne short 000000018218E80Ch
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [1837538F3h],1
+	xor edx,edx
+	mov dword ptr [rbx+50h],3DCCCCCDh
+	mov rcx,rbx
+	call 0000000180456D90h
+	mov rdx,[18351D790h]
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x1837538F3], 0
+	005 Move rbx, rcx
+	006 Move [rcx+100], 0x3F800000
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x18351D790]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x1837538F3], 1
+	011 Move rdx, 0
+	012 Move [rbx+80], 0x3DCCCCCD
+	013 Move rcx, rbx
+	014 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	015 Move rdx, ""
+	016 LoadAddress rcx, [rbx+40]
+	017 Move [rbx+40], rdx
+	018 ShiftStack 32
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Call 0x18037ACB0, rcx, rdx, r8, r9
+	022 Return 
+
+Method: System.Single <FormatString>g__Remap01|2_0(System.Single v, System.Single x0, System.Single y0)
+
+Disassembly:
+	subss xmm0,xmm1
+	subss xmm2,xmm1
+	divss xmm0,xmm2
+	ret
+
+ISIL:
+	001 Subtract xmm0, xmm0, xmm1
+	002 Subtract xmm2, xmm2, xmm1
+	003 Divide xmm0, xmm0, xmm2
+	004 Return xmm0
+

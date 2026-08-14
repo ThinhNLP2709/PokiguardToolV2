@@ -1,0 +1,48 @@
+Type: Unity.Collections.UTF8ArrayUnsafeUtility+Comparison
+
+Method: System.Void .ctor(Unity.Collections.Unicode+Rune runeA, Unity.Collections.ConversionError errorA, Unity.Collections.Unicode+Rune runeB, Unity.Collections.ConversionError errorB)
+
+Disassembly:
+	xor eax,eax
+	test r8d,r8d
+	cmovne edx,eax
+	cmp [rsp+28h],eax
+	cmovne r9d,eax
+	cmp edx,r9d
+	jne short 0000000181EF87C5h
+	mov [rcx+4],eax
+	test edx,edx
+	jne short 0000000181EF87C2h
+	test r9d,r9d
+	sete al
+	mov [rcx],al
+	ret
+	sub edx,r9d
+	mov [rcx+4],edx
+	mov byte ptr [rcx],1
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Compare r8, 0
+	003 JumpIfEqual {5}
+	004 Move rdx, rax
+	005 Nop 
+	006 Compare stack:0x28, rax
+	007 JumpIfEqual {9}
+	008 Move r9, rax
+	009 Nop 
+	010 Compare rdx, r9
+	011 JumpIfNotEqual {19}
+	012 Move [rcx+4], rax
+	013 Compare rdx, 0
+	014 JumpIfNotEqual {17}
+	015 Compare r9, 0
+	016 NotImplemented "sete al"
+	017 Move [rcx], rax
+	018 Return 
+	019 Subtract rdx, rdx, r9
+	020 Move [rcx+4], rdx
+	021 Move [rcx], 1
+	022 Return 
+

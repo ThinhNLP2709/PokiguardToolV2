@@ -1,0 +1,68 @@
+Type: UnityEngine.Rendering.RenderGraphModule.NativeRenderPassCompiler.PassRandomWriteData
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183753E27h],0
+	mov rdi,rcx
+	jne short 000000018224E7C9h
+	lea rcx,[183505490h]
+	call 000000018037BB90h
+	mov byte ptr [183753E27h],1
+	mov rax,[183505490h]
+	lea rcx,[rsp+20h]
+	movsd xmm0,qword ptr [rdi]
+	xor edx,edx
+	mov [rsp+20h],rax
+	mov eax,[rdi+8]
+	mov [rsp+38h],eax
+	mov qword ptr [rsp+28h],0FFFFFFFFFFFFFFFFh
+	movsd qword ptr [rsp+30h],xmm0
+	call 0000000181883510h
+	lea rcx,[rdi+0Ch]
+	xor edx,edx
+	mov ebx,eax
+	call 000000018078A5F0h
+	imul ecx,ebx,17h
+	mov rbx,[rsp+50h]
+	add eax,ecx
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183753E27], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183505490]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183753E27], 1
+	011 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.ResourceHandle)
+	012 LoadAddress rcx, stack:0x20
+	013 Move xmm0, [rdi]
+	014 Move rdx, 0
+	015 Move stack:0x20, rax
+	016 Move rax, [rdi+8]
+	017 Move stack:0x38, rax
+	018 Move stack:0x28, 18446744073709551615
+	019 Move stack:0x30, xmm0
+	020 Call ValueType.GetHashCode, rcx, rdx
+	021 LoadAddress rcx, [rdi+12]
+	022 Move rdx, 0
+	023 Move rbx, rax
+	024 Call 0x18078A5F0, rcx, rdx
+	025 Multiply rcx, rbx, 23
+	026 Move rbx, stack:0x50
+	027 Add rax, rax, rcx
+	028 ShiftStack 64
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return rax
+

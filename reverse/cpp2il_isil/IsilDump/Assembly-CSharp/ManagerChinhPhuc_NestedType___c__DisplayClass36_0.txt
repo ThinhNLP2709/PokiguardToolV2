@@ -1,0 +1,85 @@
+Type: ManagerChinhPhuc+<>c__DisplayClass36_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <AnimateTextFadeIn>b__0(System.Single val)
+
+Disassembly:
+	sub rsp,38h
+	mov r9,[rcx+10h]
+	movss xmm0,dword ptr [rcx+18h]
+	movss xmm2,dword ptr [rcx+1Ch]
+	movss xmm3,dword ptr [rcx+20h]
+	test r9,r9
+	je short 0000000180622823h
+	mov r8,[r9]
+	lea rdx,[rsp+20h]
+	shufps xmm0,xmm0,0E1h
+	mov rcx,r9
+	movss xmm0,xmm2
+	shufps xmm0,xmm0,0C6h
+	mov rax,[r8+2A8h]
+	movss xmm0,xmm3
+	mov r8,[r8+2B0h]
+	shufps xmm0,xmm0,27h
+	movss xmm0,xmm1
+	shufps xmm0,xmm0,39h
+	movaps [rsp+20h],xmm0
+	movdqa [rsp+20h],xmm0
+	call rax
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move r9, [rcx+16]
+	003 Move xmm0, [rcx+24]
+	004 Move xmm2, [rcx+28]
+	005 Move xmm3, [rcx+32]
+	006 Compare r9, 0
+	007 JumpIfEqual {41}
+	008 Move r8, [r9]
+	009 LoadAddress rdx, stack:0x20
+	010 Move XMM_TEMP.S[0], xmm0.S[1]
+	011 Move XMM_TEMP.S[1], xmm0.S[0]
+	012 Move XMM_TEMP.S[2], xmm0.S[2]
+	013 Move XMM_TEMP.S[3], xmm0.S[3]
+	014 Move xmm0, XMM_TEMP
+	015 Move rcx, r9
+	016 Move xmm0, xmm2
+	017 Move XMM_TEMP.S[0], xmm0.S[2]
+	018 Move XMM_TEMP.S[1], xmm0.S[1]
+	019 Move XMM_TEMP.S[2], xmm0.S[0]
+	020 Move XMM_TEMP.S[3], xmm0.S[3]
+	021 Move xmm0, XMM_TEMP
+	022 Move rax, [r8+680]
+	023 Move xmm0, xmm3
+	024 Move r8, [r8+688]
+	025 Move XMM_TEMP.S[0], xmm0.S[3]
+	026 Move XMM_TEMP.S[1], xmm0.S[1]
+	027 Move XMM_TEMP.S[2], xmm0.S[2]
+	028 Move XMM_TEMP.S[3], xmm0.S[0]
+	029 Move xmm0, XMM_TEMP
+	030 Move xmm0, xmm1
+	031 Move XMM_TEMP.S[0], xmm0.S[1]
+	032 Move XMM_TEMP.S[1], xmm0.S[2]
+	033 Move XMM_TEMP.S[2], xmm0.S[3]
+	034 Move XMM_TEMP.S[3], xmm0.S[0]
+	035 Move xmm0, XMM_TEMP
+	036 Move stack:0x20, xmm0
+	037 Move stack:0x20, xmm0
+	038 Call rax
+	039 ShiftStack 56
+	040 Return 
+	041 Call 0x18037BE30, rcx, rdx, r8, r9
+

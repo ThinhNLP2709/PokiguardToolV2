@@ -1,0 +1,70 @@
+Type: UnityEngine.U2D.SpriteBone
+
+Method: System.String get_name()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Return rax
+
+Method: System.String get_guid()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx+8]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+8]
+	003 Return rax
+
+Method: UnityEngine.Vector3 get_position()
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx+10h]
+	mov eax,[rdx+18h]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+16]
+	002 Move rax, [rdx+24]
+	003 Move [rcx], xmm0
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Return rax
+
+Method: UnityEngine.Quaternion get_rotation()
+
+Disassembly:
+	movups xmm0,[rdx+1Ch]
+	movups [rcx],xmm0
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+28]
+	002 Move [rcx], xmm0
+	003 Move rax, rcx
+	004 Return rax
+
+Method: System.Int32 get_parentId()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+30h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+48]
+	003 Return rax
+

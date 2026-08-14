@@ -1,0 +1,44 @@
+Type: Unity.Burst.BurstString+tFloatUnion64
+
+Method: System.Boolean IsNegative()
+
+Disassembly:
+	mov rax,8000000000000000h
+	test [rcx],rax
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, 9223372036854775808
+	002 Compare [rcx], rax
+	003 NotImplemented "seta al"
+	004 Return rax
+
+Method: System.UInt32 GetExponent()
+
+Disassembly:
+	mov rax,[rcx]
+	shr rax,34h
+	and eax,7FFh
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 ShiftRight rax, 52
+	003 And rax, rax, 2047
+	004 Return rax
+
+Method: System.UInt64 GetMantissa()
+
+Disassembly:
+	mov rax,[rcx]
+	mov rcx,0FFFFFFFFFFFFFh
+	and rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Move rcx, 0xFFFFFFFFFFFFF
+	003 And rax, rax, rcx
+	004 Return rax
+

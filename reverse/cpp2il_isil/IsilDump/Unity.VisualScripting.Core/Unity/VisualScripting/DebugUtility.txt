@@ -1,0 +1,140 @@
+Type: Unity.VisualScripting.DebugUtility
+
+Method: System.String get_logPath()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183754D0Fh],0
+	jne short 000000018246732Eh
+	lea rcx,[1834F53C8h]
+	call 000000018037BB90h
+	lea rcx,[183508BC8h]
+	call 000000018037BB90h
+	mov byte ptr [183754D0Fh],1
+	xor edx,edx
+	xor ecx,ecx
+	call 000000018185AFE0h
+	mov rcx,[1834F53C8h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018246734Fh
+	call 000000018037BED0h
+	mov rdx,[183508BC8h]
+	xor r8d,r8d
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 00000001817DA070h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183754D0F], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x1834F53C8]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183508BC8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183754D0F], 1
+	011 Move rdx, 0
+	012 Move rcx, 0
+	013 Call Environment.GetFolderPath, rcx, rdx
+	014 Move rcx, typeof(System.IO.Path)
+	015 Move rbx, rax
+	016 Compare [rcx+228], 0
+	017 JumpIfNotEqual {19}
+	018 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	019 Move rdx, "Ludiq.log"
+	020 Move r8, 0
+	021 Move rcx, rbx
+	022 ShiftStack 32
+	023 Move rbx, stack:0x0
+	024 ShiftStack 8
+	025 Call Path.Combine, rcx, rdx, r8
+	026 Return rax
+
+Method: System.Void LogToFile(System.String message)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183754D0Fh],0
+	mov rdi,rcx
+	jne short 0000000182467295h
+	lea rcx,[1834F53C8h]
+	call 000000018037BB90h
+	lea rcx,[183508BC8h]
+	call 000000018037BB90h
+	mov byte ptr [183754D0Fh],1
+	xor edx,edx
+	xor ecx,ecx
+	call 000000018185AFE0h
+	mov rcx,[1834F53C8h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001824672B6h
+	call 000000018037BED0h
+	mov rdx,[183508BC8h]
+	xor r8d,r8d
+	mov rcx,rbx
+	call 00000001817DA070h
+	xor ecx,ecx
+	mov rbx,rax
+	call 000000018185BC50h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018165B1F0h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001817B6E00h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183754D0F], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x1834F53C8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183508BC8]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183754D0F], 1
+	013 Move rdx, 0
+	014 Move rcx, 0
+	015 Call Environment.GetFolderPath, rcx, rdx
+	016 Move rcx, typeof(System.IO.Path)
+	017 Move rbx, rax
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Move rdx, "Ludiq.log"
+	022 Move r8, 0
+	023 Move rcx, rbx
+	024 Call Path.Combine, rcx, rdx, r8
+	025 Move rcx, 0
+	026 Move rbx, rax
+	027 Call Environment.get_NewLine, rcx
+	028 Move r8, 0
+	029 Move rdx, rax
+	030 Move rcx, rdi
+	031 Call String.Concat, rcx, rdx, r8
+	032 Move r8, 0
+	033 Move rdx, rax
+	034 Move rcx, rbx
+	035 Move rbx, stack:0x30
+	036 ShiftStack 32
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Call File.AppendAllText, rcx, rdx, r8
+	040 Return 
+

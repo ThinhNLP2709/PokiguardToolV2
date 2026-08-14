@@ -1,0 +1,150 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafePtrListDebugView`1
+
+Method: System.Void .ctor(Unity.Collections.LowLevel.Unsafe.UnsafePtrList`1<T> data)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	movups xmm0,[rbx]
+	movsd xmm1,qword ptr [rbx+10h]
+	mov rbx,[rsp+30h]
+	movups [rdi+10h],xmm0
+	movsd qword ptr [rdi+20h],xmm1
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move xmm0, [rbx]
+	010 Move xmm1, [rbx+16]
+	011 Move rbx, stack:0x30
+	012 Move [rdi+16], xmm0
+	013 Move [rdi+32], xmm1
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+
+Method: T*[] get_Items()
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[rdx+20h]
+	mov rbx,rdx
+	mov rdi,rcx
+	add rcx,10h
+	mov rdx,[rax+0C0h]
+	mov rax,[rdx+10h]
+	mov rdx,rax
+	mov r8,[rax]
+	call r8
+	mov rdx,[rbx+20h]
+	mov esi,eax
+	mov r8,[rdx+0C0h]
+	mov rax,[r8+20h]
+	test byte ptr [rax+135h],1
+	jne short 0000000180E81ED3h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov edx,esi
+	mov rcx,rax
+	call 000000018037AD30h
+	mov r8,rax
+	xor eax,eax
+	mov ecx,eax
+	test r8,r8
+	je short 0000000180E81F26h
+	mov r9d,eax
+	nop dword ptr [rax]
+	cmp ecx,[r8+18h]
+	jge short 0000000180E81F13h
+	cmp eax,[r8+18h]
+	jae short 0000000180E81F2Ch
+	mov rcx,[rdi+10h]
+	inc eax
+	mov rdx,[r9+rcx]
+	mov ecx,eax
+	mov [r9+r8+20h],rdx
+	add r9,8
+	jmp short 0000000180E81EF0h
+	mov rbx,[rsp+30h]
+	mov rax,r8
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [rdx+32]
+	007 Move rbx, rdx
+	008 Move rdi, rcx
+	009 Add rcx, rcx, 16
+	010 Move rdx, [rax+192]
+	011 Move rax, [rdx+16]
+	012 Move rdx, rax
+	013 Move r8, [rax]
+	014 Call r8
+	015 Move rdx, [rbx+32]
+	016 Move rsi, rax
+	017 Move r8, [rdx+192]
+	018 Move rax, [r8+32]
+	019 Compare [rax+309], 1
+	020 JumpIfNotEqual {23}
+	021 Move rcx, rax
+	022 Call 0x180384C90, rcx, rdx, r8, r9
+	023 Move rdx, rsi
+	024 Move rcx, rax
+	025 Call "SzArrayNew", rcx, rdx, r8, r9
+	026 Move r8, rax
+	027 Move rax, 0
+	028 Move rcx, rax
+	029 Compare r8, 0
+	030 JumpIfEqual {51}
+	031 Move r9, rax
+	032 Nop 
+	033 Compare rcx, [r8+24]
+	034 JumpIfGreaterOrEqual {44}
+	035 Compare rax, [r8+24]
+	036 JumpIfGreaterOrEqual {53}
+	037 Move rcx, [rdi+16]
+	038 Add rax, rax, 1
+	039 Move rdx, [r9+rcx]
+	040 Move rcx, rax
+	041 Move [r9+32+r8], rdx
+	042 Add r9, r9, 8
+	043 Goto {33}
+	044 Move rbx, stack:0x30
+	045 Move rax, r8
+	046 Move rsi, stack:0x38
+	047 ShiftStack 32
+	048 Move rdi, stack:0x0
+	049 ShiftStack 8
+	050 Return rax
+	051 Call 0x18037BE30, rcx, rdx, r8, r9
+	052 Interrupt 
+	053 Call 0x18037BE20, rcx, rdx, r8, r9
+

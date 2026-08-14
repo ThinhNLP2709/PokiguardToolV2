@@ -1,0 +1,95 @@
+Type: PlayerSession
+
+Method: System.Boolean get_IsLoggedIn()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18374A235h],0
+	jne short 0000000180467FC0h
+	lea rcx,[1834F8148h]
+	call 000000018037BB90h
+	mov byte ptr [18374A235h],1
+	mov rax,[1834F8148h]
+	xor edx,edx
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx+8]
+	call 000000018165FE70h
+	xor al,1
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18374A235], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834F8148]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374A235], 1
+	007 Move rax, typeof(PlayerSession)
+	008 Move rdx, 0
+	009 Move rcx, [rax+184]
+	010 Move rcx, [rcx+8]
+	011 Call String.IsNullOrEmpty, rcx, rdx
+	012 Xor rax, rax, 1
+	013 ShiftStack 40
+	014 Return rax
+
+Method: System.Void Clear()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18374A236h],0
+	jne short 0000000180467F20h
+	lea rcx,[1834F8148h]
+	call 000000018037BB90h
+	mov byte ptr [18374A236h],1
+	mov rax,[1834F8148h]
+	xor edx,edx
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx],0
+	mov rax,[1834F8148h]
+	mov rcx,[rax+0B8h]
+	mov qword ptr [rcx+8],0
+	mov rax,[1834F8148h]
+	mov rcx,[rax+0B8h]
+	add rcx,8
+	call 000000018037ACB0h
+	mov rax,[1834F8148h]
+	xor edx,edx
+	mov rcx,[rax+0B8h]
+	mov qword ptr [rcx+10h],0
+	mov rax,[1834F8148h]
+	mov rcx,[rax+0B8h]
+	add rcx,10h
+	add rsp,28h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18374A236], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834F8148]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374A236], 1
+	007 Move rax, typeof(PlayerSession)
+	008 Move rdx, 0
+	009 Move rcx, [rax+184]
+	010 Move [rcx], 0
+	011 Move rax, typeof(PlayerSession)
+	012 Move rcx, [rax+184]
+	013 Move [rcx+8], 0
+	014 Move rax, typeof(PlayerSession)
+	015 Move rcx, [rax+184]
+	016 Add rcx, rcx, 8
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 Move rax, typeof(PlayerSession)
+	019 Move rdx, 0
+	020 Move rcx, [rax+184]
+	021 Move [rcx+16], 0
+	022 Move rax, typeof(PlayerSession)
+	023 Move rcx, [rax+184]
+	024 Add rcx, rcx, 16
+	025 ShiftStack 40
+	026 Call 0x18037ACB0, rcx, rdx, r8, r9
+	027 Return 
+

@@ -1,0 +1,124 @@
+Type: PetShardTabController+<>c__DisplayClass66_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <ExchangeCo>b__0(PetExchangeResponse resp)
+
+Disassembly:
+	sub rsp,38h
+	mov rax,[rcx+10h]
+	test rax,rax
+	je short 00000001805203FBh
+	mov r9,[rcx+20h]
+	mov r8,[rcx+18h]
+	mov rcx,rax
+	mov qword ptr [rsp+20h],0
+	call 0000000180512B20h
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rax, [rcx+16]
+	003 Compare rax, 0
+	004 JumpIfEqual {12}
+	005 Move r9, [rcx+32]
+	006 Move r8, [rcx+24]
+	007 Move rcx, rax
+	008 Move stack:0x20, 0
+	009 Call PetShardTabController.OnExchanged, rcx, rdx, r8, r9
+	010 ShiftStack 56
+	011 Return 
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void <ExchangeCo>b__1(System.String err)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374A8B3h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000180520454h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[18350B0A0h]
+	call 000000018037BB90h
+	lea rcx,[18352E698h]
+	call 000000018037BB90h
+	mov byte ptr [18374A8B3h],1
+	mov rcx,[18352E698h]
+	xor r8d,r8d
+	mov rdx,rbx
+	call 000000018165B1F0h
+	mov rcx,[18351F5A0h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018052047Eh
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001825CC980h
+	movss xmm1,dword ptr [182A4FBCCh]
+	xor r8d,r8d
+	mov rcx,[18350B0A0h]
+	call 00000001805504C0h
+	mov rcx,[rdi+20h]
+	xor edx,edx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000180514BF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374A8B3], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x18351F5A0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x18350B0A0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18352E698]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18374A8B3], 1
+	016 Move rcx, "[PetShardTab] Lỗi đổi pet: "
+	017 Move r8, 0
+	018 Move rdx, rbx
+	019 Call String.Concat, rcx, rdx, r8
+	020 Move rcx, typeof(UnityEngine.Debug)
+	021 Move rbx, rax
+	022 Compare [rcx+228], 0
+	023 JumpIfNotEqual {25}
+	024 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	025 Move rdx, 0
+	026 Move rcx, rbx
+	027 Call Debug.LogWarning, rcx, rdx
+	028 Move xmm1, [0x182A4FBCC]
+	029 Move r8, 0
+	030 Move rcx, "Lỗi kết nối khi đổi pet — mở lại tab để kiểm tra"
+	031 Call GameNotice.Show, rcx, xmm1, r8
+	032 Move rcx, [rdi+32]
+	033 Move rdx, 0
+	034 Move rbx, stack:0x30
+	035 ShiftStack 32
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Call PetShardTabController.ShakeCell, rcx, rdx
+	039 Return 
+

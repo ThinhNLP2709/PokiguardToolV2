@@ -1,0 +1,1310 @@
+Type: UnityEngine.Rendering.LightUnitUtils
+
+Method: System.Single get_k_LuminanceToEvFactor()
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [183753C1Eh],0
+	movaps [rsp+20h],xmm6
+	jne short 00000001822051D5h
+	lea rcx,[183512238h]
+	call 000000018037BB90h
+	mov byte ptr [183753C1Eh],1
+	mov rax,[183512238h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 00000001822051F4h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183512238h]
+	cmp byte ptr [183753AD9h],0
+	mov rax,[rax+0B8h]
+	movss xmm6,dword ptr [182A501E8h]
+	divss xmm6,dword ptr [rax]
+	jne short 0000000182205223h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183753AD9h],1
+	mov rcx,[183562D00h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182205238h
+	call 000000018037BED0h
+	movsd xmm1,qword ptr [182A511C0h]
+	xor r8d,r8d
+	cvtps2pd xmm0,xmm6
+	call 00000001818067E0h
+	movaps xmm6,[rsp+20h]
+	cvtsd2ss xmm0,xmm0
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x183753C1E], 0
+	003 Move stack:0x20, xmm6
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x183512238]
+	006 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	007 Move [0x183753C1E], 1
+	008 Move rax, typeof(UnityEngine.Rendering.ColorUtils)
+	009 Compare [rax+228], 0
+	010 JumpIfNotEqual {14}
+	011 Move rcx, rax
+	012 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	013 Move rax, typeof(UnityEngine.Rendering.ColorUtils)
+	014 Compare [0x183753AD9], 0
+	015 Move rax, [rax+184]
+	016 Move xmm6, [0x182A501E8]
+	017 Divide xmm6, xmm6, [rax]
+	018 JumpIfNotEqual {22}
+	019 LoadAddress rcx, [0x183562D00]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 Move [0x183753AD9], 1
+	022 Move rcx, typeof(System.Math)
+	023 Compare [rcx+228], 0
+	024 JumpIfNotEqual {26}
+	025 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	026 Move xmm1, [0x182A511C0]
+	027 Move r8, 0
+	028 Move xmm0, xmm6
+	029 Call Math.Log, xmm0, xmm1, r8
+	030 Move xmm6, stack:0x20
+	031 NotImplemented "cvtsd2ss xmm0,xmm0"
+	032 ShiftStack 56
+	033 Return xmm0
+
+Method: System.Single get_k_EvToLuminanceFactor()
+
+Disassembly:
+	sub rsp,28h
+	xor ecx,ecx
+	call 00000001822051B0h
+	xorps xmm0,[182A500A0h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, 0
+	003 Call LightUnitUtils.get_k_LuminanceToEvFactor, rcx
+	004 Xor xmm0, xmm0, [0x182A500A0]
+	005 ShiftStack 40
+	006 Return xmm0
+
+Method: UnityEngine.Rendering.LightUnit GetNativeLightUnit(UnityEngine.LightType lightType)
+
+Disassembly:
+	sub rsp,28h
+	cmp ecx,7
+	ja short 0000000182204C2Dh
+	movsxd rax,ecx
+	lea rdx,[180000000h]
+	mov ecx,[rdx+rax*4+2204C70h]
+	add rcx,rdx
+	jmp rcx
+	mov eax,1
+	add rsp,28h
+	ret
+	mov eax,2
+	add rsp,28h
+	ret
+	mov eax,3
+	add rsp,28h
+	ret
+	lea rcx,[1834FFA50h]
+	mov [rsp+20h],rbx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018176BB00h
+	lea rcx,[18350BAD8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	mov rbx,[rsp+20h]
+	nop
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 7
+	003 JumpIfGreater {18}
+	004 Move rax, rcx
+	005 LoadAddress rdx, [0x180000000]
+	006 Move rcx, [rdx+0x2204C70+rax*4]
+	007 Add rcx, rcx, rdx
+	008 CallNoReturn rcx
+	009 Move rax, 1
+	010 ShiftStack 40
+	011 Return rax
+	012 Move rax, 2
+	013 ShiftStack 40
+	014 Return rax
+	015 Move rax, 3
+	016 ShiftStack 40
+	017 Return rax
+	018 LoadAddress rcx, [0x1834FFA50]
+	019 Move stack:0x20, rbx
+	020 Call 0x18037BBB0, rcx, rdx, r8, r9
+	021 Move rcx, rax
+	022 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	023 Move rdx, 0
+	024 Move rcx, rax
+	025 Move rbx, rax
+	026 Call ArgumentOutOfRangeException..ctor, rcx, rdx
+	027 LoadAddress rcx, [0x18350BAD8]
+	028 Call 0x18037BBB0, rcx, rdx, r8, r9
+	029 Move rdx, rax
+	030 Move rcx, rbx
+	031 Call 0x18037BDF0, rcx, rdx, r8, r9
+	032 Move rbx, stack:0x20
+	033 Nop 
+
+Method: System.Boolean IsLightUnitSupported(UnityEngine.LightType lightType, UnityEngine.Rendering.LightUnit lightUnit)
+
+Disassembly:
+	and edx,1Fh
+	movsxd rax,ecx
+	movzx ecx,dl
+	mov r8d,1
+	shl r8d,cl
+	cmp eax,7
+	ja short 00000001822050D2h
+	lea rdx,[180000000h]
+	mov ecx,[rdx+rax*4+22050D8h]
+	add rcx,rdx
+	jmp rcx
+	test r8b,17h
+	seta al
+	ret
+	test r8b,4
+	seta al
+	ret
+	test r8b,19h
+	seta al
+	ret
+	xor al,al
+	ret
+	nop dword ptr [rax]
+
+ISIL:
+	001 And rdx, rdx, 31
+	002 Move rax, rcx
+	003 Move rcx, rdx
+	004 Move r8, 1
+	005 ShiftLeft r8, rcx
+	006 Compare rax, 7
+	007 JumpIfGreater {21}
+	008 LoadAddress rdx, [0x180000000]
+	009 Move rcx, [rdx+0x22050D8+rax*4]
+	010 Add rcx, rcx, rdx
+	011 CallNoReturn rcx
+	012 Compare r8, 23
+	013 NotImplemented "seta al"
+	014 Return rax
+	015 Compare r8, 4
+	016 NotImplemented "seta al"
+	017 Return rax
+	018 Compare r8, 25
+	019 NotImplemented "seta al"
+	020 Return rax
+	021 Move rax, 0
+	022 Return rax
+	023 Nop 
+
+Method: System.Single GetSolidAngleFromPointLight()
+
+Disassembly:
+	movss xmm0,dword ptr [182B1EAE0h]
+	ret
+
+ISIL:
+	001 Move xmm0, [0x182B1EAE0]
+	002 Return xmm0
+
+Method: System.Single GetSolidAngleFromSpotLight(System.Single spotAngle)
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [183753C1Fh],0
+	movaps [rsp+20h],xmm6
+	movaps xmm6,xmm0
+	jne short 0000000182204DC8h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183753C1Fh],1
+	mov rcx,[183562D00h]
+	cvtss2sd xmm6,xmm6
+	cmp dword ptr [rcx+0E4h],0
+	mulsd xmm6,qword ptr [182A511D0h]
+	divsd xmm6,qword ptr [182B1EAD8h]
+	jne short 0000000182204DF1h
+	call 000000018037BED0h
+	mulsd xmm6,qword ptr [182A4FDB8h]
+	movaps xmm0,xmm6
+	call 0000000180419610h
+	movsd xmm1,qword ptr [182A4FDC0h]
+	movaps xmm6,[rsp+20h]
+	subsd xmm1,xmm0
+	mulsd xmm1,qword ptr [182B1EAD0h]
+	cvtpd2ps xmm0,xmm1
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x183753C1F], 0
+	003 Move stack:0x20, xmm6
+	004 Move xmm6, xmm0
+	005 JumpIfNotEqual {9}
+	006 LoadAddress rcx, [0x183562D00]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183753C1F], 1
+	009 Move rcx, typeof(System.Math)
+	010 NotImplemented "cvtss2sd xmm6,xmm6"
+	011 Compare [rcx+228], 0
+	012 NotImplemented "mulsd xmm6,qword ptr [182A511D0h]"
+	013 NotImplemented "divsd xmm6,qword ptr [182B1EAD8h]"
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 NotImplemented "mulsd xmm6,qword ptr [182A4FDB8h]"
+	017 Move xmm0, xmm6
+	018 Call 0x180419610, rcx, rdx, r8, r9
+	019 Move xmm1, [0x182A4FDC0]
+	020 Move xmm6, stack:0x20
+	021 NotImplemented "subsd xmm1,xmm0"
+	022 NotImplemented "mulsd xmm1,qword ptr [182B1EAD0h]"
+	023 NotImplemented "cvtpd2ps xmm0,xmm1"
+	024 ShiftStack 56
+	025 Return xmm0
+
+Method: System.Single GetSolidAngleFromPyramidLight(System.Single spotAngle, System.Single aspectRatio)
+
+Disassembly:
+	sub rsp,58h
+	cmp byte ptr [183753C20h],0
+	movaps [rsp+40h],xmm6
+	movaps xmm6,xmm1
+	movaps [rsp+30h],xmm7
+	movaps xmm7,xmm0
+	movaps [rsp+20h],xmm8
+	jne short 0000000182204CD6h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183753C20h],1
+	movss xmm2,dword ptr [182A4FBA4h]
+	comiss xmm2,xmm6
+	jbe short 0000000182204CFAh
+	movsd xmm1,qword ptr [182A4FDC0h]
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm6
+	divsd xmm1,xmm0
+	cvtpd2ps xmm6,xmm1
+	mov rcx,[183562D00h]
+	xorps xmm8,xmm8
+	cvtss2sd xmm8,xmm7
+	cmp dword ptr [rcx+0E4h],0
+	mulsd xmm8,qword ptr [182A511D0h]
+	divsd xmm8,qword ptr [182B1EAD8h]
+	jne short 0000000182204D2Ah
+	call 000000018037BED0h
+	movsd xmm7,qword ptr [182A4FDB8h]
+	movaps xmm0,xmm8
+	mulsd xmm0,xmm7
+	call 000000018041C6F0h
+	xorps xmm1,xmm1
+	cvtss2sd xmm1,xmm6
+	mulsd xmm0,xmm1
+	call 000000018041A700h
+	addsd xmm0,xmm0
+	mulsd xmm0,xmm7
+	call 0000000180419B90h
+	mulsd xmm8,xmm7
+	movaps xmm6,xmm0
+	movaps xmm0,xmm8
+	call 0000000180419B90h
+	mulsd xmm0,xmm6
+	call 0000000180419380h
+	mulsd xmm0,qword ptr [182A500C0h]
+	movaps xmm6,[rsp+40h]
+	movaps xmm7,[rsp+30h]
+	movaps xmm8,[rsp+20h]
+	cvtsd2ss xmm0,xmm0
+	add rsp,58h
+	ret
+
+ISIL:
+	001 ShiftStack -88
+	002 Compare [0x183753C20], 0
+	003 Move stack:0x40, xmm6
+	004 Move xmm6, xmm1
+	005 Move stack:0x30, xmm7
+	006 Move xmm7, xmm0
+	007 Move stack:0x20, xmm8
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183562D00]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183753C20], 1
+	012 Move xmm2, [0x182A4FBA4]
+	013 Compare xmm2, xmm6
+	014 JumpIfLessOrEqual {20}
+	015 Move xmm1, [0x182A4FDC0]
+	016 Move xmm0, 0
+	017 NotImplemented "cvtss2sd xmm0,xmm6"
+	018 NotImplemented "divsd xmm1,xmm0"
+	019 NotImplemented "cvtpd2ps xmm6,xmm1"
+	020 Move rcx, typeof(System.Math)
+	021 Move xmm8, 0
+	022 NotImplemented "cvtss2sd xmm8,xmm7"
+	023 Compare [rcx+228], 0
+	024 NotImplemented "mulsd xmm8,qword ptr [182A511D0h]"
+	025 NotImplemented "divsd xmm8,qword ptr [182B1EAD8h]"
+	026 JumpIfNotEqual {28}
+	027 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	028 Move xmm7, [0x182A4FDB8]
+	029 Move xmm0, xmm8
+	030 NotImplemented "mulsd xmm0,xmm7"
+	031 Call 0x18041C6F0, rcx, rdx, r8, r9
+	032 Move xmm1, 0
+	033 NotImplemented "cvtss2sd xmm1,xmm6"
+	034 NotImplemented "mulsd xmm0,xmm1"
+	035 Call 0x18041A700, rcx, rdx, r8, r9
+	036 NotImplemented "addsd xmm0,xmm0"
+	037 NotImplemented "mulsd xmm0,xmm7"
+	038 Call 0x180419B90, rcx, rdx, r8, r9
+	039 NotImplemented "mulsd xmm8,xmm7"
+	040 Move xmm6, xmm0
+	041 Move xmm0, xmm8
+	042 Call 0x180419B90, rcx, rdx, r8, r9
+	043 NotImplemented "mulsd xmm0,xmm6"
+	044 Call 0x180419380, rcx, rdx, r8, r9
+	045 NotImplemented "mulsd xmm0,qword ptr [182A500C0h]"
+	046 Move xmm6, stack:0x40
+	047 Move xmm7, stack:0x30
+	048 Move xmm8, stack:0x20
+	049 NotImplemented "cvtsd2ss xmm0,xmm0"
+	050 ShiftStack 88
+	051 Return xmm0
+
+Method: System.Single GetSolidAngle(UnityEngine.LightType lightType, System.Boolean spotReflector, System.Single spotAngle, System.Single aspectRatio)
+
+Disassembly:
+	mov [rsp+8],ecx
+	sub rsp,78h
+	movaps [rsp+60h],xmm6
+	movaps xmm6,xmm3
+	movaps [rsp+50h],xmm7
+	movaps xmm7,xmm2
+	test ecx,ecx
+	jne near ptr 0000000182204ED6h
+	test dl,dl
+	je near ptr 0000000182204FD3h
+	cmp [183753C1Fh],cl
+	jne short 0000000182204E73h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183753C1Fh],1
+	mov rcx,[183562D00h]
+	xorps xmm6,xmm6
+	cvtss2sd xmm6,xmm7
+	cmp dword ptr [rcx+0E4h],0
+	mulsd xmm6,qword ptr [182A511D0h]
+	divsd xmm6,qword ptr [182B1EAD8h]
+	jne short 0000000182204E9Fh
+	call 000000018037BED0h
+	mulsd xmm6,qword ptr [182A4FDB8h]
+	movaps xmm0,xmm6
+	call 0000000180419610h
+	movsd xmm1,qword ptr [182A4FDC0h]
+	subsd xmm1,xmm0
+	mulsd xmm1,qword ptr [182B1EAD0h]
+	cvtpd2ps xmm0,xmm1
+	movaps xmm6,[rsp+60h]
+	movaps xmm7,[rsp+50h]
+	add rsp,78h
+	ret
+	cmp ecx,2
+	je near ptr 0000000182204FD3h
+	cmp ecx,5
+	jne near ptr 0000000182204FEAh
+	test dl,dl
+	je near ptr 0000000182204FD3h
+	movaps [rsp+40h],xmm8
+	cmp byte ptr [183753C20h],0
+	jne short 0000000182204F12h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183753C20h],1
+	movss xmm0,dword ptr [182A4FBA4h]
+	comiss xmm0,xmm6
+	jbe short 0000000182204F36h
+	movsd xmm1,qword ptr [182A4FDC0h]
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm6
+	divsd xmm1,xmm0
+	cvtpd2ps xmm6,xmm1
+	mov rcx,[183562D00h]
+	xorps xmm8,xmm8
+	cvtss2sd xmm8,xmm7
+	cmp dword ptr [rcx+0E4h],0
+	mulsd xmm8,qword ptr [182A511D0h]
+	divsd xmm8,qword ptr [182B1EAD8h]
+	jne short 0000000182204F66h
+	call 000000018037BED0h
+	movsd xmm7,qword ptr [182A4FDB8h]
+	movaps xmm0,xmm8
+	mulsd xmm0,xmm7
+	call 000000018041C6F0h
+	xorps xmm1,xmm1
+	cvtss2sd xmm1,xmm6
+	mulsd xmm0,xmm1
+	call 000000018041A700h
+	addsd xmm0,xmm0
+	mulsd xmm0,xmm7
+	call 0000000180419B90h
+	mulsd xmm8,xmm7
+	movaps xmm6,xmm0
+	movaps xmm0,xmm8
+	call 0000000180419B90h
+	mulsd xmm0,xmm6
+	call 0000000180419380h
+	mulsd xmm0,qword ptr [182A500C0h]
+	movaps xmm8,[rsp+40h]
+	cvtsd2ss xmm0,xmm0
+	movaps xmm6,[rsp+60h]
+	movaps xmm7,[rsp+50h]
+	add rsp,78h
+	ret
+	movss xmm0,dword ptr [182B1EAE0h]
+	movaps xmm6,[rsp+60h]
+	movaps xmm7,[rsp+50h]
+	add rsp,78h
+	ret
+	mov [rsp+88h],rbx
+	lea rcx,[18355C950h]
+	mov [rsp+70h],rdi
+	call 000000018037BBB0h
+	mov rdx,rax
+	lea r8,[rsp+80h]
+	lea rcx,[rsp+20h]
+	call 00000001800041D0h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000181842700h
+	lea rcx,[1835024B0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	xor r8d,r8d
+	mov rdx,rbx
+	call 000000018165B1F0h
+	lea rcx,[1834FF8E8h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018176B4E0h
+	lea rcx,[18350BB90h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018037BDF0h
+	mov rdi,[rsp+70h]
+	mov rbx,[rsp+88h]
+
+ISIL:
+	001 Move stack:0x8, rcx
+	002 ShiftStack -120
+	003 Move stack:0x60, xmm6
+	004 Move xmm6, xmm3
+	005 Move stack:0x50, xmm7
+	006 Move xmm7, xmm2
+	007 Compare rcx, 0
+	008 JumpIfNotEqual {35}
+	009 Compare rdx, 0
+	010 JumpIfEqual {87}
+	011 Compare [0x183753C1F], rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x183562D00]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753C1F], 1
+	016 Move rcx, typeof(System.Math)
+	017 Move xmm6, 0
+	018 NotImplemented "cvtss2sd xmm6,xmm7"
+	019 Compare [rcx+228], 0
+	020 NotImplemented "mulsd xmm6,qword ptr [182A511D0h]"
+	021 NotImplemented "divsd xmm6,qword ptr [182B1EAD8h]"
+	022 JumpIfNotEqual {24}
+	023 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	024 NotImplemented "mulsd xmm6,qword ptr [182A4FDB8h]"
+	025 Move xmm0, xmm6
+	026 Call 0x180419610, rcx, rdx, r8, r9
+	027 Move xmm1, [0x182A4FDC0]
+	028 NotImplemented "subsd xmm1,xmm0"
+	029 NotImplemented "mulsd xmm1,qword ptr [182B1EAD0h]"
+	030 NotImplemented "cvtpd2ps xmm0,xmm1"
+	031 Move xmm6, stack:0x60
+	032 Move xmm7, stack:0x50
+	033 ShiftStack 120
+	034 Return xmm0
+	035 Compare rcx, 2
+	036 JumpIfEqual {87}
+	037 Compare rcx, 5
+	038 JumpIfNotEqual {92}
+	039 Compare rdx, 0
+	040 JumpIfEqual {87}
+	041 Move stack:0x40, xmm8
+	042 Compare [0x183753C20], 0
+	043 JumpIfNotEqual {47}
+	044 LoadAddress rcx, [0x183562D00]
+	045 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	046 Move [0x183753C20], 1
+	047 Move xmm0, [0x182A4FBA4]
+	048 Compare xmm0, xmm6
+	049 JumpIfLessOrEqual {55}
+	050 Move xmm1, [0x182A4FDC0]
+	051 Move xmm0, 0
+	052 NotImplemented "cvtss2sd xmm0,xmm6"
+	053 NotImplemented "divsd xmm1,xmm0"
+	054 NotImplemented "cvtpd2ps xmm6,xmm1"
+	055 Move rcx, typeof(System.Math)
+	056 Move xmm8, 0
+	057 NotImplemented "cvtss2sd xmm8,xmm7"
+	058 Compare [rcx+228], 0
+	059 NotImplemented "mulsd xmm8,qword ptr [182A511D0h]"
+	060 NotImplemented "divsd xmm8,qword ptr [182B1EAD8h]"
+	061 JumpIfNotEqual {63}
+	062 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	063 Move xmm7, [0x182A4FDB8]
+	064 Move xmm0, xmm8
+	065 NotImplemented "mulsd xmm0,xmm7"
+	066 Call 0x18041C6F0, rcx, rdx, r8, r9
+	067 Move xmm1, 0
+	068 NotImplemented "cvtss2sd xmm1,xmm6"
+	069 NotImplemented "mulsd xmm0,xmm1"
+	070 Call 0x18041A700, rcx, rdx, r8, r9
+	071 NotImplemented "addsd xmm0,xmm0"
+	072 NotImplemented "mulsd xmm0,xmm7"
+	073 Call 0x180419B90, rcx, rdx, r8, r9
+	074 NotImplemented "mulsd xmm8,xmm7"
+	075 Move xmm6, xmm0
+	076 Move xmm0, xmm8
+	077 Call 0x180419B90, rcx, rdx, r8, r9
+	078 NotImplemented "mulsd xmm0,xmm6"
+	079 Call 0x180419380, rcx, rdx, r8, r9
+	080 NotImplemented "mulsd xmm0,qword ptr [182A500C0h]"
+	081 Move xmm8, stack:0x40
+	082 NotImplemented "cvtsd2ss xmm0,xmm0"
+	083 Move xmm6, stack:0x60
+	084 Move xmm7, stack:0x50
+	085 ShiftStack 120
+	086 Return xmm0
+	087 Move xmm0, [0x182B1EAE0]
+	088 Move xmm6, stack:0x60
+	089 Move xmm7, stack:0x50
+	090 ShiftStack 120
+	091 Return xmm0
+	092 Move stack:0x88, rbx
+	093 LoadAddress rcx, [0x18355C950]
+	094 Move stack:0x70, rdi
+	095 Call 0x18037BBB0, rcx, rdx, r8, r9
+	096 Move rdx, rax
+	097 LoadAddress r8, stack:0x80
+	098 LoadAddress rcx, stack:0x20
+	099 Call 0x1800041D0, rcx, rdx, r8, r9
+	100 Move rdx, 0
+	101 LoadAddress rcx, stack:0x20
+	102 Call Enum.ToString, rcx, rdx
+	103 LoadAddress rcx, [0x1835024B0]
+	104 Move rbx, rax
+	105 Call 0x18037BBB0, rcx, rdx, r8, r9
+	106 Move rcx, rax
+	107 Move r8, 0
+	108 Move rdx, rbx
+	109 Call String.Concat, rcx, rdx, r8
+	110 LoadAddress rcx, [0x1834FF8E8]
+	111 Move rbx, rax
+	112 Call 0x18037BBB0, rcx, rdx, r8, r9
+	113 Move rcx, rax
+	114 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	115 Move r8, 0
+	116 Move rdx, rbx
+	117 Move rcx, rax
+	118 Move rdi, rax
+	119 Call ArgumentException..ctor, rcx, rdx
+	120 LoadAddress rcx, [0x18350BB90]
+	121 Call 0x18037BBB0, rcx, rdx, r8, r9
+	122 Move rdx, rax
+	123 Move rcx, rdi
+	124 Call 0x18037BDF0, rcx, rdx, r8, r9
+	125 Move rdi, stack:0x70
+	126 Move rbx, stack:0x88
+
+Method: System.Single GetAreaFromRectangleLight(System.Single rectSizeX, System.Single rectSizeY)
+
+Disassembly:
+	mulss xmm0,xmm1
+	andps xmm0,[182A4FE10h]
+	mulss xmm0,dword ptr [182A505F0h]
+	ret
+
+ISIL:
+	001 Multiply xmm0, xmm0, xmm1
+	002 And xmm0, xmm0, [0x182A4FE10]
+	003 Multiply xmm0, xmm0, [0x182A505F0]
+	004 Return xmm0
+
+Method: System.Single GetAreaFromRectangleLight(UnityEngine.Vector2 rectSize)
+
+Disassembly:
+	mov [rsp+18h],rcx
+	movss xmm0,dword ptr [rsp+1Ch]
+	mulss xmm0,dword ptr [rsp+18h]
+	andps xmm0,[182A4FE10h]
+	mulss xmm0,dword ptr [182A505F0h]
+	ret
+
+ISIL:
+	001 Move stack:0x18, rcx
+	002 Move xmm0, stack:0x1C
+	003 Multiply xmm0, xmm0, stack:0x18
+	004 And xmm0, xmm0, [0x182A4FE10]
+	005 Multiply xmm0, xmm0, [0x182A505F0]
+	006 Return xmm0
+
+Method: System.Single GetAreaFromDiscLight(System.Single discRadius)
+
+Disassembly:
+	mulss xmm0,xmm0
+	mulss xmm0,dword ptr [182A505F0h]
+	mulss xmm0,dword ptr [182A505F0h]
+	ret
+
+ISIL:
+	001 Multiply xmm0, xmm0, xmm0
+	002 Multiply xmm0, xmm0, [0x182A505F0]
+	003 Multiply xmm0, xmm0, [0x182A505F0]
+	004 Return xmm0
+
+Method: System.Single GetAreaFromTubeLight(System.Single tubeLength)
+
+Disassembly:
+	andps xmm0,[182A4FE10h]
+	mulss xmm0,dword ptr [182A4FEA4h]
+	mulss xmm0,dword ptr [182A505F0h]
+	ret
+
+ISIL:
+	001 And xmm0, xmm0, [0x182A4FE10]
+	002 Multiply xmm0, xmm0, [0x182A4FEA4]
+	003 Multiply xmm0, xmm0, [0x182A505F0]
+	004 Return xmm0
+
+Method: System.Single LumenToCandela(System.Single lumen, System.Single solidAngle)
+
+Disassembly:
+	divss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Divide xmm0, xmm0, xmm1
+	002 Return xmm0
+
+Method: System.Single CandelaToLumen(System.Single candela, System.Single solidAngle)
+
+Disassembly:
+	mulss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Multiply xmm0, xmm0, xmm1
+	002 Return xmm0
+
+Method: System.Single LumenToNits(System.Single lumen, System.Single area)
+
+Disassembly:
+	divss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Divide xmm0, xmm0, xmm1
+	002 Return xmm0
+
+Method: System.Single NitsToLumen(System.Single nits, System.Single area)
+
+Disassembly:
+	mulss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Multiply xmm0, xmm0, xmm1
+	002 Return xmm0
+
+Method: System.Single LuxToCandela(System.Single lux, System.Single distance)
+
+Disassembly:
+	mulss xmm1,xmm1
+	mulss xmm1,xmm0
+	movaps xmm0,xmm1
+	ret
+
+ISIL:
+	001 Multiply xmm1, xmm1, xmm1
+	002 Multiply xmm1, xmm1, xmm0
+	003 Move xmm0, xmm1
+	004 Return xmm0
+
+Method: System.Single CandelaToLux(System.Single candela, System.Single distance)
+
+Disassembly:
+	mulss xmm1,xmm1
+	divss xmm0,xmm1
+	ret
+
+ISIL:
+	001 Multiply xmm1, xmm1, xmm1
+	002 Divide xmm0, xmm0, xmm1
+	003 Return xmm0
+
+Method: System.Single Ev100ToNits(System.Single ev100)
+
+Disassembly:
+	sub rsp,38h
+	movaps [rsp+20h],xmm6
+	xor ecx,ecx
+	movaps xmm6,xmm0
+	call 00000001822051B0h
+	xorps xmm0,[182A500A0h]
+	addss xmm0,xmm6
+	movaps xmm1,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	jmp near ptr 00000001804171B0h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move stack:0x20, xmm6
+	003 Move rcx, 0
+	004 Move xmm6, xmm0
+	005 Call LightUnitUtils.get_k_LuminanceToEvFactor, rcx
+	006 Xor xmm0, xmm0, [0x182A500A0]
+	007 Add xmm0, xmm0, xmm6
+	008 Move xmm1, xmm0
+	009 Move xmm0, typeof(T)
+	010 Move xmm6, stack:0x20
+	011 ShiftStack 56
+	012 Call 0x1804171B0, rcx, rdx, r8, r9
+	013 Return xmm0
+
+Method: System.Single NitsToEv100(System.Single nits)
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [183753AD9h],0
+	movaps [rsp+20h],xmm6
+	movaps xmm6,xmm0
+	jne short 0000000182205148h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183753AD9h],1
+	mov rcx,[183562D00h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018220515Dh
+	call 000000018037BED0h
+	movsd xmm1,qword ptr [182A511C0h]
+	xorps xmm0,xmm0
+	cvtss2sd xmm0,xmm6
+	xor r8d,r8d
+	call 00000001818067E0h
+	xorps xmm6,xmm6
+	xor ecx,ecx
+	cvtsd2ss xmm6,xmm0
+	call 00000001822051B0h
+	addss xmm0,xmm6
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x183753AD9], 0
+	003 Move stack:0x20, xmm6
+	004 Move xmm6, xmm0
+	005 JumpIfNotEqual {9}
+	006 LoadAddress rcx, [0x183562D00]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x183753AD9], 1
+	009 Move rcx, typeof(System.Math)
+	010 Compare [rcx+228], 0
+	011 JumpIfNotEqual {13}
+	012 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	013 Move xmm1, [0x182A511C0]
+	014 Move xmm0, 0
+	015 NotImplemented "cvtss2sd xmm0,xmm6"
+	016 Move r8, 0
+	017 Call Math.Log, xmm0, xmm1, r8
+	018 Move xmm6, 0
+	019 Move rcx, 0
+	020 NotImplemented "cvtsd2ss xmm6,xmm0"
+	021 Call LightUnitUtils.get_k_LuminanceToEvFactor, rcx
+	022 Add xmm0, xmm0, xmm6
+	023 Move xmm6, stack:0x20
+	024 ShiftStack 56
+	025 Return xmm0
+
+Method: System.Single Ev100ToCandela(System.Single ev100)
+
+Disassembly:
+	sub rsp,38h
+	movaps [rsp+20h],xmm6
+	xor ecx,ecx
+	movaps xmm6,xmm0
+	call 00000001822051B0h
+	xorps xmm0,[182A500A0h]
+	addss xmm0,xmm6
+	movaps xmm1,xmm0
+	movss xmm0,dword ptr [182A4FBC8h]
+	movaps xmm6,[rsp+20h]
+	add rsp,38h
+	jmp near ptr 00000001804171B0h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move stack:0x20, xmm6
+	003 Move rcx, 0
+	004 Move xmm6, xmm0
+	005 Call LightUnitUtils.get_k_LuminanceToEvFactor, rcx
+	006 Xor xmm0, xmm0, [0x182A500A0]
+	007 Add xmm0, xmm0, xmm6
+	008 Move xmm1, xmm0
+	009 Move xmm0, typeof(T)
+	010 Move xmm6, stack:0x20
+	011 ShiftStack 56
+	012 Call 0x1804171B0, rcx, rdx, r8, r9
+	013 Return xmm0
+
+Method: System.Single CandelaToEv100(System.Single candela)
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000182205120h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call LightUnitUtils.NitsToEv100, xmm0, rdx
+	003 Return xmm0
+
+Method: System.Single ConvertIntensityInternal(System.Single intensity, UnityEngine.Rendering.LightUnit fromUnit, UnityEngine.Rendering.LightUnit toUnit, UnityEngine.LightType lightType, System.Single area, System.Single luxAtDistance, System.Single solidAngle)
+
+Disassembly:
+	mov rax,rsp
+	mov [rax+20h],r9d
+	mov [rax+18h],r8d
+	mov [rax+10h],edx
+	push rbp
+	push rbx
+	push rsi
+	push rdi
+	push r14
+	lea rbp,[rax-3Fh]
+	sub rsp,90h
+	mov esi,edx
+	movsxd rdi,r9d
+	mov ecx,edx
+	movaps [rax-38h],xmm6
+	mov edx,1
+	mov ebx,r8d
+	shl edx,cl
+	movaps xmm6,xmm0
+	cmp edi,7
+	ja near ptr 000000018220436Eh
+	lea r14,[180000000h]
+	mov eax,[r14+rdi*4+22048C0h]
+	add rax,r14
+	jmp rax
+	test dl,17h
+	jmp short 0000000182204181h
+	test dl,4
+	jmp short 0000000182204181h
+	test dl,19h
+	seta al
+	test al,al
+	je near ptr 000000018220436Eh
+	xor r8d,r8d
+	mov edx,ebx
+	mov ecx,edi
+	call 0000000182205090h
+	test al,al
+	je near ptr 000000018220436Eh
+	cmp esi,ebx
+	je near ptr 0000000182204239h
+	mov ecx,esi
+	test esi,esi
+	je near ptr 00000001822042F4h
+	sub ecx,1
+	je near ptr 00000001822042C2h
+	sub ecx,1
+	je near ptr 0000000182204260h
+	sub ecx,1
+	je short 0000000182204230h
+	cmp ecx,1
+	jne near ptr 0000000182204503h
+	mov ecx,ebx
+	test ebx,ebx
+	je short 0000000182204212h
+	sub ecx,1
+	je short 0000000182204206h
+	sub ecx,1
+	je short 00000001822041EDh
+	cmp ecx,1
+	jne near ptr 0000000182204576h
+	jmp short 0000000182204206h
+	xor edx,edx
+	movaps xmm0,xmm6
+	call 0000000182204B20h
+	movss xmm1,dword ptr [rbp+6Fh]
+	mulss xmm1,xmm1
+	divss xmm0,xmm1
+	jmp short 000000018220423Ch
+	xor edx,edx
+	movaps xmm0,xmm6
+	call 0000000182204B20h
+	jmp short 000000018220423Ch
+	xor edx,edx
+	movaps xmm0,xmm6
+	call 0000000182204B20h
+
+ISIL:
+	001 Move rax, rsp
+	002 Move [rax+32], r9
+	003 Move [rax+24], r8
+	004 Move [rax+16], rdx
+	005 ShiftStack -8
+	006 Move stack:0x0, rbp
+	007 ShiftStack -8
+	008 Move stack:0x0, rbx
+	009 ShiftStack -8
+	010 Move stack:0x0, rsi
+	011 ShiftStack -8
+	012 Move stack:0x0, rdi
+	013 ShiftStack -8
+	014 Move stack:0x0, r14
+	015 LoadAddress rbp, [rax-63]
+	016 ShiftStack -144
+	017 Move rsi, rdx
+	018 Move rdi, r9
+	019 Move rcx, rdx
+	020 Move [rax-56], xmm6
+	021 Move rdx, 1
+	022 Move rbx, r8
+	023 ShiftLeft rdx, rcx
+	024 Move xmm6, xmm0
+	025 Compare rdi, 7
+	026 Invalid "Jump target not found in method."
+	027 LoadAddress r14, [0x180000000]
+	028 Move rax, [r14+0x22048C0+rdi*4]
+	029 Add rax, rax, r14
+	030 CallNoReturn rax
+	031 Compare rdx, 23
+	032 Goto {36}
+	033 Compare rdx, 4
+	034 Goto {36}
+	035 Compare rdx, 25
+	036 NotImplemented "seta al"
+	037 Compare rax, 0
+	038 Invalid "Jump target not found in method."
+	039 Move r8, 0
+	040 Move rdx, rbx
+	041 Move rcx, rdi
+	042 Call LightUnitUtils.IsLightUnitSupported, rcx, rdx, r8
+	043 Compare rax, 0
+	044 Invalid "Jump target not found in method."
+	045 Compare rsi, rbx
+	046 Invalid "Jump target not found in method."
+	047 Move rcx, rsi
+	048 Compare rsi, 0
+	049 Invalid "Jump target not found in method."
+	050 Subtract rcx, rcx, 1
+	051 Invalid "Jump target not found in method."
+	052 Subtract rcx, rcx, 1
+	053 Invalid "Jump target not found in method."
+	054 Subtract rcx, rcx, 1
+	055 Invalid "Jump target not found in method."
+	056 Compare rcx, 1
+	057 Invalid "Jump target not found in method."
+	058 Move rcx, rbx
+	059 Compare rbx, 0
+	060 JumpIfEqual {79}
+	061 Subtract rcx, rcx, 1
+	062 JumpIfEqual {75}
+	063 Subtract rcx, rcx, 1
+	064 JumpIfEqual {68}
+	065 Compare rcx, 1
+	066 Invalid "Jump target not found in method."
+	067 Goto {75}
+	068 Move rdx, 0
+	069 Move xmm0, xmm6
+	070 Call 0x182204B20, xmm0, rdx
+	071 Move xmm1, [rbp+111]
+	072 Multiply xmm1, xmm1, xmm1
+	073 Divide xmm0, xmm0, xmm1
+	074 Invalid "Jump target not found in method."
+	075 Move rdx, 0
+	076 Move xmm0, xmm6
+	077 Call 0x182204B20, xmm0, rdx
+	078 Invalid "Jump target not found in method."
+	079 Move rdx, 0
+	080 Move xmm0, xmm6
+	081 Call 0x182204B20, xmm0, rdx
+
+Method: System.Single ConvertIntensity(UnityEngine.Light light, System.Single intensity, UnityEngine.Rendering.LightUnit fromUnit, UnityEngine.Rendering.LightUnit toUnit)
+
+Disassembly:
+	mov rax,rsp
+	push rbp
+	push rdi
+	push r14
+	sub rsp,80h
+	movaps [rax-58h],xmm9
+	movaps xmm9,xmm1
+	mov ebp,r9d
+	mov r14d,r8d
+	mov rdi,rcx
+	test rcx,rcx
+	je near ptr 0000000182204B19h
+	mov [rax+18h],rsi
+	xor edx,edx
+	movaps [rax-28h],xmm6
+	movaps [rax-38h],xmm7
+	movaps [rax-48h],xmm8
+	call 00000001825E9040h
+	mov esi,eax
+	xorps xmm6,xmm6
+	lea r10d,[rax-3]
+	test r10d,r10d
+	je near ptr 0000000182204A7Dh
+	sub r10d,1
+	je near ptr 0000000182204A49h
+	sub r10d,1
+	je short 00000001822049C6h
+	sub r10d,1
+	je short 00000001822049C6h
+	cmp r10d,1
+	jne short 00000001822049C6h
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001825E80C0h
+	mov [rsp+0A0h],rax
+	movss xmm7,dword ptr [rsp+0A0h]
+	andps xmm7,[182A4FE10h]
+	mulss xmm7,dword ptr [182A4FEA4h]
+	mulss xmm7,dword ptr [182A505F0h]
+	jmp near ptr 0000000182204AB3h
+	xor edx,edx
+	mov rcx,rdi
+	xorps xmm7,xmm7
+	call 00000001825E8980h
+	movaps xmm8,xmm0
+	test esi,esi
+	je short 00000001822049E9h
+	cmp esi,2
+	je short 00000001822049E9h
+	cmp esi,5
+	jne near ptr 0000000182204AC1h
+	xor edx,edx
+	mov [rsp+0A8h],rbx
+	mov rcx,rdi
+	call 00000001825E8740h
+	xor edx,edx
+	mov rcx,rdi
+	movzx ebx,al
+	call 00000001825E8F80h
+	xor edx,edx
+	mov rcx,rdi
+	movaps xmm6,xmm0
+	call 00000001825E80C0h
+	mov [rsp+0A0h],rax
+	movaps xmm2,xmm6
+	movss xmm3,dword ptr [rsp+0A0h]
+	movzx edx,bl
+	mov ecx,esi
+	mov qword ptr [rsp+20h],0
+	call 0000000182204E30h
+	mov rbx,[rsp+0A8h]
+	movaps xmm6,xmm0
+	jmp short 0000000182204AC1h
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001825E80C0h
+	mov [rsp+0A0h],rax
+	movss xmm1,dword ptr [rsp+0A0h]
+	mulss xmm1,xmm1
+	mulss xmm1,dword ptr [182A505F0h]
+	mulss xmm1,dword ptr [182A505F0h]
+	movaps xmm7,xmm1
+	jmp short 0000000182204AB3h
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001825E80C0h
+	mov [rsp+0A0h],rax
+	movss xmm0,dword ptr [rsp+0A4h]
+	mulss xmm0,dword ptr [rsp+0A0h]
+	andps xmm0,[182A4FE10h]
+	mulss xmm0,dword ptr [182A505F0h]
+	movaps xmm7,xmm0
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001825E8980h
+	movaps xmm8,xmm0
+	mov qword ptr [rsp+38h],0
+	mov r9d,esi
+	movss dword ptr [rsp+30h],xmm6
+	mov r8d,ebp
+	movss dword ptr [rsp+28h],xmm8
+	mov edx,r14d
+	movaps xmm0,xmm9
+	movss dword ptr [rsp+20h],xmm7
+	call 0000000182204120h
+	movaps xmm8,[rsp+50h]
+	movaps xmm7,[rsp+60h]
+	movaps xmm6,[rsp+70h]
+	mov rsi,[rsp+0B0h]
+	movaps xmm9,[rsp+40h]
+	add rsp,80h
+	pop r14
+	pop rdi
+	pop rbp
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -8
+	003 Move stack:0x0, rbp
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r14
+	008 ShiftStack -128
+	009 Move [rax-88], xmm9
+	010 Move xmm9, xmm1
+	011 Move rbp, r9
+	012 Move r14, r8
+	013 Move rdi, rcx
+	014 Compare rcx, 0
+	015 JumpIfEqual {122}
+	016 Move [rax+24], rsi
+	017 Move rdx, 0
+	018 Move [rax-40], xmm6
+	019 Move [rax-56], xmm7
+	020 Move [rax-72], xmm8
+	021 Call Light.get_type, rcx, rdx
+	022 Move rsi, rax
+	023 Move xmm6, 0
+	024 LoadAddress r10, [rax-3]
+	025 Compare r10, 0
+	026 JumpIfEqual {87}
+	027 Subtract r10, r10, 1
+	028 JumpIfEqual {77}
+	029 Subtract r10, r10, 1
+	030 JumpIfEqual {44}
+	031 Subtract r10, r10, 1
+	032 JumpIfEqual {44}
+	033 Compare r10, 1
+	034 JumpIfNotEqual {44}
+	035 Move rdx, 0
+	036 Move rcx, rdi
+	037 Call Light.get_areaSize, rcx, rdx
+	038 Move stack:0xA0, rax
+	039 Move xmm7, stack:0xA0
+	040 And xmm7, xmm7, [0x182A4FE10]
+	041 Multiply xmm7, xmm7, [0x182A4FEA4]
+	042 Multiply xmm7, xmm7, [0x182A505F0]
+	043 Goto {96}
+	044 Move rdx, 0
+	045 Move rcx, rdi
+	046 Move xmm7, 0
+	047 Call Light.get_luxAtDistance, rcx, rdx
+	048 Move xmm8, xmm0
+	049 Compare rsi, 0
+	050 JumpIfEqual {55}
+	051 Compare rsi, 2
+	052 JumpIfEqual {55}
+	053 Compare rsi, 5
+	054 JumpIfNotEqual {100}
+	055 Move rdx, 0
+	056 Move stack:0xA8, rbx
+	057 Move rcx, rdi
+	058 Call Light.get_enableSpotReflector, rcx, rdx
+	059 Move rdx, 0
+	060 Move rcx, rdi
+	061 Move rbx, rax
+	062 Call Light.get_spotAngle, rcx, rdx
+	063 Move rdx, 0
+	064 Move rcx, rdi
+	065 Move xmm6, xmm0
+	066 Call Light.get_areaSize, rcx, rdx
+	067 Move stack:0xA0, rax
+	068 Move xmm2, xmm6
+	069 Move xmm3, stack:0xA0
+	070 Move rdx, rbx
+	071 Move rcx, rsi
+	072 Move stack:0x20, 0
+	073 Call LightUnitUtils.GetSolidAngle, rcx, rdx, xmm2, xmm3, stack:0x0
+	074 Move rbx, stack:0xA8
+	075 Move xmm6, xmm0
+	076 Goto {100}
+	077 Move rdx, 0
+	078 Move rcx, rdi
+	079 Call Light.get_areaSize, rcx, rdx
+	080 Move stack:0xA0, rax
+	081 Move xmm1, stack:0xA0
+	082 Multiply xmm1, xmm1, xmm1
+	083 Multiply xmm1, xmm1, [0x182A505F0]
+	084 Multiply xmm1, xmm1, [0x182A505F0]
+	085 Move xmm7, xmm1
+	086 Goto {96}
+	087 Move rdx, 0
+	088 Move rcx, rdi
+	089 Call Light.get_areaSize, rcx, rdx
+	090 Move stack:0xA0, rax
+	091 Move xmm0, stack:0xA4
+	092 Multiply xmm0, xmm0, stack:0xA0
+	093 And xmm0, xmm0, [0x182A4FE10]
+	094 Multiply xmm0, xmm0, [0x182A505F0]
+	095 Move xmm7, xmm0
+	096 Move rdx, 0
+	097 Move rcx, rdi
+	098 Call Light.get_luxAtDistance, rcx, rdx
+	099 Move xmm8, xmm0
+	100 Move stack:0x38, 0
+	101 Move r9, rsi
+	102 Move stack:0x30, xmm6
+	103 Move r8, rbp
+	104 Move stack:0x28, xmm8
+	105 Move rdx, r14
+	106 Move xmm0, xmm9
+	107 Move stack:0x20, xmm7
+	108 Call LightUnitUtils.ConvertIntensityInternal, xmm0, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10, stack:0x18
+	109 Move xmm8, stack:0x50
+	110 Move xmm7, stack:0x60
+	111 Move xmm6, stack:0x70
+	112 Move rsi, stack:0xB0
+	113 Move xmm9, stack:0x40
+	114 ShiftStack 128
+	115 Move r14, stack:0x0
+	116 ShiftStack 8
+	117 Move rdi, stack:0x0
+	118 ShiftStack 8
+	119 Move rbp, stack:0x0
+	120 ShiftStack 8
+	121 Return xmm0
+	122 Call 0x18037BE30, rcx, rdx, r8, r9
+

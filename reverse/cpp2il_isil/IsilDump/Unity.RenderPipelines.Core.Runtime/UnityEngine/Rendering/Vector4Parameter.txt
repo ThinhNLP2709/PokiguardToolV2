@@ -1,0 +1,106 @@
+Type: UnityEngine.Rendering.Vector4Parameter
+
+Method: System.Void .ctor(UnityEngine.Vector4 value, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753C6Dh],0
+	movzx ebx,r8b
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 0000000182217085h
+	lea rcx,[1835604A0h]
+	call 000000018037BB90h
+	mov byte ptr [183753C6Dh],1
+	movups xmm0,[rdi]
+	mov r9,[1835604A0h]
+	lea rdx,[rsp+20h]
+	movzx r8d,bl
+	mov rcx,rsi
+	movaps [rsp+20h],xmm0
+	call 0000000180F70040h
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [0x183753C6D], 0
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x1835604A0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183753C6D], 1
+	014 Move xmm0, [rdi]
+	015 Move r9, [0x1835604A0]
+	016 LoadAddress rdx, stack:0x20
+	017 Move r8, rbx
+	018 Move rcx, rsi
+	019 Move stack:0x20, xmm0
+	020 Call 0x180F70040, rcx, rdx, r8
+	021 Move rbx, stack:0x40
+	022 Move rsi, stack:0x48
+	023 ShiftStack 48
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Return 
+
+Method: System.Void Interp(UnityEngine.Vector4 from, UnityEngine.Vector4 to, System.Single t)
+
+Disassembly:
+	movss xmm0,dword ptr [r8]
+	subss xmm0,dword ptr [rdx]
+	movss xmm1,dword ptr [r8+4]
+	subss xmm1,dword ptr [rdx+4]
+	mulss xmm0,xmm3
+	mulss xmm1,xmm3
+	addss xmm0,dword ptr [rdx]
+	addss xmm1,dword ptr [rdx+4]
+	movss dword ptr [rcx+18h],xmm0
+	movss xmm0,dword ptr [r8+8]
+	subss xmm0,dword ptr [rdx+8]
+	movss dword ptr [rcx+1Ch],xmm1
+	movss xmm1,dword ptr [r8+0Ch]
+	subss xmm1,dword ptr [rdx+0Ch]
+	mulss xmm0,xmm3
+	mulss xmm1,xmm3
+	addss xmm0,dword ptr [rdx+8]
+	addss xmm1,dword ptr [rdx+0Ch]
+	movss dword ptr [rcx+20h],xmm0
+	movss dword ptr [rcx+24h],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [r8]
+	002 Subtract xmm0, xmm0, [rdx]
+	003 Move xmm1, [r8+4]
+	004 Subtract xmm1, xmm1, [rdx+4]
+	005 Multiply xmm0, xmm0, xmm3
+	006 Multiply xmm1, xmm1, xmm3
+	007 Add xmm0, xmm0, [rdx]
+	008 Add xmm1, xmm1, [rdx+4]
+	009 Move [rcx+24], xmm0
+	010 Move xmm0, [r8+8]
+	011 Subtract xmm0, xmm0, [rdx+8]
+	012 Move [rcx+28], xmm1
+	013 Move xmm1, [r8+12]
+	014 Subtract xmm1, xmm1, [rdx+12]
+	015 Multiply xmm0, xmm0, xmm3
+	016 Multiply xmm1, xmm1, xmm3
+	017 Add xmm0, xmm0, [rdx+8]
+	018 Add xmm1, xmm1, [rdx+12]
+	019 Move [rcx+32], xmm0
+	020 Move [rcx+36], xmm1
+	021 Return 
+

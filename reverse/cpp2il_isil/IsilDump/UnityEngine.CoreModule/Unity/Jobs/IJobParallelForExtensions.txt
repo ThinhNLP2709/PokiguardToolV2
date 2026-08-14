@@ -1,0 +1,411 @@
+Type: Unity.Jobs.IJobParallelForExtensions
+
+Method: System.Void EarlyJobInit()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp qword ptr [rcx+38h],0
+	mov rbx,rcx
+	jne short 00000001809026B5h
+	call 0000000180384D10h
+	mov rax,[rbx+38h]
+	mov rax,[rax+8]
+	test byte ptr [rax+135h],1
+	jne short 00000001809026CEh
+	mov rcx,rax
+	call 0000000180384C90h
+	cmp dword ptr [rax+0E4h],0
+	jne short 00000001809026DFh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rcx,[rbx+38h]
+	mov rcx,[rcx]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180B7DD70h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [rcx+56], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {8}
+	007 Call 0x180384D10, rcx, rdx, r8, r9
+	008 Move rax, [rbx+56]
+	009 Move rax, [rax+8]
+	010 Compare [rax+309], 1
+	011 JumpIfNotEqual {14}
+	012 Move rcx, rax
+	013 Call 0x180384C90, rcx, rdx, r8, r9
+	014 Compare [rax+228], 0
+	015 JumpIfNotEqual {18}
+	016 Move rcx, rax
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 Move rcx, [rbx+56]
+	019 Move rcx, [rcx]
+	020 ShiftStack 32
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Call 0x180B7DD70, rcx
+	024 Return 
+
+Method: System.IntPtr GetReflectionData()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp qword ptr [rcx+38h],0
+	mov rbx,rcx
+	jne short 00000001809034FFh
+	lea rcx,[1835218F0h]
+	call 000000018037BB90h
+	cmp qword ptr [rbx+38h],0
+	jne short 00000001809034FFh
+	mov rcx,rbx
+	call 0000000180384D10h
+	mov rax,[rbx+38h]
+	mov rax,[rax+8]
+	test byte ptr [rax+135h],1
+	jne short 0000000180903518h
+	mov rcx,rax
+	call 0000000180384C90h
+	cmp dword ptr [rax+0E4h],0
+	jne short 0000000180903529h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rcx,[rbx+38h]
+	mov rcx,[rcx]
+	call 0000000180B7DD70h
+	mov rax,[rbx+38h]
+	mov rdi,[1835218F0h]
+	mov rax,[rax+8]
+	test byte ptr [rax+135h],1
+	jne short 0000000180903555h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rcx,[rax+0B8h]
+	mov rdx,rdi
+	call 0000000180AEFF90h
+	mov rax,[rax]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [rcx+56], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {14}
+	008 LoadAddress rcx, [0x1835218F0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Compare [rbx+56], 0
+	011 JumpIfNotEqual {14}
+	012 Move rcx, rbx
+	013 Call 0x180384D10, rcx, rdx, r8, r9
+	014 Move rax, [rbx+56]
+	015 Move rax, [rax+8]
+	016 Compare [rax+309], 1
+	017 JumpIfNotEqual {20}
+	018 Move rcx, rax
+	019 Call 0x180384C90, rcx, rdx, r8, r9
+	020 Compare [rax+228], 0
+	021 JumpIfNotEqual {24}
+	022 Move rcx, rax
+	023 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	024 Move rcx, [rbx+56]
+	025 Move rcx, [rcx]
+	026 Call 0x180B7DD70, rcx
+	027 Move rax, [rbx+56]
+	028 Move rdi, [0x1835218F0]
+	029 Move rax, [rax+8]
+	030 Compare [rax+309], 1
+	031 JumpIfNotEqual {34}
+	032 Move rcx, rax
+	033 Call 0x180384C90, rcx, rdx, r8, r9
+	034 Move rcx, [rax+184]
+	035 Move rdx, rdi
+	036 Call 0x180AEFF90, rcx, rdx
+	037 Move rax, [rax]
+	038 Move rbx, stack:0x30
+	039 ShiftStack 32
+	040 Move rdi, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+
+Method: Unity.Jobs.JobHandle Schedule(T jobData, System.Int32 arrayLength, System.Int32 innerloopBatchCount, Unity.Jobs.JobHandle dependsOn = null)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	push r14
+	push r15
+	sub rsp,70h
+	mov rbx,[rsp+0B8h]
+	mov ebp,r9d
+	mov r14d,r8d
+	mov r15,rdx
+	mov rdi,rcx
+	cmp qword ptr [rbx+38h],0
+	jne short 000000018090548Bh
+	mov rcx,rbx
+	call 0000000180384D10h
+	xor eax,eax
+	xorps xmm0,xmm0
+	mov [rsp+60h],rax
+	mov rax,[rbx+38h]
+	movups [rsp+40h],xmm0
+	movups [rsp+50h],xmm0
+	mov rbx,[rax+18h]
+	movups [rdi],xmm0
+	cmp qword ptr [rbx+38h],0
+	jne short 00000001809054CCh
+	lea rcx,[1835218F0h]
+	call 000000018037BB90h
+	cmp qword ptr [rbx+38h],0
+	jne short 00000001809054CCh
+	mov rcx,rbx
+	call 0000000180384D10h
+	mov rax,[rbx+38h]
+	mov rax,[rax+8]
+	test byte ptr [rax+135h],1
+	jne short 00000001809054E5h
+	mov rcx,rax
+	call 0000000180384C90h
+	cmp dword ptr [rax+0E4h],0
+	jne short 00000001809054F6h
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rcx,[rbx+38h]
+	mov rcx,[rcx]
+	call 0000000180B7DD70h
+	mov rax,[rbx+38h]
+	mov rsi,[1835218F0h]
+	mov rax,[rax+8]
+	test byte ptr [rax+135h],1
+	jne short 0000000180905522h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rcx,[rax+0B8h]
+	mov rdx,rsi
+	call 0000000180AEFF90h
+	mov rcx,[rsp+0B0h]
+	lea r9,[rsp+30h]
+	mov r8,[rax]
+	xor ebx,ebx
+	mov [rsp+28h],rbx
+	mov rdx,r15
+	mov dword ptr [rsp+20h],1
+	movups xmm0,[rcx]
+	lea rcx,[rsp+40h]
+	movaps [rsp+30h],xmm0
+	call 00000001825D48E0h
+	mov r9d,ebp
+	mov [rsp+20h],rbx
+	mov r8d,r14d
+	lea rdx,[rsp+40h]
+	lea rcx,[rsp+30h]
+	call 00000001825D4D90h
+	movups xmm0,[rax]
+	movups [rdi],xmm0
+	lea r11,[rsp+70h]
+	mov rax,rdi
+	mov rbx,[r11+20h]
+	mov rbp,[r11+28h]
+	mov rsi,[r11+30h]
+	mov rsp,r11
+	pop r15
+	pop r14
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r14
+	008 ShiftStack -8
+	009 Move stack:0x0, r15
+	010 ShiftStack -112
+	011 Move rbx, stack:0xB8
+	012 Move rbp, r9
+	013 Move r14, r8
+	014 Move r15, rdx
+	015 Move rdi, rcx
+	016 Compare [rbx+56], 0
+	017 JumpIfNotEqual {20}
+	018 Move rcx, rbx
+	019 Call 0x180384D10, rcx, rdx, r8, r9
+	020 Move rax, 0
+	021 Move xmm0, 0
+	022 Move stack:0x60, rax
+	023 Move rax, [rbx+56]
+	024 Move stack:0x40, xmm0
+	025 Move stack:0x50, xmm0
+	026 Move rbx, [rax+24]
+	027 Move [rdi], xmm0
+	028 Compare [rbx+56], 0
+	029 JumpIfNotEqual {36}
+	030 LoadAddress rcx, [0x1835218F0]
+	031 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	032 Compare [rbx+56], 0
+	033 JumpIfNotEqual {36}
+	034 Move rcx, rbx
+	035 Call 0x180384D10, rcx, rdx, r8, r9
+	036 Move rax, [rbx+56]
+	037 Move rax, [rax+8]
+	038 Compare [rax+309], 1
+	039 JumpIfNotEqual {42}
+	040 Move rcx, rax
+	041 Call 0x180384C90, rcx, rdx, r8, r9
+	042 Compare [rax+228], 0
+	043 JumpIfNotEqual {46}
+	044 Move rcx, rax
+	045 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	046 Move rcx, [rbx+56]
+	047 Move rcx, [rcx]
+	048 Call 0x180B7DD70, rcx
+	049 Move rax, [rbx+56]
+	050 Move rsi, [0x1835218F0]
+	051 Move rax, [rax+8]
+	052 Compare [rax+309], 1
+	053 JumpIfNotEqual {56}
+	054 Move rcx, rax
+	055 Call 0x180384C90, rcx, rdx, r8, r9
+	056 Move rcx, [rax+184]
+	057 Move rdx, rsi
+	058 Call 0x180AEFF90, rcx, rdx
+	059 Move rcx, stack:0xB0
+	060 LoadAddress r9, stack:0x30
+	061 Move r8, [rax]
+	062 Move rbx, 0
+	063 Move stack:0x28, rbx
+	064 Move rdx, r15
+	065 Move stack:0x20, 1
+	066 Move xmm0, [rcx]
+	067 LoadAddress rcx, stack:0x40
+	068 Move stack:0x30, xmm0
+	069 Call JobScheduleParameters..ctor, rcx, rdx, r8, r9, stack:0x0
+	070 Move r9, rbp
+	071 Move stack:0x20, rbx
+	072 Move r8, r14
+	073 LoadAddress rdx, stack:0x40
+	074 LoadAddress rcx, stack:0x30
+	075 Call JobsUtility.ScheduleParallelFor, rcx, rdx, r8, r9
+	076 Move xmm0, [rax]
+	077 Move [rdi], xmm0
+	078 LoadAddress r11, stack:0x70
+	079 Move rax, rdi
+	080 Move rbx, [r11+32]
+	081 Move rbp, [r11+40]
+	082 Move rsi, [r11+48]
+	083 Move rsp, r11
+	084 Move r15, stack:0x0
+	085 ShiftStack 8
+	086 Move r14, stack:0x0
+	087 ShiftStack 8
+	088 Move rdi, stack:0x0
+	089 ShiftStack 8
+	090 Return rax
+
+Method: System.Void Run(T jobData, System.Int32 arrayLength)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,70h
+	cmp qword ptr [r8+38h],0
+	mov rbx,r8
+	mov edi,edx
+	mov rsi,rcx
+	jne short 0000000180903BE6h
+	mov rcx,rbx
+	call 0000000180384D10h
+	mov rcx,[rbx+38h]
+	xorps xmm0,xmm0
+	xor eax,eax
+	movups [rsp+40h],xmm0
+	mov [rsp+60h],rax
+	movups [rsp+50h],xmm0
+	mov rcx,[rcx+18h]
+	call 0000000180017430h
+	xor ebx,ebx
+	lea r9,[rsp+30h]
+	xorps xmm0,xmm0
+	mov [rsp+28h],rbx
+	mov r8,rax
+	movdqa [rsp+30h],xmm0
+	mov rdx,rsi
+	mov [rsp+20h],ebx
+	lea rcx,[rsp+40h]
+	call 00000001825D48E0h
+	mov r9d,edi
+	mov [rsp+20h],rbx
+	mov r8d,edi
+	lea rdx,[rsp+40h]
+	lea rcx,[rsp+30h]
+	call 00000001825D4D90h
+	lea r11,[rsp+70h]
+	mov rbx,[r11+10h]
+	mov rsi,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -112
+	006 Compare [r8+56], 0
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {13}
+	011 Move rcx, rbx
+	012 Call 0x180384D10, rcx, rdx, r8, r9
+	013 Move rcx, [rbx+56]
+	014 Move xmm0, 0
+	015 Move rax, 0
+	016 Move stack:0x40, xmm0
+	017 Move stack:0x60, rax
+	018 Move stack:0x50, xmm0
+	019 Move rcx, [rcx+24]
+	020 Call 0x180017430, rcx, rdx, r8, r9
+	021 Move rbx, 0
+	022 LoadAddress r9, stack:0x30
+	023 Move xmm0, 0
+	024 Move stack:0x28, rbx
+	025 Move r8, rax
+	026 Move stack:0x30, xmm0
+	027 Move rdx, rsi
+	028 Move stack:0x20, rbx
+	029 LoadAddress rcx, stack:0x40
+	030 Call JobScheduleParameters..ctor, rcx, rdx, r8, r9, stack:0x0
+	031 Move r9, rdi
+	032 Move stack:0x20, rbx
+	033 Move r8, rdi
+	034 LoadAddress rdx, stack:0x40
+	035 LoadAddress rcx, stack:0x30
+	036 Call JobsUtility.ScheduleParallelFor, rcx, rdx, r8, r9
+	037 LoadAddress r11, stack:0x70
+	038 Move rbx, [r11+16]
+	039 Move rsi, [r11+24]
+	040 Move rsp, r11
+	041 Move rdi, stack:0x0
+	042 ShiftStack 8
+	043 Return 
+

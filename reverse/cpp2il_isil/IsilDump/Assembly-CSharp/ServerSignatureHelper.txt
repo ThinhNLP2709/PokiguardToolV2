@@ -1,0 +1,271 @@
+Type: ServerSignatureHelper
+
+Method: System.Collections.IEnumerator RequestSignature(System.Int64 userId, System.Int64 bossScheduleId, System.Int32 damageDealt, System.Int32 turnCount, System.Boolean victory, System.Action`1<ServerSignatureHelper+SignatureResponse> onSuccess, System.Action`1<System.String> onError)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	cmp byte ptr [18374A958h],0
+	mov edi,r9d
+	mov esi,r8d
+	mov rbp,rdx
+	mov r14,rcx
+	jne short 0000000180530042h
+	lea rcx,[1835339E8h]
+	call 000000018037BB90h
+	mov byte ptr [18374A958h],1
+	mov rcx,[1835339E8h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	movzx ecx,byte ptr [rsp+50h]
+	mov rdx,[rsp+58h]
+	mov [rbx+48h],cl
+	lea rcx,[rbx+20h]
+	mov dword ptr [rbx+10h],0
+	mov [rbx+30h],r14
+	mov [rbx+38h],rbp
+	mov [rbx+40h],esi
+	mov [rbx+44h],edi
+	mov [rbx+20h],rdx
+	call 000000018037ACB0h
+	mov rdx,[rsp+60h]
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdx
+	call 000000018037ACB0h
+	mov rbp,[rsp+38h]
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Compare [0x18374A958], 0
+	009 Move rdi, r9
+	010 Move rsi, r8
+	011 Move rbp, rdx
+	012 Move r14, rcx
+	013 JumpIfNotEqual {17}
+	014 LoadAddress rcx, [0x1835339E8]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 Move [0x18374A958], 1
+	017 Move rcx, typeof(ServerSignatureHelper+<RequestSignature>d__2)
+	018 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	019 Move rdx, 0
+	020 Move rcx, rax
+	021 Move rbx, rax
+	022 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	023 Move rcx, stack:0x50
+	024 Move rdx, stack:0x58
+	025 Move [rbx+72], rcx
+	026 LoadAddress rcx, [rbx+32]
+	027 Move [rbx+16], 0
+	028 Move [rbx+48], r14
+	029 Move [rbx+56], rbp
+	030 Move [rbx+64], rsi
+	031 Move [rbx+68], rdi
+	032 Move [rbx+32], rdx
+	033 Call 0x18037ACB0, rcx, rdx, r8, r9
+	034 Move rdx, stack:0x60
+	035 LoadAddress rcx, [rbx+40]
+	036 Move [rbx+40], rdx
+	037 Call 0x18037ACB0, rcx, rdx, r8, r9
+	038 Move rbp, stack:0x38
+	039 Move rax, rbx
+	040 Move rbx, stack:0x30
+	041 Move rsi, stack:0x40
+	042 Move rdi, stack:0x48
+	043 ShiftStack 32
+	044 Move r14, stack:0x0
+	045 ShiftStack 8
+	046 Return rax
+
+Method: System.String GenerateNonce()
+
+Disassembly:
+	sub rsp,48h
+	cmp byte ptr [18374A959h],0
+	jne short 000000018052FF40h
+	lea rcx,[183524090h]
+	call 000000018037BB90h
+	mov byte ptr [18374A959h],1
+	xorps xmm0,xmm0
+	lea rcx,[rsp+30h]
+	xor edx,edx
+	movups [rsp+20h],xmm0
+	call 00000001817FEF30h
+	mov rdx,[183524090h]
+	lea rcx,[rsp+20h]
+	xor r8d,r8d
+	movups xmm0,[rax]
+	movups [rsp+20h],xmm0
+	call 00000001817FF860h
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare [0x18374A959], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183524090]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374A959], 1
+	007 Move xmm0, 0
+	008 LoadAddress rcx, stack:0x30
+	009 Move rdx, 0
+	010 Move stack:0x20, xmm0
+	011 Call Guid.NewGuid, rcx
+	012 Move rdx, "N"
+	013 LoadAddress rcx, stack:0x20
+	014 Move r8, 0
+	015 Move xmm0, [rax]
+	016 Move stack:0x20, xmm0
+	017 Call Guid.ToString, rcx, rdx
+	018 ShiftStack 72
+	019 Return rax
+
+Method: System.Int64 GetCurrentTimestamp()
+
+Disassembly:
+	sub rsp,48h
+	cmp byte ptr [18374A95Ah],0
+	jne short 000000018052FFA0h
+	lea rcx,[18351F060h]
+	call 000000018037BB90h
+	mov byte ptr [18374A95Ah],1
+	mov rcx,[18351F060h]
+	xorps xmm0,xmm0
+	movups [rsp+20h],xmm0
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018052FFBDh
+	call 000000018037BED0h
+	xor edx,edx
+	lea rcx,[rsp+30h]
+	call 00000001817EA640h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	movups xmm0,[rax]
+	movups [rsp+20h],xmm0
+	call 00000001817E83D0h
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare [0x18374A95A], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x18351F060]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374A95A], 1
+	007 Move rcx, typeof(System.DateTimeOffset)
+	008 Move xmm0, 0
+	009 Move stack:0x20, xmm0
+	010 Compare [rcx+228], 0
+	011 JumpIfNotEqual {13}
+	012 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 LoadAddress rcx, stack:0x30
+	015 Call DateTimeOffset.get_UtcNow, rcx
+	016 Move rdx, 0
+	017 LoadAddress rcx, stack:0x20
+	018 Move xmm0, [rax]
+	019 Move stack:0x20, xmm0
+	020 Call DateTimeOffset.ToUnixTimeMilliseconds, rcx, rdx
+	021 ShiftStack 72
+	022 Return rax
+
+Method: System.String GetDeviceId()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 0000000182634E60h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call SystemInfo.get_deviceUniqueIdentifier, rcx
+	003 Return rax
+
+Method: System.String CalculateChecksum(System.Int64 userId, System.Int64 bossId, System.Int32 damage, System.Int32 turnCount, System.Boolean victory)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+20h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374A95Bh],0
+	mov ebx,r9d
+	mov edi,r8d
+	mov rsi,rdx
+	mov rbp,rcx
+	jne short 000000018052FEDCh
+	lea rcx,[183503198h]
+	call 000000018037BB90h
+	mov byte ptr [18374A95Bh],1
+	movzx eax,byte ptr [rsp+50h]
+	lea rcx,[rsp+40h]
+	mov rdx,[183503198h]
+	xor eax,esi
+	xor eax,ebp
+	xor r8d,r8d
+	xor eax,edi
+	xor eax,ebx
+	mov [rsp+40h],eax
+	call 0000000181804210h
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+48h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x20, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x18374A95B], 0
+	008 Move rbx, r9
+	009 Move rdi, r8
+	010 Move rsi, rdx
+	011 Move rbp, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x183503198]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18374A95B], 1
+	016 Move rax, stack:0x50
+	017 LoadAddress rcx, stack:0x40
+	018 Move rdx, "X8"
+	019 Xor rax, rax, rsi
+	020 Xor rax, rax, rbp
+	021 Move r8, 0
+	022 Xor rax, rax, rdi
+	023 Xor rax, rax, rbx
+	024 Move stack:0x40, rax
+	025 Call Int32.ToString, rcx, rdx
+	026 Move rbx, stack:0x30
+	027 Move rbp, stack:0x38
+	028 Move rsi, stack:0x48
+	029 ShiftStack 32
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return rax
+

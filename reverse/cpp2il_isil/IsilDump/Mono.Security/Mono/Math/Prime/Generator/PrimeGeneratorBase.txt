@@ -1,0 +1,200 @@
+Type: Mono.Math.Prime.Generator.PrimeGeneratorBase
+
+Method: Mono.Math.Prime.ConfidenceFactor get_Confidence()
+
+Disassembly:
+	mov eax,2
+	ret
+
+ISIL:
+	001 Move rax, 2
+	002 Return rax
+
+Method: Mono.Math.Prime.PrimalityTest get_PrimalityTest()
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374E639h],0
+	jne short 000000018162FA27h
+	lea rcx,[1834FA098h]
+	call 000000018037BB90h
+	lea rcx,[18354DA40h]
+	call 000000018037BB90h
+	mov byte ptr [18374E639h],1
+	mov rcx,[1834FA098h]
+	call 000000018037BDE0h
+	mov rdi,[18354DA40h]
+	mov rbx,rax
+	xor edx,edx
+	mov rax,[rdi+8]
+	lea rcx,[rbx+20h]
+	mov [rbx+10h],rax
+	mov [rbx+28h],rdi
+	mov qword ptr [rbx+20h],0
+	call 000000018037ACB0h
+	movzx esi,byte ptr [rdi+52h]
+	mov rcx,rdi
+	mov [rbx+40h],rbx
+	call 000000018037ACE0h
+	test al,al
+	je short 000000018162FA8Dh
+	cmp sil,2
+	jne short 000000018162FA7Fh
+	lea rcx,[1800D3B50h]
+	jmp short 000000018162FAE5h
+	mov rax,[rbx+20h]
+	mov rcx,[rbx+10h]
+	mov [rbx+40h],rax
+	jmp short 000000018162FAE5h
+	cmp sil,1
+	jne short 000000018162FB0Ch
+	cmp byte ptr [rbx+70h],0
+	je short 000000018162FADEh
+	mov rcx,rdi
+	call 000000018037BD90h
+	mov rcx,rdi
+	test al,al
+	je short 000000018162FAC3h
+	call 000000018037BDA0h
+	test al,al
+	lea rcx,[1800F00F0h]
+	lea rdx,[1800F01B0h]
+	cmove rcx,rdx
+	jmp short 000000018162FAE5h
+	call 000000018037BDA0h
+	test al,al
+	lea rcx,[1800F02F0h]
+	lea rdx,[1800F0230h]
+	cmovne rcx,rdx
+	jmp short 000000018162FAE5h
+	lea rcx,[1800F0200h]
+	mov eax,18h
+	mov [rbx+rax],rcx
+	lea rax,[180293140h]
+	mov rsi,[rsp+38h]
+	mov [rbx+38h],rax
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	lea rdx,[182A50388h]
+	xor ecx,ecx
+	call 000000018037B790h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374E639], 0
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x1834FA098]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18354DA40]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374E639], 1
+	013 Move rcx, typeof(Mono.Math.Prime.PrimalityTest)
+	014 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	015 Move rdi, [0x18354DA40]
+	016 Move rbx, rax
+	017 Move rdx, 0
+	018 Move rax, [rdi+8]
+	019 LoadAddress rcx, [rbx+32]
+	020 Move [rbx+16], rax
+	021 Move [rbx+40], rdi
+	022 Move [rbx+32], 0
+	023 Call 0x18037ACB0, rcx, rdx, r8, r9
+	024 Move rsi, [rdi+82]
+	025 Move rcx, rdi
+	026 Move [rbx+64], rbx
+	027 Call 0x18037ACE0, rcx, rdx, r8, r9
+	028 Compare rax, 0
+	029 JumpIfEqual {38}
+	030 Compare rsi, 2
+	031 JumpIfNotEqual {34}
+	032 LoadAddress rcx, [0x1800D3B50]
+	033 Goto {64}
+	034 Move rax, [rbx+32]
+	035 Move rcx, [rbx+16]
+	036 Move [rbx+64], rax
+	037 Goto {64}
+	038 Compare rsi, 1
+	039 JumpIfNotEqual {75}
+	040 Compare [rbx+112], 0
+	041 JumpIfEqual {63}
+	042 Move rcx, rdi
+	043 Call 0x18037BD90, rcx, rdx, r8, r9
+	044 Move rcx, rdi
+	045 Compare rax, 0
+	046 JumpIfEqual {55}
+	047 Call 0x18037BDA0, rcx, rdx, r8, r9
+	048 Compare rax, 0
+	049 LoadAddress rcx, [0x1800F00F0]
+	050 LoadAddress rdx, [0x1800F01B0]
+	051 JumpIfNotEqual {53}
+	052 Move rcx, rdx
+	053 Nop 
+	054 Goto {64}
+	055 Call 0x18037BDA0, rcx, rdx, r8, r9
+	056 Compare rax, 0
+	057 LoadAddress rcx, [0x1800F02F0]
+	058 LoadAddress rdx, [0x1800F0230]
+	059 JumpIfEqual {61}
+	060 Move rcx, rdx
+	061 Nop 
+	062 Goto {64}
+	063 LoadAddress rcx, [0x1800F0200]
+	064 Move rax, 24
+	065 Move [rbx+rax], rcx
+	066 LoadAddress rax, [0x180293140]
+	067 Move rsi, stack:0x38
+	068 Move [rbx+56], rax
+	069 Move rax, rbx
+	070 Move rbx, stack:0x30
+	071 ShiftStack 32
+	072 Move rdi, stack:0x0
+	073 ShiftStack 8
+	074 Return rax
+	075 LoadAddress rdx, [0x182A50388]
+	076 Move rcx, 0
+	077 Call 0x18037B790, rcx, rdx, r8, r9
+	078 Move rcx, rax
+	079 Move rdx, 0
+	080 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Int32 get_TrialDivisionBounds()
+
+Disassembly:
+	mov eax,0FA0h
+	ret
+
+ISIL:
+	001 Move rax, 4000
+	002 Return rax
+
+Method: Mono.Math.BigInteger GenerateNewPrime(System.Int32 bits)
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

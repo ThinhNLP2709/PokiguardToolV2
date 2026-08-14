@@ -1,0 +1,74 @@
+Type: UnityEngine.Rendering.Universal.ScriptableRenderer+RenderBlocks+BlockRange
+
+Method: System.Void .ctor(System.Int32 begin, System.Int32 end)
+
+Disassembly:
+	xchg ax,ax
+	cmp edx,r8d
+	mov eax,edx
+	cmovge eax,r8d
+	mov [rcx],eax
+	cmovg r8d,edx
+	mov [rcx+4],r8d
+	dec dword ptr [rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Compare rdx, r8
+	003 Move rax, rdx
+	004 JumpIfLess {6}
+	005 Move rax, r8
+	006 Nop 
+	007 Move [rcx], rax
+	008 JumpIfLessOrEqual {10}
+	009 Move r8, rdx
+	010 Nop 
+	011 Move [rcx+4], r8
+	012 Subtract [rcx], [rcx], 1
+	013 Return 
+
+Method: UnityEngine.Rendering.Universal.ScriptableRenderer+RenderBlocks+BlockRange GetEnumerator()
+
+Disassembly:
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	inc dword ptr [rcx]
+	mov eax,[rcx]
+	cmp eax,[rcx+4]
+	setl al
+	ret
+
+ISIL:
+	001 Add [rcx], [rcx], 1
+	002 Move rax, [rcx]
+	003 Compare rax, [rcx+4]
+	004 NotImplemented "setl al"
+	005 Return rax
+
+Method: System.Int32 get_Current()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+

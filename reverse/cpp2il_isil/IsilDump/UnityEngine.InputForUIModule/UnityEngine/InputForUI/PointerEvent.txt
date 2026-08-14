@@ -1,0 +1,2146 @@
+Type: UnityEngine.InputForUI.PointerEvent
+
+Method: System.Boolean get_isPrimaryPointer()
+
+Disassembly:
+	cmp dword ptr [rcx+4],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+4], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Single get_azimuth()
+
+Disassembly:
+	sub rsp,68h
+	movaps [rsp+50h],xmm6
+	movss xmm6,dword ptr [rcx+28h]
+	movaps [rsp+30h],xmm8
+	xorps xmm8,xmm8
+	movaps [rsp+20h],xmm9
+	movss xmm9,dword ptr [rcx+24h]
+	ucomiss xmm9,xmm8
+	jp short 00000001826B9264h
+	jne short 00000001826B9264h
+	xorps xmm0,xmm0
+	jmp near ptr 00000001826B92EEh
+	movaps xmm0,xmm9
+	movaps [rsp+40h],xmm7
+	call 0000000180418BC0h
+	movaps xmm7,xmm0
+	movaps xmm0,xmm6
+	xorps xmm7,[182A500A0h]
+	call 0000000180416DA0h
+	mulss xmm7,xmm0
+	movaps xmm0,xmm6
+	call 0000000180418BC0h
+	movaps xmm6,xmm0
+	movaps xmm0,xmm9
+	call 0000000180416DA0h
+	mulss xmm6,xmm0
+	movaps xmm0,xmm7
+	movaps xmm1,xmm6
+	call 0000000180418100h
+	movss xmm2,dword ptr [182A510DCh]
+	movaps xmm7,[rsp+40h]
+	movaps xmm1,xmm2
+	subss xmm1,xmm0
+	comiss xmm8,xmm1
+	jbe short 00000001826B92CDh
+	addss xmm1,dword ptr [182A510F4h]
+	xor eax,eax
+	comiss xmm1,xmm2
+	setb al
+	test eax,eax
+	je short 00000001826B92E3h
+	addss xmm1,dword ptr [182A5120Ch]
+	jmp short 00000001826B92EBh
+	addss xmm1,dword ptr [182A51210h]
+	movaps xmm0,xmm1
+	movaps xmm6,[rsp+50h]
+	movaps xmm8,[rsp+30h]
+	movaps xmm9,[rsp+20h]
+	add rsp,68h
+	ret
+
+ISIL:
+	001 ShiftStack -104
+	002 Move stack:0x50, xmm6
+	003 Move xmm6, [rcx+40]
+	004 Move stack:0x30, xmm8
+	005 Move xmm8, 0
+	006 Move stack:0x20, xmm9
+	007 Move xmm9, [rcx+36]
+	008 Compare xmm9, xmm8
+	009 NotImplemented "jp short 00000001826B9264h"
+	010 JumpIfNotEqual {13}
+	011 Move xmm0, 0
+	012 Goto {46}
+	013 Move xmm0, xmm9
+	014 Move stack:0x40, xmm7
+	015 Call 0x180418BC0, rcx, rdx, r8, r9
+	016 Move xmm7, xmm0
+	017 Move xmm0, xmm6
+	018 Xor xmm7, xmm7, [0x182A500A0]
+	019 Call 0x180416DA0, rcx, rdx, r8, r9
+	020 Multiply xmm7, xmm7, xmm0
+	021 Move xmm0, xmm6
+	022 Call 0x180418BC0, rcx, rdx, r8, r9
+	023 Move xmm6, xmm0
+	024 Move xmm0, xmm9
+	025 Call 0x180416DA0, rcx, rdx, r8, r9
+	026 Multiply xmm6, xmm6, xmm0
+	027 Move xmm0, xmm7
+	028 Move xmm1, xmm6
+	029 Call 0x180418100, rcx, rdx, r8, r9
+	030 Move xmm2, [0x182A510DC]
+	031 Move xmm7, stack:0x40
+	032 Move xmm1, xmm2
+	033 Subtract xmm1, xmm1, xmm0
+	034 Compare xmm8, xmm1
+	035 JumpIfLessOrEqual {37}
+	036 Add xmm1, xmm1, [0x182A510F4]
+	037 Move rax, 0
+	038 Compare xmm1, xmm2
+	039 NotImplemented "setb al"
+	040 Compare rax, 0
+	041 JumpIfEqual {44}
+	042 Add xmm1, xmm1, [0x182A5120C]
+	043 Goto {45}
+	044 Add xmm1, xmm1, [0x182A51210]
+	045 Move xmm0, xmm1
+	046 Move xmm6, stack:0x50
+	047 Move xmm8, stack:0x30
+	048 Move xmm9, stack:0x20
+	049 ShiftStack 104
+	050 Return xmm0
+
+Method: System.Single get_altitude()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	movaps [rsp+20h],xmm6
+	mov rbx,rcx
+	movss xmm0,dword ptr [rcx+28h]
+	call 0000000180418BC0h
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rbx+24h]
+	call 0000000180418BC0h
+	mulss xmm6,xmm0
+	movaps xmm0,xmm6
+	call 0000000180418DE0h
+	movss xmm1,dword ptr [182A510DCh]
+	movaps xmm6,[rsp+20h]
+	subss xmm1,xmm0
+	movaps xmm0,xmm1
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move stack:0x20, xmm6
+	005 Move rbx, rcx
+	006 Move xmm0, [rcx+40]
+	007 Call 0x180418BC0, rcx, rdx, r8, r9
+	008 Move xmm6, xmm0
+	009 Move xmm0, [rbx+36]
+	010 Call 0x180418BC0, rcx, rdx, r8, r9
+	011 Multiply xmm6, xmm6, xmm0
+	012 Move xmm0, xmm6
+	013 Call 0x180418DE0, rcx, rdx, r8, r9
+	014 Move xmm1, [0x182A510DC]
+	015 Move xmm6, stack:0x20
+	016 Subtract xmm1, xmm1, xmm0
+	017 Move xmm0, xmm1
+	018 ShiftStack 48
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Return xmm0
+
+Method: Unity.IntegerTime.DiscreteTime get_timestamp()
+
+Disassembly:
+	mov rax,[rcx+48h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+72]
+	002 Return rax
+
+Method: System.Void set_timestamp(Unity.IntegerTime.DiscreteTime value)
+
+Disassembly:
+	mov [rcx+48h],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+72], rdx
+	002 Return 
+
+Method: UnityEngine.InputForUI.EventSource get_eventSource()
+
+Disassembly:
+	mov eax,[rcx+50h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+80]
+	002 Return rax
+
+Method: System.Void set_eventSource(UnityEngine.InputForUI.EventSource value)
+
+Disassembly:
+	mov [rcx+50h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+80], rdx
+	002 Return 
+
+Method: System.Void set_playerId(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+54h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+84], rdx
+	002 Return 
+
+Method: UnityEngine.InputForUI.EventModifiers get_eventModifiers()
+
+Disassembly:
+	mov eax,[rcx+58h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+88]
+	002 Return rax
+
+Method: System.Void set_eventModifiers(UnityEngine.InputForUI.EventModifiers value)
+
+Disassembly:
+	mov [rcx+58h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+88], rdx
+	002 Return 
+
+Method: System.String ToString()
+
+Disassembly:
+	push rbp
+	push rdi
+	mov rbp,rsp
+	sub rsp,68h
+	cmp byte ptr [18375960Fh],0
+	mov rdi,rcx
+	jne near ptr 00000001826B83CDh
+	lea rcx,[183525E68h]
+	call 000000018037BB90h
+	lea rcx,[183525F28h]
+	call 000000018037BB90h
+	lea rcx,[18356C6B0h]
+	call 000000018037BB90h
+	lea rcx,[183525FE8h]
+	call 000000018037BB90h
+	lea rcx,[18352F6E8h]
+	call 000000018037BB90h
+	lea rcx,[18355BFC8h]
+	call 000000018037BB90h
+	lea rcx,[18355C088h]
+	call 000000018037BB90h
+	lea rcx,[183536D00h]
+	call 000000018037BB90h
+	lea rcx,[1835307C8h]
+	call 000000018037BB90h
+	lea rcx,[18352F808h]
+	call 000000018037BB90h
+	lea rcx,[18355C148h]
+	call 000000018037BB90h
+	lea rcx,[18355C208h]
+	call 000000018037BB90h
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [18375960Fh],1
+	cmp dword ptr [rdi+50h],4
+	mov [rsp+60h],rbx
+	mov [rsp+58h],rsi
+	mov [rsp+50h],r14
+	jne near ptr 00000001826B86AAh
+	mov rcx,[18356C6B0h]
+	mov edx,7
+	call 000000018037AD30h
+	movss xmm0,dword ptr [rdi+24h]
+	lea rdx,[rbp+18h]
+	mov rcx,[18375C118h]
+	mov rbx,rax
+	movss dword ptr [rbp+18h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rbx,rbx
+	je near ptr 00000001826B8FDDh
+	test rax,rax
+	je short 00000001826B843Dh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8F61h
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 00000001826B8FD7h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+28h]
+	lea rdx,[rbp+28h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp+28h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B8491h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8F71h
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 00000001826B8FD7h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001826B9230h
+	mov rcx,[18375C118h]
+	lea rdx,[rbp+30h]
+	movss dword ptr [rbp+30h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B84EAh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8F81h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 00000001826B8FD7h
+	lea rcx,[rbx+30h]
+	movaps [rsp+40h],xmm6
+	mov rdx,rsi
+	mov [rbx+30h],rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+28h]
+	call 0000000180418BC0h
+	movaps xmm6,xmm0
+	movss xmm0,dword ptr [rdi+24h]
+	call 0000000180418BC0h
+	mulss xmm6,xmm0
+	movaps xmm0,xmm6
+	call 0000000180418DE0h
+	movss xmm1,dword ptr [182A510DCh]
+	lea rdx,[rbp-48h]
+	mov rcx,[18375C118h]
+	subss xmm1,xmm0
+	movss dword ptr [rbp-48h],xmm1
+	call 000000018037AC90h
+	movaps xmm6,[rsp+40h]
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B8572h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8F91h
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 00000001826B8FD7h
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+2Ch]
+	lea rdx,[rbp-44h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp-44h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B85C6h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8FA1h
+	cmp dword ptr [rbx+18h],4
+	jbe near ptr 00000001826B8FD7h
+	lea rcx,[rbx+40h]
+	mov [rbx+40h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+30h]
+	lea rdx,[rbp-40h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp-40h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B861Ah
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8FB1h
+	cmp dword ptr [rbx+18h],5
+	jbe near ptr 00000001826B8FD7h
+	lea rcx,[rbx+48h]
+	mov [rbx+48h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov r14,[183536D00h]
+	mov rcx,[18375C0E8h]
+	lea rdx,[rbp-38h]
+	xor eax,eax
+	cmp [rdi+34h],al
+	setne al
+	mov [rbp-38h],eax
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B8676h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8FC1h
+	cmp dword ptr [rbx+18h],6
+	jbe near ptr 00000001826B8FD1h
+	lea rcx,[rbx+50h]
+	mov [rbx+50h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,r14
+	call 000000018165E2A0h
+	mov rbx,[18351D790h]
+	mov r14,rax
+	jmp short 00000001826B86B4h
+	mov rbx,[18351D790h]
+	mov r14,rbx
+	cmp dword ptr [rdi+50h],5
+	jne near ptr 00000001826B8890h
+	mov rcx,[18356C6B0h]
+	mov edx,5
+	call 000000018037AD30h
+	mov ecx,[rdi+4]
+	lea rdx,[rbp+18h]
+	mov [rbp+18h],ecx
+	mov rbx,rax
+	mov rcx,[18375C0E8h]
+	call 000000018037AC90h
+	mov rsi,rax
+	test rbx,rbx
+	je near ptr 00000001826B9072h
+	test rax,rax
+	je short 00000001826B8711h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8FE3h
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 00000001826B906Ch
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+24h]
+	lea rdx,[rbp+28h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp+28h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B8765h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B8FF3h
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 00000001826B906Ch
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+28h]
+	lea rdx,[rbp+30h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp+30h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B87B9h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9003h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 00000001826B906Ch
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+2Ch]
+	lea rdx,[rbp-40h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp-40h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B880Dh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9013h
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 00000001826B906Ch
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	movss xmm0,dword ptr [rdi+30h]
+	lea rdx,[rbp-44h]
+	mov rcx,[18375C118h]
+	movss dword ptr [rbp-44h],xmm0
+	call 000000018037AC90h
+	mov rsi,rax
+	test rax,rax
+	je short 00000001826B8861h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9023h
+	cmp dword ptr [rbx+18h],4
+	jbe near ptr 00000001826B906Ch
+	lea rcx,[rbx+40h]
+	mov [rbx+40h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rcx,[1835307C8h]
+	xor r8d,r8d
+	mov rdx,rbx
+	call 000000018165E2A0h
+	mov rbx,rax
+	mov eax,[rdi+20h]
+	lea rdx,[rbp-48h]
+	mov rcx,[18375C0E8h]
+	mov [rbp-48h],eax
+	call 000000018037AC90h
+	mov rcx,[18352F808h]
+	xor r8d,r8d
+	mov rdx,rax
+	call 000000018165E580h
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	mov rcx,r14
+	call 000000018165AF00h
+	mov rsi,rax
+	mov eax,[rdi]
+	sub eax,1
+	je near ptr 00000001826B8D98h
+	sub eax,1
+	je near ptr 00000001826B8C41h
+	sub eax,1
+	je near ptr 00000001826B8A4Eh
+	sub eax,1
+	je near ptr 00000001826B8A4Eh
+	cmp eax,1
+	jne near ptr 00000001826B9033h
+	mov rcx,[18356C6B0h]
+	mov edx,4
+	call 000000018037AD30h
+	mov ecx,[rdi]
+	lea rdx,[rbp+18h]
+	mov [rbp+18h],ecx
+	mov rbx,rax
+	mov rcx,[183525FE8h]
+	call 000000018037AC90h
+	mov r14,rax
+	test rbx,rbx
+	je near ptr 00000001826B90BEh
+	test rax,rax
+	je short 00000001826B894Dh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9078h
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 00000001826B90B8h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rdi+8]
+	lea rdx,[rbp+30h]
+	mov rcx,[18352F6E8h]
+	movsd qword ptr [rbp+30h],xmm0
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B89A1h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9088h
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 00000001826B90B8h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	mov eax,[rdi+3Ch]
+	lea rdx,[rbp+28h]
+	mov rcx,[183525F28h]
+	mov [rbp+28h],eax
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 00000001826B89F1h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9098h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 00000001826B90B8h
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	test rsi,rsi
+	je short 00000001826B8A28h
+	mov rdx,[rbx]
+	mov rcx,rsi
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B90A8h
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 00000001826B90B8h
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rcx,[18355C088h]
+	jmp near ptr 00000001826B8F3Ah
+	mov rcx,[18356C6B0h]
+	mov edx,6
+	call 000000018037AD30h
+	mov ecx,[rdi]
+	lea rdx,[rbp+18h]
+	mov [rbp+18h],ecx
+	mov rbx,rax
+	mov rcx,[183525FE8h]
+	call 000000018037AC90h
+	mov r14,rax
+	test rbx,rbx
+	je near ptr 00000001826B912Ah
+	test rax,rax
+	je short 00000001826B8AA0h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B90C4h
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 00000001826B9124h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rdi+8]
+	lea rdx,[rbp-40h]
+	mov rcx,[18352F6E8h]
+	movsd qword ptr [rbp-40h],xmm0
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B8AF4h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B90D4h
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 00000001826B9124h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	mov eax,[rdi+38h]
+	lea rdx,[rbp+28h]
+	mov rcx,[183525E68h]
+	mov [rbp+28h],eax
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B8B44h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B90E4h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 00000001826B9124h
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	mov eax,[rdi+3Ch]
+	lea rdx,[rbp+30h]
+	mov rcx,[183525F28h]
+	mov [rbp+30h],eax
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B8B94h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B90F4h
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 00000001826B9124h
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	mov eax,[rdi+40h]
+	lea rdx,[rbp-38h]
+	mov rcx,[18375C0E8h]
+	mov [rbp-38h],eax
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 00000001826B8BE4h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9104h
+	cmp dword ptr [rbx+18h],4
+	jbe near ptr 00000001826B9124h
+	lea rcx,[rbx+40h]
+	mov [rbx+40h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	test rsi,rsi
+	je short 00000001826B8C1Bh
+	mov rdx,[rbx]
+	mov rcx,rsi
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9114h
+	cmp dword ptr [rbx+18h],5
+	jbe near ptr 00000001826B9124h
+	lea rcx,[rbx+48h]
+	mov [rbx+48h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rcx,[18355BFC8h]
+	jmp near ptr 00000001826B8F3Ah
+	mov rcx,[18356C6B0h]
+	mov edx,4
+	call 000000018037AD30h
+	mov ecx,[rdi]
+	lea rdx,[rbp+18h]
+	mov [rbp+18h],ecx
+	mov rbx,rax
+	mov rcx,[183525FE8h]
+	call 000000018037AC90h
+	mov r14,rax
+	test rbx,rbx
+	je near ptr 00000001826B9176h
+	test rax,rax
+	je short 00000001826B8C93h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9130h
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 00000001826B9170h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rdi+8]
+	lea rdx,[rbp+28h]
+	mov rcx,[18352F6E8h]
+	movsd qword ptr [rbp+28h],xmm0
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B8CE7h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9140h
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 00000001826B9170h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rdi+18h]
+	lea rdx,[rbp+30h]
+	mov rcx,[18352F6E8h]
+	movsd qword ptr [rbp+30h],xmm0
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 00000001826B8D3Bh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9150h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 00000001826B9170h
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	test rsi,rsi
+	je short 00000001826B8D72h
+	mov rdx,[rbx]
+	mov rcx,rsi
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B9160h
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 00000001826B9170h
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rcx,[18355C208h]
+	jmp near ptr 00000001826B8F3Ah
+	mov rcx,[18356C6B0h]
+	mov edx,5
+	call 000000018037AD30h
+	mov ecx,[rdi]
+	lea rdx,[rbp+18h]
+	mov [rbp+18h],ecx
+	mov rbx,rax
+	mov rcx,[183525FE8h]
+	call 000000018037AC90h
+	mov r14,rax
+	test rbx,rbx
+	je near ptr 00000001826B8F5Bh
+	test rax,rax
+	je short 00000001826B8DEAh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B917Ch
+	cmp dword ptr [rbx+18h],0
+	jbe near ptr 00000001826B91CCh
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rdi+8]
+	lea rdx,[rbp+30h]
+	mov rcx,[18352F6E8h]
+	movsd qword ptr [rbp+30h],xmm0
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B8E3Eh
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B918Ch
+	cmp dword ptr [rbx+18h],1
+	jbe near ptr 00000001826B91CCh
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movsd xmm0,qword ptr [rdi+10h]
+	lea rdx,[rbp-38h]
+	mov rcx,[18352F6E8h]
+	movsd qword ptr [rbp-38h],xmm0
+	call 000000018037AC90h
+	mov r14,rax
+	test rax,rax
+	je short 00000001826B8E92h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B919Ch
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 00000001826B91CCh
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	mov eax,[rdi+3Ch]
+	lea rdx,[rbp+28h]
+	mov rcx,[183525F28h]
+	mov [rbp+28h],eax
+	call 000000018037AC90h
+	mov rdi,rax
+	test rax,rax
+	je short 00000001826B8EE2h
+	mov rdx,[rbx]
+	mov rcx,rax
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B91ACh
+	cmp dword ptr [rbx+18h],3
+	jbe near ptr 00000001826B91CCh
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	test rsi,rsi
+	je short 00000001826B8F19h
+	mov rdx,[rbx]
+	mov rcx,rsi
+	mov rdx,[rdx+40h]
+	call 000000018037ACD0h
+	test rax,rax
+	je near ptr 00000001826B91BCh
+	cmp dword ptr [rbx+18h],4
+	jbe near ptr 00000001826B91CCh
+	lea rcx,[rbx+40h]
+	mov [rbx+40h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rcx,[18355C148h]
+	xor r8d,r8d
+	mov rdx,rbx
+	call 000000018165E2A0h
+	mov r14,[rsp+50h]
+	mov rsi,[rsp+58h]
+	mov rbx,[rsp+60h]
+	add rsp,68h
+	pop rdi
+	pop rbp
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	lea rcx,[1834FFA50h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018176BB00h
+	lea rcx,[18354CFC0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037B7B0h
+	mov rcx,rax
+	xor edx,edx
+	call 000000018037BDF0h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 Move rbp, rsp
+	006 ShiftStack -104
+	007 Compare [0x18375960F], 0
+	008 Move rdi, rcx
+	009 JumpIfNotEqual {37}
+	010 LoadAddress rcx, [0x183525E68]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183525F28]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x18356C6B0]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x183525FE8]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x18352F6E8]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 LoadAddress rcx, [0x18355BFC8]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x18355C088]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 LoadAddress rcx, [0x183536D00]
+	025 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	026 LoadAddress rcx, [0x1835307C8]
+	027 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	028 LoadAddress rcx, [0x18352F808]
+	029 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	030 LoadAddress rcx, [0x18355C148]
+	031 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	032 LoadAddress rcx, [0x18355C208]
+	033 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	034 LoadAddress rcx, [0x18351D790]
+	035 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	036 Move [0x18375960F], 1
+	037 Compare [rdi+80], 4
+	038 Move stack:0x60, rbx
+	039 Move stack:0x58, rsi
+	040 Move stack:0x50, r14
+	041 JumpIfNotEqual {211}
+	042 Move rcx, typeof(System.Object[1])
+	043 Move rdx, 7
+	044 Call "SzArrayNew", rcx, rdx, r8, r9
+	045 Move xmm0, [rdi+36]
+	046 LoadAddress rdx, [rbp+24]
+	047 Move rcx, [0x18375C118]
+	048 Move rbx, rax
+	049 Move [rbp+24], xmm0
+	050 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	051 Move rsi, rax
+	052 Compare rbx, 0
+	053 JumpIfEqual {792}
+	054 Compare rax, 0
+	055 JumpIfEqual {62}
+	056 Move rdx, [rbx]
+	057 Move rcx, rax
+	058 Move rdx, [rdx+64]
+	059 Call 0x18037ACD0, rcx, rdx, r8, r9
+	060 Compare rax, 0
+	061 JumpIfEqual {753}
+	062 Compare [rbx+24], 0
+	063 JumpIfLessOrEqual {790}
+	064 LoadAddress rcx, [rbx+32]
+	065 Move [rbx+32], rsi
+	066 Move rdx, rsi
+	067 Call 0x18037ACB0, rcx, rdx, r8, r9
+	068 Move xmm0, [rdi+40]
+	069 LoadAddress rdx, [rbp+40]
+	070 Move rcx, [0x18375C118]
+	071 Move [rbp+40], xmm0
+	072 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	073 Move rsi, rax
+	074 Compare rax, 0
+	075 JumpIfEqual {82}
+	076 Move rdx, [rbx]
+	077 Move rcx, rax
+	078 Move rdx, [rdx+64]
+	079 Call 0x18037ACD0, rcx, rdx, r8, r9
+	080 Compare rax, 0
+	081 JumpIfEqual {758}
+	082 Compare [rbx+24], 1
+	083 JumpIfLessOrEqual {790}
+	084 LoadAddress rcx, [rbx+40]
+	085 Move [rbx+40], rsi
+	086 Move rdx, rsi
+	087 Call 0x18037ACB0, rcx, rdx, r8, r9
+	088 Move rdx, 0
+	089 Move rcx, rdi
+	090 Call PointerEvent.get_azimuth, rcx, rdx
+	091 Move rcx, [0x18375C118]
+	092 LoadAddress rdx, [rbp+48]
+	093 Move [rbp+48], xmm0
+	094 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	095 Move rsi, rax
+	096 Compare rax, 0
+	097 JumpIfEqual {104}
+	098 Move rdx, [rbx]
+	099 Move rcx, rax
+	100 Move rdx, [rdx+64]
+	101 Call 0x18037ACD0, rcx, rdx, r8, r9
+	102 Compare rax, 0
+	103 JumpIfEqual {763}
+	104 Compare [rbx+24], 2
+	105 JumpIfLessOrEqual {790}
+	106 LoadAddress rcx, [rbx+48]
+	107 Move stack:0x40, xmm6
+	108 Move rdx, rsi
+	109 Move [rbx+48], rsi
+	110 Call 0x18037ACB0, rcx, rdx, r8, r9
+	111 Move xmm0, [rdi+40]
+	112 Call 0x180418BC0, rcx, rdx, r8, r9
+	113 Move xmm6, xmm0
+	114 Move xmm0, [rdi+36]
+	115 Call 0x180418BC0, rcx, rdx, r8, r9
+	116 Multiply xmm6, xmm6, xmm0
+	117 Move xmm0, xmm6
+	118 Call 0x180418DE0, rcx, rdx, r8, r9
+	119 Move xmm1, [0x182A510DC]
+	120 LoadAddress rdx, [rbp-72]
+	121 Move rcx, [0x18375C118]
+	122 Subtract xmm1, xmm1, xmm0
+	123 Move [rbp-72], xmm1
+	124 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	125 Move xmm6, stack:0x40
+	126 Move rsi, rax
+	127 Compare rax, 0
+	128 JumpIfEqual {135}
+	129 Move rdx, [rbx]
+	130 Move rcx, rax
+	131 Move rdx, [rdx+64]
+	132 Call 0x18037ACD0, rcx, rdx, r8, r9
+	133 Compare rax, 0
+	134 JumpIfEqual {768}
+	135 Compare [rbx+24], 3
+	136 JumpIfLessOrEqual {790}
+	137 LoadAddress rcx, [rbx+56]
+	138 Move [rbx+56], rsi
+	139 Move rdx, rsi
+	140 Call 0x18037ACB0, rcx, rdx, r8, r9
+	141 Move xmm0, [rdi+44]
+	142 LoadAddress rdx, [rbp-68]
+	143 Move rcx, [0x18375C118]
+	144 Move [rbp-68], xmm0
+	145 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	146 Move rsi, rax
+	147 Compare rax, 0
+	148 JumpIfEqual {155}
+	149 Move rdx, [rbx]
+	150 Move rcx, rax
+	151 Move rdx, [rdx+64]
+	152 Call 0x18037ACD0, rcx, rdx, r8, r9
+	153 Compare rax, 0
+	154 JumpIfEqual {773}
+	155 Compare [rbx+24], 4
+	156 JumpIfLessOrEqual {790}
+	157 LoadAddress rcx, [rbx+64]
+	158 Move [rbx+64], rsi
+	159 Move rdx, rsi
+	160 Call 0x18037ACB0, rcx, rdx, r8, r9
+	161 Move xmm0, [rdi+48]
+	162 LoadAddress rdx, [rbp-64]
+	163 Move rcx, [0x18375C118]
+	164 Move [rbp-64], xmm0
+	165 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	166 Move rsi, rax
+	167 Compare rax, 0
+	168 JumpIfEqual {175}
+	169 Move rdx, [rbx]
+	170 Move rcx, rax
+	171 Move rdx, [rdx+64]
+	172 Call 0x18037ACD0, rcx, rdx, r8, r9
+	173 Compare rax, 0
+	174 JumpIfEqual {778}
+	175 Compare [rbx+24], 5
+	176 JumpIfLessOrEqual {790}
+	177 LoadAddress rcx, [rbx+72]
+	178 Move [rbx+72], rsi
+	179 Move rdx, rsi
+	180 Call 0x18037ACB0, rcx, rdx, r8, r9
+	181 Move r14, " tilt:({0:f1},{1:f1}) az:{2:f2} al:{3:f2} twist:{4} pressure:{5} isInverted:{6}"
+	182 Move rcx, [0x18375C0E8]
+	183 LoadAddress rdx, [rbp-56]
+	184 Move rax, 0
+	185 Compare [rdi+52], rax
+	186 NotImplemented "setne al"
+	187 Move [rbp-56], rax
+	188 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	189 Move rsi, rax
+	190 Compare rax, 0
+	191 JumpIfEqual {198}
+	192 Move rdx, [rbx]
+	193 Move rcx, rax
+	194 Move rdx, [rdx+64]
+	195 Call 0x18037ACD0, rcx, rdx, r8, r9
+	196 Compare rax, 0
+	197 JumpIfEqual {783}
+	198 Compare [rbx+24], 6
+	199 JumpIfLessOrEqual {788}
+	200 LoadAddress rcx, [rbx+80]
+	201 Move [rbx+80], rsi
+	202 Move rdx, rsi
+	203 Call 0x18037ACB0, rcx, rdx, r8, r9
+	204 Move r8, 0
+	205 Move rdx, rbx
+	206 Move rcx, r14
+	207 Call String.Format, rcx, rdx, r8
+	208 Move rbx, ""
+	209 Move r14, rax
+	210 Goto {213}
+	211 Move rbx, ""
+	212 Move r14, rbx
+	213 Compare [rdi+80], 5
+	214 JumpIfNotEqual {326}
+	215 Move rcx, typeof(System.Object[1])
+	216 Move rdx, 5
+	217 Call "SzArrayNew", rcx, rdx, r8, r9
+	218 Move rcx, [rdi+4]
+	219 LoadAddress rdx, [rbp+24]
+	220 Move [rbp+24], rcx
+	221 Move rbx, rax
+	222 Move rcx, [0x18375C0E8]
+	223 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	224 Move rsi, rax
+	225 Compare rbx, 0
+	226 JumpIfEqual {835}
+	227 Compare rax, 0
+	228 JumpIfEqual {235}
+	229 Move rdx, [rbx]
+	230 Move rcx, rax
+	231 Move rdx, [rdx+64]
+	232 Call 0x18037ACD0, rcx, rdx, r8, r9
+	233 Compare rax, 0
+	234 JumpIfEqual {794}
+	235 Compare [rbx+24], 0
+	236 JumpIfLessOrEqual {833}
+	237 LoadAddress rcx, [rbx+32]
+	238 Move [rbx+32], rsi
+	239 Move rdx, rsi
+	240 Call 0x18037ACB0, rcx, rdx, r8, r9
+	241 Move xmm0, [rdi+36]
+	242 LoadAddress rdx, [rbp+40]
+	243 Move rcx, [0x18375C118]
+	244 Move [rbp+40], xmm0
+	245 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	246 Move rsi, rax
+	247 Compare rax, 0
+	248 JumpIfEqual {255}
+	249 Move rdx, [rbx]
+	250 Move rcx, rax
+	251 Move rdx, [rdx+64]
+	252 Call 0x18037ACD0, rcx, rdx, r8, r9
+	253 Compare rax, 0
+	254 JumpIfEqual {799}
+	255 Compare [rbx+24], 1
+	256 JumpIfLessOrEqual {833}
+	257 LoadAddress rcx, [rbx+40]
+	258 Move [rbx+40], rsi
+	259 Move rdx, rsi
+	260 Call 0x18037ACB0, rcx, rdx, r8, r9
+	261 Move xmm0, [rdi+40]
+	262 LoadAddress rdx, [rbp+48]
+	263 Move rcx, [0x18375C118]
+	264 Move [rbp+48], xmm0
+	265 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	266 Move rsi, rax
+	267 Compare rax, 0
+	268 JumpIfEqual {275}
+	269 Move rdx, [rbx]
+	270 Move rcx, rax
+	271 Move rdx, [rdx+64]
+	272 Call 0x18037ACD0, rcx, rdx, r8, r9
+	273 Compare rax, 0
+	274 JumpIfEqual {804}
+	275 Compare [rbx+24], 2
+	276 JumpIfLessOrEqual {833}
+	277 LoadAddress rcx, [rbx+48]
+	278 Move [rbx+48], rsi
+	279 Move rdx, rsi
+	280 Call 0x18037ACB0, rcx, rdx, r8, r9
+	281 Move xmm0, [rdi+44]
+	282 LoadAddress rdx, [rbp-64]
+	283 Move rcx, [0x18375C118]
+	284 Move [rbp-64], xmm0
+	285 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	286 Move rsi, rax
+	287 Compare rax, 0
+	288 JumpIfEqual {295}
+	289 Move rdx, [rbx]
+	290 Move rcx, rax
+	291 Move rdx, [rdx+64]
+	292 Call 0x18037ACD0, rcx, rdx, r8, r9
+	293 Compare rax, 0
+	294 JumpIfEqual {809}
+	295 Compare [rbx+24], 3
+	296 JumpIfLessOrEqual {833}
+	297 LoadAddress rcx, [rbx+56]
+	298 Move [rbx+56], rsi
+	299 Move rdx, rsi
+	300 Call 0x18037ACB0, rcx, rdx, r8, r9
+	301 Move xmm0, [rdi+48]
+	302 LoadAddress rdx, [rbp-68]
+	303 Move rcx, [0x18375C118]
+	304 Move [rbp-68], xmm0
+	305 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	306 Move rsi, rax
+	307 Compare rax, 0
+	308 JumpIfEqual {315}
+	309 Move rdx, [rbx]
+	310 Move rcx, rax
+	311 Move rdx, [rdx+64]
+	312 Call 0x18037ACD0, rcx, rdx, r8, r9
+	313 Compare rax, 0
+	314 JumpIfEqual {814}
+	315 Compare [rbx+24], 4
+	316 JumpIfLessOrEqual {833}
+	317 LoadAddress rcx, [rbx+64]
+	318 Move [rbx+64], rsi
+	319 Move rdx, rsi
+	320 Call 0x18037ACB0, rcx, rdx, r8, r9
+	321 Move rcx, " finger:{0} tilt:({1:f1},{2:f1}) twist:{3} pressure:{4}"
+	322 Move r8, 0
+	323 Move rdx, rbx
+	324 Call String.Format, rcx, rdx, r8
+	325 Move rbx, rax
+	326 Move rax, [rdi+32]
+	327 LoadAddress rdx, [rbp-72]
+	328 Move rcx, [0x18375C0E8]
+	329 Move [rbp-72], rax
+	330 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	331 Move rcx, " dsp:{0}"
+	332 Move r8, 0
+	333 Move rdx, rax
+	334 Call String.Format, rcx, rdx, r8
+	335 Move r9, 0
+	336 Move r8, rax
+	337 Move rdx, rbx
+	338 Move rcx, r14
+	339 Call String.Concat, rcx, rdx, r8, r9
+	340 Move rsi, rax
+	341 Move rax, [rdi]
+	342 Subtract rax, rax, 1
+	343 JumpIfEqual {638}
+	344 Subtract rax, rax, 1
+	345 JumpIfEqual {556}
+	346 Subtract rax, rax, 1
+	347 JumpIfEqual {434}
+	348 Subtract rax, rax, 1
+	349 JumpIfEqual {434}
+	350 Compare rax, 1
+	351 JumpIfNotEqual {819}
+	352 Move rcx, typeof(System.Object[1])
+	353 Move rdx, 4
+	354 Call "SzArrayNew", rcx, rdx, r8, r9
+	355 Move rcx, [rdi]
+	356 LoadAddress rdx, [rbp+24]
+	357 Move [rbp+24], rcx
+	358 Move rbx, rax
+	359 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+Type)
+	360 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	361 Move r14, rax
+	362 Compare rbx, 0
+	363 JumpIfEqual {859}
+	364 Compare rax, 0
+	365 JumpIfEqual {372}
+	366 Move rdx, [rbx]
+	367 Move rcx, rax
+	368 Move rdx, [rdx+64]
+	369 Call 0x18037ACD0, rcx, rdx, r8, r9
+	370 Compare rax, 0
+	371 JumpIfEqual {837}
+	372 Compare [rbx+24], 0
+	373 JumpIfLessOrEqual {857}
+	374 LoadAddress rcx, [rbx+32]
+	375 Move [rbx+32], r14
+	376 Move rdx, r14
+	377 Call 0x18037ACB0, rcx, rdx, r8, r9
+	378 Move xmm0, [rdi+8]
+	379 LoadAddress rdx, [rbp+48]
+	380 Move rcx, typeof(UnityEngine.Vector2)
+	381 Move [rbp+48], xmm0
+	382 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	383 Move r14, rax
+	384 Compare rax, 0
+	385 JumpIfEqual {392}
+	386 Move rdx, [rbx]
+	387 Move rcx, rax
+	388 Move rdx, [rdx+64]
+	389 Call 0x18037ACD0, rcx, rdx, r8, r9
+	390 Compare rax, 0
+	391 JumpIfEqual {842}
+	392 Compare [rbx+24], 1
+	393 JumpIfLessOrEqual {857}
+	394 LoadAddress rcx, [rbx+40]
+	395 Move [rbx+40], r14
+	396 Move rdx, r14
+	397 Call 0x18037ACB0, rcx, rdx, r8, r9
+	398 Move rax, [rdi+60]
+	399 LoadAddress rdx, [rbp+40]
+	400 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+ButtonsState)
+	401 Move [rbp+40], rax
+	402 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	403 Move rdi, rax
+	404 Compare rax, 0
+	405 JumpIfEqual {412}
+	406 Move rdx, [rbx]
+	407 Move rcx, rax
+	408 Move rdx, [rdx+64]
+	409 Call 0x18037ACD0, rcx, rdx, r8, r9
+	410 Compare rax, 0
+	411 JumpIfEqual {847}
+	412 Compare [rbx+24], 2
+	413 JumpIfLessOrEqual {857}
+	414 LoadAddress rcx, [rbx+48]
+	415 Move [rbx+48], rdi
+	416 Move rdx, rdi
+	417 Call 0x18037ACB0, rcx, rdx, r8, r9
+	418 Compare rsi, 0
+	419 JumpIfEqual {426}
+	420 Move rdx, [rbx]
+	421 Move rcx, rsi
+	422 Move rdx, [rdx+64]
+	423 Call 0x18037ACD0, rcx, rdx, r8, r9
+	424 Compare rax, 0
+	425 JumpIfEqual {852}
+	426 Compare [rbx+24], 3
+	427 JumpIfLessOrEqual {857}
+	428 LoadAddress rcx, [rbx+56]
+	429 Move [rbx+56], rsi
+	430 Move rdx, rsi
+	431 Call 0x18037ACB0, rcx, rdx, r8, r9
+	432 Move rcx, "{0} pos:{1} btns:{2}{3}"
+	433 Goto {739}
+	434 Move rcx, typeof(System.Object[1])
+	435 Move rdx, 6
+	436 Call "SzArrayNew", rcx, rdx, r8, r9
+	437 Move rcx, [rdi]
+	438 LoadAddress rdx, [rbp+24]
+	439 Move [rbp+24], rcx
+	440 Move rbx, rax
+	441 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+Type)
+	442 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	443 Move r14, rax
+	444 Compare rbx, 0
+	445 JumpIfEqual {893}
+	446 Compare rax, 0
+	447 JumpIfEqual {454}
+	448 Move rdx, [rbx]
+	449 Move rcx, rax
+	450 Move rdx, [rdx+64]
+	451 Call 0x18037ACD0, rcx, rdx, r8, r9
+	452 Compare rax, 0
+	453 JumpIfEqual {861}
+	454 Compare [rbx+24], 0
+	455 JumpIfLessOrEqual {891}
+	456 LoadAddress rcx, [rbx+32]
+	457 Move [rbx+32], r14
+	458 Move rdx, r14
+	459 Call 0x18037ACB0, rcx, rdx, r8, r9
+	460 Move xmm0, [rdi+8]
+	461 LoadAddress rdx, [rbp-64]
+	462 Move rcx, typeof(UnityEngine.Vector2)
+	463 Move [rbp-64], xmm0
+	464 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	465 Move r14, rax
+	466 Compare rax, 0
+	467 JumpIfEqual {474}
+	468 Move rdx, [rbx]
+	469 Move rcx, rax
+	470 Move rdx, [rdx+64]
+	471 Call 0x18037ACD0, rcx, rdx, r8, r9
+	472 Compare rax, 0
+	473 JumpIfEqual {866}
+	474 Compare [rbx+24], 1
+	475 JumpIfLessOrEqual {891}
+	476 LoadAddress rcx, [rbx+40]
+	477 Move [rbx+40], r14
+	478 Move rdx, r14
+	479 Call 0x18037ACB0, rcx, rdx, r8, r9
+	480 Move rax, [rdi+56]
+	481 LoadAddress rdx, [rbp+40]
+	482 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+Button)
+	483 Move [rbp+40], rax
+	484 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	485 Move r14, rax
+	486 Compare rax, 0
+	487 JumpIfEqual {494}
+	488 Move rdx, [rbx]
+	489 Move rcx, rax
+	490 Move rdx, [rdx+64]
+	491 Call 0x18037ACD0, rcx, rdx, r8, r9
+	492 Compare rax, 0
+	493 JumpIfEqual {871}
+	494 Compare [rbx+24], 2
+	495 JumpIfLessOrEqual {891}
+	496 LoadAddress rcx, [rbx+48]
+	497 Move [rbx+48], r14
+	498 Move rdx, r14
+	499 Call 0x18037ACB0, rcx, rdx, r8, r9
+	500 Move rax, [rdi+60]
+	501 LoadAddress rdx, [rbp+48]
+	502 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+ButtonsState)
+	503 Move [rbp+48], rax
+	504 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	505 Move r14, rax
+	506 Compare rax, 0
+	507 JumpIfEqual {514}
+	508 Move rdx, [rbx]
+	509 Move rcx, rax
+	510 Move rdx, [rdx+64]
+	511 Call 0x18037ACD0, rcx, rdx, r8, r9
+	512 Compare rax, 0
+	513 JumpIfEqual {876}
+	514 Compare [rbx+24], 3
+	515 JumpIfLessOrEqual {891}
+	516 LoadAddress rcx, [rbx+56]
+	517 Move [rbx+56], r14
+	518 Move rdx, r14
+	519 Call 0x18037ACB0, rcx, rdx, r8, r9
+	520 Move rax, [rdi+64]
+	521 LoadAddress rdx, [rbp-56]
+	522 Move rcx, [0x18375C0E8]
+	523 Move [rbp-56], rax
+	524 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	525 Move rdi, rax
+	526 Compare rax, 0
+	527 JumpIfEqual {534}
+	528 Move rdx, [rbx]
+	529 Move rcx, rax
+	530 Move rdx, [rdx+64]
+	531 Call 0x18037ACD0, rcx, rdx, r8, r9
+	532 Compare rax, 0
+	533 JumpIfEqual {881}
+	534 Compare [rbx+24], 4
+	535 JumpIfLessOrEqual {891}
+	536 LoadAddress rcx, [rbx+64]
+	537 Move [rbx+64], rdi
+	538 Move rdx, rdi
+	539 Call 0x18037ACB0, rcx, rdx, r8, r9
+	540 Compare rsi, 0
+	541 JumpIfEqual {548}
+	542 Move rdx, [rbx]
+	543 Move rcx, rsi
+	544 Move rdx, [rdx+64]
+	545 Call 0x18037ACD0, rcx, rdx, r8, r9
+	546 Compare rax, 0
+	547 JumpIfEqual {886}
+	548 Compare [rbx+24], 5
+	549 JumpIfLessOrEqual {891}
+	550 LoadAddress rcx, [rbx+72]
+	551 Move [rbx+72], rsi
+	552 Move rdx, rsi
+	553 Call 0x18037ACB0, rcx, rdx, r8, r9
+	554 Move rcx, "{0} pos:{1} btn:{2} btns:{3} clk:{4}{5}"
+	555 Goto {739}
+	556 Move rcx, typeof(System.Object[1])
+	557 Move rdx, 4
+	558 Call "SzArrayNew", rcx, rdx, r8, r9
+	559 Move rcx, [rdi]
+	560 LoadAddress rdx, [rbp+24]
+	561 Move [rbp+24], rcx
+	562 Move rbx, rax
+	563 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+Type)
+	564 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	565 Move r14, rax
+	566 Compare rbx, 0
+	567 JumpIfEqual {917}
+	568 Compare rax, 0
+	569 JumpIfEqual {576}
+	570 Move rdx, [rbx]
+	571 Move rcx, rax
+	572 Move rdx, [rdx+64]
+	573 Call 0x18037ACD0, rcx, rdx, r8, r9
+	574 Compare rax, 0
+	575 JumpIfEqual {895}
+	576 Compare [rbx+24], 0
+	577 JumpIfLessOrEqual {915}
+	578 LoadAddress rcx, [rbx+32]
+	579 Move [rbx+32], r14
+	580 Move rdx, r14
+	581 Call 0x18037ACB0, rcx, rdx, r8, r9
+	582 Move xmm0, [rdi+8]
+	583 LoadAddress rdx, [rbp+40]
+	584 Move rcx, typeof(UnityEngine.Vector2)
+	585 Move [rbp+40], xmm0
+	586 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	587 Move r14, rax
+	588 Compare rax, 0
+	589 JumpIfEqual {596}
+	590 Move rdx, [rbx]
+	591 Move rcx, rax
+	592 Move rdx, [rdx+64]
+	593 Call 0x18037ACD0, rcx, rdx, r8, r9
+	594 Compare rax, 0
+	595 JumpIfEqual {900}
+	596 Compare [rbx+24], 1
+	597 JumpIfLessOrEqual {915}
+	598 LoadAddress rcx, [rbx+40]
+	599 Move [rbx+40], r14
+	600 Move rdx, r14
+	601 Call 0x18037ACB0, rcx, rdx, r8, r9
+	602 Move xmm0, [rdi+24]
+	603 LoadAddress rdx, [rbp+48]
+	604 Move rcx, typeof(UnityEngine.Vector2)
+	605 Move [rbp+48], xmm0
+	606 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	607 Move rdi, rax
+	608 Compare rax, 0
+	609 JumpIfEqual {616}
+	610 Move rdx, [rbx]
+	611 Move rcx, rax
+	612 Move rdx, [rdx+64]
+	613 Call 0x18037ACD0, rcx, rdx, r8, r9
+	614 Compare rax, 0
+	615 JumpIfEqual {905}
+	616 Compare [rbx+24], 2
+	617 JumpIfLessOrEqual {915}
+	618 LoadAddress rcx, [rbx+48]
+	619 Move [rbx+48], rdi
+	620 Move rdx, rdi
+	621 Call 0x18037ACB0, rcx, rdx, r8, r9
+	622 Compare rsi, 0
+	623 JumpIfEqual {630}
+	624 Move rdx, [rbx]
+	625 Move rcx, rsi
+	626 Move rdx, [rdx+64]
+	627 Call 0x18037ACD0, rcx, rdx, r8, r9
+	628 Compare rax, 0
+	629 JumpIfEqual {910}
+	630 Compare [rbx+24], 3
+	631 JumpIfLessOrEqual {915}
+	632 LoadAddress rcx, [rbx+56]
+	633 Move [rbx+56], rsi
+	634 Move rdx, rsi
+	635 Call 0x18037ACB0, rcx, rdx, r8, r9
+	636 Move rcx, "{0} pos:{1} scr:{2}{3}"
+	637 Goto {739}
+	638 Move rcx, typeof(System.Object[1])
+	639 Move rdx, 5
+	640 Call "SzArrayNew", rcx, rdx, r8, r9
+	641 Move rcx, [rdi]
+	642 LoadAddress rdx, [rbp+24]
+	643 Move [rbp+24], rcx
+	644 Move rbx, rax
+	645 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+Type)
+	646 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	647 Move r14, rax
+	648 Compare rbx, 0
+	649 JumpIfEqual {751}
+	650 Compare rax, 0
+	651 JumpIfEqual {658}
+	652 Move rdx, [rbx]
+	653 Move rcx, rax
+	654 Move rdx, [rdx+64]
+	655 Call 0x18037ACD0, rcx, rdx, r8, r9
+	656 Compare rax, 0
+	657 JumpIfEqual {919}
+	658 Compare [rbx+24], 0
+	659 JumpIfLessOrEqual {944}
+	660 LoadAddress rcx, [rbx+32]
+	661 Move [rbx+32], r14
+	662 Move rdx, r14
+	663 Call 0x18037ACB0, rcx, rdx, r8, r9
+	664 Move xmm0, [rdi+8]
+	665 LoadAddress rdx, [rbp+48]
+	666 Move rcx, typeof(UnityEngine.Vector2)
+	667 Move [rbp+48], xmm0
+	668 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	669 Move r14, rax
+	670 Compare rax, 0
+	671 JumpIfEqual {678}
+	672 Move rdx, [rbx]
+	673 Move rcx, rax
+	674 Move rdx, [rdx+64]
+	675 Call 0x18037ACD0, rcx, rdx, r8, r9
+	676 Compare rax, 0
+	677 JumpIfEqual {924}
+	678 Compare [rbx+24], 1
+	679 JumpIfLessOrEqual {944}
+	680 LoadAddress rcx, [rbx+40]
+	681 Move [rbx+40], r14
+	682 Move rdx, r14
+	683 Call 0x18037ACB0, rcx, rdx, r8, r9
+	684 Move xmm0, [rdi+16]
+	685 LoadAddress rdx, [rbp-56]
+	686 Move rcx, typeof(UnityEngine.Vector2)
+	687 Move [rbp-56], xmm0
+	688 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	689 Move r14, rax
+	690 Compare rax, 0
+	691 JumpIfEqual {698}
+	692 Move rdx, [rbx]
+	693 Move rcx, rax
+	694 Move rdx, [rdx+64]
+	695 Call 0x18037ACD0, rcx, rdx, r8, r9
+	696 Compare rax, 0
+	697 JumpIfEqual {929}
+	698 Compare [rbx+24], 2
+	699 JumpIfLessOrEqual {944}
+	700 LoadAddress rcx, [rbx+48]
+	701 Move [rbx+48], r14
+	702 Move rdx, r14
+	703 Call 0x18037ACB0, rcx, rdx, r8, r9
+	704 Move rax, [rdi+60]
+	705 LoadAddress rdx, [rbp+40]
+	706 Move rcx, typeof(UnityEngine.InputForUI.PointerEvent+ButtonsState)
+	707 Move [rbp+40], rax
+	708 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	709 Move rdi, rax
+	710 Compare rax, 0
+	711 JumpIfEqual {718}
+	712 Move rdx, [rbx]
+	713 Move rcx, rax
+	714 Move rdx, [rdx+64]
+	715 Call 0x18037ACD0, rcx, rdx, r8, r9
+	716 Compare rax, 0
+	717 JumpIfEqual {934}
+	718 Compare [rbx+24], 3
+	719 JumpIfLessOrEqual {944}
+	720 LoadAddress rcx, [rbx+56]
+	721 Move [rbx+56], rdi
+	722 Move rdx, rdi
+	723 Call 0x18037ACB0, rcx, rdx, r8, r9
+	724 Compare rsi, 0
+	725 JumpIfEqual {732}
+	726 Move rdx, [rbx]
+	727 Move rcx, rsi
+	728 Move rdx, [rdx+64]
+	729 Call 0x18037ACD0, rcx, rdx, r8, r9
+	730 Compare rax, 0
+	731 JumpIfEqual {939}
+	732 Compare [rbx+24], 4
+	733 JumpIfLessOrEqual {944}
+	734 LoadAddress rcx, [rbx+64]
+	735 Move [rbx+64], rsi
+	736 Move rdx, rsi
+	737 Call 0x18037ACB0, rcx, rdx, r8, r9
+	738 Move rcx, "{0} pos:{1} dlt:{2} btns:{3}{4}"
+	739 Move r8, 0
+	740 Move rdx, rbx
+	741 Call String.Format, rcx, rdx, r8
+	742 Move r14, stack:0x50
+	743 Move rsi, stack:0x58
+	744 Move rbx, stack:0x60
+	745 ShiftStack 104
+	746 Move rdi, stack:0x0
+	747 ShiftStack 8
+	748 Move rbp, stack:0x0
+	749 ShiftStack 8
+	750 Return rax
+	751 Call 0x18037BE30, rcx, rdx, r8, r9
+	752 Interrupt 
+	753 Call 0x18037B7B0, rcx, rdx, r8, r9
+	754 Move rcx, rax
+	755 Move rdx, 0
+	756 Call 0x18037BDF0, rcx, rdx, r8, r9
+	757 Interrupt 
+	758 Call 0x18037B7B0, rcx, rdx, r8, r9
+	759 Move rcx, rax
+	760 Move rdx, 0
+	761 Call 0x18037BDF0, rcx, rdx, r8, r9
+	762 Interrupt 
+	763 Call 0x18037B7B0, rcx, rdx, r8, r9
+	764 Move rcx, rax
+	765 Move rdx, 0
+	766 Call 0x18037BDF0, rcx, rdx, r8, r9
+	767 Interrupt 
+	768 Call 0x18037B7B0, rcx, rdx, r8, r9
+	769 Move rcx, rax
+	770 Move rdx, 0
+	771 Call 0x18037BDF0, rcx, rdx, r8, r9
+	772 Interrupt 
+	773 Call 0x18037B7B0, rcx, rdx, r8, r9
+	774 Move rcx, rax
+	775 Move rdx, 0
+	776 Call 0x18037BDF0, rcx, rdx, r8, r9
+	777 Interrupt 
+	778 Call 0x18037B7B0, rcx, rdx, r8, r9
+	779 Move rcx, rax
+	780 Move rdx, 0
+	781 Call 0x18037BDF0, rcx, rdx, r8, r9
+	782 Interrupt 
+	783 Call 0x18037B7B0, rcx, rdx, r8, r9
+	784 Move rcx, rax
+	785 Move rdx, 0
+	786 Call 0x18037BDF0, rcx, rdx, r8, r9
+	787 Interrupt 
+	788 Call 0x18037BE20, rcx, rdx, r8, r9
+	789 Interrupt 
+	790 Call 0x18037BE20, rcx, rdx, r8, r9
+	791 Interrupt 
+	792 Call 0x18037BE30, rcx, rdx, r8, r9
+	793 Interrupt 
+	794 Call 0x18037B7B0, rcx, rdx, r8, r9
+	795 Move rcx, rax
+	796 Move rdx, 0
+	797 Call 0x18037BDF0, rcx, rdx, r8, r9
+	798 Interrupt 
+	799 Call 0x18037B7B0, rcx, rdx, r8, r9
+	800 Move rcx, rax
+	801 Move rdx, 0
+	802 Call 0x18037BDF0, rcx, rdx, r8, r9
+	803 Interrupt 
+	804 Call 0x18037B7B0, rcx, rdx, r8, r9
+	805 Move rcx, rax
+	806 Move rdx, 0
+	807 Call 0x18037BDF0, rcx, rdx, r8, r9
+	808 Interrupt 
+	809 Call 0x18037B7B0, rcx, rdx, r8, r9
+	810 Move rcx, rax
+	811 Move rdx, 0
+	812 Call 0x18037BDF0, rcx, rdx, r8, r9
+	813 Interrupt 
+	814 Call 0x18037B7B0, rcx, rdx, r8, r9
+	815 Move rcx, rax
+	816 Move rdx, 0
+	817 Call 0x18037BDF0, rcx, rdx, r8, r9
+	818 Interrupt 
+	819 LoadAddress rcx, [0x1834FFA50]
+	820 Call 0x18037BBB0, rcx, rdx, r8, r9
+	821 Move rcx, rax
+	822 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	823 Move rdx, 0
+	824 Move rcx, rax
+	825 Move rbx, rax
+	826 Call ArgumentOutOfRangeException..ctor, rcx, rdx
+	827 LoadAddress rcx, [0x18354CFC0]
+	828 Call 0x18037BBB0, rcx, rdx, r8, r9
+	829 Move rdx, rax
+	830 Move rcx, rbx
+	831 Call 0x18037BDF0, rcx, rdx, r8, r9
+	832 Interrupt 
+	833 Call 0x18037BE20, rcx, rdx, r8, r9
+	834 Interrupt 
+	835 Call 0x18037BE30, rcx, rdx, r8, r9
+	836 Interrupt 
+	837 Call 0x18037B7B0, rcx, rdx, r8, r9
+	838 Move rcx, rax
+	839 Move rdx, 0
+	840 Call 0x18037BDF0, rcx, rdx, r8, r9
+	841 Interrupt 
+	842 Call 0x18037B7B0, rcx, rdx, r8, r9
+	843 Move rcx, rax
+	844 Move rdx, 0
+	845 Call 0x18037BDF0, rcx, rdx, r8, r9
+	846 Interrupt 
+	847 Call 0x18037B7B0, rcx, rdx, r8, r9
+	848 Move rcx, rax
+	849 Move rdx, 0
+	850 Call 0x18037BDF0, rcx, rdx, r8, r9
+	851 Interrupt 
+	852 Call 0x18037B7B0, rcx, rdx, r8, r9
+	853 Move rcx, rax
+	854 Move rdx, 0
+	855 Call 0x18037BDF0, rcx, rdx, r8, r9
+	856 Interrupt 
+	857 Call 0x18037BE20, rcx, rdx, r8, r9
+	858 Interrupt 
+	859 Call 0x18037BE30, rcx, rdx, r8, r9
+	860 Interrupt 
+	861 Call 0x18037B7B0, rcx, rdx, r8, r9
+	862 Move rcx, rax
+	863 Move rdx, 0
+	864 Call 0x18037BDF0, rcx, rdx, r8, r9
+	865 Interrupt 
+	866 Call 0x18037B7B0, rcx, rdx, r8, r9
+	867 Move rcx, rax
+	868 Move rdx, 0
+	869 Call 0x18037BDF0, rcx, rdx, r8, r9
+	870 Interrupt 
+	871 Call 0x18037B7B0, rcx, rdx, r8, r9
+	872 Move rcx, rax
+	873 Move rdx, 0
+	874 Call 0x18037BDF0, rcx, rdx, r8, r9
+	875 Interrupt 
+	876 Call 0x18037B7B0, rcx, rdx, r8, r9
+	877 Move rcx, rax
+	878 Move rdx, 0
+	879 Call 0x18037BDF0, rcx, rdx, r8, r9
+	880 Interrupt 
+	881 Call 0x18037B7B0, rcx, rdx, r8, r9
+	882 Move rcx, rax
+	883 Move rdx, 0
+	884 Call 0x18037BDF0, rcx, rdx, r8, r9
+	885 Interrupt 
+	886 Call 0x18037B7B0, rcx, rdx, r8, r9
+	887 Move rcx, rax
+	888 Move rdx, 0
+	889 Call 0x18037BDF0, rcx, rdx, r8, r9
+	890 Interrupt 
+	891 Call 0x18037BE20, rcx, rdx, r8, r9
+	892 Interrupt 
+	893 Call 0x18037BE30, rcx, rdx, r8, r9
+	894 Interrupt 
+	895 Call 0x18037B7B0, rcx, rdx, r8, r9
+	896 Move rcx, rax
+	897 Move rdx, 0
+	898 Call 0x18037BDF0, rcx, rdx, r8, r9
+	899 Interrupt 
+	900 Call 0x18037B7B0, rcx, rdx, r8, r9
+	901 Move rcx, rax
+	902 Move rdx, 0
+	903 Call 0x18037BDF0, rcx, rdx, r8, r9
+	904 Interrupt 
+	905 Call 0x18037B7B0, rcx, rdx, r8, r9
+	906 Move rcx, rax
+	907 Move rdx, 0
+	908 Call 0x18037BDF0, rcx, rdx, r8, r9
+	909 Interrupt 
+	910 Call 0x18037B7B0, rcx, rdx, r8, r9
+	911 Move rcx, rax
+	912 Move rdx, 0
+	913 Call 0x18037BDF0, rcx, rdx, r8, r9
+	914 Interrupt 
+	915 Call 0x18037BE20, rcx, rdx, r8, r9
+	916 Interrupt 
+	917 Call 0x18037BE30, rcx, rdx, r8, r9
+	918 Interrupt 
+	919 Call 0x18037B7B0, rcx, rdx, r8, r9
+	920 Move rcx, rax
+	921 Move rdx, 0
+	922 Call 0x18037BDF0, rcx, rdx, r8, r9
+	923 Interrupt 
+	924 Call 0x18037B7B0, rcx, rdx, r8, r9
+	925 Move rcx, rax
+	926 Move rdx, 0
+	927 Call 0x18037BDF0, rcx, rdx, r8, r9
+	928 Interrupt 
+	929 Call 0x18037B7B0, rcx, rdx, r8, r9
+	930 Move rcx, rax
+	931 Move rdx, 0
+	932 Call 0x18037BDF0, rcx, rdx, r8, r9
+	933 Interrupt 
+	934 Call 0x18037B7B0, rcx, rdx, r8, r9
+	935 Move rcx, rax
+	936 Move rdx, 0
+	937 Call 0x18037BDF0, rcx, rdx, r8, r9
+	938 Interrupt 
+	939 Call 0x18037B7B0, rcx, rdx, r8, r9
+	940 Move rcx, rax
+	941 Move rdx, 0
+	942 Call 0x18037BDF0, rcx, rdx, r8, r9
+	943 Interrupt 
+	944 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.InputForUI.PointerEvent+Button ButtonFromButtonIndex(System.Int32 index)
+
+Disassembly:
+	cmp ecx,1Fh
+	jg short 00000001826B830Dh
+	mov eax,1
+	shl eax,cl
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Compare rcx, 31
+	002 JumpIfGreater {6}
+	003 Move rax, 1
+	004 ShiftLeft rax, rcx
+	005 Return rax
+	006 Move rax, 0
+	007 Return rax
+

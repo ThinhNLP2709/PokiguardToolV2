@@ -1,0 +1,100 @@
+Type: Unity.Collections.NativeReference`1+ReadOnly
+
+Method: System.Void .ctor(System.Void* data)
+
+Disassembly:
+	mov [rcx],rdx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: T get_Value()
+
+Disassembly:
+	push rbp
+	sub rsp,20h
+	lea rbp,[rsp+20h]
+	mov rax,[r8+20h]
+	mov [rbp+10h],rbx
+	mov [rbp+18h],rsi
+	mov rsi,rdx
+	mov [rbp+20h],rdi
+	test byte ptr [rax+135h],1
+	mov [rbp+28h],r14
+	mov r14,rcx
+	jne short 0000000180BE3BD6h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rax,[rax+0C0h]
+	mov rcx,[rax+8]
+	mov edi,[rcx+0FCh]
+	lea rax,[rdi+0Fh]
+	cmp rax,rdi
+	ja short 0000000180BE3BFAh
+	mov rax,0FFFFFFFFFFFFFF0h
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	mov rdx,[r14]
+	sub rsp,rax
+	mov r8,rdi
+	lea rbx,[rsp+20h]
+	mov rcx,rbx
+	call 0000000180445210h
+	mov r8,rdi
+	mov rdx,rbx
+	mov rcx,rsi
+	call 0000000180445210h
+	mov rbx,[rbp+10h]
+	mov rsi,[rbp+18h]
+	mov rdi,[rbp+20h]
+	mov r14,[rbp+28h]
+	mov rsp,rbp
+	pop rbp
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -32
+	004 LoadAddress rbp, stack:0x20
+	005 Move rax, [r8+32]
+	006 Move [rbp+16], rbx
+	007 Move [rbp+24], rsi
+	008 Move rsi, rdx
+	009 Move [rbp+32], rdi
+	010 Compare [rax+309], 1
+	011 Move [rbp+40], r14
+	012 Move r14, rcx
+	013 JumpIfNotEqual {16}
+	014 Move rcx, rax
+	015 Call 0x180384C90, rcx, rdx, r8, r9
+	016 Move rax, [rax+192]
+	017 Move rcx, [rax+8]
+	018 Move rdi, [rcx+252]
+	019 LoadAddress rax, [rdi+15]
+	020 Compare rax, rdi
+	021 JumpIfGreater {23}
+	022 Move rax, 0xFFFFFFFFFFFFFF0
+	023 And rax, rax, 18446744073709551600
+	024 Call 0x180410930, rcx, rdx, r8, r9
+	025 Move rdx, [r14]
+	026 Subtract rsp, rsp, rax
+	027 Move r8, rdi
+	028 LoadAddress rbx, stack:0x20
+	029 Move rcx, rbx
+	030 Call 0x180445210, rcx, rdx, r8, r9
+	031 Move r8, rdi
+	032 Move rdx, rbx
+	033 Move rcx, rsi
+	034 Call 0x180445210, rcx, rdx, r8, r9
+	035 Move rbx, [rbp+16]
+	036 Move rsi, [rbp+24]
+	037 Move rdi, [rbp+32]
+	038 Move r14, [rbp+40]
+	039 Move rsp, rbp
+	040 Move rbp, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+

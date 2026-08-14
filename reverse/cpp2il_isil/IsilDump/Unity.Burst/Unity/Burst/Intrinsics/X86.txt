@@ -1,0 +1,240 @@
+Type: Unity.Burst.Intrinsics.X86
+
+Method: Unity.Burst.Intrinsics.v128 GenericCSharpLoad(System.Void* ptr)
+
+Disassembly:
+	movups xmm0,[rdx]
+	mov rax,rcx
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Move [rcx], xmm0
+	004 Return rax
+
+Method: System.Void GenericCSharpStore(System.Void* ptr, Unity.Burst.Intrinsics.v128 val)
+
+Disassembly:
+	movups xmm0,[rdx]
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move [rcx], xmm0
+	003 Return 
+
+Method: System.SByte Saturate_To_Int8(System.Int32 val)
+
+Disassembly:
+	cmp ecx,7Fh
+	jg short 0000000181ED2FC4h
+	cmp ecx,0FFFFFF80h
+	movzx edx,cl
+	mov eax,0FFFFFF80h
+	cmovge eax,edx
+	ret
+	mov al,7Fh
+	ret
+
+ISIL:
+	001 Compare rcx, 127
+	002 JumpIfGreater {10}
+	003 Compare rcx, 18446744073709551488
+	004 Move rdx, rcx
+	005 Move rax, 0xFFFFFF80
+	006 JumpIfLess {8}
+	007 Move rax, rdx
+	008 Nop 
+	009 Return rax
+	010 Move rax, 127
+	011 Return rax
+
+Method: System.Byte Saturate_To_UnsignedInt8(System.Int32 val)
+
+Disassembly:
+	cmp ecx,0FFh
+	jg short 0000000181ED3003h
+	xor eax,eax
+	movzx edx,cl
+	test ecx,ecx
+	cmovns eax,edx
+	ret
+	mov al,0FFh
+	ret
+
+ISIL:
+	001 Compare rcx, 255
+	002 JumpIfGreater {10}
+	003 Move rax, 0
+	004 Move rdx, rcx
+	005 Compare rcx, 0
+	006 JumpIfSign {8}
+	007 Move rax, rdx
+	008 Nop 
+	009 Return rax
+	010 Move rax, 255
+	011 Return rax
+
+Method: System.Int16 Saturate_To_Int16(System.Int32 val)
+
+Disassembly:
+	mov eax,7FFFh
+	cmp ecx,eax
+	jg short 0000000181ED2FA4h
+	mov eax,0FFFF8000h
+	cmp ecx,eax
+	cmovge ax,cx
+	ret
+
+ISIL:
+	001 Move rax, 0x7FFF
+	002 Compare rcx, rax
+	003 JumpIfGreater {9}
+	004 Move rax, 0xFFFF8000
+	005 Compare rcx, rax
+	006 JumpIfLess {8}
+	007 Move rax, rcx
+	008 Nop 
+	009 Return rax
+
+Method: System.UInt16 Saturate_To_UnsignedInt16(System.Int32 val)
+
+Disassembly:
+	mov eax,0FFFFh
+	cmp ecx,eax
+	jg short 0000000181ED2FE1h
+	xor eax,eax
+	test ecx,ecx
+	cmovns ax,cx
+	ret
+
+ISIL:
+	001 Move rax, 0xFFFF
+	002 Compare rcx, rax
+	003 JumpIfGreater {9}
+	004 Move rax, 0
+	005 Compare rcx, 0
+	006 JumpIfSign {8}
+	007 Move rax, rcx
+	008 Nop 
+	009 Return rax
+
+Method: System.Boolean IsNaN(System.UInt32 v)
+
+Disassembly:
+	btr ecx,1Fh
+	cmp ecx,7F800000h
+	seta al
+	ret
+
+ISIL:
+	001 NotImplemented "btr ecx,1Fh"
+	002 Compare rcx, 0x7F800000
+	003 NotImplemented "seta al"
+	004 Return rax
+
+Method: System.Boolean IsNaN(System.UInt64 v)
+
+Disassembly:
+	mov rax,7FFFFFFFFFFFFFFFh
+	and rcx,rax
+	mov rax,7FF0000000000000h
+	cmp rcx,rax
+	seta al
+	ret
+
+ISIL:
+	001 Move rax, 9223372036854775807
+	002 And rcx, rcx, rax
+	003 Move rax, 0x7FF0000000000000
+	004 Compare rcx, rax
+	005 NotImplemented "seta al"
+	006 Return rax
+
+Method: System.Void BurstIntrinsicSetCSRFromManaged(System.Int32 _)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Int32 BurstIntrinsicGetCSRFromManaged()
+
+Disassembly:
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Int32 getcsr_raw()
+
+Disassembly:
+	xchg ax,ax
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, 0
+	003 Return rax
+
+Method: System.Void setcsr_raw(System.Int32 bits)
+
+Disassembly:
+	xchg ax,ax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Return 
+
+Method: System.Void DoSetCSRTrampoline(System.Int32 bits)
+
+Disassembly:
+	xchg ax,ax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Return 
+
+Method: System.Int32 DoGetCSRTrampoline()
+
+Disassembly:
+	xchg ax,ax
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, 0
+	003 Return rax
+
+Method: Unity.Burst.Intrinsics.X86+MXCSRBits get_MXCSR()
+
+Disassembly:
+	xchg ax,ax
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, 0
+	003 Return rax
+
+Method: System.Void set_MXCSR(Unity.Burst.Intrinsics.X86+MXCSRBits value)
+
+Disassembly:
+	xchg ax,ax
+	ret
+
+ISIL:
+	001 Nop 
+	002 Return 
+

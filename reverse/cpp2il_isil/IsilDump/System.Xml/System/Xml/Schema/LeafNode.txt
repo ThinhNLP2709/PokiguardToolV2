@@ -1,0 +1,198 @@
+Type: System.Xml.Schema.LeafNode
+
+Method: System.Void .ctor(System.Int32 pos)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov [rbx+10h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Int32 get_Pos()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_Pos(System.Int32 value)
+
+Disassembly:
+	mov [rcx+10h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+
+Method: System.Void ExpandTree(System.Xml.Schema.InteriorNode parent, System.Xml.Schema.SymbolsDictionary symbols, System.Xml.Schema.Positions positions)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Void ConstructPos(System.Xml.Schema.BitSet firstpos, System.Xml.Schema.BitSet lastpos, System.Xml.Schema.BitSet[] followpos)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	mov rbp,r8
+	mov rsi,rdx
+	mov r14,rcx
+	test rdx,rdx
+	je near ptr 0000000181CF132Bh
+	mov edi,[rcx+10h]
+	xor r8d,r8d
+	mov ebx,edi
+	mov rcx,rsi
+	sar ebx,5
+	lea edx,[rbx+1]
+	call 0000000181CEBB50h
+	mov rcx,[rsi+18h]
+	test rcx,rcx
+	je short 0000000181CF132Bh
+	cmp ebx,[rcx+18h]
+	jae short 0000000181CF1331h
+	movsxd rax,ebx
+	and edi,1Fh
+	lea rcx,[rcx+rax*4]
+	mov eax,[rcx+20h]
+	bts eax,edi
+	mov [rcx+20h],eax
+	test rbp,rbp
+	je short 0000000181CF132Bh
+	mov edi,[r14+10h]
+	xor r8d,r8d
+	mov ebx,edi
+	mov rcx,rbp
+	sar ebx,5
+	lea edx,[rbx+1]
+	call 0000000181CEBB50h
+	mov rcx,[rbp+18h]
+	test rcx,rcx
+	je short 0000000181CF132Bh
+	cmp ebx,[rcx+18h]
+	jae short 0000000181CF1331h
+	mov rbp,[rsp+38h]
+	and edi,1Fh
+	mov rsi,[rsp+40h]
+	movsxd rax,ebx
+	mov rbx,[rsp+30h]
+	lea rcx,[rcx+rax*4]
+	mov eax,[rcx+20h]
+	bts eax,edi
+	mov rdi,[rsp+48h]
+	mov [rcx+20h],eax
+	add rsp,20h
+	pop r14
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Move rbp, r8
+	009 Move rsi, rdx
+	010 Move r14, rcx
+	011 Compare rdx, 0
+	012 JumpIfEqual {59}
+	013 Move rdi, [rcx+16]
+	014 Move r8, 0
+	015 Move rbx, rdi
+	016 Move rcx, rsi
+	017 ShiftRight rbx, 5
+	018 LoadAddress rdx, [rbx+1]
+	019 Call BitSet.EnsureLength, rcx, rdx
+	020 Move rcx, [rsi+24]
+	021 Compare rcx, 0
+	022 JumpIfEqual {59}
+	023 Compare rbx, [rcx+24]
+	024 JumpIfGreaterOrEqual {61}
+	025 Move rax, rbx
+	026 And rdi, rdi, 31
+	027 LoadAddress rcx, [rcx+rax*4]
+	028 Move rax, [rcx+32]
+	029 NotImplemented "bts eax,edi"
+	030 Move [rcx+32], rax
+	031 Compare rbp, 0
+	032 JumpIfEqual {59}
+	033 Move rdi, [r14+16]
+	034 Move r8, 0
+	035 Move rbx, rdi
+	036 Move rcx, rbp
+	037 ShiftRight rbx, 5
+	038 LoadAddress rdx, [rbx+1]
+	039 Call BitSet.EnsureLength, rcx, rdx
+	040 Move rcx, [rbp+24]
+	041 Compare rcx, 0
+	042 JumpIfEqual {59}
+	043 Compare rbx, [rcx+24]
+	044 JumpIfGreaterOrEqual {61}
+	045 Move rbp, stack:0x38
+	046 And rdi, rdi, 31
+	047 Move rsi, stack:0x40
+	048 Move rax, rbx
+	049 Move rbx, stack:0x30
+	050 LoadAddress rcx, [rcx+rax*4]
+	051 Move rax, [rcx+32]
+	052 NotImplemented "bts eax,edi"
+	053 Move rdi, stack:0x48
+	054 Move [rcx+32], rax
+	055 ShiftStack 32
+	056 Move r14, stack:0x0
+	057 ShiftStack 8
+	058 Return 
+	059 Call 0x18037BE30, rcx, rdx, r8, r9
+	060 Interrupt 
+	061 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.Boolean get_IsNullable()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+

@@ -1,0 +1,167 @@
+Type: UnityEngine.AddressableAssets.AssetReferenceT`1
+
+Method: System.Void .ctor(System.String guid)
+
+Disassembly:
+	xor r8d,r8d
+	jmp near ptr 0000000181E82C30h
+
+ISIL:
+	001 Move r8, 0
+	002 Call AssetReference..ctor, rcx, rdx
+	003 Return 
+
+Method: UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1<TObject> LoadAssetAsync()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	mov rbx,rdx
+	mov rdi,rcx
+	test rdx,rdx
+	je short 0000000180ABDFFAh
+	mov rax,[r8+20h]
+	mov rcx,[rbx]
+	mov r8,[rax+0C0h]
+	mov rdx,[r8]
+	movzx eax,word ptr [rdx+50h]
+	add rax,14h
+	add rax,rax
+	mov rcx,[rcx+rax*8]
+	call 000000018037B7D0h
+	mov r8,rax
+	lea rcx,[rsp+20h]
+	mov rdx,rbx
+	mov r9,[rax+8]
+	call r9
+	mov rbx,[rsp+50h]
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rdi
+	movups [rdi],xmm0
+	movsd qword ptr [rdi+10h],xmm1
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Compare rdx, 0
+	008 JumpIfEqual {33}
+	009 Move rax, [r8+32]
+	010 Move rcx, [rbx]
+	011 Move r8, [rax+192]
+	012 Move rdx, [r8]
+	013 Move rax, [rdx+80]
+	014 Add rax, rax, 20
+	015 Add rax, rax, rax
+	016 Move rcx, [rcx+rax*8]
+	017 Call 0x18037B7D0, rcx, rdx, r8, r9
+	018 Move r8, rax
+	019 LoadAddress rcx, stack:0x20
+	020 Move rdx, rbx
+	021 Move r9, [rax+8]
+	022 Call r9
+	023 Move rbx, stack:0x50
+	024 Move xmm0, [rax]
+	025 Move xmm1, [rax+16]
+	026 Move rax, rdi
+	027 Move [rdi], xmm0
+	028 Move [rdi+16], xmm1
+	029 ShiftStack 64
+	030 Move rdi, stack:0x0
+	031 ShiftStack 8
+	032 Return rax
+	033 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean ValidateAsset(UnityEngine.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,r8
+	mov rax,rdx
+	test rdx,rdx
+	je short 0000000180ABE079h
+	xor edx,edx
+	mov rcx,rax
+	call 00000001818613C0h
+	mov rcx,[rbx+20h]
+	mov rdi,rax
+	mov rbx,[rcx+0C0h]
+	mov rcx,[18375C180h]
+	mov rbx,[rbx+10h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000180ABE046h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018182C680h
+	test rax,rax
+	je short 0000000180ABE079h
+	mov r8,[rax]
+	mov rdx,rdi
+	mov rcx,rax
+	mov r9,[r8+298h]
+	mov r8,[r8+2A0h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp r9
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, r8
+	006 Move rax, rdx
+	007 Compare rdx, 0
+	008 JumpIfEqual {35}
+	009 Move rdx, 0
+	010 Move rcx, rax
+	011 Call "il2cpp_vm_object_is_inst", rcx, rdx
+	012 Move rcx, [rbx+32]
+	013 Move rdi, rax
+	014 Move rbx, [rcx+192]
+	015 Move rcx, [0x18375C180]
+	016 Move rbx, [rbx+16]
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rdx, 0
+	021 Move rcx, rbx
+	022 Call Type.GetTypeFromHandle, rcx, rdx
+	023 Compare rax, 0
+	024 JumpIfEqual {35}
+	025 Move r8, [rax]
+	026 Move rdx, rdi
+	027 Move rcx, rax
+	028 Move r9, [r8+664]
+	029 Move r8, [r8+672]
+	030 Move rbx, stack:0x30
+	031 ShiftStack 32
+	032 Move rdi, stack:0x0
+	033 ShiftStack 8
+	034 CallNoReturn r9
+	035 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean ValidateAsset(System.String mainAssetPath)
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+

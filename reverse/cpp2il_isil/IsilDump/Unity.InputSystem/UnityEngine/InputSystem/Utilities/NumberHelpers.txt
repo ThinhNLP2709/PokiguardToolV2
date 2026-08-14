@@ -1,0 +1,490 @@
+Type: UnityEngine.InputSystem.Utilities.NumberHelpers
+
+Method: System.Int32 AlignToMultipleOf(System.Int32 number, System.Int32 alignment)
+
+Disassembly:
+	mov r8d,edx
+	mov eax,ecx
+	cdq
+	idiv r8d
+	test edx,edx
+	je short 0000000181F56B34h
+	sub ecx,edx
+	lea eax,[r8+rcx]
+	ret
+	mov eax,ecx
+	ret
+
+ISIL:
+	001 Move r8, rdx
+	002 Move rax, rcx
+	003 Move TEMP, rax
+	004 ShiftRight TEMP, 31
+	005 Compare TEMP, 1
+	006 JumpIfNotEqual {9}
+	007 Move rdx, 0xFFFFFFFF
+	008 Goto {10}
+	009 Move rdx, 0
+	010 Nop 
+	011 NotImplemented "idiv r8d"
+	012 Compare rdx, 0
+	013 JumpIfEqual {17}
+	014 Subtract rcx, rcx, rdx
+	015 LoadAddress rax, [r8+rcx]
+	016 Return rax
+	017 Move rax, rcx
+	018 Return rax
+
+Method: System.Int64 AlignToMultipleOf(System.Int64 number, System.Int64 alignment)
+
+Disassembly:
+	mov r8,rdx
+	mov rax,rcx
+	cqo
+	idiv r8
+	test rdx,rdx
+	je short 0000000181F56B78h
+	sub rcx,rdx
+	lea rax,[r8+rcx]
+	ret
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move r8, rdx
+	002 Move rax, rcx
+	003 Move TEMP, rax
+	004 ShiftRight TEMP, 63
+	005 Compare TEMP, 1
+	006 JumpIfNotEqual {9}
+	007 Move rdx, 18446744073709551615
+	008 Goto {10}
+	009 Move rdx, 0
+	010 Nop 
+	011 NotImplemented "idiv r8"
+	012 Compare rdx, 0
+	013 JumpIfEqual {17}
+	014 Subtract rcx, rcx, rdx
+	015 LoadAddress rax, [r8+rcx]
+	016 Return rax
+	017 Move rax, rcx
+	018 Return rax
+
+Method: System.UInt32 AlignToMultipleOf(System.UInt32 number, System.UInt32 alignment)
+
+Disassembly:
+	mov r8d,edx
+	mov eax,ecx
+	xor edx,edx
+	div r8d
+	test edx,edx
+	je short 0000000181F56B55h
+	sub ecx,edx
+	lea eax,[r8+rcx]
+	ret
+	mov eax,ecx
+	ret
+
+ISIL:
+	001 Move r8, rdx
+	002 Move rax, rcx
+	003 Move rdx, 0
+	004 NotImplemented "div r8d"
+	005 Compare rdx, 0
+	006 JumpIfEqual {10}
+	007 Subtract rcx, rcx, rdx
+	008 LoadAddress rax, [r8+rcx]
+	009 Return rax
+	010 Move rax, rcx
+	011 Return rax
+
+Method: System.Boolean Approximately(System.Double a, System.Double b)
+
+Disassembly:
+	sub rsp,48h
+	cmp byte ptr [183752E6Ch],0
+	movaps [rsp+30h],xmm6
+	movaps xmm6,xmm1
+	movaps [rsp+20h],xmm7
+	movaps xmm7,xmm0
+	jne short 0000000181F56BB0h
+	lea rcx,[183562D00h]
+	call 000000018037BB90h
+	mov byte ptr [183752E6Ch],1
+	mov rcx,[183562D00h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181F56BC5h
+	call 000000018037BED0h
+	movaps xmm1,xmm6
+	movaps xmm0,xmm7
+	andps xmm1,[182B1D690h]
+	xor r8d,r8d
+	andps xmm0,[182B1D690h]
+	call 0000000181806920h
+	mulsd xmm0,qword ptr [182B1E718h]
+	subsd xmm6,xmm7
+	xor r8d,r8d
+	movsd xmm1,qword ptr [182B1E710h]
+	andps xmm6,[182B1D690h]
+	call 0000000181806920h
+	movaps xmm7,[rsp+20h]
+	comisd xmm0,xmm6
+	movaps xmm6,[rsp+30h]
+	seta al
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Compare [0x183752E6C], 0
+	003 Move stack:0x30, xmm6
+	004 Move xmm6, xmm1
+	005 Move stack:0x20, xmm7
+	006 Move xmm7, xmm0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183562D00]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183752E6C], 1
+	011 Move rcx, typeof(System.Math)
+	012 Compare [rcx+228], 0
+	013 JumpIfNotEqual {15}
+	014 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	015 Move xmm1, xmm6
+	016 Move xmm0, xmm7
+	017 And xmm1, xmm1, [0x182B1D690]
+	018 Move r8, 0
+	019 And xmm0, xmm0, [0x182B1D690]
+	020 Call Math.Max, xmm0, xmm1, r8
+	021 NotImplemented "mulsd xmm0,qword ptr [182B1E718h]"
+	022 NotImplemented "subsd xmm6,xmm7"
+	023 Move r8, 0
+	024 Move xmm1, [0x182B1E710]
+	025 And xmm6, xmm6, [0x182B1D690]
+	026 Call Math.Max, xmm0, xmm1, r8
+	027 Move xmm7, stack:0x20
+	028 NotImplemented "comisd xmm0,xmm6"
+	029 Move xmm6, stack:0x30
+	030 NotImplemented "seta al"
+	031 ShiftStack 72
+	032 Return rax
+
+Method: System.Single IntToNormalizedFloat(System.Int32 value, System.Int32 minValue, System.Int32 maxValue)
+
+Disassembly:
+	cmp ecx,edx
+	jle short 0000000181F56C64h
+	cmp ecx,r8d
+	jge short 0000000181F56C5Bh
+	movd xmm3,ecx
+	cvtdq2pd xmm3,xmm3
+	movd xmm0,edx
+	cvtdq2pd xmm0,xmm0
+	movd xmm2,r8d
+	subsd xmm3,xmm0
+	movd xmm1,edx
+	cvtdq2pd xmm2,xmm2
+	cvtdq2pd xmm1,xmm1
+	subsd xmm2,xmm1
+	divsd xmm3,xmm2
+	cvtpd2ps xmm0,xmm3
+	ret
+	movss xmm0,dword ptr [182A4FBA4h]
+	ret
+	xorps xmm0,xmm0
+	ret
+
+ISIL:
+	001 Compare rcx, rdx
+	002 JumpIfLessOrEqual {20}
+	003 Compare rcx, r8
+	004 JumpIfGreaterOrEqual {18}
+	005 Move xmm3, rcx
+	006 NotImplemented "cvtdq2pd xmm3,xmm3"
+	007 Move xmm0, rdx
+	008 NotImplemented "cvtdq2pd xmm0,xmm0"
+	009 Move xmm2, r8
+	010 NotImplemented "subsd xmm3,xmm0"
+	011 Move xmm1, rdx
+	012 NotImplemented "cvtdq2pd xmm2,xmm2"
+	013 NotImplemented "cvtdq2pd xmm1,xmm1"
+	014 NotImplemented "subsd xmm2,xmm1"
+	015 NotImplemented "divsd xmm3,xmm2"
+	016 NotImplemented "cvtpd2ps xmm0,xmm3"
+	017 Return xmm0
+	018 Move xmm0, [0x182A4FBA4]
+	019 Return xmm0
+	020 Move xmm0, 0
+	021 Return xmm0
+
+Method: System.Int32 NormalizedFloatToInt(System.Single value, System.Int32 intMinValue, System.Int32 intMaxValue)
+
+Disassembly:
+	xorps xmm1,xmm1
+	comiss xmm1,xmm0
+	jae short 0000000181F56CB3h
+	comiss xmm0,dword ptr [182A4FBA4h]
+	jae short 0000000181F56CAFh
+	movd xmm2,r8d
+	cvtdq2pd xmm2,xmm2
+	movd xmm1,edx
+	cvtdq2pd xmm1,xmm1
+	cvtss2sd xmm0,xmm0
+	subsd xmm2,xmm1
+	movd xmm1,edx
+	cvtdq2pd xmm1,xmm1
+	mulsd xmm2,xmm0
+	addsd xmm2,xmm1
+	cvttsd2si eax,xmm2
+	ret
+	mov eax,r8d
+	ret
+	mov eax,edx
+	ret
+
+ISIL:
+	001 Move xmm1, 0
+	002 Compare xmm1, xmm0
+	003 JumpIfGreaterOrEqual {20}
+	004 Compare xmm0, [0x182A4FBA4]
+	005 JumpIfGreaterOrEqual {18}
+	006 Move xmm2, r8
+	007 NotImplemented "cvtdq2pd xmm2,xmm2"
+	008 Move xmm1, rdx
+	009 NotImplemented "cvtdq2pd xmm1,xmm1"
+	010 NotImplemented "cvtss2sd xmm0,xmm0"
+	011 NotImplemented "subsd xmm2,xmm1"
+	012 Move xmm1, rdx
+	013 NotImplemented "cvtdq2pd xmm1,xmm1"
+	014 NotImplemented "mulsd xmm2,xmm0"
+	015 NotImplemented "addsd xmm2,xmm1"
+	016 Move rax, xmm2
+	017 Return rax
+	018 Move rax, r8
+	019 Return rax
+	020 Move rax, rdx
+	021 Return rax
+
+Method: System.Single UIntToNormalizedFloat(System.UInt32 value, System.UInt32 minValue, System.UInt32 maxValue)
+
+Disassembly:
+	cmp ecx,edx
+	jbe short 0000000181F538ECh
+	cmp ecx,r8d
+	jae short 0000000181F538E3h
+	xorps xmm2,xmm2
+	mov eax,ecx
+	xorps xmm0,xmm0
+	xorps xmm1,xmm1
+	cvtsi2sd xmm2,rax
+	mov eax,edx
+	cvtsi2sd xmm0,rax
+	mov eax,r8d
+	cvtsi2sd xmm1,rax
+	mov eax,edx
+	subsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtsi2sd xmm0,rax
+	subsd xmm1,xmm0
+	divsd xmm2,xmm1
+	cvtpd2ps xmm0,xmm2
+	ret
+	movss xmm0,dword ptr [182A4FBA4h]
+	ret
+	xorps xmm0,xmm0
+	ret
+
+ISIL:
+	001 Compare rcx, rdx
+	002 JumpIfLessOrEqual {24}
+	003 Compare rcx, r8
+	004 JumpIfGreaterOrEqual {22}
+	005 Move xmm2, 0
+	006 Move rax, rcx
+	007 Move xmm0, 0
+	008 Move xmm1, 0
+	009 NotImplemented "cvtsi2sd xmm2,rax"
+	010 Move rax, rdx
+	011 NotImplemented "cvtsi2sd xmm0,rax"
+	012 Move rax, r8
+	013 NotImplemented "cvtsi2sd xmm1,rax"
+	014 Move rax, rdx
+	015 NotImplemented "subsd xmm2,xmm0"
+	016 Move xmm0, 0
+	017 NotImplemented "cvtsi2sd xmm0,rax"
+	018 NotImplemented "subsd xmm1,xmm0"
+	019 NotImplemented "divsd xmm2,xmm1"
+	020 NotImplemented "cvtpd2ps xmm0,xmm2"
+	021 Return xmm0
+	022 Move xmm0, [0x182A4FBA4]
+	023 Return xmm0
+	024 Move xmm0, 0
+	025 Return xmm0
+
+Method: System.UInt32 NormalizedFloatToUInt(System.Single value, System.UInt32 uintMinValue, System.UInt32 uintMaxValue)
+
+Disassembly:
+	movaps xmm3,xmm0
+	xorps xmm1,xmm1
+	comiss xmm1,xmm3
+	jae short 0000000181F5388Eh
+	comiss xmm3,dword ptr [182A4FBA4h]
+	jae short 0000000181F5388Ah
+	xorps xmm2,xmm2
+	mov eax,r8d
+	xorps xmm0,xmm0
+	xorps xmm1,xmm1
+	cvtss2sd xmm1,xmm3
+	cvtsi2sd xmm2,rax
+	mov eax,edx
+	cvtsi2sd xmm0,rax
+	mov eax,edx
+	subsd xmm2,xmm0
+	xorps xmm0,xmm0
+	cvtsi2sd xmm0,rax
+	mulsd xmm2,xmm1
+	addsd xmm2,xmm0
+	xorps xmm0,xmm0
+	comisd xmm0,xmm2
+	jbe short 0000000181F53884h
+	cvttsd2si eax,xmm2
+	ret
+	cvttsd2si rax,xmm2
+	ret
+	mov eax,r8d
+	ret
+	mov eax,edx
+	ret
+
+ISIL:
+	001 Move xmm3, xmm0
+	002 Move xmm1, 0
+	003 Compare xmm1, xmm3
+	004 JumpIfGreaterOrEqual {30}
+	005 Compare xmm3, [0x182A4FBA4]
+	006 JumpIfGreaterOrEqual {28}
+	007 Move xmm2, 0
+	008 Move rax, r8
+	009 Move xmm0, 0
+	010 Move xmm1, 0
+	011 NotImplemented "cvtss2sd xmm1,xmm3"
+	012 NotImplemented "cvtsi2sd xmm2,rax"
+	013 Move rax, rdx
+	014 NotImplemented "cvtsi2sd xmm0,rax"
+	015 Move rax, rdx
+	016 NotImplemented "subsd xmm2,xmm0"
+	017 Move xmm0, 0
+	018 NotImplemented "cvtsi2sd xmm0,rax"
+	019 NotImplemented "mulsd xmm2,xmm1"
+	020 NotImplemented "addsd xmm2,xmm0"
+	021 Move xmm0, 0
+	022 NotImplemented "comisd xmm0,xmm2"
+	023 JumpIfLessOrEqual {26}
+	024 Move rax, xmm2
+	025 Return rax
+	026 Move rax, xmm2
+	027 Return rax
+	028 Move rax, r8
+	029 Return rax
+	030 Move rax, rdx
+	031 Return rax
+
+Method: System.UInt32 RemapUIntBitsToNormalizeFloatToUIntBits(System.UInt32 value, System.UInt32 inBitSize, System.UInt32 outBitSize)
+
+Disassembly:
+	mov eax,ecx
+	and r8d,3Fh
+	mov r9d,1
+	movzx ecx,r8b
+	mov r10d,r9d
+	and edx,3Fh
+	shl r10,cl
+	movzx ecx,dl
+	shl r9,cl
+	dec r10d
+	dec r9d
+	test eax,eax
+	je short 0000000181F56D54h
+	cmp eax,r9d
+	jae short 0000000181F56D50h
+	xorps xmm1,xmm1
+	xorps xmm0,xmm0
+	cvtsi2sd xmm1,rax
+	mov eax,r9d
+	xorps xmm2,xmm2
+	cvtsi2sd xmm0,rax
+	subsd xmm1,xmm2
+	subsd xmm0,xmm2
+	divsd xmm1,xmm0
+	xorps xmm0,xmm0
+	cvtpd2ps xmm3,xmm1
+	comiss xmm0,xmm3
+	jae short 0000000181F56D54h
+	comiss xmm3,dword ptr [182A4FBA4h]
+	jae short 0000000181F56D50h
+	xorps xmm1,xmm1
+	mov eax,r10d
+	cvtps2pd xmm0,xmm3
+	cvtsi2sd xmm1,rax
+	subsd xmm1,xmm2
+	mulsd xmm1,xmm0
+	addsd xmm1,xmm2
+	comisd xmm2,xmm1
+	jbe short 0000000181F56D4Ah
+	cvttsd2si eax,xmm1
+	ret
+	cvttsd2si rax,xmm1
+	ret
+	mov eax,r10d
+	ret
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 And r8, r8, 63
+	003 Move r9, 1
+	004 Move rcx, r8
+	005 Move r10, r9
+	006 And rdx, rdx, 63
+	007 ShiftLeft r10, rcx
+	008 Move rcx, rdx
+	009 ShiftLeft r9, rcx
+	010 Subtract r10, r10, 1
+	011 Subtract r9, r9, 1
+	012 Compare rax, 0
+	013 JumpIfEqual {46}
+	014 Compare rax, r9
+	015 JumpIfGreaterOrEqual {44}
+	016 Move xmm1, 0
+	017 Move xmm0, 0
+	018 NotImplemented "cvtsi2sd xmm1,rax"
+	019 Move rax, r9
+	020 Move xmm2, 0
+	021 NotImplemented "cvtsi2sd xmm0,rax"
+	022 NotImplemented "subsd xmm1,xmm2"
+	023 NotImplemented "subsd xmm0,xmm2"
+	024 NotImplemented "divsd xmm1,xmm0"
+	025 Move xmm0, 0
+	026 NotImplemented "cvtpd2ps xmm3,xmm1"
+	027 Compare xmm0, xmm3
+	028 JumpIfGreaterOrEqual {46}
+	029 Compare xmm3, [0x182A4FBA4]
+	030 JumpIfGreaterOrEqual {44}
+	031 Move xmm1, 0
+	032 Move rax, r10
+	033 Move xmm0, xmm3
+	034 NotImplemented "cvtsi2sd xmm1,rax"
+	035 NotImplemented "subsd xmm1,xmm2"
+	036 NotImplemented "mulsd xmm1,xmm0"
+	037 NotImplemented "addsd xmm1,xmm2"
+	038 NotImplemented "comisd xmm2,xmm1"
+	039 JumpIfLessOrEqual {42}
+	040 Move rax, xmm1
+	041 Return rax
+	042 Move rax, xmm1
+	043 Return rax
+	044 Move rax, r10
+	045 Return rax
+	046 Move rax, 0
+	047 Return rax
+

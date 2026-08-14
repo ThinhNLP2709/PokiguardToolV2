@@ -1,0 +1,218 @@
+Type: System.Linq.Expressions.Interpreter.NegateCheckedInstruction+NegateCheckedInt16
+
+Method: System.Int32 Run(System.Linq.Expressions.Interpreter.InterpretedFrame frame)
+
+Disassembly:
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837505F6h],0
+	mov rdi,rdx
+	jne short 0000000181A0EA65h
+	lea rcx,[183506BE0h]
+	call 000000018037BB90h
+	mov byte ptr [1837505F6h],1
+	test rdi,rdi
+	je near ptr 0000000181A0EB78h
+	xor edx,edx
+	mov [rsp+30h],rbx
+	mov rcx,rdi
+	call 00000001819E6270h
+	mov rbx,rax
+	test rax,rax
+	je near ptr 0000000181A0EB5Bh
+	mov rax,[18375C0D8h]
+	mov rdx,[rbx]
+	mov rcx,[rax+40h]
+	cmp [rdx+40h],rcx
+	mov rcx,rbx
+	jne near ptr 0000000181A0EBC0h
+	call 000000018037AE90h
+	movsx rcx,word ptr [rax]
+	neg rcx
+	cmp rcx,0FFFFFFFF80000000h
+	jl near ptr 0000000181A0EBA8h
+	mov rcx,[rbx]
+	mov rdx,[18375C0D8h]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne near ptr 0000000181A0EBA2h
+	call 000000018037AE90h
+	movsx rcx,word ptr [rax]
+	neg rcx
+	cmp rcx,7FFFFFFFh
+	jg near ptr 0000000181A0EBA8h
+	mov rcx,[rbx]
+	mov rdx,[18375C0D8h]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne near ptr 0000000181A0EB9Ch
+	call 000000018037AE90h
+	movsx ecx,word ptr [rax]
+	neg ecx
+	cmp ecx,7FFFh
+	jg short 0000000181A0EB7Eh
+	mov rcx,[rbx]
+	mov rdx,[18375C0D8h]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 0000000181A0EB96h
+	call 000000018037AE90h
+	xor r8d,r8d
+	mov rcx,rdi
+	movzx edx,word ptr [rax]
+	neg dx
+	call 00000001819E6480h
+	mov rbx,[rsp+30h]
+	mov eax,1
+	add rsp,20h
+	pop rdi
+	ret
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001819E63F0h
+	mov rbx,[rsp+30h]
+	mov eax,1
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	mov rbx,[183506BE0h]
+	call 000000018037B970h
+	mov rdx,rbx
+	mov rcx,rax
+	call 000000018037BDF0h
+	int 3
+	call 000000018037ACF0h
+	int 3
+	call 000000018037ACF0h
+	int 3
+	call 000000018037ACF0h
+	int 3
+	mov rbx,[183506BE0h]
+	call 000000018037B970h
+	mov rdx,rbx
+	mov rcx,rax
+	call 000000018037BDF0h
+	int 3
+	mov rdx,rax
+	call 000000018037ACF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rdi
+	003 ShiftStack -32
+	004 Compare [0x1837505F6], 0
+	005 Move rdi, rdx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183506BE0]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x1837505F6], 1
+	010 Compare rdi, 0
+	011 JumpIfEqual {80}
+	012 Move rdx, 0
+	013 Move stack:0x30, rbx
+	014 Move rcx, rdi
+	015 Call InterpretedFrame.Pop, rcx, rdx
+	016 Move rbx, rax
+	017 Compare rax, 0
+	018 JumpIfEqual {70}
+	019 Move rax, [0x18375C0D8]
+	020 Move rdx, [rbx]
+	021 Move rcx, [rax+64]
+	022 Compare [rdx+64], rcx
+	023 Move rcx, rbx
+	024 JumpIfNotEqual {100}
+	025 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	026 Move rcx, [rax]
+	027 Neg rcx
+	028 Compare rcx, 18446744071562067968
+	029 JumpIfLess {94}
+	030 Move rcx, [rbx]
+	031 Move rdx, [0x18375C0D8]
+	032 Move rax, [rdx+64]
+	033 Compare [rcx+64], rax
+	034 Move rcx, rbx
+	035 JumpIfNotEqual {92}
+	036 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	037 Move rcx, [rax]
+	038 Neg rcx
+	039 Compare rcx, 0x7FFFFFFF
+	040 JumpIfGreater {94}
+	041 Move rcx, [rbx]
+	042 Move rdx, [0x18375C0D8]
+	043 Move rax, [rdx+64]
+	044 Compare [rcx+64], rax
+	045 Move rcx, rbx
+	046 JumpIfNotEqual {90}
+	047 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	048 Move rcx, [rax]
+	049 Neg rcx
+	050 Compare rcx, 0x7FFF
+	051 JumpIfGreater {82}
+	052 Move rcx, [rbx]
+	053 Move rdx, [0x18375C0D8]
+	054 Move rax, [rdx+64]
+	055 Compare [rcx+64], rax
+	056 Move rcx, rbx
+	057 JumpIfNotEqual {88}
+	058 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	059 Move r8, 0
+	060 Move rcx, rdi
+	061 Move rdx, [rax]
+	062 Neg rdx
+	063 Call InterpretedFrame.Push, rcx, rdx
+	064 Move rbx, stack:0x30
+	065 Move rax, 1
+	066 ShiftStack 32
+	067 Move rdi, stack:0x0
+	068 ShiftStack 8
+	069 Return rax
+	070 Move r8, 0
+	071 Move rdx, 0
+	072 Move rcx, rdi
+	073 Call InterpretedFrame.Push, rcx, rdx
+	074 Move rbx, stack:0x30
+	075 Move rax, 1
+	076 ShiftStack 32
+	077 Move rdi, stack:0x0
+	078 ShiftStack 8
+	079 Return rax
+	080 Call 0x18037BE30, rcx, rdx, r8, r9
+	081 Interrupt 
+	082 Move rbx, [0x183506BE0]
+	083 Call 0x18037B970, rcx, rdx, r8, r9
+	084 Move rdx, rbx
+	085 Move rcx, rax
+	086 Call 0x18037BDF0, rcx, rdx, r8, r9
+	087 Interrupt 
+	088 Call 0x18037ACF0, rcx, rdx, r8, r9
+	089 Interrupt 
+	090 Call 0x18037ACF0, rcx, rdx, r8, r9
+	091 Interrupt 
+	092 Call 0x18037ACF0, rcx, rdx, r8, r9
+	093 Interrupt 
+	094 Move rbx, [0x183506BE0]
+	095 Call 0x18037B970, rcx, rdx, r8, r9
+	096 Move rdx, rbx
+	097 Move rcx, rax
+	098 Call 0x18037BDF0, rcx, rdx, r8, r9
+	099 Interrupt 
+	100 Move rdx, rax
+	101 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 00000001804552D0h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x1804552D0, rcx, rdx, r8
+	003 Return 
+

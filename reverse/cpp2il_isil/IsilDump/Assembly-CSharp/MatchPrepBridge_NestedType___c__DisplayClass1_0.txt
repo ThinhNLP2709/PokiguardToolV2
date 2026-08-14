@@ -1,0 +1,134 @@
+Type: MatchPrepBridge+<>c__DisplayClass1_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void <RequestMatchPrep>b__0(MatchPrepDataDTO data)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	sub rsp,20h
+	cmp byte ptr [18374A45Eh],0
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 00000001804B99ACh
+	lea rcx,[183562340h]
+	call 000000018037BB90h
+	mov byte ptr [18374A45Eh],1
+	cmp byte ptr [rbx+10h],0
+	jne near ptr 00000001804B9A3Ch
+	lea rcx,[rbx+18h]
+	mov byte ptr [rbx+10h],1
+	mov rdx,rsi
+	mov [rbx+18h],rsi
+	call 000000018037ACB0h
+	mov rcx,[183562340h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804B99DFh
+	call 000000018037BED0h
+	cmp byte ptr [18374A472h],0
+	jne short 00000001804B99FBh
+	lea rcx,[183562340h]
+	call 000000018037BB90h
+	mov byte ptr [18374A472h],1
+	test rsi,rsi
+	je short 00000001804B9A3Ch
+	mov [rsp+30h],rdi
+	mov rcx,[183562340h]
+	mov rbx,[rsi+38h]
+	mov rdi,[rsi+40h]
+	mov rsi,[rsi+48h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001804B9A26h
+	call 000000018037BED0h
+	xor r9d,r9d
+	mov r8,rsi
+	mov rdx,rdi
+	mov rcx,rbx
+	call 000000018049FDC0h
+	mov rdi,[rsp+30h]
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rsi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -32
+	005 Compare [0x18374A45E], 0
+	006 Move rsi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183562340]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18374A45E], 1
+	012 Compare [rbx+16], 0
+	013 JumpIfNotEqual {44}
+	014 LoadAddress rcx, [rbx+24]
+	015 Move [rbx+16], 1
+	016 Move rdx, rsi
+	017 Move [rbx+24], rsi
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Move rcx, typeof(MatchService)
+	020 Compare [rcx+228], 0
+	021 JumpIfNotEqual {23}
+	022 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	023 Compare [0x18374A472], 0
+	024 JumpIfNotEqual {28}
+	025 LoadAddress rcx, [0x183562340]
+	026 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	027 Move [0x18374A472], 1
+	028 Compare rsi, 0
+	029 JumpIfEqual {44}
+	030 Move stack:0x30, rdi
+	031 Move rcx, typeof(MatchService)
+	032 Move rbx, [rsi+56]
+	033 Move rdi, [rsi+64]
+	034 Move rsi, [rsi+72]
+	035 Compare [rcx+228], 0
+	036 JumpIfNotEqual {38}
+	037 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	038 Move r9, 0
+	039 Move r8, rsi
+	040 Move rdx, rdi
+	041 Move rcx, rbx
+	042 Call MatchService.ApplyPrepStatFrame, rcx, rdx, r8, r9
+	043 Move rdi, stack:0x30
+	044 Move rbx, stack:0x38
+	045 ShiftStack 32
+	046 Move rsi, stack:0x0
+	047 ShiftStack 8
+	048 Return 
+
+Method: System.Void <RequestMatchPrep>b__1(System.String reason)
+
+Disassembly:
+	cmp byte ptr [rcx+10h],0
+	jne short 00000001804B9A67h
+	mov byte ptr [rcx+10h],1
+	mov [rcx+20h],rdx
+	add rcx,20h
+	jmp near ptr 000000018037ACB0h
+	ret
+
+ISIL:
+	001 Compare [rcx+16], 0
+	002 JumpIfNotEqual {8}
+	003 Move [rcx+16], 1
+	004 Move [rcx+32], rdx
+	005 Add rcx, rcx, 32
+	006 Call 0x18037ACB0, rcx, rdx, r8, r9
+	007 Return 
+	008 Return 
+

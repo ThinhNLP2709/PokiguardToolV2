@@ -1,0 +1,182 @@
+Type: TMPro.TMP_GlyphAdjustmentRecord
+
+Method: System.UInt32 get_glyphIndex()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_glyphIndex(System.UInt32 value)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: TMPro.TMP_GlyphValueRecord get_glyphValueRecord()
+
+Disassembly:
+	movups xmm0,[rdx+4]
+	mov rax,rcx
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+4]
+	002 Move rax, rcx
+	003 Move [rcx], xmm0
+	004 Return rax
+
+Method: System.Void set_glyphValueRecord(TMPro.TMP_GlyphValueRecord value)
+
+Disassembly:
+	movups xmm0,[rdx]
+	movups [rcx+4],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move [rcx+4], xmm0
+	003 Return 
+
+Method: System.Void .ctor(System.UInt32 glyphIndex, TMPro.TMP_GlyphValueRecord glyphValueRecord)
+
+Disassembly:
+	movups xmm0,[r8]
+	mov [rcx],edx
+	movups [rcx+4],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [r8]
+	002 Move [rcx], rdx
+	003 Move [rcx+4], xmm0
+	004 Return 
+
+Method: System.Void .ctor(UnityEngine.TextCore.LowLevel.GlyphAdjustmentRecord adjustmentRecord)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,60h
+	mov rbx,rdx
+	movaps [rsp+50h],xmm6
+	mov rdi,rcx
+	movaps [rsp+40h],xmm7
+	mov rcx,rbx
+	movaps [rsp+30h],xmm8
+	xor edx,edx
+	call 0000000180CFCE10h
+	xor r8d,r8d
+	mov [rdi],eax
+	mov rdx,rbx
+	lea rcx,[rsp+20h]
+	call 00000001826745A0h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	movups xmm0,[rax]
+	movaps [rsp+20h],xmm0
+	call 00000001804BA640h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	movaps xmm8,xmm0
+	call 00000001804BA650h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	movaps xmm6,xmm0
+	call 000000018044A050h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	movaps xmm7,xmm0
+	call 000000018044A040h
+	mov rbx,[rsp+70h]
+	shufps xmm8,xmm8,0E1h
+	movss xmm8,xmm6
+	movaps xmm6,[rsp+50h]
+	shufps xmm8,xmm8,0C6h
+	movss xmm8,xmm7
+	movaps xmm7,[rsp+40h]
+	shufps xmm8,xmm8,27h
+	movss xmm8,xmm0
+	shufps xmm8,xmm8,39h
+	movups [rdi+4],xmm8
+	movaps xmm8,[rsp+30h]
+	add rsp,60h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -96
+	005 Move rbx, rdx
+	006 Move stack:0x50, xmm6
+	007 Move rdi, rcx
+	008 Move stack:0x40, xmm7
+	009 Move rcx, rbx
+	010 Move stack:0x30, xmm8
+	011 Move rdx, 0
+	012 Call 0x180CFCE10, rcx, rdx
+	013 Move r8, 0
+	014 Move [rdi], rax
+	015 Move rdx, rbx
+	016 LoadAddress rcx, stack:0x20
+	017 Call 0x1826745A0, rcx, rdx
+	018 Move rdx, 0
+	019 LoadAddress rcx, stack:0x20
+	020 Move xmm0, [rax]
+	021 Move stack:0x20, xmm0
+	022 Call 0x1804BA640, rcx, rdx
+	023 Move rdx, 0
+	024 LoadAddress rcx, stack:0x20
+	025 Move xmm8, xmm0
+	026 Call 0x1804BA650, rcx, rdx
+	027 Move rdx, 0
+	028 LoadAddress rcx, stack:0x20
+	029 Move xmm6, xmm0
+	030 Call 0x18044A050, rcx, rdx
+	031 Move rdx, 0
+	032 LoadAddress rcx, stack:0x20
+	033 Move xmm7, xmm0
+	034 Call 0x18044A040, rcx, rdx
+	035 Move rbx, stack:0x70
+	036 Move XMM_TEMP.S[0], xmm8.S[1]
+	037 Move XMM_TEMP.S[1], xmm8.S[0]
+	038 Move XMM_TEMP.S[2], xmm8.S[2]
+	039 Move XMM_TEMP.S[3], xmm8.S[3]
+	040 Move xmm8, XMM_TEMP
+	041 Move xmm8, xmm6
+	042 Move xmm6, stack:0x50
+	043 Move XMM_TEMP.S[0], xmm8.S[2]
+	044 Move XMM_TEMP.S[1], xmm8.S[1]
+	045 Move XMM_TEMP.S[2], xmm8.S[0]
+	046 Move XMM_TEMP.S[3], xmm8.S[3]
+	047 Move xmm8, XMM_TEMP
+	048 Move xmm8, xmm7
+	049 Move xmm7, stack:0x40
+	050 Move XMM_TEMP.S[0], xmm8.S[3]
+	051 Move XMM_TEMP.S[1], xmm8.S[1]
+	052 Move XMM_TEMP.S[2], xmm8.S[2]
+	053 Move XMM_TEMP.S[3], xmm8.S[0]
+	054 Move xmm8, XMM_TEMP
+	055 Move xmm8, xmm0
+	056 Move XMM_TEMP.S[0], xmm8.S[1]
+	057 Move XMM_TEMP.S[1], xmm8.S[2]
+	058 Move XMM_TEMP.S[2], xmm8.S[3]
+	059 Move XMM_TEMP.S[3], xmm8.S[0]
+	060 Move xmm8, XMM_TEMP
+	061 Move [rdi+4], xmm8
+	062 Move xmm8, stack:0x30
+	063 ShiftStack 96
+	064 Move rdi, stack:0x0
+	065 ShiftStack 8
+	066 Return 
+

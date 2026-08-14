@@ -1,0 +1,99 @@
+Type: UnityEngine.Rendering.LensFlareDataSRP
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xor edx,edx
+	mov rbx,rcx
+	call 0000000182618FC0h
+	lea rcx,[rbx+18h]
+	mov qword ptr [rbx+18h],0
+	xor edx,edx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rdx, 0
+	005 Move rbx, rcx
+	006 Call ScriptableObject..ctor, rcx, rdx
+	007 LoadAddress rcx, [rbx+24]
+	008 Move [rbx+24], 0
+	009 Move rdx, 0
+	010 ShiftStack 32
+	011 Move rbx, stack:0x0
+	012 ShiftStack 8
+	013 Call 0x18037ACB0, rcx, rdx, r8, r9
+	014 Return 
+
+Method: System.Boolean HasAModulateByLightColorElement()
+
+Disassembly:
+	sub rsp,28h
+	cmp qword ptr [rcx+18h],0
+	je short 00000001821D85EAh
+	mov r8,[rcx+18h]
+	xor eax,eax
+	mov r9d,[r8+18h]
+	lea rcx,[r8+20h]
+	mov edx,eax
+	nop dword ptr [rax+rax]
+	cmp eax,r9d
+	jge short 00000001821D85EAh
+	cmp eax,r9d
+	jae short 00000001821D85F7h
+	mov rdx,[rcx]
+	test rdx,rdx
+	je short 00000001821D85F1h
+	cmp byte ptr [rdx+0A4h],0
+	jne short 00000001821D85E3h
+	inc eax
+	add rcx,8
+	jmp short 00000001821D85B9h
+	mov al,1
+	add rsp,28h
+	ret
+	xor al,al
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx+24], 0
+	003 JumpIfEqual {25}
+	004 Move r8, [rcx+24]
+	005 Move rax, 0
+	006 Move r9, [r8+24]
+	007 LoadAddress rcx, [r8+32]
+	008 Move rdx, rax
+	009 Nop 
+	010 Compare rax, r9
+	011 JumpIfGreaterOrEqual {25}
+	012 Compare rax, r9
+	013 JumpIfGreaterOrEqual {30}
+	014 Move rdx, [rcx]
+	015 Compare rdx, 0
+	016 JumpIfEqual {28}
+	017 Compare [rdx+164], 0
+	018 JumpIfNotEqual {22}
+	019 Add rax, rax, 1
+	020 Add rcx, rcx, 8
+	021 Goto {8}
+	022 Move rax, 1
+	023 ShiftStack 40
+	024 Return rax
+	025 Move rax, 0
+	026 ShiftStack 40
+	027 Return rax
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+	029 Interrupt 
+	030 Call 0x18037BE20, rcx, rdx, r8, r9
+

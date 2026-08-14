@@ -1,0 +1,105 @@
+Type: DG.Tweening.DOTweenCYInstruction+WaitForRewind
+
+Method: System.Boolean get_keepWaiting()
+
+Disassembly:
+	sub rsp,38h
+	mov rax,[rcx+10h]
+	test rax,rax
+	je short 0000000180456D44h
+	cmp byte ptr [rax+0E8h],0
+	jne short 0000000180456CFDh
+	xor al,al
+	add rsp,38h
+	ret
+	cmp byte ptr [rax+102h],0
+	jne short 0000000180456D0Dh
+	mov al,1
+	add rsp,38h
+	ret
+	movaps [rsp+20h],xmm6
+	xor edx,edx
+	movss xmm6,dword ptr [rax+104h]
+	mov rcx,rax
+	call 000000018076A470h
+	inc eax
+	xorps xmm0,xmm0
+	movd xmm1,eax
+	cvtdq2ps xmm1,xmm1
+	mulss xmm1,xmm6
+	movaps xmm6,[rsp+20h]
+	comiss xmm1,xmm0
+	seta al
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rax, [rcx+16]
+	003 Compare rax, 0
+	004 JumpIfEqual {30}
+	005 Compare [rax+232], 0
+	006 JumpIfNotEqual {10}
+	007 Move rax, 0
+	008 ShiftStack 56
+	009 Return rax
+	010 Compare [rax+258], 0
+	011 JumpIfNotEqual {15}
+	012 Move rax, 1
+	013 ShiftStack 56
+	014 Return rax
+	015 Move stack:0x20, xmm6
+	016 Move rdx, 0
+	017 Move xmm6, [rax+260]
+	018 Move rcx, rax
+	019 Call TweenExtensions.CompletedLoops, rcx, rdx
+	020 Add rax, rax, 1
+	021 Move xmm0, 0
+	022 Move xmm1, rax
+	023 Move xmm1, xmm1
+	024 Multiply xmm1, xmm1, xmm6
+	025 Move xmm6, stack:0x20
+	026 Compare xmm1, xmm0
+	027 NotImplemented "seta al"
+	028 ShiftStack 56
+	029 Return rax
+	030 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor(DG.Tweening.Tween tween)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 00000001804552D0h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x1804552D0, rcx, rdx, r8
+	009 LoadAddress rcx, [rbx+16]
+	010 Move [rbx+16], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+

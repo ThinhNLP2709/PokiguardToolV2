@@ -1,0 +1,139 @@
+Type: Unity.VisualScripting.Antlr3.Runtime.Tree.TreeWizard+PatternMatchingContextVisitor
+
+Method: System.Void .ctor(Unity.VisualScripting.Antlr3.Runtime.Tree.TreeWizard owner, Unity.VisualScripting.Antlr3.Runtime.Tree.TreeWizard+TreePattern pattern, System.Collections.IList list)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rbp,r9
+	xor edx,edx
+	mov rdi,r8
+	mov rsi,rcx
+	call 0000000180456D90h
+	lea rcx,[rsi+10h]
+	mov [rsi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	lea rcx,[rsi+18h]
+	mov [rsi+18h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	lea rcx,[rsi+20h]
+	mov [rsi+20h],rbp
+	mov rdx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rbx, rdx
+	008 Move rbp, r9
+	009 Move rdx, 0
+	010 Move rdi, r8
+	011 Move rsi, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 LoadAddress rcx, [rsi+16]
+	014 Move [rsi+16], rbx
+	015 Move rdx, rbx
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 LoadAddress rcx, [rsi+24]
+	018 Move [rsi+24], rdi
+	019 Move rdx, rdi
+	020 Call 0x18037ACB0, rcx, rdx, r8, r9
+	021 LoadAddress rcx, [rsi+32]
+	022 Move [rsi+32], rbp
+	023 Move rdx, rbp
+	024 Move rbx, stack:0x30
+	025 Move rbp, stack:0x38
+	026 Move rsi, stack:0x40
+	027 ShiftStack 32
+	028 Move rdi, stack:0x0
+	029 ShiftStack 8
+	030 Call 0x18037ACB0, rcx, rdx, r8, r9
+	031 Return 
+
+Method: System.Void Visit(System.Object t, System.Object parent, System.Int32 childIndex, System.Collections.IDictionary labels)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183754BE3h],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018245148Ch
+	lea rcx,[1835445B8h]
+	call 000000018037BB90h
+	mov byte ptr [183754BE3h],1
+	mov rcx,[rbx+10h]
+	test rcx,rcx
+	je short 00000001824514D9h
+	mov r8,[rbx+18h]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov qword ptr [rsp+20h],0
+	call 0000000182458140h
+	test al,al
+	je short 00000001824514CEh
+	mov r8,[rbx+20h]
+	test r8,r8
+	je short 00000001824514D9h
+	mov rdx,[1835445B8h]
+	mov ecx,2
+	mov r9,rdi
+	call 0000000180006970h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x183754BE3], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1835445B8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183754BE3], 1
+	012 Move rcx, [rbx+16]
+	013 Compare rcx, 0
+	014 JumpIfEqual {34}
+	015 Move r8, [rbx+24]
+	016 Move r9, 0
+	017 Move rdx, rdi
+	018 Move stack:0x20, 0
+	019 Call TreeWizard._Parse, rcx, rdx, r8, r9
+	020 Compare rax, 0
+	021 JumpIfEqual {29}
+	022 Move r8, [rbx+32]
+	023 Compare r8, 0
+	024 JumpIfEqual {34}
+	025 Move rdx, typeof(System.Collections.IList)
+	026 Move rcx, 2
+	027 Move r9, rdi
+	028 Call 0x180006970, rcx, rdx, r8, r9
+	029 Move rbx, stack:0x40
+	030 ShiftStack 48
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Return 
+	034 Call 0x18037BE30, rcx, rdx, r8, r9
+

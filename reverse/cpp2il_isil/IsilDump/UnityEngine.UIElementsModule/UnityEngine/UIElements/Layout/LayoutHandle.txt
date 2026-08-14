@@ -1,0 +1,148 @@
+Type: UnityEngine.UIElements.Layout.LayoutHandle
+
+Method: UnityEngine.UIElements.Layout.LayoutHandle get_Undefined()
+
+Disassembly:
+	xor eax,eax
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.Void .ctor(System.Int32 index, System.Int32 version)
+
+Disassembly:
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+4], r8
+	003 Return 
+
+Method: System.Boolean Equals(UnityEngine.UIElements.Layout.LayoutHandle other)
+
+Disassembly:
+	cmp [rcx],edx
+	je short 00000001825DF5F7h
+	xor eax,eax
+	ret
+	shr rdx,20h
+	cmp [rcx+4],edx
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], rdx
+	002 JumpIfEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 ShiftRight rdx, 32
+	006 Compare [rcx+4], rdx
+	007 NotImplemented "sete al"
+	008 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375AC53h],0
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 000000018286FFD1h
+	lea rcx,[183559C50h]
+	call 000000018037BB90h
+	mov byte ptr [18375AC53h],1
+	xor ebx,ebx
+	test rdi,rdi
+	je short 0000000182870013h
+	mov rdx,[183559C50h]
+	mov eax,ebx
+	cmp [rdi],rdx
+	cmove rax,rdi
+	test rax,rax
+	je short 0000000182870013h
+	mov rcx,[rdi]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rdi
+	jne short 0000000182870026h
+	call 000000018037AE90h
+	mov rax,[rax]
+	cmp [rsi],eax
+	jne short 0000000182870013h
+	shr rax,20h
+	cmp [rsi+4],eax
+	sete bl
+	mov rsi,[rsp+38h]
+	movzx eax,bl
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18375AC53], 0
+	007 Move rdi, rdx
+	008 Move rsi, rcx
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x183559C50]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18375AC53], 1
+	013 Move rbx, 0
+	014 Compare rdi, 0
+	015 JumpIfEqual {36}
+	016 Move rdx, typeof(UnityEngine.UIElements.Layout.LayoutHandle)
+	017 Move rax, rbx
+	018 Compare [rdi], rdx
+	019 JumpIfNotEqual {21}
+	020 Move rax, rdi
+	021 Nop 
+	022 Compare rax, 0
+	023 JumpIfEqual {36}
+	024 Move rcx, [rdi]
+	025 Move rax, [rdx+64]
+	026 Compare [rcx+64], rax
+	027 Move rcx, rdi
+	028 JumpIfNotEqual {43}
+	029 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	030 Move rax, [rax]
+	031 Compare [rsi], rax
+	032 JumpIfNotEqual {36}
+	033 ShiftRight rax, 32
+	034 Compare [rsi+4], rax
+	035 NotImplemented "sete bl"
+	036 Move rsi, stack:0x38
+	037 Move rax, rbx
+	038 Move rbx, stack:0x30
+	039 ShiftStack 32
+	040 Move rdi, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	xchg ax,ax
+	imul eax,[rcx],18Dh
+	xor eax,[rcx+4]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Multiply rax, [rcx], 397
+	003 Xor rax, rax, [rcx+4]
+	004 Return rax
+

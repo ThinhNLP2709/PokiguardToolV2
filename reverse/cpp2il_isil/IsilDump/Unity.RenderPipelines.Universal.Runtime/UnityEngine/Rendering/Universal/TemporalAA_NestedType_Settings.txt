@@ -1,0 +1,250 @@
+Type: UnityEngine.Rendering.Universal.TemporalAA+Settings
+
+Method: UnityEngine.Rendering.Universal.TemporalAAQuality get_quality()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_quality(UnityEngine.Rendering.Universal.TemporalAAQuality value)
+
+Disassembly:
+	test edx,edx
+	js short 000000018231E283h
+	cmp edx,4
+	jle short 000000018231E280h
+	mov dword ptr [rcx],4
+	ret
+	mov [rcx],edx
+	ret
+	mov dword ptr [rcx],0
+	ret
+
+ISIL:
+	001 Compare rdx, 0
+	002 JumpIfSign {9}
+	003 Compare rdx, 4
+	004 JumpIfLessOrEqual {7}
+	005 Move [rcx], 4
+	006 Return 
+	007 Move [rcx], rdx
+	008 Return 
+	009 Move [rcx], 0
+	010 Return 
+
+Method: System.Single get_baseBlendFactor()
+
+Disassembly:
+	movss xmm0,dword ptr [182A4FBA4h]
+	subss xmm0,dword ptr [rcx+4]
+	ret
+
+ISIL:
+	001 Move xmm0, [0x182A4FBA4]
+	002 Subtract xmm0, xmm0, [rcx+4]
+	003 Return xmm0
+
+Method: System.Void set_baseBlendFactor(System.Single value)
+
+Disassembly:
+	movss xmm2,dword ptr [182A4FBA4h]
+	movaps xmm0,xmm2
+	subss xmm0,xmm1
+	xorps xmm1,xmm1
+	comiss xmm1,xmm0
+	ja short 000000018231E1D8h
+	comiss xmm0,xmm2
+	ja short 000000018231E1D2h
+	movss dword ptr [rcx+4],xmm0
+	ret
+	movss dword ptr [rcx+4],xmm2
+	ret
+	movss dword ptr [rcx+4],xmm1
+	ret
+
+ISIL:
+	001 Move xmm2, [0x182A4FBA4]
+	002 Move xmm0, xmm2
+	003 Subtract xmm0, xmm0, xmm1
+	004 Move xmm1, 0
+	005 Compare xmm1, xmm0
+	006 JumpIfGreater {13}
+	007 Compare xmm0, xmm2
+	008 JumpIfGreater {11}
+	009 Move [rcx+4], xmm0
+	010 Return 
+	011 Move [rcx+4], xmm2
+	012 Return 
+	013 Move [rcx+4], xmm1
+	014 Return 
+
+Method: System.Single get_jitterScale()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+8]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+8]
+	002 Return xmm0
+
+Method: System.Void set_jitterScale(System.Single value)
+
+Disassembly:
+	xorps xmm0,xmm0
+	comiss xmm0,xmm1
+	ja short 000000018231E22Bh
+	movss xmm0,dword ptr [182A4FBA4h]
+	comiss xmm1,xmm0
+	ja short 000000018231E22Bh
+	movss dword ptr [rcx+8],xmm1
+	ret
+	movss dword ptr [rcx+8],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Compare xmm0, xmm1
+	003 JumpIfGreater {9}
+	004 Move xmm0, [0x182A4FBA4]
+	005 Compare xmm1, xmm0
+	006 JumpIfGreater {9}
+	007 Move [rcx+8], xmm1
+	008 Return 
+	009 Move [rcx+8], xmm0
+	010 Return 
+
+Method: System.Single get_mipBias()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+0Ch]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+12]
+	002 Return xmm0
+
+Method: System.Void set_mipBias(System.Single value)
+
+Disassembly:
+	movss xmm0,dword ptr [182A4FBA8h]
+	comiss xmm0,xmm1
+	ja short 000000018231E25Bh
+	xorps xmm0,xmm0
+	comiss xmm1,xmm0
+	ja short 000000018231E25Bh
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+	movss dword ptr [rcx+0Ch],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [0x182A4FBA8]
+	002 Compare xmm0, xmm1
+	003 JumpIfGreater {9}
+	004 Move xmm0, 0
+	005 Compare xmm1, xmm0
+	006 JumpIfGreater {9}
+	007 Move [rcx+12], xmm1
+	008 Return 
+	009 Move [rcx+12], xmm0
+	010 Return 
+
+Method: System.Single get_varianceClampScale()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+16]
+	002 Return xmm0
+
+Method: System.Void set_varianceClampScale(System.Single value)
+
+Disassembly:
+	movss xmm0,dword ptr [182A506D4h]
+	comiss xmm0,xmm1
+	ja short 000000018231E2B0h
+	movss xmm0,dword ptr [182A4FBE0h]
+	comiss xmm1,xmm0
+	ja short 000000018231E2B0h
+	movss dword ptr [rcx+10h],xmm1
+	ret
+	movss dword ptr [rcx+10h],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [0x182A506D4]
+	002 Compare xmm0, xmm1
+	003 JumpIfGreater {9}
+	004 Move xmm0, [0x182A4FBE0]
+	005 Compare xmm1, xmm0
+	006 JumpIfGreater {9}
+	007 Move [rcx+16], xmm1
+	008 Return 
+	009 Move [rcx+16], xmm0
+	010 Return 
+
+Method: System.Single get_contrastAdaptiveSharpening()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+14h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+20]
+	002 Return xmm0
+
+Method: System.Void set_contrastAdaptiveSharpening(System.Single value)
+
+Disassembly:
+	xorps xmm0,xmm0
+	comiss xmm0,xmm1
+	ja short 000000018231E1FBh
+	movss xmm0,dword ptr [182A4FBA4h]
+	comiss xmm1,xmm0
+	ja short 000000018231E1FBh
+	movss dword ptr [rcx+14h],xmm1
+	ret
+	movss dword ptr [rcx+14h],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, 0
+	002 Compare xmm0, xmm1
+	003 JumpIfGreater {9}
+	004 Move xmm0, [0x182A4FBA4]
+	005 Compare xmm1, xmm0
+	006 JumpIfGreater {9}
+	007 Move [rcx+20], xmm1
+	008 Return 
+	009 Move [rcx+20], xmm0
+	010 Return 
+
+Method: UnityEngine.Rendering.Universal.TemporalAA+Settings Create()
+
+Disassembly:
+	xor eax,eax
+	mov dword ptr [rcx],3
+	mov [rcx+18h],rax
+	mov rax,rcx
+	mov dword ptr [rcx+4],3DCCCCCDh
+	mov qword ptr [rcx+8],3F800000h
+	mov qword ptr [rcx+10h],3F666666h
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx], 3
+	003 Move [rcx+24], rax
+	004 Move rax, rcx
+	005 Move [rcx+4], 0x3DCCCCCD
+	006 Move [rcx+8], 0x3F800000
+	007 Move [rcx+16], 0x3F666666
+	008 Return rax
+

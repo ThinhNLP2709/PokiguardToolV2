@@ -1,0 +1,147 @@
+Type: System.Dynamic.UnaryOperationBinder
+
+Method: System.Dynamic.DynamicMetaObject FallbackUnaryOperation(System.Dynamic.DynamicMetaObject target)
+
+Disassembly:
+	mov r9,[rcx]
+	xor r8d,r8d
+	mov rax,[r9+1C8h]
+	mov r9,[r9+1D0h]
+	jmp rax
+
+ISIL:
+	001 Move r9, [rcx]
+	002 Move r8, 0
+	003 Move rax, [r9+456]
+	004 Move r9, [r9+464]
+	005 CallNoReturn rax
+
+Method: System.Dynamic.DynamicMetaObject FallbackUnaryOperation(System.Dynamic.DynamicMetaObject target, System.Dynamic.DynamicMetaObject errorSuggestion)
+
+Disassembly:
+	
+
+ISIL:
+No ISIL was generated
+Method: System.Dynamic.DynamicMetaObject Bind(System.Dynamic.DynamicMetaObject target, System.Dynamic.DynamicMetaObject[] args)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837506B1h],0
+	mov rbx,r8
+	mov rdi,rdx
+	mov rbp,rcx
+	jne short 0000000181A26025h
+	lea rcx,[18352A480h]
+	call 000000018037BB90h
+	lea rcx,[1834F3B48h]
+	call 000000018037BB90h
+	mov byte ptr [1837506B1h],1
+	mov rsi,[18352A480h]
+	test rdi,rdi
+	je short 0000000181A2606Ah
+	test rbx,rbx
+	je short 0000000181A2603Ch
+	cmp dword ptr [rbx+18h],0
+	jne short 0000000181A260A7h
+	mov r8,[rdi]
+	mov rdx,rbp
+	mov rcx,rdi
+	mov rax,[r8+218h]
+	mov r8,[r8+220h]
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+	lea rcx,[1834FF998h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rsi
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018176B740h
+	lea rcx,[183541020h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+	int 3
+	mov rcx,[1834F3B48h]
+	xor edx,edx
+	call 00000001819C97E0h
+	lea rcx,[183540F60h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x1837506B1], 0
+	008 Move rbx, r8
+	009 Move rdi, rdx
+	010 Move rbp, rcx
+	011 JumpIfNotEqual {17}
+	012 LoadAddress rcx, [0x18352A480]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x1834F3B48]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 Move [0x1837506B1], 1
+	017 Move rsi, "target"
+	018 Compare rdi, 0
+	019 JumpIfEqual {36}
+	020 Compare rbx, 0
+	021 JumpIfEqual {24}
+	022 Compare [rbx+24], 0
+	023 JumpIfNotEqual {51}
+	024 Move r8, [rdi]
+	025 Move rdx, rbp
+	026 Move rcx, rdi
+	027 Move rax, [r8+536]
+	028 Move r8, [r8+544]
+	029 Move rbx, stack:0x30
+	030 Move rbp, stack:0x38
+	031 Move rsi, stack:0x40
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 CallNoReturn rax
+	036 LoadAddress rcx, [0x1834FF998]
+	037 Call 0x18037BBB0, rcx, rdx, r8, r9
+	038 Move rcx, rax
+	039 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	040 Move r8, 0
+	041 Move rdx, rsi
+	042 Move rcx, rax
+	043 Move rbx, rax
+	044 Call ArgumentNullException..ctor, rcx, rdx
+	045 LoadAddress rcx, [0x183541020]
+	046 Call 0x18037BBB0, rcx, rdx, r8, r9
+	047 Move rdx, rax
+	048 Move rcx, rbx
+	049 Call 0x18037BDF0, rcx, rdx, r8, r9
+	050 Interrupt 
+	051 Move rcx, "args"
+	052 Move rdx, 0
+	053 Call Error.InvalidArgumentValue, rcx, rdx
+	054 LoadAddress rcx, [0x183540F60]
+	055 Move rbx, rax
+	056 Call 0x18037BBB0, rcx, rdx, r8, r9
+	057 Move rdx, rax
+	058 Move rcx, rbx
+	059 Call 0x18037BDF0, rcx, rdx, r8, r9
+

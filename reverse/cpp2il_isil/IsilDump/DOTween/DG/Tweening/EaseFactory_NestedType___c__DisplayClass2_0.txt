@@ -1,0 +1,85 @@
+Type: DG.Tweening.EaseFactory+<>c__DisplayClass2_0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Single <StopMotion>b__0(System.Single time, System.Single duration, System.Single overshootOrAmplitude, System.Single period)
+
+Disassembly:
+	push rbx
+	sub rsp,60h
+	movaps [rsp+50h],xmm6
+	mov rbx,rcx
+	movaps [rsp+40h],xmm7
+	movaps xmm6,xmm1
+	movaps xmm7,xmm2
+	movaps [rsp+30h],xmm8
+	comiss xmm7,xmm6
+	movaps xmm8,xmm3
+	jbe short 000000018076FB39h
+	movss xmm1,dword ptr [rcx+10h]
+	movaps xmm0,xmm6
+	call 0000000180418520h
+	subss xmm6,xmm0
+	mov rcx,[rbx+18h]
+	test rcx,rcx
+	je short 000000018076FB78h
+	mov rax,[rcx+28h]
+	movaps xmm3,xmm8
+	mov rdx,[rcx+18h]
+	movaps xmm2,xmm7
+	movaps xmm1,xmm6
+	mov rcx,[rcx+40h]
+	mov [rsp+98h],rax
+	movaps xmm6,[rsp+50h]
+	movaps xmm7,[rsp+40h]
+	movaps xmm8,[rsp+30h]
+	add rsp,60h
+	pop rbx
+	jmp rdx
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -96
+	004 Move stack:0x50, xmm6
+	005 Move rbx, rcx
+	006 Move stack:0x40, xmm7
+	007 Move xmm6, xmm1
+	008 Move xmm7, xmm2
+	009 Move stack:0x30, xmm8
+	010 Compare xmm7, xmm6
+	011 Move xmm8, xmm3
+	012 JumpIfLessOrEqual {17}
+	013 Move xmm1, [rcx+16]
+	014 Move xmm0, xmm6
+	015 Call 0x180418520, rcx, rdx, r8, r9
+	016 Subtract xmm6, xmm6, xmm0
+	017 Move rcx, [rbx+24]
+	018 Compare rcx, 0
+	019 JumpIfEqual {34}
+	020 Move rax, [rcx+40]
+	021 Move xmm3, xmm8
+	022 Move rdx, [rcx+24]
+	023 Move xmm2, xmm7
+	024 Move xmm1, xmm6
+	025 Move rcx, [rcx+64]
+	026 Move stack:0x98, rax
+	027 Move xmm6, stack:0x50
+	028 Move xmm7, stack:0x40
+	029 Move xmm8, stack:0x30
+	030 ShiftStack 96
+	031 Move rbx, stack:0x0
+	032 ShiftStack 8
+	033 CallNoReturn rdx
+	034 Call 0x18037BE30, rcx, rdx, r8, r9
+

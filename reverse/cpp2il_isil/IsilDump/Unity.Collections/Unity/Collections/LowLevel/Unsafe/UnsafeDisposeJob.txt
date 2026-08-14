@@ -1,0 +1,55 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafeDisposeJob
+
+Method: System.Void Execute()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183752C38h],0
+	mov rdi,rcx
+	jne short 0000000181F04E09h
+	lea rcx,[1834FC918h]
+	call 000000018037BB90h
+	mov byte ptr [183752C38h],1
+	mov rcx,[1834FC918h]
+	mov ebx,[rdi+8]
+	mov rdi,[rdi]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181F04E24h
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov ecx,ebx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181EDB6B0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183752C38], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x1834FC918]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183752C38], 1
+	011 Move rcx, typeof(Unity.Collections.AllocatorManager)
+	012 Move rbx, [rdi+8]
+	013 Move rdi, [rdi]
+	014 Compare [rcx+228], 0
+	015 JumpIfNotEqual {17}
+	016 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	017 Move r8, 0
+	018 Move rdx, rdi
+	019 Move rcx, rbx
+	020 Move rbx, stack:0x30
+	021 ShiftStack 32
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Call AllocatorManager.Free, rcx, rdx, r8
+	025 Return 
+

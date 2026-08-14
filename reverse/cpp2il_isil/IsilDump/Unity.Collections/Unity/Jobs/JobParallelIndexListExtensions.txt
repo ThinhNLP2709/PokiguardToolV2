@@ -1,0 +1,278 @@
+Type: Unity.Jobs.JobParallelIndexListExtensions
+
+Method: Unity.Jobs.JobHandle ScheduleAppend(T jobData, Unity.Collections.NativeList`1<System.Int32> indices, System.Int32 arrayLength, System.Int32 innerloopBatchCount, Unity.Jobs.JobHandle dependsOn = null)
+
+Disassembly:
+	push rbp
+	push rdi
+	push r12
+	push r14
+	push r15
+	sub rsp,70h
+	lea rbp,[rsp+30h]
+	mov [rbp+70h],rbx
+	mov r15d,r9d
+	mov [rbp+78h],rsi
+	mov rbx,r8
+	mov rsi,[rbp+0A0h]
+	mov r12,rdx
+	mov r14,rcx
+	cmp qword ptr [rsi+38h],0
+	jne short 00000001809235ECh
+	mov rcx,rsi
+	call 0000000180384D10h
+	mov rax,[rsi+38h]
+	mov r8,[rax]
+	mov r8d,[r8+0FCh]
+	lea rax,[r8+0Fh]
+	cmp rax,r8
+	ja short 000000018092360Dh
+	mov rax,0FFFFFFFFFFFFFF0h
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	mov rdx,r12
+	lea rdi,[rsp+30h]
+	mov rcx,rdi
+	call 0000000180445210h
+	mov rax,[rsi+38h]
+	lea r8,[rbp+10h]
+	mov [rsp+20h],r8
+	lea r9,[rbp+20h]
+	xor r8d,r8d
+	mov [rbp+88h],r15d
+	mov [rbp+0A0h],rbx
+	mov rdx,[rax+8]
+	mov rax,[rbp+98h]
+	mov [rbp+20h],rdi
+	mov rcx,[rdx]
+	movups xmm0,[rax]
+	lea rax,[rbp+0A0h]
+	mov [rbp+28h],rax
+	lea rax,[rbp+88h]
+	mov [rbp+30h],rax
+	lea rax,[rbp]
+	mov [rbp+38h],rax
+	movaps [rbp],xmm0
+	mov rax,[rdx+10h]
+	call rax
+	movups xmm0,[rbp+10h]
+	mov rbx,[rbp+70h]
+	mov rax,r14
+	mov rsi,[rbp+78h]
+	movups [r14],xmm0
+	lea rsp,[rbp+40h]
+	pop r15
+	pop r14
+	pop r12
+	pop rdi
+	pop rbp
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r12
+	007 ShiftStack -8
+	008 Move stack:0x0, r14
+	009 ShiftStack -8
+	010 Move stack:0x0, r15
+	011 ShiftStack -112
+	012 LoadAddress rbp, stack:0x30
+	013 Move [rbp+112], rbx
+	014 Move r15, r9
+	015 Move [rbp+120], rsi
+	016 Move rbx, r8
+	017 Move rsi, [rbp+160]
+	018 Move r12, rdx
+	019 Move r14, rcx
+	020 Compare [rsi+56], 0
+	021 JumpIfNotEqual {24}
+	022 Move rcx, rsi
+	023 Call 0x180384D10, rcx, rdx, r8, r9
+	024 Move rax, [rsi+56]
+	025 Move r8, [rax]
+	026 Move r8, [r8+252]
+	027 LoadAddress rax, [r8+15]
+	028 Compare rax, r8
+	029 JumpIfGreater {31}
+	030 Move rax, 0xFFFFFFFFFFFFFF0
+	031 And rax, rax, 18446744073709551600
+	032 Call 0x180410930, rcx, rdx, r8, r9
+	033 Subtract rsp, rsp, rax
+	034 Move rdx, r12
+	035 LoadAddress rdi, stack:0x30
+	036 Move rcx, rdi
+	037 Call 0x180445210, rcx, rdx, r8, r9
+	038 Move rax, [rsi+56]
+	039 LoadAddress r8, [rbp+16]
+	040 Move stack:0x20, r8
+	041 LoadAddress r9, [rbp+32]
+	042 Move r8, 0
+	043 Move [rbp+136], r15
+	044 Move [rbp+160], rbx
+	045 Move rdx, [rax+8]
+	046 Move rax, [rbp+152]
+	047 Move [rbp+32], rdi
+	048 Move rcx, [rdx]
+	049 Move xmm0, [rax]
+	050 LoadAddress rax, [rbp+160]
+	051 Move [rbp+40], rax
+	052 LoadAddress rax, [rbp+136]
+	053 Move [rbp+48], rax
+	054 LoadAddress rax, [rbp]
+	055 Move [rbp+56], rax
+	056 Move [rbp], xmm0
+	057 Move rax, [rdx+16]
+	058 Call rax
+	059 Move xmm0, [rbp+16]
+	060 Move rbx, [rbp+112]
+	061 Move rax, r14
+	062 Move rsi, [rbp+120]
+	063 Move [r14], xmm0
+	064 LoadAddress rsp, [rbp+64]
+	065 Move r15, stack:0x0
+	066 ShiftStack 8
+	067 Move r14, stack:0x0
+	068 ShiftStack 8
+	069 Move r12, stack:0x0
+	070 ShiftStack 8
+	071 Move rdi, stack:0x0
+	072 ShiftStack 8
+	073 Move rbp, stack:0x0
+	074 ShiftStack 8
+	075 Return rax
+
+Method: Unity.Jobs.JobHandle ScheduleFilter(T jobData, Unity.Collections.NativeList`1<System.Int32> indices, System.Int32 innerloopBatchCount, Unity.Jobs.JobHandle dependsOn = null)
+
+Disassembly:
+	push rbp
+	push r14
+	push r15
+	sub rsp,70h
+	lea rbp,[rsp+30h]
+	mov [rbp+60h],rbx
+	mov r15,rdx
+	mov [rbp+68h],rsi
+	mov rbx,r8
+	mov rsi,[rbp+88h]
+	mov r14,rcx
+	mov [rbp+70h],rdi
+	cmp qword ptr [rsi+38h],0
+	jne short 00000001809236EAh
+	mov rcx,rsi
+	call 0000000180384D10h
+	mov rax,[rsi+38h]
+	mov r8,[rax]
+	mov r8d,[r8+0FCh]
+	lea rax,[r8+0Fh]
+	cmp rax,r8
+	ja short 000000018092370Bh
+	mov rax,0FFFFFFFFFFFFFF0h
+	and rax,0FFFFFFFFFFFFFFF0h
+	call 0000000180410930h
+	sub rsp,rax
+	mov rdx,r15
+	lea rdi,[rsp+30h]
+	mov rcx,rdi
+	call 0000000180445210h
+	mov rax,[rsi+38h]
+	lea r8,[rbp+10h]
+	mov [rsp+20h],r8
+	lea r9,[rbp+20h]
+	xor r8d,r8d
+	mov [rbp+88h],rbx
+	mov [rbp+20h],rdi
+	mov rdx,[rax+8]
+	mov rax,[rbp+80h]
+	mov rcx,[rdx]
+	movups xmm0,[rax]
+	lea rax,[rbp+88h]
+	mov [rbp+28h],rax
+	lea rax,[rbp]
+	mov [rbp+30h],rax
+	movaps [rbp],xmm0
+	mov rax,[rdx+10h]
+	call rax
+	movups xmm0,[rbp+10h]
+	mov rbx,[rbp+60h]
+	mov rax,r14
+	mov rsi,[rbp+68h]
+	mov rdi,[rbp+70h]
+	movups [r14],xmm0
+	lea rsp,[rbp+40h]
+	pop r15
+	pop r14
+	pop rbp
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, r14
+	005 ShiftStack -8
+	006 Move stack:0x0, r15
+	007 ShiftStack -112
+	008 LoadAddress rbp, stack:0x30
+	009 Move [rbp+96], rbx
+	010 Move r15, rdx
+	011 Move [rbp+104], rsi
+	012 Move rbx, r8
+	013 Move rsi, [rbp+136]
+	014 Move r14, rcx
+	015 Move [rbp+112], rdi
+	016 Compare [rsi+56], 0
+	017 JumpIfNotEqual {20}
+	018 Move rcx, rsi
+	019 Call 0x180384D10, rcx, rdx, r8, r9
+	020 Move rax, [rsi+56]
+	021 Move r8, [rax]
+	022 Move r8, [r8+252]
+	023 LoadAddress rax, [r8+15]
+	024 Compare rax, r8
+	025 JumpIfGreater {27}
+	026 Move rax, 0xFFFFFFFFFFFFFF0
+	027 And rax, rax, 18446744073709551600
+	028 Call 0x180410930, rcx, rdx, r8, r9
+	029 Subtract rsp, rsp, rax
+	030 Move rdx, r15
+	031 LoadAddress rdi, stack:0x30
+	032 Move rcx, rdi
+	033 Call 0x180445210, rcx, rdx, r8, r9
+	034 Move rax, [rsi+56]
+	035 LoadAddress r8, [rbp+16]
+	036 Move stack:0x20, r8
+	037 LoadAddress r9, [rbp+32]
+	038 Move r8, 0
+	039 Move [rbp+136], rbx
+	040 Move [rbp+32], rdi
+	041 Move rdx, [rax+8]
+	042 Move rax, [rbp+128]
+	043 Move rcx, [rdx]
+	044 Move xmm0, [rax]
+	045 LoadAddress rax, [rbp+136]
+	046 Move [rbp+40], rax
+	047 LoadAddress rax, [rbp]
+	048 Move [rbp+48], rax
+	049 Move [rbp], xmm0
+	050 Move rax, [rdx+16]
+	051 Call rax
+	052 Move xmm0, [rbp+16]
+	053 Move rbx, [rbp+96]
+	054 Move rax, r14
+	055 Move rsi, [rbp+104]
+	056 Move rdi, [rbp+112]
+	057 Move [r14], xmm0
+	058 LoadAddress rsp, [rbp+64]
+	059 Move r15, stack:0x0
+	060 ShiftStack 8
+	061 Move r14, stack:0x0
+	062 ShiftStack 8
+	063 Move rbp, stack:0x0
+	064 ShiftStack 8
+	065 Return rax
+

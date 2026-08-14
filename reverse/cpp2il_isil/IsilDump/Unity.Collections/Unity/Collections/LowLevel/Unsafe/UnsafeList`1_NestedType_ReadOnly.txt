@@ -1,0 +1,253 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafeList`1+ReadOnly
+
+Method: System.Boolean get_IsCreated()
+
+Disassembly:
+	cmp qword ptr [rcx],0
+	setne al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 NotImplemented "setne al"
+	003 Return rax
+
+Method: System.Boolean get_IsEmpty()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	mov rcx,[rdx+20h]
+	test byte ptr [rcx+135h],1
+	jne short 0000000180BE2CEBh
+	call 0000000180384C90h
+	cmp qword ptr [rbx],0
+	jne short 0000000180BE2CF9h
+	mov al,1
+	add rsp,20h
+	pop rbx
+	ret
+	cmp dword ptr [rbx+8],0
+	sete al
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Move rcx, [rdx+32]
+	006 Compare [rcx+309], 1
+	007 JumpIfNotEqual {9}
+	008 Call 0x180384C90, rcx, rdx, r8, r9
+	009 Compare [rbx], 0
+	010 JumpIfNotEqual {16}
+	011 Move rax, 1
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Return rax
+	016 Compare [rbx+8], 0
+	017 NotImplemented "sete al"
+	018 ShiftStack 32
+	019 Move rbx, stack:0x0
+	020 ShiftStack 8
+	021 Return rax
+
+Method: System.Void .ctor(T* ptr, System.Int32 length)
+
+Disassembly:
+	mov [rcx],rdx
+	mov [rcx+8],r8d
+	ret
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	int 3
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	mov rax,[rcx+10h]
+	mov rbx,[rax]
+	mov rax,[rcx+8]
+	mov rdi,[rax]
+	mov rax,[rcx]
+	mov rdx,[rax]
+	mov rax,[rdx+20h]
+	mov rdx,[rax+0C0h]
+	mov rax,[rcx]
+	mov rsi,[rdx+118h]
+	mov rcx,[rax]
+	mov rax,[rcx+20h]
+	mov rcx,[rax+0C0h]
+	mov rax,[rcx+0B0h]
+	test byte ptr [rax+135h],1
+	jne short 0000000180B7EAFEh
+	mov rcx,rax
+	call 0000000180384C90h
+	xor ecx,ecx
+	mov r9,rbx
+	mov [rsp+28h],rcx
+	mov r8,rdi
+	mov [rsp+20h],rcx
+	mov rdx,rsi
+	mov rcx,rax
+	call 000000018037BEE0h
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+8], r8
+	003 Return 
+	004 Interrupt 
+	005 Interrupt 
+	006 Interrupt 
+	007 Interrupt 
+	008 Interrupt 
+	009 Interrupt 
+	010 Interrupt 
+	011 Interrupt 
+	012 Move stack:0x8, rbx
+	013 Move stack:0x10, rsi
+	014 ShiftStack -8
+	015 Move stack:0x0, rdi
+	016 ShiftStack -48
+	017 Move rax, [rcx+16]
+	018 Move rbx, [rax]
+	019 Move rax, [rcx+8]
+	020 Move rdi, [rax]
+	021 Move rax, [rcx]
+	022 Move rdx, [rax]
+	023 Move rax, [rdx+32]
+	024 Move rdx, [rax+192]
+	025 Move rax, [rcx]
+	026 Move rsi, [rdx+280]
+	027 Move rcx, [rax]
+	028 Move rax, [rcx+32]
+	029 Move rcx, [rax+192]
+	030 Move rax, [rcx+176]
+	031 Compare [rax+309], 1
+	032 JumpIfNotEqual {35}
+	033 Move rcx, rax
+	034 Call 0x180384C90, rcx, rdx, r8, r9
+	035 Move rcx, 0
+	036 Move r9, rbx
+	037 Move stack:0x28, rcx
+	038 Move r8, rdi
+	039 Move stack:0x20, rcx
+	040 Move rdx, rsi
+	041 Move rcx, rax
+	042 Call 0x18037BEE0, rcx, rdx, r8, r9
+	043 Move rbx, stack:0x40
+	044 Move rsi, stack:0x48
+	045 ShiftStack 48
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return 
+
+Method: Unity.Collections.LowLevel.Unsafe.UnsafeList`1+Enumerator<T> GetEnumerator()
+
+Disassembly:
+	mov rax,[rdx]
+	mov [rcx],rax
+	mov eax,[rdx+8]
+	mov [rcx+8],eax
+	mov rax,rcx
+	mov dword ptr [rcx+0Ch],0FFFFFFFFh
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Move [rcx], rax
+	003 Move rax, [rdx+8]
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Move [rcx+12], 0xFFFFFFFF
+	007 Return rax
+
+Method: System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	lea rcx,[1834EFEA0h]
+	mov rdi,rdx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181808380h
+	mov rdx,rdi
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 LoadAddress rcx, [0x1834EFEA0]
+	006 Move rdi, rdx
+	007 Call 0x18037BBB0, rcx, rdx, r8, r9
+	008 Move rcx, rax
+	009 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	010 Move rdx, 0
+	011 Move rcx, rax
+	012 Move rbx, rax
+	013 Call NotImplementedException..ctor, rcx, rdx
+	014 Move rdx, rdi
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Collections.Generic.IEnumerator`1<T> System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	lea rcx,[1834EFEA0h]
+	mov rdi,rdx
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181808380h
+	mov rdx,rdi
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 LoadAddress rcx, [0x1834EFEA0]
+	006 Move rdi, rdx
+	007 Call 0x18037BBB0, rcx, rdx, r8, r9
+	008 Move rcx, rax
+	009 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	010 Move rdx, 0
+	011 Move rcx, rax
+	012 Move rbx, rax
+	013 Call NotImplementedException..ctor, rcx, rdx
+	014 Move rdx, rdi
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+

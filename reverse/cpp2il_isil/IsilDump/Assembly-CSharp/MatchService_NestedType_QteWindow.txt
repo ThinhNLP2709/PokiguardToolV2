@@ -1,0 +1,24 @@
+Type: MatchService+QteWindow
+
+Method: System.Boolean get_Valid()
+
+Disassembly:
+	cmp dword ptr [rcx],0
+	jg short 00000001804AC238h
+	xor al,al
+	ret
+	mov eax,[rcx+4]
+	cmp [rcx+8],eax
+	setg al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 JumpIfGreater {5}
+	003 Move rax, 0
+	004 Return rax
+	005 Move rax, [rcx+4]
+	006 Compare [rcx+8], rax
+	007 NotImplemented "setg al"
+	008 Return rax
+

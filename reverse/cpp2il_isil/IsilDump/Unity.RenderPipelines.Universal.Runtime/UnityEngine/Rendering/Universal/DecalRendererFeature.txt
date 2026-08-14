@@ -1,0 +1,3278 @@
+Type: UnityEngine.Rendering.Universal.DecalRendererFeature
+
+Method: UnityEngine.Rendering.Universal.SharedDecalEntityManager get_sharedDecalEntityManager()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837543C0h],0
+	jne short 00000001822FC310h
+	lea rcx,[1835219A0h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C0h],1
+	mov rax,[1835219A0h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 00000001822FC32Fh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[1835219A0h]
+	mov rax,[rax+0B8h]
+	mov rax,[rax]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837543C0], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1835219A0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837543C0], 1
+	007 Move rax, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	008 Compare [rax+228], 0
+	009 JumpIfNotEqual {13}
+	010 Move rcx, rax
+	011 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	012 Move rax, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	013 Move rax, [rax+184]
+	014 Move rax, [rax]
+	015 ShiftStack 40
+	016 Return rax
+
+Method: UnityEngine.Rendering.Universal.DecalSettings get_settings()
+
+Disassembly:
+	lea rax,[rcx+20h]
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx+32]
+	002 Return rax
+
+Method: System.Boolean get_intermediateRendering()
+
+Disassembly:
+	cmp dword ptr [rcx+28h],1
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+40], 1
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean get_requiresDecalLayers()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+20h]
+	test rax,rax
+	je short 00000001822FC2D6h
+	movzx eax,byte ptr [rax+18h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+32]
+	003 Compare rax, 0
+	004 JumpIfEqual {8}
+	005 Move rax, [rax+24]
+	006 ShiftStack 40
+	007 Return rax
+	008 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean get_isGLDevice()
+
+Disassembly:
+	sub rsp,28h
+	xor ecx,ecx
+	call 00000001826342F0h
+	cmp eax,0Bh
+	jne short 00000001822FC2A7h
+	mov al,1
+	add rsp,28h
+	ret
+	xor ecx,ecx
+	call 00000001826342F0h
+	cmp eax,11h
+	sete al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, 0
+	003 Call 0x1826342F0, rcx
+	004 Compare rax, 11
+	005 JumpIfNotEqual {9}
+	006 Move rax, 1
+	007 ShiftStack 40
+	008 Return rax
+	009 Move rcx, 0
+	010 Call 0x1826342F0, rcx
+	011 Compare rax, 17
+	012 NotImplemented "sete al"
+	013 ShiftStack 40
+	014 Return rax
+
+Method: System.Void Create()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837543C1h],0
+	mov rdi,rcx
+	jne short 00000001822FAC29h
+	lea rcx,[183521820h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C1h],1
+	mov rcx,[183521820h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001822AFB90h
+	lea rcx,[rdi+48h]
+	mov [rdi+48h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rbx,[rsp+30h]
+	mov byte ptr [rdi+40h],1
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837543C1], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183521820]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x1837543C1], 1
+	011 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalPreviewPass)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call DecalPreviewPass..ctor, rcx, rdx
+	017 LoadAddress rcx, [rdi+72]
+	018 Move [rdi+72], rbx
+	019 Move rdx, rbx
+	020 Call 0x18037ACB0, rcx, rdx, r8, r9
+	021 Move rbx, stack:0x30
+	022 Move [rdi+64], 1
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Return 
+
+Method: System.Boolean RequireRenderingLayers(System.Boolean isDeferred, System.Boolean needsGBufferAccurateNormals, out UnityEngine.Rendering.Universal.RenderingLayerUtils+Event atEvent, out UnityEngine.Rendering.Universal.RenderingLayerUtils+MaskSize maskSize)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837543C2h],0
+	mov rdi,r9
+	movzx esi,r8b
+	movzx ebp,dl
+	mov rbx,rcx
+	jne short 00000001822FBECDh
+	lea rcx,[1834FF4B0h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C2h],1
+	mov rcx,[1834FF4B0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FBEE2h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825C2360h
+	movzx r9d,al
+	mov qword ptr [rsp+20h],0
+	movzx r8d,sil
+	movzx edx,bpl
+	mov rcx,rbx
+	call 00000001822FB010h
+	xor ecx,ecx
+	cmp eax,1
+	mov rax,[rsp+60h]
+	setne cl
+	mov [rdi],ecx
+	mov dword ptr [rax],0
+	mov rax,[rbx+20h]
+	test rax,rax
+	je short 00000001822FBF3Dh
+	movzx eax,byte ptr [rax+18h]
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Compare [0x1837543C2], 0
+	008 Move rdi, r9
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x1834FF4B0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837543C2], 1
+	016 Move rcx, typeof(UnityEngine.Application)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rcx, 0
+	021 Call Application.get_isPlaying, rcx
+	022 Move r9, rax
+	023 Move stack:0x20, 0
+	024 Move r8, rsi
+	025 Move rdx, rbp
+	026 Move rcx, rbx
+	027 Call DecalRendererFeature.GetTechnique, rcx, rdx, r8, r9
+	028 Move rcx, 0
+	029 Compare rax, 1
+	030 Move rax, stack:0x60
+	031 NotImplemented "setne cl"
+	032 Move [rdi], rcx
+	033 Move [rax], 0
+	034 Move rax, [rbx+32]
+	035 Compare rax, 0
+	036 JumpIfEqual {45}
+	037 Move rax, [rax+24]
+	038 Move rbx, stack:0x40
+	039 Move rbp, stack:0x48
+	040 Move rsi, stack:0x50
+	041 ShiftStack 48
+	042 Move rdi, stack:0x0
+	043 ShiftStack 8
+	044 Return rax
+	045 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Rendering.Universal.DBufferSettings GetDBufferSettings()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [1837543C3h],0
+	mov rbx,rcx
+	jne short 00000001822FAF35h
+	lea rcx,[183519428h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C3h],1
+	mov rax,[rbx+20h]
+	test rax,rax
+	je short 00000001822FAF7Eh
+	cmp dword ptr [rax+10h],0
+	je short 00000001822FAF4Eh
+	mov rax,[rax+20h]
+	add rsp,20h
+	pop rbx
+	ret
+	mov rcx,[183519428h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	mov dword ptr [rax+10h],2
+	call 0000000180456D90h
+	mov rax,rbx
+	mov dword ptr [rbx+10h],2
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x1837543C3], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183519428]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x1837543C3], 1
+	010 Move rax, [rbx+32]
+	011 Compare rax, 0
+	012 JumpIfEqual {33}
+	013 Compare [rax+16], 0
+	014 JumpIfEqual {20}
+	015 Move rax, [rax+32]
+	016 ShiftStack 32
+	017 Move rbx, stack:0x0
+	018 ShiftStack 8
+	019 Return rax
+	020 Move rcx, typeof(UnityEngine.Rendering.Universal.DBufferSettings)
+	021 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	022 Move rdx, 0
+	023 Move rcx, rax
+	024 Move rbx, rax
+	025 Move [rax+16], 2
+	026 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	027 Move rax, rbx
+	028 Move [rbx+16], 2
+	029 ShiftStack 32
+	030 Move rbx, stack:0x0
+	031 ShiftStack 8
+	032 Return rax
+	033 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Rendering.Universal.DecalScreenSpaceSettings GetScreenSpaceSettings()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [1837543C4h],0
+	mov rbx,rcx
+	jne short 00000001822FAFB5h
+	lea rcx,[183521B20h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C4h],1
+	mov rax,[rbx+20h]
+	test rax,rax
+	je short 00000001822FAFFCh
+	cmp dword ptr [rax+10h],0
+	je short 00000001822FAFCEh
+	mov rax,[rax+28h]
+	add rsp,20h
+	pop rbx
+	ret
+	mov rcx,[183521B20h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	test rbx,rbx
+	je short 00000001822FAFFCh
+	mov dword ptr [rbx+10h],0
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x1837543C4], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183521B20]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x1837543C4], 1
+	010 Move rax, [rbx+32]
+	011 Compare rax, 0
+	012 JumpIfEqual {34}
+	013 Compare [rax+16], 0
+	014 JumpIfEqual {20}
+	015 Move rax, [rax+40]
+	016 ShiftStack 32
+	017 Move rbx, stack:0x0
+	018 ShiftStack 8
+	019 Return rax
+	020 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalScreenSpaceSettings)
+	021 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	022 Move rdx, 0
+	023 Move rcx, rax
+	024 Move rbx, rax
+	025 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	026 Compare rbx, 0
+	027 JumpIfEqual {34}
+	028 Move [rbx+16], 0
+	029 Move rax, rbx
+	030 ShiftStack 32
+	031 Move rbx, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+	034 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Rendering.Universal.DecalTechnique GetTechnique(UnityEngine.Rendering.Universal.ScriptableRendererData renderer)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837543C5h],0
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 00000001822FB385h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[1834F11B8h]
+	call 000000018037BB90h
+	lea rcx,[18352B730h]
+	call 000000018037BB90h
+	lea rcx,[183540EF8h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C5h],1
+	test rdi,rdi
+	jne short 00000001822FB38Eh
+	xor ebx,ebx
+	jmp short 00000001822FB3CAh
+	mov rdx,[18352B730h]
+	mov r8,[rdi]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r8+130h],al
+	jb short 00000001822FB3C0h
+	movzx ecx,al
+	mov rax,[r8+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	jne short 00000001822FB3C0h
+	mov eax,1
+	jmp short 00000001822FB3C2h
+	xor eax,eax
+	xor ebx,ebx
+	test eax,eax
+	cmovne rbx,rdi
+	mov rcx,[1834F11B8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB3DFh
+	call 000000018037BED0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000182628480h
+	test al,al
+	jne short 00000001822FB428h
+	test rbx,rbx
+	je short 00000001822FB45Dh
+	cmp dword ptr [rbx+74h],1
+	mov r9b,1
+	movzx r8d,byte ptr [rbx+88h]
+	mov rcx,rsi
+	sete dl
+	mov qword ptr [rsp+20h],0
+	call 00000001822FB010h
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+	mov rcx,[18351F5A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB43Dh
+	call 000000018037BED0h
+	mov rcx,[183540EF8h]
+	xor edx,edx
+	call 00000001825CC140h
+	mov rbx,[rsp+40h]
+	xor eax,eax
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [0x1837543C5], 0
+	007 Move rdi, rdx
+	008 Move rsi, rcx
+	009 JumpIfNotEqual {19}
+	010 LoadAddress rcx, [0x18351F5A0]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x1834F11B8]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x18352B730]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x183540EF8]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 Move [0x1837543C5], 1
+	019 Compare rdi, 0
+	020 JumpIfNotEqual {23}
+	021 Move rbx, 0
+	022 Goto {40}
+	023 Move rdx, typeof(UnityEngine.Rendering.Universal.UniversalRendererData)
+	024 Move r8, [rdi]
+	025 Move rax, [rdx+304]
+	026 Compare [r8+304], rax
+	027 JumpIfLess {34}
+	028 Move rcx, rax
+	029 Move rax, [r8+200]
+	030 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	031 JumpIfNotEqual {34}
+	032 Move rax, 1
+	033 Goto {35}
+	034 Move rax, 0
+	035 Move rbx, 0
+	036 Compare rax, 0
+	037 JumpIfEqual {39}
+	038 Move rbx, rdi
+	039 Nop 
+	040 Move rcx, typeof(UnityEngine.Object)
+	041 Compare [rcx+228], 0
+	042 JumpIfNotEqual {44}
+	043 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	044 Move r8, 0
+	045 Move rdx, 0
+	046 Move rcx, rbx
+	047 Call Object.op_Equality, rcx, rdx, r8
+	048 Compare rax, 0
+	049 JumpIfNotEqual {65}
+	050 Compare rbx, 0
+	051 JumpIfEqual {79}
+	052 Compare [rbx+116], 1
+	053 Move r9, 1
+	054 Move r8, [rbx+136]
+	055 Move rcx, rsi
+	056 NotImplemented "sete dl"
+	057 Move stack:0x20, 0
+	058 Call DecalRendererFeature.GetTechnique, rcx, rdx, r8, r9
+	059 Move rbx, stack:0x40
+	060 Move rsi, stack:0x48
+	061 ShiftStack 48
+	062 Move rdi, stack:0x0
+	063 ShiftStack 8
+	064 Return rax
+	065 Move rcx, typeof(UnityEngine.Debug)
+	066 Compare [rcx+228], 0
+	067 JumpIfNotEqual {69}
+	068 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	069 Move rcx, "Only universal renderer supports Decal renderer feature."
+	070 Move rdx, 0
+	071 Call Debug.LogError, rcx, rdx
+	072 Move rbx, stack:0x40
+	073 Move rax, 0
+	074 Move rsi, stack:0x48
+	075 ShiftStack 48
+	076 Move rdi, stack:0x0
+	077 ShiftStack 8
+	078 Return rax
+	079 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Rendering.Universal.DecalTechnique GetTechnique(UnityEngine.Rendering.Universal.ScriptableRenderer renderer)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	sub rsp,30h
+	cmp byte ptr [1837543C6h],0
+	mov rbx,rdx
+	mov rsi,rcx
+	jne short 00000001822FB294h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[18352B678h]
+	call 000000018037BB90h
+	lea rcx,[183540EF8h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C6h],1
+	mov [rsp+40h],rdi
+	test rbx,rbx
+	je short 00000001822FB2F8h
+	mov rax,[18352B678h]
+	xor edi,edi
+	cmp [rbx],rax
+	cmove rdi,rbx
+	test rdi,rdi
+	je short 00000001822FB2F8h
+	xor edx,edx
+	mov rcx,rdi
+	call 000000018234E610h
+	cmp eax,1
+	mov rcx,rdi
+	sete bl
+	xor edx,edx
+	call 000000018234E330h
+	mov r9b,1
+	mov qword ptr [rsp+20h],0
+	movzx r8d,al
+	movzx edx,bl
+	mov rcx,rsi
+	call 00000001822FB010h
+	mov rdi,[rsp+40h]
+	mov rbx,[rsp+48h]
+	add rsp,30h
+	pop rsi
+	ret
+	mov rcx,[18351F5A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB30Dh
+	call 000000018037BED0h
+	mov rcx,[183540EF8h]
+	xor edx,edx
+	call 00000001825CC140h
+	mov rdi,[rsp+40h]
+	xor eax,eax
+	mov rbx,[rsp+48h]
+	add rsp,30h
+	pop rsi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -48
+	005 Compare [0x1837543C6], 0
+	006 Move rbx, rdx
+	007 Move rsi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x18351F5A0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x18352B678]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183540EF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837543C6], 1
+	016 Move stack:0x40, rdi
+	017 Compare rbx, 0
+	018 JumpIfEqual {47}
+	019 Move rax, typeof(UnityEngine.Rendering.Universal.UniversalRenderer)
+	020 Move rdi, 0
+	021 Compare [rbx], rax
+	022 JumpIfNotEqual {24}
+	023 Move rdi, rbx
+	024 Nop 
+	025 Compare rdi, 0
+	026 JumpIfEqual {47}
+	027 Move rdx, 0
+	028 Move rcx, rdi
+	029 Call UniversalRenderer.get_renderingModeActual, rcx, rdx
+	030 Compare rax, 1
+	031 Move rcx, rdi
+	032 NotImplemented "sete bl"
+	033 Move rdx, 0
+	034 Call UniversalRenderer.get_accurateGbufferNormals, rcx, rdx
+	035 Move r9, 1
+	036 Move stack:0x20, 0
+	037 Move r8, rax
+	038 Move rdx, rbx
+	039 Move rcx, rsi
+	040 Call DecalRendererFeature.GetTechnique, rcx, rdx, r8, r9
+	041 Move rdi, stack:0x40
+	042 Move rbx, stack:0x48
+	043 ShiftStack 48
+	044 Move rsi, stack:0x0
+	045 ShiftStack 8
+	046 Return rax
+	047 Move rcx, typeof(UnityEngine.Debug)
+	048 Compare [rcx+228], 0
+	049 JumpIfNotEqual {51}
+	050 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	051 Move rcx, "Only universal renderer supports Decal renderer feature."
+	052 Move rdx, 0
+	053 Call Debug.LogError, rcx, rdx
+	054 Move rdi, stack:0x40
+	055 Move rax, 0
+	056 Move rbx, stack:0x48
+	057 ShiftStack 48
+	058 Move rsi, stack:0x0
+	059 ShiftStack 8
+	060 Return rax
+
+Method: UnityEngine.Rendering.Universal.DecalTechnique GetTechnique(System.Boolean isDeferred, System.Boolean needsGBufferAccurateNormals, System.Boolean checkForInvalidTechniques = True)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	cmp byte ptr [1837543C7h],0
+	movzx r14d,r9b
+	movzx ebp,r8b
+	movzx edi,dl
+	mov rsi,rcx
+	jne short 00000001822FB084h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[1835219A0h]
+	call 000000018037BB90h
+	lea rcx,[183501BC0h]
+	call 000000018037BB90h
+	lea rcx,[183501E90h]
+	call 000000018037BB90h
+	lea rcx,[183501C78h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C7h],1
+	mov rcx,[rsi+20h]
+	xor ebx,ebx
+	test rcx,rcx
+	je near ptr 00000001822FB246h
+	mov ecx,[rcx+10h]
+	test ecx,ecx
+	je short 00000001822FB0BAh
+	sub ecx,1
+	je near ptr 00000001822FB167h
+	cmp ecx,1
+	jne near ptr 00000001822FB16Ch
+	test dil,dil
+	setne bl
+	add ebx,2
+	jmp near ptr 00000001822FB16Ch
+	cmp [1837543C8h],bl
+	jne short 00000001822FB0E1h
+	lea rcx,[1834FF4B0h]
+	call 000000018037BB90h
+	lea rcx,[1834F7120h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C8h],1
+	mov rcx,[1834FF4B0h]
+	cmp [rcx+0E4h],ebx
+	jne short 00000001822FB0F5h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825C24B0h
+	cmp eax,11h
+	je short 00000001822FB157h
+	mov rcx,[1834F7120h]
+	cmp [rcx+0E4h],ebx
+	jne short 00000001822FB115h
+	call 000000018037BED0h
+	cmp [183754415h],bl
+	jne short 00000001822FB130h
+	lea rcx,[1834F7120h]
+	call 000000018037BB90h
+	mov byte ptr [183754415h],1
+	mov rcx,[1834F7120h]
+	cmp [rcx+0E4h],ebx
+	jne short 00000001822FB144h
+	call 000000018037BED0h
+	mov rax,[1834F7120h]
+	mov rcx,[rax+0B8h]
+	cmp [rcx+1],bl
+	je short 00000001822FB167h
+	test bpl,dil
+	jne short 00000001822FB167h
+	test dil,dil
+	setne bl
+	add ebx,2
+	jmp short 00000001822FB16Ch
+	mov ebx,1
+	test r14b,r14b
+	je near ptr 00000001822FB242h
+	cmp ebx,1
+	jne short 00000001822FB1E7h
+	mov rcx,[1835219A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB18Fh
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001826342F0h
+	cmp eax,0Bh
+	je short 00000001822FB1A7h
+	xor ecx,ecx
+	call 00000001826342F0h
+	cmp eax,11h
+	jne short 00000001822FB1E7h
+	mov rcx,[18351F5A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB1BCh
+	call 000000018037BED0h
+	mov rcx,[183501BC0h]
+	xor edx,edx
+	call 00000001825CC140h
+	xor eax,eax
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+	xor ecx,ecx
+	call 0000000182634940h
+	cmp ebx,1
+	jne short 00000001822FB218h
+	cmp eax,4
+	jge short 00000001822FB242h
+	mov rcx,[18351F5A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB20Dh
+	call 000000018037BED0h
+	mov rcx,[183501C78h]
+	xor edx,edx
+	jmp short 00000001822FB1C5h
+	cmp ebx,3
+	jne short 00000001822FB242h
+	cmp eax,4
+	jge short 00000001822FB242h
+	mov rcx,[18351F5A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB237h
+	call 000000018037BED0h
+	mov rcx,[183501E90h]
+	xor edx,edx
+	jmp short 00000001822FB1C5h
+	mov eax,ebx
+	jmp short 00000001822FB1CCh
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Compare [0x1837543C7], 0
+	009 Move r14, r9
+	010 Move rbp, r8
+	011 Move rdi, rdx
+	012 Move rsi, rcx
+	013 JumpIfNotEqual {25}
+	014 LoadAddress rcx, [0x18351F5A0]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x1835219A0]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x183501BC0]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 LoadAddress rcx, [0x183501E90]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x183501C78]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 Move [0x1837543C7], 1
+	025 Move rcx, [rsi+32]
+	026 Move rbx, 0
+	027 Compare rcx, 0
+	028 JumpIfEqual {137}
+	029 Move rcx, [rcx+16]
+	030 Compare rcx, 0
+	031 JumpIfEqual {40}
+	032 Subtract rcx, rcx, 1
+	033 JumpIfEqual {78}
+	034 Compare rcx, 1
+	035 JumpIfNotEqual {79}
+	036 Compare rdi, 0
+	037 NotImplemented "setne bl"
+	038 Add rbx, rbx, 2
+	039 Goto {79}
+	040 Compare [0x1837543C8], rbx
+	041 JumpIfNotEqual {47}
+	042 LoadAddress rcx, [0x1834FF4B0]
+	043 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	044 LoadAddress rcx, [0x1834F7120]
+	045 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	046 Move [0x1837543C8], 1
+	047 Move rcx, typeof(UnityEngine.Application)
+	048 Compare [rcx+228], rbx
+	049 JumpIfNotEqual {51}
+	050 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	051 Move rcx, 0
+	052 Call Application.get_platform, rcx
+	053 Compare rax, 17
+	054 JumpIfEqual {72}
+	055 Move rcx, typeof(UnityEngine.Rendering.Universal.PlatformAutoDetect)
+	056 Compare [rcx+228], rbx
+	057 JumpIfNotEqual {59}
+	058 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	059 Compare [0x183754415], rbx
+	060 JumpIfNotEqual {64}
+	061 LoadAddress rcx, [0x1834F7120]
+	062 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	063 Move [0x183754415], 1
+	064 Move rcx, typeof(UnityEngine.Rendering.Universal.PlatformAutoDetect)
+	065 Compare [rcx+228], rbx
+	066 JumpIfNotEqual {68}
+	067 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	068 Move rax, typeof(UnityEngine.Rendering.Universal.PlatformAutoDetect)
+	069 Move rcx, [rax+184]
+	070 Compare [rcx+1], rbx
+	071 JumpIfEqual {78}
+	072 Compare rbp, rdi
+	073 JumpIfNotEqual {78}
+	074 Compare rdi, 0
+	075 NotImplemented "setne bl"
+	076 Add rbx, rbx, 2
+	077 Goto {79}
+	078 Move rbx, 1
+	079 Compare r14, 0
+	080 JumpIfEqual {135}
+	081 Compare rbx, 1
+	082 JumpIfNotEqual {111}
+	083 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	084 Compare [rcx+228], 0
+	085 JumpIfNotEqual {87}
+	086 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	087 Move rcx, 0
+	088 Call 0x1826342F0, rcx
+	089 Compare rax, 11
+	090 JumpIfEqual {95}
+	091 Move rcx, 0
+	092 Call 0x1826342F0, rcx
+	093 Compare rax, 17
+	094 JumpIfNotEqual {111}
+	095 Move rcx, typeof(UnityEngine.Debug)
+	096 Compare [rcx+228], 0
+	097 JumpIfNotEqual {99}
+	098 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	099 Move rcx, "Decal DBuffer technique is not supported with OpenGL."
+	100 Move rdx, 0
+	101 Call Debug.LogError, rcx, rdx
+	102 Move rax, 0
+	103 Move rbx, stack:0x30
+	104 Move rbp, stack:0x38
+	105 Move rsi, stack:0x40
+	106 Move rdi, stack:0x48
+	107 ShiftStack 32
+	108 Move r14, stack:0x0
+	109 ShiftStack 8
+	110 Return rax
+	111 Move rcx, 0
+	112 Call 0x182634940, rcx
+	113 Compare rbx, 1
+	114 JumpIfNotEqual {124}
+	115 Compare rax, 4
+	116 JumpIfGreaterOrEqual {135}
+	117 Move rcx, typeof(UnityEngine.Debug)
+	118 Compare [rcx+228], 0
+	119 JumpIfNotEqual {121}
+	120 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	121 Move rcx, "Decal DBuffer technique requires MRT4 support."
+	122 Move rdx, 0
+	123 Goto {101}
+	124 Compare rbx, 3
+	125 JumpIfNotEqual {135}
+	126 Compare rax, 4
+	127 JumpIfGreaterOrEqual {135}
+	128 Move rcx, typeof(UnityEngine.Debug)
+	129 Compare [rcx+228], 0
+	130 JumpIfNotEqual {132}
+	131 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	132 Move rcx, "Decal useGBuffer option requires MRT4 support."
+	133 Move rdx, 0
+	134 Goto {101}
+	135 Move rax, rbx
+	136 Goto {103}
+	137 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean IsAutomaticDBuffer()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837543C8h],0
+	jne short 00000001822FB49Ch
+	lea rcx,[1834FF4B0h]
+	call 000000018037BB90h
+	lea rcx,[1834F7120h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C8h],1
+	mov rcx,[1834FF4B0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB4B1h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001825C24B0h
+	cmp eax,11h
+	je short 00000001822FB51Dh
+	mov rcx,[1834F7120h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB4D2h
+	call 000000018037BED0h
+	cmp byte ptr [183754415h],0
+	jne short 00000001822FB4EEh
+	lea rcx,[1834F7120h]
+	call 000000018037BB90h
+	mov byte ptr [183754415h],1
+	mov rcx,[1834F7120h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FB503h
+	call 000000018037BED0h
+	mov rax,[1834F7120h]
+	mov rcx,[rax+0B8h]
+	cmp byte ptr [rcx+1],0
+	sete al
+	add rsp,28h
+	ret
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837543C8], 0
+	003 JumpIfNotEqual {9}
+	004 LoadAddress rcx, [0x1834FF4B0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x1834F7120]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 Move [0x1837543C8], 1
+	009 Move rcx, typeof(UnityEngine.Application)
+	010 Compare [rcx+228], 0
+	011 JumpIfNotEqual {13}
+	012 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	013 Move rcx, 0
+	014 Call Application.get_platform, rcx
+	015 Compare rax, 17
+	016 JumpIfEqual {36}
+	017 Move rcx, typeof(UnityEngine.Rendering.Universal.PlatformAutoDetect)
+	018 Compare [rcx+228], 0
+	019 JumpIfNotEqual {21}
+	020 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	021 Compare [0x183754415], 0
+	022 JumpIfNotEqual {26}
+	023 LoadAddress rcx, [0x1834F7120]
+	024 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	025 Move [0x183754415], 1
+	026 Move rcx, typeof(UnityEngine.Rendering.Universal.PlatformAutoDetect)
+	027 Compare [rcx+228], 0
+	028 JumpIfNotEqual {30}
+	029 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	030 Move rax, typeof(UnityEngine.Rendering.Universal.PlatformAutoDetect)
+	031 Move rcx, [rax+184]
+	032 Compare [rcx+1], 0
+	033 NotImplemented "sete al"
+	034 ShiftStack 40
+	035 Return rax
+	036 Move rax, 0
+	037 ShiftStack 40
+	038 Return rax
+
+Method: System.Boolean RecreateSystemsIfNeeded(UnityEngine.Rendering.Universal.ScriptableRenderer renderer, in UnityEngine.Rendering.Universal.CameraData cameraData)
+
+Disassembly:
+	push rbp
+	push r14
+	sub rsp,58h
+	cmp byte ptr [1837543C9h],0
+	mov r14,rdx
+	mov rbp,rcx
+	jne near ptr 00000001822FB792h
+	lea rcx,[183517628h]
+	call 000000018037BB90h
+	lea rcx,[1835192A8h]
+	call 000000018037BB90h
+	lea rcx,[183519368h]
+	call 000000018037BB90h
+	lea rcx,[183520DA0h]
+	call 000000018037BB90h
+	lea rcx,[183520FE0h]
+	call 000000018037BB90h
+	lea rcx,[1835210A0h]
+	call 000000018037BB90h
+	lea rcx,[183521160h]
+	call 000000018037BB90h
+	lea rcx,[183521220h]
+	call 000000018037BB90h
+	lea rcx,[1835212E0h]
+	call 000000018037BB90h
+	lea rcx,[1835216A0h]
+	call 000000018037BB90h
+	lea rcx,[183521760h]
+	call 000000018037BB90h
+	lea rcx,[1835219A0h]
+	call 000000018037BB90h
+	lea rcx,[183521A60h]
+	call 000000018037BB90h
+	lea rcx,[183521CA0h]
+	call 000000018037BB90h
+	lea rcx,[183521D60h]
+	call 000000018037BB90h
+	lea rcx,[183521E20h]
+	call 000000018037BB90h
+	lea rcx,[183521EE0h]
+	call 000000018037BB90h
+	lea rcx,[18353A530h]
+	call 000000018037BB90h
+	lea rcx,[183537498h]
+	call 000000018037BB90h
+	lea rcx,[18352B678h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C9h],1
+	cmp byte ptr [rbp+40h],0
+	je near ptr 00000001822FBE7Fh
+	mov [rsp+88h],r12
+	cmp byte ptr [1837543C6h],0
+	jne short 00000001822FB7D8h
+	lea rcx,[18351F5A0h]
+	call 000000018037BB90h
+	lea rcx,[18352B678h]
+	call 000000018037BB90h
+	lea rcx,[183540EF8h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C6h],1
+	mov [rsp+70h],rbx
+	xor r12d,r12d
+	mov [rsp+78h],rsi
+	mov [rsp+80h],rdi
+	mov [rsp+50h],r15
+	movaps [rsp+40h],xmm6
+	test r14,r14
+	je near ptr 00000001822FBE54h
+	mov rax,[18352B678h]
+	mov edi,r12d
+	cmp [r14],rax
+	cmove rdi,r14
+	test rdi,rdi
+	je near ptr 00000001822FBE54h
+	xor edx,edx
+	mov rcx,rdi
+	call 000000018234E610h
+	cmp eax,1
+	mov rcx,rdi
+	sete bl
+	xor edx,edx
+	call 000000018234E330h
+	mov r9b,1
+	mov [rsp+20h],r12
+	movzx r8d,al
+	movzx edx,bl
+	mov rcx,rbp
+	call 00000001822FB010h
+	mov [rbp+28h],eax
+	test eax,eax
+	je near ptr 00000001822FBE7Bh
+	cmp [1837543C3h],r12b
+	jne short 00000001822FB872h
+	lea rcx,[183519428h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C3h],1
+	mov rax,[rbp+20h]
+	test rax,rax
+	je near ptr 00000001822FBE89h
+	cmp [rax+10h],r12d
+	je short 00000001822FB88Bh
+	mov rbx,[rax+20h]
+	jmp short 00000001822FB8B2h
+	mov rcx,[183519428h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	mov dword ptr [rax+10h],2
+	call 0000000180456D90h
+	mov dword ptr [rbx+10h],2
+	lea rcx,[rbp+30h]
+	mov [rbp+30h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	cmp [1837543C4h],r12b
+	jne short 00000001822FB8DEh
+	lea rcx,[183521B20h]
+	call 000000018037BB90h
+	mov byte ptr [1837543C4h],1
+	mov rax,[rbp+20h]
+	test rax,rax
+	je near ptr 00000001822FBE89h
+	cmp [rax+10h],r12d
+	je short 00000001822FB8F7h
+	mov rbx,[rax+28h]
+	jmp short 00000001822FB91Dh
+	mov rcx,[183521B20h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	test rbx,rbx
+	je near ptr 00000001822FBE89h
+	mov [rbx+10h],r12d
+	lea rcx,[rbp+38h]
+	mov [rbp+38h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rcx,[183537498h]
+	cmp [rcx+0E4h],r12d
+	jne short 00000001822FB942h
+	call 000000018037BED0h
+	mov rcx,[18353A530h]
+	call 00000001808EAD70h
+	mov r15,rax
+	test rax,rax
+	je near ptr 00000001822FBE7Bh
+	mov rcx,[183517628h]
+	mov rbx,[rax+30h]
+	cmp [rcx+0E4h],r12d
+	jne short 00000001822FB973h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001821ED590h
+	lea rcx,[rbp+0A8h]
+	mov [rbp+0A8h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	cmp [rbp+50h],r12
+	jne short 00000001822FB9D8h
+	mov rcx,[1835219A0h]
+	cmp [rcx+0E4h],r12d
+	jne short 00000001822FB9AEh
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001822FA7B0h
+	test rax,rax
+	je near ptr 00000001822FBE89h
+	xor edx,edx
+	mov rcx,rax
+	call 0000000182311440h
+	lea rcx,[rbp+50h]
+	mov [rbp+50h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rcx,[183521D60h]
+	mov rbx,[rbp+50h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822B2AE0h
+	lea rcx,[rbp+58h]
+	mov [rbp+58h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[183521E20h]
+	mov rbx,[rbp+50h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822B2E20h
+	lea rcx,[rbp+68h]
+	mov [rbp+68h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rax,[rbp+20h]
+	mov rdi,[rbp+50h]
+	test rax,rax
+	je near ptr 00000001822FBE89h
+	mov rcx,[183520DA0h]
+	movss xmm6,dword ptr [rax+14h]
+	call 000000018037BDE0h
+	xor r9d,r9d
+	movaps xmm2,xmm6
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001822A68C0h
+	lea rcx,[rbp+70h]
+	mov [rbp+70h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	cmp dword ptr [rbp+28h],1
+	mov rdi,[rbp+50h]
+	je short 00000001822FBAB5h
+	mov rcx,[183521CA0h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001822B25D0h
+	mov eax,0C0h
+	mov [rbp+0C0h],rbx
+	jmp short 00000001822FBAF0h
+	mov rax,[rbp+20h]
+	test rax,rax
+	je near ptr 00000001822FBE89h
+	mov rcx,[183521EE0h]
+	movss xmm6,dword ptr [rax+14h]
+	call 000000018037BDE0h
+	xor r9d,r9d
+	movaps xmm2,xmm6
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001822B3360h
+	mov eax,60h
+	mov [rbp+60h],rbx
+	lea rcx,[rax+rbp]
+	mov rdx,rbx
+	call 000000018037ACB0h
+	mov rcx,[1835210A0h]
+	mov rdi,[rbp+50h]
+	mov ebx,[rbp+28h]
+	call 000000018037BDE0h
+	xor r9d,r9d
+	mov r8d,ebx
+	mov rdx,rdi
+	mov rcx,rax
+	mov rsi,rax
+	call 00000001822A6E90h
+	lea rcx,[rbp+78h]
+	mov [rbp+78h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rax,[18352B678h]
+	mov r8,r12
+	cmp [r14],rax
+	mov ecx,[rbp+28h]
+	cmove r8,r14
+	sub ecx,1
+	je near ptr 00000001822FBCB3h
+	sub ecx,1
+	je near ptr 00000001822FBC1Ch
+	cmp ecx,1
+	jne near ptr 00000001822FBE22h
+	test r8,r8
+	je near ptr 00000001822FBE89h
+	mov rdx,[r8+298h]
+	lea rcx,[rbp+0D8h]
+	mov [rbp+0D8h],rdx
+	call 000000018037ACB0h
+	mov rcx,[183521220h]
+	mov rbx,[rbp+50h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822A6FC0h
+	lea rcx,[rbp+0D0h]
+	mov [rbp+0D0h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	cmp dword ptr [rbp+28h],1
+	jne short 00000001822FBBCBh
+	mov rsi,[rbp+0D0h]
+	jmp short 00000001822FBBCEh
+	mov rsi,r12
+	mov rbx,[rbp+20h]
+	mov r14,[rbp+38h]
+	test rbx,rbx
+	je near ptr 00000001822FBE89h
+	mov rcx,[183521760h]
+	movzx ebx,byte ptr [rbx+18h]
+	call 000000018037BDE0h
+	movzx r9d,bl
+	mov [rsp+20h],r12
+	mov r8,rsi
+	mov rdx,r14
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822AEBC0h
+	lea rcx,[rbp+0C8h]
+	mov [rbp+0C8h],rdi
+	jmp near ptr 00000001822FBE1Ah
+	mov rcx,[1835212E0h]
+	mov rbx,[rbp+50h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822A7050h
+	lea rcx,[rbp+0B8h]
+	mov [rbp+0B8h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	cmp dword ptr [rbp+28h],1
+	jne short 00000001822FBC62h
+	mov rsi,[rbp+0B8h]
+	jmp short 00000001822FBC65h
+	mov rsi,r12
+	mov rbx,[rbp+20h]
+	mov r14,[rbp+38h]
+	test rbx,rbx
+	je near ptr 00000001822FBE89h
+	mov rcx,[183521A60h]
+	movzx ebx,byte ptr [rbx+18h]
+	call 000000018037BDE0h
+	movzx r9d,bl
+	mov [rsp+20h],r12
+	mov r8,rsi
+	mov rdx,r14
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822B1F30h
+	lea rcx,[rbp+0B0h]
+	mov [rbp+0B0h],rdi
+	jmp near ptr 00000001822FBE1Ah
+	mov rsi,[r15+18h]
+	test r8,r8
+	je near ptr 00000001822FBE89h
+	xor edx,edx
+	mov rcx,r8
+	call 000000018234E610h
+	mov rcx,[1835192A8h]
+	mov ebx,eax
+	call 000000018037BDE0h
+	mov [rsp+30h],r12
+	cmp ebx,1
+	mov [rsp+28h],r12b
+	mov r8,rsi
+	setne cl
+	mov edx,0C9h
+	mov [rsp+20h],cl
+	xor r9d,r9d
+	mov rcx,rax
+	mov rdi,rax
+	call 0000000182288F10h
+	lea rcx,[rbp+80h]
+	mov [rbp+80h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[183520FE0h]
+	mov rbx,[rbp+50h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822A6D90h
+	lea rcx,[rbp+98h]
+	mov [rbp+98h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rbx,[rbp+20h]
+	mov rsi,[rbp+0A8h]
+	mov r14,[rbp+30h]
+	mov r15,[rbp+98h]
+	test rbx,rbx
+	je near ptr 00000001822FBE89h
+	mov rcx,[183519368h]
+	movzx ebx,byte ptr [rbx+18h]
+	call 000000018037BDE0h
+	mov r9,r15
+	mov [rsp+28h],r12
+	mov r8,r14
+	mov [rsp+20h],bl
+	mov rdx,rsi
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822A5620h
+	lea rcx,[rbp+88h]
+	mov [rbp+88h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[183521160h]
+	mov rbx,[rbp+50h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822A6F30h
+	lea rcx,[rbp+0A0h]
+	mov [rbp+0A0h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rcx,[1835216A0h]
+	mov rbx,[rbp+0A0h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 00000001822ACDC0h
+	lea rcx,[rbp+90h]
+	mov [rbp+90h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov [rbp+40h],r12b
+	mov al,1
+	mov r15,[rsp+50h]
+	mov rbx,[rsp+70h]
+	mov rdi,[rsp+80h]
+	mov rsi,[rsp+78h]
+	movaps xmm6,[rsp+40h]
+	mov r12,[rsp+88h]
+	add rsp,58h
+	pop r14
+	pop rbp
+	ret
+	mov rcx,[18351F5A0h]
+	cmp [rcx+0E4h],r12d
+	jne short 00000001822FBE69h
+	call 000000018037BED0h
+	mov rcx,[183540EF8h]
+	xor edx,edx
+	call 00000001825CC140h
+	mov [rbp+28h],r12d
+	xor al,al
+	jmp short 00000001822FBE28h
+	mov al,1
+	add rsp,58h
+	pop r14
+	pop rbp
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, r14
+	005 ShiftStack -88
+	006 Compare [0x1837543C9], 0
+	007 Move r14, rdx
+	008 Move rbp, rcx
+	009 JumpIfNotEqual {51}
+	010 LoadAddress rcx, [0x183517628]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x1835192A8]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x183519368]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x183520DA0]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x183520FE0]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 LoadAddress rcx, [0x1835210A0]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x183521160]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 LoadAddress rcx, [0x183521220]
+	025 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	026 LoadAddress rcx, [0x1835212E0]
+	027 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	028 LoadAddress rcx, [0x1835216A0]
+	029 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	030 LoadAddress rcx, [0x183521760]
+	031 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	032 LoadAddress rcx, [0x1835219A0]
+	033 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	034 LoadAddress rcx, [0x183521A60]
+	035 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	036 LoadAddress rcx, [0x183521CA0]
+	037 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	038 LoadAddress rcx, [0x183521D60]
+	039 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	040 LoadAddress rcx, [0x183521E20]
+	041 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	042 LoadAddress rcx, [0x183521EE0]
+	043 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	044 LoadAddress rcx, [0x18353A530]
+	045 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	046 LoadAddress rcx, [0x183537498]
+	047 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	048 LoadAddress rcx, [0x18352B678]
+	049 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	050 Move [0x1837543C9], 1
+	051 Compare [rbp+64], 0
+	052 JumpIfEqual {460}
+	053 Move stack:0x88, r12
+	054 Compare [0x1837543C6], 0
+	055 JumpIfNotEqual {63}
+	056 LoadAddress rcx, [0x18351F5A0]
+	057 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	058 LoadAddress rcx, [0x18352B678]
+	059 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	060 LoadAddress rcx, [0x183540EF8]
+	061 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	062 Move [0x1837543C6], 1
+	063 Move stack:0x70, rbx
+	064 Move r12, 0
+	065 Move stack:0x78, rsi
+	066 Move stack:0x80, rdi
+	067 Move stack:0x50, r15
+	068 Move stack:0x40, xmm6
+	069 Compare r14, 0
+	070 JumpIfEqual {450}
+	071 Move rax, typeof(UnityEngine.Rendering.Universal.UniversalRenderer)
+	072 Move rdi, r12
+	073 Compare [r14], rax
+	074 JumpIfNotEqual {76}
+	075 Move rdi, r14
+	076 Nop 
+	077 Compare rdi, 0
+	078 JumpIfEqual {450}
+	079 Move rdx, 0
+	080 Move rcx, rdi
+	081 Call UniversalRenderer.get_renderingModeActual, rcx, rdx
+	082 Compare rax, 1
+	083 Move rcx, rdi
+	084 NotImplemented "sete bl"
+	085 Move rdx, 0
+	086 Call UniversalRenderer.get_accurateGbufferNormals, rcx, rdx
+	087 Move r9, 1
+	088 Move stack:0x20, r12
+	089 Move r8, rax
+	090 Move rdx, rbx
+	091 Move rcx, rbp
+	092 Call DecalRendererFeature.GetTechnique, rcx, rdx, r8, r9
+	093 Move [rbp+40], rax
+	094 Compare rax, 0
+	095 JumpIfEqual {458}
+	096 Compare [0x1837543C3], r12
+	097 JumpIfNotEqual {101}
+	098 LoadAddress rcx, [0x183519428]
+	099 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	100 Move [0x1837543C3], 1
+	101 Move rax, [rbp+32]
+	102 Compare rax, 0
+	103 JumpIfEqual {467}
+	104 Compare [rax+16], r12
+	105 JumpIfEqual {108}
+	106 Move rbx, [rax+32]
+	107 Goto {116}
+	108 Move rcx, typeof(UnityEngine.Rendering.Universal.DBufferSettings)
+	109 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	110 Move rdx, 0
+	111 Move rcx, rax
+	112 Move rbx, rax
+	113 Move [rax+16], 2
+	114 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	115 Move [rbx+16], 2
+	116 LoadAddress rcx, [rbp+48]
+	117 Move [rbp+48], rbx
+	118 Move rdx, rbx
+	119 Call 0x18037ACB0, rcx, rdx, r8, r9
+	120 Compare [0x1837543C4], r12
+	121 JumpIfNotEqual {125}
+	122 LoadAddress rcx, [0x183521B20]
+	123 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	124 Move [0x1837543C4], 1
+	125 Move rax, [rbp+32]
+	126 Compare rax, 0
+	127 JumpIfEqual {467}
+	128 Compare [rax+16], r12
+	129 JumpIfEqual {132}
+	130 Move rbx, [rax+40]
+	131 Goto {141}
+	132 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalScreenSpaceSettings)
+	133 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	134 Move rdx, 0
+	135 Move rcx, rax
+	136 Move rbx, rax
+	137 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	138 Compare rbx, 0
+	139 JumpIfEqual {467}
+	140 Move [rbx+16], r12
+	141 LoadAddress rcx, [rbp+56]
+	142 Move [rbp+56], rbx
+	143 Move rdx, rbx
+	144 Call 0x18037ACB0, rcx, rdx, r8, r9
+	145 Move rcx, typeof(UnityEngine.Rendering.GraphicsSettings)
+	146 Compare [rcx+228], r12
+	147 JumpIfNotEqual {149}
+	148 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	149 Move rcx, [0x18353A530]
+	150 Call 0x1808EAD70, rcx
+	151 Move r15, rax
+	152 Compare rax, 0
+	153 JumpIfEqual {458}
+	154 Move rcx, typeof(UnityEngine.Rendering.CoreUtils)
+	155 Move rbx, [rax+48]
+	156 Compare [rcx+228], r12
+	157 JumpIfNotEqual {159}
+	158 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	159 Move rdx, 0
+	160 Move rcx, rbx
+	161 Call CoreUtils.CreateEngineMaterial, rcx, rdx
+	162 LoadAddress rcx, [rbp+168]
+	163 Move [rbp+168], rax
+	164 Move rdx, rax
+	165 Call 0x18037ACB0, rcx, rdx, r8, r9
+	166 Compare [rbp+80], r12
+	167 JumpIfNotEqual {183}
+	168 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	169 Compare [rcx+228], r12
+	170 JumpIfNotEqual {172}
+	171 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	172 Move rcx, 0
+	173 Call 0x1822FA7B0, rcx, rdx, r8, r9
+	174 Compare rax, 0
+	175 JumpIfEqual {467}
+	176 Move rdx, 0
+	177 Move rcx, rax
+	178 Call SharedDecalEntityManager.Get, rcx, rdx
+	179 LoadAddress rcx, [rbp+80]
+	180 Move [rbp+80], rax
+	181 Move rdx, rax
+	182 Call 0x18037ACB0, rcx, rdx, r8, r9
+	183 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalUpdateCachedSystem)
+	184 Move rbx, [rbp+80]
+	185 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	186 Move r8, 0
+	187 Move rdx, rbx
+	188 Move rcx, rax
+	189 Move rdi, rax
+	190 Call DecalUpdateCachedSystem..ctor, rcx, rdx
+	191 LoadAddress rcx, [rbp+88]
+	192 Move [rbp+88], rdi
+	193 Move rdx, rdi
+	194 Call 0x18037ACB0, rcx, rdx, r8, r9
+	195 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalUpdateCulledSystem)
+	196 Move rbx, [rbp+80]
+	197 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	198 Move r8, 0
+	199 Move rdx, rbx
+	200 Move rcx, rax
+	201 Move rdi, rax
+	202 Call DecalUpdateCulledSystem..ctor, rcx, rdx
+	203 LoadAddress rcx, [rbp+104]
+	204 Move [rbp+104], rdi
+	205 Move rdx, rdi
+	206 Call 0x18037ACB0, rcx, rdx, r8, r9
+	207 Move rax, [rbp+32]
+	208 Move rdi, [rbp+80]
+	209 Compare rax, 0
+	210 JumpIfEqual {467}
+	211 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalCreateDrawCallSystem)
+	212 Move xmm6, [rax+20]
+	213 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	214 Move r9, 0
+	215 Move xmm2, xmm6
+	216 Move rdx, rdi
+	217 Move rcx, rax
+	218 Move rbx, rax
+	219 Call DecalCreateDrawCallSystem..ctor, rcx, xmm1, r8
+	220 LoadAddress rcx, [rbp+112]
+	221 Move [rbp+112], rbx
+	222 Move rdx, rbx
+	223 Call 0x18037ACB0, rcx, rdx, r8, r9
+	224 Compare [rbp+40], 1
+	225 Move rdi, [rbp+80]
+	226 JumpIfEqual {237}
+	227 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalSkipCulledSystem)
+	228 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	229 Move r8, 0
+	230 Move rdx, rdi
+	231 Move rcx, rax
+	232 Move rbx, rax
+	233 Call DecalSkipCulledSystem..ctor, rcx, rdx
+	234 Move rax, 192
+	235 Move [rbp+192], rbx
+	236 Goto {251}
+	237 Move rax, [rbp+32]
+	238 Compare rax, 0
+	239 JumpIfEqual {467}
+	240 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalUpdateCullingGroupSystem)
+	241 Move xmm6, [rax+20]
+	242 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	243 Move r9, 0
+	244 Move xmm2, xmm6
+	245 Move rdx, rdi
+	246 Move rcx, rax
+	247 Move rbx, rax
+	248 Call DecalUpdateCullingGroupSystem..ctor, rcx, xmm1, r8
+	249 Move rax, 96
+	250 Move [rbp+96], rbx
+	251 LoadAddress rcx, [rax+rbp]
+	252 Move rdx, rbx
+	253 Call 0x18037ACB0, rcx, rdx, r8, r9
+	254 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawErrorSystem)
+	255 Move rdi, [rbp+80]
+	256 Move rbx, [rbp+40]
+	257 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	258 Move r9, 0
+	259 Move r8, rbx
+	260 Move rdx, rdi
+	261 Move rcx, rax
+	262 Move rsi, rax
+	263 Call DecalDrawErrorSystem..ctor, rcx, rdx, r8
+	264 LoadAddress rcx, [rbp+120]
+	265 Move [rbp+120], rsi
+	266 Move rdx, rsi
+	267 Call 0x18037ACB0, rcx, rdx, r8, r9
+	268 Move rax, typeof(UnityEngine.Rendering.Universal.UniversalRenderer)
+	269 Move r8, r12
+	270 Compare [r14], rax
+	271 Move rcx, [rbp+40]
+	272 JumpIfNotEqual {274}
+	273 Move r8, r14
+	274 Nop 
+	275 Subtract rcx, rcx, 1
+	276 JumpIfEqual {355}
+	277 Subtract rcx, rcx, 1
+	278 JumpIfEqual {321}
+	279 Compare rcx, 1
+	280 JumpIfNotEqual {436}
+	281 Compare r8, 0
+	282 JumpIfEqual {467}
+	283 Move rdx, [r8+664]
+	284 LoadAddress rcx, [rbp+216]
+	285 Move [rbp+216], rdx
+	286 Call 0x18037ACB0, rcx, rdx, r8, r9
+	287 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawGBufferSystem)
+	288 Move rbx, [rbp+80]
+	289 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	290 Move r8, 0
+	291 Move rdx, rbx
+	292 Move rcx, rax
+	293 Move rdi, rax
+	294 Call DecalDrawGBufferSystem..ctor, rcx, rdx
+	295 LoadAddress rcx, [rbp+208]
+	296 Move [rbp+208], rdi
+	297 Move rdx, rdi
+	298 Call 0x18037ACB0, rcx, rdx, r8, r9
+	299 Compare [rbp+40], 1
+	300 JumpIfNotEqual {303}
+	301 Move rsi, [rbp+208]
+	302 Goto {304}
+	303 Move rsi, r12
+	304 Move rbx, [rbp+32]
+	305 Move r14, [rbp+56]
+	306 Compare rbx, 0
+	307 JumpIfEqual {467}
+	308 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalGBufferRenderPass)
+	309 Move rbx, [rbx+24]
+	310 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	311 Move r9, rbx
+	312 Move stack:0x20, r12
+	313 Move r8, rsi
+	314 Move rdx, r14
+	315 Move rcx, rax
+	316 Move rdi, rax
+	317 Call DecalGBufferRenderPass..ctor, rcx, rdx, r8, r9
+	318 LoadAddress rcx, [rbp+200]
+	319 Move [rbp+200], rdi
+	320 Goto {434}
+	321 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawScreenSpaceSystem)
+	322 Move rbx, [rbp+80]
+	323 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	324 Move r8, 0
+	325 Move rdx, rbx
+	326 Move rcx, rax
+	327 Move rdi, rax
+	328 Call DecalDrawScreenSpaceSystem..ctor, rcx, rdx
+	329 LoadAddress rcx, [rbp+184]
+	330 Move [rbp+184], rdi
+	331 Move rdx, rdi
+	332 Call 0x18037ACB0, rcx, rdx, r8, r9
+	333 Compare [rbp+40], 1
+	334 JumpIfNotEqual {337}
+	335 Move rsi, [rbp+184]
+	336 Goto {338}
+	337 Move rsi, r12
+	338 Move rbx, [rbp+32]
+	339 Move r14, [rbp+56]
+	340 Compare rbx, 0
+	341 JumpIfEqual {467}
+	342 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalScreenSpaceRenderPass)
+	343 Move rbx, [rbx+24]
+	344 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	345 Move r9, rbx
+	346 Move stack:0x20, r12
+	347 Move r8, rsi
+	348 Move rdx, r14
+	349 Move rcx, rax
+	350 Move rdi, rax
+	351 Call DecalScreenSpaceRenderPass..ctor, rcx, rdx, r8, r9
+	352 LoadAddress rcx, [rbp+176]
+	353 Move [rbp+176], rdi
+	354 Goto {434}
+	355 Move rsi, [r15+24]
+	356 Compare r8, 0
+	357 JumpIfEqual {467}
+	358 Move rdx, 0
+	359 Move rcx, r8
+	360 Call UniversalRenderer.get_renderingModeActual, rcx, rdx
+	361 Move rcx, typeof(UnityEngine.Rendering.Universal.DBufferCopyDepthPass)
+	362 Move rbx, rax
+	363 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	364 Move stack:0x30, r12
+	365 Compare rbx, 1
+	366 Move stack:0x28, r12
+	367 Move r8, rsi
+	368 NotImplemented "setne cl"
+	369 Move rdx, 201
+	370 Move stack:0x20, rcx
+	371 Move r9, 0
+	372 Move rcx, rax
+	373 Move rdi, rax
+	374 Call DBufferCopyDepthPass..ctor, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	375 LoadAddress rcx, [rbp+128]
+	376 Move [rbp+128], rdi
+	377 Move rdx, rdi
+	378 Call 0x18037ACB0, rcx, rdx, r8, r9
+	379 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawDBufferSystem)
+	380 Move rbx, [rbp+80]
+	381 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	382 Move r8, 0
+	383 Move rdx, rbx
+	384 Move rcx, rax
+	385 Move rdi, rax
+	386 Call DecalDrawDBufferSystem..ctor, rcx, rdx
+	387 LoadAddress rcx, [rbp+152]
+	388 Move [rbp+152], rdi
+	389 Move rdx, rdi
+	390 Call 0x18037ACB0, rcx, rdx, r8, r9
+	391 Move rbx, [rbp+32]
+	392 Move rsi, [rbp+168]
+	393 Move r14, [rbp+48]
+	394 Move r15, [rbp+152]
+	395 Compare rbx, 0
+	396 JumpIfEqual {467}
+	397 Move rcx, typeof(UnityEngine.Rendering.Universal.DBufferRenderPass)
+	398 Move rbx, [rbx+24]
+	399 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	400 Move r9, r15
+	401 Move stack:0x28, r12
+	402 Move r8, r14
+	403 Move stack:0x20, rbx
+	404 Move rdx, rsi
+	405 Move rcx, rax
+	406 Move rdi, rax
+	407 Call DBufferRenderPass..ctor, rcx, rdx, r8, r9, stack:0x0
+	408 LoadAddress rcx, [rbp+136]
+	409 Move [rbp+136], rdi
+	410 Move rdx, rdi
+	411 Call 0x18037ACB0, rcx, rdx, r8, r9
+	412 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawFowardEmissiveSystem)
+	413 Move rbx, [rbp+80]
+	414 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	415 Move r8, 0
+	416 Move rdx, rbx
+	417 Move rcx, rax
+	418 Move rdi, rax
+	419 Call DecalDrawFowardEmissiveSystem..ctor, rcx, rdx
+	420 LoadAddress rcx, [rbp+160]
+	421 Move [rbp+160], rdi
+	422 Move rdx, rdi
+	423 Call 0x18037ACB0, rcx, rdx, r8, r9
+	424 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalForwardEmissivePass)
+	425 Move rbx, [rbp+160]
+	426 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	427 Move r8, 0
+	428 Move rdx, rbx
+	429 Move rcx, rax
+	430 Move rdi, rax
+	431 Call DecalForwardEmissivePass..ctor, rcx, rdx
+	432 LoadAddress rcx, [rbp+144]
+	433 Move [rbp+144], rdi
+	434 Move rdx, rdi
+	435 Call 0x18037ACB0, rcx, rdx, r8, r9
+	436 Move [rbp+64], r12
+	437 Move rax, 1
+	438 Move r15, stack:0x50
+	439 Move rbx, stack:0x70
+	440 Move rdi, stack:0x80
+	441 Move rsi, stack:0x78
+	442 Move xmm6, stack:0x40
+	443 Move r12, stack:0x88
+	444 ShiftStack 88
+	445 Move r14, stack:0x0
+	446 ShiftStack 8
+	447 Move rbp, stack:0x0
+	448 ShiftStack 8
+	449 Return rax
+	450 Move rcx, typeof(UnityEngine.Debug)
+	451 Compare [rcx+228], r12
+	452 JumpIfNotEqual {454}
+	453 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	454 Move rcx, "Only universal renderer supports Decal renderer feature."
+	455 Move rdx, 0
+	456 Call Debug.LogError, rcx, rdx
+	457 Move [rbp+40], r12
+	458 Move rax, 0
+	459 Goto {438}
+	460 Move rax, 1
+	461 ShiftStack 88
+	462 Move r14, stack:0x0
+	463 ShiftStack 8
+	464 Move rbp, stack:0x0
+	465 ShiftStack 8
+	466 Return rax
+	467 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void OnCameraPreCull(UnityEngine.Rendering.Universal.ScriptableRenderer renderer, in UnityEngine.Rendering.Universal.CameraData cameraData)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rax,[r8]
+	mov rsi,rdx
+	mov rbx,rcx
+	mov [rsp+40h],rax
+	xor edx,edx
+	lea rcx,[rsp+40h]
+	mov rdi,r8
+	call 0000000182354700h
+	cmp dword ptr [rax],4
+	je near ptr 00000001822FB66Ah
+	xor r9d,r9d
+	mov r8,rdi
+	mov rdx,rsi
+	mov rcx,rbx
+	call 00000001822FB680h
+	test al,al
+	je near ptr 00000001822FB66Ah
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822FAAA0h
+	mov rcx,[rbx+50h]
+	test rcx,rcx
+	je near ptr 00000001822FB67Ah
+	xor edx,edx
+	call 00000001822AB1A0h
+	mov rcx,[rbx+58h]
+	test rcx,rcx
+	je near ptr 00000001822FB67Ah
+	xor edx,edx
+	call 00000001822B2960h
+	mov rax,[rdi]
+	lea rcx,[rsp+40h]
+	xor edx,edx
+	mov [rsp+40h],rax
+	cmp dword ptr [rbx+28h],1
+	je short 00000001822FB63Ah
+	mov rsi,[rbx+0C0h]
+	call 0000000182354750h
+	test rsi,rsi
+	je near ptr 00000001822FB67Ah
+	mov rdx,[rax]
+	xor r8d,r8d
+	mov rcx,rsi
+	call 00000001822B22F0h
+	mov rcx,[rbx+70h]
+	test rcx,rcx
+	je near ptr 00000001822FB67Ah
+	xor edx,edx
+	call 00000001822A6270h
+	cmp dword ptr [rbx+28h],2
+	je short 00000001822FB621h
+	cmp dword ptr [rbx+28h],3
+	jne short 00000001822FB656h
+	mov rcx,[rbx+0D0h]
+	test rcx,rcx
+	je short 00000001822FB67Ah
+	xor r8d,r8d
+	mov rdx,rdi
+	call 00000001822A80C0h
+	jmp short 00000001822FB656h
+	mov rcx,[rbx+0B8h]
+	test rcx,rcx
+	je short 00000001822FB67Ah
+	xor r8d,r8d
+	mov rdx,rdi
+	call 00000001822A80C0h
+	jmp short 00000001822FB656h
+	mov rsi,[rbx+60h]
+	call 0000000182354750h
+	test rsi,rsi
+	je short 00000001822FB67Ah
+	mov rdx,[rax]
+	xor r8d,r8d
+	mov rcx,rsi
+	call 00000001822B2EB0h
+	mov rcx,[rbx+78h]
+	test rcx,rcx
+	je short 00000001822FB67Ah
+	xor r8d,r8d
+	mov rdx,rdi
+	call 00000001822A80C0h
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rax, [r8]
+	007 Move rsi, rdx
+	008 Move rbx, rcx
+	009 Move stack:0x40, rax
+	010 Move rdx, 0
+	011 LoadAddress rcx, stack:0x40
+	012 Move rdi, r8
+	013 Call CameraData.get_cameraType, rcx, rdx
+	014 Compare [rax], 4
+	015 JumpIfEqual {87}
+	016 Move r9, 0
+	017 Move r8, rdi
+	018 Move rdx, rsi
+	019 Move rcx, rbx
+	020 Call DecalRendererFeature.RecreateSystemsIfNeeded, rcx, rdx, r8
+	021 Compare rax, 0
+	022 JumpIfEqual {87}
+	023 Move rdx, 0
+	024 Move rcx, rbx
+	025 Call DecalRendererFeature.ChangeAdaptivePerformanceDrawDistances, rcx, rdx
+	026 Move rcx, [rbx+80]
+	027 Compare rcx, 0
+	028 JumpIfEqual {93}
+	029 Move rdx, 0
+	030 Call DecalEntityManager.Update, rcx, rdx
+	031 Move rcx, [rbx+88]
+	032 Compare rcx, 0
+	033 JumpIfEqual {93}
+	034 Move rdx, 0
+	035 Call DecalUpdateCachedSystem.Execute, rcx, rdx
+	036 Move rax, [rdi]
+	037 LoadAddress rcx, stack:0x40
+	038 Move rdx, 0
+	039 Move stack:0x40, rax
+	040 Compare [rbx+40], 1
+	041 JumpIfEqual {73}
+	042 Move rsi, [rbx+192]
+	043 Call CameraData.get_camera, rcx, rdx
+	044 Compare rsi, 0
+	045 JumpIfEqual {93}
+	046 Move rdx, [rax]
+	047 Move r8, 0
+	048 Move rcx, rsi
+	049 Call DecalSkipCulledSystem.Execute, rcx, rdx
+	050 Move rcx, [rbx+112]
+	051 Compare rcx, 0
+	052 JumpIfEqual {93}
+	053 Move rdx, 0
+	054 Call DecalCreateDrawCallSystem.Execute, rcx, rdx
+	055 Compare [rbx+40], 2
+	056 JumpIfEqual {66}
+	057 Compare [rbx+40], 3
+	058 JumpIfNotEqual {81}
+	059 Move rcx, [rbx+208]
+	060 Compare rcx, 0
+	061 JumpIfEqual {93}
+	062 Move r8, 0
+	063 Move rdx, rdi
+	064 Call DecalDrawSystem.Execute, rcx, rdx
+	065 Goto {81}
+	066 Move rcx, [rbx+184]
+	067 Compare rcx, 0
+	068 JumpIfEqual {93}
+	069 Move r8, 0
+	070 Move rdx, rdi
+	071 Call DecalDrawSystem.Execute, rcx, rdx
+	072 Goto {81}
+	073 Move rsi, [rbx+96]
+	074 Call CameraData.get_camera, rcx, rdx
+	075 Compare rsi, 0
+	076 JumpIfEqual {93}
+	077 Move rdx, [rax]
+	078 Move r8, 0
+	079 Move rcx, rsi
+	080 Call DecalUpdateCullingGroupSystem.Execute, rcx, rdx
+	081 Move rcx, [rbx+120]
+	082 Compare rcx, 0
+	083 JumpIfEqual {93}
+	084 Move r8, 0
+	085 Move rdx, rdi
+	086 Call DecalDrawSystem.Execute, rcx, rdx
+	087 Move rbx, stack:0x30
+	088 Move rsi, stack:0x38
+	089 ShiftStack 32
+	090 Move rdi, stack:0x0
+	091 ShiftStack 8
+	092 Return 
+	093 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void AddRenderPasses(UnityEngine.Rendering.Universal.ScriptableRenderer renderer, ref UnityEngine.Rendering.Universal.RenderingData renderingData)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837543CAh],0
+	mov rsi,r8
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 00000001822FA8D4h
+	lea rcx,[18352B678h]
+	call 000000018037BB90h
+	mov byte ptr [1837543CAh],1
+	mov rcx,[18352B678h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FA8E9h
+	call 000000018037BED0h
+	lea rcx,[rsi+8]
+	xor edx,edx
+	call 0000000182342950h
+	test al,al
+	jne near ptr 00000001822FAA30h
+	lea rcx,[rsi+8]
+	xor edx,edx
+	call 0000000182354700h
+	cmp dword ptr [rax],4
+	je near ptr 00000001822FAA86h
+	lea r8,[rsi+8]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov rcx,rbx
+	call 00000001822FB680h
+	test al,al
+	je near ptr 00000001822FAA30h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822FAAA0h
+	cmp dword ptr [rbx+28h],1
+	jne near ptr 00000001822FA9DDh
+	mov rcx,[rbx+68h]
+	test rcx,rcx
+	je near ptr 00000001822FAA94h
+	xor edx,edx
+	call 00000001822B2BB0h
+	mov rcx,[rbx+70h]
+	test rcx,rcx
+	je near ptr 00000001822FAA94h
+	xor edx,edx
+	call 00000001822A6270h
+	cmp dword ptr [rbx+28h],1
+	jne short 00000001822FA9DDh
+	test rdi,rdi
+	je near ptr 00000001822FAA94h
+	mov rdx,[18352B678h]
+	xor ecx,ecx
+	cmp [rdi],rdx
+	mov eax,ecx
+	cmove rax,rdi
+	test rax,rax
+	je near ptr 00000001822FAA94h
+	cmp [rdi],rdx
+	cmove rcx,rdi
+	xor edx,edx
+	call 000000018234E610h
+	mov rcx,[rbx+80h]
+	test rcx,rcx
+	je near ptr 00000001822FAA94h
+	cmp eax,1
+	je short 00000001822FA9D6h
+	mov byte ptr [rcx+0CCh],1
+	mov rax,[rbx+80h]
+	test rax,rax
+	je near ptr 00000001822FAA94h
+	mov dword ptr [rax+0C8h],1
+	jmp short 00000001822FA9DDh
+	mov byte ptr [rcx+0CCh],0
+	mov ecx,[rbx+28h]
+	sub ecx,1
+	je short 00000001822FAA51h
+	sub ecx,1
+	je short 00000001822FAA40h
+	cmp ecx,1
+	jne short 00000001822FAA30h
+	mov rcx,[rbx+0C8h]
+	test rcx,rcx
+	je near ptr 00000001822FAA94h
+	mov rdx,[rbx+0D8h]
+	mov [rcx+0F0h],rdx
+	add rcx,0F0h
+	call 000000018037ACB0h
+	test rdi,rdi
+	je short 00000001822FAA94h
+	mov rdx,[rbx+0C8h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 00000001822B7730h
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	test rdi,rdi
+	je short 00000001822FAA94h
+	mov rdx,[rbx+0B0h]
+	xor r8d,r8d
+	jmp short 00000001822FAA28h
+	test rdi,rdi
+	je short 00000001822FAA94h
+	mov rdx,[rbx+80h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 00000001822B7730h
+	mov rdx,[rbx+88h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 00000001822B7730h
+	mov rdx,[rbx+90h]
+	xor r8d,r8d
+	jmp short 00000001822FAA28h
+	test rdi,rdi
+	je short 00000001822FAA94h
+	mov rdx,[rbx+48h]
+	xor r8d,r8d
+	jmp short 00000001822FAA28h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x1837543CA], 0
+	007 Move rsi, r8
+	008 Move rdi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x18352B678]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x1837543CA], 1
+	014 Move rcx, typeof(UnityEngine.Rendering.Universal.UniversalRenderer)
+	015 Compare [rcx+228], 0
+	016 JumpIfNotEqual {18}
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [rsi+8]
+	019 Move rdx, 0
+	020 Call UniversalRenderer.IsOffscreenDepthTexture, rcx, rdx
+	021 Compare rax, 0
+	022 JumpIfNotEqual {101}
+	023 LoadAddress rcx, [rsi+8]
+	024 Move rdx, 0
+	025 Call CameraData.get_cameraType, rcx, rdx
+	026 Compare [rax], 4
+	027 JumpIfEqual {125}
+	028 LoadAddress r8, [rsi+8]
+	029 Move r9, 0
+	030 Move rdx, rdi
+	031 Move rcx, rbx
+	032 Call DecalRendererFeature.RecreateSystemsIfNeeded, rcx, rdx, r8
+	033 Compare rax, 0
+	034 JumpIfEqual {101}
+	035 Move rdx, 0
+	036 Move rcx, rbx
+	037 Call DecalRendererFeature.ChangeAdaptivePerformanceDrawDistances, rcx, rdx
+	038 Compare [rbx+40], 1
+	039 JumpIfNotEqual {81}
+	040 Move rcx, [rbx+104]
+	041 Compare rcx, 0
+	042 JumpIfEqual {130}
+	043 Move rdx, 0
+	044 Call DecalUpdateCulledSystem.Execute, rcx, rdx
+	045 Move rcx, [rbx+112]
+	046 Compare rcx, 0
+	047 JumpIfEqual {130}
+	048 Move rdx, 0
+	049 Call DecalCreateDrawCallSystem.Execute, rcx, rdx
+	050 Compare [rbx+40], 1
+	051 JumpIfNotEqual {81}
+	052 Compare rdi, 0
+	053 JumpIfEqual {130}
+	054 Move rdx, typeof(UnityEngine.Rendering.Universal.UniversalRenderer)
+	055 Move rcx, 0
+	056 Compare [rdi], rdx
+	057 Move rax, rcx
+	058 JumpIfNotEqual {60}
+	059 Move rax, rdi
+	060 Nop 
+	061 Compare rax, 0
+	062 JumpIfEqual {130}
+	063 Compare [rdi], rdx
+	064 JumpIfNotEqual {66}
+	065 Move rcx, rdi
+	066 Nop 
+	067 Move rdx, 0
+	068 Call UniversalRenderer.get_renderingModeActual, rcx, rdx
+	069 Move rcx, [rbx+128]
+	070 Compare rcx, 0
+	071 JumpIfEqual {130}
+	072 Compare rax, 1
+	073 JumpIfEqual {80}
+	074 Move [rcx+204], 1
+	075 Move rax, [rbx+128]
+	076 Compare rax, 0
+	077 JumpIfEqual {130}
+	078 Move [rax+200], 1
+	079 Goto {81}
+	080 Move [rcx+204], 0
+	081 Move rcx, [rbx+40]
+	082 Subtract rcx, rcx, 1
+	083 JumpIfEqual {112}
+	084 Subtract rcx, rcx, 1
+	085 JumpIfEqual {107}
+	086 Compare rcx, 1
+	087 JumpIfNotEqual {101}
+	088 Move rcx, [rbx+200]
+	089 Compare rcx, 0
+	090 JumpIfEqual {130}
+	091 Move rdx, [rbx+216]
+	092 Move [rcx+240], rdx
+	093 Add rcx, rcx, 240
+	094 Call 0x18037ACB0, rcx, rdx, r8, r9
+	095 Compare rdi, 0
+	096 JumpIfEqual {130}
+	097 Move rdx, [rbx+200]
+	098 Move r8, 0
+	099 Move rcx, rdi
+	100 Call ScriptableRenderer.EnqueuePass, rcx, rdx
+	101 Move rbx, stack:0x30
+	102 Move rsi, stack:0x38
+	103 ShiftStack 32
+	104 Move rdi, stack:0x0
+	105 ShiftStack 8
+	106 Return 
+	107 Compare rdi, 0
+	108 JumpIfEqual {130}
+	109 Move rdx, [rbx+176]
+	110 Move r8, 0
+	111 Goto {99}
+	112 Compare rdi, 0
+	113 JumpIfEqual {130}
+	114 Move rdx, [rbx+128]
+	115 Move r8, 0
+	116 Move rcx, rdi
+	117 Call ScriptableRenderer.EnqueuePass, rcx, rdx
+	118 Move rdx, [rbx+136]
+	119 Move r8, 0
+	120 Move rcx, rdi
+	121 Call ScriptableRenderer.EnqueuePass, rcx, rdx
+	122 Move rdx, [rbx+144]
+	123 Move r8, 0
+	124 Goto {99}
+	125 Compare rdi, 0
+	126 JumpIfEqual {130}
+	127 Move rdx, [rbx+72]
+	128 Move r8, 0
+	129 Goto {99}
+	130 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean SupportsNativeRenderPass()
+
+Disassembly:
+	cmp dword ptr [rcx+28h],3
+	jne short 00000001822FC179h
+	mov al,1
+	ret
+	cmp dword ptr [rcx+28h],2
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+40], 3
+	002 JumpIfNotEqual {5}
+	003 Move rax, 1
+	004 Return rax
+	005 Compare [rcx+40], 2
+	006 NotImplemented "sete al"
+	007 Return rax
+
+Method: System.Void SetupRenderPasses(UnityEngine.Rendering.Universal.ScriptableRenderer renderer, in UnityEngine.Rendering.Universal.RenderingData renderingData)
+
+Disassembly:
+	push rbx
+	push rdi
+	push r14
+	sub rsp,60h
+	cmp byte ptr [1837543CBh],0
+	mov r14,r8
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 00000001822FBF7Eh
+	lea rcx,[18352B678h]
+	call 000000018037BB90h
+	mov byte ptr [1837543CBh],1
+	mov [rsp+80h],rbp
+	mov [rsp+90h],rsi
+	test rdi,rdi
+	je near ptr 00000001822FC16Ah
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001822C4E80h
+	test rax,rax
+	je near ptr 00000001822FC039h
+	cmp dword ptr [rbx+28h],1
+	je near ptr 00000001822FC052h
+	cmp dword ptr [rbx+28h],3
+	jne short 00000001822FC039h
+	mov rax,[rbx+0D8h]
+	test rax,rax
+	je near ptr 00000001822FC16Ah
+	cmp byte ptr [rax+15h],0
+	je short 00000001822FC039h
+	mov rax,[r14+8]
+	lea rcx,[rsp+88h]
+	mov rbx,[rbx+0C8h]
+	xor edx,edx
+	mov [rsp+88h],rax
+	call 00000001823546B0h
+	test rbx,rbx
+	je near ptr 00000001822FC16Ah
+	movups xmm0,[rax]
+	mov r9,[rbx]
+	lea r8,[rsp+20h]
+	movups xmm1,[rax+10h]
+	xor edx,edx
+	mov rcx,rbx
+	movaps [rsp+20h],xmm0
+	movups xmm0,[rax+20h]
+	mov eax,[rax+30h]
+	mov [rsp+50h],eax
+	mov rax,[r9+1A8h]
+	mov r9,[r9+1B0h]
+	movaps [rsp+30h],xmm1
+	movaps [rsp+40h],xmm0
+	call rax
+	mov rsi,[rsp+90h]
+	mov rbp,[rsp+80h]
+	add rsp,60h
+	pop r14
+	pop rdi
+	pop rbx
+	ret
+	mov rcx,[rbx+88h]
+	test rcx,rcx
+	je near ptr 00000001822FC16Ah
+	lea rdx,[r14+8]
+	xor r8d,r8d
+	call 00000001822A5310h
+	mov rax,[18352B678h]
+	xor esi,esi
+	cmp [rdi],rax
+	cmove rsi,rdi
+	test rsi,rsi
+	je near ptr 00000001822FC16Ah
+	xor edx,edx
+	mov rcx,rsi
+	call 000000018234E610h
+	mov rbp,[rbx+88h]
+	cmp eax,1
+	je short 00000001822FC119h
+	test rbp,rbp
+	je near ptr 00000001822FC16Ah
+	lea rdx,[r14+8]
+	xor r8d,r8d
+	mov rcx,rbp
+	call 00000001822A5310h
+	mov r8,[rbx+88h]
+	test r8,r8
+	je near ptr 00000001822FC16Ah
+	mov rcx,[rbx+80h]
+	test rcx,rcx
+	je near ptr 00000001822FC16Ah
+	mov r8,[r8+108h]
+	xor r9d,r9d
+	mov rdx,[rsi+260h]
+	call 000000018236C2A0h
+	mov rax,[rbx+80h]
+	test rax,rax
+	je short 00000001822FC16Ah
+	mov byte ptr [rax+0CCh],1
+	mov rax,[rbx+80h]
+	test rax,rax
+	je short 00000001822FC16Ah
+	mov dword ptr [rax+0C8h],1
+	jmp near ptr 00000001822FC039h
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001822C4F50h
+	test rbp,rbp
+	je short 00000001822FC16Ah
+	lea rdx,[r14+8]
+	xor r9d,r9d
+	mov r8,rax
+	mov rcx,rbp
+	call 00000001822A4F20h
+	mov rbx,[rbx+80h]
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001822C4F50h
+	test rbx,rbx
+	je short 00000001822FC16Ah
+	mov r8,[rsi+260h]
+	xor r9d,r9d
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018236C2A0h
+	jmp near ptr 00000001822FC039h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -96
+	008 Compare [0x1837543CB], 0
+	009 Move r14, r8
+	010 Move rdi, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18352B678]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837543CB], 1
+	016 Move stack:0x80, rbp
+	017 Move stack:0x90, rsi
+	018 Compare rdi, 0
+	019 JumpIfEqual {134}
+	020 Move rdx, 0
+	021 Move rcx, rdi
+	022 Call ScriptableRenderer.get_cameraColorTargetHandle, rcx, rdx
+	023 Compare rax, 0
+	024 JumpIfEqual {57}
+	025 Compare [rbx+40], 1
+	026 JumpIfEqual {67}
+	027 Compare [rbx+40], 3
+	028 JumpIfNotEqual {57}
+	029 Move rax, [rbx+216]
+	030 Compare rax, 0
+	031 JumpIfEqual {134}
+	032 Compare [rax+21], 0
+	033 JumpIfEqual {57}
+	034 Move rax, [r14+8]
+	035 LoadAddress rcx, stack:0x88
+	036 Move rbx, [rbx+200]
+	037 Move rdx, 0
+	038 Move stack:0x88, rax
+	039 Call CameraData.get_cameraTargetDescriptor, rcx, rdx
+	040 Compare rbx, 0
+	041 JumpIfEqual {134}
+	042 Move xmm0, [rax]
+	043 Move r9, [rbx]
+	044 LoadAddress r8, stack:0x20
+	045 Move xmm1, [rax+16]
+	046 Move rdx, 0
+	047 Move rcx, rbx
+	048 Move stack:0x20, xmm0
+	049 Move xmm0, [rax+32]
+	050 Move rax, [rax+48]
+	051 Move stack:0x50, rax
+	052 Move rax, [r9+424]
+	053 Move r9, [r9+432]
+	054 Move stack:0x30, xmm1
+	055 Move stack:0x40, xmm0
+	056 Call rax
+	057 Move rsi, stack:0x90
+	058 Move rbp, stack:0x80
+	059 ShiftStack 96
+	060 Move r14, stack:0x0
+	061 ShiftStack 8
+	062 Move rdi, stack:0x0
+	063 ShiftStack 8
+	064 Move rbx, stack:0x0
+	065 ShiftStack 8
+	066 Return 
+	067 Move rcx, [rbx+136]
+	068 Compare rcx, 0
+	069 JumpIfEqual {134}
+	070 LoadAddress rdx, [r14+8]
+	071 Move r8, 0
+	072 Call DBufferRenderPass.Setup, rcx, rdx
+	073 Move rax, typeof(UnityEngine.Rendering.Universal.UniversalRenderer)
+	074 Move rsi, 0
+	075 Compare [rdi], rax
+	076 JumpIfNotEqual {78}
+	077 Move rsi, rdi
+	078 Nop 
+	079 Compare rsi, 0
+	080 JumpIfEqual {134}
+	081 Move rdx, 0
+	082 Move rcx, rsi
+	083 Call UniversalRenderer.get_renderingModeActual, rcx, rdx
+	084 Move rbp, [rbx+136]
+	085 Compare rax, 1
+	086 JumpIfEqual {112}
+	087 Compare rbp, 0
+	088 JumpIfEqual {134}
+	089 LoadAddress rdx, [r14+8]
+	090 Move r8, 0
+	091 Move rcx, rbp
+	092 Call DBufferRenderPass.Setup, rcx, rdx
+	093 Move r8, [rbx+136]
+	094 Compare r8, 0
+	095 JumpIfEqual {134}
+	096 Move rcx, [rbx+128]
+	097 Compare rcx, 0
+	098 JumpIfEqual {134}
+	099 Move r8, [r8+264]
+	100 Move r9, 0
+	101 Move rdx, [rsi+608]
+	102 Call CopyDepthPass.Setup, rcx, rdx, r8
+	103 Move rax, [rbx+128]
+	104 Compare rax, 0
+	105 JumpIfEqual {134}
+	106 Move [rax+204], 1
+	107 Move rax, [rbx+128]
+	108 Compare rax, 0
+	109 JumpIfEqual {134}
+	110 Move [rax+200], 1
+	111 Goto {57}
+	112 Move rdx, 0
+	113 Move rcx, rdi
+	114 Call ScriptableRenderer.get_cameraDepthTargetHandle, rcx, rdx
+	115 Compare rbp, 0
+	116 JumpIfEqual {134}
+	117 LoadAddress rdx, [r14+8]
+	118 Move r9, 0
+	119 Move r8, rax
+	120 Move rcx, rbp
+	121 Call DBufferRenderPass.Setup, rcx, rdx, r8
+	122 Move rbx, [rbx+128]
+	123 Move rdx, 0
+	124 Move rcx, rdi
+	125 Call ScriptableRenderer.get_cameraDepthTargetHandle, rcx, rdx
+	126 Compare rbx, 0
+	127 JumpIfEqual {134}
+	128 Move r8, [rsi+608]
+	129 Move r9, 0
+	130 Move rdx, rax
+	131 Move rcx, rbx
+	132 Call CopyDepthPass.Setup, rcx, rdx, r8
+	133 Goto {57}
+	134 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void Dispose(System.Boolean disposing)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837543CCh],0
+	mov rbx,rcx
+	jne short 00000001822FACA5h
+	lea rcx,[183517628h]
+	call 000000018037BB90h
+	lea rcx,[1835219A0h]
+	call 000000018037BB90h
+	mov byte ptr [1837543CCh],1
+	mov rcx,[rbx+88h]
+	test rcx,rcx
+	je short 00000001822FACB8h
+	xor edx,edx
+	call 00000001822A2CF0h
+	mov rcx,[rbx+80h]
+	test rcx,rcx
+	je short 00000001822FACCBh
+	xor edx,edx
+	call 000000018236AF70h
+	mov rcx,[183517628h]
+	mov rdi,[rbx+0A8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FACE7h
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rdi
+	call 00000001821ED680h
+	cmp qword ptr [rbx+50h],0
+	je near ptr 00000001822FAEFBh
+	lea rcx,[rbx+50h]
+	mov qword ptr [rbx+50h],0
+	xor edx,edx
+	call 000000018037ACB0h
+	mov rcx,[1835219A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FAD24h
+	call 000000018037BED0h
+	cmp byte ptr [183754416h],0
+	jne short 00000001822FAD40h
+	lea rcx,[1835219A0h]
+	call 000000018037BB90h
+	mov byte ptr [183754416h],1
+	mov rcx,[1835219A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FAD55h
+	call 000000018037BED0h
+	mov rax,[1835219A0h]
+	mov rcx,[rax+0B8h]
+	mov rdi,[rcx]
+	test rdi,rdi
+	je near ptr 00000001822FAF06h
+	cmp dword ptr [rdi+18h],0
+	je near ptr 00000001822FAEFBh
+	sub dword ptr [rdi+18h],1
+	jne near ptr 00000001822FAEFBh
+	cmp byte ptr [1837543BFh],0
+	jne short 00000001822FADE7h
+	lea rcx,[1834FAA30h]
+	call 000000018037BB90h
+	lea rcx,[1835699B0h]
+	call 000000018037BB90h
+	lea rcx,[183502BE0h]
+	call 000000018037BB90h
+	lea rcx,[183502C90h]
+	call 000000018037BB90h
+	lea rcx,[183502D48h]
+	call 000000018037BB90h
+	lea rcx,[183502DF8h]
+	call 000000018037BB90h
+	lea rcx,[183502EA8h]
+	call 000000018037BB90h
+	mov byte ptr [1837543BFh],1
+	mov rcx,[rdi+10h]
+	test rcx,rcx
+	je near ptr 00000001822FAF06h
+	xor edx,edx
+	call 00000001822AA0E0h
+	lea rcx,[rdi+10h]
+	mov qword ptr [rdi+10h],0
+	xor edx,edx
+	call 000000018037ACB0h
+	mov dword ptr [rdi+18h],0
+	mov rcx,[1835699B0h]
+	call 000000018037BDE0h
+	mov r8,[183502C90h]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180E32180h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822B08F0h
+	mov rcx,[1835699B0h]
+	call 000000018037BDE0h
+	mov r8,[183502EA8h]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180E32180h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822B0B30h
+	mov rcx,[1835699B0h]
+	call 000000018037BDE0h
+	mov r8,[183502DF8h]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180E32180h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822B0A70h
+	mov rcx,[1835699B0h]
+	call 000000018037BDE0h
+	mov r8,[183502D48h]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180E32180h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822B09B0h
+	mov rcx,[1834FAA30h]
+	call 000000018037BDE0h
+	mov r8,[183502BE0h]
+	xor r9d,r9d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001806FDD60h
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001822B0830h
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837543CC], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x183517628]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x1835219A0]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x1837543CC], 1
+	013 Move rcx, [rbx+136]
+	014 Compare rcx, 0
+	015 JumpIfEqual {18}
+	016 Move rdx, 0
+	017 Call DBufferRenderPass.Dispose, rcx, rdx
+	018 Move rcx, [rbx+128]
+	019 Compare rcx, 0
+	020 JumpIfEqual {23}
+	021 Move rdx, 0
+	022 Call CopyDepthPass.Dispose, rcx, rdx
+	023 Move rcx, typeof(UnityEngine.Rendering.CoreUtils)
+	024 Move rdi, [rbx+168]
+	025 Compare [rcx+228], 0
+	026 JumpIfNotEqual {28}
+	027 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	028 Move rdx, 0
+	029 Move rcx, rdi
+	030 Call CoreUtils.Destroy, rcx, rdx
+	031 Compare [rbx+80], 0
+	032 JumpIfEqual {141}
+	033 LoadAddress rcx, [rbx+80]
+	034 Move [rbx+80], 0
+	035 Move rdx, 0
+	036 Call 0x18037ACB0, rcx, rdx, r8, r9
+	037 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	038 Compare [rcx+228], 0
+	039 JumpIfNotEqual {41}
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Compare [0x183754416], 0
+	042 JumpIfNotEqual {46}
+	043 LoadAddress rcx, [0x1835219A0]
+	044 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	045 Move [0x183754416], 1
+	046 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	047 Compare [rcx+228], 0
+	048 JumpIfNotEqual {50}
+	049 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	050 Move rax, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	051 Move rcx, [rax+184]
+	052 Move rdi, [rcx]
+	053 Compare rdi, 0
+	054 JumpIfEqual {146}
+	055 Compare [rdi+24], 0
+	056 JumpIfEqual {141}
+	057 Subtract [rdi+24], [rdi+24], 1
+	058 JumpIfNotEqual {141}
+	059 Compare [0x1837543BF], 0
+	060 JumpIfNotEqual {76}
+	061 LoadAddress rcx, [0x1834FAA30]
+	062 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	063 LoadAddress rcx, [0x1835699B0]
+	064 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	065 LoadAddress rcx, [0x183502BE0]
+	066 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	067 LoadAddress rcx, [0x183502C90]
+	068 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	069 LoadAddress rcx, [0x183502D48]
+	070 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	071 LoadAddress rcx, [0x183502DF8]
+	072 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	073 LoadAddress rcx, [0x183502EA8]
+	074 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	075 Move [0x1837543BF], 1
+	076 Move rcx, [rdi+16]
+	077 Compare rcx, 0
+	078 JumpIfEqual {146}
+	079 Move rdx, 0
+	080 Call DecalEntityManager.Dispose, rcx, rdx
+	081 LoadAddress rcx, [rdi+16]
+	082 Move [rdi+16], 0
+	083 Move rdx, 0
+	084 Call 0x18037ACB0, rcx, rdx, r8, r9
+	085 Move [rdi+24], 0
+	086 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalProjector+DecalProjectorAction)
+	087 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	088 Move r8, [0x183502C90]
+	089 Move r9, 0
+	090 Move rdx, rdi
+	091 Move rcx, rax
+	092 Move rbx, rax
+	093 Call 0x180E32180, rcx, rdx, r8
+	094 Move rdx, 0
+	095 Move rcx, rbx
+	096 Call DecalProjector.remove_onDecalAdd, rcx, rdx
+	097 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalProjector+DecalProjectorAction)
+	098 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	099 Move r8, [0x183502EA8]
+	100 Move r9, 0
+	101 Move rdx, rdi
+	102 Move rcx, rax
+	103 Move rbx, rax
+	104 Call 0x180E32180, rcx, rdx, r8
+	105 Move rdx, 0
+	106 Move rcx, rbx
+	107 Call DecalProjector.remove_onDecalRemove, rcx, rdx
+	108 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalProjector+DecalProjectorAction)
+	109 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	110 Move r8, [0x183502DF8]
+	111 Move r9, 0
+	112 Move rdx, rdi
+	113 Move rcx, rax
+	114 Move rbx, rax
+	115 Call 0x180E32180, rcx, rdx, r8
+	116 Move rdx, 0
+	117 Move rcx, rbx
+	118 Call DecalProjector.remove_onDecalPropertyChange, rcx, rdx
+	119 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalProjector+DecalProjectorAction)
+	120 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	121 Move r8, [0x183502D48]
+	122 Move r9, 0
+	123 Move rdx, rdi
+	124 Move rcx, rax
+	125 Move rbx, rax
+	126 Call 0x180E32180, rcx, rdx, r8
+	127 Move rdx, 0
+	128 Move rcx, rbx
+	129 Call DecalProjector.remove_onDecalMaterialChange, rcx, rdx
+	130 Move rcx, typeof(System.Action)
+	131 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	132 Move r8, [0x183502BE0]
+	133 Move r9, 0
+	134 Move rdx, rdi
+	135 Move rcx, rax
+	136 Move rbx, rax
+	137 Call 0x1806FDD60, rcx, rdx, r8
+	138 Move rdx, 0
+	139 Move rcx, rbx
+	140 Call DecalProjector.remove_onAllDecalPropertyChange, rcx, rdx
+	141 Move rbx, stack:0x30
+	142 ShiftStack 32
+	143 Move rdi, stack:0x0
+	144 ShiftStack 8
+	145 Return 
+	146 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void ChangeAdaptivePerformanceDrawDistances()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [1837543CDh],0
+	mov rbx,rcx
+	jne short 00000001822FAAD1h
+	lea rcx,[1834FB298h]
+	call 000000018037BB90h
+	lea rcx,[18352B388h]
+	call 000000018037BB90h
+	mov byte ptr [1837543CDh],1
+	mov rcx,[18352B388h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FAAE6h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 000000018233D500h
+	test rax,rax
+	je near ptr 00000001822FABECh
+	cmp byte ptr [rax+104h],0
+	je near ptr 00000001822FABE6h
+	cmp qword ptr [rbx+70h],0
+	je short 00000001822FAB72h
+	mov rcx,[1834FB298h]
+	mov [rsp+30h],rdi
+	mov rdi,[rbx+70h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FAB28h
+	call 000000018037BED0h
+	cmp byte ptr [183752815h],0
+	jne short 00000001822FAB44h
+	lea rcx,[1834FB298h]
+	call 000000018037BB90h
+	mov byte ptr [183752815h],1
+	mov rcx,[1834FB298h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FAB59h
+	call 000000018037BED0h
+	mov rax,[1834FB298h]
+	mov rcx,[rax+0B8h]
+	mov eax,[rcx+0Ch]
+	mov [rdi+20h],eax
+	mov rdi,[rsp+30h]
+	cmp qword ptr [rbx+60h],0
+	je short 00000001822FABE6h
+	mov rcx,[1834FB298h]
+	mov rbx,[rbx+60h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FAB92h
+	call 000000018037BED0h
+	cmp byte ptr [183752815h],0
+	jne short 00000001822FABAEh
+	lea rcx,[1834FB298h]
+	call 000000018037BB90h
+	mov byte ptr [183752815h],1
+	mov rcx,[1834FB298h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822FABC3h
+	call 000000018037BED0h
+	mov rax,[1834FB298h]
+	xor r8d,r8d
+	mov rcx,rbx
+	mov rdx,[rax+0B8h]
+	movss xmm1,dword ptr [rdx+0Ch]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 00000001822B3480h
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x1837543CD], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {12}
+	007 LoadAddress rcx, [0x1834FB298]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 LoadAddress rcx, [0x18352B388]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x1837543CD], 1
+	012 Move rcx, typeof(UnityEngine.Rendering.Universal.UniversalRenderPipeline)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move rcx, 0
+	017 Call UniversalRenderPipeline.get_asset, rcx
+	018 Compare rax, 0
+	019 JumpIfEqual {74}
+	020 Compare [rax+260], 0
+	021 JumpIfEqual {70}
+	022 Compare [rbx+112], 0
+	023 JumpIfEqual {44}
+	024 Move rcx, typeof(UnityEngine.AdaptivePerformance.AdaptivePerformanceRenderSettings)
+	025 Move stack:0x30, rdi
+	026 Move rdi, [rbx+112]
+	027 Compare [rcx+228], 0
+	028 JumpIfNotEqual {30}
+	029 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	030 Compare [0x183752815], 0
+	031 JumpIfNotEqual {35}
+	032 LoadAddress rcx, [0x1834FB298]
+	033 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	034 Move [0x183752815], 1
+	035 Move rcx, typeof(UnityEngine.AdaptivePerformance.AdaptivePerformanceRenderSettings)
+	036 Compare [rcx+228], 0
+	037 JumpIfNotEqual {39}
+	038 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	039 Move rax, typeof(UnityEngine.AdaptivePerformance.AdaptivePerformanceRenderSettings)
+	040 Move rcx, [rax+184]
+	041 Move rax, [rcx+12]
+	042 Move [rdi+32], rax
+	043 Move rdi, stack:0x30
+	044 Compare [rbx+96], 0
+	045 JumpIfEqual {70}
+	046 Move rcx, typeof(UnityEngine.AdaptivePerformance.AdaptivePerformanceRenderSettings)
+	047 Move rbx, [rbx+96]
+	048 Compare [rcx+228], 0
+	049 JumpIfNotEqual {51}
+	050 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	051 Compare [0x183752815], 0
+	052 JumpIfNotEqual {56}
+	053 LoadAddress rcx, [0x1834FB298]
+	054 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	055 Move [0x183752815], 1
+	056 Move rcx, typeof(UnityEngine.AdaptivePerformance.AdaptivePerformanceRenderSettings)
+	057 Compare [rcx+228], 0
+	058 JumpIfNotEqual {60}
+	059 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	060 Move rax, typeof(UnityEngine.AdaptivePerformance.AdaptivePerformanceRenderSettings)
+	061 Move r8, 0
+	062 Move rcx, rbx
+	063 Move rdx, [rax+184]
+	064 Move xmm1, [rdx+12]
+	065 ShiftStack 32
+	066 Move rbx, stack:0x0
+	067 ShiftStack 8
+	068 Call DecalUpdateCullingGroupSystem.set_boundingDistance, rcx, rdx
+	069 Return 
+	070 ShiftStack 32
+	071 Move rbx, stack:0x0
+	072 ShiftStack 8
+	073 Return 
+	074 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837543CEh],0
+	mov rdi,rcx
+	jne short 00000001822FC239h
+	lea rcx,[183521BE0h]
+	call 000000018037BB90h
+	mov byte ptr [1837543CEh],1
+	mov rcx,[183521BE0h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	mov dword ptr [rax+14h],447A0000h
+	call 0000000180456D90h
+	lea rcx,[rdi+20h]
+	mov [rdi+20h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	xor edx,edx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018231E160h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837543CE], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183521BE0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x1837543CE], 1
+	011 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalSettings)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Move [rax+20], 0x447A0000
+	017 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	018 LoadAddress rcx, [rdi+32]
+	019 Move [rdi+32], rbx
+	020 Move rdx, rbx
+	021 Call 0x18037ACB0, rcx, rdx, r8, r9
+	022 Move rdx, 0
+	023 Move rcx, rdi
+	024 Move rbx, stack:0x30
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Call ScriptableRendererFeature..ctor, rcx, rdx
+	029 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [1837543CFh],0
+	jne short 00000001822FC1BEh
+	lea rcx,[1835219A0h]
+	call 000000018037BB90h
+	lea rcx,[18350F0E0h]
+	call 000000018037BB90h
+	mov byte ptr [1837543CFh],1
+	mov rcx,[18350F0E0h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	mov rcx,[1835219A0h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[1835219A0h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x1837543CF], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x1835219A0]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x18350F0E0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x1837543CF], 1
+	011 Move rcx, typeof(UnityEngine.Rendering.Universal.SharedDecalEntityManager)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	017 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	018 Move rdx, [rcx+184]
+	019 Move [rdx], rbx
+	020 Move rdx, rbx
+	021 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalRendererFeature)
+	022 Move rcx, [rcx+184]
+	023 ShiftStack 32
+	024 Move rbx, stack:0x0
+	025 ShiftStack 8
+	026 Call 0x18037ACB0, rcx, rdx, r8, r9
+	027 Return 
+

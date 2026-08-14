@@ -1,0 +1,546 @@
+Type: System.Runtime.Remoting.Channels.CrossAppDomainChannel
+
+Method: System.Void RegisterCrossAppDomainChannel()
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	cmp byte ptr [18374EBB1h],0
+	jne short 00000001816DF1CEh
+	lea rcx,[18350EF30h]
+	call 000000018037BB90h
+	lea rcx,[183517AA8h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBB1h],1
+	mov rax,[183517AA8h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 00000001816DF1EDh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183517AA8h]
+	mov rax,[rax+0B8h]
+	mov rcx,[rax]
+	mov [rsp+60h],rcx
+	mov byte ptr [rsp+58h],0
+	mov qword ptr [rsp+28h],0
+	lea rax,[rsp+58h]
+	mov [rsp+30h],rax
+	lea rax,[rsp+60h]
+	mov [rsp+38h],rax
+	xor r8d,r8d
+	lea rdx,[rsp+58h]
+	mov rcx,[rsp+60h]
+	call 000000018187C7B0h
+	mov rcx,[183517AA8h]
+	call 000000018037BDE0h
+	mov rbx,rax
+	xor edx,edx
+	mov rcx,rax
+	call 0000000180456D90h
+	mov rcx,[18350EF30h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001816DF25Eh
+	call 000000018037BED0h
+	cmp byte ptr [18374EBA7h],0
+	jne short 00000001816DF27Ah
+	lea rcx,[18350EF30h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBA7h],1
+	mov rcx,[18350EF30h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001816DF28Fh
+	call 000000018037BED0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001816DC910h
+	nop
+	cmp byte ptr [rsp+58h],0
+	je short 00000001816DF2B0h
+	xor edx,edx
+	mov rcx,[rsp+60h]
+	call 000000018187C840h
+	jmp short 00000001816DF2CFh
+	cmp byte ptr [rsp+58h],0
+	je short 00000001816DF2C5h
+	xor edx,edx
+	mov rcx,[rsp+60h]
+	call 000000018187C840h
+	mov rcx,[rsp+28h]
+	test rcx,rcx
+	jne short 00000001816DF2D5h
+	add rsp,40h
+	pop rbx
+	ret
+	call 000000018037BEC0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Compare [0x18374EBB1], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x18350EF30]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183517AA8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374EBB1], 1
+	011 Move rax, typeof(System.Runtime.Remoting.Channels.CrossAppDomainChannel)
+	012 Compare [rax+228], 0
+	013 JumpIfNotEqual {17}
+	014 Move rcx, rax
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move rax, typeof(System.Runtime.Remoting.Channels.CrossAppDomainChannel)
+	017 Move rax, [rax+184]
+	018 Move rcx, [rax]
+	019 Move stack:0x60, rcx
+	020 Move stack:0x58, 0
+	021 Move stack:0x28, 0
+	022 LoadAddress rax, stack:0x58
+	023 Move stack:0x30, rax
+	024 LoadAddress rax, stack:0x60
+	025 Move stack:0x38, rax
+	026 Move r8, 0
+	027 LoadAddress rdx, stack:0x58
+	028 Move rcx, stack:0x60
+	029 Call Monitor.Enter, rcx, rdx, r8
+	030 Move rcx, typeof(System.Runtime.Remoting.Channels.CrossAppDomainChannel)
+	031 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	032 Move rbx, rax
+	033 Move rdx, 0
+	034 Move rcx, rax
+	035 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	036 Move rcx, typeof(System.Runtime.Remoting.Channels.ChannelServices)
+	037 Compare [rcx+228], 0
+	038 JumpIfNotEqual {40}
+	039 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	040 Compare [0x18374EBA7], 0
+	041 JumpIfNotEqual {45}
+	042 LoadAddress rcx, [0x18350EF30]
+	043 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	044 Move [0x18374EBA7], 1
+	045 Move rcx, typeof(System.Runtime.Remoting.Channels.ChannelServices)
+	046 Compare [rcx+228], 0
+	047 JumpIfNotEqual {49}
+	048 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	049 Move r8, 0
+	050 Move rdx, 0
+	051 Move rcx, rbx
+	052 Call ChannelServices.RegisterChannel, rcx, rdx, r8
+	053 Nop 
+	054 Compare stack:0x58, 0
+	055 JumpIfEqual {59}
+	056 Move rdx, 0
+	057 Move rcx, stack:0x60
+	058 Call Monitor.Exit, rcx, rdx
+	059 Goto {68}
+	060 Compare stack:0x58, 0
+	061 JumpIfEqual {65}
+	062 Move rdx, 0
+	063 Move rcx, stack:0x60
+	064 Call Monitor.Exit, rcx, rdx
+	065 Move rcx, stack:0x28
+	066 Compare rcx, 0
+	067 JumpIfNotEqual {72}
+	068 ShiftStack 64
+	069 Move rbx, stack:0x0
+	070 ShiftStack 8
+	071 Return 
+	072 Call 0x18037BEC0, rcx, rdx, r8, r9
+
+Method: System.String get_ChannelName()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18374EBB2h],0
+	jne short 00000001816DF450h
+	lea rcx,[1835101D0h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBB2h],1
+	mov rax,[1835101D0h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18374EBB2], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1835101D0]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374EBB2], 1
+	007 Move rax, "MONOCAD"
+	008 ShiftStack 40
+	009 Return rax
+
+Method: System.Int32 get_ChannelPriority()
+
+Disassembly:
+	mov eax,64h
+	ret
+
+ISIL:
+	001 Move rax, 100
+	002 Return rax
+
+Method: System.Object get_ChannelData()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374EBB3h],0
+	jne short 00000001816DF386h
+	lea rcx,[183517B68h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBB3h],1
+	xor ecx,ecx
+	call 000000018189C550h
+	mov rcx,[183517B68h]
+	mov edi,eax
+	call 000000018037BDE0h
+	cmp byte ptr [18374EBB0h],0
+	mov rbx,rax
+	jne short 00000001816DF3BAh
+	lea rcx,[183502840h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBB0h],1
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180456D90h
+	mov rcx,[18375C0E8h]
+	lea rdx,[rsp+40h]
+	mov dword ptr [rsp+40h],0
+	call 000000018037AC90h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov [rbx+18h],edi
+	mov rcx,[183502840h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001816DF405h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001816C79C0h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rax
+	mov rdx,rax
+	call 000000018037ACB0h
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374EBB3], 0
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183517B68]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x18374EBB3], 1
+	010 Move rcx, 0
+	011 Call Thread.GetDomainID, rcx
+	012 Move rcx, typeof(System.Runtime.Remoting.Channels.CrossAppDomainData)
+	013 Move rdi, rax
+	014 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	015 Compare [0x18374EBB0], 0
+	016 Move rbx, rax
+	017 JumpIfNotEqual {21}
+	018 LoadAddress rcx, [0x183502840]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 Move [0x18374EBB0], 1
+	021 Move rdx, 0
+	022 Move rcx, rbx
+	023 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	024 Move rcx, [0x18375C0E8]
+	025 LoadAddress rdx, stack:0x40
+	026 Move stack:0x40, 0
+	027 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	028 LoadAddress rcx, [rbx+16]
+	029 Move [rbx+16], rax
+	030 Move rdx, rax
+	031 Call 0x18037ACB0, rcx, rdx, r8, r9
+	032 Move [rbx+24], rdi
+	033 Move rcx, typeof(System.Runtime.Remoting.RemotingConfiguration)
+	034 Compare [rcx+228], 0
+	035 JumpIfNotEqual {37}
+	036 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	037 Move rcx, 0
+	038 Call RemotingConfiguration.get_ProcessId, rcx
+	039 LoadAddress rcx, [rbx+32]
+	040 Move [rbx+32], rax
+	041 Move rdx, rax
+	042 Call 0x18037ACB0, rcx, rdx, r8, r9
+	043 Move rax, rbx
+	044 Move rbx, stack:0x30
+	045 ShiftStack 32
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return rax
+
+Method: System.Void StartListening(System.Object data)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Runtime.Remoting.Messaging.IMessageSink CreateMessageSink(System.String url, System.Object data, out System.String uri)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374EBB4h],0
+	mov rdi,r9
+	mov rbx,r8
+	mov rsi,rdx
+	jne short 00000001816DF078h
+	lea rcx,[183517B68h]
+	call 000000018037BB90h
+	lea rcx,[183517C28h]
+	call 000000018037BB90h
+	lea rcx,[183502840h]
+	call 000000018037BB90h
+	lea rcx,[1835101D0h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBB4h],1
+	xor edx,edx
+	mov qword ptr [rdi],0
+	mov rcx,rdi
+	call 000000018037ACB0h
+	test rbx,rbx
+	je near ptr 00000001816DF11Fh
+	mov rdx,[183517B68h]
+	mov r8,[rbx]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r8+130h],al
+	jb short 00000001816DF11Fh
+	movzx ecx,al
+	mov rax,[r8+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	jne short 00000001816DF11Fh
+	mov rcx,[183502840h]
+	mov rdi,[rbx+20h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001816DF0D6h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 00000001816C79C0h
+	xor r8d,r8d
+	mov rdx,rax
+	mov rcx,rdi
+	call 000000018165D590h
+	test al,al
+	je short 00000001816DF11Fh
+	mov rcx,[183517C28h]
+	mov ebx,[rbx+18h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001816DF107h
+	call 000000018037BED0h
+	xor edx,edx
+	mov ecx,ebx
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001816DF5E0h
+	test rsi,rsi
+	je short 00000001816DF13Ah
+	mov rdx,[1835101D0h]
+	xor r8d,r8d
+	mov rcx,rsi
+	call 0000000181663EB0h
+	test al,al
+	jne short 00000001816DF14Ch
+	mov rbx,[rsp+30h]
+	xor eax,eax
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	lea rcx,[1834F0018h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	lea rcx,[183545EA0h]
+	mov rbx,rax
+	call 000000018037BBB0h
+	mov rdx,rax
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181808440h
+	lea rcx,[1835476D0h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374EBB4], 0
+	007 Move rdi, r9
+	008 Move rbx, r8
+	009 Move rsi, rdx
+	010 JumpIfNotEqual {20}
+	011 LoadAddress rcx, [0x183517B68]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183517C28]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x183502840]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x1835101D0]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 Move [0x18374EBB4], 1
+	020 Move rdx, 0
+	021 Move [rdi], 0
+	022 Move rcx, rdi
+	023 Call 0x18037ACB0, rcx, rdx, r8, r9
+	024 Compare rbx, 0
+	025 JumpIfEqual {62}
+	026 Move rdx, typeof(System.Runtime.Remoting.Channels.CrossAppDomainData)
+	027 Move r8, [rbx]
+	028 Move rax, [rdx+304]
+	029 Compare [r8+304], rax
+	030 JumpIfLess {62}
+	031 Move rcx, rax
+	032 Move rax, [r8+200]
+	033 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	034 JumpIfNotEqual {62}
+	035 Move rcx, typeof(System.Runtime.Remoting.RemotingConfiguration)
+	036 Move rdi, [rbx+32]
+	037 Compare [rcx+228], 0
+	038 JumpIfNotEqual {40}
+	039 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	040 Move rcx, 0
+	041 Call RemotingConfiguration.get_ProcessId, rcx
+	042 Move r8, 0
+	043 Move rdx, rax
+	044 Move rcx, rdi
+	045 Call 0x18165D590, rcx, rdx, r8
+	046 Compare rax, 0
+	047 JumpIfEqual {62}
+	048 Move rcx, typeof(System.Runtime.Remoting.Channels.CrossAppDomainSink)
+	049 Move rbx, [rbx+24]
+	050 Compare [rcx+228], 0
+	051 JumpIfNotEqual {53}
+	052 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	053 Move rdx, 0
+	054 Move rcx, rbx
+	055 Move rbx, stack:0x30
+	056 Move rsi, stack:0x38
+	057 ShiftStack 32
+	058 Move rdi, stack:0x0
+	059 ShiftStack 8
+	060 Call CrossAppDomainSink.GetSink, rcx, rdx
+	061 Return rax
+	062 Compare rsi, 0
+	063 JumpIfEqual {70}
+	064 Move rdx, "MONOCAD"
+	065 Move r8, 0
+	066 Move rcx, rsi
+	067 Call String.StartsWith, rcx, rdx
+	068 Compare rax, 0
+	069 JumpIfNotEqual {77}
+	070 Move rbx, stack:0x30
+	071 Move rax, 0
+	072 Move rsi, stack:0x38
+	073 ShiftStack 32
+	074 Move rdi, stack:0x0
+	075 ShiftStack 8
+	076 Return rax
+	077 LoadAddress rcx, [0x1834F0018]
+	078 Call 0x18037BBB0, rcx, rdx, r8, r9
+	079 Move rcx, rax
+	080 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	081 LoadAddress rcx, [0x183545EA0]
+	082 Move rbx, rax
+	083 Call 0x18037BBB0, rcx, rdx, r8, r9
+	084 Move rdx, rax
+	085 Move r8, 0
+	086 Move rcx, rbx
+	087 Call NotSupportedException..ctor, rcx, rdx
+	088 LoadAddress rcx, [0x1835476D0]
+	089 Call 0x18037BBB0, rcx, rdx, r8, r9
+	090 Move rdx, rax
+	091 Move rcx, rbx
+	092 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374EBB5h],0
+	jne short 00000001816DF30Eh
+	lea rcx,[183517AA8h]
+	call 000000018037BB90h
+	lea rcx,[1834F10F8h]
+	call 000000018037BB90h
+	mov byte ptr [18374EBB5h],1
+	mov rcx,[1834F10F8h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	mov rcx,[183517AA8h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],rbx
+	mov rdx,rbx
+	mov rcx,[183517AA8h]
+	mov rcx,[rcx+0B8h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374EBB5], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x183517AA8]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x1834F10F8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374EBB5], 1
+	011 Move rcx, typeof(System.Object)
+	012 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	017 Move rcx, typeof(System.Runtime.Remoting.Channels.CrossAppDomainChannel)
+	018 Move rdx, [rcx+184]
+	019 Move [rdx], rbx
+	020 Move rdx, rbx
+	021 Move rcx, typeof(System.Runtime.Remoting.Channels.CrossAppDomainChannel)
+	022 Move rcx, [rcx+184]
+	023 ShiftStack 32
+	024 Move rbx, stack:0x0
+	025 ShiftStack 8
+	026 Call 0x18037ACB0, rcx, rdx, r8, r9
+	027 Return 
+

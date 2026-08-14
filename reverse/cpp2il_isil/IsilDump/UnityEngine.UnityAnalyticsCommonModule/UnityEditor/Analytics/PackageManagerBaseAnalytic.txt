@@ -1,0 +1,54 @@
+Type: UnityEditor.Analytics.PackageManagerBaseAnalytic
+
+Method: System.Void .ctor(System.String eventName)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [18375BAAEh],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 00000001829B578Ch
+	lea rcx,[1834FE8F0h]
+	call 000000018037BB90h
+	mov byte ptr [18375BAAEh],1
+	mov rax,[1834FE8F0h]
+	xor r9d,r9d
+	mov qword ptr [rsp+28h],0
+	mov r8d,1
+	mov rdx,rbx
+	mov [rsp+20h],rax
+	mov rcx,rdi
+	call 000000018261F5C0h
+	mov rbx,[rsp+40h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x18375BAAE], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1834FE8F0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x18375BAAE], 1
+	012 Move rax, "packageManager"
+	013 Move r9, 0
+	014 Move stack:0x28, 0
+	015 Move r8, 1
+	016 Move rdx, rbx
+	017 Move stack:0x20, rax
+	018 Move rcx, rdi
+	019 Call AnalyticsEventBase..ctor, rcx, rdx, r8, r9, stack:0x0
+	020 Move rbx, stack:0x40
+	021 ShiftStack 48
+	022 Move rdi, stack:0x0
+	023 ShiftStack 8
+	024 Return 
+

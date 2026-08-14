@@ -1,0 +1,136 @@
+Type: UnityEngine.InputForUI.CommandEvent
+
+Method: System.Void set_timestamp(Unity.IntegerTime.DiscreteTime value)
+
+Disassembly:
+	mov [rcx+8],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: UnityEngine.InputForUI.EventSource get_eventSource()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_eventSource(UnityEngine.InputForUI.EventSource value)
+
+Disassembly:
+	mov [rcx+10h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+
+Method: System.Void set_playerId(System.UInt32 value)
+
+Disassembly:
+	mov [rcx+14h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+20], rdx
+	002 Return 
+
+Method: UnityEngine.InputForUI.EventModifiers get_eventModifiers()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_eventModifiers(UnityEngine.InputForUI.EventModifiers value)
+
+Disassembly:
+	mov [rcx+18h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+24], rdx
+	002 Return 
+
+Method: System.String ToString()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837595F6h],0
+	mov rdi,rcx
+	jne short 00000001826B0B01h
+	lea rcx,[18355E0D8h]
+	call 000000018037BB90h
+	lea rcx,[18355E198h]
+	call 000000018037BB90h
+	lea rcx,[18355CB08h]
+	call 000000018037BB90h
+	mov byte ptr [1837595F6h],1
+	mov eax,[rdi]
+	lea rdx,[rsp+30h]
+	mov rcx,[18355E198h]
+	mov [rsp+30h],eax
+	call 000000018037AC90h
+	mov ecx,[rdi+4]
+	lea rdx,[rsp+40h]
+	mov [rsp+40h],ecx
+	mov rbx,rax
+	mov rcx,[18355E0D8h]
+	call 000000018037AC90h
+	mov rcx,[18355CB08h]
+	xor r9d,r9d
+	mov r8,rax
+	mov rdx,rbx
+	call 000000018165E830h
+	mov rbx,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837595F6], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {15}
+	008 LoadAddress rcx, [0x18355E0D8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18355E198]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x18355CB08]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x1837595F6], 1
+	015 Move rax, [rdi]
+	016 LoadAddress rdx, stack:0x30
+	017 Move rcx, typeof(UnityEngine.InputForUI.CommandEvent+Type)
+	018 Move stack:0x30, rax
+	019 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	020 Move rcx, [rdi+4]
+	021 LoadAddress rdx, stack:0x40
+	022 Move stack:0x40, rcx
+	023 Move rbx, rax
+	024 Move rcx, typeof(UnityEngine.InputForUI.CommandEvent+Command)
+	025 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	026 Move rcx, "{0} {1}"
+	027 Move r9, 0
+	028 Move r8, rax
+	029 Move rdx, rbx
+	030 Call String.Format, rcx, rdx, r8, r9
+	031 Move rbx, stack:0x38
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+

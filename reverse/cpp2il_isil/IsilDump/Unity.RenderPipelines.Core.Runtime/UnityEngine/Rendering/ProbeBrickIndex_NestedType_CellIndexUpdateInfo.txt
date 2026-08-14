@@ -1,0 +1,62 @@
+Type: UnityEngine.Rendering.ProbeBrickIndex+CellIndexUpdateInfo
+
+Method: System.Int32 GetNumberOfChunks()
+
+Disassembly:
+	sub rsp,68h
+	mov r8,[rcx]
+	xor r9d,r9d
+	mov ecx,r9d
+	mov eax,r9d
+	test r8,r8
+	je short 00000001821B5BD6h
+	mov r10d,[r8+18h]
+	lea rdx,[r8+20h]
+	nop dword ptr [rax]
+	cmp eax,r10d
+	jge short 00000001821B5BCEh
+	cmp ecx,r10d
+	jae short 00000001821B5BDCh
+	mov rax,[rdx]
+	inc ecx
+	shr rax,20h
+	add r9d,eax
+	mov eax,ecx
+	add rdx,34h
+	jmp short 00000001821B5BB0h
+	mov eax,r9d
+	add rsp,68h
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -104
+	002 Move r8, [rcx]
+	003 Move r9, 0
+	004 Move rcx, r9
+	005 Move rax, r9
+	006 Compare r8, 0
+	007 JumpIfEqual {25}
+	008 Move r10, [r8+24]
+	009 LoadAddress rdx, [r8+32]
+	010 Nop 
+	011 Compare rax, r10
+	012 JumpIfGreaterOrEqual {22}
+	013 Compare rcx, r10
+	014 JumpIfGreaterOrEqual {27}
+	015 Move rax, [rdx]
+	016 Add rcx, rcx, 1
+	017 ShiftRight rax, 32
+	018 Add r9, r9, rax
+	019 Move rax, rcx
+	020 Add rdx, rdx, 52
+	021 Goto {11}
+	022 Move rax, r9
+	023 ShiftStack 104
+	024 Return rax
+	025 Call 0x18037BE30, rcx, rdx, r8, r9
+	026 Interrupt 
+	027 Call 0x18037BE20, rcx, rdx, r8, r9
+

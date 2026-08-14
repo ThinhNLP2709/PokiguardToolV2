@@ -1,0 +1,370 @@
+Type: UnityEngine.TerrainCallbacks
+
+Method: System.Void InvokeHeightmapChangedCallback(UnityEngine.TerrainData terrainData, UnityEngine.RectInt heightRegion, System.Boolean synched)
+
+Disassembly:
+	mov [rsp+18h],rbp
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,40h
+	cmp byte ptr [183759BB0h],0
+	movzx ebp,r8b
+	mov r14,rdx
+	mov rdi,rcx
+	jne short 00000001826EE666h
+	lea rcx,[18351CFB0h]
+	call 000000018037BB90h
+	mov byte ptr [183759BB0h],1
+	mov rax,[18351CFB0h]
+	mov r9,[rax+0B8h]
+	cmp qword ptr [r9],0
+	jbe near ptr 00000001826EE773h
+	mov [rsp+50h],rbx
+	mov [rsp+58h],rsi
+	test rdi,rdi
+	je near ptr 00000001826EE78Ah
+	cmp byte ptr [183759BC2h],0
+	jne short 00000001826EE6B9h
+	lea rcx,[18350B338h]
+	call 000000018037BB90h
+	lea rcx,[18351D070h]
+	call 000000018037BB90h
+	mov byte ptr [183759BC2h],1
+	mov rsi,[rdi+10h]
+	xor ebx,ebx
+	test rsi,rsi
+	jne short 00000001826EE6D0h
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000182635460h
+	mov esi,ebx
+	mov rcx,[18351D070h]
+	cmp [rcx+0E4h],ebx
+	jne short 00000001826EE6E4h
+	call 000000018037BED0h
+	mov rax,[183759BD8h]
+	test rax,rax
+	jne short 00000001826EE703h
+	lea rcx,[182B48AB0h]
+	call 000000018037BE90h
+	mov [183759BD8h],rax
+	mov rcx,rsi
+	call rax
+	mov rdi,rax
+	mov eax,ebx
+	test rdi,rdi
+	je short 00000001826EE78Ah
+	lea rsi,[rdi+20h]
+	cmp eax,[rdi+18h]
+	jge short 00000001826EE769h
+	cmp ebx,[rdi+18h]
+	jae short 00000001826EE784h
+	mov rax,[18351CFB0h]
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 00000001826EE78Ah
+	mov rax,[rcx+28h]
+	lea r8,[rsp+30h]
+	movups xmm0,[r14]
+	mov r10,[rcx+18h]
+	movzx r9d,bpl
+	mov rdx,[rsi]
+	mov rcx,[rcx+40h]
+	movaps [rsp+30h],xmm0
+	mov [rsp+20h],rax
+	call r10
+	inc ebx
+	add rsi,8
+	mov eax,ebx
+	jmp short 00000001826EE716h
+	mov rbx,[rsp+50h]
+	mov rsi,[rsp+58h]
+	mov rbp,[rsp+60h]
+	mov rdi,[rsp+68h]
+	add rsp,40h
+	pop r14
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbp
+	002 Move stack:0x20, rdi
+	003 ShiftStack -8
+	004 Move stack:0x0, r14
+	005 ShiftStack -64
+	006 Compare [0x183759BB0], 0
+	007 Move rbp, r8
+	008 Move r14, rdx
+	009 Move rdi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x18351CFB0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183759BB0], 1
+	014 Move rax, typeof(UnityEngine.TerrainCallbacks)
+	015 Move r9, [rax+184]
+	016 Compare [r9], 0
+	017 JumpIfLessOrEqual {79}
+	018 Move stack:0x50, rbx
+	019 Move stack:0x58, rsi
+	020 Compare rdi, 0
+	021 JumpIfEqual {87}
+	022 Compare [0x183759BC2], 0
+	023 JumpIfNotEqual {29}
+	024 LoadAddress rcx, [0x18350B338]
+	025 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	026 LoadAddress rcx, [0x18351D070]
+	027 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	028 Move [0x183759BC2], 1
+	029 Move rsi, [rdi+16]
+	030 Move rbx, 0
+	031 Compare rsi, 0
+	032 JumpIfNotEqual {37}
+	033 Move rdx, 0
+	034 Move rcx, rdi
+	035 Call ThrowHelper.ThrowNullReferenceException, rcx, rdx
+	036 Move rsi, rbx
+	037 Move rcx, typeof(UnityEngine.TerrainData)
+	038 Compare [rcx+228], rbx
+	039 JumpIfNotEqual {41}
+	040 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	041 Move rax, [0x183759BD8]
+	042 Compare rax, 0
+	043 JumpIfNotEqual {47}
+	044 LoadAddress rcx, [0x182B48AB0]
+	045 Call 0x18037BE90, rcx, rdx, r8, r9
+	046 Move [0x183759BD8], rax
+	047 Move rcx, rsi
+	048 Call rax
+	049 Move rdi, rax
+	050 Move rax, rbx
+	051 Compare rdi, 0
+	052 JumpIfEqual {87}
+	053 LoadAddress rsi, [rdi+32]
+	054 Compare rax, [rdi+24]
+	055 JumpIfGreaterOrEqual {77}
+	056 Compare rbx, [rdi+24]
+	057 JumpIfGreaterOrEqual {85}
+	058 Move rax, typeof(UnityEngine.TerrainCallbacks)
+	059 Move rcx, [rax+184]
+	060 Move rcx, [rcx]
+	061 Compare rcx, 0
+	062 JumpIfEqual {87}
+	063 Move rax, [rcx+40]
+	064 LoadAddress r8, stack:0x30
+	065 Move xmm0, [r14]
+	066 Move r10, [rcx+24]
+	067 Move r9, rbp
+	068 Move rdx, [rsi]
+	069 Move rcx, [rcx+64]
+	070 Move stack:0x30, xmm0
+	071 Move stack:0x20, rax
+	072 Call r10
+	073 Add rbx, rbx, 1
+	074 Add rsi, rsi, 8
+	075 Move rax, rbx
+	076 Goto {54}
+	077 Move rbx, stack:0x50
+	078 Move rsi, stack:0x58
+	079 Move rbp, stack:0x60
+	080 Move rdi, stack:0x68
+	081 ShiftStack 64
+	082 Move r14, stack:0x0
+	083 ShiftStack 8
+	084 Return 
+	085 Call 0x18037BE20, rcx, rdx, r8, r9
+	086 Interrupt 
+	087 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void InvokeTextureChangedCallback(UnityEngine.TerrainData terrainData, System.String textureName, UnityEngine.RectInt texelRegion, System.Boolean synched)
+
+Disassembly:
+	mov [rsp+18h],rbp
+	push rdi
+	push r14
+	push r15
+	sub rsp,40h
+	cmp byte ptr [183759BB1h],0
+	movzx ebp,r9b
+	mov r14,r8
+	mov r15,rdx
+	mov rdi,rcx
+	jne short 00000001826EE7C7h
+	lea rcx,[18351CFB0h]
+	call 000000018037BB90h
+	mov byte ptr [183759BB1h],1
+	mov rax,[18351CFB0h]
+	mov r10,[rax+0B8h]
+	cmp qword ptr [r10+8],0
+	jbe near ptr 00000001826EE8DAh
+	mov [rsp+60h],rbx
+	mov [rsp+68h],rsi
+	test rdi,rdi
+	je near ptr 00000001826EE8EFh
+	cmp byte ptr [183759BC2h],0
+	jne short 00000001826EE81Bh
+	lea rcx,[18350B338h]
+	call 000000018037BB90h
+	lea rcx,[18351D070h]
+	call 000000018037BB90h
+	mov byte ptr [183759BC2h],1
+	mov rsi,[rdi+10h]
+	xor ebx,ebx
+	test rsi,rsi
+	jne short 00000001826EE832h
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000182635460h
+	mov esi,ebx
+	mov rcx,[18351D070h]
+	cmp [rcx+0E4h],ebx
+	jne short 00000001826EE846h
+	call 000000018037BED0h
+	mov rax,[183759BD8h]
+	test rax,rax
+	jne short 00000001826EE865h
+	lea rcx,[182B48AB0h]
+	call 000000018037BE90h
+	mov [183759BD8h],rax
+	mov rcx,rsi
+	call rax
+	mov rdi,rax
+	mov eax,ebx
+	test rdi,rdi
+	je short 00000001826EE8EFh
+	lea rsi,[rdi+20h]
+	cmp eax,[rdi+18h]
+	jge short 00000001826EE8D0h
+	cmp ebx,[rdi+18h]
+	jae short 00000001826EE8E9h
+	mov rax,[18351CFB0h]
+	mov rcx,[rax+0B8h]
+	mov rcx,[rcx+8]
+	test rcx,rcx
+	je short 00000001826EE8EFh
+	mov rax,[rcx+28h]
+	lea r9,[rsp+30h]
+	movups xmm0,[r14]
+	mov r10,[rcx+18h]
+	mov r8,r15
+	mov rdx,[rsi]
+	mov rcx,[rcx+40h]
+	mov [rsp+28h],rax
+	movaps [rsp+30h],xmm0
+	mov [rsp+20h],bpl
+	call r10
+	inc ebx
+	add rsi,8
+	mov eax,ebx
+	jmp short 00000001826EE878h
+	mov rbx,[rsp+60h]
+	mov rsi,[rsp+68h]
+	mov rbp,[rsp+70h]
+	add rsp,40h
+	pop r15
+	pop r14
+	pop rdi
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbp
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -8
+	005 Move stack:0x0, r14
+	006 ShiftStack -8
+	007 Move stack:0x0, r15
+	008 ShiftStack -64
+	009 Compare [0x183759BB1], 0
+	010 Move rbp, r9
+	011 Move r14, r8
+	012 Move r15, rdx
+	013 Move rdi, rcx
+	014 JumpIfNotEqual {18}
+	015 LoadAddress rcx, [0x18351CFB0]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 Move [0x183759BB1], 1
+	018 Move rax, typeof(UnityEngine.TerrainCallbacks)
+	019 Move r10, [rax+184]
+	020 Compare [r10+8], 0
+	021 JumpIfLessOrEqual {84}
+	022 Move stack:0x60, rbx
+	023 Move stack:0x68, rsi
+	024 Compare rdi, 0
+	025 JumpIfEqual {95}
+	026 Compare [0x183759BC2], 0
+	027 JumpIfNotEqual {33}
+	028 LoadAddress rcx, [0x18350B338]
+	029 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	030 LoadAddress rcx, [0x18351D070]
+	031 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	032 Move [0x183759BC2], 1
+	033 Move rsi, [rdi+16]
+	034 Move rbx, 0
+	035 Compare rsi, 0
+	036 JumpIfNotEqual {41}
+	037 Move rdx, 0
+	038 Move rcx, rdi
+	039 Call ThrowHelper.ThrowNullReferenceException, rcx, rdx
+	040 Move rsi, rbx
+	041 Move rcx, typeof(UnityEngine.TerrainData)
+	042 Compare [rcx+228], rbx
+	043 JumpIfNotEqual {45}
+	044 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	045 Move rax, [0x183759BD8]
+	046 Compare rax, 0
+	047 JumpIfNotEqual {51}
+	048 LoadAddress rcx, [0x182B48AB0]
+	049 Call 0x18037BE90, rcx, rdx, r8, r9
+	050 Move [0x183759BD8], rax
+	051 Move rcx, rsi
+	052 Call rax
+	053 Move rdi, rax
+	054 Move rax, rbx
+	055 Compare rdi, 0
+	056 JumpIfEqual {95}
+	057 LoadAddress rsi, [rdi+32]
+	058 Compare rax, [rdi+24]
+	059 JumpIfGreaterOrEqual {82}
+	060 Compare rbx, [rdi+24]
+	061 JumpIfGreaterOrEqual {93}
+	062 Move rax, typeof(UnityEngine.TerrainCallbacks)
+	063 Move rcx, [rax+184]
+	064 Move rcx, [rcx+8]
+	065 Compare rcx, 0
+	066 JumpIfEqual {95}
+	067 Move rax, [rcx+40]
+	068 LoadAddress r9, stack:0x30
+	069 Move xmm0, [r14]
+	070 Move r10, [rcx+24]
+	071 Move r8, r15
+	072 Move rdx, [rsi]
+	073 Move rcx, [rcx+64]
+	074 Move stack:0x28, rax
+	075 Move stack:0x30, xmm0
+	076 Move stack:0x20, rbp
+	077 Call r10
+	078 Add rbx, rbx, 1
+	079 Add rsi, rsi, 8
+	080 Move rax, rbx
+	081 Goto {58}
+	082 Move rbx, stack:0x60
+	083 Move rsi, stack:0x68
+	084 Move rbp, stack:0x70
+	085 ShiftStack 64
+	086 Move r15, stack:0x0
+	087 ShiftStack 8
+	088 Move r14, stack:0x0
+	089 ShiftStack 8
+	090 Move rdi, stack:0x0
+	091 ShiftStack 8
+	092 Return 
+	093 Call 0x18037BE20, rcx, rdx, r8, r9
+	094 Interrupt 
+	095 Call 0x18037BE30, rcx, rdx, r8, r9
+

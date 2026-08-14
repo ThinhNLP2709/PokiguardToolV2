@@ -1,0 +1,60 @@
+Type: UnityEngine.InputSystem.XInput.LowLevel.XInputControllerWindowsState
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_format()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,58h
+	mov [rsp+28h],rcx
+	mov r9d,4Eh
+	mov [rsp+50h],ecx
+	mov r8d,49h
+	lea rcx,[rsp+50h]
+	mov word ptr [rsp+20h],50h
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 88
+	004 Move stack:0x28, rcx
+	005 Move r9, 78
+	006 Move stack:0x50, rcx
+	007 Move r8, 73
+	008 LoadAddress rcx, stack:0x50
+	009 Move stack:0x20, 80
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x50
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.InputSystem.XInput.LowLevel.XInputControllerWindowsState WithButton(UnityEngine.InputSystem.XInput.LowLevel.XInputControllerWindowsState+Button button)
+
+Disassembly:
+	movzx eax,word ptr [rdx]
+	and r8w,1Fh
+	bts ax,r8w
+	mov [rdx],ax
+	mov eax,[rdx+8]
+	movsd xmm0,qword ptr [rdx]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 And r8, r8, 31
+	003 NotImplemented "bts ax,r8w"
+	004 Move [rdx], rax
+	005 Move rax, [rdx+8]
+	006 Move xmm0, [rdx]
+	007 Move [rcx], xmm0
+	008 Move [rcx+8], rax
+	009 Move rax, rcx
+	010 Return rax
+

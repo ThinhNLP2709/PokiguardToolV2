@@ -1,0 +1,17 @@
+namespace DG.Tweening.Core.Easing;
+
+public static class Flash
+{
+
+	public static float Ease(float time, float duration, float overshootOrAmplitude, float period) { }
+
+	public static float EaseIn(float time, float duration, float overshootOrAmplitude, float period) { }
+
+	public static float EaseInOut(float time, float duration, float overshootOrAmplitude, float period) { }
+
+	public static float EaseOut(float time, float duration, float overshootOrAmplitude, float period) { }
+
+	private static float WeightedEase(float overshootOrAmplitude, float period, int stepIndex, float stepDuration, float dir, float res) { }
+
+}
+

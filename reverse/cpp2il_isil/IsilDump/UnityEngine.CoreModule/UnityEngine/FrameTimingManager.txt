@@ -1,0 +1,168 @@
+Type: UnityEngine.FrameTimingManager
+
+Method: System.Void CaptureFrameTimings()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[1837567D8h]
+	test rax,rax
+	jne short 00000001825CFE73h
+	lea rcx,[182B28B40h]
+	call 000000018037BE90h
+	mov [1837567D8h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x1837567D8]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B28B40]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x1837567D8], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.UInt32 GetLatestTimings(System.UInt32 numFrames, UnityEngine.FrameTiming[] timings)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [1837567E0h],0
+	mov rbx,rdx
+	mov edi,ecx
+	jne short 00000001825CFF03h
+	lea rcx,[183524D70h]
+	call 000000018037BB90h
+	lea rcx,[183524CB0h]
+	call 000000018037BB90h
+	lea rcx,[183524E30h]
+	call 000000018037BB90h
+	mov byte ptr [1837567E0h],1
+	mov qword ptr [rsp+28h],0
+	xorps xmm0,xmm0
+	movups [rsp+30h],xmm0
+	test rbx,rbx
+	je short 00000001825CFF2Bh
+	lea rax,[rbx+20h]
+	mov [rsp+20h],rax
+	mov eax,[rbx+18h]
+	mov [rsp+28h],eax
+	jmp short 00000001825CFF30h
+	movups [rsp+20h],xmm0
+	mov rdx,[183524D70h]
+	lea rcx,[rsp+20h]
+	call 0000000180C62060h
+	mov r8d,[rsp+28h]
+	lea rcx,[rsp+30h]
+	xor r9d,r9d
+	mov rdx,rax
+	call 0000000180B7EA90h
+	mov rax,[1837567E8h]
+	test rax,rax
+	jne short 00000001825CFF75h
+	lea rcx,[182B28B80h]
+	call 000000018037BE90h
+	mov [1837567E8h],rax
+	lea rdx,[rsp+30h]
+	mov ecx,edi
+	call rax
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x1837567E0], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x183524D70]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183524CB0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183524E30]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837567E0], 1
+	016 Move stack:0x28, 0
+	017 Move xmm0, 0
+	018 Move stack:0x30, xmm0
+	019 Compare rbx, 0
+	020 JumpIfEqual {26}
+	021 LoadAddress rax, [rbx+32]
+	022 Move stack:0x20, rax
+	023 Move rax, [rbx+24]
+	024 Move stack:0x28, rax
+	025 Goto {27}
+	026 Move stack:0x20, xmm0
+	027 Move rdx, [0x183524D70]
+	028 LoadAddress rcx, stack:0x20
+	029 Call 0x180C62060, rcx, rdx
+	030 Move r8, stack:0x28
+	031 LoadAddress rcx, stack:0x30
+	032 Move r9, 0
+	033 Move rdx, rax
+	034 Call 0x180B7EA90, rcx, rdx, r8
+	035 Move rax, [0x1837567E8]
+	036 Compare rax, 0
+	037 JumpIfNotEqual {41}
+	038 LoadAddress rcx, [0x182B28B80]
+	039 Call 0x18037BE90, rcx, rdx, r8, r9
+	040 Move [0x1837567E8], rax
+	041 LoadAddress rdx, stack:0x30
+	042 Move rcx, rdi
+	043 Call rax
+	044 Move rbx, stack:0x50
+	045 ShiftStack 64
+	046 Move rdi, stack:0x0
+	047 ShiftStack 8
+	048 Return rax
+
+Method: System.UInt32 GetLatestTimings_Injected(System.UInt32 numFrames, ref UnityEngine.Bindings.ManagedSpanWrapper timings)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rax,[1837567E8h]
+	mov rbx,rdx
+	mov edi,ecx
+	test rax,rax
+	jne short 00000001825CFEAEh
+	lea rcx,[182B28B80h]
+	call 000000018037BE90h
+	mov [1837567E8h],rax
+	mov rdx,rbx
+	mov ecx,edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp rax
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rax, [0x1837567E8]
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 Compare rax, 0
+	009 JumpIfNotEqual {13}
+	010 LoadAddress rcx, [0x182B28B80]
+	011 Call 0x18037BE90, rcx, rdx, r8, r9
+	012 Move [0x1837567E8], rax
+	013 Move rdx, rbx
+	014 Move rcx, rdi
+	015 Move rbx, stack:0x30
+	016 ShiftStack 32
+	017 Move rdi, stack:0x0
+	018 ShiftStack 8
+	019 CallNoReturn rax
+

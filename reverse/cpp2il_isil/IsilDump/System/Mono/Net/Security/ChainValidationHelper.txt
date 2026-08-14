@@ -1,0 +1,1837 @@
+Type: Mono.Net.Security.ChainValidationHelper
+
+Method: Mono.Net.Security.ChainValidationHelper GetInternalValidator(System.Net.Security.SslStream owner, Mono.Net.Security.MobileTlsProvider provider, Mono.Security.Interface.MonoTlsSettings settings)
+
+Disassembly:
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [18375072Ch],0
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbp,rcx
+	jne short 0000000181A28594h
+	lea rcx,[18350EA28h]
+	call 000000018037BB90h
+	mov byte ptr [18375072Ch],1
+	mov [rsp+50h],rbx
+	test rdi,rdi
+	je short 0000000181A285EDh
+	cmp qword ptr [rdi+78h],0
+	jne short 0000000181A285B6h
+	mov rcx,[18350EA28h]
+	call 000000018037BDE0h
+	mov r9,rdi
+	jmp short 0000000181A285FCh
+	mov rax,[rdi+78h]
+	mov r8,[18350EA28h]
+	test rax,rax
+	je short 0000000181A28620h
+	mov r9,[rax]
+	movzx ecx,byte ptr [r8+130h]
+	cmp [r9+130h],cl
+	jb short 0000000181A28635h
+	movzx edx,cl
+	mov rcx,[r9+0C8h]
+	cmp [rcx+rdx*8-8],r8
+	jne short 0000000181A28635h
+	jmp short 0000000181A28620h
+	mov rcx,[18350EA28h]
+	call 000000018037BDE0h
+	xor r9d,r9d
+	mov rbx,rax
+	mov r8,rsi
+	xor eax,eax
+	mov rdx,rbp
+	mov [rsp+30h],rax
+	mov rcx,rbx
+	mov [rsp+28h],rax
+	mov [rsp+20h],al
+	call 0000000181A28E70h
+	mov rax,rbx
+	mov rbx,[rsp+50h]
+	mov rbp,[rsp+58h]
+	mov rsi,[rsp+60h]
+	add rsp,40h
+	pop rdi
+	ret
+	mov rdx,r8
+	mov rcx,rax
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x10, rbp
+	002 Move stack:0x18, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -64
+	006 Compare [0x18375072C], 0
+	007 Move rdi, r8
+	008 Move rsi, rdx
+	009 Move rbp, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x18350EA28]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18375072C], 1
+	014 Move stack:0x50, rbx
+	015 Compare rdi, 0
+	016 JumpIfEqual {36}
+	017 Compare [rdi+120], 0
+	018 JumpIfNotEqual {23}
+	019 Move rcx, typeof(Mono.Net.Security.ChainValidationHelper)
+	020 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	021 Move r9, rdi
+	022 Goto {39}
+	023 Move rax, [rdi+120]
+	024 Move r8, typeof(Mono.Net.Security.ChainValidationHelper)
+	025 Compare rax, 0
+	026 JumpIfEqual {49}
+	027 Move r9, [rax]
+	028 Move rcx, [r8+304]
+	029 Compare [r9+304], rcx
+	030 JumpIfLess {56}
+	031 Move rdx, rcx
+	032 Move rcx, [r9+200]
+	033 Compare [rcx+0xFFFFFFF8+rdx*8], r8
+	034 JumpIfNotEqual {56}
+	035 Goto {49}
+	036 Move rcx, typeof(Mono.Net.Security.ChainValidationHelper)
+	037 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	038 Move r9, 0
+	039 Move rbx, rax
+	040 Move r8, rsi
+	041 Move rax, 0
+	042 Move rdx, rbp
+	043 Move stack:0x30, rax
+	044 Move rcx, rbx
+	045 Move stack:0x28, rax
+	046 Move stack:0x20, rax
+	047 Call ChainValidationHelper..ctor, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	048 Move rax, rbx
+	049 Move rbx, stack:0x50
+	050 Move rbp, stack:0x58
+	051 Move rsi, stack:0x60
+	052 ShiftStack 64
+	053 Move rdi, stack:0x0
+	054 ShiftStack 8
+	055 Return rax
+	056 Move rdx, r8
+	057 Move rcx, rax
+	058 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: Mono.Net.Security.ChainValidationHelper Create(Mono.Net.Security.MobileTlsProvider provider, ref Mono.Security.Interface.MonoTlsSettings settings, Mono.Net.Security.MonoTlsStream stream)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,40h
+	cmp byte ptr [18375072Dh],0
+	mov rbp,r8
+	mov rsi,rdx
+	mov r14,rcx
+	jne short 0000000181A284AFh
+	lea rcx,[18350EA28h]
+	call 000000018037BB90h
+	mov byte ptr [18375072Dh],1
+	mov rcx,[18350EA28h]
+	mov rbx,[rsi]
+	call 000000018037BDE0h
+	mov qword ptr [rsp+30h],0
+	mov r9,rbx
+	mov [rsp+28h],rbp
+	mov r8,r14
+	xor edx,edx
+	mov byte ptr [rsp+20h],1
+	mov rcx,rax
+	mov rdi,rax
+	call 0000000181A28E70h
+	test rdi,rdi
+	je short 0000000181A28516h
+	mov rdx,[rdi+18h]
+	mov rcx,rsi
+	mov [rsi],rdx
+	call 000000018037ACB0h
+	mov rbx,[rsp+50h]
+	mov rax,rdi
+	mov rdi,[rsp+68h]
+	mov rbp,[rsp+58h]
+	mov rsi,[rsp+60h]
+	add rsp,40h
+	pop r14
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -64
+	008 Compare [0x18375072D], 0
+	009 Move rbp, r8
+	010 Move rsi, rdx
+	011 Move r14, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18350EA28]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18375072D], 1
+	016 Move rcx, typeof(Mono.Net.Security.ChainValidationHelper)
+	017 Move rbx, [rsi]
+	018 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	019 Move stack:0x30, 0
+	020 Move r9, rbx
+	021 Move stack:0x28, rbp
+	022 Move r8, r14
+	023 Move rdx, 0
+	024 Move stack:0x20, 1
+	025 Move rcx, rax
+	026 Move rdi, rax
+	027 Call ChainValidationHelper..ctor, rcx, rdx, r8, r9, stack:0x0, stack:0x8
+	028 Compare rdi, 0
+	029 JumpIfEqual {43}
+	030 Move rdx, [rdi+24]
+	031 Move rcx, rsi
+	032 Move [rsi], rdx
+	033 Call 0x18037ACB0, rcx, rdx, r8, r9
+	034 Move rbx, stack:0x50
+	035 Move rax, rdi
+	036 Move rdi, stack:0x68
+	037 Move rbp, stack:0x58
+	038 Move rsi, stack:0x60
+	039 ShiftStack 64
+	040 Move r14, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void .ctor(System.Net.Security.SslStream owner, Mono.Net.Security.MobileTlsProvider provider, Mono.Security.Interface.MonoTlsSettings settings, System.Boolean cloneSettings, Mono.Net.Security.MonoTlsStream stream)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	push rbp
+	push rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375072Eh],0
+	mov rsi,r9
+	mov rbx,r8
+	mov rbp,rdx
+	mov rdi,rcx
+	jne short 0000000181A28EF8h
+	lea rcx,[183527638h]
+	call 000000018037BB90h
+	lea rcx,[18355E450h]
+	call 000000018037BB90h
+	lea rcx,[183568FE8h]
+	call 000000018037BB90h
+	lea rcx,[1834F5E98h]
+	call 000000018037BB90h
+	lea rcx,[1834F5F50h]
+	call 000000018037BB90h
+	lea rcx,[18350E058h]
+	call 000000018037BB90h
+	lea rcx,[1835609E0h]
+	call 000000018037BB90h
+	lea rcx,[183561650h]
+	call 000000018037BB90h
+	mov byte ptr [18375072Eh],1
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000180456D90h
+	test rsi,rsi
+	jne short 0000000181A28F11h
+	xor ecx,ecx
+	call 000000018162D870h
+	mov rsi,rax
+	cmp byte ptr [rsp+60h],0
+	mov [rsp+40h],r14
+	mov [rsp+48h],r15
+	je short 0000000181A28F3Ch
+	test rsi,rsi
+	je near ptr 0000000181A2927Dh
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rsi
+	call 000000018162D770h
+	mov rsi,rax
+	test rbx,rbx
+	jne short 0000000181A28F5Fh
+	mov rcx,[183568FE8h]
+	cmp [rcx+0E4h],ebx
+	jne short 0000000181A28F55h
+	call 000000018037BED0h
+	xor ecx,ecx
+	call 0000000181A353B0h
+	mov rbx,rax
+	lea rcx,[rdi+20h]
+	mov [rdi+20h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	lea rcx,[rdi+18h]
+	mov [rdi+18h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov r15,[rsp+68h]
+	lea rcx,[rdi+38h]
+	mov rdx,r15
+	mov [rdi+38h],r15
+	call 000000018037ACB0h
+	test rbp,rbp
+	je short 0000000181A28FCAh
+	mov rcx,[183561650h]
+	call 000000018037BDE0h
+	mov r8,[1835609E0h]
+	mov rdx,rbp
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180F72540h
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	xor bpl,bpl
+	test rsi,rsi
+	je near ptr 0000000181A29178h
+	cmp [18375072Fh],bpl
+	jne short 0000000181A29016h
+	lea rcx,[183502570h]
+	call 000000018037BB90h
+	lea rcx,[18350D930h]
+	call 000000018037BB90h
+	lea rcx,[183507B18h]
+	call 000000018037BB90h
+	lea rcx,[18355C458h]
+	call 000000018037BB90h
+	mov byte ptr [18375072Fh],1
+	mov rcx,[18355C458h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov r14,rax
+	call 0000000180456D90h
+	test r14,r14
+	je near ptr 0000000181A2927Dh
+	lea rcx,[r14+10h]
+	mov [r14+10h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	mov rax,[r14+10h]
+	test rax,rax
+	je near ptr 0000000181A2927Dh
+	xor ebp,ebp
+	cmp [rax+10h],rbp
+	je short 0000000181A290A0h
+	mov rcx,[183502570h]
+	call 000000018037BDE0h
+	mov r8,[183507B18h]
+	xor r9d,r9d
+	mov rdx,r14
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181D4F450h
+	mov rcx,[18350D930h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov r14,rax
+	call 0000000181E3B610h
+	jmp short 0000000181A290A3h
+	mov r14,rbp
+	lea rcx,[rdi+28h]
+	mov [rdi+28h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	cmp [183750762h],bpl
+	mov r14,[rsi+18h]
+	jne short 0000000181A290EBh
+	lea rcx,[18355E450h]
+	call 000000018037BB90h
+	lea rcx,[183505520h]
+	call 000000018037BB90h
+	lea rcx,[1835598D8h]
+	call 000000018037BB90h
+	mov byte ptr [183750762h],1
+	mov rcx,[1835598D8h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	test rbx,rbx
+	je near ptr 0000000181A2927Dh
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	cmp [rbx+10h],rbp
+	je short 0000000181A29149h
+	mov rcx,[18355E450h]
+	call 000000018037BDE0h
+	mov r8,[183505520h]
+	xor r9d,r9d
+	mov rdx,rbx
+	mov rcx,rax
+	mov r14,rax
+	call 000000018162D4D0h
+	jmp short 0000000181A2914Ch
+	mov r14,rbp
+	lea rcx,[rdi+30h]
+	mov [rdi+30h],r14
+	mov rdx,r14
+	call 000000018037ACB0h
+	movzx eax,word ptr [rsi+73h]
+	test al,al
+	je short 0000000181A2916Bh
+	mov ebp,eax
+	shr ebp,8
+	jmp short 0000000181A29172h
+	test r15,r15
+	setne bpl
+	test ebp,ebp
+	setne bpl
+	test r15,r15
+	je short 0000000181A291F5h
+	mov rdx,[r15+20h]
+	lea rcx,[rdi+40h]
+	mov [rdi+40h],rdx
+	call 000000018037ACB0h
+	cmp qword ptr [rdi+28h],0
+	jne short 0000000181A291B6h
+	mov rdx,[rdi+40h]
+	test rdx,rdx
+	je near ptr 0000000181A2927Dh
+	mov rdx,[rdx+150h]
+	lea rcx,[rdi+28h]
+	mov [rdi+28h],rdx
+	call 000000018037ACB0h
+	cmp qword ptr [rdi+30h],0
+	jne short 0000000181A291F0h
+	mov rcx,[18355E450h]
+	call 000000018037BDE0h
+	mov r8,[183527638h]
+	xor r9d,r9d
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018162D4D0h
+	lea rcx,[rdi+30h]
+	mov [rdi+30h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	test rsi,rsi
+	je short 0000000181A291FAh
+	test bpl,bpl
+	je short 0000000181A29266h
+	cmp qword ptr [rdi+28h],0
+	jne short 0000000181A29266h
+	mov rcx,[18350E058h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181A29216h
+	call 000000018037BED0h
+	cmp byte ptr [18375086Bh],0
+	jne short 0000000181A29232h
+	lea rcx,[18350E058h]
+	call 000000018037BB90h
+	mov byte ptr [18375086Bh],1
+	mov rcx,[18350E058h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181A29247h
+	call 000000018037BED0h
+	mov rax,[18350E058h]
+	mov rcx,[rax+0B8h]
+	mov rdx,[rcx+30h]
+	lea rcx,[rdi+28h]
+	mov [rdi+28h],rdx
+	call 000000018037ACB0h
+	mov r15,[rsp+48h]
+	mov r14,[rsp+40h]
+	mov rbx,[rsp+50h]
+	add rsp,20h
+	pop rdi
+	pop rsi
+	pop rbp
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbp
+	004 ShiftStack -8
+	005 Move stack:0x0, rsi
+	006 ShiftStack -8
+	007 Move stack:0x0, rdi
+	008 ShiftStack -32
+	009 Compare [0x18375072E], 0
+	010 Move rsi, r9
+	011 Move rbx, r8
+	012 Move rbp, rdx
+	013 Move rdi, rcx
+	014 JumpIfNotEqual {32}
+	015 LoadAddress rcx, [0x183527638]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x18355E450]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 LoadAddress rcx, [0x183568FE8]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 LoadAddress rcx, [0x1834F5E98]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 LoadAddress rcx, [0x1834F5F50]
+	024 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	025 LoadAddress rcx, [0x18350E058]
+	026 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	027 LoadAddress rcx, [0x1835609E0]
+	028 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	029 LoadAddress rcx, [0x183561650]
+	030 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	031 Move [0x18375072E], 1
+	032 Move rdx, 0
+	033 Move rcx, rdi
+	034 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	035 Compare rsi, 0
+	036 JumpIfNotEqual {40}
+	037 Move rcx, 0
+	038 Call MonoTlsSettings.CopyDefaultSettings, rcx
+	039 Move rsi, rax
+	040 Compare stack:0x60, 0
+	041 Move stack:0x40, r14
+	042 Move stack:0x48, r15
+	043 JumpIfEqual {51}
+	044 Compare rsi, 0
+	045 JumpIfEqual {252}
+	046 Move r8, 0
+	047 Move rdx, rdi
+	048 Move rcx, rsi
+	049 Call MonoTlsSettings.CloneWithValidator, rcx, rdx
+	050 Move rsi, rax
+	051 Compare rbx, 0
+	052 JumpIfNotEqual {60}
+	053 Move rcx, typeof(Mono.Net.Security.MonoTlsProviderFactory)
+	054 Compare [rcx+228], rbx
+	055 JumpIfNotEqual {57}
+	056 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	057 Move rcx, 0
+	058 Call MonoTlsProviderFactory.GetProviderInternal, rcx
+	059 Move rbx, rax
+	060 LoadAddress rcx, [rdi+32]
+	061 Move [rdi+32], rbx
+	062 Move rdx, rbx
+	063 Call 0x18037ACB0, rcx, rdx, r8, r9
+	064 LoadAddress rcx, [rdi+24]
+	065 Move [rdi+24], rsi
+	066 Move rdx, rsi
+	067 Call 0x18037ACB0, rcx, rdx, r8, r9
+	068 Move r15, stack:0x68
+	069 LoadAddress rcx, [rdi+56]
+	070 Move rdx, r15
+	071 Move [rdi+56], r15
+	072 Call 0x18037ACB0, rcx, rdx, r8, r9
+	073 Compare rbp, 0
+	074 JumpIfEqual {86}
+	075 Move rcx, typeof(System.WeakReference`1<SslStream>)
+	076 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	077 Move r8, [0x1835609E0]
+	078 Move rdx, rbp
+	079 Move rcx, rax
+	080 Move rbx, rax
+	081 Call 0x180F72540, rcx, rdx
+	082 LoadAddress rcx, [rdi+16]
+	083 Move [rdi+16], rbx
+	084 Move rdx, rbx
+	085 Call 0x18037ACB0, rcx, rdx, r8, r9
+	086 Move rbp, 0
+	087 Compare rsi, 0
+	088 JumpIfEqual {187}
+	089 Compare [0x18375072F], rbp
+	090 JumpIfNotEqual {100}
+	091 LoadAddress rcx, [0x183502570]
+	092 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	093 LoadAddress rcx, [0x18350D930]
+	094 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	095 LoadAddress rcx, [0x183507B18]
+	096 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	097 LoadAddress rcx, [0x18355C458]
+	098 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	099 Move [0x18375072F], 1
+	100 Move rcx, typeof(Mono.Net.Security.ChainValidationHelper+<>c__DisplayClass11_0)
+	101 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	102 Move rdx, 0
+	103 Move rcx, rax
+	104 Move r14, rax
+	105 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	106 Compare r14, 0
+	107 JumpIfEqual {252}
+	108 LoadAddress rcx, [r14+16]
+	109 Move [r14+16], rsi
+	110 Move rdx, rsi
+	111 Call 0x18037ACB0, rcx, rdx, r8, r9
+	112 Move rax, [r14+16]
+	113 Compare rax, 0
+	114 JumpIfEqual {252}
+	115 Move rbp, 0
+	116 Compare [rax+16], rbp
+	117 JumpIfEqual {134}
+	118 Move rcx, typeof(System.Net.Security.RemoteCertificateValidationCallback)
+	119 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	120 Move r8, [0x183507B18]
+	121 Move r9, 0
+	122 Move rdx, r14
+	123 Move rcx, rax
+	124 Move rbx, rax
+	125 Call RemoteCertificateValidationCallback..ctor, rcx, rdx, r8
+	126 Move rcx, typeof(System.Net.ServerCertValidationCallback)
+	127 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	128 Move r8, 0
+	129 Move rdx, rbx
+	130 Move rcx, rax
+	131 Move r14, rax
+	132 Call ServerCertValidationCallback..ctor, rcx, rdx
+	133 Goto {135}
+	134 Move r14, rbp
+	135 LoadAddress rcx, [rdi+40]
+	136 Move [rdi+40], r14
+	137 Move rdx, r14
+	138 Call 0x18037ACB0, rcx, rdx, r8, r9
+	139 Compare [0x183750762], rbp
+	140 Move r14, [rsi+24]
+	141 JumpIfNotEqual {149}
+	142 LoadAddress rcx, [0x18355E450]
+	143 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	144 LoadAddress rcx, [0x183505520]
+	145 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	146 LoadAddress rcx, [0x1835598D8]
+	147 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	148 Move [0x183750762], 1
+	149 Move rcx, typeof(Mono.Net.Security.Private.CallbackHelpers+<>c__DisplayClass6_0)
+	150 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	151 Move rdx, 0
+	152 Move rcx, rax
+	153 Move rbx, rax
+	154 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	155 Compare rbx, 0
+	156 JumpIfEqual {252}
+	157 LoadAddress rcx, [rbx+16]
+	158 Move [rbx+16], r14
+	159 Move rdx, r14
+	160 Call 0x18037ACB0, rcx, rdx, r8, r9
+	161 Compare [rbx+16], rbp
+	162 JumpIfEqual {172}
+	163 Move rcx, typeof(System.Net.Security.LocalCertSelectionCallback)
+	164 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	165 Move r8, [0x183505520]
+	166 Move r9, 0
+	167 Move rdx, rbx
+	168 Move rcx, rax
+	169 Move r14, rax
+	170 Call 0x18162D4D0, rcx, rdx, r8
+	171 Goto {173}
+	172 Move r14, rbp
+	173 LoadAddress rcx, [rdi+48]
+	174 Move [rdi+48], r14
+	175 Move rdx, r14
+	176 Call 0x18037ACB0, rcx, rdx, r8, r9
+	177 Move rax, [rsi+115]
+	178 Compare rax, 0
+	179 JumpIfEqual {183}
+	180 Move rbp, rax
+	181 ShiftRight rbp, 8
+	182 Goto {185}
+	183 Compare r15, 0
+	184 NotImplemented "setne bpl"
+	185 Compare rbp, 0
+	186 NotImplemented "setne bpl"
+	187 Compare r15, 0
+	188 JumpIfEqual {218}
+	189 Move rdx, [r15+32]
+	190 LoadAddress rcx, [rdi+64]
+	191 Move [rdi+64], rdx
+	192 Call 0x18037ACB0, rcx, rdx, r8, r9
+	193 Compare [rdi+40], 0
+	194 JumpIfNotEqual {202}
+	195 Move rdx, [rdi+64]
+	196 Compare rdx, 0
+	197 JumpIfEqual {252}
+	198 Move rdx, [rdx+336]
+	199 LoadAddress rcx, [rdi+40]
+	200 Move [rdi+40], rdx
+	201 Call 0x18037ACB0, rcx, rdx, r8, r9
+	202 Compare [rdi+48], 0
+	203 JumpIfNotEqual {216}
+	204 Move rcx, typeof(System.Net.Security.LocalCertSelectionCallback)
+	205 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	206 Move r8, [0x183527638]
+	207 Move r9, 0
+	208 Move rdx, 0
+	209 Move rcx, rax
+	210 Move rbx, rax
+	211 Call 0x18162D4D0, rcx, rdx, r8
+	212 LoadAddress rcx, [rdi+48]
+	213 Move [rdi+48], rbx
+	214 Move rdx, rbx
+	215 Call 0x18037ACB0, rcx, rdx, r8, r9
+	216 Compare rsi, 0
+	217 JumpIfEqual {220}
+	218 Compare rbp, 0
+	219 JumpIfEqual {241}
+	220 Compare [rdi+40], 0
+	221 JumpIfNotEqual {241}
+	222 Move rcx, typeof(System.Net.ServicePointManager)
+	223 Compare [rcx+228], 0
+	224 JumpIfNotEqual {226}
+	225 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	226 Compare [0x18375086B], 0
+	227 JumpIfNotEqual {231}
+	228 LoadAddress rcx, [0x18350E058]
+	229 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	230 Move [0x18375086B], 1
+	231 Move rcx, typeof(System.Net.ServicePointManager)
+	232 Compare [rcx+228], 0
+	233 JumpIfNotEqual {235}
+	234 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	235 Move rax, typeof(System.Net.ServicePointManager)
+	236 Move rcx, [rax+184]
+	237 Move rdx, [rcx+48]
+	238 LoadAddress rcx, [rdi+40]
+	239 Move [rdi+40], rdx
+	240 Call 0x18037ACB0, rcx, rdx, r8, r9
+	241 Move r15, stack:0x48
+	242 Move r14, stack:0x40
+	243 Move rbx, stack:0x50
+	244 ShiftStack 32
+	245 Move rdi, stack:0x0
+	246 ShiftStack 8
+	247 Move rsi, stack:0x0
+	248 ShiftStack 8
+	249 Move rbp, stack:0x0
+	250 ShiftStack 8
+	251 Return 
+	252 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Net.ServerCertValidationCallback GetValidationCallback(Mono.Security.Interface.MonoTlsSettings settings)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375072Fh],0
+	mov rdi,rcx
+	jne short 0000000181A2869Dh
+	lea rcx,[183502570h]
+	call 000000018037BB90h
+	lea rcx,[18350D930h]
+	call 000000018037BB90h
+	lea rcx,[183507B18h]
+	call 000000018037BB90h
+	lea rcx,[18355C458h]
+	call 000000018037BB90h
+	mov byte ptr [18375072Fh],1
+	mov rcx,[18355C458h]
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000180456D90h
+	test rbx,rbx
+	je short 0000000181A28737h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	mov rax,[rbx+10h]
+	test rax,rax
+	je short 0000000181A28737h
+	cmp qword ptr [rax+10h],0
+	je short 0000000181A2872Ah
+	mov rcx,[183502570h]
+	call 000000018037BDE0h
+	mov r8,[183507B18h]
+	xor r9d,r9d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 0000000181D4F450h
+	mov rcx,[18350D930h]
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rax
+	mov rbx,rax
+	call 0000000181E3B610h
+	mov rax,rbx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rbx,[rsp+30h]
+	xor eax,eax
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18375072F], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {17}
+	008 LoadAddress rcx, [0x183502570]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18350D930]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x183507B18]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x18355C458]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 Move [0x18375072F], 1
+	017 Move rcx, typeof(Mono.Net.Security.ChainValidationHelper+<>c__DisplayClass11_0)
+	018 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	019 Move rdx, 0
+	020 Move rcx, rax
+	021 Move rbx, rax
+	022 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	023 Compare rbx, 0
+	024 JumpIfEqual {61}
+	025 LoadAddress rcx, [rbx+16]
+	026 Move [rbx+16], rdi
+	027 Move rdx, rdi
+	028 Call 0x18037ACB0, rcx, rdx, r8, r9
+	029 Move rax, [rbx+16]
+	030 Compare rax, 0
+	031 JumpIfEqual {61}
+	032 Compare [rax+16], 0
+	033 JumpIfEqual {55}
+	034 Move rcx, typeof(System.Net.Security.RemoteCertificateValidationCallback)
+	035 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	036 Move r8, [0x183507B18]
+	037 Move r9, 0
+	038 Move rdx, rbx
+	039 Move rcx, rax
+	040 Move rdi, rax
+	041 Call RemoteCertificateValidationCallback..ctor, rcx, rdx, r8
+	042 Move rcx, typeof(System.Net.ServerCertValidationCallback)
+	043 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	044 Move r8, 0
+	045 Move rdx, rdi
+	046 Move rcx, rax
+	047 Move rbx, rax
+	048 Call ServerCertValidationCallback..ctor, rcx, rdx
+	049 Move rax, rbx
+	050 Move rbx, stack:0x30
+	051 ShiftStack 32
+	052 Move rdi, stack:0x0
+	053 ShiftStack 8
+	054 Return rax
+	055 Move rbx, stack:0x30
+	056 Move rax, 0
+	057 ShiftStack 32
+	058 Move rdi, stack:0x0
+	059 ShiftStack 8
+	060 Return rax
+	061 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Security.Cryptography.X509Certificates.X509Certificate DefaultSelectionCallback(System.String targetHost, System.Security.Cryptography.X509Certificates.X509CertificateCollection localCertificates, System.Security.Cryptography.X509Certificates.X509Certificate remoteCertificate, System.String[] acceptableIssuers)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rdx
+	test rdx,rdx
+	je short 0000000181A2854Eh
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001817A0100h
+	test eax,eax
+	je short 0000000181A2854Eh
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000181DC1BB0h
+	xor eax,eax
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rdx
+	005 Compare rdx, 0
+	006 JumpIfEqual {20}
+	007 Move rdx, 0
+	008 Move rcx, rbx
+	009 Call 0x1817A0100, rcx, rdx
+	010 Compare rax, 0
+	011 JumpIfEqual {20}
+	012 Move r8, 0
+	013 Move rdx, 0
+	014 Move rcx, rbx
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Call X509CertificateCollection.get_Item, rcx, rdx
+	019 Return rax
+	020 Move rax, 0
+	021 ShiftStack 32
+	022 Move rbx, stack:0x0
+	023 ShiftStack 8
+	024 Return rax
+
+Method: Mono.Security.Interface.MonoTlsSettings get_Settings()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Boolean SelectClientCertificate(System.String targetHost, System.Security.Cryptography.X509Certificates.X509CertificateCollection localCertificates, System.Security.Cryptography.X509Certificates.X509Certificate remoteCertificate, System.String[] acceptableIssuers, out System.Security.Cryptography.X509Certificates.X509Certificate clientCertificate)
+
+Disassembly:
+	sub rsp,38h
+	cmp qword ptr [rcx+30h],0
+	je short 0000000181A28844h
+	mov rcx,[rcx+30h]
+	mov rax,[rcx+28h]
+	mov r10,[rcx+18h]
+	mov rcx,[rcx+40h]
+	mov [rsp+28h],rax
+	mov rax,[rsp+60h]
+	mov [rsp+20h],rax
+	call r10
+	mov rcx,[rsp+68h]
+	mov rdx,rax
+	mov [rcx],rax
+	call 000000018037ACB0h
+	mov al,1
+	add rsp,38h
+	ret
+	mov rcx,[rsp+68h]
+	xor edx,edx
+	mov qword ptr [rcx],0
+	call 000000018037ACB0h
+	xor al,al
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [rcx+48], 0
+	003 JumpIfEqual {19}
+	004 Move rcx, [rcx+48]
+	005 Move rax, [rcx+40]
+	006 Move r10, [rcx+24]
+	007 Move rcx, [rcx+64]
+	008 Move stack:0x28, rax
+	009 Move rax, stack:0x60
+	010 Move stack:0x20, rax
+	011 Call r10
+	012 Move rcx, stack:0x68
+	013 Move rdx, rax
+	014 Move [rcx], rax
+	015 Call 0x18037ACB0, rcx, rdx, r8, r9
+	016 Move rax, 1
+	017 ShiftStack 56
+	018 Return rax
+	019 Move rcx, stack:0x68
+	020 Move rdx, 0
+	021 Move [rcx], 0
+	022 Call 0x18037ACB0, rcx, rdx, r8, r9
+	023 Move rax, 0
+	024 ShiftStack 56
+	025 Return rax
+
+Method: Mono.Security.Interface.ValidationResult ValidateCertificate(System.String host, System.Boolean serverMode, System.Security.Cryptography.X509Certificates.X509Certificate leaf, System.Security.Cryptography.X509Certificates.X509Chain chain)
+
+Disassembly:
+	mov [rsp+8],rcx
+	push rbx
+	sub rsp,60h
+	mov rbx,rcx
+	xor eax,eax
+	mov [rsp+58h],eax
+	mov [rsp+38h],rax
+	mov [rsp+30h],eax
+	mov [rsp+28h],rax
+	mov rax,[rsp+90h]
+	mov [rsp+20h],rax
+	call 0000000181A28900h
+	cmp qword ptr [rbx+38h],0
+	je short 0000000181A288BCh
+	mov rdx,[rbx+38h]
+	test rax,rax
+	je short 0000000181A288AFh
+	cmp byte ptr [rax+10h],0
+	je short 0000000181A288AFh
+	movzx ecx,byte ptr [rax+11h]
+	jmp short 0000000181A288B4h
+	mov ecx,1
+	test ecx,ecx
+	setne cl
+	mov [rdx+44h],cl
+	add rsp,60h
+	pop rbx
+	ret
+	mov rbx,[rsp+70h]
+	cmp qword ptr [rbx+38h],0
+	je short 0000000181A288E7h
+	mov rbx,[rbx+38h]
+	mov rcx,rbx
+	call 0000000180001E40h
+	xor r8d,r8d
+	mov dl,1
+	mov rcx,rbx
+	call 0000000181A26EB0h
+	lea rcx,[rsp+50h]
+	call 0000000180001E90h
+	mov rcx,rax
+	call 000000018037BEC0h
+
+ISIL:
+	001 Move stack:0x8, rcx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbx
+	004 ShiftStack -96
+	005 Move rbx, rcx
+	006 Move rax, 0
+	007 Move stack:0x58, rax
+	008 Move stack:0x38, rax
+	009 Move stack:0x30, rax
+	010 Move stack:0x28, rax
+	011 Move rax, stack:0x90
+	012 Move stack:0x20, rax
+	013 Call ChainValidationHelper.ValidateChain, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	014 Compare [rbx+56], 0
+	015 JumpIfEqual {27}
+	016 Move rdx, [rbx+56]
+	017 Compare rax, 0
+	018 JumpIfEqual {23}
+	019 Compare [rax+16], 0
+	020 JumpIfEqual {23}
+	021 Move rcx, [rax+17]
+	022 Goto {24}
+	023 Move rcx, 1
+	024 Compare rcx, 0
+	025 NotImplemented "setne cl"
+	026 Move [rdx+68], rcx
+	027 ShiftStack 96
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Return rax
+	031 Move rbx, stack:0x70
+	032 Compare [rbx+56], 0
+	033 JumpIfEqual {41}
+	034 Move rbx, [rbx+56]
+	035 Move rcx, rbx
+	036 Call 0x180001E40, rcx, rdx, r8, r9
+	037 Move r8, 0
+	038 Move rdx, 1
+	039 Move rcx, rbx
+	040 Call 0x181A26EB0, rcx, rdx
+	041 LoadAddress rcx, stack:0x50
+	042 Call 0x180001E90, rcx, rdx, r8, r9
+	043 Move rcx, rax
+	044 Call 0x18037BEC0, rcx, rdx, r8, r9
+
+Method: Mono.Security.Interface.ValidationResult ValidateChain(System.String host, System.Boolean server, System.Security.Cryptography.X509Certificates.X509Certificate leaf, System.Security.Cryptography.X509Certificates.X509Chain chain, System.Security.Cryptography.X509Certificates.X509CertificateCollection certs, System.Net.Security.SslPolicyErrors errors)
+
+Disassembly:
+	mov r11,rsp
+	mov [r11+8],rbx
+	push rdi
+	sub rsp,60h
+	xor r10d,r10d
+	mov [rsp+78h],r10
+	mov rdi,[r11+28h]
+	test rdi,rdi
+	sete byte ptr [r11+18h]
+	mov [r11-20h],r10
+	lea rax,[r11+18h]
+	mov [r11-18h],rax
+	lea rax,[r11+28h]
+	mov [r11-10h],rax
+	mov [r11-30h],r10
+	mov eax,[rsp+0A0h]
+	mov [rsp+30h],eax
+	mov rax,[rsp+98h]
+	mov [r11-40h],rax
+	lea rax,[r11+28h]
+	mov [r11-48h],rax
+	call 0000000181A289E0h
+	mov rbx,rax
+	mov rcx,[rsp+90h]
+	cmp rcx,rdi
+	jne short 0000000181A28976h
+	movzx eax,byte ptr [rsp+80h]
+	jmp short 0000000181A2897Fh
+	mov al,1
+	mov [rsp+80h],al
+	mov [rsp+78h],rbx
+	test al,al
+	je short 0000000181A28994h
+	test rcx,rcx
+	je short 0000000181A28994h
+	xor edx,edx
+	call 0000000181DC8200h
+	jmp short 0000000181A289C3h
+	cmp byte ptr [rsp+80h],0
+	je short 0000000181A289B4h
+	mov rcx,[rsp+90h]
+	test rcx,rcx
+	je short 0000000181A289B4h
+	xor edx,edx
+	call 0000000181DC8200h
+	mov rcx,[rsp+48h]
+	test rcx,rcx
+	jne short 0000000181A289D1h
+	mov rbx,[rsp+78h]
+	mov rax,rbx
+	mov rbx,[rsp+70h]
+	add rsp,60h
+	pop rdi
+	ret
+	call 000000018037BEC0h
+
+ISIL:
+	001 Move r11, rsp
+	002 Move [r11+8], rbx
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -96
+	006 Move r10, 0
+	007 Move stack:0x78, r10
+	008 Move rdi, [r11+40]
+	009 Compare rdi, 0
+	010 NotImplemented "sete byte ptr [r11+18h]"
+	011 Move [r11-32], r10
+	012 LoadAddress rax, [r11+24]
+	013 Move [r11-24], rax
+	014 LoadAddress rax, [r11+40]
+	015 Move [r11-16], rax
+	016 Move [r11-48], r10
+	017 Move rax, stack:0xA0
+	018 Move stack:0x30, rax
+	019 Move rax, stack:0x98
+	020 Move [r11-64], rax
+	021 LoadAddress rax, [r11+40]
+	022 Move [r11-72], rax
+	023 Call ChainValidationHelper.ValidateChain, rcx, rdx, r8, r9, stack:0x0, stack:0x8, stack:0x10
+	024 Move rbx, rax
+	025 Move rcx, stack:0x90
+	026 Compare rcx, rdi
+	027 JumpIfNotEqual {30}
+	028 Move rax, stack:0x80
+	029 Goto {32}
+	030 Move rax, 1
+	031 Move stack:0x80, rax
+	032 Move stack:0x78, rbx
+	033 Compare rax, 0
+	034 JumpIfEqual {39}
+	035 Compare rcx, 0
+	036 JumpIfEqual {39}
+	037 Move rdx, 0
+	038 Call X509Chain.Dispose, rcx, rdx
+	039 Goto {51}
+	040 Compare stack:0x80, 0
+	041 JumpIfEqual {47}
+	042 Move rcx, stack:0x90
+	043 Compare rcx, 0
+	044 JumpIfEqual {47}
+	045 Move rdx, 0
+	046 Call X509Chain.Dispose, rcx, rdx
+	047 Move rcx, stack:0x48
+	048 Compare rcx, 0
+	049 JumpIfNotEqual {57}
+	050 Move rbx, stack:0x78
+	051 Move rax, rbx
+	052 Move rbx, stack:0x70
+	053 ShiftStack 96
+	054 Move rdi, stack:0x0
+	055 ShiftStack 8
+	056 Return rax
+	057 Call 0x18037BEC0, rcx, rdx, r8, r9
+
+Method: Mono.Security.Interface.ValidationResult ValidateChain(System.String host, System.Boolean server, System.Security.Cryptography.X509Certificates.X509Certificate leaf, ref System.Security.Cryptography.X509Certificates.X509Chain chain, System.Security.Cryptography.X509Certificates.X509CertificateCollection certs, System.Net.Security.SslPolicyErrors errors)
+
+Disassembly:
+	mov [rsp+20h],rbx
+	push rbp
+	push rsi
+	push r12
+	push r14
+	push r15
+	sub rsp,60h
+	cmp byte ptr [183750730h],0
+	mov r12,r9
+	movzx r15d,r8b
+	mov rbp,rdx
+	mov rbx,rcx
+	jne short 0000000181A28A56h
+	lea rcx,[183522960h]
+	call 000000018037BB90h
+	lea rcx,[18353D610h]
+	call 000000018037BB90h
+	lea rcx,[1834FC0B8h]
+	call 000000018037BB90h
+	lea rcx,[18350E058h]
+	call 000000018037BB90h
+	lea rcx,[1835199B0h]
+	call 000000018037BB90h
+	lea rcx,[18352E668h]
+	call 000000018037BB90h
+	mov byte ptr [183750730h],1
+	xor sil,sil
+	mov [rsp+98h],rdi
+	xor r14b,r14b
+	cmp qword ptr [rbx+38h],0
+	je short 0000000181A28A96h
+	mov rcx,[rbx+40h]
+	test rcx,rcx
+	je near ptr 0000000181A28E68h
+	xor edx,edx
+	call 0000000181E398C0h
+	test rax,rax
+	je near ptr 0000000181A28E68h
+	xor r8d,r8d
+	mov rdx,r12
+	mov rcx,rax
+	call 0000000181D38DE0h
+	test r12,r12
+	je near ptr 0000000181A28DC1h
+	xor edx,edx
+	mov rcx,rbp
+	call 000000018165FE70h
+	test al,al
+	jne short 0000000181A28ADDh
+	test rbp,rbp
+	je near ptr 0000000181A28E68h
+	mov edx,3Ah
+	xor r8d,r8d
+	mov rcx,rbp
+	call 000000018165F9E0h
+	test eax,eax
+	jle short 0000000181A28ADDh
+	xor r9d,r9d
+	mov r8d,eax
+	xor edx,edx
+	mov rcx,rbp
+	call 0000000181663FD0h
+	mov rbp,rax
+	mov rcx,[18350E058h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181A28AF2h
+	call 000000018037BED0h
+	cmp [18375086Ch],sil
+	jne short 0000000181A28B0Eh
+	lea rcx,[18350E058h]
+	call 000000018037BB90h
+	mov byte ptr [18375086Ch],1
+	mov rcx,[18350E058h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181A28B23h
+	call 000000018037BED0h
+	mov rax,[18350E058h]
+	xor edi,edi
+	mov rcx,[rax+0B8h]
+	mov r14,[rcx+8]
+	mov rcx,[1835199B0h]
+	mov [rsp+90h],edi
+	cmp [rcx+0E4h],edi
+	jne short 0000000181A28B52h
+	call 000000018037BED0h
+	xor dl,dl
+	cmp [rbx+28h],rdi
+	je short 0000000181A28B6Bh
+	cmp [rbx+18h],rdi
+	je short 0000000181A28B69h
+	mov rax,[rbx+18h]
+	cmp [rax+76h],dl
+	je short 0000000181A28B6Bh
+	mov dl,1
+	mov rcx,[rbx+20h]
+	test rcx,rcx
+	je near ptr 0000000181A28E68h
+	mov rax,[rcx]
+	movzx r9d,r15b
+	mov [rsp+0A0h],r13
+	mov r8,rbp
+	mov r13,[rsp+0B0h]
+	mov r10,[rax+1F8h]
+	mov rax,[rax+200h]
+	mov [rsp+48h],rax
+	lea rax,[rsp+90h]
+	mov [rsp+40h],rax
+	lea rax,[rsp+0C0h]
+	mov [rsp+38h],rax
+	mov rax,[rsp+0B8h]
+	mov [rsp+30h],r13
+	mov [rsp+28h],dl
+	mov rdx,rbx
+	mov [rsp+20h],rax
+	call r10
+	mov ebp,[rsp+90h]
+	movzx r15d,al
+	mov edx,[rsp+0C0h]
+	test ebp,ebp
+	jne short 0000000181A28C01h
+	test edx,edx
+	je short 0000000181A28C01h
+	mov ebp,800B010Bh
+	mov [rsp+90h],ebp
+	test r14,r14
+	je near ptr 0000000181A28D37h
+	mov r8,[183522960h]
+	mov r9,[r14]
+	movzx eax,byte ptr [r8+130h]
+	cmp [r9+130h],al
+	jb short 0000000181A28C40h
+	movzx ecx,al
+	mov rax,[r9+0C8h]
+	cmp [rax+rcx*8-8],r8
+	jne short 0000000181A28C40h
+	cmp [rbx+28h],rdi
+	jne near ptr 0000000181A28D3Dh
+	mov rsi,rdi
+	cmp [rbx+40h],rdi
+	je short 0000000181A28C54h
+	mov rax,[rbx+40h]
+	mov rsi,[rax+0E8h]
+	mov r10,[r14]
+	movzx ecx,di
+	mov r15,[rbx+40h]
+	mov r9,[18353D610h]
+	movzx edx,word ptr [r10+12Eh]
+	cmp di,dx
+	jae short 0000000181A28C94h
+	mov r8,[r10+0B0h]
+	nop dword ptr [rax]
+	movzx eax,cx
+	add rax,rax
+	cmp [r8+rax*8],r9
+	je short 0000000181A28CCDh
+	inc cx
+	cmp cx,dx
+	jb short 0000000181A28C80h
+	xor r8d,r8d
+	mov rdx,r9
+	mov rcx,r14
+	call 0000000180384590h
+	mov r10,[rax]
+	mov r9,r15
+	mov rax,[rax+8]
+	mov r8,r12
+	mov [rsp+28h],rax
+	mov rdx,rsi
+	mov rcx,r14
+	mov [rsp+20h],ebp
+	call r10
+	movzx r15d,al
+	test al,al
+	je short 0000000181A28CE7h
+	mov esi,edi
+	jmp short 0000000181A28D29h
+	movzx ecx,cx
+	add rcx,rcx
+	movsxd rax,dword ptr [r8+rcx*8+8]
+	shl rax,4
+	add rax,138h
+	add rax,r10
+	jmp short 0000000181A28CA2h
+	mov rdx,[183522960h]
+	mov r8,[r14]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r8+130h],al
+	jb short 0000000181A28D17h
+	movzx ecx,al
+	mov rax,[r8+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	mov ecx,1
+	je short 0000000181A28D19h
+	mov ecx,edi
+	test ecx,ecx
+	mov rax,rdi
+	cmovne rax,r14
+	test rax,rax
+	sete sil
+	mov edx,[rsp+0C0h]
+	mov ebp,[rsp+90h]
+	cmp [rbx+28h],rdi
+	je short 0000000181A28D6Dh
+	mov r8,[r13]
+	mov r9d,edx
+	mov rdx,r12
+	mov [rsp+20h],rdi
+	mov rcx,rbx
+	call 0000000181A28740h
+	mov edx,[rsp+0C0h]
+	movzx esi,al
+	mov ebp,[rsp+90h]
+	xor sil,1
+	movzx r15d,al
+	mov r8,[1834FC0B8h]
+	lea rcx,[rsp+50h]
+	mov [rsp+50h],rdi
+	call 0000000180B22AF0h
+	mov rcx,[18352E668h]
+	call 000000018037BDE0h
+	mov rcx,[rsp+50h]
+	mov r9d,ebp
+	mov [rsp+28h],rdi
+	movzx r8d,sil
+	mov [rsp+20h],rcx
+	movzx edx,r15b
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001816352E0h
+	mov r13,[rsp+0A0h]
+	jmp near ptr 0000000181A28E48h
+	mov edx,[rsp+0C0h]
+	xor edi,edi
+	or edx,1
+	mov [rsp+0C0h],edx
+	cmp [rbx+28h],rdi
+	je short 0000000181A28E01h
+	mov r9d,edx
+	mov [rsp+20h],rdi
+	xor edx,edx
+	xor r8d,r8d
+	mov rcx,rbx
+	call 0000000181A28740h
+	mov edx,[rsp+0C0h]
+	movzx esi,al
+	xor sil,1
+	movzx r14d,al
+	mov r8,[1834FC0B8h]
+	lea rcx,[rsp+50h]
+	mov [rsp+50h],rdi
+	call 0000000180B22AF0h
+	mov rcx,[18352E668h]
+	call 000000018037BDE0h
+	mov rcx,[rsp+50h]
+	xor r9d,r9d
+	mov [rsp+28h],rdi
+	movzx r8d,sil
+	mov [rsp+20h],rcx
+	movzx edx,r14b
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001816352E0h
+	mov rdi,[rsp+98h]
+	mov rax,rbx
+	mov rbx,[rsp+0A8h]
+	add rsp,60h
+	pop r15
+	pop r14
+	pop r12
+	pop rsi
+	pop rbp
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x20, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rbp
+	004 ShiftStack -8
+	005 Move stack:0x0, rsi
+	006 ShiftStack -8
+	007 Move stack:0x0, r12
+	008 ShiftStack -8
+	009 Move stack:0x0, r14
+	010 ShiftStack -8
+	011 Move stack:0x0, r15
+	012 ShiftStack -96
+	013 Compare [0x183750730], 0
+	014 Move r12, r9
+	015 Move r15, r8
+	016 Move rbp, rdx
+	017 Move rbx, rcx
+	018 JumpIfNotEqual {32}
+	019 LoadAddress rcx, [0x183522960]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 LoadAddress rcx, [0x18353D610]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 LoadAddress rcx, [0x1834FC0B8]
+	024 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	025 LoadAddress rcx, [0x18350E058]
+	026 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	027 LoadAddress rcx, [0x1835199B0]
+	028 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	029 LoadAddress rcx, [0x18352E668]
+	030 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	031 Move [0x183750730], 1
+	032 Move rsi, 0
+	033 Move stack:0x98, rdi
+	034 Move r14, 0
+	035 Compare [rbx+56], 0
+	036 JumpIfEqual {48}
+	037 Move rcx, [rbx+64]
+	038 Compare rcx, 0
+	039 JumpIfEqual {285}
+	040 Move rdx, 0
+	041 Call HttpWebRequest.get_ServicePoint, rcx, rdx
+	042 Compare rax, 0
+	043 JumpIfEqual {285}
+	044 Move r8, 0
+	045 Move rdx, r12
+	046 Move rcx, rax
+	047 Call ServicePoint.UpdateServerCertificate, rcx, rdx
+	048 Compare r12, 0
+	049 JumpIfEqual {239}
+	050 Move rdx, 0
+	051 Move rcx, rbp
+	052 Call String.IsNullOrEmpty, rcx, rdx
+	053 Compare rax, 0
+	054 JumpIfNotEqual {69}
+	055 Compare rbp, 0
+	056 JumpIfEqual {285}
+	057 Move rdx, 58
+	058 Move r8, 0
+	059 Move rcx, rbp
+	060 Call String.IndexOf, rcx, rdx
+	061 Compare rax, 0
+	062 JumpIfLessOrEqual {69}
+	063 Move r9, 0
+	064 Move r8, rax
+	065 Move rdx, 0
+	066 Move rcx, rbp
+	067 Call String.Substring, rcx, rdx, r8
+	068 Move rbp, rax
+	069 Move rcx, typeof(System.Net.ServicePointManager)
+	070 Compare [rcx+228], 0
+	071 JumpIfNotEqual {73}
+	072 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	073 Compare [0x18375086C], rsi
+	074 JumpIfNotEqual {78}
+	075 LoadAddress rcx, [0x18350E058]
+	076 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	077 Move [0x18375086C], 1
+	078 Move rcx, typeof(System.Net.ServicePointManager)
+	079 Compare [rcx+228], 0
+	080 JumpIfNotEqual {82}
+	081 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	082 Move rax, typeof(System.Net.ServicePointManager)
+	083 Move rdi, 0
+	084 Move rcx, [rax+184]
+	085 Move r14, [rcx+8]
+	086 Move rcx, typeof(Mono.Net.Security.SystemCertificateValidator)
+	087 Move stack:0x90, rdi
+	088 Compare [rcx+228], rdi
+	089 JumpIfNotEqual {91}
+	090 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	091 Move rdx, 0
+	092 Compare [rbx+40], rdi
+	093 JumpIfEqual {100}
+	094 Compare [rbx+24], rdi
+	095 JumpIfEqual {99}
+	096 Move rax, [rbx+24]
+	097 Compare [rax+118], rdx
+	098 JumpIfEqual {100}
+	099 Move rdx, 1
+	100 Move rcx, [rbx+32]
+	101 Compare rcx, 0
+	102 JumpIfEqual {285}
+	103 Move rax, [rcx]
+	104 Move r9, r15
+	105 Move stack:0xA0, r13
+	106 Move r8, rbp
+	107 Move r13, stack:0xB0
+	108 Move r10, [rax+504]
+	109 Move rax, [rax+512]
+	110 Move stack:0x48, rax
+	111 LoadAddress rax, stack:0x90
+	112 Move stack:0x40, rax
+	113 LoadAddress rax, stack:0xC0
+	114 Move stack:0x38, rax
+	115 Move rax, stack:0xB8
+	116 Move stack:0x30, r13
+	117 Move stack:0x28, rdx
+	118 Move rdx, rbx
+	119 Move stack:0x20, rax
+	120 Call r10
+	121 Move rbp, stack:0x90
+	122 Move r15, rax
+	123 Move rdx, stack:0xC0
+	124 Compare rbp, 0
+	125 JumpIfNotEqual {130}
+	126 Compare rdx, 0
+	127 JumpIfEqual {130}
+	128 Move rbp, 0x800B010B
+	129 Move stack:0x90, rbp
+	130 Compare r14, 0
+	131 JumpIfEqual {209}
+	132 Move r8, typeof(System.Net.DefaultCertificatePolicy)
+	133 Move r9, [r14]
+	134 Move rax, [r8+304]
+	135 Compare [r9+304], rax
+	136 JumpIfLess {143}
+	137 Move rcx, rax
+	138 Move rax, [r9+200]
+	139 Compare [rax+0xFFFFFFF8+rcx*8], r8
+	140 JumpIfNotEqual {143}
+	141 Compare [rbx+40], rdi
+	142 JumpIfNotEqual {211}
+	143 Move rsi, rdi
+	144 Compare [rbx+64], rdi
+	145 JumpIfEqual {148}
+	146 Move rax, [rbx+64]
+	147 Move rsi, [rax+232]
+	148 Move r10, [r14]
+	149 Move rcx, rdi
+	150 Move r15, [rbx+64]
+	151 Move r9, typeof(System.Net.ICertificatePolicy)
+	152 Move rdx, [r10+302]
+	153 Compare rdi, rdx
+	154 JumpIfGreaterOrEqual {164}
+	155 Move r8, [r10+176]
+	156 Nop 
+	157 Move rax, rcx
+	158 Add rax, rax, rax
+	159 Compare [r8+rax*8], r9
+	160 JumpIfEqual {182}
+	161 Add rcx, rcx, 1
+	162 Compare rcx, rdx
+	163 JumpIfLess {157}
+	164 Move r8, 0
+	165 Move rdx, r9
+	166 Move rcx, r14
+	167 Call 0x180384590, rcx, rdx, r8, r9
+	168 Move r10, [rax]
+	169 Move r9, r15
+	170 Move rax, [rax+8]
+	171 Move r8, r12
+	172 Move stack:0x28, rax
+	173 Move rdx, rsi
+	174 Move rcx, r14
+	175 Move stack:0x20, rbp
+	176 Call r10
+	177 Move r15, rax
+	178 Compare rax, 0
+	179 JumpIfEqual {189}
+	180 Move rsi, rdi
+	181 Goto {207}
+	182 Move rcx, rcx
+	183 Add rcx, rcx, rcx
+	184 Move rax, [r8+8+rcx*8]
+	185 ShiftLeft rax, 4
+	186 Add rax, rax, 312
+	187 Add rax, rax, r10
+	188 Goto {168}
+	189 Move rdx, typeof(System.Net.DefaultCertificatePolicy)
+	190 Move r8, [r14]
+	191 Move rax, [rdx+304]
+	192 Compare [r8+304], rax
+	193 JumpIfLess {199}
+	194 Move rcx, rax
+	195 Move rax, [r8+200]
+	196 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	197 Move rcx, 1
+	198 JumpIfEqual {200}
+	199 Move rcx, rdi
+	200 Compare rcx, 0
+	201 Move rax, rdi
+	202 JumpIfEqual {204}
+	203 Move rax, r14
+	204 Nop 
+	205 Compare rax, 0
+	206 NotImplemented "sete sil"
+	207 Move rdx, stack:0xC0
+	208 Move rbp, stack:0x90
+	209 Compare [rbx+40], rdi
+	210 JumpIfEqual {222}
+	211 Move r8, [r13]
+	212 Move r9, rdx
+	213 Move rdx, r12
+	214 Move stack:0x20, rdi
+	215 Move rcx, rbx
+	216 Call ChainValidationHelper.InvokeCallback, rcx, rdx, r8, r9
+	217 Move rdx, stack:0xC0
+	218 Move rsi, rax
+	219 Move rbp, stack:0x90
+	220 Xor rsi, rsi, 1
+	221 Move r15, rax
+	222 Move r8, [0x1834FC0B8]
+	223 LoadAddress rcx, stack:0x50
+	224 Move stack:0x50, rdi
+	225 Call 0x180B22AF0, rcx, rdx
+	226 Move rcx, typeof(Mono.Security.Interface.ValidationResult)
+	227 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	228 Move rcx, stack:0x50
+	229 Move r9, rbp
+	230 Move stack:0x28, rdi
+	231 Move r8, rsi
+	232 Move stack:0x20, rcx
+	233 Move rdx, r15
+	234 Move rcx, rax
+	235 Move rbx, rax
+	236 Call ValidationResult..ctor, rcx, rdx, r8, r9, stack:0x0
+	237 Move r13, stack:0xA0
+	238 Goto {270}
+	239 Move rdx, stack:0xC0
+	240 Move rdi, 0
+	241 Or rdx, rdx, 1
+	242 Move stack:0xC0, rdx
+	243 Compare [rbx+40], rdi
+	244 JumpIfEqual {255}
+	245 Move r9, rdx
+	246 Move stack:0x20, rdi
+	247 Move rdx, 0
+	248 Move r8, 0
+	249 Move rcx, rbx
+	250 Call ChainValidationHelper.InvokeCallback, rcx, rdx, r8, r9
+	251 Move rdx, stack:0xC0
+	252 Move rsi, rax
+	253 Xor rsi, rsi, 1
+	254 Move r14, rax
+	255 Move r8, [0x1834FC0B8]
+	256 LoadAddress rcx, stack:0x50
+	257 Move stack:0x50, rdi
+	258 Call 0x180B22AF0, rcx, rdx
+	259 Move rcx, typeof(Mono.Security.Interface.ValidationResult)
+	260 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	261 Move rcx, stack:0x50
+	262 Move r9, 0
+	263 Move stack:0x28, rdi
+	264 Move r8, rsi
+	265 Move stack:0x20, rcx
+	266 Move rdx, r14
+	267 Move rcx, rax
+	268 Move rbx, rax
+	269 Call ValidationResult..ctor, rcx, rdx, r8, r9, stack:0x0
+	270 Move rdi, stack:0x98
+	271 Move rax, rbx
+	272 Move rbx, stack:0xA8
+	273 ShiftStack 96
+	274 Move r15, stack:0x0
+	275 ShiftStack 8
+	276 Move r14, stack:0x0
+	277 ShiftStack 8
+	278 Move r12, stack:0x0
+	279 ShiftStack 8
+	280 Move rsi, stack:0x0
+	281 ShiftStack 8
+	282 Move rbp, stack:0x0
+	283 ShiftStack 8
+	284 Return rax
+	285 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean InvokeCallback(System.Security.Cryptography.X509Certificates.X509Certificate leaf, System.Security.Cryptography.X509Certificates.X509Chain chain, System.Net.Security.SslPolicyErrors errors)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rbp
+	push rsi
+	push rdi
+	push r14
+	sub rsp,30h
+	cmp byte ptr [183750731h],0
+	mov esi,r9d
+	mov rbp,r8
+	mov r14,rdx
+	mov rbx,rcx
+	jne short 0000000181A2877Ah
+	lea rcx,[183560AA0h]
+	call 000000018037BB90h
+	mov byte ptr [183750731h],1
+	xor edi,edi
+	mov qword ptr [rsp+50h],0
+	cmp [rbx+40h],rdi
+	jne short 0000000181A287B1h
+	cmp [rbx+10h],rdi
+	je short 0000000181A287B5h
+	mov r8,[183560AA0h]
+	lea rdx,[rsp+50h]
+	mov rcx,[rbx+10h]
+	call 0000000180F72310h
+	test al,al
+	je short 0000000181A287B5h
+	mov rdi,[rsp+50h]
+	jmp short 0000000181A287B5h
+	mov rdi,[rbx+40h]
+	mov rcx,[rbx+28h]
+	test rcx,rcx
+	je short 0000000181A287ECh
+	mov qword ptr [rsp+28h],0
+	mov r9,rbp
+	mov r8,r14
+	mov [rsp+20h],esi
+	mov rdx,rdi
+	call 0000000181E3B4A0h
+	mov rbx,[rsp+58h]
+	mov rbp,[rsp+60h]
+	add rsp,30h
+	pop r14
+	pop rdi
+	pop rsi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rsi
+	005 ShiftStack -8
+	006 Move stack:0x0, rdi
+	007 ShiftStack -8
+	008 Move stack:0x0, r14
+	009 ShiftStack -48
+	010 Compare [0x183750731], 0
+	011 Move rsi, r9
+	012 Move rbp, r8
+	013 Move r14, rdx
+	014 Move rbx, rcx
+	015 JumpIfNotEqual {19}
+	016 LoadAddress rcx, [0x183560AA0]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 Move [0x183750731], 1
+	019 Move rdi, 0
+	020 Move stack:0x50, 0
+	021 Compare [rbx+64], rdi
+	022 JumpIfNotEqual {33}
+	023 Compare [rbx+16], rdi
+	024 JumpIfEqual {34}
+	025 Move r8, [0x183560AA0]
+	026 LoadAddress rdx, stack:0x50
+	027 Move rcx, [rbx+16]
+	028 Call 0x180F72310, rcx, rdx
+	029 Compare rax, 0
+	030 JumpIfEqual {34}
+	031 Move rdi, stack:0x50
+	032 Goto {34}
+	033 Move rdi, [rbx+64]
+	034 Move rcx, [rbx+40]
+	035 Compare rcx, 0
+	036 JumpIfEqual {53}
+	037 Move stack:0x28, 0
+	038 Move r9, rbp
+	039 Move r8, r14
+	040 Move stack:0x20, rsi
+	041 Move rdx, rdi
+	042 Call ServerCertValidationCallback.Invoke, rcx, rdx, r8, r9, stack:0x0
+	043 Move rbx, stack:0x58
+	044 Move rbp, stack:0x60
+	045 ShiftStack 48
+	046 Move r14, stack:0x0
+	047 ShiftStack 8
+	048 Move rdi, stack:0x0
+	049 ShiftStack 8
+	050 Move rsi, stack:0x0
+	051 ShiftStack 8
+	052 Return rax
+	053 Call 0x18037BE30, rcx, rdx, r8, r9
+

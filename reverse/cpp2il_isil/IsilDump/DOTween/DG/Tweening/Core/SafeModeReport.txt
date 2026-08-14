@@ -1,0 +1,132 @@
+Type: DG.Tweening.Core.SafeModeReport
+
+Method: System.Int32 get_totMissingTargetOrFieldErrors()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Void set_totMissingTargetOrFieldErrors(System.Int32 value)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: System.Int32 get_totCallbackErrors()
+
+Disassembly:
+	mov eax,[rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+
+Method: System.Void set_totCallbackErrors(System.Int32 value)
+
+Disassembly:
+	mov [rcx+4],edx
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: System.Int32 get_totStartupErrors()
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: System.Void set_totStartupErrors(System.Int32 value)
+
+Disassembly:
+	mov [rcx+8],edx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: System.Int32 get_totUnsetErrors()
+
+Disassembly:
+	mov eax,[rcx+0Ch]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+12]
+	002 Return rax
+
+Method: System.Void set_totUnsetErrors(System.Int32 value)
+
+Disassembly:
+	mov [rcx+0Ch],edx
+	ret
+
+ISIL:
+	001 Move [rcx+12], rdx
+	002 Return 
+
+Method: System.Void Add(DG.Tweening.Core.SafeModeReport+SafeModeReportType type)
+
+Disassembly:
+	sub edx,1
+	je short 000000018078A5CBh
+	sub edx,1
+	je short 000000018078A5C7h
+	cmp edx,1
+	je short 000000018078A5C3h
+	inc dword ptr [rcx+0Ch]
+	ret
+	inc dword ptr [rcx+8]
+	ret
+	inc dword ptr [rcx+4]
+	ret
+	inc dword ptr [rcx]
+	ret
+
+ISIL:
+	001 Subtract rdx, rdx, 1
+	002 JumpIfEqual {13}
+	003 Subtract rdx, rdx, 1
+	004 JumpIfEqual {11}
+	005 Compare rdx, 1
+	006 JumpIfEqual {9}
+	007 Add [rcx+12], [rcx+12], 1
+	008 Return 
+	009 Add [rcx+8], [rcx+8], 1
+	010 Return 
+	011 Add [rcx+4], [rcx+4], 1
+	012 Return 
+	013 Add [rcx], [rcx], 1
+	014 Return 
+
+Method: System.Int32 GetTotErrors()
+
+Disassembly:
+	mov eax,[rcx+0Ch]
+	add eax,[rcx+8]
+	add eax,[rcx+4]
+	add eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+12]
+	002 Add rax, rax, [rcx+8]
+	003 Add rax, rax, [rcx+4]
+	004 Add rax, rax, [rcx]
+	005 Return rax
+

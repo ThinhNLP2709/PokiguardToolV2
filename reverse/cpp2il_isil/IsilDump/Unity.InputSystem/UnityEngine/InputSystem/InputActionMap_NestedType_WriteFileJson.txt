@@ -1,0 +1,418 @@
+Type: UnityEngine.InputSystem.InputActionMap+WriteFileJson
+
+Method: UnityEngine.InputSystem.InputActionMap+WriteFileJson FromMap(UnityEngine.InputSystem.InputActionMap map)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183752CD0h],0
+	mov rdi,rcx
+	jne short 0000000181F255E9h
+	lea rcx,[1834F68C8h]
+	call 000000018037BB90h
+	mov byte ptr [183752CD0h],1
+	mov rcx,[1834F68C8h]
+	mov edx,1
+	call 000000018037AD30h
+	xor r8d,r8d
+	lea rcx,[rsp+20h]
+	mov rdx,rdi
+	mov rbx,rax
+	call 0000000181F258F0h
+	test rbx,rbx
+	je short 0000000181F25654h
+	cmp dword ptr [rbx+18h],0
+	jbe short 0000000181F2565Ah
+	movups xmm0,[rax]
+	lea rcx,[rbx+20h]
+	xor edx,edx
+	movups [rbx+20h],xmm0
+	movups xmm1,[rax+10h]
+	movups [rbx+30h],xmm1
+	call 000000018037ACB0h
+	mov rdx,rbx
+	mov [rsp+50h],rbx
+	lea rcx,[rsp+50h]
+	call 000000018037ACB0h
+	mov rax,[rsp+50h]
+	mov rbx,[rsp+58h]
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183752CD0], 0
+	006 Move rdi, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x1834F68C8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183752CD0], 1
+	011 Move rcx, typeof(WriteMapJson[1])
+	012 Move rdx, 1
+	013 Call "SzArrayNew", rcx, rdx, r8, r9
+	014 Move r8, 0
+	015 LoadAddress rcx, stack:0x20
+	016 Move rdx, rdi
+	017 Move rbx, rax
+	018 Call WriteMapJson.FromMap, rcx, rdx
+	019 Compare rbx, 0
+	020 JumpIfEqual {40}
+	021 Compare [rbx+24], 0
+	022 JumpIfLessOrEqual {42}
+	023 Move xmm0, [rax]
+	024 LoadAddress rcx, [rbx+32]
+	025 Move rdx, 0
+	026 Move [rbx+32], xmm0
+	027 Move xmm1, [rax+16]
+	028 Move [rbx+48], xmm1
+	029 Call 0x18037ACB0, rcx, rdx, r8, r9
+	030 Move rdx, rbx
+	031 Move stack:0x50, rbx
+	032 LoadAddress rcx, stack:0x50
+	033 Call 0x18037ACB0, rcx, rdx, r8, r9
+	034 Move rax, stack:0x50
+	035 Move rbx, stack:0x58
+	036 ShiftStack 64
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Return rax
+	040 Call 0x18037BE30, rcx, rdx, r8, r9
+	041 Interrupt 
+	042 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: UnityEngine.InputSystem.InputActionMap+WriteFileJson FromMaps(System.Collections.Generic.IEnumerable`1<UnityEngine.InputSystem.InputActionMap> maps)
+
+Disassembly:
+	mov [rsp+10h],rbx
+	push rsi
+	push rdi
+	push r12
+	push r14
+	push r15
+	sub rsp,60h
+	mov rdi,rcx
+	cmp byte ptr [183752CD1h],0
+	jne short 0000000181F256CCh
+	lea rcx,[1834F9028h]
+	call 000000018037BB90h
+	lea rcx,[183540548h]
+	call 000000018037BB90h
+	lea rcx,[1835205E0h]
+	call 000000018037BB90h
+	lea rcx,[183524A20h]
+	call 000000018037BB90h
+	lea rcx,[183541440h]
+	call 000000018037BB90h
+	lea rcx,[1834F68C8h]
+	call 000000018037BB90h
+	mov byte ptr [183752CD1h],1
+	xor ebx,ebx
+	mov [rsp+0A0h],rbx
+	mov rdx,[1834F9028h]
+	mov rcx,rdi
+	call 0000000180887DA0h
+	test eax,eax
+	je near ptr 0000000181F258B4h
+	mov edx,eax
+	mov rcx,[1834F68C8h]
+	call 000000018037AD30h
+	mov r14,rax
+	mov [rsp+0A8h],rax
+	mov r15d,ebx
+	test rdi,rdi
+	je near ptr 0000000181F258E8h
+	xor ecx,ecx
+	mov r8,rdi
+	mov rdx,[1835205E0h]
+	call 00000001800025F0h
+	mov [rsp+90h],rax
+	mov [rsp+28h],rbx
+	lea rdi,[rsp+90h]
+	mov [rsp+30h],rdi
+	nop dword ptr [rax]
+	mov r12d,r15d
+	mov r8,[rsp+90h]
+	test r8,r8
+	je near ptr 0000000181F258DCh
+	xor ecx,ecx
+	mov rdx,[183541440h]
+	call 00000001800025F0h
+	test al,al
+	je near ptr 0000000181F2584Bh
+	mov rsi,[rsp+90h]
+	test rsi,rsi
+	je near ptr 0000000181F258D7h
+	mov r9,[183524A20h]
+	mov r10,[rsi]
+	movzx eax,bx
+	movzx edx,word ptr [r10+12Eh]
+	cmp bx,dx
+	jae short 0000000181F257B4h
+	mov r8,[r10+0B0h]
+	nop dword ptr [rax]
+	movzx ecx,ax
+	add rcx,rcx
+	cmp [r8+rcx*8],r9
+	je short 0000000181F257FFh
+	inc ax
+	cmp ax,dx
+	jb short 0000000181F257A0h
+	xor r8d,r8d
+	mov rdx,r9
+	mov rcx,rsi
+	call 0000000180384590h
+	mov rdx,rax
+	mov rax,[rdx]
+	mov rdx,[rdx+8]
+	mov rcx,rsi
+	call rax
+	movsxd rsi,r15d
+	inc r15d
+	xor r8d,r8d
+	mov rdx,rax
+	lea rcx,[rsp+38h]
+	call 0000000181F258F0h
+	mov rcx,rax
+	test r14,r14
+	je near ptr 0000000181F258D2h
+	cmp r12d,[r14+18h]
+	jae near ptr 0000000181F258CCh
+	jmp short 0000000181F2581Ah
+	movzx ecx,ax
+	add rcx,rcx
+	movsxd rdx,dword ptr [r8+rcx*8+8]
+	shl rdx,4
+	add rdx,138h
+	add rdx,r10
+	jmp short 0000000181F257C5h
+	lea rax,[rsi+1]
+	shl rax,5
+	movups xmm0,[rcx]
+	movups [rax+r14],xmm0
+	movups xmm1,[rcx+10h]
+	movups [rax+r14+10h],xmm1
+	lea rcx,[rsi+1]
+	shl rcx,5
+	add rcx,r14
+	xor edx,edx
+	call 000000018037ACB0h
+	jmp near ptr 0000000181F25740h
+	cmp qword ptr [rdi],0
+	je short 0000000181F25862h
+	xor ecx,ecx
+	mov r8,[rdi]
+	mov rdx,[183540548h]
+	call 00000001800025F0h
+	jmp short 0000000181F25892h
+	mov r8,[rsp+30h]
+	cmp qword ptr [r8],0
+	je short 0000000181F25880h
+	xor ecx,ecx
+	mov r8,[r8]
+	mov rdx,[183540548h]
+	call 00000001800025F0h
+	mov rcx,[rsp+28h]
+	test rcx,rcx
+	jne short 0000000181F258E2h
+	mov r14,[rsp+0A8h]
+	mov [rsp+0A0h],r14
+	mov rdx,r14
+	lea rcx,[rsp+0A0h]
+	call 000000018037ACB0h
+	mov rax,[rsp+0A0h]
+	jmp short 0000000181F258B7h
+	mov rax,rbx
+	mov rbx,[rsp+98h]
+	add rsp,60h
+	pop r15
+	pop r14
+	pop r12
+	pop rdi
+	pop rsi
+	ret
+	call 000000018037BE20h
+	nop
+	call 000000018037BE30h
+	call 000000018037BE30h
+	call 000000018037BE30h
+	nop
+	call 000000018037BEC0h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -8
+	007 Move stack:0x0, r12
+	008 ShiftStack -8
+	009 Move stack:0x0, r14
+	010 ShiftStack -8
+	011 Move stack:0x0, r15
+	012 ShiftStack -96
+	013 Move rdi, rcx
+	014 Compare [0x183752CD1], 0
+	015 JumpIfNotEqual {29}
+	016 LoadAddress rcx, [0x1834F9028]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x183540548]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 LoadAddress rcx, [0x1835205E0]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x183524A20]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 LoadAddress rcx, [0x183541440]
+	025 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	026 LoadAddress rcx, [0x1834F68C8]
+	027 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	028 Move [0x183752CD1], 1
+	029 Move rbx, 0
+	030 Move stack:0xA0, rbx
+	031 Move rdx, [0x1834F9028]
+	032 Move rcx, rdi
+	033 Call 0x180887DA0, rcx, rdx
+	034 Compare rax, 0
+	035 JumpIfEqual {144}
+	036 Move rdx, rax
+	037 Move rcx, typeof(WriteMapJson[1])
+	038 Call "SzArrayNew", rcx, rdx, r8, r9
+	039 Move r14, rax
+	040 Move stack:0xA8, rax
+	041 Move r15, rbx
+	042 Compare rdi, 0
+	043 JumpIfEqual {166}
+	044 Move rcx, 0
+	045 Move r8, rdi
+	046 Move rdx, typeof(System.Collections.Generic.IEnumerable`1<InputActionMap>)
+	047 Call 0x1800025F0, rcx, rdx, r8, r9
+	048 Move stack:0x90, rax
+	049 Move stack:0x28, rbx
+	050 LoadAddress rdi, stack:0x90
+	051 Move stack:0x30, rdi
+	052 Nop 
+	053 Move r12, r15
+	054 Move r8, stack:0x90
+	055 Compare r8, 0
+	056 JumpIfEqual {162}
+	057 Move rcx, 0
+	058 Move rdx, typeof(System.Collections.IEnumerator)
+	059 Call 0x1800025F0, rcx, rdx, r8, r9
+	060 Compare rax, 0
+	061 JumpIfEqual {120}
+	062 Move rsi, stack:0x90
+	063 Compare rsi, 0
+	064 JumpIfEqual {161}
+	065 Move r9, typeof(System.Collections.Generic.IEnumerator`1<InputActionMap>)
+	066 Move r10, [rsi]
+	067 Move rax, rbx
+	068 Move rdx, [r10+302]
+	069 Compare rbx, rdx
+	070 JumpIfGreaterOrEqual {80}
+	071 Move r8, [r10+176]
+	072 Nop 
+	073 Move rcx, rax
+	074 Add rcx, rcx, rcx
+	075 Compare [r8+rcx*8], r9
+	076 JumpIfEqual {101}
+	077 Add rax, rax, 1
+	078 Compare rax, rdx
+	079 JumpIfLess {73}
+	080 Move r8, 0
+	081 Move rdx, r9
+	082 Move rcx, rsi
+	083 Call 0x180384590, rcx, rdx, r8, r9
+	084 Move rdx, rax
+	085 Move rax, [rdx]
+	086 Move rdx, [rdx+8]
+	087 Move rcx, rsi
+	088 Call rax
+	089 Move rsi, r15
+	090 Add r15, r15, 1
+	091 Move r8, 0
+	092 Move rdx, rax
+	093 LoadAddress rcx, stack:0x38
+	094 Call WriteMapJson.FromMap, rcx, rdx
+	095 Move rcx, rax
+	096 Compare r14, 0
+	097 JumpIfEqual {160}
+	098 Compare r12, [r14+24]
+	099 JumpIfGreaterOrEqual {158}
+	100 Goto {108}
+	101 Move rcx, rax
+	102 Add rcx, rcx, rcx
+	103 Move rdx, [r8+8+rcx*8]
+	104 ShiftLeft rdx, 4
+	105 Add rdx, rdx, 312
+	106 Add rdx, rdx, r10
+	107 Goto {85}
+	108 LoadAddress rax, [rsi+1]
+	109 ShiftLeft rax, 5
+	110 Move xmm0, [rcx]
+	111 Move [rax+r14], xmm0
+	112 Move xmm1, [rcx+16]
+	113 Move [rax+16+r14], xmm1
+	114 LoadAddress rcx, [rsi+1]
+	115 ShiftLeft rcx, 5
+	116 Add rcx, rcx, r14
+	117 Move rdx, 0
+	118 Call 0x18037ACB0, rcx, rdx, r8, r9
+	119 Goto {53}
+	120 Compare [rdi], 0
+	121 JumpIfEqual {126}
+	122 Move rcx, 0
+	123 Move r8, [rdi]
+	124 Move rdx, typeof(System.IDisposable)
+	125 Call 0x1800025F0, rcx, rdx, r8, r9
+	126 Goto {138}
+	127 Move r8, stack:0x30
+	128 Compare [r8], 0
+	129 JumpIfEqual {134}
+	130 Move rcx, 0
+	131 Move r8, [r8]
+	132 Move rdx, typeof(System.IDisposable)
+	133 Call 0x1800025F0, rcx, rdx, r8, r9
+	134 Move rcx, stack:0x28
+	135 Compare rcx, 0
+	136 JumpIfNotEqual {164}
+	137 Move r14, stack:0xA8
+	138 Move stack:0xA0, r14
+	139 Move rdx, r14
+	140 LoadAddress rcx, stack:0xA0
+	141 Call 0x18037ACB0, rcx, rdx, r8, r9
+	142 Move rax, stack:0xA0
+	143 Goto {145}
+	144 Move rax, rbx
+	145 Move rbx, stack:0x98
+	146 ShiftStack 96
+	147 Move r15, stack:0x0
+	148 ShiftStack 8
+	149 Move r14, stack:0x0
+	150 ShiftStack 8
+	151 Move r12, stack:0x0
+	152 ShiftStack 8
+	153 Move rdi, stack:0x0
+	154 ShiftStack 8
+	155 Move rsi, stack:0x0
+	156 ShiftStack 8
+	157 Return rax
+	158 Call 0x18037BE20, rcx, rdx, r8, r9
+	159 Nop 
+	160 Call 0x18037BE30, rcx, rdx, r8, r9
+	161 Call 0x18037BE30, rcx, rdx, r8, r9
+	162 Call 0x18037BE30, rcx, rdx, r8, r9
+	163 Nop 
+	164 Call 0x18037BEC0, rcx, rdx, r8, r9
+	165 Interrupt 
+	166 Call 0x18037BE30, rcx, rdx, r8, r9
+

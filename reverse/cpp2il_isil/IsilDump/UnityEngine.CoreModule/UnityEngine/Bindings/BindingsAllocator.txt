@@ -1,0 +1,90 @@
+Type: UnityEngine.Bindings.BindingsAllocator
+
+Method: System.Void Free(System.Void* ptr)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[1837580B8h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 00000001826213B8h
+	lea rcx,[182B36CA0h]
+	call 000000018037BE90h
+	mov [1837580B8h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x1837580B8]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B36CA0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x1837580B8], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Void FreeNativeOwnedMemory(System.Void* ptr)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rax,[1837580C0h]
+	mov rbx,rcx
+	test rax,rax
+	jne short 0000000182621378h
+	lea rcx,[182B36CE0h]
+	call 000000018037BE90h
+	mov [1837580C0h],rax
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp rax
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [0x1837580C0]
+	005 Move rbx, rcx
+	006 Compare rax, 0
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x182B36CE0]
+	009 Call 0x18037BE90, rcx, rdx, r8, r9
+	010 Move [0x1837580C0], rax
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 CallNoReturn rax
+
+Method: System.Void* GetNativeOwnedDataPointer(System.Void* ptr)
+
+Disassembly:
+	sub rsp,28h
+	test rcx,rcx
+	je short 0000000180946A91h
+	mov rax,[rcx]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rcx, 0
+	003 JumpIfEqual {7}
+	004 Move rax, [rcx]
+	005 ShiftStack 40
+	006 Return rax
+	007 Call 0x18037BE30, rcx, rdx, r8, r9
+

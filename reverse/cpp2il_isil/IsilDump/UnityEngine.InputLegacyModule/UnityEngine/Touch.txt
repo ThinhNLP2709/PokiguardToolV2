@@ -1,0 +1,224 @@
+Type: UnityEngine.Touch
+
+Method: System.Int32 get_fingerId()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Return rax
+
+Method: UnityEngine.Vector2 get_position()
+
+Disassembly:
+	movss xmm1,dword ptr [rcx+8]
+	movss xmm0,dword ptr [rcx+4]
+	unpcklps xmm0,xmm1
+	movq rax,xmm0
+	ret
+
+ISIL:
+	001 Move xmm1, [rcx+8]
+	002 Move xmm0, [rcx+4]
+	003 Move XMM_TEMP.S[0], xmm0.S[0]
+	004 Move XMM_TEMP.S[1], xmm1.S[0]
+	005 Move XMM_TEMP.S[2], xmm0.S[1]
+	006 Move XMM_TEMP.S[3], xmm1.S[1]
+	007 Move xmm0, XMM_TEMP
+	008 Move rax, xmm0
+	009 Return rax
+
+Method: System.Void set_position(UnityEngine.Vector2 value)
+
+Disassembly:
+	mov [rcx+4],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+4], rdx
+	002 Return 
+
+Method: UnityEngine.Vector2 get_rawPosition()
+
+Disassembly:
+	movss xmm1,dword ptr [rcx+10h]
+	movss xmm0,dword ptr [rcx+0Ch]
+	unpcklps xmm0,xmm1
+	movq rax,xmm0
+	ret
+
+ISIL:
+	001 Move xmm1, [rcx+16]
+	002 Move xmm0, [rcx+12]
+	003 Move XMM_TEMP.S[0], xmm0.S[0]
+	004 Move XMM_TEMP.S[1], xmm1.S[0]
+	005 Move XMM_TEMP.S[2], xmm0.S[1]
+	006 Move XMM_TEMP.S[3], xmm1.S[1]
+	007 Move xmm0, XMM_TEMP
+	008 Move rax, xmm0
+	009 Return rax
+
+Method: System.Void set_rawPosition(UnityEngine.Vector2 value)
+
+Disassembly:
+	mov [rcx+0Ch],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+12], rdx
+	002 Return 
+
+Method: UnityEngine.Vector2 get_deltaPosition()
+
+Disassembly:
+	movss xmm1,dword ptr [rcx+18h]
+	movss xmm0,dword ptr [rcx+14h]
+	unpcklps xmm0,xmm1
+	movq rax,xmm0
+	ret
+
+ISIL:
+	001 Move xmm1, [rcx+24]
+	002 Move xmm0, [rcx+20]
+	003 Move XMM_TEMP.S[0], xmm0.S[0]
+	004 Move XMM_TEMP.S[1], xmm1.S[0]
+	005 Move XMM_TEMP.S[2], xmm0.S[1]
+	006 Move XMM_TEMP.S[3], xmm1.S[1]
+	007 Move xmm0, XMM_TEMP
+	008 Move rax, xmm0
+	009 Return rax
+
+Method: System.Void set_deltaPosition(UnityEngine.Vector2 value)
+
+Disassembly:
+	mov [rcx+14h],rdx
+	ret
+
+ISIL:
+	001 Move [rcx+20], rdx
+	002 Return 
+
+Method: System.Single get_deltaTime()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+1Ch]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+28]
+	003 Return xmm0
+
+Method: System.Int32 get_tapCount()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+20h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+32]
+	003 Return rax
+
+Method: UnityEngine.TouchPhase get_phase()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+24h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+36]
+	003 Return rax
+
+Method: System.Single get_pressure()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+2Ch]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+44]
+	003 Return xmm0
+
+Method: System.Single get_maximumPossiblePressure()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+30h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+48]
+	003 Return xmm0
+
+Method: UnityEngine.TouchType get_type()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+28h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+40]
+	003 Return rax
+
+Method: System.Single get_altitudeAngle()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+3Ch]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+60]
+	003 Return xmm0
+
+Method: System.Single get_azimuthAngle()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+40h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+64]
+	003 Return xmm0
+
+Method: System.Single get_radius()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+34h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+52]
+	003 Return xmm0
+
+Method: System.Single get_radiusVariance()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+38h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+56]
+	003 Return xmm0
+

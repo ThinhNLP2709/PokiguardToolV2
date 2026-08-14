@@ -1,0 +1,120 @@
+Type: Unity.VisualScripting.Dependencies.NCalc.UnaryExpression
+
+Method: System.Void .ctor(Unity.VisualScripting.Dependencies.NCalc.UnaryExpressionType type, Unity.VisualScripting.Dependencies.NCalc.LogicalExpression expression)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov rsi,r8
+	xor edx,edx
+	mov rdi,rcx
+	call 00000001804552D0h
+	lea rcx,[rdi+10h]
+	mov [rdi+18h],ebx
+	mov rdx,rsi
+	mov [rdi+10h],rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, rdx
+	007 Move rsi, r8
+	008 Move rdx, 0
+	009 Move rdi, rcx
+	010 Call 0x1804552D0, rcx, rdx, r8
+	011 LoadAddress rcx, [rdi+16]
+	012 Move [rdi+24], rbx
+	013 Move rdx, rsi
+	014 Move [rdi+16], rsi
+	015 Move rbx, stack:0x30
+	016 Move rsi, stack:0x38
+	017 ShiftStack 32
+	018 Move rdi, stack:0x0
+	019 ShiftStack 8
+	020 Call 0x18037ACB0, rcx, rdx, r8, r9
+	021 Return 
+
+Method: Unity.VisualScripting.Dependencies.NCalc.LogicalExpression get_Expression()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Void set_Expression(Unity.VisualScripting.Dependencies.NCalc.LogicalExpression value)
+
+Disassembly:
+	mov [rcx+10h],rdx
+	add rcx,10h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Add rcx, rcx, 16
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: Unity.VisualScripting.Dependencies.NCalc.UnaryExpressionType get_Type()
+
+Disassembly:
+	mov eax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void set_Type(Unity.VisualScripting.Dependencies.NCalc.UnaryExpressionType value)
+
+Disassembly:
+	mov [rcx+18h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+24], rdx
+	002 Return 
+
+Method: System.Void Accept(Unity.VisualScripting.Dependencies.NCalc.LogicalExpressionVisitor visitor)
+
+Disassembly:
+	sub rsp,28h
+	mov r9,rdx
+	test rdx,rdx
+	je short 00000001819BFDFAh
+	mov r8,[rdx]
+	mov rdx,rcx
+	mov rcx,r9
+	mov rax,[r8+198h]
+	mov r8,[r8+1A0h]
+	add rsp,28h
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r9, rdx
+	003 Compare rdx, 0
+	004 JumpIfEqual {12}
+	005 Move r8, [rdx]
+	006 Move rdx, rcx
+	007 Move rcx, r9
+	008 Move rax, [r8+408]
+	009 Move r8, [r8+416]
+	010 ShiftStack 40
+	011 CallNoReturn rax
+	012 Call 0x18037BE30, rcx, rdx, r8, r9
+

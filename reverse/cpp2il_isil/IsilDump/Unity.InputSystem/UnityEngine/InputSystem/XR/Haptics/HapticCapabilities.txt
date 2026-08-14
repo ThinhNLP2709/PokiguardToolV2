@@ -1,0 +1,106 @@
+Type: UnityEngine.InputSystem.XR.Haptics.HapticCapabilities
+
+Method: System.Void .ctor(System.UInt32 numChannels, System.Boolean supportsImpulse, System.Boolean supportsBuffer, System.UInt32 frequencyHz, System.UInt32 maxBufferSize, System.UInt32 optimalBufferSize)
+
+Disassembly:
+	mov eax,[rsp+28h]
+	mov [rcx+8],eax
+	mov eax,[rsp+30h]
+	mov [rcx+0Ch],eax
+	mov eax,[rsp+38h]
+	mov [rcx+10h],eax
+	mov [rcx],edx
+	mov [rcx+4],r8b
+	mov [rcx+5],r9b
+	ret
+
+ISIL:
+	001 Move rax, stack:0x28
+	002 Move [rcx+8], rax
+	003 Move rax, stack:0x30
+	004 Move [rcx+12], rax
+	005 Move rax, stack:0x38
+	006 Move [rcx+16], rax
+	007 Move [rcx], rdx
+	008 Move [rcx+4], r8
+	009 Move [rcx+5], r9
+	010 Return 
+
+Method: System.Void .ctor(System.UInt32 numChannels, System.UInt32 frequencyHz, System.UInt32 maxBufferSize)
+
+Disassembly:
+	mov [rcx],edx
+	mov word ptr [rcx+4],0
+	mov [rcx+8],r8d
+	mov [rcx+0Ch],r9d
+	mov dword ptr [rcx+10h],0
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move [rcx+4], 0
+	003 Move [rcx+8], r8
+	004 Move [rcx+12], r9
+	005 Move [rcx+16], 0
+	006 Return 
+
+Method: System.UInt32 get_numChannels()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Boolean get_supportsImpulse()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+
+Method: System.Boolean get_supportsBuffer()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+5]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+5]
+	002 Return rax
+
+Method: System.UInt32 get_frequencyHz()
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: System.UInt32 get_maxBufferSize()
+
+Disassembly:
+	mov eax,[rcx+0Ch]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+12]
+	002 Return rax
+
+Method: System.UInt32 get_optimalBufferSize()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+

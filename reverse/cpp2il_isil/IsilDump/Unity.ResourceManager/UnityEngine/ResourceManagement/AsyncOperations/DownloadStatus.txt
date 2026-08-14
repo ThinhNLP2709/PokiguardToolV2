@@ -1,0 +1,36 @@
+Type: UnityEngine.ResourceManagement.AsyncOperations.DownloadStatus
+
+Method: System.Single get_Percent()
+
+Disassembly:
+	cmp qword ptr [rcx],0
+	jle short 00000001823851FCh
+	xorps xmm0,xmm0
+	xorps xmm1,xmm1
+	cvtsi2ss xmm0,qword ptr [rcx+8]
+	cvtsi2ss xmm1,qword ptr [rcx]
+	divss xmm0,xmm1
+	ret
+	cmp byte ptr [rcx+10h],0
+	je short 000000018238520Bh
+	movss xmm0,dword ptr [182A4FBA4h]
+	ret
+	xorps xmm0,xmm0
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 JumpIfLessOrEqual {9}
+	003 Move xmm0, 0
+	004 Move xmm1, 0
+	005 NotImplemented "cvtsi2ss xmm0,qword ptr [rcx+8]"
+	006 NotImplemented "cvtsi2ss xmm1,qword ptr [rcx]"
+	007 Divide xmm0, xmm0, xmm1
+	008 Return xmm0
+	009 Compare [rcx+16], 0
+	010 JumpIfEqual {13}
+	011 Move xmm0, [0x182A4FBA4]
+	012 Return xmm0
+	013 Move xmm0, 0
+	014 Return xmm0
+

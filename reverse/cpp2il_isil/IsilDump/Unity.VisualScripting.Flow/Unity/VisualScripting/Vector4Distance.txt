@@ -1,0 +1,147 @@
+Type: Unity.VisualScripting.Vector4Distance
+
+Method: System.Single Operation(UnityEngine.Vector4 a, UnityEngine.Vector4 b)
+
+Disassembly:
+	sub rsp,38h
+	movups xmm3,[r8]
+	movups xmm4,[rdx]
+	movaps xmm0,xmm3
+	shufps xmm0,xmm3,55h
+	movaps xmm2,xmm4
+	shufps xmm2,xmm4,55h
+	movaps xmm5,xmm4
+	movaps xmm1,xmm4
+	subss xmm2,xmm0
+	shufps xmm1,xmm4,0AAh
+	subss xmm5,xmm3
+	movaps xmm0,xmm3
+	shufps xmm4,xmm4,0FFh
+	shufps xmm0,xmm3,0AAh
+	shufps xmm3,xmm3,0FFh
+	subss xmm1,xmm0
+	subss xmm4,xmm3
+	shufps xmm5,xmm5,0E1h
+	movss xmm5,xmm2
+	shufps xmm5,xmm5,0C6h
+	movss xmm5,xmm1
+	shufps xmm5,xmm5,27h
+	movss xmm5,xmm4
+	shufps xmm5,xmm5,39h
+	movups [rsp+20h],xmm5
+	movdqa [rsp+20h],xmm5
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000182165A80h
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm3, [r8]
+	003 Move xmm4, [rdx]
+	004 Move xmm0, xmm3
+	005 Move XMM_TEMP.S[0], xmm0.S[1]
+	006 Move XMM_TEMP.S[1], xmm0.S[1]
+	007 Move XMM_TEMP.S[2], xmm3.S[1]
+	008 Move XMM_TEMP.S[3], xmm3.S[1]
+	009 Move xmm0, XMM_TEMP
+	010 Move xmm2, xmm4
+	011 Move XMM_TEMP.S[0], xmm2.S[1]
+	012 Move XMM_TEMP.S[1], xmm2.S[1]
+	013 Move XMM_TEMP.S[2], xmm4.S[1]
+	014 Move XMM_TEMP.S[3], xmm4.S[1]
+	015 Move xmm2, XMM_TEMP
+	016 Move xmm5, xmm4
+	017 Move xmm1, xmm4
+	018 Subtract xmm2, xmm2, xmm0
+	019 Move XMM_TEMP.S[0], xmm1.S[2]
+	020 Move XMM_TEMP.S[1], xmm1.S[2]
+	021 Move XMM_TEMP.S[2], xmm4.S[2]
+	022 Move XMM_TEMP.S[3], xmm4.S[2]
+	023 Move xmm1, XMM_TEMP
+	024 Subtract xmm5, xmm5, xmm3
+	025 Move xmm0, xmm3
+	026 Move XMM_TEMP.S[0], xmm4.S[3]
+	027 Move XMM_TEMP.S[1], xmm4.S[3]
+	028 Move XMM_TEMP.S[2], xmm4.S[3]
+	029 Move XMM_TEMP.S[3], xmm4.S[3]
+	030 Move xmm4, XMM_TEMP
+	031 Move XMM_TEMP.S[0], xmm0.S[2]
+	032 Move XMM_TEMP.S[1], xmm0.S[2]
+	033 Move XMM_TEMP.S[2], xmm3.S[2]
+	034 Move XMM_TEMP.S[3], xmm3.S[2]
+	035 Move xmm0, XMM_TEMP
+	036 Move XMM_TEMP.S[0], xmm3.S[3]
+	037 Move XMM_TEMP.S[1], xmm3.S[3]
+	038 Move XMM_TEMP.S[2], xmm3.S[3]
+	039 Move XMM_TEMP.S[3], xmm3.S[3]
+	040 Move xmm3, XMM_TEMP
+	041 Subtract xmm1, xmm1, xmm0
+	042 Subtract xmm4, xmm4, xmm3
+	043 Move XMM_TEMP.S[0], xmm5.S[1]
+	044 Move XMM_TEMP.S[1], xmm5.S[0]
+	045 Move XMM_TEMP.S[2], xmm5.S[2]
+	046 Move XMM_TEMP.S[3], xmm5.S[3]
+	047 Move xmm5, XMM_TEMP
+	048 Move xmm5, xmm2
+	049 Move XMM_TEMP.S[0], xmm5.S[2]
+	050 Move XMM_TEMP.S[1], xmm5.S[1]
+	051 Move XMM_TEMP.S[2], xmm5.S[0]
+	052 Move XMM_TEMP.S[3], xmm5.S[3]
+	053 Move xmm5, XMM_TEMP
+	054 Move xmm5, xmm1
+	055 Move XMM_TEMP.S[0], xmm5.S[3]
+	056 Move XMM_TEMP.S[1], xmm5.S[1]
+	057 Move XMM_TEMP.S[2], xmm5.S[2]
+	058 Move XMM_TEMP.S[3], xmm5.S[0]
+	059 Move xmm5, XMM_TEMP
+	060 Move xmm5, xmm4
+	061 Move XMM_TEMP.S[0], xmm5.S[1]
+	062 Move XMM_TEMP.S[1], xmm5.S[2]
+	063 Move XMM_TEMP.S[2], xmm5.S[3]
+	064 Move XMM_TEMP.S[3], xmm5.S[0]
+	065 Move xmm5, XMM_TEMP
+	066 Move stack:0x20, xmm5
+	067 Move stack:0x20, xmm5
+	068 Move rdx, 0
+	069 LoadAddress rcx, stack:0x20
+	070 Call 0x182165A80, rcx, rdx, r8, r9
+	071 ShiftStack 56
+	072 Return xmm0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [183755515h],0
+	mov rbx,rcx
+	jne short 00000001825782F5h
+	lea rcx,[18355EB18h]
+	call 000000018037BB90h
+	mov byte ptr [183755515h],1
+	mov rdx,[18355EB18h]
+	mov rcx,rbx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000180B170F0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x183755515], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x18355EB18]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183755515], 1
+	010 Move rdx, [0x18355EB18]
+	011 Move rcx, rbx
+	012 ShiftStack 32
+	013 Move rbx, stack:0x0
+	014 ShiftStack 8
+	015 Call 0x180B170F0, rcx, rdx
+	016 Return 
+

@@ -1,0 +1,61 @@
+namespace UnityEngine.UIElements;
+
+[VisibleToOtherModules(new IL2CPP_TYPE_STRING[] {"UnityEditor.UIBuilderModule"})]
+internal abstract class CollectionVirtualizationController
+{
+	protected readonly ScrollView m_ScrollView; //Field offset: 0x10
+
+	public abstract IEnumerable<ReusableCollectionItem> activeItems
+	{
+		 get { } //Length: 0
+	}
+
+	public abstract int firstVisibleIndex
+	{
+		 get { } //Length: 0
+		 set { } //Length: 0
+	}
+
+	public abstract int visibleItemCount
+	{
+		 get { } //Length: 0
+	}
+
+	protected CollectionVirtualizationController(ScrollView scrollView) { }
+
+	internal abstract void EndDrag(int dropIndex) { }
+
+	public abstract IEnumerable<ReusableCollectionItem> get_activeItems() { }
+
+	public abstract int get_firstVisibleIndex() { }
+
+	public abstract int get_visibleItemCount() { }
+
+	public abstract float GetExpectedContentHeight() { }
+
+	public abstract float GetExpectedItemHeight(int index) { }
+
+	public abstract int GetIndexFromPosition(Vector2 position) { }
+
+	public abstract void OnFocusIn(VisualElement leafTarget) { }
+
+	public abstract void OnFocusOut(VisualElement willFocus) { }
+
+	public abstract void OnScroll(Vector2 offset) { }
+
+	public abstract void Refresh(bool rebuild) { }
+
+	public abstract void Resize(Vector2 size) { }
+
+	public abstract void ScrollToItem(int id) { }
+
+	protected abstract void set_firstVisibleIndex(int value) { }
+
+	internal abstract void StartDragItem(ReusableCollectionItem item) { }
+
+	public abstract void UnbindAll() { }
+
+	public abstract void UpdateBackground() { }
+
+}
+

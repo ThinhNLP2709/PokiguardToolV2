@@ -1,0 +1,176 @@
+Type: EasyUI.PickerWheelUI.PickerWheel+<SetupWheelCoroutine>d__35
+
+Method: System.Void .ctor(System.Int32 <>1__state)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov edi,edx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	mov [rbx+10h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move [rbx+16], rdi
+	010 Move rbx, stack:0x30
+	011 ShiftStack 32
+	012 Move rdi, stack:0x0
+	013 ShiftStack 8
+	014 Return 
+
+Method: System.Void System.IDisposable.Dispose()
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Boolean MoveNext()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov eax,[rcx+10h]
+	mov rbx,rcx
+	mov rcx,[rcx+20h]
+	test eax,eax
+	jne short 00000001806B729Fh
+	mov dword ptr [rbx+10h],0FFFFFFFFh
+	test rcx,rcx
+	je short 00000001806B72BFh
+	xor edx,edx
+	mov [rcx+0D8h],al
+	call 00000001806A8B10h
+	lea rcx,[rbx+18h]
+	mov qword ptr [rbx+18h],0
+	xor edx,edx
+	call 000000018037ACB0h
+	mov al,1
+	mov dword ptr [rbx+10h],1
+	add rsp,20h
+	pop rbx
+	ret
+	cmp eax,1
+	jne short 00000001806B72B7h
+	mov dword ptr [rbx+10h],0FFFFFFFFh
+	test rcx,rcx
+	je short 00000001806B72BFh
+	xor edx,edx
+	call 00000001806A9F90h
+	xor al,al
+	add rsp,20h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, [rcx+16]
+	005 Move rbx, rcx
+	006 Move rcx, [rcx+32]
+	007 Compare rax, 0
+	008 JumpIfNotEqual {25}
+	009 Move [rbx+16], 0xFFFFFFFF
+	010 Compare rcx, 0
+	011 JumpIfEqual {37}
+	012 Move rdx, 0
+	013 Move [rcx+216], rax
+	014 Call PickerWheel.ClearWheel, rcx, rdx
+	015 LoadAddress rcx, [rbx+24]
+	016 Move [rbx+24], 0
+	017 Move rdx, 0
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Move rax, 1
+	020 Move [rbx+16], 1
+	021 ShiftStack 32
+	022 Move rbx, stack:0x0
+	023 ShiftStack 8
+	024 Return rax
+	025 Compare rax, 1
+	026 JumpIfNotEqual {32}
+	027 Move [rbx+16], 0xFFFFFFFF
+	028 Compare rcx, 0
+	029 JumpIfEqual {37}
+	030 Move rdx, 0
+	031 Call PickerWheel.SetupWheelImmediate, rcx, rdx
+	032 Move rax, 0
+	033 ShiftStack 32
+	034 Move rbx, stack:0x0
+	035 ShiftStack 8
+	036 Return rax
+	037 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.Generic.IEnumerator<System.Object>.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void System.Collections.IEnumerator.Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	lea rcx,[1834F0018h]
+	call 000000018037BBB0h
+	mov rcx,rax
+	call 000000018037BDE0h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 00000001818083D0h
+	lea rcx,[183511FB8h]
+	call 000000018037BBB0h
+	mov rdx,rax
+	mov rcx,rbx
+	call 000000018037BDF0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 LoadAddress rcx, [0x1834F0018]
+	005 Call 0x18037BBB0, rcx, rdx, r8, r9
+	006 Move rcx, rax
+	007 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	008 Move rdx, 0
+	009 Move rcx, rax
+	010 Move rbx, rax
+	011 Call NotSupportedException..ctor, rcx, rdx
+	012 LoadAddress rcx, [0x183511FB8]
+	013 Call 0x18037BBB0, rcx, rdx, r8, r9
+	014 Move rdx, rax
+	015 Move rcx, rbx
+	016 Call 0x18037BDF0, rcx, rdx, r8, r9
+
+Method: System.Object System.Collections.IEnumerator.get_Current()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+

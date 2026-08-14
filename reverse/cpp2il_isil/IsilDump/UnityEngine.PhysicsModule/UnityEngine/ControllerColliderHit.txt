@@ -1,0 +1,92 @@
+Type: UnityEngine.ControllerColliderHit
+
+Method: UnityEngine.CharacterController get_controller()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+16]
+	003 Return rax
+
+Method: UnityEngine.Collider get_collider()
+
+Disassembly:
+	xchg ax,ax
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+24]
+	003 Return rax
+
+Method: UnityEngine.Vector3 get_point()
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx+20h]
+	mov eax,[rdx+28h]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+32]
+	002 Move rax, [rdx+40]
+	003 Move [rcx], xmm0
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Return rax
+
+Method: UnityEngine.Vector3 get_normal()
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx+2Ch]
+	mov eax,[rdx+34h]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+44]
+	002 Move rax, [rdx+52]
+	003 Move [rcx], xmm0
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Return rax
+
+Method: UnityEngine.Vector3 get_moveDirection()
+
+Disassembly:
+	movsd xmm0,qword ptr [rdx+38h]
+	mov eax,[rdx+40h]
+	movsd qword ptr [rcx],xmm0
+	mov [rcx+8],eax
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+56]
+	002 Move rax, [rdx+64]
+	003 Move [rcx], xmm0
+	004 Move [rcx+8], rax
+	005 Move rax, rcx
+	006 Return rax
+
+Method: System.Single get_moveLength()
+
+Disassembly:
+	xchg ax,ax
+	movss xmm0,dword ptr [rcx+44h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move xmm0, [rcx+68]
+	003 Return xmm0
+

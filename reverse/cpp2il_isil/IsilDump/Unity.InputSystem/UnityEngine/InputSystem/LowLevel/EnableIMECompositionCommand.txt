@@ -1,0 +1,152 @@
+Type: UnityEngine.InputSystem.LowLevel.EnableIMECompositionCommand
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_Type()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov eax,4Dh
+	mov [rsp+28h],rcx
+	mov r9d,45h
+	mov [rsp+48h],ecx
+	mov r8d,eax
+	lea rcx,[rsp+48h]
+	mov [rsp+20h],ax
+	mov edx,49h
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rax, 77
+	004 Move stack:0x28, rcx
+	005 Move r9, 69
+	006 Move stack:0x48, rcx
+	007 Move r8, rax
+	008 LoadAddress rcx, stack:0x48
+	009 Move stack:0x20, rax
+	010 Move rdx, 73
+	011 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	012 Move rax, stack:0x48
+	013 ShiftStack 56
+	014 Return rax
+
+Method: System.Boolean get_imeEnabled()
+
+Disassembly:
+	cmp byte ptr [rcx+8],0
+	seta al
+	ret
+
+ISIL:
+	001 Compare [rcx+8], 0
+	002 NotImplemented "seta al"
+	003 Return rax
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_typeStatic()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov eax,4Dh
+	mov [rsp+28h],rcx
+	mov r9d,45h
+	mov [rsp+50h],ecx
+	mov r8d,eax
+	lea rcx,[rsp+50h]
+	mov [rsp+20h],ax
+	mov edx,49h
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rax, 77
+	004 Move stack:0x28, rcx
+	005 Move r9, 69
+	006 Move stack:0x50, rcx
+	007 Move r8, rax
+	008 LoadAddress rcx, stack:0x50
+	009 Move stack:0x20, rax
+	010 Move rdx, 73
+	011 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	012 Move rax, stack:0x50
+	013 ShiftStack 56
+	014 Return rax
+
+Method: UnityEngine.InputSystem.LowLevel.EnableIMECompositionCommand Create(System.Boolean enabled)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	push rdi
+	sub rsp,30h
+	xor eax,eax
+	mov rdi,rcx
+	mov [rcx],rax
+	movzx ebx,dl
+	mov [rcx+8],al
+	mov r9d,45h
+	xor ecx,ecx
+	mov eax,4Dh
+	mov [rsp+28h],rcx
+	mov r8d,eax
+	mov [rsp+48h],ecx
+	mov edx,49h
+	lea rcx,[rsp+48h]
+	mov [rsp+20h],ax
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	mov [rsp+40h],eax
+	mov dword ptr [rsp+44h],9
+	mov rax,[rsp+40h]
+	mov [rdi],rax
+	neg bl
+	mov rbx,[rsp+50h]
+	sbb al,al
+	mov [rdi+8],al
+	mov rax,rdi
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Move rax, 0
+	006 Move rdi, rcx
+	007 Move [rcx], rax
+	008 Move rbx, rdx
+	009 Move [rcx+8], rax
+	010 Move r9, 69
+	011 Move rcx, 0
+	012 Move rax, 77
+	013 Move stack:0x28, rcx
+	014 Move r8, rax
+	015 Move stack:0x48, rcx
+	016 Move rdx, 73
+	017 LoadAddress rcx, stack:0x48
+	018 Move stack:0x20, rax
+	019 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	020 Move rax, stack:0x48
+	021 Move stack:0x40, rax
+	022 Move stack:0x44, 9
+	023 Move rax, stack:0x40
+	024 Move [rdi], rax
+	025 Neg rbx
+	026 Move rbx, stack:0x50
+	027 NotImplemented "sbb al,al"
+	028 Move [rdi+8], rax
+	029 Move rax, rdi
+	030 ShiftStack 48
+	031 Move rdi, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+

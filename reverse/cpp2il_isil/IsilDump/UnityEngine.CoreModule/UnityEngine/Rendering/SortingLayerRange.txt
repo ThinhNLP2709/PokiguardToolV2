@@ -1,0 +1,157 @@
+Type: UnityEngine.Rendering.SortingLayerRange
+
+Method: UnityEngine.Rendering.SortingLayerRange get_all()
+
+Disassembly:
+	mov dword ptr [rsp+10h],7FFF8000h
+	mov eax,[rsp+10h]
+	ret
+
+ISIL:
+	001 Move stack:0x10, 0x7FFF8000
+	002 Move rax, stack:0x10
+	003 Return rax
+
+Method: System.Boolean Equals(UnityEngine.Rendering.SortingLayerRange other)
+
+Disassembly:
+	cmp [rcx],dx
+	je short 00000001826704B8h
+	xor eax,eax
+	ret
+	shr edx,10h
+	cmp [rcx+2],dx
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], rdx
+	002 JumpIfEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 ShiftRight rdx, 16
+	006 Compare [rcx+2], rdx
+	007 NotImplemented "sete al"
+	008 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183758AC9h],0
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 00000001826704FCh
+	lea rcx,[1835112A8h]
+	call 000000018037BB90h
+	mov byte ptr [183758AC9h],1
+	mov [rsp+30h],rbx
+	test rdi,rdi
+	je short 0000000182670556h
+	mov rdx,[1835112A8h]
+	xor ebx,ebx
+	cmp [rdi],rdx
+	mov eax,ebx
+	cmove rax,rdi
+	test rax,rax
+	je short 0000000182670556h
+	mov rcx,[rdi]
+	mov rax,[rdx+40h]
+	cmp [rcx+40h],rax
+	mov rcx,rdi
+	jne short 000000018267056Bh
+	call 000000018037AE90h
+	mov eax,[rax]
+	cmp [rsi],ax
+	jne short 0000000182670558h
+	shr eax,10h
+	cmp [rsi+2],ax
+	sete bl
+	movzx eax,bl
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	xor bl,bl
+	mov rsi,[rsp+38h]
+	movzx eax,bl
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x10, rsi
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183758AC9], 0
+	006 Move rdi, rdx
+	007 Move rsi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x1835112A8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183758AC9], 1
+	012 Move stack:0x30, rbx
+	013 Compare rdi, 0
+	014 JumpIfEqual {43}
+	015 Move rdx, typeof(UnityEngine.Rendering.SortingLayerRange)
+	016 Move rbx, 0
+	017 Compare [rdi], rdx
+	018 Move rax, rbx
+	019 JumpIfNotEqual {21}
+	020 Move rax, rdi
+	021 Nop 
+	022 Compare rax, 0
+	023 JumpIfEqual {43}
+	024 Move rcx, [rdi]
+	025 Move rax, [rdx+64]
+	026 Compare [rcx+64], rax
+	027 Move rcx, rdi
+	028 JumpIfNotEqual {51}
+	029 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	030 Move rax, [rax]
+	031 Compare [rsi], rax
+	032 JumpIfNotEqual {44}
+	033 ShiftRight rax, 16
+	034 Compare [rsi+2], rax
+	035 NotImplemented "sete bl"
+	036 Move rax, rbx
+	037 Move rbx, stack:0x30
+	038 Move rsi, stack:0x38
+	039 ShiftStack 32
+	040 Move rdi, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Move rbx, 0
+	044 Move rsi, stack:0x38
+	045 Move rax, rbx
+	046 Move rbx, stack:0x30
+	047 ShiftStack 32
+	048 Move rdi, stack:0x0
+	049 ShiftStack 8
+	050 Return rax
+	051 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	xchg ax,ax
+	movsx eax,word ptr [rcx+2]
+	movzx ecx,word ptr [rcx]
+	shl eax,10h
+	or eax,ecx
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+2]
+	003 Move rcx, [rcx]
+	004 ShiftLeft rax, 16
+	005 Or rax, rax, rcx
+	006 Return rax
+

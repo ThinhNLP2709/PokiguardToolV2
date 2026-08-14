@@ -1,0 +1,58 @@
+Type: UnityEngine.Rendering.NoInterpVector4Parameter
+
+Method: System.Void .ctor(UnityEngine.Vector4 value, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [183753C6Eh],0
+	movzx ebx,r8b
+	mov rdi,rdx
+	mov rsi,rcx
+	jne short 00000001822077D5h
+	lea rcx,[1835604A0h]
+	call 000000018037BB90h
+	mov byte ptr [183753C6Eh],1
+	movups xmm0,[rdi]
+	mov r9,[1835604A0h]
+	lea rdx,[rsp+20h]
+	movzx r8d,bl
+	mov rcx,rsi
+	movaps [rsp+20h],xmm0
+	call 0000000180F70040h
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Compare [0x183753C6E], 0
+	007 Move rbx, r8
+	008 Move rdi, rdx
+	009 Move rsi, rcx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x1835604A0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183753C6E], 1
+	014 Move xmm0, [rdi]
+	015 Move r9, [0x1835604A0]
+	016 LoadAddress rdx, stack:0x20
+	017 Move r8, rbx
+	018 Move rcx, rsi
+	019 Move stack:0x20, xmm0
+	020 Call 0x180F70040, rcx, rdx, r8
+	021 Move rbx, stack:0x40
+	022 Move rsi, stack:0x48
+	023 ShiftStack 48
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Return 
+

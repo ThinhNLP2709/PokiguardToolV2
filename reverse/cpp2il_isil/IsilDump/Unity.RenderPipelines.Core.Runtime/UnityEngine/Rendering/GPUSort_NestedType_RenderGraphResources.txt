@@ -1,0 +1,146 @@
+Type: UnityEngine.Rendering.GPUSort+RenderGraphResources
+
+Method: UnityEngine.Rendering.GPUSort+RenderGraphResources Create(System.Int32 count, UnityEngine.Rendering.RenderGraphModule.RenderGraph renderGraph, UnityEngine.Rendering.RenderGraphModule.RenderGraphBuilder builder)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,70h
+	cmp byte ptr [183753C0Eh],0
+	mov rdi,r9
+	mov esi,edx
+	mov rbx,rcx
+	jne short 000000018220843Fh
+	lea rcx,[1834F9198h]
+	call 000000018037BB90h
+	lea rcx,[1834F8758h]
+	call 000000018037BB90h
+	mov byte ptr [183753C0Eh],1
+	xor eax,eax
+	lea rcx,[rsp+40h]
+	xorps xmm0,xmm0
+	mov [rsp+50h],rax
+	xorps xmm1,xmm1
+	mov [rsp+68h],rax
+	movups [rbx],xmm0
+	mov r9d,28h
+	mov [rbx+10h],rax
+	mov r8d,4
+	mov [rsp+20h],rax
+	mov edx,esi
+	movups [rsp+40h],xmm0
+	movups [rsp+58h],xmm1
+	call 000000018221E280h
+	mov rdx,[1834F9198h]
+	lea rcx,[rsp+48h]
+	mov [rsp+48h],rdx
+	call 000000018037ACB0h
+	xor r9d,r9d
+	lea r8,[rsp+40h]
+	mov rdx,rdi
+	lea rcx,[rsp+30h]
+	call 000000018222AB20h
+	mov r9d,28h
+	mov qword ptr [rsp+20h],0
+	mov r8d,4
+	lea rcx,[rsp+58h]
+	mov edx,esi
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rbx],xmm0
+	mov [rbx+8],eax
+	call 000000018221E280h
+	mov rdx,[1834F8758h]
+	lea rcx,[rsp+60h]
+	mov [rsp+60h],rdx
+	call 000000018037ACB0h
+	xor r9d,r9d
+	lea r8,[rsp+58h]
+	mov rdx,rdi
+	lea rcx,[rsp+30h]
+	call 000000018222AB20h
+	lea r11,[rsp+70h]
+	mov rsi,[r11+18h]
+	movsd xmm0,qword ptr [rax]
+	mov eax,[rax+8]
+	movsd qword ptr [rbx+0Ch],xmm0
+	mov [rbx+14h],eax
+	mov rax,rbx
+	mov rbx,[r11+10h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -112
+	006 Compare [0x183753C0E], 0
+	007 Move rdi, r9
+	008 Move rsi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x1834F9198]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x1834F8758]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753C0E], 1
+	016 Move rax, 0
+	017 LoadAddress rcx, stack:0x40
+	018 Move xmm0, 0
+	019 Move stack:0x50, rax
+	020 Move xmm1, 0
+	021 Move stack:0x68, rax
+	022 Move [rbx], xmm0
+	023 Move r9, 40
+	024 Move [rbx+16], rax
+	025 Move r8, 4
+	026 Move stack:0x20, rax
+	027 Move rdx, rsi
+	028 Move stack:0x40, xmm0
+	029 Move stack:0x58, xmm1
+	030 Call BufferDesc..ctor, rcx, rdx, r8, r9
+	031 Move rdx, "Keys"
+	032 LoadAddress rcx, stack:0x48
+	033 Move stack:0x48, rdx
+	034 Call 0x18037ACB0, rcx, rdx, r8, r9
+	035 Move r9, 0
+	036 LoadAddress r8, stack:0x40
+	037 Move rdx, rdi
+	038 LoadAddress rcx, stack:0x30
+	039 Call RenderGraphBuilder.CreateTransientBuffer, rcx, rdx
+	040 Move r9, 40
+	041 Move stack:0x20, 0
+	042 Move r8, 4
+	043 LoadAddress rcx, stack:0x58
+	044 Move rdx, rsi
+	045 Move xmm0, [rax]
+	046 Move rax, [rax+8]
+	047 Move [rbx], xmm0
+	048 Move [rbx+8], rax
+	049 Call BufferDesc..ctor, rcx, rdx, r8, r9
+	050 Move rdx, "Values"
+	051 LoadAddress rcx, stack:0x60
+	052 Move stack:0x60, rdx
+	053 Call 0x18037ACB0, rcx, rdx, r8, r9
+	054 Move r9, 0
+	055 LoadAddress r8, stack:0x58
+	056 Move rdx, rdi
+	057 LoadAddress rcx, stack:0x30
+	058 Call RenderGraphBuilder.CreateTransientBuffer, rcx, rdx
+	059 LoadAddress r11, stack:0x70
+	060 Move rsi, [r11+24]
+	061 Move xmm0, [rax]
+	062 Move rax, [rax+8]
+	063 Move [rbx+12], xmm0
+	064 Move [rbx+20], rax
+	065 Move rax, rbx
+	066 Move rbx, [r11+16]
+	067 Move rsp, r11
+	068 Move rdi, stack:0x0
+	069 ShiftStack 8
+	070 Return rax
+

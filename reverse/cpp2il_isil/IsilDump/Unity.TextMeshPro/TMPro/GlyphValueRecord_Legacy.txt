@@ -1,0 +1,94 @@
+Type: TMPro.GlyphValueRecord_Legacy
+
+Method: System.Void .ctor(UnityEngine.TextCore.LowLevel.GlyphValueRecord valueRecord)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	mov rcx,rbx
+	xor edx,edx
+	call 00000001804BA640h
+	xor edx,edx
+	movss dword ptr [rdi],xmm0
+	mov rcx,rbx
+	call 00000001804BA650h
+	xor edx,edx
+	movss dword ptr [rdi+4],xmm0
+	mov rcx,rbx
+	call 000000018044A050h
+	xor edx,edx
+	movss dword ptr [rdi+8],xmm0
+	mov rcx,rbx
+	call 000000018044A040h
+	mov rbx,[rsp+30h]
+	movss dword ptr [rdi+0Ch],xmm0
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rcx, rbx
+	008 Move rdx, 0
+	009 Call 0x1804BA640, rcx, rdx
+	010 Move rdx, 0
+	011 Move [rdi], xmm0
+	012 Move rcx, rbx
+	013 Call 0x1804BA650, rcx, rdx
+	014 Move rdx, 0
+	015 Move [rdi+4], xmm0
+	016 Move rcx, rbx
+	017 Call 0x18044A050, rcx, rdx
+	018 Move rdx, 0
+	019 Move [rdi+8], xmm0
+	020 Move rcx, rbx
+	021 Call 0x18044A040, rcx, rdx
+	022 Move rbx, stack:0x30
+	023 Move [rdi+12], xmm0
+	024 ShiftStack 32
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Return 
+
+Method: TMPro.GlyphValueRecord_Legacy op_Addition(TMPro.GlyphValueRecord_Legacy a, TMPro.GlyphValueRecord_Legacy b)
+
+Disassembly:
+	movss xmm0,dword ptr [rdx]
+	mov rax,rcx
+	addss xmm0,dword ptr [r8]
+	movss xmm1,dword ptr [rdx+4]
+	addss xmm1,dword ptr [r8+4]
+	movss dword ptr [rcx],xmm0
+	movss xmm0,dword ptr [rdx+8]
+	addss xmm0,dword ptr [r8+8]
+	movss dword ptr [rcx+4],xmm1
+	movss xmm1,dword ptr [rdx+0Ch]
+	addss xmm1,dword ptr [r8+0Ch]
+	movss dword ptr [rcx+8],xmm0
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx]
+	002 Move rax, rcx
+	003 Add xmm0, xmm0, [r8]
+	004 Move xmm1, [rdx+4]
+	005 Add xmm1, xmm1, [r8+4]
+	006 Move [rcx], xmm0
+	007 Move xmm0, [rdx+8]
+	008 Add xmm0, xmm0, [r8+8]
+	009 Move [rcx+4], xmm1
+	010 Move xmm1, [rdx+12]
+	011 Add xmm1, xmm1, [r8+12]
+	012 Move [rcx+8], xmm0
+	013 Move [rcx+12], xmm1
+	014 Return rax
+

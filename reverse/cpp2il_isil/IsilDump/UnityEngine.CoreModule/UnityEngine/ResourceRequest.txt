@@ -1,0 +1,83 @@
+Type: UnityEngine.ResourceRequest
+
+Method: UnityEngine.Object GetResult()
+
+Disassembly:
+	xchg ax,ax
+	mov rdx,[rcx+28h]
+	xor r8d,r8d
+	mov rcx,[rcx+20h]
+	jmp near ptr 0000000182618D40h
+
+ISIL:
+	001 Nop 
+	002 Move rdx, [rcx+40]
+	003 Move r8, 0
+	004 Move rcx, [rcx+32]
+	005 Call Resources.Load, rcx, rdx, r8
+	006 Return rax
+
+Method: UnityEngine.Object get_asset()
+
+Disassembly:
+	mov rdx,[rcx]
+	mov rax,[rdx+178h]
+	mov rdx,[rdx+180h]
+	jmp rax
+
+ISIL:
+	001 Move rdx, [rcx]
+	002 Move rax, [rdx+376]
+	003 Move rdx, [rdx+384]
+	004 CallNoReturn rax
+
+Method: System.Void .ctor(System.IntPtr ptr)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 00000001804552D0h
+	mov rax,[183757710h]
+	test rax,rax
+	jne short 00000001826070E6h
+	lea rcx,[182B317C0h]
+	call 000000018037BE90h
+	mov [183757710h],rax
+	mov rdx,rbx
+	mov rcx,rdi
+	call rax
+	mov [rbx+10h],rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x1804552D0, rcx, rdx, r8
+	009 Move rax, [0x183757710]
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B317C0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183757710], rax
+	015 Move rdx, rbx
+	016 Move rcx, rdi
+	017 Call rax
+	018 Move [rbx+16], rdi
+	019 Move rbx, stack:0x30
+	020 ShiftStack 32
+	021 Move rdi, stack:0x0
+	022 ShiftStack 8
+	023 Return 
+

@@ -1,0 +1,36 @@
+Type: System.Runtime.Versioning.BinaryCompatibility
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [18374EC58h],0
+	jne short 00000001816D6D00h
+	lea rcx,[183506748h]
+	call 000000018037BB90h
+	mov byte ptr [18374EC58h],1
+	mov rax,[183506748h]
+	mov rcx,[rax+0B8h]
+	mov byte ptr [rcx],1
+	mov rax,[183506748h]
+	mov rcx,[rax+0B8h]
+	mov byte ptr [rcx+1],1
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x18374EC58], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183506748]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x18374EC58], 1
+	007 Move rax, typeof(System.Runtime.Versioning.BinaryCompatibility)
+	008 Move rcx, [rax+184]
+	009 Move [rcx], 1
+	010 Move rax, typeof(System.Runtime.Versioning.BinaryCompatibility)
+	011 Move rcx, [rax+184]
+	012 Move [rcx+1], 1
+	013 ShiftStack 40
+	014 Return 
+

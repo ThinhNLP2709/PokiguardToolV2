@@ -1,0 +1,79 @@
+Type: UnityEngine.Rendering.Universal.DecalDrawScreenSpaceSystem
+
+Method: System.Void .ctor(UnityEngine.Rendering.Universal.DecalEntityManager entityManager)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18375420Ch],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 00000001822A7088h
+	lea rcx,[1835213A0h]
+	call 000000018037BB90h
+	lea rcx,[1835022C8h]
+	call 000000018037BB90h
+	mov byte ptr [18375420Ch],1
+	mov rcx,[1835213A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822A709Dh
+	call 000000018037BED0h
+	mov rdx,[1835022C8h]
+	xor r9d,r9d
+	mov r8,rbx
+	mov rcx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001822A8740h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18375420C], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {14}
+	009 LoadAddress rcx, [0x1835213A0]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x1835022C8]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x18375420C], 1
+	014 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawSystem)
+	015 Compare [rcx+228], 0
+	016 JumpIfNotEqual {18}
+	017 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	018 Move rdx, "DecalDrawScreenSpaceSystem.Execute"
+	019 Move r9, 0
+	020 Move r8, rbx
+	021 Move rcx, rdi
+	022 Move rbx, stack:0x30
+	023 ShiftStack 32
+	024 Move rdi, stack:0x0
+	025 ShiftStack 8
+	026 Call DecalDrawSystem..ctor, rcx, rdx, r8
+	027 Return 
+
+Method: System.Int32 GetPassIndex(UnityEngine.Rendering.Universal.DecalCachedChunk decalCachedChunk)
+
+Disassembly:
+	sub rsp,28h
+	test rdx,rdx
+	je short 00000001822A7041h
+	mov eax,[rdx+38h]
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare rdx, 0
+	003 JumpIfEqual {7}
+	004 Move rax, [rdx+56]
+	005 ShiftStack 40
+	006 Return rax
+	007 Call 0x18037BE30, rcx, rdx, r8, r9
+

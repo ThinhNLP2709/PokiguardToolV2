@@ -1,0 +1,58 @@
+Type: Unity.Burst.Intrinsics.X86+Sse4_2+StrBoolArray
+
+Method: System.Void SetBit(System.Int32 aindex, System.Int32 bindex, System.Boolean val)
+
+Disassembly:
+	movsxd rax,edx
+	and r8w,1Fh
+	lea rdx,[rax+rax]
+	movzx eax,word ptr [rdx+rcx]
+	test r9b,r9b
+	jne short 0000000181EDAF3Fh
+	btr ax,r8w
+	mov [rdx+rcx],ax
+	ret
+	bts ax,r8w
+	mov [rdx+rcx],ax
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 And r8, r8, 31
+	003 LoadAddress rdx, [rax+rax]
+	004 Move rax, [rdx+rcx]
+	005 Compare r9, 0
+	006 JumpIfNotEqual {10}
+	007 NotImplemented "btr ax,r8w"
+	008 Move [rdx+rcx], rax
+	009 Return 
+	010 NotImplemented "bts ax,r8w"
+	011 Move [rdx+rcx], rax
+	012 Return 
+
+Method: System.Boolean GetBit(System.Int32 aindex, System.Int32 bindex)
+
+Disassembly:
+	mov r10,rcx
+	movsxd rax,edx
+	and r8d,1Fh
+	mov r9d,1
+	movzx ecx,r8b
+	shl r9d,cl
+	movzx ecx,word ptr [r10+rax*2]
+	test ecx,r9d
+	seta al
+	ret
+
+ISIL:
+	001 Move r10, rcx
+	002 Move rax, rdx
+	003 And r8, r8, 31
+	004 Move r9, 1
+	005 Move rcx, r8
+	006 ShiftLeft r9, rcx
+	007 Move rcx, [r10+rax*2]
+	008 Compare rcx, r9
+	009 NotImplemented "seta al"
+	010 Return rax
+

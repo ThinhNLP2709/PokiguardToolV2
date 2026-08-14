@@ -1,0 +1,113 @@
+Type: LeanAudioStream
+
+Method: System.Void .ctor(System.Single[] audioArr)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	lea rcx,[rbx+20h]
+	mov [rbx+20h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rdi, rdx
+	006 Move rbx, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 LoadAddress rcx, [rbx+32]
+	010 Move [rbx+32], rdi
+	011 Move rdx, rdi
+	012 Move rbx, stack:0x30
+	013 ShiftStack 32
+	014 Move rdi, stack:0x0
+	015 ShiftStack 8
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 Return 
+
+Method: System.Void OnAudioRead(System.Single[] data)
+
+Disassembly:
+	sub rsp,28h
+	xor r9d,r9d
+	mov r8,rcx
+	mov eax,r9d
+	test rdx,rdx
+	je short 00000001806FAB15h
+	lea r10,[rdx+20h]
+	cmp eax,[rdx+18h]
+	jge short 00000001806FAB0Ah
+	mov rcx,[r8+20h]
+	test rcx,rcx
+	je short 00000001806FAB15h
+	movsxd rax,dword ptr [r8+10h]
+	cmp eax,[rcx+18h]
+	jae short 00000001806FAB0Fh
+	cmp r9d,[rdx+18h]
+	jae short 00000001806FAB0Fh
+	mov ecx,[rcx+rax*4+20h]
+	inc r9d
+	mov [r10],ecx
+	mov eax,r9d
+	inc dword ptr [r8+10h]
+	add r10,4
+	jmp short 00000001806FAAD6h
+	add rsp,28h
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r9, 0
+	003 Move r8, rcx
+	004 Move rax, r9
+	005 Compare rdx, 0
+	006 JumpIfEqual {29}
+	007 LoadAddress r10, [rdx+32]
+	008 Compare rax, [rdx+24]
+	009 JumpIfGreaterOrEqual {25}
+	010 Move rcx, [r8+32]
+	011 Compare rcx, 0
+	012 JumpIfEqual {29}
+	013 Move rax, [r8+16]
+	014 Compare rax, [rcx+24]
+	015 JumpIfGreaterOrEqual {27}
+	016 Compare r9, [rdx+24]
+	017 JumpIfGreaterOrEqual {27}
+	018 Move rcx, [rcx+32+rax*4]
+	019 Add r9, r9, 1
+	020 Move [r10], rcx
+	021 Move rax, r9
+	022 Add [r8+16], [r8+16], 1
+	023 Add r10, r10, 4
+	024 Goto {8}
+	025 ShiftStack 40
+	026 Return 
+	027 Call 0x18037BE20, rcx, rdx, r8, r9
+	028 Interrupt 
+	029 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Void OnAudioSetPosition(System.Int32 newPosition)
+
+Disassembly:
+	mov [rcx+10h],edx
+	ret
+
+ISIL:
+	001 Move [rcx+16], rdx
+	002 Return 
+

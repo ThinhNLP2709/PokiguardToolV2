@@ -1,0 +1,242 @@
+Type: UnityEngine.Rendering.Universal.SpaceFillingCurves
+
+Method: System.UInt32 Part1By1(System.UInt32 x)
+
+Disassembly:
+	movzx eax,cx
+	mov ecx,eax
+	shl ecx,8
+	xor ecx,eax
+	and ecx,0FF00FFh
+	mov eax,ecx
+	shl eax,4
+	xor eax,ecx
+	and eax,0F0F0F0Fh
+	lea ecx,[rax*4]
+	xor ecx,eax
+	and ecx,33333333h
+	lea eax,[rcx+rcx]
+	xor eax,ecx
+	and eax,55555555h
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Move rcx, rax
+	003 ShiftLeft rcx, 8
+	004 Xor rcx, rcx, rax
+	005 And rcx, rcx, 0xFF00FF
+	006 Move rax, rcx
+	007 ShiftLeft rax, 4
+	008 Xor rax, rax, rcx
+	009 And rax, rax, 0xF0F0F0F
+	010 LoadAddress rcx, []
+	011 Xor rcx, rcx, rax
+	012 And rcx, rcx, 0x33333333
+	013 LoadAddress rax, [rcx+rcx]
+	014 Xor rax, rax, rcx
+	015 And rax, rax, 0x55555555
+	016 Return rax
+
+Method: System.UInt32 Compact1By1(System.UInt32 x)
+
+Disassembly:
+	and ecx,55555555h
+	mov eax,ecx
+	shr eax,1
+	xor eax,ecx
+	and eax,33333333h
+	mov ecx,eax
+	shr ecx,2
+	xor ecx,eax
+	and ecx,0F0F0F0Fh
+	mov edx,ecx
+	shr edx,4
+	xor edx,ecx
+	and edx,0FF00FFh
+	mov eax,edx
+	shr eax,8
+	xor eax,edx
+	movzx eax,ax
+	ret
+
+ISIL:
+	001 And rcx, rcx, 0x55555555
+	002 Move rax, rcx
+	003 ShiftRight rax, 1
+	004 Xor rax, rax, rcx
+	005 And rax, rax, 0x33333333
+	006 Move rcx, rax
+	007 ShiftRight rcx, 2
+	008 Xor rcx, rcx, rax
+	009 And rcx, rcx, 0xF0F0F0F
+	010 Move rdx, rcx
+	011 ShiftRight rdx, 4
+	012 Xor rdx, rdx, rcx
+	013 And rdx, rdx, 0xFF00FF
+	014 Move rax, rdx
+	015 ShiftRight rax, 8
+	016 Xor rax, rax, rdx
+	017 Move rax, rax
+	018 Return rax
+
+Method: System.UInt32 EncodeMorton2D(Unity.Mathematics.uint2 coord)
+
+Disassembly:
+	mov rax,rcx
+	shr rax,20h
+	movzx edx,ax
+	mov r8d,edx
+	shl r8d,8
+	xor r8d,edx
+	and r8d,0FF00FFh
+	mov eax,r8d
+	shl eax,4
+	xor eax,r8d
+	and eax,0F0F0F0Fh
+	lea r8d,[rax*4]
+	xor r8d,eax
+	movzx eax,cx
+	mov ecx,eax
+	and r8d,33333333h
+	shl ecx,8
+	xor ecx,eax
+	and ecx,0FF00FFh
+	mov eax,ecx
+	shl eax,4
+	xor eax,ecx
+	lea ecx,[r8+r8]
+	and eax,0F0F0F0Fh
+	xor ecx,r8d
+	and ecx,55555555h
+	lea edx,[rax*4]
+	xor edx,eax
+	and edx,33333333h
+	lea eax,[rdx+rdx]
+	xor eax,edx
+	and eax,55555555h
+	lea eax,[rax+rcx*2]
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 ShiftRight rax, 32
+	003 Move rdx, rax
+	004 Move r8, rdx
+	005 ShiftLeft r8, 8
+	006 Xor r8, r8, rdx
+	007 And r8, r8, 0xFF00FF
+	008 Move rax, r8
+	009 ShiftLeft rax, 4
+	010 Xor rax, rax, r8
+	011 And rax, rax, 0xF0F0F0F
+	012 LoadAddress r8, []
+	013 Xor r8, r8, rax
+	014 Move rax, rcx
+	015 Move rcx, rax
+	016 And r8, r8, 0x33333333
+	017 ShiftLeft rcx, 8
+	018 Xor rcx, rcx, rax
+	019 And rcx, rcx, 0xFF00FF
+	020 Move rax, rcx
+	021 ShiftLeft rax, 4
+	022 Xor rax, rax, rcx
+	023 LoadAddress rcx, [r8+r8]
+	024 And rax, rax, 0xF0F0F0F
+	025 Xor rcx, rcx, r8
+	026 And rcx, rcx, 0x55555555
+	027 LoadAddress rdx, []
+	028 Xor rdx, rdx, rax
+	029 And rdx, rdx, 0x33333333
+	030 LoadAddress rax, [rdx+rdx]
+	031 Xor rax, rax, rdx
+	032 And rax, rax, 0x55555555
+	033 LoadAddress rax, [rax+rcx*2]
+	034 Return rax
+
+Method: Unity.Mathematics.uint2 DecodeMorton2D(System.UInt32 code)
+
+Disassembly:
+	mov eax,ecx
+	shr ecx,1
+	and eax,55555555h
+	and ecx,55555555h
+	mov edx,eax
+	shr edx,1
+	xor edx,eax
+	and edx,33333333h
+	mov eax,edx
+	shr eax,2
+	xor eax,edx
+	and eax,0F0F0F0Fh
+	mov r8d,eax
+	shr r8d,4
+	xor r8d,eax
+	mov eax,ecx
+	shr eax,1
+	and r8d,0FF00FFh
+	xor eax,ecx
+	and eax,33333333h
+	mov ecx,eax
+	shr ecx,2
+	xor ecx,eax
+	mov eax,r8d
+	shr eax,8
+	and ecx,0F0F0F0Fh
+	xor eax,r8d
+	mov edx,ecx
+	movzx eax,ax
+	mov [rsp+18h],eax
+	shr edx,4
+	xor edx,ecx
+	and edx,0FF00FFh
+	mov eax,edx
+	shr eax,8
+	xor eax,edx
+	movzx eax,ax
+	mov [rsp+1Ch],eax
+	mov rax,[rsp+18h]
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 ShiftRight rcx, 1
+	003 And rax, rax, 0x55555555
+	004 And rcx, rcx, 0x55555555
+	005 Move rdx, rax
+	006 ShiftRight rdx, 1
+	007 Xor rdx, rdx, rax
+	008 And rdx, rdx, 0x33333333
+	009 Move rax, rdx
+	010 ShiftRight rax, 2
+	011 Xor rax, rax, rdx
+	012 And rax, rax, 0xF0F0F0F
+	013 Move r8, rax
+	014 ShiftRight r8, 4
+	015 Xor r8, r8, rax
+	016 Move rax, rcx
+	017 ShiftRight rax, 1
+	018 And r8, r8, 0xFF00FF
+	019 Xor rax, rax, rcx
+	020 And rax, rax, 0x33333333
+	021 Move rcx, rax
+	022 ShiftRight rcx, 2
+	023 Xor rcx, rcx, rax
+	024 Move rax, r8
+	025 ShiftRight rax, 8
+	026 And rcx, rcx, 0xF0F0F0F
+	027 Xor rax, rax, r8
+	028 Move rdx, rcx
+	029 Move rax, rax
+	030 Move stack:0x18, rax
+	031 ShiftRight rdx, 4
+	032 Xor rdx, rdx, rcx
+	033 And rdx, rdx, 0xFF00FF
+	034 Move rax, rdx
+	035 ShiftRight rax, 8
+	036 Xor rax, rax, rdx
+	037 Move rax, rax
+	038 Move stack:0x1C, rax
+	039 Move rax, stack:0x18
+	040 Return rax
+

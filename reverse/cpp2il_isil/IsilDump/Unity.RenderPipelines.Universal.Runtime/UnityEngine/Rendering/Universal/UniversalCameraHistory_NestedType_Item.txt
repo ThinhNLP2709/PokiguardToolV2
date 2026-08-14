@@ -1,0 +1,40 @@
+Type: UnityEngine.Rendering.Universal.UniversalCameraHistory+Item
+
+Method: System.Void Reset()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	mov rcx,[rcx]
+	test rcx,rcx
+	je short 0000000182330A44h
+	mov rdx,[rcx]
+	mov rax,[rdx+178h]
+	mov rdx,[rdx+180h]
+	call rax
+	mov dword ptr [rbx+0Ch],0FFFFFFFEh
+	mov dword ptr [rbx+8],0FFFFFFFEh
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Move rcx, [rcx]
+	006 Compare rcx, 0
+	007 JumpIfEqual {12}
+	008 Move rdx, [rcx]
+	009 Move rax, [rdx+376]
+	010 Move rdx, [rdx+384]
+	011 Call rax
+	012 Move [rbx+12], 0xFFFFFFFE
+	013 Move [rbx+8], 0xFFFFFFFE
+	014 ShiftStack 32
+	015 Move rbx, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+

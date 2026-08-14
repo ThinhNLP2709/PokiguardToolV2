@@ -1,0 +1,371 @@
+Type: Unity.Collections.Unicode+Rune
+
+Method: System.Void .ctor(System.Int32 codepoint)
+
+Disassembly:
+	mov [rcx],edx
+	ret
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Return 
+
+Method: Unity.Collections.Unicode+Rune op_Implicit(System.Char codepoint)
+
+Disassembly:
+	movzx eax,cx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Return rax
+
+Method: System.Boolean op_Equality(Unity.Collections.Unicode+Rune lhs, Unity.Collections.Unicode+Rune rhs)
+
+Disassembly:
+	cmp ecx,edx
+	sete al
+	ret
+
+ISIL:
+	001 Compare rcx, rdx
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Boolean Equals(System.Object obj)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183752C07h],0
+	mov rbx,rdx
+	mov rdi,rcx
+	jne short 0000000181EFF2DCh
+	lea rcx,[183548240h]
+	call 000000018037BB90h
+	mov byte ptr [183752C07h],1
+	test rbx,rbx
+	je short 0000000181EFF31Dh
+	mov rdx,[183548240h]
+	xor eax,eax
+	cmp [rbx],rdx
+	cmove rax,rbx
+	test rax,rax
+	je short 0000000181EFF31Dh
+	mov rcx,[rbx]
+	mov rax,[rdx+40h]
+	mov edi,[rdi]
+	cmp [rcx+40h],rax
+	mov rcx,rbx
+	jne short 0000000181EFF32Ah
+	call 000000018037AE90h
+	cmp edi,[rax]
+	sete al
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	mov rbx,[rsp+30h]
+	xor al,al
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037ACF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183752C07], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183548240]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183752C07], 1
+	012 Compare rbx, 0
+	013 JumpIfEqual {36}
+	014 Move rdx, typeof(Unity.Collections.Unicode+Rune)
+	015 Move rax, 0
+	016 Compare [rbx], rdx
+	017 JumpIfNotEqual {19}
+	018 Move rax, rbx
+	019 Nop 
+	020 Compare rax, 0
+	021 JumpIfEqual {36}
+	022 Move rcx, [rbx]
+	023 Move rax, [rdx+64]
+	024 Move rdi, [rdi]
+	025 Compare [rcx+64], rax
+	026 Move rcx, rbx
+	027 JumpIfNotEqual {42}
+	028 Call "il2cpp_object_unbox", rcx, rdx, r8, r9
+	029 Compare rdi, [rax]
+	030 NotImplemented "sete al"
+	031 Move rbx, stack:0x30
+	032 ShiftStack 32
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+	036 Move rbx, stack:0x30
+	037 Move rax, 0
+	038 ShiftStack 32
+	039 Move rdi, stack:0x0
+	040 ShiftStack 8
+	041 Return rax
+	042 Call 0x18037ACF0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.Boolean op_Inequality(Unity.Collections.Unicode+Rune lhs, Unity.Collections.Unicode+Rune rhs)
+
+Disassembly:
+	cmp ecx,edx
+	setne al
+	ret
+
+ISIL:
+	001 Compare rcx, rdx
+	002 NotImplemented "setne al"
+	003 Return rax
+
+Method: System.Boolean IsDigit(Unity.Collections.Unicode+Rune r)
+
+Disassembly:
+	cmp ecx,30h
+	jge short 0000000181EFF358h
+	xor al,al
+	ret
+	cmp ecx,39h
+	setle al
+	ret
+
+ISIL:
+	001 Compare rcx, 48
+	002 JumpIfGreaterOrEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 Compare rcx, 57
+	006 NotImplemented "setle al"
+	007 Return rax
+
+Method: System.Boolean IsAscii()
+
+Disassembly:
+	cmp dword ptr [rcx],80h
+	setl al
+	ret
+
+ISIL:
+	001 Compare [rcx], 128
+	002 NotImplemented "setl al"
+	003 Return rax
+
+Method: System.Boolean IsLatin1()
+
+Disassembly:
+	cmp dword ptr [rcx],100h
+	setl al
+	ret
+
+ISIL:
+	001 Compare [rcx], 256
+	002 NotImplemented "setl al"
+	003 Return rax
+
+Method: System.Boolean IsDigit()
+
+Disassembly:
+	cmp dword ptr [rcx],30h
+	jge short 0000000181EFF348h
+	xor al,al
+	ret
+	cmp dword ptr [rcx],39h
+	setbe al
+	ret
+
+ISIL:
+	001 Compare [rcx], 48
+	002 JumpIfGreaterOrEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 Compare [rcx], 57
+	006 NotImplemented "setbe al"
+	007 Return rax
+
+Method: System.Boolean IsWhiteSpace()
+
+Disassembly:
+	mov eax,[rcx]
+	cmp eax,100h
+	jl short 0000000181EFF3B3h
+	cmp eax,1680h
+	je short 0000000181EFF3D2h
+	cmp eax,2000h
+	jb short 0000000181EFF38Eh
+	cmp eax,200Ah
+	jbe short 0000000181EFF3D2h
+	cmp eax,2028h
+	je short 0000000181EFF3D2h
+	cmp eax,2029h
+	je short 0000000181EFF3D2h
+	cmp eax,202Fh
+	je short 0000000181EFF3D2h
+	cmp eax,205Fh
+	je short 0000000181EFF3D2h
+	cmp eax,3000h
+	sete al
+	ret
+	cmp eax,20h
+	je short 0000000181EFF3D2h
+	cmp eax,9
+	jl short 0000000181EFF3C2h
+	cmp eax,0Dh
+	jbe short 0000000181EFF3D2h
+	cmp eax,0A0h
+	je short 0000000181EFF3D2h
+	cmp eax,85h
+	sete al
+	ret
+	mov al,1
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Compare rax, 256
+	003 JumpIfLess {21}
+	004 Compare rax, 0x1680
+	005 JumpIfEqual {32}
+	006 Compare rax, 0x2000
+	007 JumpIfLess {10}
+	008 Compare rax, 0x200A
+	009 JumpIfLessOrEqual {32}
+	010 Compare rax, 0x2028
+	011 JumpIfEqual {32}
+	012 Compare rax, 0x2029
+	013 JumpIfEqual {32}
+	014 Compare rax, 0x202F
+	015 JumpIfEqual {32}
+	016 Compare rax, 0x205F
+	017 JumpIfEqual {32}
+	018 Compare rax, 0x3000
+	019 NotImplemented "sete al"
+	020 Return rax
+	021 Compare rax, 32
+	022 JumpIfEqual {32}
+	023 Compare rax, 9
+	024 JumpIfLess {27}
+	025 Compare rax, 13
+	026 JumpIfLessOrEqual {32}
+	027 Compare rax, 160
+	028 JumpIfEqual {32}
+	029 Compare rax, 133
+	030 NotImplemented "sete al"
+	031 Return rax
+	032 Move rax, 1
+	033 Return rax
+
+Method: Unity.Collections.Unicode+Rune ToLowerAscii()
+
+Disassembly:
+	xchg ax,ax
+	mov edx,[rcx]
+	xor r8d,r8d
+	sub edx,41h
+	mov eax,20h
+	cmp edx,19h
+	cmova eax,r8d
+	add eax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rdx, [rcx]
+	003 Move r8, 0
+	004 Subtract rdx, rdx, 65
+	005 Move rax, 32
+	006 Compare rdx, 25
+	007 JumpIfLessOrEqual {9}
+	008 Move rax, r8
+	009 Nop 
+	010 Add rax, rax, [rcx]
+	011 Return rax
+
+Method: Unity.Collections.Unicode+Rune ToUpperAscii()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx]
+	xor r8d,r8d
+	sub eax,61h
+	mov edx,20h
+	cmp eax,19h
+	mov eax,[rcx]
+	cmova edx,r8d
+	sub eax,edx
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx]
+	003 Move r8, 0
+	004 Subtract rax, rax, 97
+	005 Move rdx, 32
+	006 Compare rax, 25
+	007 Move rax, [rcx]
+	008 JumpIfLessOrEqual {10}
+	009 Move rdx, r8
+	010 Nop 
+	011 Subtract rax, rax, rdx
+	012 Return rax
+
+Method: System.Int32 LengthInUtf8Bytes()
+
+Disassembly:
+	cmp dword ptr [rcx],0
+	jl short 0000000181EFF40Dh
+	cmp dword ptr [rcx],7Fh
+	jbe short 0000000181EFF407h
+	cmp dword ptr [rcx],7FFh
+	jbe short 0000000181EFF401h
+	xor eax,eax
+	cmp dword ptr [rcx],0FFFFh
+	seta al
+	add eax,3
+	ret
+	mov eax,2
+	ret
+	mov eax,1
+	ret
+	mov eax,4
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 JumpIfLess {16}
+	003 Compare [rcx], 127
+	004 JumpIfLessOrEqual {14}
+	005 Compare [rcx], 2047
+	006 JumpIfLessOrEqual {12}
+	007 Move rax, 0
+	008 Compare [rcx], 0xFFFF
+	009 NotImplemented "seta al"
+	010 Add rax, rax, 3
+	011 Return rax
+	012 Move rax, 2
+	013 Return rax
+	014 Move rax, 1
+	015 Return rax
+	016 Move rax, 4
+	017 Return rax
+

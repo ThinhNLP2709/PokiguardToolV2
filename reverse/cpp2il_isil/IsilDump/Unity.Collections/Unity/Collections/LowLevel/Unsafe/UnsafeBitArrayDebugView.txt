@@ -1,0 +1,132 @@
+Type: Unity.Collections.LowLevel.Unsafe.UnsafeBitArrayDebugView
+
+Method: System.Void .ctor(Unity.Collections.LowLevel.Unsafe.UnsafeBitArray data)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	movups xmm0,[rbx]
+	movsd xmm1,qword ptr [rbx+10h]
+	mov rbx,[rsp+30h]
+	movups [rdi+10h],xmm0
+	movsd qword ptr [rdi+20h],xmm1
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move xmm0, [rbx]
+	010 Move xmm1, [rbx+16]
+	011 Move rbx, stack:0x30
+	012 Move [rdi+16], xmm0
+	013 Move [rdi+32], xmm1
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return 
+
+Method: System.Boolean[] get_Bits()
+
+Disassembly:
+	mov [rsp+10h],rbx
+	mov [rsp+18h],rbp
+	push rsi
+	sub rsp,20h
+	cmp byte ptr [183752C37h],0
+	mov rbp,rcx
+	jne short 0000000181F03AAEh
+	lea rcx,[183565180h]
+	call 000000018037BB90h
+	mov byte ptr [183752C37h],1
+	mov edx,[rbp+18h]
+	mov rcx,[183565180h]
+	mov [rsp+30h],rdi
+	call 000000018037AD30h
+	xor ebx,ebx
+	mov rsi,rax
+	cmp [rbp+18h],ebx
+	jle short 0000000181F03AF4h
+	lea rdi,[rax+20h]
+	mov rcx,[rbp+10h]
+	xor r8d,r8d
+	mov edx,ebx
+	call 0000000181EDE780h
+	test rsi,rsi
+	je short 0000000181F03B0Ch
+	cmp ebx,[rsi+18h]
+	jae short 0000000181F03B12h
+	mov [rdi],al
+	inc ebx
+	inc rdi
+	cmp ebx,[rbp+18h]
+	jl short 0000000181F03AD0h
+	mov rdi,[rsp+30h]
+	mov rax,rsi
+	mov rbx,[rsp+38h]
+	mov rbp,[rsp+40h]
+	add rsp,20h
+	pop rsi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x10, rbx
+	002 Move stack:0x18, rbp
+	003 ShiftStack -8
+	004 Move stack:0x0, rsi
+	005 ShiftStack -32
+	006 Compare [0x183752C37], 0
+	007 Move rbp, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183565180]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183752C37], 1
+	012 Move rdx, [rbp+24]
+	013 Move rcx, typeof(System.Boolean[1])
+	014 Move stack:0x30, rdi
+	015 Call "SzArrayNew", rcx, rdx, r8, r9
+	016 Move rbx, 0
+	017 Move rsi, rax
+	018 Compare [rbp+24], rbx
+	019 JumpIfLessOrEqual {34}
+	020 LoadAddress rdi, [rax+32]
+	021 Move rcx, [rbp+16]
+	022 Move r8, 0
+	023 Move rdx, rbx
+	024 Call Bitwise.IsSet, rcx, rdx, r8
+	025 Compare rsi, 0
+	026 JumpIfEqual {42}
+	027 Compare rbx, [rsi+24]
+	028 JumpIfGreaterOrEqual {44}
+	029 Move [rdi], rax
+	030 Add rbx, rbx, 1
+	031 Add rdi, rdi, 1
+	032 Compare rbx, [rbp+24]
+	033 JumpIfLess {21}
+	034 Move rdi, stack:0x30
+	035 Move rax, rsi
+	036 Move rbx, stack:0x38
+	037 Move rbp, stack:0x40
+	038 ShiftStack 32
+	039 Move rsi, stack:0x0
+	040 ShiftStack 8
+	041 Return rax
+	042 Call 0x18037BE30, rcx, rdx, r8, r9
+	043 Interrupt 
+	044 Call 0x18037BE20, rcx, rdx, r8, r9
+

@@ -1,0 +1,186 @@
+Type: UnityEngine.Rendering.GPUPrefixSum+SystemResources
+
+Method: System.Void LoadKernels()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753C04h],0
+	mov rbx,rcx
+	jne short 0000000182214CCDh
+	lea rcx,[1834F11B8h]
+	call 000000018037BB90h
+	lea rcx,[183511818h]
+	call 000000018037BB90h
+	lea rcx,[1835118D0h]
+	call 000000018037BB90h
+	lea rcx,[183511AF8h]
+	call 000000018037BB90h
+	lea rcx,[183511C68h]
+	call 000000018037BB90h
+	lea rcx,[183511DD8h]
+	call 000000018037BB90h
+	lea rcx,[183511BB0h]
+	call 000000018037BB90h
+	lea rcx,[183511D20h]
+	call 000000018037BB90h
+	mov byte ptr [183753C04h],1
+	mov rcx,[1834F11B8h]
+	mov rdi,[rbx]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182214CE5h
+	call 000000018037BED0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rdi
+	call 0000000182628480h
+	test al,al
+	jne near ptr 0000000182214DBCh
+	mov rcx,[rbx]
+	test rcx,rcx
+	je near ptr 0000000182214DC7h
+	mov rdx,[1835118D0h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov rcx,[rbx]
+	mov [rbx+8],eax
+	test rcx,rcx
+	je near ptr 0000000182214DC7h
+	mov rdx,[183511818h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov rcx,[rbx]
+	mov [rbx+0Ch],eax
+	test rcx,rcx
+	je near ptr 0000000182214DC7h
+	mov rdx,[183511BB0h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov rcx,[rbx]
+	mov [rbx+10h],eax
+	test rcx,rcx
+	je short 0000000182214DC7h
+	mov rdx,[183511C68h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov rcx,[rbx]
+	mov [rbx+14h],eax
+	test rcx,rcx
+	je short 0000000182214DC7h
+	mov rdx,[183511AF8h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov rcx,[rbx]
+	mov [rbx+18h],eax
+	test rcx,rcx
+	je short 0000000182214DC7h
+	mov rdx,[183511D20h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov rcx,[rbx]
+	mov [rbx+1Ch],eax
+	test rcx,rcx
+	je short 0000000182214DC7h
+	mov rdx,[183511DD8h]
+	xor r8d,r8d
+	call 0000000182622460h
+	mov [rbx+20h],eax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183753C04], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {25}
+	008 LoadAddress rcx, [0x1834F11B8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183511818]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x1835118D0]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x183511AF8]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x183511C68]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x183511DD8]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 LoadAddress rcx, [0x183511BB0]
+	021 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	022 LoadAddress rcx, [0x183511D20]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 Move [0x183753C04], 1
+	025 Move rcx, typeof(UnityEngine.Object)
+	026 Move rdi, [rbx]
+	027 Compare [rcx+228], 0
+	028 JumpIfNotEqual {30}
+	029 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	030 Move r8, 0
+	031 Move rdx, 0
+	032 Move rcx, rdi
+	033 Call Object.op_Equality, rcx, rdx, r8
+	034 Compare rax, 0
+	035 JumpIfNotEqual {85}
+	036 Move rcx, [rbx]
+	037 Compare rcx, 0
+	038 JumpIfEqual {90}
+	039 Move rdx, "MainCalculateLevelDispatchArgsFromConst"
+	040 Move r8, 0
+	041 Call ComputeShader.FindKernel, rcx, rdx
+	042 Move rcx, [rbx]
+	043 Move [rbx+8], rax
+	044 Compare rcx, 0
+	045 JumpIfEqual {90}
+	046 Move rdx, "MainCalculateLevelDispatchArgsFromBuffer"
+	047 Move r8, 0
+	048 Call ComputeShader.FindKernel, rcx, rdx
+	049 Move rcx, [rbx]
+	050 Move [rbx+12], rax
+	051 Compare rcx, 0
+	052 JumpIfEqual {90}
+	053 Move rdx, "MainPrefixSumOnGroup"
+	054 Move r8, 0
+	055 Call ComputeShader.FindKernel, rcx, rdx
+	056 Move rcx, [rbx]
+	057 Move [rbx+16], rax
+	058 Compare rcx, 0
+	059 JumpIfEqual {90}
+	060 Move rdx, "MainPrefixSumOnGroupExclusive"
+	061 Move r8, 0
+	062 Call ComputeShader.FindKernel, rcx, rdx
+	063 Move rcx, [rbx]
+	064 Move [rbx+20], rax
+	065 Compare rcx, 0
+	066 JumpIfEqual {90}
+	067 Move rdx, "MainPrefixSumNextInput"
+	068 Move r8, 0
+	069 Call ComputeShader.FindKernel, rcx, rdx
+	070 Move rcx, [rbx]
+	071 Move [rbx+24], rax
+	072 Compare rcx, 0
+	073 JumpIfEqual {90}
+	074 Move rdx, "MainPrefixSumResolveParent"
+	075 Move r8, 0
+	076 Call ComputeShader.FindKernel, rcx, rdx
+	077 Move rcx, [rbx]
+	078 Move [rbx+28], rax
+	079 Compare rcx, 0
+	080 JumpIfEqual {90}
+	081 Move rdx, "MainPrefixSumResolveParentExclusive"
+	082 Move r8, 0
+	083 Call ComputeShader.FindKernel, rcx, rdx
+	084 Move [rbx+32], rax
+	085 Move rbx, stack:0x30
+	086 ShiftStack 32
+	087 Move rdi, stack:0x0
+	088 ShiftStack 8
+	089 Return 
+	090 Call 0x18037BE30, rcx, rdx, r8, r9
+

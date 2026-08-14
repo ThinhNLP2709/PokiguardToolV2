@@ -1,0 +1,104 @@
+Type: UnityEngine.Rendering.Universal.PostProcessPass+BloomMaterialParams
+
+Method: System.Boolean Equals(ref UnityEngine.Rendering.Universal.PostProcessPass+BloomMaterialParams other)
+
+Disassembly:
+	movups xmm2,[rdx]
+	movups xmm5,[rcx]
+	movaps xmm0,xmm2
+	shufps xmm0,xmm2,55h
+	movaps xmm4,xmm5
+	shufps xmm4,xmm5,55h
+	movaps xmm3,xmm5
+	movaps xmm1,xmm5
+	subss xmm4,xmm0
+	shufps xmm1,xmm5,0AAh
+	subss xmm3,xmm2
+	movaps xmm0,xmm2
+	shufps xmm5,xmm5,0FFh
+	shufps xmm0,xmm2,0AAh
+	shufps xmm2,xmm2,0FFh
+	subss xmm1,xmm0
+	subss xmm5,xmm2
+	movss xmm0,dword ptr [182A4FDA0h]
+	mulss xmm4,xmm4
+	mulss xmm3,xmm3
+	mulss xmm1,xmm1
+	addss xmm4,xmm3
+	mulss xmm5,xmm5
+	addss xmm4,xmm1
+	addss xmm4,xmm5
+	comiss xmm0,xmm4
+	jbe short 00000001822FA87Ah
+	movzx eax,byte ptr [rdx+10h]
+	cmp [rcx+10h],al
+	jne short 00000001822FA87Ah
+	movzx eax,byte ptr [rdx+11h]
+	cmp [rcx+11h],al
+	sete al
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Move xmm2, [rdx]
+	002 Move xmm5, [rcx]
+	003 Move xmm0, xmm2
+	004 Move XMM_TEMP.S[0], xmm0.S[1]
+	005 Move XMM_TEMP.S[1], xmm0.S[1]
+	006 Move XMM_TEMP.S[2], xmm2.S[1]
+	007 Move XMM_TEMP.S[3], xmm2.S[1]
+	008 Move xmm0, XMM_TEMP
+	009 Move xmm4, xmm5
+	010 Move XMM_TEMP.S[0], xmm4.S[1]
+	011 Move XMM_TEMP.S[1], xmm4.S[1]
+	012 Move XMM_TEMP.S[2], xmm5.S[1]
+	013 Move XMM_TEMP.S[3], xmm5.S[1]
+	014 Move xmm4, XMM_TEMP
+	015 Move xmm3, xmm5
+	016 Move xmm1, xmm5
+	017 Subtract xmm4, xmm4, xmm0
+	018 Move XMM_TEMP.S[0], xmm1.S[2]
+	019 Move XMM_TEMP.S[1], xmm1.S[2]
+	020 Move XMM_TEMP.S[2], xmm5.S[2]
+	021 Move XMM_TEMP.S[3], xmm5.S[2]
+	022 Move xmm1, XMM_TEMP
+	023 Subtract xmm3, xmm3, xmm2
+	024 Move xmm0, xmm2
+	025 Move XMM_TEMP.S[0], xmm5.S[3]
+	026 Move XMM_TEMP.S[1], xmm5.S[3]
+	027 Move XMM_TEMP.S[2], xmm5.S[3]
+	028 Move XMM_TEMP.S[3], xmm5.S[3]
+	029 Move xmm5, XMM_TEMP
+	030 Move XMM_TEMP.S[0], xmm0.S[2]
+	031 Move XMM_TEMP.S[1], xmm0.S[2]
+	032 Move XMM_TEMP.S[2], xmm2.S[2]
+	033 Move XMM_TEMP.S[3], xmm2.S[2]
+	034 Move xmm0, XMM_TEMP
+	035 Move XMM_TEMP.S[0], xmm2.S[3]
+	036 Move XMM_TEMP.S[1], xmm2.S[3]
+	037 Move XMM_TEMP.S[2], xmm2.S[3]
+	038 Move XMM_TEMP.S[3], xmm2.S[3]
+	039 Move xmm2, XMM_TEMP
+	040 Subtract xmm1, xmm1, xmm0
+	041 Subtract xmm5, xmm5, xmm2
+	042 Move xmm0, [0x182A4FDA0]
+	043 Multiply xmm4, xmm4, xmm4
+	044 Multiply xmm3, xmm3, xmm3
+	045 Multiply xmm1, xmm1, xmm1
+	046 Add xmm4, xmm4, xmm3
+	047 Multiply xmm5, xmm5, xmm5
+	048 Add xmm4, xmm4, xmm1
+	049 Add xmm4, xmm4, xmm5
+	050 Compare xmm0, xmm4
+	051 JumpIfLessOrEqual {59}
+	052 Move rax, [rdx+16]
+	053 Compare [rcx+16], rax
+	054 JumpIfNotEqual {59}
+	055 Move rax, [rdx+17]
+	056 Compare [rcx+17], rax
+	057 NotImplemented "sete al"
+	058 Return rax
+	059 Move rax, 0
+	060 Return rax
+

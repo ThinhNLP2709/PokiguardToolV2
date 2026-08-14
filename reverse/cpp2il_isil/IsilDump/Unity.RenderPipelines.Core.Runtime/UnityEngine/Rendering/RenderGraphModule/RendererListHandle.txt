@@ -1,0 +1,172 @@
+Type: UnityEngine.Rendering.RenderGraphModule.RendererListHandle
+
+Method: System.Int32 get_handle()
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: System.Void set_handle(System.Int32 value)
+
+Disassembly:
+	mov [rcx+8],edx
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Return 
+
+Method: System.Void .ctor(System.Int32 handle, UnityEngine.Rendering.RenderGraphModule.RendererListHandleType type = 0)
+
+Disassembly:
+	mov [rcx+8],edx
+	mov byte ptr [rcx+4],1
+	mov [rcx],r8d
+	ret
+
+ISIL:
+	001 Move [rcx+8], rdx
+	002 Move [rcx+4], 1
+	003 Move [rcx], r8
+	004 Return 
+
+Method: System.Int32 op_Implicit(UnityEngine.Rendering.RenderGraphModule.RendererListHandle handle)
+
+Disassembly:
+	mov eax,[rcx+8]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Return rax
+
+Method: UnityEngine.Rendering.RendererList op_Implicit(UnityEngine.Rendering.RenderGraphModule.RendererListHandle rendererList)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183753D9Ah],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018223B6F8h
+	lea rcx,[183503708h]
+	call 000000018037BB90h
+	lea rcx,[183504680h]
+	call 000000018037BB90h
+	mov byte ptr [183753D9Ah],1
+	cmp byte ptr [rdi+4],0
+	je short 000000018223B76Ch
+	mov rcx,[183503708h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223B713h
+	call 000000018037BED0h
+	cmp byte ptr [183753E0Eh],0
+	jne short 000000018223B72Fh
+	lea rcx,[183503708h]
+	call 000000018037BB90h
+	mov byte ptr [183753E0Eh],1
+	mov rcx,[183503708h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018223B744h
+	call 000000018037BED0h
+	mov rax,[183503708h]
+	mov rcx,[rax+0B8h]
+	mov rdx,[rcx]
+	test rdx,rdx
+	je short 000000018223B7B0h
+	xor r9d,r9d
+	lea rcx,[rsp+20h]
+	mov r8,rdi
+	call 00000001822359E0h
+	jmp short 000000018223B792h
+	mov rax,[183504680h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 000000018223B78Bh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183504680h]
+	mov rax,[rax+0B8h]
+	movups xmm0,[rax]
+	movsd xmm1,qword ptr [rax+10h]
+	mov rax,rbx
+	movups [rbx],xmm0
+	movsd qword ptr [rbx+10h],xmm1
+	mov rbx,[rsp+50h]
+	add rsp,40h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183753D9A], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {14}
+	009 LoadAddress rcx, [0x183503708]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183504680]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x183753D9A], 1
+	014 Compare [rdi+4], 0
+	015 JumpIfEqual {39}
+	016 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.RenderGraphResourceRegistry)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Compare [0x183753E0E], 0
+	021 JumpIfNotEqual {25}
+	022 LoadAddress rcx, [0x183503708]
+	023 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	024 Move [0x183753E0E], 1
+	025 Move rcx, typeof(UnityEngine.Rendering.RenderGraphModule.RenderGraphResourceRegistry)
+	026 Compare [rcx+228], 0
+	027 JumpIfNotEqual {29}
+	028 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	029 Move rax, typeof(UnityEngine.Rendering.RenderGraphModule.RenderGraphResourceRegistry)
+	030 Move rcx, [rax+184]
+	031 Move rdx, [rcx]
+	032 Compare rdx, 0
+	033 JumpIfEqual {56}
+	034 Move r9, 0
+	035 LoadAddress rcx, stack:0x20
+	036 Move r8, rdi
+	037 Call RenderGraphResourceRegistry.GetRendererList, rcx, rdx
+	038 Goto {46}
+	039 Move rax, typeof(UnityEngine.Rendering.RendererList)
+	040 Compare [rax+228], 0
+	041 JumpIfNotEqual {45}
+	042 Move rcx, rax
+	043 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	044 Move rax, typeof(UnityEngine.Rendering.RendererList)
+	045 Move rax, [rax+184]
+	046 Move xmm0, [rax]
+	047 Move xmm1, [rax+16]
+	048 Move rax, rbx
+	049 Move [rbx], xmm0
+	050 Move [rbx+16], xmm1
+	051 Move rbx, stack:0x50
+	052 ShiftStack 64
+	053 Move rdi, stack:0x0
+	054 ShiftStack 8
+	055 Return rax
+	056 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean IsValid()
+
+Disassembly:
+	movzx eax,byte ptr [rcx+4]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+4]
+	002 Return rax
+

@@ -1,0 +1,57 @@
+Type: UnityEngine.Rendering.HableCurve+Segment
+
+Method: System.Single Eval(System.Single x)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	subss xmm1,dword ptr [rcx+10h]
+	xorps xmm0,xmm0
+	mov rbx,rcx
+	mulss xmm1,dword ptr [rcx+18h]
+	comiss xmm1,xmm0
+	jbe short 0000000182213C02h
+	movaps xmm0,xmm1
+	call 000000018041DF20h
+	mulss xmm0,dword ptr [rbx+24h]
+	addss xmm0,dword ptr [rbx+20h]
+	call 000000018041D600h
+	mulss xmm0,dword ptr [rbx+1Ch]
+	addss xmm0,dword ptr [rbx+14h]
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Subtract xmm1, xmm1, [rcx+16]
+	005 Move xmm0, 0
+	006 Move rbx, rcx
+	007 Multiply xmm1, xmm1, [rcx+24]
+	008 Compare xmm1, xmm0
+	009 JumpIfLessOrEqual {15}
+	010 Move xmm0, xmm1
+	011 Call 0x18041DF20, rcx, rdx, r8, r9
+	012 Multiply xmm0, xmm0, [rbx+36]
+	013 Add xmm0, xmm0, [rbx+32]
+	014 Call 0x18041D600, rcx, rdx, r8, r9
+	015 Multiply xmm0, xmm0, [rbx+28]
+	016 Add xmm0, xmm0, [rbx+20]
+	017 ShiftStack 32
+	018 Move rbx, stack:0x0
+	019 ShiftStack 8
+	020 Return xmm0
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

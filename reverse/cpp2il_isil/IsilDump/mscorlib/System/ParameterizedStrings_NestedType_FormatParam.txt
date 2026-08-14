@@ -1,0 +1,130 @@
+Type: System.ParameterizedStrings+FormatParam
+
+Method: System.Void .ctor(System.Int32 value)
+
+Disassembly:
+	mov [rcx],edx
+	xor edx,edx
+	mov qword ptr [rcx+8],0
+	add rcx,8
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move rdx, 0
+	003 Move [rcx+8], 0
+	004 Add rcx, rcx, 8
+	005 Call 0x18037ACB0, rcx, rdx, r8, r9
+	006 Return 
+
+Method: System.Void .ctor(System.Int32 intValue, System.String stringValue)
+
+Disassembly:
+	mov [rcx],edx
+	mov rdx,r8
+	mov [rcx+8],r8
+	add rcx,8
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx], rdx
+	002 Move rdx, r8
+	003 Move [rcx+8], r8
+	004 Add rcx, rcx, 8
+	005 Call 0x18037ACB0, rcx, rdx, r8, r9
+	006 Return 
+
+Method: System.ParameterizedStrings+FormatParam op_Implicit(System.Int32 value)
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xor eax,eax
+	mov rbx,rcx
+	mov [rcx+4],eax
+	mov [rcx],edx
+	xor edx,edx
+	mov [rcx+8],rax
+	add rcx,8
+	call 000000018037ACB0h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rax, 0
+	005 Move rbx, rcx
+	006 Move [rcx+4], rax
+	007 Move [rcx], rdx
+	008 Move rdx, 0
+	009 Move [rcx+8], rax
+	010 Add rcx, rcx, 8
+	011 Call 0x18037ACB0, rcx, rdx, r8, r9
+	012 Move rax, rbx
+	013 ShiftStack 32
+	014 Move rbx, stack:0x0
+	015 ShiftStack 8
+	016 Return rax
+
+Method: System.Int32 get_Int32()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.String get_String()
+
+Disassembly:
+	mov rax,[rcx+8]
+	test rax,rax
+	jne short 000000018185C39Ah
+	mov rax,[18375C130h]
+	mov rcx,[rax+0B8h]
+	mov rax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+8]
+	002 Compare rax, 0
+	003 JumpIfNotEqual {7}
+	004 Move rax, [0x18375C130]
+	005 Move rcx, [rax+184]
+	006 Move rax, [rcx]
+	007 Return rax
+
+Method: System.Object get_Object()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[rcx+8]
+	test rax,rax
+	jne short 000000018185C374h
+	mov eax,[rcx]
+	lea rdx,[rsp+30h]
+	mov rcx,[18375C0E8h]
+	mov [rsp+30h],eax
+	call 000000018037AC90h
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rcx+8]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {10}
+	005 Move rax, [rcx]
+	006 LoadAddress rdx, stack:0x30
+	007 Move rcx, [0x18375C0E8]
+	008 Move stack:0x30, rax
+	009 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	010 ShiftStack 40
+	011 Return rax
+

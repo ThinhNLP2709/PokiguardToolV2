@@ -1,0 +1,56 @@
+Type: UnityEngine.InputSystem.Users.InputUser+ControlSchemeChangeSyntax
+
+Method: UnityEngine.InputSystem.Users.InputUser+ControlSchemeChangeSyntax AndPairRemainingDevices()
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183753378h],0
+	mov rbx,rcx
+	jne short 00000001820076F9h
+	lea rcx,[183550598h]
+	call 000000018037BB90h
+	mov byte ptr [183753378h],1
+	mov rcx,[183550598h]
+	mov edi,[rbx]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182007710h
+	call 000000018037BED0h
+	xor r8d,r8d
+	mov dl,1
+	mov ecx,edi
+	call 0000000181FEFA70h
+	mov eax,[rbx]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183753378], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {11}
+	008 LoadAddress rcx, [0x183550598]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x183753378], 1
+	011 Move rcx, typeof(UnityEngine.InputSystem.Users.InputUser)
+	012 Move rdi, [rbx]
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Move r8, 0
+	017 Move rdx, 1
+	018 Move rcx, rdi
+	019 Call InputUser.UpdateControlSchemeMatch, rcx, rdx, r8
+	020 Move rax, [rbx]
+	021 Move rbx, stack:0x30
+	022 ShiftStack 32
+	023 Move rdi, stack:0x0
+	024 ShiftStack 8
+	025 Return rax
+

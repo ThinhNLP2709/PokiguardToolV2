@@ -1,0 +1,145 @@
+Type: UnityEngine.GUISettings
+
+Method: System.Single Internal_GetCursorFlashSpeed()
+
+Disassembly:
+	sub rsp,28h
+	mov rax,[183759240h]
+	test rax,rax
+	jne short 0000000182688353h
+	lea rcx,[182B443F0h]
+	call 000000018037BE90h
+	mov [183759240h],rax
+	add rsp,28h
+	jmp rax
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [0x183759240]
+	003 Compare rax, 0
+	004 JumpIfNotEqual {8}
+	005 LoadAddress rcx, [0x182B443F0]
+	006 Call 0x18037BE90, rcx, rdx, r8, r9
+	007 Move [0x183759240], rax
+	008 ShiftStack 40
+	009 CallNoReturn rax
+
+Method: System.Boolean get_doubleClickSelectsWord()
+
+Disassembly:
+	xchg ax,ax
+	movzx eax,byte ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+16]
+	003 Return rax
+
+Method: System.Boolean get_tripleClickSelectsLine()
+
+Disassembly:
+	xchg ax,ax
+	movzx eax,byte ptr [rcx+11h]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+17]
+	003 Return rax
+
+Method: UnityEngine.Color get_cursorColor()
+
+Disassembly:
+	movups xmm0,[rdx+14h]
+	movups [rcx],xmm0
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+20]
+	002 Move [rcx], xmm0
+	003 Move rax, rcx
+	004 Return rax
+
+Method: System.Single get_cursorFlashSpeed()
+
+Disassembly:
+	sub rsp,28h
+	movss xmm1,dword ptr [rcx+24h]
+	xor eax,eax
+	xorps xmm0,xmm0
+	comiss xmm1,xmm0
+	setb al
+	test eax,eax
+	je short 00000001826883CEh
+	mov rax,[183759240h]
+	test rax,rax
+	jne short 00000001826883C7h
+	lea rcx,[182B443F0h]
+	call 000000018037BE90h
+	mov [183759240h],rax
+	add rsp,28h
+	jmp rax
+	movaps xmm0,xmm1
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move xmm1, [rcx+36]
+	003 Move rax, 0
+	004 Move xmm0, 0
+	005 Compare xmm1, xmm0
+	006 NotImplemented "setb al"
+	007 Compare rax, 0
+	008 JumpIfEqual {17}
+	009 Move rax, [0x183759240]
+	010 Compare rax, 0
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x182B443F0]
+	013 Call 0x18037BE90, rcx, rdx, r8, r9
+	014 Move [0x183759240], rax
+	015 ShiftStack 40
+	016 CallNoReturn rax
+	017 Move xmm0, xmm1
+	018 ShiftStack 40
+	019 Return xmm0
+
+Method: UnityEngine.Color get_selectionColor()
+
+Disassembly:
+	movups xmm0,[rdx+28h]
+	movups [rcx],xmm0
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+40]
+	002 Move [rcx], xmm0
+	003 Move rax, rcx
+	004 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	movdqa xmm0,[182A4FD90h]
+	mov word ptr [rcx+10h],101h
+	movups [rcx+14h],xmm0
+	xor edx,edx
+	mov dword ptr [rcx+24h],0BF800000h
+	movdqa xmm0,[182B45810h]
+	movups [rcx+28h],xmm0
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move xmm0, [0x182A4FD90]
+	002 Move [rcx+16], 257
+	003 Move [rcx+20], xmm0
+	004 Move rdx, 0
+	005 Move [rcx+36], 0xBF800000
+	006 Move xmm0, [0x182B45810]
+	007 Move [rcx+40], xmm0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Return 
+

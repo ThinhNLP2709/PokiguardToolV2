@@ -1,0 +1,252 @@
+Type: UnityEngine.Rendering.InstanceNumInfo
+
+Method: System.Void InitDefault()
+
+Disassembly:
+	mov qword ptr [rcx],0
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Return 
+
+Method: System.Void .ctor(UnityEngine.Rendering.InstanceType type, System.Int32 instanceNum)
+
+Disassembly:
+	mov qword ptr [rcx],0
+	movsxd rax,edx
+	mov [rcx+rax*4],r8d
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Move rax, rdx
+	003 Move [rcx+rax*4], r8
+	004 Return 
+
+Method: System.Void .ctor(System.Int32 meshRendererNum = 0, System.Int32 speedTreeNum = 0)
+
+Disassembly:
+	xchg ax,ax
+	mov [rcx],edx
+	mov [rcx+4],r8d
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move [rcx], rdx
+	003 Move [rcx+4], r8
+	004 Return 
+
+Method: System.Int32 GetInstanceNum(UnityEngine.Rendering.InstanceType type)
+
+Disassembly:
+	movsxd rax,edx
+	mov eax,[rcx+rax*4]
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 Move rax, [rcx+rax*4]
+	003 Return rax
+
+Method: System.Int32 GetInstanceNumIncludingChildren(UnityEngine.Rendering.InstanceType type)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,60h
+	movsxd rbx,edx
+	mov rsi,rcx
+	cmp byte ptr [18375401Bh],0
+	jne short 000000018227BE51h
+	lea rcx,[1834F4990h]
+	call 000000018037BB90h
+	lea rcx,[1834F4A40h]
+	call 000000018037BB90h
+	lea rcx,[1834F4B00h]
+	call 000000018037BB90h
+	lea rcx,[1835510D8h]
+	call 000000018037BB90h
+	lea rcx,[1834FE890h]
+	call 000000018037BB90h
+	mov byte ptr [18375401Bh],1
+	mov edi,[rsi+rbx*4]
+	mov [rsp+78h],edi
+	mov rcx,[1835510D8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018227BE6Dh
+	call 000000018037BED0h
+	cmp byte ptr [18375401Ah],0
+	jne short 000000018227BE89h
+	lea rcx,[1835510D8h]
+	call 000000018037BB90h
+	mov byte ptr [18375401Ah],1
+	mov rcx,[1835510D8h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018227BE9Eh
+	call 000000018037BED0h
+	mov rax,[1835510D8h]
+	mov rcx,[rax+0B8h]
+	mov rdx,[rcx+8]
+	test rdx,rdx
+	je near ptr 000000018227BF81h
+	cmp ebx,[rdx+18h]
+	jae near ptr 000000018227BF87h
+	mov rdx,[rdx+rbx*8+20h]
+	test rdx,rdx
+	je near ptr 000000018227BF81h
+	mov r8,[1834FE890h]
+	lea rcx,[rsp+28h]
+	call 00000001814D5C10h
+	movups xmm0,[rsp+28h]
+	movups [rsp+40h],xmm0
+	movsd xmm1,qword ptr [rsp+38h]
+	movsd qword ptr [rsp+50h],xmm1
+	mov qword ptr [rsp+28h],0
+	lea rbx,[rsp+40h]
+	mov [rsp+30h],rbx
+	nop word ptr [rax+rax]
+	mov rdx,[1834F4A40h]
+	lea rcx,[rsp+40h]
+	call 000000018119FB20h
+	test al,al
+	je short 000000018227BF3Ch
+	xor r8d,r8d
+	mov edx,[rsp+50h]
+	mov rcx,rsi
+	call 000000018227BDF0h
+	add edi,eax
+	mov [rsp+78h],edi
+	jmp short 000000018227BF10h
+	mov rdx,[1834F4990h]
+	mov rcx,rbx
+	call 0000000180456D90h
+	jmp short 000000018227BF6Ch
+	mov rdx,[1834F4990h]
+	mov rcx,[rsp+30h]
+	call 0000000180456D90h
+	mov rcx,[rsp+28h]
+	test rcx,rcx
+	jne short 000000018227BF8Dh
+	mov edi,[rsp+78h]
+	mov eax,edi
+	mov rbx,[rsp+70h]
+	mov rsi,[rsp+80h]
+	add rsp,60h
+	pop rdi
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+	int 3
+	call 000000018037BEC0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x18, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -96
+	006 Move rbx, rdx
+	007 Move rsi, rcx
+	008 Compare [0x18375401B], 0
+	009 JumpIfNotEqual {21}
+	010 LoadAddress rcx, [0x1834F4990]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x1834F4A40]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x1834F4B00]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x1835510D8]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 LoadAddress rcx, [0x1834FE890]
+	019 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	020 Move [0x18375401B], 1
+	021 Move rdi, [rsi+rbx*4]
+	022 Move stack:0x78, rdi
+	023 Move rcx, typeof(UnityEngine.Rendering.InstanceTypeInfo)
+	024 Compare [rcx+228], 0
+	025 JumpIfNotEqual {27}
+	026 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	027 Compare [0x18375401A], 0
+	028 JumpIfNotEqual {32}
+	029 LoadAddress rcx, [0x1835510D8]
+	030 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	031 Move [0x18375401A], 1
+	032 Move rcx, typeof(UnityEngine.Rendering.InstanceTypeInfo)
+	033 Compare [rcx+228], 0
+	034 JumpIfNotEqual {36}
+	035 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	036 Move rax, typeof(UnityEngine.Rendering.InstanceTypeInfo)
+	037 Move rcx, [rax+184]
+	038 Move rdx, [rcx+8]
+	039 Compare rdx, 0
+	040 JumpIfEqual {87}
+	041 Compare rbx, [rdx+24]
+	042 JumpIfGreaterOrEqual {89}
+	043 Move rdx, [rdx+32+rbx*8]
+	044 Compare rdx, 0
+	045 JumpIfEqual {87}
+	046 Move r8, [0x1834FE890]
+	047 LoadAddress rcx, stack:0x28
+	048 Call 0x1814D5C10, rcx, rdx
+	049 Move xmm0, stack:0x28
+	050 Move stack:0x40, xmm0
+	051 Move xmm1, stack:0x38
+	052 Move stack:0x50, xmm1
+	053 Move stack:0x28, 0
+	054 LoadAddress rbx, stack:0x40
+	055 Move stack:0x30, rbx
+	056 Nop 
+	057 Move rdx, [0x1834F4A40]
+	058 LoadAddress rcx, stack:0x40
+	059 Call 0x18119FB20, rcx, rdx
+	060 Compare rax, 0
+	061 JumpIfEqual {69}
+	062 Move r8, 0
+	063 Move rdx, stack:0x50
+	064 Move rcx, rsi
+	065 Call InstanceNumInfo.GetInstanceNumIncludingChildren, rcx, rdx
+	066 Add rdi, rdi, rax
+	067 Move stack:0x78, rdi
+	068 Goto {57}
+	069 Move rdx, [0x1834F4990]
+	070 Move rcx, rbx
+	071 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	072 Goto {80}
+	073 Move rdx, [0x1834F4990]
+	074 Move rcx, stack:0x30
+	075 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	076 Move rcx, stack:0x28
+	077 Compare rcx, 0
+	078 JumpIfNotEqual {91}
+	079 Move rdi, stack:0x78
+	080 Move rax, rdi
+	081 Move rbx, stack:0x70
+	082 Move rsi, stack:0x80
+	083 ShiftStack 96
+	084 Move rdi, stack:0x0
+	085 ShiftStack 8
+	086 Return rax
+	087 Call 0x18037BE30, rcx, rdx, r8, r9
+	088 Interrupt 
+	089 Call 0x18037BE20, rcx, rdx, r8, r9
+	090 Interrupt 
+	091 Call 0x18037BEC0, rcx, rdx, r8, r9
+
+Method: System.Int32 GetTotalInstanceNum()
+
+Disassembly:
+	xchg ax,ax
+	mov eax,[rcx+4]
+	add eax,[rcx]
+	ret
+
+ISIL:
+	001 Nop 
+	002 Move rax, [rcx+4]
+	003 Add rax, rax, [rcx]
+	004 Return rax
+

@@ -1,0 +1,167 @@
+Type: UnityEngine.Rendering.Universal.DecalDrawErrorSystem
+
+Method: System.Void .ctor(UnityEngine.Rendering.Universal.DecalEntityManager entityManager, UnityEngine.Rendering.Universal.DecalTechnique technique)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837541AFh],0
+	mov edi,r8d
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 00000001822A6ED0h
+	lea rcx,[1835213A0h]
+	call 000000018037BB90h
+	lea rcx,[183501FF8h]
+	call 000000018037BB90h
+	mov byte ptr [1837541AFh],1
+	mov rcx,[1835213A0h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001822A6EE5h
+	call 000000018037BED0h
+	mov rdx,[183501FF8h]
+	xor r9d,r9d
+	mov r8,rsi
+	mov rcx,rbx
+	call 00000001822A8740h
+	mov rsi,[rsp+38h]
+	mov [rbx+40h],edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x1837541AF], 0
+	007 Move rdi, r8
+	008 Move rsi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x1835213A0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183501FF8]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837541AF], 1
+	016 Move rcx, typeof(UnityEngine.Rendering.Universal.DecalDrawSystem)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rdx, "DecalDrawErrorSystem.Execute"
+	021 Move r9, 0
+	022 Move r8, rsi
+	023 Move rcx, rbx
+	024 Call DecalDrawSystem..ctor, rcx, rdx, r8
+	025 Move rsi, stack:0x38
+	026 Move [rbx+64], rdi
+	027 Move rbx, stack:0x30
+	028 ShiftStack 32
+	029 Move rdi, stack:0x0
+	030 ShiftStack 8
+	031 Return 
+
+Method: System.Int32 GetPassIndex(UnityEngine.Rendering.Universal.DecalCachedChunk decalCachedChunk)
+
+Disassembly:
+	sub rsp,28h
+	mov r8d,[rcx+40h]
+	test r8d,r8d
+	je short 00000001822A6E4Ah
+	sub r8d,1
+	je short 00000001822A6E5Ch
+	sub r8d,1
+	je short 00000001822A6E51h
+	cmp r8d,1
+	jne short 00000001822A6E4Ah
+	test rdx,rdx
+	je short 00000001822A6E7Fh
+	cmp dword ptr [rdx+3Ch],0FFFFFFFFh
+	jne short 00000001822A6E75h
+	xor eax,eax
+	add rsp,28h
+	ret
+	test rdx,rdx
+	je short 00000001822A6E7Fh
+	cmp dword ptr [rdx+38h],0FFFFFFFFh
+	jmp short 00000001822A6E48h
+	test rdx,rdx
+	je short 00000001822A6E7Fh
+	cmp dword ptr [rdx+30h],0FFFFFFFFh
+	jne short 00000001822A6E75h
+	mov eax,[rdx+34h]
+	inc eax
+	neg eax
+	sbb eax,eax
+	add rsp,28h
+	ret
+	mov eax,0FFFFFFFFh
+	add rsp,28h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move r8, [rcx+64]
+	003 Compare r8, 0
+	004 JumpIfEqual {15}
+	005 Subtract r8, r8, 1
+	006 JumpIfEqual {22}
+	007 Subtract r8, r8, 1
+	008 JumpIfEqual {18}
+	009 Compare r8, 1
+	010 JumpIfNotEqual {15}
+	011 Compare rdx, 0
+	012 JumpIfEqual {35}
+	013 Compare [rdx+60], 18446744073709551615
+	014 JumpIfNotEqual {32}
+	015 Move rax, 0
+	016 ShiftStack 40
+	017 Return rax
+	018 Compare rdx, 0
+	019 JumpIfEqual {35}
+	020 Compare [rdx+56], 18446744073709551615
+	021 Goto {14}
+	022 Compare rdx, 0
+	023 JumpIfEqual {35}
+	024 Compare [rdx+48], 18446744073709551615
+	025 JumpIfNotEqual {32}
+	026 Move rax, [rdx+52]
+	027 Add rax, rax, 1
+	028 Neg rax
+	029 NotImplemented "sbb eax,eax"
+	030 ShiftStack 40
+	031 Return rax
+	032 Move rax, 0xFFFFFFFF
+	033 ShiftStack 40
+	034 Return rax
+	035 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: UnityEngine.Material GetMaterial(UnityEngine.Rendering.Universal.DecalEntityChunk decalEntityChunk)
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+10h]
+	test rcx,rcx
+	je short 00000001822A6E18h
+	xor edx,edx
+	add rsp,28h
+	jmp near ptr 00000001822AC100h
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+16]
+	003 Compare rcx, 0
+	004 JumpIfEqual {9}
+	005 Move rdx, 0
+	006 ShiftStack 40
+	007 Call DecalEntityManager.get_errorMaterial, rcx, rdx
+	008 Return rax
+	009 Call 0x18037BE30, rcx, rdx, r8, r9
+

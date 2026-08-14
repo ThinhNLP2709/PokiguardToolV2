@@ -1,0 +1,105 @@
+Type: Newtonsoft.Json.Schema.JsonSchemaGenerator+TypeSchema
+
+Method: System.Type get_Type()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: Newtonsoft.Json.Schema.JsonSchema get_Schema()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Void .ctor(System.Type type, Newtonsoft.Json.Schema.JsonSchema schema)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374FF25h],0
+	mov rdi,r8
+	mov rsi,rdx
+	mov rbx,rcx
+	jne short 00000001819498A0h
+	lea rcx,[183513FF0h]
+	call 000000018037BB90h
+	lea rcx,[183537110h]
+	call 000000018037BB90h
+	mov byte ptr [18374FF25h],1
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000180456D90h
+	mov rdx,[183537110h]
+	xor r8d,r8d
+	mov rcx,rsi
+	call 000000018192F340h
+	mov rdx,[183513FF0h]
+	xor r8d,r8d
+	mov rcx,rdi
+	call 000000018192F340h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	lea rcx,[rbx+18h]
+	mov [rbx+18h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x18374FF25], 0
+	007 Move rdi, r8
+	008 Move rsi, rdx
+	009 Move rbx, rcx
+	010 JumpIfNotEqual {16}
+	011 LoadAddress rcx, [0x183513FF0]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183537110]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18374FF25], 1
+	016 Move rdx, 0
+	017 Move rcx, rbx
+	018 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	019 Move rdx, "type"
+	020 Move r8, 0
+	021 Move rcx, rsi
+	022 Call ValidationUtils.ArgumentNotNull, rcx, rdx, r8
+	023 Move rdx, "schema"
+	024 Move r8, 0
+	025 Move rcx, rdi
+	026 Call ValidationUtils.ArgumentNotNull, rcx, rdx, r8
+	027 LoadAddress rcx, [rbx+16]
+	028 Move [rbx+16], rsi
+	029 Move rdx, rsi
+	030 Call 0x18037ACB0, rcx, rdx, r8, r9
+	031 LoadAddress rcx, [rbx+24]
+	032 Move [rbx+24], rdi
+	033 Move rdx, rdi
+	034 Move rbx, stack:0x30
+	035 Move rsi, stack:0x38
+	036 ShiftStack 32
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Call 0x18037ACB0, rcx, rdx, r8, r9
+	040 Return 
+

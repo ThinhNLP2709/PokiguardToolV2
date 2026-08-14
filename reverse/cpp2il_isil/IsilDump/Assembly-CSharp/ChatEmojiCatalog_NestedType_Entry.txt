@@ -1,0 +1,61 @@
+Type: ChatEmojiCatalog+Entry
+
+Method: System.Void .ctor(System.String id, System.Single fps, System.String[] framePaths)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,30h
+	mov rbx,rdx
+	movaps [rsp+20h],xmm6
+	xor edx,edx
+	mov rsi,r9
+	movaps xmm6,xmm2
+	mov rdi,rcx
+	call 0000000180456D90h
+	lea rcx,[rdi+10h]
+	mov [rdi+10h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	lea rcx,[rdi+18h]
+	movss dword ptr [rdi+20h],xmm6
+	mov rdx,rsi
+	mov [rdi+18h],rsi
+	mov rbx,[rsp+40h]
+	mov rsi,[rsp+48h]
+	movaps xmm6,[rsp+20h]
+	add rsp,30h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -48
+	006 Move rbx, rdx
+	007 Move stack:0x20, xmm6
+	008 Move rdx, 0
+	009 Move rsi, r9
+	010 Move xmm6, xmm2
+	011 Move rdi, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 LoadAddress rcx, [rdi+16]
+	014 Move [rdi+16], rbx
+	015 Move rdx, rbx
+	016 Call 0x18037ACB0, rcx, rdx, r8, r9
+	017 LoadAddress rcx, [rdi+24]
+	018 Move [rdi+32], xmm6
+	019 Move rdx, rsi
+	020 Move [rdi+24], rsi
+	021 Move rbx, stack:0x40
+	022 Move rsi, stack:0x48
+	023 Move xmm6, stack:0x20
+	024 ShiftStack 48
+	025 Move rdi, stack:0x0
+	026 ShiftStack 8
+	027 Call 0x18037ACB0, rcx, rdx, r8, r9
+	028 Return 
+

@@ -1,0 +1,132 @@
+Type: UnityEngine.Rendering.RangeKey
+
+Method: System.Boolean Equals(UnityEngine.Rendering.RangeKey other)
+
+Disassembly:
+	sub rsp,28h
+	movzx eax,byte ptr [rdx]
+	cmp [rcx],al
+	jne short 0000000182260328h
+	mov rax,[rdx]
+	movsd xmm0,qword ptr [rdx+10h]
+	shr rax,20h
+	movsd qword ptr [rsp+10h],xmm0
+	cmp [rcx+4],eax
+	jne short 0000000182260328h
+	mov eax,[rdx+8]
+	movsd qword ptr [rsp+10h],xmm0
+	cmp [rcx+8],eax
+	jne short 0000000182260328h
+	mov rax,[rdx+8]
+	shr rax,20h
+	movsd qword ptr [rsp+10h],xmm0
+	cmp [rcx+0Ch],eax
+	jne short 0000000182260328h
+	movaps xmm1,xmm0
+	movsd qword ptr [rsp+10h],xmm1
+	movzx eax,byte ptr [rsp+10h]
+	cmp [rcx+10h],al
+	jne short 0000000182260328h
+	movsd qword ptr [rsp+10h],xmm1
+	mov rax,[rsp+10h]
+	shr rax,20h
+	cmp [rcx+14h],eax
+	jne short 0000000182260328h
+	mov eax,[rdx+18h]
+	cmp [rcx+18h],al
+	sete al
+	add rsp,28h
+	ret
+	xor al,al
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rax, [rdx]
+	003 Compare [rcx], rax
+	004 JumpIfNotEqual {35}
+	005 Move rax, [rdx]
+	006 Move xmm0, [rdx+16]
+	007 ShiftRight rax, 32
+	008 Move stack:0x10, xmm0
+	009 Compare [rcx+4], rax
+	010 JumpIfNotEqual {35}
+	011 Move rax, [rdx+8]
+	012 Move stack:0x10, xmm0
+	013 Compare [rcx+8], rax
+	014 JumpIfNotEqual {35}
+	015 Move rax, [rdx+8]
+	016 ShiftRight rax, 32
+	017 Move stack:0x10, xmm0
+	018 Compare [rcx+12], rax
+	019 JumpIfNotEqual {35}
+	020 Move xmm1, xmm0
+	021 Move stack:0x10, xmm1
+	022 Move rax, stack:0x10
+	023 Compare [rcx+16], rax
+	024 JumpIfNotEqual {35}
+	025 Move stack:0x10, xmm1
+	026 Move rax, stack:0x10
+	027 ShiftRight rax, 32
+	028 Compare [rcx+20], rax
+	029 JumpIfNotEqual {35}
+	030 Move rax, [rdx+24]
+	031 Compare [rcx+24], rax
+	032 NotImplemented "sete al"
+	033 ShiftStack 40
+	034 Return rax
+	035 Move rax, 0
+	036 ShiftStack 40
+	037 Return rax
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	mov r9,rcx
+	movzx eax,byte ptr [rcx]
+	imul edx,eax,17h
+	add edx,[rcx+4]
+	imul eax,edx,17h
+	add eax,[rcx+8]
+	imul edx,eax,17h
+	movzx eax,byte ptr [rcx+10h]
+	add edx,[rcx+0Ch]
+	imul r8d,edx,211h
+	neg al
+	sbb ecx,ecx
+	xor eax,eax
+	and ecx,17h
+	add r8d,ecx
+	add r8d,[r9+14h]
+	imul ecx,r8d,17h
+	cmp [r9+18h],al
+	setne al
+	add eax,4E43AC3Bh
+	add eax,ecx
+	ret
+
+ISIL:
+	001 Move r9, rcx
+	002 Move rax, [rcx]
+	003 Multiply rdx, rax, 23
+	004 Add rdx, rdx, [rcx+4]
+	005 Multiply rax, rdx, 23
+	006 Add rax, rax, [rcx+8]
+	007 Multiply rdx, rax, 23
+	008 Move rax, [rcx+16]
+	009 Add rdx, rdx, [rcx+12]
+	010 Multiply r8, rdx, 529
+	011 Neg rax
+	012 NotImplemented "sbb ecx,ecx"
+	013 Move rax, 0
+	014 And rcx, rcx, 23
+	015 Add r8, r8, rcx
+	016 Add r8, r8, [r9+20]
+	017 Multiply rcx, r8, 23
+	018 Compare [r9+24], rax
+	019 NotImplemented "setne al"
+	020 Add rax, rax, 0x4E43AC3B
+	021 Add rax, rax, rcx
+	022 Return rax
+

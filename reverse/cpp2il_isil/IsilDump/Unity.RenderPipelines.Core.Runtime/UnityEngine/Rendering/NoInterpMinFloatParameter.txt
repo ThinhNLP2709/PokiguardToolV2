@@ -1,0 +1,89 @@
+Type: UnityEngine.Rendering.NoInterpMinFloatParameter
+
+Method: System.Single get_value()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+18h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+24]
+	002 Return xmm0
+
+Method: System.Void set_value(System.Single value)
+
+Disassembly:
+	xchg ax,ax
+	maxss xmm1,dword ptr [rcx+20h]
+	movss dword ptr [rcx+18h],xmm1
+	ret
+
+ISIL:
+	001 Nop 
+	002 Compare xmm1, [rcx+32]
+	003 JumpIfGreaterOrEqual {5}
+	004 Move xmm1, [rcx+32]
+	005 Nop 
+	006 Move [rcx+24], xmm1
+	007 Return 
+
+Method: System.Void .ctor(System.Single value, System.Single min, System.Boolean overrideState = False)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,40h
+	cmp byte ptr [183753C60h],0
+	movzx edi,r9b
+	movaps [rsp+30h],xmm6
+	mov rbx,rcx
+	movaps [rsp+20h],xmm7
+	movaps xmm6,xmm2
+	movaps xmm7,xmm1
+	jne short 000000018220736Dh
+	lea rcx,[18355FDE0h]
+	call 000000018037BB90h
+	mov byte ptr [183753C60h],1
+	mov r9,[18355FDE0h]
+	movzx r8d,dil
+	movaps xmm1,xmm7
+	mov rcx,rbx
+	call 0000000180F6FCA0h
+	movaps xmm7,[rsp+20h]
+	movss dword ptr [rbx+20h],xmm6
+	mov rbx,[rsp+50h]
+	movaps xmm6,[rsp+30h]
+	add rsp,40h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -64
+	005 Compare [0x183753C60], 0
+	006 Move rdi, r9
+	007 Move stack:0x30, xmm6
+	008 Move rbx, rcx
+	009 Move stack:0x20, xmm7
+	010 Move xmm6, xmm2
+	011 Move xmm7, xmm1
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x18355FDE0]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183753C60], 1
+	016 Move r9, [0x18355FDE0]
+	017 Move r8, rdi
+	018 Move xmm1, xmm7
+	019 Move rcx, rbx
+	020 Call VolumeParameter`1<Single>..ctor, rcx, rdx, r8
+	021 Move xmm7, stack:0x20
+	022 Move [rbx+32], xmm6
+	023 Move rbx, stack:0x50
+	024 Move xmm6, stack:0x30
+	025 ShiftStack 64
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+

@@ -1,0 +1,452 @@
+Type: UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_format()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837533E1h],0
+	jne short 0000000182017850h
+	lea rcx,[183519230h]
+	call 000000018037BB90h
+	mov byte ptr [1837533E1h],1
+	mov rax,[183519230h]
+	cmp dword ptr [rax+0E4h],0
+	jne short 000000018201786Fh
+	mov rcx,rax
+	call 000000018037BED0h
+	mov rax,[183519230h]
+	mov rax,[rax+0B8h]
+	mov eax,[rax]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837533E1], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183519230]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837533E1], 1
+	007 Move rax, typeof(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState)
+	008 Compare [rax+228], 0
+	009 JumpIfNotEqual {13}
+	010 Move rcx, rax
+	011 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	012 Move rax, typeof(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState)
+	013 Move rax, [rax+184]
+	014 Move rax, [rax]
+	015 ShiftStack 40
+	016 Return rax
+
+Method: UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState WithButton(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState+Button button, System.Boolean value = True)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837533E2h],0
+	movzx ebp,r9b
+	mov edi,r8d
+	mov rbx,rdx
+	mov rsi,rcx
+	jne short 000000018201771Dh
+	lea rcx,[183519230h]
+	call 000000018037BB90h
+	mov byte ptr [1837533E2h],1
+	mov rcx,[183519230h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182017732h
+	call 000000018037BED0h
+	cmp edi,10h
+	jl short 0000000182017762h
+	cmp edi,12h
+	jge short 000000018201778Dh
+	lea ecx,[rdi-10h]
+	mov eax,1
+	and ecx,1Fh
+	shl al,cl
+	movzx ecx,byte ptr [rbx+6]
+	test bpl,bpl
+	jne short 000000018201775Bh
+	not al
+	and al,cl
+	mov [rbx+6],al
+	jmp short 000000018201778Dh
+	or cl,al
+	mov [rbx+6],cl
+	jmp short 000000018201778Dh
+	and edi,1Fh
+	mov eax,1
+	movzx ecx,dil
+	shl ax,cl
+	movzx ecx,word ptr [rbx+4]
+	test bpl,bpl
+	jne short 0000000182017786h
+	not ax
+	and ax,cx
+	mov [rbx+4],ax
+	jmp short 000000018201778Dh
+	or cx,ax
+	mov [rbx+4],cx
+	mov eax,[rbx]
+	mov rbp,[rsp+38h]
+	mov [rsi],eax
+	movzx eax,word ptr [rbx+4]
+	mov [rsi+4],ax
+	movzx eax,byte ptr [rbx+6]
+	mov rbx,[rsp+30h]
+	mov [rsi+6],al
+	mov rax,rsi
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Compare [0x1837533E2], 0
+	008 Move rbp, r9
+	009 Move rdi, r8
+	010 Move rbx, rdx
+	011 Move rsi, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x183519230]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x1837533E2], 1
+	016 Move rcx, typeof(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState)
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Compare rdi, 16
+	021 JumpIfLess {38}
+	022 Compare rdi, 18
+	023 JumpIfGreaterOrEqual {51}
+	024 LoadAddress rcx, [rdi-16]
+	025 Move rax, 1
+	026 And rcx, rcx, 31
+	027 ShiftLeft rax, rcx
+	028 Move rcx, [rbx+6]
+	029 Compare rbp, 0
+	030 JumpIfNotEqual {35}
+	031 Neg rax
+	032 And rax, rax, rcx
+	033 Move [rbx+6], rax
+	034 Goto {51}
+	035 Or rcx, rcx, rax
+	036 Move [rbx+6], rcx
+	037 Goto {51}
+	038 And rdi, rdi, 31
+	039 Move rax, 1
+	040 Move rcx, rdi
+	041 ShiftLeft rax, rcx
+	042 Move rcx, [rbx+4]
+	043 Compare rbp, 0
+	044 JumpIfNotEqual {49}
+	045 Neg rax
+	046 And rax, rax, rcx
+	047 Move [rbx+4], rax
+	048 Goto {51}
+	049 Or rcx, rcx, rax
+	050 Move [rbx+4], rcx
+	051 Move rax, [rbx]
+	052 Move rbp, stack:0x38
+	053 Move [rsi], rax
+	054 Move rax, [rbx+4]
+	055 Move [rsi+4], rax
+	056 Move rax, [rbx+6]
+	057 Move rbx, stack:0x30
+	058 Move [rsi+6], rax
+	059 Move rax, rsi
+	060 Move rsi, stack:0x40
+	061 ShiftStack 32
+	062 Move rdi, stack:0x0
+	063 ShiftStack 8
+	064 Return rax
+
+Method: System.Void Set(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState+Button button, System.Boolean state)
+
+Disassembly:
+	mov r9,rcx
+	cmp edx,10h
+	jl short 00000001820176A4h
+	cmp edx,12h
+	jge short 00000001820176D0h
+	lea ecx,[rdx-10h]
+	mov eax,1
+	and ecx,1Fh
+	shl al,cl
+	movzx ecx,byte ptr [r9+6]
+	test r8b,r8b
+	jne short 000000018201769Dh
+	not al
+	and al,cl
+	mov [r9+6],al
+	ret
+	or cl,al
+	mov [r9+6],cl
+	ret
+	and edx,1Fh
+	mov eax,1
+	movzx ecx,dl
+	shl ax,cl
+	movzx ecx,word ptr [r9+4]
+	test r8b,r8b
+	jne short 00000001820176C8h
+	not ax
+	and ax,cx
+	mov [r9+4],ax
+	ret
+	or cx,ax
+	mov [r9+4],cx
+	ret
+
+ISIL:
+	001 Move r9, rcx
+	002 Compare rdx, 16
+	003 JumpIfLess {20}
+	004 Compare rdx, 18
+	005 JumpIfGreaterOrEqual {33}
+	006 LoadAddress rcx, [rdx-16]
+	007 Move rax, 1
+	008 And rcx, rcx, 31
+	009 ShiftLeft rax, rcx
+	010 Move rcx, [r9+6]
+	011 Compare r8, 0
+	012 JumpIfNotEqual {17}
+	013 Neg rax
+	014 And rax, rax, rcx
+	015 Move [r9+6], rax
+	016 Return 
+	017 Or rcx, rcx, rax
+	018 Move [r9+6], rcx
+	019 Return 
+	020 And rdx, rdx, 31
+	021 Move rax, 1
+	022 Move rcx, rdx
+	023 ShiftLeft rax, rcx
+	024 Move rcx, [r9+4]
+	025 Compare r8, 0
+	026 JumpIfNotEqual {31}
+	027 Neg rax
+	028 And rax, rax, rcx
+	029 Move [r9+4], rax
+	030 Return 
+	031 Or rcx, rcx, rax
+	032 Move [r9+4], rcx
+	033 Return 
+
+Method: System.Void Press(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState+Button button)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837533E3h],0
+	mov ebx,edx
+	mov rdi,rcx
+	jne short 000000018201759Bh
+	lea rcx,[183519230h]
+	call 000000018037BB90h
+	mov byte ptr [1837533E3h],1
+	mov rcx,[183519230h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 00000001820175B0h
+	call 000000018037BED0h
+	cmp ebx,10h
+	jl short 00000001820175D5h
+	cmp ebx,12h
+	jge short 00000001820175E5h
+	movzx ecx,byte ptr [rdi+6]
+	lea eax,[rbx-10h]
+	and eax,1Fh
+	bts ecx,eax
+	mov [rdi+6],cl
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	movzx eax,word ptr [rdi+4]
+	and bx,1Fh
+	bts ax,bx
+	mov [rdi+4],ax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837533E3], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183519230]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x1837533E3], 1
+	012 Move rcx, typeof(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Compare rbx, 16
+	017 JumpIfLess {30}
+	018 Compare rbx, 18
+	019 JumpIfGreaterOrEqual {34}
+	020 Move rcx, [rdi+6]
+	021 LoadAddress rax, [rbx-16]
+	022 And rax, rax, 31
+	023 NotImplemented "bts ecx,eax"
+	024 Move [rdi+6], rcx
+	025 Move rbx, stack:0x30
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return 
+	030 Move rax, [rdi+4]
+	031 And rbx, rbx, 31
+	032 NotImplemented "bts ax,bx"
+	033 Move [rdi+4], rax
+	034 Move rbx, stack:0x30
+	035 ShiftStack 32
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return 
+
+Method: System.Void Release(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState+Button button)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837533E4h],0
+	mov ebx,edx
+	mov rdi,rcx
+	jne short 000000018201761Bh
+	lea rcx,[183519230h]
+	call 000000018037BB90h
+	mov byte ptr [1837533E4h],1
+	mov rcx,[183519230h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000182017630h
+	call 000000018037BED0h
+	cmp ebx,10h
+	jl short 0000000182017655h
+	cmp ebx,12h
+	jge short 0000000182017665h
+	movzx ecx,byte ptr [rdi+6]
+	lea eax,[rbx-10h]
+	and eax,1Fh
+	btr ecx,eax
+	mov [rdi+6],cl
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+	movzx eax,word ptr [rdi+4]
+	and bx,1Fh
+	btr ax,bx
+	mov [rdi+4],ax
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837533E4], 0
+	006 Move rbx, rdx
+	007 Move rdi, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183519230]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x1837533E4], 1
+	012 Move rcx, typeof(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState)
+	013 Compare [rcx+228], 0
+	014 JumpIfNotEqual {16}
+	015 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	016 Compare rbx, 16
+	017 JumpIfLess {30}
+	018 Compare rbx, 18
+	019 JumpIfGreaterOrEqual {34}
+	020 Move rcx, [rdi+6]
+	021 LoadAddress rax, [rbx-16]
+	022 And rax, rax, 31
+	023 NotImplemented "btr ecx,eax"
+	024 Move [rdi+6], rcx
+	025 Move rbx, stack:0x30
+	026 ShiftStack 32
+	027 Move rdi, stack:0x0
+	028 ShiftStack 8
+	029 Return 
+	030 Move rax, [rdi+4]
+	031 And rbx, rbx, 31
+	032 NotImplemented "btr ax,bx"
+	033 Move [rdi+4], rax
+	034 Move rbx, stack:0x30
+	035 ShiftStack 32
+	036 Move rdi, stack:0x0
+	037 ShiftStack 8
+	038 Return 
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,38h
+	cmp byte ptr [1837533E5h],0
+	jne short 00000001820177E0h
+	lea rcx,[183519230h]
+	call 000000018037BB90h
+	mov byte ptr [1837533E5h],1
+	xor ecx,ecx
+	mov eax,53h
+	mov [rsp+28h],rcx
+	mov r9d,56h
+	mov [rsp+48h],ecx
+	mov r8d,50h
+	lea rcx,[rsp+48h]
+	mov [rsp+20h],ax
+	mov edx,eax
+	call 0000000181F41F80h
+	mov rax,[183519230h]
+	mov rcx,[rax+0B8h]
+	mov eax,[rsp+48h]
+	mov [rcx],eax
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Compare [0x1837533E5], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183519230]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837533E5], 1
+	007 Move rcx, 0
+	008 Move rax, 83
+	009 Move stack:0x28, rcx
+	010 Move r9, 86
+	011 Move stack:0x48, rcx
+	012 Move r8, 80
+	013 LoadAddress rcx, stack:0x48
+	014 Move stack:0x20, rax
+	015 Move rdx, rax
+	016 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	017 Move rax, typeof(UnityEngine.InputSystem.Switch.LowLevel.SwitchProControllerHIDInputState)
+	018 Move rcx, [rax+184]
+	019 Move rax, stack:0x48
+	020 Move [rcx], rax
+	021 ShiftStack 56
+	022 Return 
+

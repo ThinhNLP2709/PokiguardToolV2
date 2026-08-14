@@ -1,0 +1,110 @@
+Type: UnityEngine.InputSystem.InputExtensions
+
+Method: System.Boolean IsInProgress(UnityEngine.InputSystem.InputActionPhase phase)
+
+Disassembly:
+	cmp ecx,2
+	jne short 00000001818A7738h
+	mov al,1
+	ret
+	cmp ecx,3
+	sete al
+	ret
+
+ISIL:
+	001 Compare rcx, 2
+	002 JumpIfNotEqual {5}
+	003 Move rax, 1
+	004 Return rax
+	005 Compare rcx, 3
+	006 NotImplemented "sete al"
+	007 Return rax
+
+Method: System.Boolean IsEndedOrCanceled(UnityEngine.InputSystem.TouchPhase phase)
+
+Disassembly:
+	cmp ecx,4
+	jne short 0000000181FCC698h
+	mov al,1
+	ret
+	cmp ecx,3
+	sete al
+	ret
+
+ISIL:
+	001 Compare rcx, 4
+	002 JumpIfNotEqual {5}
+	003 Move rax, 1
+	004 Return rax
+	005 Compare rcx, 3
+	006 NotImplemented "sete al"
+	007 Return rax
+
+Method: System.Boolean IsActive(UnityEngine.InputSystem.TouchPhase phase)
+
+Disassembly:
+	lea eax,[rcx-1]
+	cmp eax,1
+	jbe short 0000000181FCC67Fh
+	cmp ecx,5
+	sete al
+	ret
+	mov al,1
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-1]
+	002 Compare rax, 1
+	003 JumpIfLessOrEqual {7}
+	004 Compare rcx, 5
+	005 NotImplemented "sete al"
+	006 Return rax
+	007 Move rax, 1
+	008 Return rax
+
+Method: System.Boolean IsModifierKey(UnityEngine.InputSystem.Key key)
+
+Disassembly:
+	lea eax,[rcx-33h]
+	cmp eax,7
+	setbe al
+	ret
+
+ISIL:
+	001 LoadAddress rax, [rcx-51]
+	002 Compare rax, 7
+	003 NotImplemented "setbe al"
+	004 Return rax
+
+Method: System.Boolean IsTextInputKey(UnityEngine.InputSystem.Key key)
+
+Disassembly:
+	cmp ecx,7Eh
+	ja short 0000000181FCC6D6h
+	movsxd rax,ecx
+	lea rdx,[180000000h]
+	movzx eax,byte ptr [rdx+rax+1FCC6E4h]
+	mov ecx,[rdx+rax*4+1FCC6DCh]
+	add rcx,rdx
+	jmp rcx
+	xor al,al
+	ret
+	mov al,1
+	ret
+	nop dword ptr [rax]
+
+ISIL:
+	001 Compare rcx, 126
+	002 JumpIfGreater {11}
+	003 Move rax, rcx
+	004 LoadAddress rdx, [0x180000000]
+	005 Move rax, [rdx+0x1FCC6E4+rax]
+	006 Move rcx, [rdx+0x1FCC6DC+rax*4]
+	007 Add rcx, rcx, rdx
+	008 CallNoReturn rcx
+	009 Move rax, 0
+	010 Return rax
+	011 Move rax, 1
+	012 Return rax
+	013 Nop 
+

@@ -1,0 +1,382 @@
+Type: UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusionPass+SSAOMaterialParams
+
+Method: System.Void .ctor(ref UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusionSettings settings, System.Boolean isOrthographic)
+
+Disassembly:
+	sub rsp,38h
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+10h],0
+	mov r9d,[rax+18h]
+	movss xmm4,dword ptr [182A4FBA4h]
+	jne short 000000018230B01Ch
+	movss xmm3,dword ptr [182A4FDB4h]
+	jmp short 000000018230B01Fh
+	movaps xmm3,xmm4
+	mov [rcx],r8b
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+10h],0
+	sete al
+	mov [rcx+1],al
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+10h],1
+	sete al
+	mov [rcx+2],al
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+2Ch],0
+	sete al
+	mov [rcx+3],al
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+2Ch],1
+	sete al
+	mov [rcx+4],al
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+2Ch],2
+	sete al
+	mov [rcx+5],al
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+18h],1
+	sete al
+	mov [rcx+6],al
+	cmp r9d,1
+	jne short 000000018230B0BAh
+	mov word ptr [rcx+7],0
+	xor r8d,r8d
+	mov eax,r8d
+	jmp short 000000018230B0F8h
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+1Ch],2
+	sete al
+	mov [rcx+7],al
+	mov rax,[rdx]
+	test rax,rax
+	je near ptr 000000018230B169h
+	cmp dword ptr [rax+1Ch],1
+	sete al
+	mov [rcx+8],al
+	mov r9,[rdx]
+	test r9,r9
+	je short 000000018230B169h
+	xor r8d,r8d
+	cmp [r9+1Ch],r8d
+	sete al
+	mov [rcx+9],al
+	cmp qword ptr [rdx],0
+	je short 000000018230B169h
+	mov rax,[rdx]
+	mov r9,rax
+	movzx r10d,byte ptr [rax+14h]
+	movss xmm0,dword ptr [rax+28h]
+	test r10b,r10b
+	je short 000000018230B11Ch
+	mulss xmm3,xmm0
+	jmp short 000000018230B123h
+	mulss xmm0,xmm3
+	movaps xmm3,xmm0
+	movss xmm2,dword ptr [rax+20h]
+	test r10b,r10b
+	movss xmm1,dword ptr [r9+34h]
+	shufps xmm2,xmm2,0E1h
+	setne r8b
+	movss xmm2,xmm3
+	inc r8d
+	shufps xmm2,xmm2,0C6h
+	movd xmm0,r8d
+	cvtdq2ps xmm0,xmm0
+	divss xmm4,xmm0
+	movss xmm2,xmm4
+	shufps xmm2,xmm2,27h
+	movss xmm2,xmm1
+	shufps xmm2,xmm2,39h
+	movups [rcx+0Ch],xmm2
+	add rsp,38h
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rax, [rdx]
+	003 Compare rax, 0
+	004 JumpIfEqual {120}
+	005 Compare [rax+16], 0
+	006 Move r9, [rax+24]
+	007 Move xmm4, [0x182A4FBA4]
+	008 JumpIfNotEqual {11}
+	009 Move xmm3, [0x182A4FDB4]
+	010 Goto {12}
+	011 Move xmm3, xmm4
+	012 Move [rcx], r8
+	013 Move rax, [rdx]
+	014 Compare rax, 0
+	015 JumpIfEqual {120}
+	016 Compare [rax+16], 0
+	017 NotImplemented "sete al"
+	018 Move [rcx+1], rax
+	019 Move rax, [rdx]
+	020 Compare rax, 0
+	021 JumpIfEqual {120}
+	022 Compare [rax+16], 1
+	023 NotImplemented "sete al"
+	024 Move [rcx+2], rax
+	025 Move rax, [rdx]
+	026 Compare rax, 0
+	027 JumpIfEqual {120}
+	028 Compare [rax+44], 0
+	029 NotImplemented "sete al"
+	030 Move [rcx+3], rax
+	031 Move rax, [rdx]
+	032 Compare rax, 0
+	033 JumpIfEqual {120}
+	034 Compare [rax+44], 1
+	035 NotImplemented "sete al"
+	036 Move [rcx+4], rax
+	037 Move rax, [rdx]
+	038 Compare rax, 0
+	039 JumpIfEqual {120}
+	040 Compare [rax+44], 2
+	041 NotImplemented "sete al"
+	042 Move [rcx+5], rax
+	043 Move rax, [rdx]
+	044 Compare rax, 0
+	045 JumpIfEqual {120}
+	046 Compare [rax+24], 1
+	047 NotImplemented "sete al"
+	048 Move [rcx+6], rax
+	049 Compare r9, 1
+	050 JumpIfNotEqual {55}
+	051 Move [rcx+7], 0
+	052 Move r8, 0
+	053 Move rax, r8
+	054 Goto {73}
+	055 Move rax, [rdx]
+	056 Compare rax, 0
+	057 JumpIfEqual {120}
+	058 Compare [rax+28], 2
+	059 NotImplemented "sete al"
+	060 Move [rcx+7], rax
+	061 Move rax, [rdx]
+	062 Compare rax, 0
+	063 JumpIfEqual {120}
+	064 Compare [rax+28], 1
+	065 NotImplemented "sete al"
+	066 Move [rcx+8], rax
+	067 Move r9, [rdx]
+	068 Compare r9, 0
+	069 JumpIfEqual {120}
+	070 Move r8, 0
+	071 Compare [r9+28], r8
+	072 NotImplemented "sete al"
+	073 Move [rcx+9], rax
+	074 Compare [rdx], 0
+	075 JumpIfEqual {120}
+	076 Move rax, [rdx]
+	077 Move r9, rax
+	078 Move r10, [rax+20]
+	079 Move xmm0, [rax+40]
+	080 Compare r10, 0
+	081 JumpIfEqual {84}
+	082 Multiply xmm3, xmm3, xmm0
+	083 Goto {86}
+	084 Multiply xmm0, xmm0, xmm3
+	085 Move xmm3, xmm0
+	086 Move xmm2, [rax+32]
+	087 Compare r10, 0
+	088 Move xmm1, [r9+52]
+	089 Move XMM_TEMP.S[0], xmm2.S[1]
+	090 Move XMM_TEMP.S[1], xmm2.S[0]
+	091 Move XMM_TEMP.S[2], xmm2.S[2]
+	092 Move XMM_TEMP.S[3], xmm2.S[3]
+	093 Move xmm2, XMM_TEMP
+	094 NotImplemented "setne r8b"
+	095 Move xmm2, xmm3
+	096 Add r8, r8, 1
+	097 Move XMM_TEMP.S[0], xmm2.S[2]
+	098 Move XMM_TEMP.S[1], xmm2.S[1]
+	099 Move XMM_TEMP.S[2], xmm2.S[0]
+	100 Move XMM_TEMP.S[3], xmm2.S[3]
+	101 Move xmm2, XMM_TEMP
+	102 Move xmm0, r8
+	103 Move xmm0, xmm0
+	104 Divide xmm4, xmm4, xmm0
+	105 Move xmm2, xmm4
+	106 Move XMM_TEMP.S[0], xmm2.S[3]
+	107 Move XMM_TEMP.S[1], xmm2.S[1]
+	108 Move XMM_TEMP.S[2], xmm2.S[2]
+	109 Move XMM_TEMP.S[3], xmm2.S[0]
+	110 Move xmm2, XMM_TEMP
+	111 Move xmm2, xmm1
+	112 Move XMM_TEMP.S[0], xmm2.S[1]
+	113 Move XMM_TEMP.S[1], xmm2.S[2]
+	114 Move XMM_TEMP.S[2], xmm2.S[3]
+	115 Move XMM_TEMP.S[3], xmm2.S[0]
+	116 Move xmm2, XMM_TEMP
+	117 Move [rcx+12], xmm2
+	118 ShiftStack 56
+	119 Return 
+	120 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Boolean Equals(ref UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusionPass+SSAOMaterialParams other)
+
+Disassembly:
+	movzx eax,byte ptr [rdx]
+	cmp [rcx],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+1]
+	cmp [rcx+1],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+2]
+	cmp [rcx+2],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+3]
+	cmp [rcx+3],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+4]
+	cmp [rcx+4],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+5]
+	cmp [rcx+5],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+6]
+	cmp [rcx+6],al
+	jne near ptr 000000018230AFDEh
+	movzx eax,byte ptr [rdx+7]
+	cmp [rcx+7],al
+	jne short 000000018230AFDEh
+	movzx eax,byte ptr [rdx+8]
+	cmp [rcx+8],al
+	jne short 000000018230AFDEh
+	movzx eax,byte ptr [rdx+9]
+	cmp [rcx+9],al
+	jne short 000000018230AFDEh
+	movups xmm2,[rdx+0Ch]
+	movups xmm5,[rcx+0Ch]
+	movaps xmm0,xmm2
+	shufps xmm0,xmm2,55h
+	movaps xmm4,xmm5
+	shufps xmm4,xmm5,55h
+	movaps xmm3,xmm5
+	movaps xmm1,xmm5
+	subss xmm4,xmm0
+	shufps xmm1,xmm5,0AAh
+	subss xmm3,xmm2
+	movaps xmm0,xmm2
+	shufps xmm5,xmm5,0FFh
+	shufps xmm0,xmm2,0AAh
+	shufps xmm2,xmm2,0FFh
+	subss xmm1,xmm0
+	subss xmm5,xmm2
+	movss xmm0,dword ptr [182A4FDA0h]
+	mulss xmm4,xmm4
+	mulss xmm3,xmm3
+	mulss xmm1,xmm1
+	addss xmm4,xmm3
+	mulss xmm5,xmm5
+	addss xmm4,xmm1
+	addss xmm4,xmm5
+	comiss xmm0,xmm4
+	seta al
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, [rdx]
+	002 Compare [rcx], rax
+	003 JumpIfNotEqual {83}
+	004 Move rax, [rdx+1]
+	005 Compare [rcx+1], rax
+	006 JumpIfNotEqual {83}
+	007 Move rax, [rdx+2]
+	008 Compare [rcx+2], rax
+	009 JumpIfNotEqual {83}
+	010 Move rax, [rdx+3]
+	011 Compare [rcx+3], rax
+	012 JumpIfNotEqual {83}
+	013 Move rax, [rdx+4]
+	014 Compare [rcx+4], rax
+	015 JumpIfNotEqual {83}
+	016 Move rax, [rdx+5]
+	017 Compare [rcx+5], rax
+	018 JumpIfNotEqual {83}
+	019 Move rax, [rdx+6]
+	020 Compare [rcx+6], rax
+	021 JumpIfNotEqual {83}
+	022 Move rax, [rdx+7]
+	023 Compare [rcx+7], rax
+	024 JumpIfNotEqual {83}
+	025 Move rax, [rdx+8]
+	026 Compare [rcx+8], rax
+	027 JumpIfNotEqual {83}
+	028 Move rax, [rdx+9]
+	029 Compare [rcx+9], rax
+	030 JumpIfNotEqual {83}
+	031 Move xmm2, [rdx+12]
+	032 Move xmm5, [rcx+12]
+	033 Move xmm0, xmm2
+	034 Move XMM_TEMP.S[0], xmm0.S[1]
+	035 Move XMM_TEMP.S[1], xmm0.S[1]
+	036 Move XMM_TEMP.S[2], xmm2.S[1]
+	037 Move XMM_TEMP.S[3], xmm2.S[1]
+	038 Move xmm0, XMM_TEMP
+	039 Move xmm4, xmm5
+	040 Move XMM_TEMP.S[0], xmm4.S[1]
+	041 Move XMM_TEMP.S[1], xmm4.S[1]
+	042 Move XMM_TEMP.S[2], xmm5.S[1]
+	043 Move XMM_TEMP.S[3], xmm5.S[1]
+	044 Move xmm4, XMM_TEMP
+	045 Move xmm3, xmm5
+	046 Move xmm1, xmm5
+	047 Subtract xmm4, xmm4, xmm0
+	048 Move XMM_TEMP.S[0], xmm1.S[2]
+	049 Move XMM_TEMP.S[1], xmm1.S[2]
+	050 Move XMM_TEMP.S[2], xmm5.S[2]
+	051 Move XMM_TEMP.S[3], xmm5.S[2]
+	052 Move xmm1, XMM_TEMP
+	053 Subtract xmm3, xmm3, xmm2
+	054 Move xmm0, xmm2
+	055 Move XMM_TEMP.S[0], xmm5.S[3]
+	056 Move XMM_TEMP.S[1], xmm5.S[3]
+	057 Move XMM_TEMP.S[2], xmm5.S[3]
+	058 Move XMM_TEMP.S[3], xmm5.S[3]
+	059 Move xmm5, XMM_TEMP
+	060 Move XMM_TEMP.S[0], xmm0.S[2]
+	061 Move XMM_TEMP.S[1], xmm0.S[2]
+	062 Move XMM_TEMP.S[2], xmm2.S[2]
+	063 Move XMM_TEMP.S[3], xmm2.S[2]
+	064 Move xmm0, XMM_TEMP
+	065 Move XMM_TEMP.S[0], xmm2.S[3]
+	066 Move XMM_TEMP.S[1], xmm2.S[3]
+	067 Move XMM_TEMP.S[2], xmm2.S[3]
+	068 Move XMM_TEMP.S[3], xmm2.S[3]
+	069 Move xmm2, XMM_TEMP
+	070 Subtract xmm1, xmm1, xmm0
+	071 Subtract xmm5, xmm5, xmm2
+	072 Move xmm0, [0x182A4FDA0]
+	073 Multiply xmm4, xmm4, xmm4
+	074 Multiply xmm3, xmm3, xmm3
+	075 Multiply xmm1, xmm1, xmm1
+	076 Add xmm4, xmm4, xmm3
+	077 Multiply xmm5, xmm5, xmm5
+	078 Add xmm4, xmm4, xmm1
+	079 Add xmm4, xmm4, xmm5
+	080 Compare xmm0, xmm4
+	081 NotImplemented "seta al"
+	082 Return rax
+	083 Move rax, 0
+	084 Return rax
+

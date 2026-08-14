@@ -1,0 +1,244 @@
+Type: UnityEngine.InputSystem.XInput.XInputController
+
+Method: UnityEngine.InputSystem.Controls.ButtonControl get_menu()
+
+Disassembly:
+	mov rax,[rcx+210h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+528]
+	002 Return rax
+
+Method: System.Void set_menu(UnityEngine.InputSystem.Controls.ButtonControl value)
+
+Disassembly:
+	mov [rcx+210h],rdx
+	add rcx,210h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+528], rdx
+	002 Add rcx, rcx, 528
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: UnityEngine.InputSystem.Controls.ButtonControl get_view()
+
+Disassembly:
+	mov rax,[rcx+218h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+536]
+	002 Return rax
+
+Method: System.Void set_view(UnityEngine.InputSystem.Controls.ButtonControl value)
+
+Disassembly:
+	mov [rcx+218h],rdx
+	add rcx,218h
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move [rcx+536], rdx
+	002 Add rcx, rcx, 536
+	003 Call 0x18037ACB0, rcx, rdx, r8, r9
+	004 Return 
+
+Method: UnityEngine.InputSystem.XInput.XInputController+DeviceSubType get_subType()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [rcx+220h],0
+	mov rbx,rcx
+	jne short 0000000182003685h
+	xor edx,edx
+	call 0000000182003590h
+	mov eax,[rbx+224h]
+	add rsp,20h
+	pop rbx
+	ret
+	mov eax,[rcx+224h]
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [rcx+544], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {14}
+	007 Move rdx, 0
+	008 Call XInputController.ParseCapabilities, rcx, rdx
+	009 Move rax, [rbx+548]
+	010 ShiftStack 32
+	011 Move rbx, stack:0x0
+	012 ShiftStack 8
+	013 Return rax
+	014 Move rax, [rcx+548]
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+
+Method: UnityEngine.InputSystem.XInput.XInputController+DeviceFlags get_flags()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [rcx+220h],0
+	mov rbx,rcx
+	jne short 0000000182003645h
+	xor edx,edx
+	call 0000000182003590h
+	mov eax,[rbx+228h]
+	add rsp,20h
+	pop rbx
+	ret
+	mov eax,[rcx+228h]
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [rcx+544], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {14}
+	007 Move rdx, 0
+	008 Call XInputController.ParseCapabilities, rcx, rdx
+	009 Move rax, [rbx+552]
+	010 ShiftStack 32
+	011 Move rbx, stack:0x0
+	012 ShiftStack 8
+	013 Return rax
+	014 Move rax, [rcx+552]
+	015 ShiftStack 32
+	016 Move rbx, stack:0x0
+	017 ShiftStack 8
+	018 Return rax
+
+Method: System.Void FinishSetup()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	xor edx,edx
+	mov rbx,rcx
+	call 0000000181F5FC70h
+	mov rdx,[rbx+1C0h]
+	lea rcx,[rbx+210h]
+	mov [rbx+210h],rdx
+	call 000000018037ACB0h
+	mov rdx,[rbx+1C8h]
+	lea rcx,[rbx+218h]
+	mov [rbx+218h],rdx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rdx, 0
+	005 Move rbx, rcx
+	006 Call Gamepad.FinishSetup, rcx, rdx
+	007 Move rdx, [rbx+448]
+	008 LoadAddress rcx, [rbx+528]
+	009 Move [rbx+528], rdx
+	010 Call 0x18037ACB0, rcx, rdx, r8, r9
+	011 Move rdx, [rbx+456]
+	012 LoadAddress rcx, [rbx+536]
+	013 Move [rbx+536], rdx
+	014 ShiftStack 32
+	015 Move rbx, stack:0x0
+	016 ShiftStack 8
+	017 Call 0x18037ACB0, rcx, rdx, r8, r9
+	018 Return 
+
+Method: System.Void ParseCapabilities()
+
+Disassembly:
+	push rbx
+	sub rsp,70h
+	cmp byte ptr [183753331h],0
+	mov rbx,rcx
+	jne short 00000001820035B5h
+	lea rcx,[1835005A8h]
+	call 000000018037BB90h
+	mov byte ptr [183753331h],1
+	movsd xmm1,qword ptr [rbx+128h]
+	xor edx,edx
+	movsd qword ptr [rsp+60h],xmm1
+	mov rcx,[rsp+60h]
+	call 000000018165FE70h
+	test al,al
+	jne short 0000000182003610h
+	movsd xmm1,qword ptr [rbx+128h]
+	lea rcx,[rsp+20h]
+	mov r8,[1835005A8h]
+	movsd qword ptr [rsp+60h],xmm1
+	mov rdx,[rsp+60h]
+	call 0000000180925410h
+	mov rax,[rsp+20h]
+	shr rax,20h
+	mov [rbx+224h],eax
+	mov eax,[rsp+28h]
+	mov [rbx+228h],eax
+	mov byte ptr [rbx+220h],1
+	add rsp,70h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -112
+	004 Compare [0x183753331], 0
+	005 Move rbx, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x1835005A8]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x183753331], 1
+	010 Move xmm1, [rbx+296]
+	011 Move rdx, 0
+	012 Move stack:0x60, xmm1
+	013 Move rcx, stack:0x60
+	014 Call String.IsNullOrEmpty, rcx, rdx
+	015 Compare rax, 0
+	016 JumpIfNotEqual {28}
+	017 Move xmm1, [rbx+296]
+	018 LoadAddress rcx, stack:0x20
+	019 Move r8, [0x1835005A8]
+	020 Move stack:0x60, xmm1
+	021 Move rdx, stack:0x60
+	022 Call JsonUtility.FromJson, rcx, rdx
+	023 Move rax, stack:0x20
+	024 ShiftRight rax, 32
+	025 Move [rbx+548], rax
+	026 Move rax, stack:0x28
+	027 Move [rbx+552], rax
+	028 Move [rbx+544], 1
+	029 ShiftStack 112
+	030 Move rbx, stack:0x0
+	031 ShiftStack 8
+	032 Return 
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000181F60280h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x181F60280, rcx, rdx
+	003 Return 
+

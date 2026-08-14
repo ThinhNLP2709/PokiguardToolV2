@@ -1,0 +1,134 @@
+Type: System.Net.WebCompletionSource`1+Result
+
+Method: System.Net.WebCompletionSource`1+Status<T> get_Status()
+
+Disassembly:
+	mov eax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+
+Method: System.Boolean get_Success()
+
+Disassembly:
+	cmp dword ptr [rcx+10h],1
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx+16], 1
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Runtime.ExceptionServices.ExceptionDispatchInfo get_Error()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: T get_Argument()
+
+Disassembly:
+	movups xmm0,[rdx+20h]
+	mov rax,rcx
+	movups [rcx],xmm0
+	ret
+
+ISIL:
+	001 Move xmm0, [rdx+32]
+	002 Move rax, rcx
+	003 Move [rcx], xmm0
+	004 Return rax
+
+Method: System.Void .ctor(T argument)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	mov rbx,rdx
+	mov rdi,rcx
+	xor edx,edx
+	call 0000000180456D90h
+	movups xmm0,[rbx]
+	lea rcx,[rdi+28h]
+	mov dword ptr [rdi+10h],1
+	xor edx,edx
+	movups [rdi+20h],xmm0
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Move rbx, rdx
+	006 Move rdi, rcx
+	007 Move rdx, 0
+	008 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	009 Move xmm0, [rbx]
+	010 LoadAddress rcx, [rdi+40]
+	011 Move [rdi+16], 1
+	012 Move rdx, 0
+	013 Move [rdi+32], xmm0
+	014 Move rbx, stack:0x30
+	015 ShiftStack 32
+	016 Move rdi, stack:0x0
+	017 ShiftStack 8
+	018 Call 0x18037ACB0, rcx, rdx, r8, r9
+	019 Return 
+
+Method: System.Void .ctor(System.Net.WebCompletionSource`1+Status<T> state, System.Runtime.ExceptionServices.ExceptionDispatchInfo error)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov ebx,edx
+	mov rsi,r8
+	xor edx,edx
+	mov rdi,rcx
+	call 0000000180456D90h
+	lea rcx,[rdi+18h]
+	mov [rdi+10h],ebx
+	mov rdx,rsi
+	mov [rdi+18h],rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, rdx
+	007 Move rsi, r8
+	008 Move rdx, 0
+	009 Move rdi, rcx
+	010 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	011 LoadAddress rcx, [rdi+24]
+	012 Move [rdi+16], rbx
+	013 Move rdx, rsi
+	014 Move [rdi+24], rsi
+	015 Move rbx, stack:0x30
+	016 Move rsi, stack:0x38
+	017 ShiftStack 32
+	018 Move rdi, stack:0x0
+	019 ShiftStack 8
+	020 Call 0x18037ACB0, rcx, rdx, r8, r9
+	021 Return 
+

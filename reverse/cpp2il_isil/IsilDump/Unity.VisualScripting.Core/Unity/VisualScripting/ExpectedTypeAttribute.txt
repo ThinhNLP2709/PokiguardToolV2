@@ -1,0 +1,97 @@
+Type: Unity.VisualScripting.ExpectedTypeAttribute
+
+Method: System.Void .ctor(System.Type type)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183754CBFh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 000000018246C774h
+	lea rcx,[1834F1968h]
+	call 000000018037BB90h
+	lea rcx,[183529B48h]
+	call 000000018037BB90h
+	lea rcx,[183537110h]
+	call 000000018037BB90h
+	mov byte ptr [183754CBFh],1
+	xor edx,edx
+	mov rcx,rbx
+	call 00000001804552D0h
+	mov rcx,[183529B48h]
+	cmp dword ptr [rcx+0E4h],0
+	jne short 000000018246C793h
+	call 000000018037BED0h
+	mov rcx,[183537110h]
+	xor edx,edx
+	call 000000018246A070h
+	test rax,rax
+	je short 000000018246C7D2h
+	mov r8,[1834F1968h]
+	mov rdx,rdi
+	mov rcx,rax
+	call 000000018087EBB0h
+	lea rcx,[rbx+10h]
+	mov [rbx+10h],rdi
+	mov rdx,rdi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183754CBF], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {16}
+	009 LoadAddress rcx, [0x1834F1968]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183529B48]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x183537110]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x183754CBF], 1
+	016 Move rdx, 0
+	017 Move rcx, rbx
+	018 Call 0x1804552D0, rcx, rdx, r8
+	019 Move rcx, typeof(Unity.VisualScripting.Ensure)
+	020 Compare [rcx+228], 0
+	021 JumpIfNotEqual {23}
+	022 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	023 Move rcx, "type"
+	024 Move rdx, 0
+	025 Call Ensure.That, rcx, rdx
+	026 Compare rax, 0
+	027 JumpIfEqual {41}
+	028 Move r8, [0x1834F1968]
+	029 Move rdx, rdi
+	030 Move rcx, rax
+	031 Call 0x18087EBB0, rcx, rdx
+	032 LoadAddress rcx, [rbx+16]
+	033 Move [rbx+16], rdi
+	034 Move rdx, rdi
+	035 Move rbx, stack:0x30
+	036 ShiftStack 32
+	037 Move rdi, stack:0x0
+	038 ShiftStack 8
+	039 Call 0x18037ACB0, rcx, rdx, r8, r9
+	040 Return 
+	041 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Type get_type()
+
+Disassembly:
+	mov rax,[rcx+10h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+16]
+	002 Return rax
+

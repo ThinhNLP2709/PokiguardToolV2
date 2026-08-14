@@ -1,0 +1,88 @@
+Type: UnityEngine.ResourceManagement.Util.LRUCache`2+Entry
+
+Method: System.Boolean Equals(UnityEngine.ResourceManagement.Util.LRUCache`2+Entry<TKey, TValue> other)
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	movups xmm0,[rdx]
+	mov rax,[r8+20h]
+	mov rbx,rcx
+	movups [rsp+20h],xmm0
+	test byte ptr [rax+135h],1
+	jne short 00000001811838E6h
+	mov rcx,rax
+	call 0000000180384C90h
+	mov rcx,[rax+0C0h]
+	lea rdx,[rsp+20h]
+	mov rcx,[rcx]
+	call 000000018037AC90h
+	cmp qword ptr [rbx+8],0
+	je short 0000000181183922h
+	mov rcx,[rbx+8]
+	mov rdx,rax
+	mov r8,[rcx]
+	mov r9,[r8+138h]
+	mov r8,[r8+140h]
+	call r9
+	add rsp,30h
+	pop rbx
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move xmm0, [rdx]
+	005 Move rax, [r8+32]
+	006 Move rbx, rcx
+	007 Move stack:0x20, xmm0
+	008 Compare [rax+309], 1
+	009 JumpIfNotEqual {12}
+	010 Move rcx, rax
+	011 Call 0x180384C90, rcx, rdx, r8, r9
+	012 Move rcx, [rax+192]
+	013 LoadAddress rdx, stack:0x20
+	014 Move rcx, [rcx]
+	015 Call "il2cpp_value_box", rcx, rdx, r8, r9
+	016 Compare [rbx+8], 0
+	017 JumpIfEqual {28}
+	018 Move rcx, [rbx+8]
+	019 Move rdx, rax
+	020 Move r8, [rcx]
+	021 Move r9, [r8+312]
+	022 Move r8, [r8+320]
+	023 Call r9
+	024 ShiftStack 48
+	025 Move rbx, stack:0x0
+	026 ShiftStack 8
+	027 Return rax
+	028 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Int32 GetHashCode()
+
+Disassembly:
+	sub rsp,28h
+	cmp qword ptr [rcx+8],0
+	je short 0000000181183C67h
+	mov rcx,[rcx+8]
+	mov rdx,[rcx]
+	mov rax,[rdx+158h]
+	mov rdx,[rdx+160h]
+	add rsp,28h
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [rcx+8], 0
+	003 JumpIfEqual {10}
+	004 Move rcx, [rcx+8]
+	005 Move rdx, [rcx]
+	006 Move rax, [rdx+344]
+	007 Move rdx, [rdx+352]
+	008 ShiftStack 40
+	009 CallNoReturn rax
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+

@@ -1,0 +1,84 @@
+Type: UnityEngine.InputSystem.DualShock.DualSenseGamepadHID+DualSenseHIDMinimalInputReport
+
+Method: UnityEngine.InputSystem.DualShock.LowLevel.DualSenseHIDInputReport ToHIDInputReport()
+
+Disassembly:
+	movzx eax,byte ptr [rdx+1]
+	mov [rcx],al
+	movzx eax,byte ptr [rdx+2]
+	mov [rcx+1],al
+	movzx eax,byte ptr [rdx+3]
+	mov [rcx+2],al
+	movzx eax,byte ptr [rdx+4]
+	mov [rcx+3],al
+	movzx eax,byte ptr [rdx+8]
+	mov [rcx+4],al
+	movzx eax,byte ptr [rdx+9]
+	mov [rcx+5],al
+	movzx eax,byte ptr [rdx+5]
+	mov [rcx+6],al
+	movzx eax,byte ptr [rdx+6]
+	mov [rcx+7],al
+	movzx eax,byte ptr [rdx+7]
+	and al,3
+	mov [rcx+8],al
+	mov rax,rcx
+	ret
+
+ISIL:
+	001 Move rax, [rdx+1]
+	002 Move [rcx], rax
+	003 Move rax, [rdx+2]
+	004 Move [rcx+1], rax
+	005 Move rax, [rdx+3]
+	006 Move [rcx+2], rax
+	007 Move rax, [rdx+4]
+	008 Move [rcx+3], rax
+	009 Move rax, [rdx+8]
+	010 Move [rcx+4], rax
+	011 Move rax, [rdx+9]
+	012 Move [rcx+5], rax
+	013 Move rax, [rdx+5]
+	014 Move [rcx+6], rax
+	015 Move rax, [rdx+6]
+	016 Move [rcx+7], rax
+	017 Move rax, [rdx+7]
+	018 And rax, rax, 3
+	019 Move [rcx+8], rax
+	020 Move rax, rcx
+	021 Return rax
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837534A8h],0
+	jne short 000000018201E950h
+	lea rcx,[1834EFA80h]
+	call 000000018037BB90h
+	mov byte ptr [1837534A8h],1
+	mov rax,[1834EFA80h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx],0Ah
+	mov rax,[1834EFA80h]
+	mov rcx,[rax+0B8h]
+	mov dword ptr [rcx+4],4Eh
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837534A8], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x1834EFA80]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837534A8], 1
+	007 Move rax, typeof(UnityEngine.InputSystem.DualShock.DualSenseGamepadHID+DualSenseHIDMinimalInputReport)
+	008 Move rcx, [rax+184]
+	009 Move [rcx], 10
+	010 Move rax, typeof(UnityEngine.InputSystem.DualShock.DualSenseGamepadHID+DualSenseHIDMinimalInputReport)
+	011 Move rcx, [rax+184]
+	012 Move [rcx+4], 78
+	013 ShiftStack 40
+	014 Return 
+

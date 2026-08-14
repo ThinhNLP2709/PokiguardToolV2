@@ -1,0 +1,549 @@
+Type: MatchPetIds
+
+Method: System.Int32 EPetId()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A650h],0
+	jne short 00000001804CDA1Ah
+	lea rcx,[183521ED8h]
+	call 000000018037BB90h
+	lea rcx,[183521F98h]
+	call 000000018037BB90h
+	lea rcx,[1834F9D00h]
+	call 000000018037BB90h
+	mov byte ptr [18374A650h],1
+	xor ecx,ecx
+	call 00000001804CDA80h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018165FE70h
+	xor r8d,r8d
+	test al,al
+	je short 00000001804CDA3Eh
+	mov rcx,[183521ED8h]
+	jmp short 00000001804CDA53h
+	mov rcx,[183521F98h]
+	mov rdx,rbx
+	call 000000018165B1F0h
+	xor r8d,r8d
+	mov rcx,rax
+	xor edx,edx
+	call 0000000182615540h
+	test eax,eax
+	jg short 00000001804CDA77h
+	mov rcx,[1834F9D00h]
+	xor r8d,r8d
+	mov edx,1
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000182615540h
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A650], 0
+	005 JumpIfNotEqual {13}
+	006 LoadAddress rcx, [0x183521ED8]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183521F98]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x1834F9D00]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374A650], 1
+	013 Move rcx, 0
+	014 Call MatchPetIds.GetCurrentUsername, rcx
+	015 Move rdx, 0
+	016 Move rcx, rax
+	017 Move rbx, rax
+	018 Call String.IsNullOrEmpty, rcx, rdx
+	019 Move r8, 0
+	020 Compare rax, 0
+	021 JumpIfEqual {24}
+	022 Move rcx, "ePetId"
+	023 Goto {29}
+	024 Move rcx, "ePetId_"
+	025 Move rdx, rbx
+	026 Call String.Concat, rcx, rdx, r8
+	027 Move r8, 0
+	028 Move rcx, rax
+	029 Move rdx, 0
+	030 Call PlayerPrefs.GetInt, rcx, rdx, r8
+	031 Compare rax, 0
+	032 JumpIfGreater {41}
+	033 Move rcx, "SelectedPetId"
+	034 Move r8, 0
+	035 Move rdx, 1
+	036 ShiftStack 32
+	037 Move rbx, stack:0x0
+	038 ShiftStack 8
+	039 Call PlayerPrefs.GetInt, rcx, rdx, r8
+	040 Return rax
+	041 ShiftStack 32
+	042 Move rbx, stack:0x0
+	043 ShiftStack 8
+	044 Return rax
+
+Method: System.Void SetEPetId(System.Int32 ePetId)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374A651h],0
+	mov ebx,ecx
+	jne short 00000001804CDC44h
+	lea rcx,[183521ED8h]
+	call 000000018037BB90h
+	lea rcx,[183521F98h]
+	call 000000018037BB90h
+	mov byte ptr [18374A651h],1
+	xor ecx,ecx
+	call 00000001804CDA80h
+	xor edx,edx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018165FE70h
+	xor r8d,r8d
+	test al,al
+	je short 00000001804CDC68h
+	mov rcx,[183521ED8h]
+	jmp short 00000001804CDC7Dh
+	mov rcx,[183521F98h]
+	mov rdx,rdi
+	call 000000018165B1F0h
+	xor r8d,r8d
+	mov rcx,rax
+	mov edx,ebx
+	call 0000000182615CC0h
+	xor ecx,ecx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000182615C20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374A651], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x183521ED8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183521F98]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374A651], 1
+	013 Move rcx, 0
+	014 Call MatchPetIds.GetCurrentUsername, rcx
+	015 Move rdx, 0
+	016 Move rcx, rax
+	017 Move rdi, rax
+	018 Call String.IsNullOrEmpty, rcx, rdx
+	019 Move r8, 0
+	020 Compare rax, 0
+	021 JumpIfEqual {24}
+	022 Move rcx, "ePetId"
+	023 Goto {29}
+	024 Move rcx, "ePetId_"
+	025 Move rdx, rdi
+	026 Call String.Concat, rcx, rdx, r8
+	027 Move r8, 0
+	028 Move rcx, rax
+	029 Move rdx, rbx
+	030 Call PlayerPrefs.SetInt, rcx, rdx, r8
+	031 Move rcx, 0
+	032 Move rbx, stack:0x30
+	033 ShiftStack 32
+	034 Move rdi, stack:0x0
+	035 ShiftStack 8
+	036 Call PlayerPrefs.Save, rcx
+	037 Return 
+
+Method: System.Void ClearEPetId()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A652h],0
+	jne short 00000001804CD98Eh
+	lea rcx,[183521ED8h]
+	call 000000018037BB90h
+	lea rcx,[183521F98h]
+	call 000000018037BB90h
+	mov byte ptr [18374A652h],1
+	mov rcx,[183521ED8h]
+	xor edx,edx
+	call 0000000182615190h
+	xor ecx,ecx
+	call 00000001804CDA80h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018165FE70h
+	test al,al
+	jne short 00000001804CD9D5h
+	mov rcx,[183521F98h]
+	xor r8d,r8d
+	mov rdx,rbx
+	call 000000018165B1F0h
+	xor edx,edx
+	mov rcx,rax
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000182615190h
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A652], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x183521ED8]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183521F98]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374A652], 1
+	011 Move rcx, "ePetId"
+	012 Move rdx, 0
+	013 Call PlayerPrefs.DeleteKey, rcx, rdx
+	014 Move rcx, 0
+	015 Call MatchPetIds.GetCurrentUsername, rcx
+	016 Move rdx, 0
+	017 Move rcx, rax
+	018 Move rbx, rax
+	019 Call String.IsNullOrEmpty, rcx, rdx
+	020 Compare rax, 0
+	021 JumpIfNotEqual {33}
+	022 Move rcx, "ePetId_"
+	023 Move r8, 0
+	024 Move rdx, rbx
+	025 Call String.Concat, rcx, rdx, r8
+	026 Move rdx, 0
+	027 Move rcx, rax
+	028 ShiftStack 32
+	029 Move rbx, stack:0x0
+	030 ShiftStack 8
+	031 Call PlayerPrefs.DeleteKey, rcx, rdx
+	032 Return 
+	033 ShiftStack 32
+	034 Move rbx, stack:0x0
+	035 ShiftStack 8
+	036 Return 
+
+Method: System.Int32 IdPet()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A653h],0
+	jne short 00000001804CDBAEh
+	lea rcx,[183545970h]
+	call 000000018037BB90h
+	lea rcx,[183545AF0h]
+	call 000000018037BB90h
+	mov byte ptr [18374A653h],1
+	xor ecx,ecx
+	call 00000001804CDA80h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018165FE70h
+	xor r8d,r8d
+	test al,al
+	jne short 00000001804CDBF7h
+	mov rcx,[183545AF0h]
+	mov rdx,rbx
+	call 000000018165B1F0h
+	xor r8d,r8d
+	xor edx,edx
+	mov rcx,rax
+	call 0000000182615540h
+	test eax,eax
+	mov edx,1
+	cmovg edx,eax
+	mov eax,edx
+	add rsp,20h
+	pop rbx
+	ret
+	mov rcx,[183545970h]
+	mov edx,1
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000182615540h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A653], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x183545970]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183545AF0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374A653], 1
+	011 Move rcx, 0
+	012 Call MatchPetIds.GetCurrentUsername, rcx
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call String.IsNullOrEmpty, rcx, rdx
+	017 Move r8, 0
+	018 Compare rax, 0
+	019 JumpIfNotEqual {37}
+	020 Move rcx, "userPetId_"
+	021 Move rdx, rbx
+	022 Call String.Concat, rcx, rdx, r8
+	023 Move r8, 0
+	024 Move rdx, 0
+	025 Move rcx, rax
+	026 Call PlayerPrefs.GetInt, rcx, rdx, r8
+	027 Compare rax, 0
+	028 Move rdx, 1
+	029 JumpIfLessOrEqual {31}
+	030 Move rdx, rax
+	031 Nop 
+	032 Move rax, rdx
+	033 ShiftStack 32
+	034 Move rbx, stack:0x0
+	035 ShiftStack 8
+	036 Return rax
+	037 Move rcx, "userPetId"
+	038 Move rdx, 1
+	039 ShiftStack 32
+	040 Move rbx, stack:0x0
+	041 ShiftStack 8
+	042 Call PlayerPrefs.GetInt, rcx, rdx, r8
+	043 Return rax
+
+Method: System.Int32 IdPetRaw()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A654h],0
+	jne short 00000001804CDB2Eh
+	lea rcx,[183545970h]
+	call 000000018037BB90h
+	lea rcx,[183545AF0h]
+	call 000000018037BB90h
+	mov byte ptr [18374A654h],1
+	xor ecx,ecx
+	call 00000001804CDA80h
+	xor edx,edx
+	mov rcx,rax
+	mov rbx,rax
+	call 000000018165FE70h
+	xor r8d,r8d
+	test al,al
+	jne short 00000001804CDB6Ah
+	mov rcx,[183545AF0h]
+	mov rdx,rbx
+	call 000000018165B1F0h
+	xor r8d,r8d
+	mov rcx,rax
+	xor edx,edx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000182615540h
+	mov rcx,[183545970h]
+	xor edx,edx
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000182615540h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A654], 0
+	005 JumpIfNotEqual {11}
+	006 LoadAddress rcx, [0x183545970]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183545AF0]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 Move [0x18374A654], 1
+	011 Move rcx, 0
+	012 Call MatchPetIds.GetCurrentUsername, rcx
+	013 Move rdx, 0
+	014 Move rcx, rax
+	015 Move rbx, rax
+	016 Call String.IsNullOrEmpty, rcx, rdx
+	017 Move r8, 0
+	018 Compare rax, 0
+	019 JumpIfNotEqual {31}
+	020 Move rcx, "userPetId_"
+	021 Move rdx, rbx
+	022 Call String.Concat, rcx, rdx, r8
+	023 Move r8, 0
+	024 Move rcx, rax
+	025 Move rdx, 0
+	026 ShiftStack 32
+	027 Move rbx, stack:0x0
+	028 ShiftStack 8
+	029 Call PlayerPrefs.GetInt, rcx, rdx, r8
+	030 Return rax
+	031 Move rcx, "userPetId"
+	032 Move rdx, 0
+	033 ShiftStack 32
+	034 Move rbx, stack:0x0
+	035 ShiftStack 8
+	036 Call PlayerPrefs.GetInt, rcx, rdx, r8
+	037 Return rax
+
+Method: System.Void SetIdPet(System.Int32 petId)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [18374A655h],0
+	mov ebx,ecx
+	jne short 00000001804CDCD4h
+	lea rcx,[183545970h]
+	call 000000018037BB90h
+	lea rcx,[183545AF0h]
+	call 000000018037BB90h
+	mov byte ptr [18374A655h],1
+	xor ecx,ecx
+	call 00000001804CDA80h
+	xor edx,edx
+	mov rcx,rax
+	mov rdi,rax
+	call 000000018165FE70h
+	xor r8d,r8d
+	test al,al
+	je short 00000001804CDCF8h
+	mov rcx,[183545970h]
+	jmp short 00000001804CDD0Dh
+	mov rcx,[183545AF0h]
+	mov rdx,rdi
+	call 000000018165B1F0h
+	xor r8d,r8d
+	mov rcx,rax
+	mov edx,ebx
+	call 0000000182615CC0h
+	xor ecx,ecx
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000182615C20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x18374A655], 0
+	006 Move rbx, rcx
+	007 JumpIfNotEqual {13}
+	008 LoadAddress rcx, [0x183545970]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183545AF0]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374A655], 1
+	013 Move rcx, 0
+	014 Call MatchPetIds.GetCurrentUsername, rcx
+	015 Move rdx, 0
+	016 Move rcx, rax
+	017 Move rdi, rax
+	018 Call String.IsNullOrEmpty, rcx, rdx
+	019 Move r8, 0
+	020 Compare rax, 0
+	021 JumpIfEqual {24}
+	022 Move rcx, "userPetId"
+	023 Goto {29}
+	024 Move rcx, "userPetId_"
+	025 Move rdx, rdi
+	026 Call String.Concat, rcx, rdx, r8
+	027 Move r8, 0
+	028 Move rcx, rax
+	029 Move rdx, rbx
+	030 Call PlayerPrefs.SetInt, rcx, rdx, r8
+	031 Move rcx, 0
+	032 Move rbx, stack:0x30
+	033 ShiftStack 32
+	034 Move rdi, stack:0x0
+	035 ShiftStack 8
+	036 Call PlayerPrefs.Save, rcx
+	037 Return 
+
+Method: System.String GetCurrentUsername()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	cmp byte ptr [18374A656h],0
+	jne short 00000001804CDABAh
+	lea rcx,[1834F8148h]
+	call 000000018037BB90h
+	lea rcx,[1834F4D18h]
+	call 000000018037BB90h
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [18374A656h],1
+	mov rax,[1834F8148h]
+	xor edx,edx
+	mov rcx,[rax+0B8h]
+	mov rbx,[rcx+8]
+	mov rcx,rbx
+	call 000000018165FE70h
+	test al,al
+	je short 00000001804CDAF5h
+	mov rdx,[18351D790h]
+	xor r8d,r8d
+	mov rcx,[1834F4D18h]
+	add rsp,20h
+	pop rbx
+	jmp near ptr 0000000182615770h
+	mov rax,rbx
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Compare [0x18374A656], 0
+	005 JumpIfNotEqual {13}
+	006 LoadAddress rcx, [0x1834F8148]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x1834F4D18]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x18351D790]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x18374A656], 1
+	013 Move rax, typeof(PlayerSession)
+	014 Move rdx, 0
+	015 Move rcx, [rax+184]
+	016 Move rbx, [rcx+8]
+	017 Move rcx, rbx
+	018 Call String.IsNullOrEmpty, rcx, rdx
+	019 Compare rax, 0
+	020 JumpIfEqual {29}
+	021 Move rdx, ""
+	022 Move r8, 0
+	023 Move rcx, "SavedUsername"
+	024 ShiftStack 32
+	025 Move rbx, stack:0x0
+	026 ShiftStack 8
+	027 Call PlayerPrefs.GetString, rcx, rdx, r8
+	028 Return rax
+	029 Move rax, rbx
+	030 ShiftStack 32
+	031 Move rbx, stack:0x0
+	032 ShiftStack 8
+	033 Return rax
+

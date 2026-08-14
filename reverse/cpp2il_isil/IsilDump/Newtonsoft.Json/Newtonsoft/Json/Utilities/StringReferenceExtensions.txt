@@ -1,0 +1,280 @@
+Type: Newtonsoft.Json.Utilities.StringReferenceExtensions
+
+Method: System.Int32 IndexOf(Newtonsoft.Json.Utilities.StringReference s, System.Char c, System.Int32 startIndex, System.Int32 length)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [18374FDDCh],0
+	mov edi,r9d
+	mov esi,r8d
+	movzx ebp,dx
+	mov rbx,rcx
+	jne short 000000018192C52Ch
+	lea rcx,[1834F3448h]
+	call 000000018037BB90h
+	mov byte ptr [18374FDDCh],1
+	mov r8d,[rbx+8]
+	mov r9d,edi
+	mov r10,[1834F3448h]
+	add r8d,esi
+	mov rcx,[rbx]
+	movzx edx,bp
+	mov [rsp+20h],r10
+	call 00000001809B1450h
+	cmp eax,0FFFFFFFFh
+	je short 000000018192C557h
+	sub eax,[rbx+8]
+	jmp short 000000018192C55Ch
+	mov eax,0FFFFFFFFh
+	mov rbx,[rsp+40h]
+	mov rbp,[rsp+48h]
+	mov rsi,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -48
+	007 Compare [0x18374FDDC], 0
+	008 Move rdi, r9
+	009 Move rsi, r8
+	010 Move rbp, rdx
+	011 Move rbx, rcx
+	012 JumpIfNotEqual {16}
+	013 LoadAddress rcx, [0x1834F3448]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 Move [0x18374FDDC], 1
+	016 Move r8, [rbx+8]
+	017 Move r9, rdi
+	018 Move r10, [0x1834F3448]
+	019 Add r8, r8, rsi
+	020 Move rcx, [rbx]
+	021 Move rdx, rbp
+	022 Move stack:0x20, r10
+	023 Call Array.IndexOf, rcx, rdx, r8, r9, stack:0x0
+	024 Compare rax, 18446744073709551615
+	025 JumpIfEqual {28}
+	026 Subtract rax, rax, [rbx+8]
+	027 Goto {29}
+	028 Move rax, 0xFFFFFFFF
+	029 Move rbx, stack:0x40
+	030 Move rbp, stack:0x48
+	031 Move rsi, stack:0x50
+	032 ShiftStack 48
+	033 Move rdi, stack:0x0
+	034 ShiftStack 8
+	035 Return rax
+
+Method: System.Boolean StartsWith(Newtonsoft.Json.Utilities.StringReference s, System.String text)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	mov [rsp+18h],rdi
+	push r14
+	sub rsp,20h
+	mov rdi,rdx
+	mov r14,rcx
+	test rdx,rdx
+	je short 000000018192C5FCh
+	mov eax,[rcx+0Ch]
+	cmp [rdx+10h],eax
+	jg short 000000018192C5F8h
+	mov rsi,[rcx]
+	xor ebx,ebx
+	mov eax,ebx
+	nop
+	cmp ebx,[rdi+10h]
+	jge short 000000018192C5E0h
+	xor r8d,r8d
+	mov edx,ebx
+	mov rcx,rdi
+	call 00000001816652C0h
+	test rsi,rsi
+	je short 000000018192C5FCh
+	mov edx,[r14+8]
+	add edx,ebx
+	cmp edx,[rsi+18h]
+	jae short 000000018192C602h
+	movsxd rcx,edx
+	cmp ax,[rsi+rcx*2+20h]
+	jne short 000000018192C5F8h
+	inc ebx
+	jmp short 000000018192C5ADh
+	mov al,1
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	mov rdi,[rsp+40h]
+	add rsp,20h
+	pop r14
+	ret
+	xor al,al
+	jmp short 000000018192C5E2h
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 Move stack:0x18, rdi
+	004 ShiftStack -8
+	005 Move stack:0x0, r14
+	006 ShiftStack -32
+	007 Move rdi, rdx
+	008 Move r14, rcx
+	009 Compare rdx, 0
+	010 JumpIfEqual {45}
+	011 Move rax, [rcx+12]
+	012 Compare [rdx+16], rax
+	013 JumpIfGreater {43}
+	014 Move rsi, [rcx]
+	015 Move rbx, 0
+	016 Move rax, rbx
+	017 Nop 
+	018 Compare rbx, [rdi+16]
+	019 JumpIfGreaterOrEqual {35}
+	020 Move r8, 0
+	021 Move rdx, rbx
+	022 Move rcx, rdi
+	023 Call String.get_Chars, rcx, rdx
+	024 Compare rsi, 0
+	025 JumpIfEqual {45}
+	026 Move rdx, [r14+8]
+	027 Add rdx, rdx, rbx
+	028 Compare rdx, [rsi+24]
+	029 JumpIfGreaterOrEqual {47}
+	030 Move rcx, rdx
+	031 Compare rax, [rsi+32+rcx*2]
+	032 JumpIfNotEqual {43}
+	033 Add rbx, rbx, 1
+	034 Goto {16}
+	035 Move rax, 1
+	036 Move rbx, stack:0x30
+	037 Move rsi, stack:0x38
+	038 Move rdi, stack:0x40
+	039 ShiftStack 32
+	040 Move r14, stack:0x0
+	041 ShiftStack 8
+	042 Return rax
+	043 Move rax, 0
+	044 Goto {36}
+	045 Call 0x18037BE30, rcx, rdx, r8, r9
+	046 Interrupt 
+	047 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.Boolean EndsWith(Newtonsoft.Json.Utilities.StringReference s, System.String text)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	mov [rsp+20h],rdi
+	push r14
+	sub rsp,20h
+	mov rsi,rdx
+	test rdx,rdx
+	je short 000000018192C4E3h
+	mov eax,[rcx+0Ch]
+	cmp [rdx+10h],eax
+	jg short 000000018192C4DFh
+	mov rbp,[rcx]
+	mov r14d,eax
+	sub r14d,[rdx+10h]
+	xor ebx,ebx
+	add r14d,[rcx+8]
+	movsxd rax,r14d
+	lea rdi,[rbp+20h]
+	lea rdi,[rdi+rax*2]
+	mov edx,ebx
+	cmp ebx,[rsi+10h]
+	jge short 000000018192C4C2h
+	xor r8d,r8d
+	mov rcx,rsi
+	call 00000001816652C0h
+	test rbp,rbp
+	je short 000000018192C4E3h
+	lea ecx,[rbx+r14]
+	cmp ecx,[rbp+18h]
+	jae short 000000018192C4E9h
+	cmp ax,[rdi]
+	jne short 000000018192C4DFh
+	inc ebx
+	add rdi,2
+	jmp short 000000018192C495h
+	mov al,1
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	mov rdi,[rsp+48h]
+	add rsp,20h
+	pop r14
+	ret
+	xor al,al
+	jmp short 000000018192C4C4h
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 Move stack:0x20, rdi
+	005 ShiftStack -8
+	006 Move stack:0x0, r14
+	007 ShiftStack -32
+	008 Move rsi, rdx
+	009 Compare rdx, 0
+	010 JumpIfEqual {49}
+	011 Move rax, [rcx+12]
+	012 Compare [rdx+16], rax
+	013 JumpIfGreater {47}
+	014 Move rbp, [rcx]
+	015 Move r14, rax
+	016 Subtract r14, r14, [rdx+16]
+	017 Move rbx, 0
+	018 Add r14, r14, [rcx+8]
+	019 Move rax, r14
+	020 LoadAddress rdi, [rbp+32]
+	021 LoadAddress rdi, [rdi+rax*2]
+	022 Move rdx, rbx
+	023 Compare rbx, [rsi+16]
+	024 JumpIfGreaterOrEqual {38}
+	025 Move r8, 0
+	026 Move rcx, rsi
+	027 Call String.get_Chars, rcx, rdx
+	028 Compare rbp, 0
+	029 JumpIfEqual {49}
+	030 LoadAddress rcx, [rbx+r14]
+	031 Compare rcx, [rbp+24]
+	032 JumpIfGreaterOrEqual {51}
+	033 Compare rax, [rdi]
+	034 JumpIfNotEqual {47}
+	035 Add rbx, rbx, 1
+	036 Add rdi, rdi, 2
+	037 Goto {22}
+	038 Move rax, 1
+	039 Move rbx, stack:0x30
+	040 Move rbp, stack:0x38
+	041 Move rsi, stack:0x40
+	042 Move rdi, stack:0x48
+	043 ShiftStack 32
+	044 Move r14, stack:0x0
+	045 ShiftStack 8
+	046 Return rax
+	047 Move rax, 0
+	048 Goto {39}
+	049 Call 0x18037BE30, rcx, rdx, r8, r9
+	050 Interrupt 
+	051 Call 0x18037BE20, rcx, rdx, r8, r9
+

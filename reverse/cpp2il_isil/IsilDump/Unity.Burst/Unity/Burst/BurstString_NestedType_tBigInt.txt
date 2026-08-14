@@ -1,0 +1,120 @@
+Type: Unity.Burst.BurstString+tBigInt
+
+Method: System.Int32 GetLength()
+
+Disassembly:
+	mov eax,[rcx]
+	ret
+
+ISIL:
+	001 Move rax, [rcx]
+	002 Return rax
+
+Method: System.UInt32 GetBlock(System.Int32 idx)
+
+Disassembly:
+	movsxd rax,edx
+	mov eax,[rcx+rax*4+4]
+	ret
+
+ISIL:
+	001 Move rax, rdx
+	002 Move rax, [rcx+4+rax*4]
+	003 Return rax
+
+Method: System.Void SetZero()
+
+Disassembly:
+	mov dword ptr [rcx],0
+	ret
+
+ISIL:
+	001 Move [rcx], 0
+	002 Return 
+
+Method: System.Boolean IsZero()
+
+Disassembly:
+	cmp dword ptr [rcx],0
+	sete al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 NotImplemented "sete al"
+	003 Return rax
+
+Method: System.Void SetU64(System.UInt64 val)
+
+Disassembly:
+	mov eax,0FFFFFFFFh
+	cmp rdx,rax
+	ja short 0000000181EC25DCh
+	test rdx,rdx
+	jne short 0000000181EC25D2h
+	mov [rcx],edx
+	ret
+	mov [rcx+4],edx
+	mov dword ptr [rcx],1
+	ret
+	mov [rcx+4],edx
+	shr rdx,20h
+	mov [rcx+8],edx
+	mov dword ptr [rcx],2
+	ret
+
+ISIL:
+	001 Move rax, 0xFFFFFFFF
+	002 Compare rdx, rax
+	003 JumpIfGreater {11}
+	004 Compare rdx, 0
+	005 JumpIfNotEqual {8}
+	006 Move [rcx], rdx
+	007 Return 
+	008 Move [rcx+4], rdx
+	009 Move [rcx], 1
+	010 Return 
+	011 Move [rcx+4], rdx
+	012 ShiftRight rdx, 32
+	013 Move [rcx+8], rdx
+	014 Move [rcx], 2
+	015 Return 
+
+Method: System.Void SetU32(System.UInt32 val)
+
+Disassembly:
+	test edx,edx
+	jne short 0000000181EC25A7h
+	mov [rcx],edx
+	ret
+	mov [rcx+4],edx
+	mov dword ptr [rcx],1
+	ret
+
+ISIL:
+	001 Compare rdx, 0
+	002 JumpIfNotEqual {5}
+	003 Move [rcx], rdx
+	004 Return 
+	005 Move [rcx+4], rdx
+	006 Move [rcx], 1
+	007 Return 
+
+Method: System.UInt32 GetU32()
+
+Disassembly:
+	cmp dword ptr [rcx],0
+	jne short 0000000181EC2598h
+	xor eax,eax
+	ret
+	mov eax,[rcx+4]
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 JumpIfNotEqual {5}
+	003 Move rax, 0
+	004 Return rax
+	005 Move rax, [rcx+4]
+	006 Return rax
+

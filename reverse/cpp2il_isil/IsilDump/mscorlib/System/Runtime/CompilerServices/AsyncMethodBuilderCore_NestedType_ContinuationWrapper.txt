@@ -1,0 +1,141 @@
+Type: System.Runtime.CompilerServices.AsyncMethodBuilderCore+ContinuationWrapper
+
+Method: System.Void .ctor(System.Action continuation, System.Action invokeAction, System.Threading.Tasks.Task innerTask)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rbp
+	mov [rsp+18h],rsi
+	push rdi
+	sub rsp,20h
+	mov rdi,rdx
+	mov rbx,r9
+	xor edx,edx
+	mov rbp,r8
+	mov rsi,rcx
+	call 0000000180456D90h
+	test rbx,rbx
+	jne short 00000001817130F8h
+	cmp [18374EDB4h],bl
+	jne short 00000001817130B7h
+	lea rcx,[18354F568h]
+	call 000000018037BB90h
+	mov byte ptr [18374EDB4h],1
+	test rdi,rdi
+	je short 00000001817130F6h
+	mov rbx,[rdi+20h]
+	test rbx,rbx
+	je short 00000001817130F6h
+	mov rdx,[18354F568h]
+	mov r8,[rbx]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r8+130h],al
+	jb short 00000001817130F6h
+	movzx ecx,al
+	mov rax,[r8+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	jne short 00000001817130F6h
+	mov rbx,[rbx+20h]
+	jmp short 00000001817130F8h
+	xor ebx,ebx
+	lea rcx,[rsi+10h]
+	mov [rsi+10h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	lea rcx,[rsi+20h]
+	mov [rsi+20h],rbx
+	mov rdx,rbx
+	call 000000018037ACB0h
+	lea rcx,[rsi+18h]
+	mov [rsi+18h],rbp
+	mov rdx,rbp
+	mov rbx,[rsp+30h]
+	mov rbp,[rsp+38h]
+	mov rsi,[rsp+40h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 000000018037ACB0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rbp
+	003 Move stack:0x18, rsi
+	004 ShiftStack -8
+	005 Move stack:0x0, rdi
+	006 ShiftStack -32
+	007 Move rdi, rdx
+	008 Move rbx, r9
+	009 Move rdx, 0
+	010 Move rbp, r8
+	011 Move rsi, rcx
+	012 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	013 Compare rbx, 0
+	014 JumpIfNotEqual {37}
+	015 Compare [0x18374EDB4], rbx
+	016 JumpIfNotEqual {20}
+	017 LoadAddress rcx, [0x18354F568]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 Move [0x18374EDB4], 1
+	020 Compare rdi, 0
+	021 JumpIfEqual {36}
+	022 Move rbx, [rdi+32]
+	023 Compare rbx, 0
+	024 JumpIfEqual {36}
+	025 Move rdx, typeof(System.Runtime.CompilerServices.AsyncMethodBuilderCore+ContinuationWrapper)
+	026 Move r8, [rbx]
+	027 Move rax, [rdx+304]
+	028 Compare [r8+304], rax
+	029 JumpIfLess {36}
+	030 Move rcx, rax
+	031 Move rax, [r8+200]
+	032 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	033 JumpIfNotEqual {36}
+	034 Move rbx, [rbx+32]
+	035 Goto {37}
+	036 Move rbx, 0
+	037 LoadAddress rcx, [rsi+16]
+	038 Move [rsi+16], rdi
+	039 Move rdx, rdi
+	040 Call 0x18037ACB0, rcx, rdx, r8, r9
+	041 LoadAddress rcx, [rsi+32]
+	042 Move [rsi+32], rbx
+	043 Move rdx, rbx
+	044 Call 0x18037ACB0, rcx, rdx, r8, r9
+	045 LoadAddress rcx, [rsi+24]
+	046 Move [rsi+24], rbp
+	047 Move rdx, rbp
+	048 Move rbx, stack:0x30
+	049 Move rbp, stack:0x38
+	050 Move rsi, stack:0x40
+	051 ShiftStack 32
+	052 Move rdi, stack:0x0
+	053 ShiftStack 8
+	054 Call 0x18037ACB0, rcx, rdx, r8, r9
+	055 Return 
+
+Method: System.Void Invoke()
+
+Disassembly:
+	sub rsp,28h
+	mov rcx,[rcx+18h]
+	test rcx,rcx
+	je short 000000018057ABE0h
+	mov rax,[rcx+18h]
+	mov rdx,[rcx+28h]
+	mov rcx,[rcx+40h]
+	add rsp,28h
+	jmp rax
+	call 000000018037BE30h
+
+ISIL:
+	001 ShiftStack -40
+	002 Move rcx, [rcx+24]
+	003 Compare rcx, 0
+	004 JumpIfEqual {10}
+	005 Move rax, [rcx+24]
+	006 Move rdx, [rcx+40]
+	007 Move rcx, [rcx+64]
+	008 ShiftStack 40
+	009 CallNoReturn rax
+	010 Call 0x18037BE30, rcx, rdx, r8, r9
+

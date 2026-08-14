@@ -1,0 +1,171 @@
+Type: UnityEngine.InputSystem.Editor.SampleFrequencyCalculator
+
+Method: System.Void .ctor(System.Single targetFrequency, System.Double realtimeSinceStartup)
+
+Disassembly:
+	xor eax,eax
+	movss dword ptr [rcx+0Ch],xmm1
+	mov [rcx+8],eax
+	mov [rcx+10h],eax
+	movsd qword ptr [rcx],xmm2
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Move [rcx+12], xmm1
+	003 Move [rcx+8], rax
+	004 Move [rcx+16], rax
+	005 Move [rcx], xmm2
+	006 Return 
+
+Method: System.Single get_targetFrequency()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+0Ch]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+12]
+	002 Return xmm0
+
+Method: System.Void set_targetFrequency(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+0Ch],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+12], xmm1
+	002 Return 
+
+Method: System.Single get_frequency()
+
+Disassembly:
+	movss xmm0,dword ptr [rcx+10h]
+	ret
+
+ISIL:
+	001 Move xmm0, [rcx+16]
+	002 Return xmm0
+
+Method: System.Void set_frequency(System.Single value)
+
+Disassembly:
+	movss dword ptr [rcx+10h],xmm1
+	ret
+
+ISIL:
+	001 Move [rcx+16], xmm1
+	002 Return 
+
+Method: System.Void ProcessSample(UnityEngine.InputSystem.LowLevel.InputEventPtr eventPtr)
+
+Disassembly:
+	test rdx,rdx
+	je short 000000018202E6D8h
+	inc dword ptr [rcx+8]
+	ret
+
+ISIL:
+	001 Compare rdx, 0
+	002 JumpIfEqual {4}
+	003 Add [rcx+8], [rcx+8], 1
+	004 Return 
+
+Method: System.Boolean Update()
+
+Disassembly:
+	push rbx
+	sub rsp,20h
+	mov rbx,rcx
+	xor ecx,ecx
+	call 0000000182635570h
+	movsd xmm1,qword ptr [182A4FDC0h]
+	movaps xmm2,xmm0
+	subsd xmm2,qword ptr [rbx]
+	comisd xmm1,xmm2
+	ja short 000000018202E76Eh
+	movsd qword ptr [rbx],xmm0
+	mov al,1
+	movd xmm0,dword ptr [rbx+8]
+	cvtdq2pd xmm0,xmm0
+	mov dword ptr [rbx+8],0
+	divsd xmm0,xmm2
+	cvtpd2ps xmm0,xmm0
+	movss dword ptr [rbx+10h],xmm0
+	add rsp,20h
+	pop rbx
+	ret
+	xor al,al
+	add rsp,20h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -32
+	004 Move rbx, rcx
+	005 Move rcx, 0
+	006 Call Time.get_realtimeSinceStartupAsDouble, rcx
+	007 Move xmm1, [0x182A4FDC0]
+	008 Move xmm2, xmm0
+	009 NotImplemented "subsd xmm2,qword ptr [rbx]"
+	010 NotImplemented "comisd xmm1,xmm2"
+	011 JumpIfGreater {24}
+	012 Move [rbx], xmm0
+	013 Move rax, 1
+	014 Move xmm0, [rbx+8]
+	015 NotImplemented "cvtdq2pd xmm0,xmm0"
+	016 Move [rbx+8], 0
+	017 NotImplemented "divsd xmm0,xmm2"
+	018 NotImplemented "cvtpd2ps xmm0,xmm0"
+	019 Move [rbx+16], xmm0
+	020 ShiftStack 32
+	021 Move rbx, stack:0x0
+	022 ShiftStack 8
+	023 Return rax
+	024 Move rax, 0
+	025 ShiftStack 32
+	026 Move rbx, stack:0x0
+	027 ShiftStack 8
+	028 Return rax
+
+Method: System.Boolean Update(System.Double realtimeSinceStartup)
+
+Disassembly:
+	movsd xmm0,qword ptr [182A4FDC0h]
+	movaps xmm2,xmm1
+	subsd xmm2,qword ptr [rcx]
+	comisd xmm0,xmm2
+	ja short 000000018202E719h
+	movd xmm0,dword ptr [rcx+8]
+	mov al,1
+	cvtdq2pd xmm0,xmm0
+	mov dword ptr [rcx+8],0
+	movsd qword ptr [rcx],xmm1
+	divsd xmm0,xmm2
+	cvtpd2ps xmm0,xmm0
+	movss dword ptr [rcx+10h],xmm0
+	ret
+	xor al,al
+	ret
+
+ISIL:
+	001 Move xmm0, [0x182A4FDC0]
+	002 Move xmm2, xmm1
+	003 NotImplemented "subsd xmm2,qword ptr [rcx]"
+	004 NotImplemented "comisd xmm0,xmm2"
+	005 JumpIfGreater {15}
+	006 Move xmm0, [rcx+8]
+	007 Move rax, 1
+	008 NotImplemented "cvtdq2pd xmm0,xmm0"
+	009 Move [rcx+8], 0
+	010 Move [rcx], xmm1
+	011 NotImplemented "divsd xmm0,xmm2"
+	012 NotImplemented "cvtpd2ps xmm0,xmm0"
+	013 Move [rcx+16], xmm0
+	014 Return rax
+	015 Move rax, 0
+	016 Return rax
+

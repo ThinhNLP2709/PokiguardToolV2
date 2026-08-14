@@ -1,0 +1,358 @@
+Type: Unity.Burst.Intrinsics.X86+Bmi2
+
+Method: System.Boolean get_IsBmi2Supported()
+
+Disassembly:
+	xor al,al
+	ret
+
+ISIL:
+	001 Move rax, 0
+	002 Return rax
+
+Method: System.UInt32 bzhi_u32(System.UInt32 a, System.UInt32 index)
+
+Disassembly:
+	mov r8d,ecx
+	movzx ecx,dl
+	cmp ecx,20h
+	jae short 0000000181ECE278h
+	mov eax,1
+	shl eax,cl
+	dec eax
+	and eax,r8d
+	ret
+	mov eax,r8d
+	ret
+
+ISIL:
+	001 Move r8, rcx
+	002 Move rcx, rdx
+	003 Compare rcx, 32
+	004 JumpIfGreaterOrEqual {10}
+	005 Move rax, 1
+	006 ShiftLeft rax, rcx
+	007 Subtract rax, rax, 1
+	008 And rax, rax, r8
+	009 Return rax
+	010 Move rax, r8
+	011 Return rax
+
+Method: System.UInt64 bzhi_u64(System.UInt64 a, System.UInt64 index)
+
+Disassembly:
+	mov r8,rcx
+	movzx ecx,dl
+	cmp rcx,40h
+	jae short 0000000181ECE29Bh
+	mov eax,1
+	shl rax,cl
+	dec rax
+	and rax,r8
+	ret
+	mov rax,r8
+	ret
+
+ISIL:
+	001 Move r8, rcx
+	002 Move rcx, rdx
+	003 Compare rcx, 64
+	004 JumpIfGreaterOrEqual {10}
+	005 Move rax, 1
+	006 ShiftLeft rax, rcx
+	007 Subtract rax, rax, 1
+	008 And rax, rax, r8
+	009 Return rax
+	010 Move rax, r8
+	011 Return rax
+
+Method: System.UInt32 mulx_u32(System.UInt32 a, System.UInt32 b, out System.UInt32 hi)
+
+Disassembly:
+	mov eax,ecx
+	mov ecx,edx
+	imul rax,rcx
+	mov rcx,rax
+	shr rcx,20h
+	mov [r8],ecx
+	ret
+
+ISIL:
+	001 Move rax, rcx
+	002 Move rcx, rdx
+	003 Multiply rax, rax, rcx
+	004 Move rcx, rax
+	005 ShiftRight rcx, 32
+	006 Move [r8], rcx
+	007 Return rax
+
+Method: System.UInt64 mulx_u64(System.UInt64 a, System.UInt64 b, out System.UInt64 hi)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov eax,ecx
+	mov r10,rcx
+	shr r10,20h
+	mov r11,rdx
+	shr r11,20h
+	mov r9d,edx
+	imul r9,rax
+	mov eax,ecx
+	shr r9,20h
+	imul rax,r11
+	imul rcx,rdx
+	add r9,rax
+	mov ebx,edx
+	imul rbx,r10
+	imul r10,r11
+	mov eax,ebx
+	add r9,rax
+	shr rbx,20h
+	shr r9,20h
+	mov rax,rcx
+	add r9,r10
+	add r9,rbx
+	mov rbx,[rsp+8]
+	mov [r8],r9
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move rax, rcx
+	003 Move r10, rcx
+	004 ShiftRight r10, 32
+	005 Move r11, rdx
+	006 ShiftRight r11, 32
+	007 Move r9, rdx
+	008 Multiply r9, r9, rax
+	009 Move rax, rcx
+	010 ShiftRight r9, 32
+	011 Multiply rax, rax, r11
+	012 Multiply rcx, rcx, rdx
+	013 Add r9, r9, rax
+	014 Move rbx, rdx
+	015 Multiply rbx, rbx, r10
+	016 Multiply r10, r10, r11
+	017 Move rax, rbx
+	018 Add r9, r9, rax
+	019 ShiftRight rbx, 32
+	020 ShiftRight r9, 32
+	021 Move rax, rcx
+	022 Add r9, r9, r10
+	023 Add r9, r9, rbx
+	024 Move rbx, stack:0x8
+	025 Move [r8], r9
+	026 Return rax
+
+Method: System.UInt32 pdep_u32(System.UInt32 a, System.UInt32 mask)
+
+Disassembly:
+	mov [rsp+8],rbx
+	xor eax,eax
+	mov r11d,edx
+	mov r10d,eax
+	mov r9d,eax
+	mov ebx,ecx
+	mov r8d,1
+	test r11d,r8d
+	je short 0000000181ECE351h
+	mov ecx,r10d
+	mov edx,ebx
+	shr edx,cl
+	mov ecx,r9d
+	and edx,1
+	shl edx,cl
+	or eax,edx
+	inc r10d
+	inc r9d
+	rol r8d,1
+	cmp r9d,20h
+	jl short 0000000181ECE338h
+	mov rbx,[rsp+8]
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move rax, 0
+	003 Move r11, rdx
+	004 Move r10, rax
+	005 Move r9, rax
+	006 Move rbx, rcx
+	007 Move r8, 1
+	008 Compare r11, r8
+	009 JumpIfEqual {18}
+	010 Move rcx, r10
+	011 Move rdx, rbx
+	012 ShiftRight rdx, rcx
+	013 Move rcx, r9
+	014 And rdx, rdx, 1
+	015 ShiftLeft rdx, rcx
+	016 Or rax, rax, rdx
+	017 Add r10, r10, 1
+	018 Add r9, r9, 1
+	019 NotImplemented "rol r8d,1"
+	020 Compare r9, 32
+	021 JumpIfLess {8}
+	022 Move rbx, stack:0x8
+	023 Return rax
+
+Method: System.UInt64 pdep_u64(System.UInt64 a, System.UInt64 mask)
+
+Disassembly:
+	mov [rsp+8],rbx
+	xor eax,eax
+	mov r11,rdx
+	mov r10d,eax
+	mov r9d,eax
+	mov rbx,rcx
+	mov r8d,1
+	nop dword ptr [rax]
+	test r11,r8
+	je short 0000000181ECE3ADh
+	mov ecx,r10d
+	mov rdx,rbx
+	shr rdx,cl
+	mov ecx,r9d
+	and edx,1
+	shl rdx,cl
+	or rax,rdx
+	inc r10d
+	inc r9d
+	rol r8,1
+	cmp r9d,40h
+	jl short 0000000181ECE390h
+	mov rbx,[rsp+8]
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move rax, 0
+	003 Move r11, rdx
+	004 Move r10, rax
+	005 Move r9, rax
+	006 Move rbx, rcx
+	007 Move r8, 1
+	008 Nop 
+	009 Compare r11, r8
+	010 JumpIfEqual {19}
+	011 Move rcx, r10
+	012 Move rdx, rbx
+	013 ShiftRight rdx, rcx
+	014 Move rcx, r9
+	015 And rdx, rdx, 1
+	016 ShiftLeft rdx, rcx
+	017 Or rax, rax, rdx
+	018 Add r10, r10, 1
+	019 Add r9, r9, 1
+	020 NotImplemented "rol r8,1"
+	021 Compare r9, 64
+	022 JumpIfLess {9}
+	023 Move rbx, stack:0x8
+	024 Return rax
+
+Method: System.UInt32 pext_u32(System.UInt32 a, System.UInt32 mask)
+
+Disassembly:
+	mov [rsp+8],rbx
+	xor eax,eax
+	mov r11d,edx
+	mov r10d,eax
+	mov r9d,eax
+	mov ebx,ecx
+	mov r8d,1
+	test r11d,r8d
+	je short 0000000181ECE3F1h
+	mov ecx,r9d
+	mov edx,ebx
+	shr edx,cl
+	mov ecx,r10d
+	and edx,1
+	shl edx,cl
+	or eax,edx
+	inc r10d
+	inc r9d
+	rol r8d,1
+	cmp r9d,20h
+	jl short 0000000181ECE3D8h
+	mov rbx,[rsp+8]
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move rax, 0
+	003 Move r11, rdx
+	004 Move r10, rax
+	005 Move r9, rax
+	006 Move rbx, rcx
+	007 Move r8, 1
+	008 Compare r11, r8
+	009 JumpIfEqual {18}
+	010 Move rcx, r9
+	011 Move rdx, rbx
+	012 ShiftRight rdx, rcx
+	013 Move rcx, r10
+	014 And rdx, rdx, 1
+	015 ShiftLeft rdx, rcx
+	016 Or rax, rax, rdx
+	017 Add r10, r10, 1
+	018 Add r9, r9, 1
+	019 NotImplemented "rol r8d,1"
+	020 Compare r9, 32
+	021 JumpIfLess {8}
+	022 Move rbx, stack:0x8
+	023 Return rax
+
+Method: System.UInt64 pext_u64(System.UInt64 a, System.UInt64 mask)
+
+Disassembly:
+	mov [rsp+8],rbx
+	xor eax,eax
+	mov r11,rdx
+	mov r10d,eax
+	mov r9d,eax
+	mov rbx,rcx
+	mov r8d,1
+	nop dword ptr [rax]
+	test r11,r8
+	je short 0000000181ECE44Dh
+	mov ecx,r9d
+	mov rdx,rbx
+	shr rdx,cl
+	mov ecx,r10d
+	and edx,1
+	shl rdx,cl
+	or rax,rdx
+	inc r10d
+	inc r9d
+	rol r8,1
+	cmp r9d,40h
+	jl short 0000000181ECE430h
+	mov rbx,[rsp+8]
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move rax, 0
+	003 Move r11, rdx
+	004 Move r10, rax
+	005 Move r9, rax
+	006 Move rbx, rcx
+	007 Move r8, 1
+	008 Nop 
+	009 Compare r11, r8
+	010 JumpIfEqual {19}
+	011 Move rcx, r9
+	012 Move rdx, rbx
+	013 ShiftRight rdx, rcx
+	014 Move rcx, r10
+	015 And rdx, rdx, 1
+	016 ShiftLeft rdx, rcx
+	017 Or rax, rax, rdx
+	018 Add r10, r10, 1
+	019 Add r9, r9, 1
+	020 NotImplemented "rol r8,1"
+	021 Compare r9, 64
+	022 JumpIfLess {9}
+	023 Move rbx, stack:0x8
+	024 Return rax
+

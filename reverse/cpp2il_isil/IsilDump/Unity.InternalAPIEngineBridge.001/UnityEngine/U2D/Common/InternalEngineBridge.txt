@@ -1,0 +1,306 @@
+Type: UnityEngine.U2D.Common.InternalEngineBridge
+
+Method: System.Void SetLocalAABB(UnityEngine.SpriteRenderer spriteRenderer, UnityEngine.Bounds aabb)
+
+Disassembly:
+	sub rsp,48h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	movsd xmm1,qword ptr [rdx+10h]
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	movsd qword ptr [rsp+30h],xmm1
+	call 0000000182672650h
+	add rsp,48h
+	ret
+
+ISIL:
+	001 ShiftStack -72
+	002 Move xmm0, [rdx]
+	003 Move r8, 0
+	004 Move xmm1, [rdx+16]
+	005 LoadAddress rdx, stack:0x20
+	006 Move stack:0x20, xmm0
+	007 Move stack:0x30, xmm1
+	008 Call SpriteRendererDataAccessExtensions.SetLocalAABB, rcx, rdx, r8
+	009 ShiftStack 72
+	010 Return 
+
+Method: System.Void SetDeformableBuffer(UnityEngine.SpriteRenderer spriteRenderer, Unity.Collections.NativeArray`1<System.Byte> src)
+
+Disassembly:
+	sub rsp,38h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182672280h
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm0, [rdx]
+	003 Move r8, 0
+	004 LoadAddress rdx, stack:0x20
+	005 Move stack:0x20, xmm0
+	006 Call SpriteRendererDataAccessExtensions.SetDeformableBuffer, rcx, rdx, r8
+	007 ShiftStack 56
+	008 Return 
+
+Method: System.Void SetBoneTransforms(UnityEngine.SpriteRenderer spriteRenderer, Unity.Collections.NativeArray`1<UnityEngine.Matrix4x4> src)
+
+Disassembly:
+	sub rsp,38h
+	movups xmm0,[rdx]
+	xor r8d,r8d
+	lea rdx,[rsp+20h]
+	movaps [rsp+20h],xmm0
+	call 0000000182672120h
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move xmm0, [rdx]
+	003 Move r8, 0
+	004 LoadAddress rdx, stack:0x20
+	005 Move stack:0x20, xmm0
+	006 Call SpriteRendererDataAccessExtensions.SetBoneTransforms, rcx, rdx, r8
+	007 ShiftStack 56
+	008 Return 
+
+Method: System.Boolean IsUsingDeformableBuffer(UnityEngine.SpriteRenderer spriteRenderer, System.IntPtr buffer)
+
+Disassembly:
+	xor r8d,r8d
+	jmp near ptr 0000000182671AB0h
+
+ISIL:
+	001 Move r8, 0
+	002 Call SpriteRendererDataAccessExtensions.IsUsingDeformableBuffer, rcx, rdx, r8
+	003 Return rax
+
+Method: System.Void SetupMaterialProperties(UnityEngine.SpriteRenderer spriteRenderer)
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000182672740h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call SpriteRendererDataAccessExtensions.SetupMaterialProperties, rcx, rdx
+	003 Return 
+
+Method: UnityEngine.Vector2 GUIUnclip(UnityEngine.Vector2 v)
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000182682880h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call GUIClip.Unclip, rcx, rdx
+	003 Return rax
+
+Method: UnityEngine.Rect GetGUIClipTopMostRect()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rbx,rcx
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000182682910h
+	movups xmm0,[rax]
+	mov rax,rbx
+	movups [rbx],xmm0
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rbx, rcx
+	005 Move rdx, 0
+	006 LoadAddress rcx, stack:0x20
+	007 Call GUIClip.get_topmostRect, rcx
+	008 Move xmm0, [rax]
+	009 Move rax, rbx
+	010 Move [rbx], xmm0
+	011 ShiftStack 48
+	012 Move rbx, stack:0x0
+	013 ShiftStack 8
+	014 Return rax
+
+Method: UnityEngine.Rect GetGUIClipTopRect()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rbx,rcx
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000182682320h
+	movups xmm0,[rax]
+	mov rax,rbx
+	movups [rbx],xmm0
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rbx, rcx
+	005 Move rdx, 0
+	006 LoadAddress rcx, stack:0x20
+	007 Call GUIClip.GetTopRect, rcx
+	008 Move xmm0, [rax]
+	009 Move rax, rbx
+	010 Move [rbx], xmm0
+	011 ShiftStack 48
+	012 Move rbx, stack:0x0
+	013 ShiftStack 8
+	014 Return rax
+
+Method: UnityEngine.Rect GetGUIClipVisibleRect()
+
+Disassembly:
+	push rbx
+	sub rsp,30h
+	mov rbx,rcx
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000182682990h
+	movups xmm0,[rax]
+	mov rax,rbx
+	movups [rbx],xmm0
+	add rsp,30h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -48
+	004 Move rbx, rcx
+	005 Move rdx, 0
+	006 LoadAddress rcx, stack:0x20
+	007 Call GUIClip.get_visibleRect, rcx
+	008 Move xmm0, [rax]
+	009 Move rax, rbx
+	010 Move [rbx], xmm0
+	011 ShiftStack 48
+	012 Move rbx, stack:0x0
+	013 ShiftStack 8
+	014 Return rax
+
+Method: System.Boolean IsGPUSkinningEnabled()
+
+Disassembly:
+	xor ecx,ecx
+	jmp near ptr 0000000182671A30h
+
+ISIL:
+	001 Move rcx, 0
+	002 Call SpriteRendererDataAccessExtensions.IsGPUSkinningEnabled, rcx
+	003 Return rax
+
+Method: System.Void SetBatchDeformableBufferAndLocalAABBArray(UnityEngine.SpriteRenderer[] spriteRenderers, Unity.Collections.NativeArray`1<System.IntPtr> buffers, Unity.Collections.NativeArray`1<System.Int32> bufferSizes, Unity.Collections.NativeArray`1<UnityEngine.Bounds> bounds)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,68h
+	movups xmm0,[r9]
+	lea r9,[rax-38h]
+	mov qword ptr [rax-48h],0
+	movups xmm1,[r8]
+	lea r8,[rax-28h]
+	movaps [rax-38h],xmm0
+	movups xmm0,[rdx]
+	lea rdx,[rax-18h]
+	movaps [rax-28h],xmm1
+	movaps [rax-18h],xmm0
+	call 0000000182671C20h
+	add rsp,68h
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -104
+	003 Move xmm0, [r9]
+	004 LoadAddress r9, [rax-56]
+	005 Move [rax-72], 0
+	006 Move xmm1, [r8]
+	007 LoadAddress r8, [rax-40]
+	008 Move [rax-56], xmm0
+	009 Move xmm0, [rdx]
+	010 LoadAddress rdx, [rax-24]
+	011 Move [rax-40], xmm1
+	012 Move [rax-24], xmm0
+	013 Call SpriteRendererDataAccessExtensions.SetBatchDeformableBufferAndLocalAABBArray, rcx, rdx, r8, r9, stack:0x0
+	014 ShiftStack 104
+	015 Return 
+
+Method: System.Void SetBatchBoneTransformsAABBArray(UnityEngine.SpriteRenderer[] spriteRenderers, Unity.Collections.NativeArray`1<System.IntPtr> buffers, Unity.Collections.NativeArray`1<System.Int32> bufferSizes, Unity.Collections.NativeArray`1<UnityEngine.Bounds> bounds)
+
+Disassembly:
+	mov rax,rsp
+	sub rsp,68h
+	movups xmm0,[r9]
+	lea r9,[rax-38h]
+	mov qword ptr [rax-48h],0
+	movups xmm1,[r8]
+	lea r8,[rax-28h]
+	movaps [rax-38h],xmm0
+	movups xmm0,[rdx]
+	lea rdx,[rax-18h]
+	movaps [rax-28h],xmm1
+	movaps [rax-18h],xmm0
+	call 0000000182671E80h
+	add rsp,68h
+	ret
+
+ISIL:
+	001 Move rax, rsp
+	002 ShiftStack -104
+	003 Move xmm0, [r9]
+	004 LoadAddress r9, [rax-56]
+	005 Move [rax-72], 0
+	006 Move xmm1, [r8]
+	007 LoadAddress r8, [rax-40]
+	008 Move [rax-56], xmm0
+	009 Move xmm0, [rdx]
+	010 LoadAddress rdx, [rax-24]
+	011 Move [rax-40], xmm1
+	012 Move [rax-24], xmm0
+	013 Call SpriteRendererDataAccessExtensions.SetBoneTransformsArray, rcx, rdx, r8, r9, stack:0x0
+	014 ShiftStack 104
+	015 Return 
+
+Method: System.Int32 ConvertFloatToInt(System.Single f)
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 00000001825B9750h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call DiscreteEvaluationAttributeUtilities.ConvertFloatToDiscreteInt, xmm0, rdx
+	003 Return rax
+
+Method: System.Single ConvertIntToFloat(System.Int32 i)
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 00000001825B9740h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call DiscreteEvaluationAttributeUtilities.ConvertDiscreteIntToFloat, rcx, rdx
+	003 Return xmm0
+

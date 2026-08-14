@@ -1,0 +1,615 @@
+Type: System.Net.BasicClient
+
+Method: System.Net.Authorization Authenticate(System.String challenge, System.Net.WebRequest webRequest, System.Net.ICredentials credentials)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837525C8h],0
+	mov rdi,r9
+	mov rsi,r8
+	mov rbx,rdx
+	jne short 0000000181E25D24h
+	lea rcx,[1834F9948h]
+	call 000000018037BB90h
+	mov byte ptr [1837525C8h],1
+	test rdi,rdi
+	je short 0000000181E25D86h
+	test rbx,rbx
+	je short 0000000181E25D86h
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000181665140h
+	test rax,rax
+	je short 0000000181E25D98h
+	xor edx,edx
+	mov rcx,rax
+	call 00000001816649E0h
+	test rax,rax
+	je short 0000000181E25D98h
+	mov rdx,[1834F9948h]
+	xor r9d,r9d
+	mov r8d,4
+	mov rcx,rax
+	call 000000018165F580h
+	cmp eax,0FFFFFFFFh
+	je short 0000000181E25D86h
+	xor r8d,r8d
+	mov rdx,rdi
+	mov rcx,rsi
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000181E25E50h
+	mov rbx,[rsp+30h]
+	xor eax,eax
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	ret
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Compare [0x1837525C8], 0
+	007 Move rdi, r9
+	008 Move rsi, r8
+	009 Move rbx, rdx
+	010 JumpIfNotEqual {14}
+	011 LoadAddress rcx, [0x1834F9948]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 Move [0x1837525C8], 1
+	014 Compare rdi, 0
+	015 JumpIfEqual {45}
+	016 Compare rbx, 0
+	017 JumpIfEqual {45}
+	018 Move rdx, 0
+	019 Move rcx, rbx
+	020 Call String.Trim, rcx, rdx
+	021 Compare rax, 0
+	022 JumpIfEqual {52}
+	023 Move rdx, 0
+	024 Move rcx, rax
+	025 Call String.ToLower, rcx, rdx
+	026 Compare rax, 0
+	027 JumpIfEqual {52}
+	028 Move rdx, "basic"
+	029 Move r9, 0
+	030 Move r8, 4
+	031 Move rcx, rax
+	032 Call String.IndexOf, rcx, rdx, r8
+	033 Compare rax, 18446744073709551615
+	034 JumpIfEqual {45}
+	035 Move r8, 0
+	036 Move rdx, rdi
+	037 Move rcx, rsi
+	038 Move rbx, stack:0x30
+	039 Move rsi, stack:0x38
+	040 ShiftStack 32
+	041 Move rdi, stack:0x0
+	042 ShiftStack 8
+	043 Call BasicClient.InternalAuthenticate, rcx, rdx, r8
+	044 Return rax
+	045 Move rbx, stack:0x30
+	046 Move rax, 0
+	047 Move rsi, stack:0x38
+	048 ShiftStack 32
+	049 Move rdi, stack:0x0
+	050 ShiftStack 8
+	051 Return rax
+	052 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Byte[] GetBytes(System.String str)
+
+Disassembly:
+	push rbp
+	sub rsp,20h
+	cmp byte ptr [1837525C9h],0
+	mov rbp,rcx
+	jne short 0000000181E25DC5h
+	lea rcx,[183565480h]
+	call 000000018037BB90h
+	mov byte ptr [1837525C9h],1
+	mov [rsp+30h],rbx
+	mov [rsp+38h],rsi
+	mov [rsp+40h],rdi
+	test rbp,rbp
+	je short 0000000181E25E39h
+	mov ebx,[rbp+10h]
+	mov edx,ebx
+	mov rcx,[183565480h]
+	call 000000018037AD30h
+	sub ebx,1
+	mov rsi,rax
+	js short 0000000181E25E21h
+	movsxd rdi,ebx
+	add rdi,20h
+	add rdi,rax
+	nop dword ptr [rax]
+	xor r8d,r8d
+	mov edx,ebx
+	mov rcx,rbp
+	call 00000001816652C0h
+	test rsi,rsi
+	je short 0000000181E25E39h
+	cmp ebx,[rsi+18h]
+	jae short 0000000181E25E3Fh
+	mov [rdi],al
+	dec rdi
+	sub ebx,1
+	jns short 0000000181E25E00h
+	mov rdi,[rsp+40h]
+	mov rax,rsi
+	mov rsi,[rsp+38h]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rbp
+	ret
+	call 000000018037BE30h
+	int 3
+	call 000000018037BE20h
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbp
+	003 ShiftStack -32
+	004 Compare [0x1837525C9], 0
+	005 Move rbp, rcx
+	006 JumpIfNotEqual {10}
+	007 LoadAddress rcx, [0x183565480]
+	008 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	009 Move [0x1837525C9], 1
+	010 Move stack:0x30, rbx
+	011 Move stack:0x38, rsi
+	012 Move stack:0x40, rdi
+	013 Compare rbp, 0
+	014 JumpIfEqual {46}
+	015 Move rbx, [rbp+16]
+	016 Move rdx, rbx
+	017 Move rcx, typeof(System.Byte[1])
+	018 Call "SzArrayNew", rcx, rdx, r8, r9
+	019 Subtract rbx, rbx, 1
+	020 Move rsi, rax
+	021 JumpIfSign {38}
+	022 Move rdi, rbx
+	023 Add rdi, rdi, 32
+	024 Add rdi, rdi, rax
+	025 Nop 
+	026 Move r8, 0
+	027 Move rdx, rbx
+	028 Move rcx, rbp
+	029 Call String.get_Chars, rcx, rdx
+	030 Compare rsi, 0
+	031 JumpIfEqual {46}
+	032 Compare rbx, [rsi+24]
+	033 JumpIfGreaterOrEqual {48}
+	034 Move [rdi], rax
+	035 Subtract rdi, rdi, 1
+	036 Subtract rbx, rbx, 1
+	037 JumpIfNotSign {26}
+	038 Move rdi, stack:0x40
+	039 Move rax, rsi
+	040 Move rsi, stack:0x38
+	041 Move rbx, stack:0x30
+	042 ShiftStack 32
+	043 Move rbp, stack:0x0
+	044 ShiftStack 8
+	045 Return rax
+	046 Call 0x18037BE30, rcx, rdx, r8, r9
+	047 Interrupt 
+	048 Call 0x18037BE20, rcx, rdx, r8, r9
+
+Method: System.Net.Authorization InternalAuthenticate(System.Net.WebRequest webRequest, System.Net.ICredentials credentials)
+
+Disassembly:
+	mov [rsp+18h],rbx
+	push rdi
+	sub rsp,30h
+	cmp byte ptr [1837525CAh],0
+	mov rdi,rdx
+	mov rbx,rcx
+	jne short 0000000181E25EE8h
+	lea rcx,[183503560h]
+	call 000000018037BB90h
+	lea rcx,[183516668h]
+	call 000000018037BB90h
+	lea rcx,[18353BD50h]
+	call 000000018037BB90h
+	lea rcx,[18353EF90h]
+	call 000000018037BB90h
+	lea rcx,[1834F1A48h]
+	call 000000018037BB90h
+	lea rcx,[183538B90h]
+	call 000000018037BB90h
+	lea rcx,[1834F9948h]
+	call 000000018037BB90h
+	lea rcx,[1834FBBE0h]
+	call 000000018037BB90h
+	lea rcx,[183532248h]
+	call 000000018037BB90h
+	lea rcx,[18351D790h]
+	call 000000018037BB90h
+	mov byte ptr [1837525CAh],1
+	test rbx,rbx
+	je near ptr 0000000181E26133h
+	mov rdx,[18353BD50h]
+	mov r8,[rbx]
+	movzx eax,byte ptr [rdx+130h]
+	cmp [r8+130h],al
+	jb near ptr 0000000181E26133h
+	movzx ecx,al
+	mov rax,[r8+0C8h]
+	cmp [rax+rcx*8-8],rdx
+	jne near ptr 0000000181E26133h
+	test rdi,rdi
+	je near ptr 0000000181E26133h
+	mov rax,[1834F9948h]
+	xor ecx,ecx
+	mov r9,[rbx+40h]
+	mov r8,rdi
+	mov rdx,[18353EF90h]
+	mov [rsp+20h],rax
+	call 000000018000DC40h
+	mov rbx,rax
+	test rax,rax
+	je near ptr 0000000181E26133h
+	xor edx,edx
+	mov rcx,rax
+	call 000000018046C870h
+	mov rdi,rax
+	test rax,rax
+	je near ptr 0000000181E26133h
+	mov rdx,[18351D790h]
+	xor r8d,r8d
+	mov rcx,rax
+	call 000000018165D590h
+	test al,al
+	jne near ptr 0000000181E26133h
+	mov [rsp+40h],rbp
+	mov [rsp+48h],rsi
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000181E1DDC0h
+	xor edx,edx
+	mov rcx,rbx
+	mov rbp,rax
+	call 00000001804DA130h
+	mov rsi,rax
+	test rax,rax
+	je near ptr 0000000181E260A8h
+	mov rdx,[18351D790h]
+	xor r8d,r8d
+	mov rcx,rax
+	call 000000018165D590h
+	test al,al
+	jne near ptr 0000000181E260A8h
+	xor edx,edx
+	mov rcx,rsi
+	call 0000000181665140h
+	mov rdx,[18351D790h]
+	xor r8d,r8d
+	mov rcx,rax
+	call 000000018165D590h
+	test al,al
+	jne near ptr 0000000181E260A8h
+	mov rcx,[1834F1A48h]
+	mov edx,5
+	call 000000018037AD30h
+	mov rbx,rax
+	test rax,rax
+	je near ptr 0000000181E26146h
+	cmp dword ptr [rax+18h],0
+	jbe near ptr 0000000181E26140h
+	lea rcx,[rax+20h]
+	mov [rax+20h],rsi
+	mov rdx,rsi
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],1
+	mov rdx,[183538B90h]
+	jbe near ptr 0000000181E26140h
+	lea rcx,[rbx+28h]
+	mov [rbx+28h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],2
+	jbe near ptr 0000000181E26140h
+	lea rcx,[rbx+30h]
+	mov [rbx+30h],rdi
+	mov rdx,rdi
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],3
+	mov rdx,[1834FBBE0h]
+	jbe near ptr 0000000181E26140h
+	lea rcx,[rbx+38h]
+	mov [rbx+38h],rdx
+	call 000000018037ACB0h
+	cmp dword ptr [rbx+18h],4
+	jbe near ptr 0000000181E26140h
+	lea rcx,[rbx+40h]
+	mov [rbx+40h],rbp
+	mov rdx,rbp
+	call 000000018037ACB0h
+	xor edx,edx
+	mov rcx,rbx
+	call 000000018165ABB0h
+	jmp short 0000000181E260BDh
+	mov rdx,[1834FBBE0h]
+	xor r9d,r9d
+	mov r8,rbp
+	mov rcx,rdi
+	call 000000018165AF00h
+	xor edx,edx
+	mov rcx,rax
+	call 0000000181E25DA0h
+	mov rcx,[183516668h]
+	mov rbx,rax
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181E260DFh
+	call 000000018037BED0h
+	xor edx,edx
+	mov rcx,rbx
+	call 0000000181774750h
+	mov rcx,[183532248h]
+	xor r8d,r8d
+	mov rdx,rax
+	call 000000018165B1F0h
+	mov rcx,[183503560h]
+	mov rbx,rax
+	call 000000018037BDE0h
+	xor r8d,r8d
+	mov rdx,rbx
+	mov rcx,rax
+	mov rdi,rax
+	call 0000000181E08EA0h
+	mov rbp,[rsp+40h]
+	mov rax,rdi
+	mov rsi,[rsp+48h]
+	mov rbx,[rsp+50h]
+	add rsp,30h
+	pop rdi
+	ret
+	mov rbx,[rsp+50h]
+	xor eax,eax
+	add rsp,30h
+	pop rdi
+	ret
+	call 000000018037BE20h
+	int 3
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x18, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -48
+	005 Compare [0x1837525CA], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {30}
+	009 LoadAddress rcx, [0x183503560]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 LoadAddress rcx, [0x183516668]
+	012 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	013 LoadAddress rcx, [0x18353BD50]
+	014 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	015 LoadAddress rcx, [0x18353EF90]
+	016 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	017 LoadAddress rcx, [0x1834F1A48]
+	018 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	019 LoadAddress rcx, [0x183538B90]
+	020 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	021 LoadAddress rcx, [0x1834F9948]
+	022 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	023 LoadAddress rcx, [0x1834FBBE0]
+	024 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	025 LoadAddress rcx, [0x183532248]
+	026 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	027 LoadAddress rcx, [0x18351D790]
+	028 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	029 Move [0x1837525CA], 1
+	030 Compare rbx, 0
+	031 JumpIfEqual {168}
+	032 Move rdx, typeof(System.Net.HttpWebRequest)
+	033 Move r8, [rbx]
+	034 Move rax, [rdx+304]
+	035 Compare [r8+304], rax
+	036 JumpIfLess {168}
+	037 Move rcx, rax
+	038 Move rax, [r8+200]
+	039 Compare [rax+0xFFFFFFF8+rcx*8], rdx
+	040 JumpIfNotEqual {168}
+	041 Compare rdi, 0
+	042 JumpIfEqual {168}
+	043 Move rax, "basic"
+	044 Move rcx, 0
+	045 Move r9, [rbx+64]
+	046 Move r8, rdi
+	047 Move rdx, typeof(System.Net.ICredentials)
+	048 Move stack:0x20, rax
+	049 Call 0x18000DC40, rcx, rdx, r8, r9
+	050 Move rbx, rax
+	051 Compare rax, 0
+	052 JumpIfEqual {168}
+	053 Move rdx, 0
+	054 Move rcx, rax
+	055 Call 0x18046C870, rcx, rdx
+	056 Move rdi, rax
+	057 Compare rax, 0
+	058 JumpIfEqual {168}
+	059 Move rdx, ""
+	060 Move r8, 0
+	061 Move rcx, rax
+	062 Call 0x18165D590, rcx, rdx, r8
+	063 Compare rax, 0
+	064 JumpIfNotEqual {168}
+	065 Move stack:0x40, rbp
+	066 Move stack:0x48, rsi
+	067 Move rdx, 0
+	068 Move rcx, rbx
+	069 Call 0x181E1DDC0, rcx, rdx
+	070 Move rdx, 0
+	071 Move rcx, rbx
+	072 Move rbp, rax
+	073 Call 0x1804DA130, rcx, rdx
+	074 Move rsi, rax
+	075 Compare rax, 0
+	076 JumpIfEqual {132}
+	077 Move rdx, ""
+	078 Move r8, 0
+	079 Move rcx, rax
+	080 Call 0x18165D590, rcx, rdx, r8
+	081 Compare rax, 0
+	082 JumpIfNotEqual {132}
+	083 Move rdx, 0
+	084 Move rcx, rsi
+	085 Call String.Trim, rcx, rdx
+	086 Move rdx, ""
+	087 Move r8, 0
+	088 Move rcx, rax
+	089 Call 0x18165D590, rcx, rdx, r8
+	090 Compare rax, 0
+	091 JumpIfNotEqual {132}
+	092 Move rcx, typeof(System.String[1])
+	093 Move rdx, 5
+	094 Call "SzArrayNew", rcx, rdx, r8, r9
+	095 Move rbx, rax
+	096 Compare rax, 0
+	097 JumpIfEqual {176}
+	098 Compare [rax+24], 0
+	099 JumpIfLessOrEqual {174}
+	100 LoadAddress rcx, [rax+32]
+	101 Move [rax+32], rsi
+	102 Move rdx, rsi
+	103 Call 0x18037ACB0, rcx, rdx, r8, r9
+	104 Compare [rbx+24], 1
+	105 Move rdx, "\"
+	106 JumpIfLessOrEqual {174}
+	107 LoadAddress rcx, [rbx+40]
+	108 Move [rbx+40], rdx
+	109 Call 0x18037ACB0, rcx, rdx, r8, r9
+	110 Compare [rbx+24], 2
+	111 JumpIfLessOrEqual {174}
+	112 LoadAddress rcx, [rbx+48]
+	113 Move [rbx+48], rdi
+	114 Move rdx, rdi
+	115 Call 0x18037ACB0, rcx, rdx, r8, r9
+	116 Compare [rbx+24], 3
+	117 Move rdx, ":"
+	118 JumpIfLessOrEqual {174}
+	119 LoadAddress rcx, [rbx+56]
+	120 Move [rbx+56], rdx
+	121 Call 0x18037ACB0, rcx, rdx, r8, r9
+	122 Compare [rbx+24], 4
+	123 JumpIfLessOrEqual {174}
+	124 LoadAddress rcx, [rbx+64]
+	125 Move [rbx+64], rbp
+	126 Move rdx, rbp
+	127 Call 0x18037ACB0, rcx, rdx, r8, r9
+	128 Move rdx, 0
+	129 Move rcx, rbx
+	130 Call String.Concat, rcx, rdx
+	131 Goto {137}
+	132 Move rdx, ":"
+	133 Move r9, 0
+	134 Move r8, rbp
+	135 Move rcx, rdi
+	136 Call String.Concat, rcx, rdx, r8, r9
+	137 Move rdx, 0
+	138 Move rcx, rax
+	139 Call BasicClient.GetBytes, rcx, rdx
+	140 Move rcx, typeof(System.Convert)
+	141 Move rbx, rax
+	142 Compare [rcx+228], 0
+	143 JumpIfNotEqual {145}
+	144 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	145 Move rdx, 0
+	146 Move rcx, rbx
+	147 Call Convert.ToBase64String, rcx, rdx
+	148 Move rcx, "Basic "
+	149 Move r8, 0
+	150 Move rdx, rax
+	151 Call String.Concat, rcx, rdx, r8
+	152 Move rcx, typeof(System.Net.Authorization)
+	153 Move rbx, rax
+	154 Call "il2cpp_codegen_object_new", rcx, rdx, r8, r9
+	155 Move r8, 0
+	156 Move rdx, rbx
+	157 Move rcx, rax
+	158 Move rdi, rax
+	159 Call Authorization..ctor, rcx, rdx
+	160 Move rbp, stack:0x40
+	161 Move rax, rdi
+	162 Move rsi, stack:0x48
+	163 Move rbx, stack:0x50
+	164 ShiftStack 48
+	165 Move rdi, stack:0x0
+	166 ShiftStack 8
+	167 Return rax
+	168 Move rbx, stack:0x50
+	169 Move rax, 0
+	170 ShiftStack 48
+	171 Move rdi, stack:0x0
+	172 ShiftStack 8
+	173 Return rax
+	174 Call 0x18037BE20, rcx, rdx, r8, r9
+	175 Interrupt 
+	176 Call 0x18037BE30, rcx, rdx, r8, r9
+
+Method: System.Net.Authorization PreAuthenticate(System.Net.WebRequest webRequest, System.Net.ICredentials credentials)
+
+Disassembly:
+	mov rax,r8
+	mov rcx,rdx
+	mov rdx,rax
+	xor r8d,r8d
+	jmp near ptr 0000000181E25E50h
+
+ISIL:
+	001 Move rax, r8
+	002 Move rcx, rdx
+	003 Move rdx, rax
+	004 Move r8, 0
+	005 Call BasicClient.InternalAuthenticate, rcx, rdx, r8
+	006 Return rax
+
+Method: System.String get_AuthenticationType()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [1837525CBh],0
+	jne short 0000000181E26190h
+	lea rcx,[183532188h]
+	call 000000018037BB90h
+	mov byte ptr [1837525CBh],1
+	mov rax,[183532188h]
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x1837525CB], 0
+	003 JumpIfNotEqual {7}
+	004 LoadAddress rcx, [0x183532188]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 Move [0x1837525CB], 1
+	007 Move rax, "Basic"
+	008 ShiftStack 40
+	009 Return rax
+
+Method: System.Void .ctor()
+
+Disassembly:
+	xor edx,edx
+	jmp near ptr 0000000180456D90h
+
+ISIL:
+	001 Move rdx, 0
+	002 Call 0x180456D90, rcx, rdx, r8, r9, stack:0x0
+	003 Return 
+

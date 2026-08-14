@@ -1,0 +1,62 @@
+Type: Unity.Collections.AllocatorManager+Range
+
+Method: System.Void Dispose()
+
+Disassembly:
+	push rbx
+	sub rsp,40h
+	cmp byte ptr [183752A95h],0
+	xorps xmm1,xmm1
+	movups xmm0,[rcx]
+	mov rbx,rcx
+	movups [rsp+20h],xmm1
+	movups [rsp+20h],xmm0
+	movups [rsp+30h],xmm1
+	jne short 0000000181EF6ABAh
+	lea rcx,[1834FC918h]
+	call 000000018037BB90h
+	mov byte ptr [183752A95h],1
+	mov rcx,[1834FC918h]
+	mov dword ptr [rsp+28h],0
+	cmp dword ptr [rcx+0E4h],0
+	jne short 0000000181EF6AD7h
+	call 000000018037BED0h
+	xor edx,edx
+	lea rcx,[rsp+20h]
+	call 0000000181EDBFB0h
+	movups xmm0,[rsp+20h]
+	movups [rbx],xmm0
+	add rsp,40h
+	pop rbx
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Move stack:0x0, rbx
+	003 ShiftStack -64
+	004 Compare [0x183752A95], 0
+	005 Move xmm1, 0
+	006 Move xmm0, [rcx]
+	007 Move rbx, rcx
+	008 Move stack:0x20, xmm1
+	009 Move stack:0x20, xmm0
+	010 Move stack:0x30, xmm1
+	011 JumpIfNotEqual {15}
+	012 LoadAddress rcx, [0x1834FC918]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 Move [0x183752A95], 1
+	015 Move rcx, typeof(Unity.Collections.AllocatorManager)
+	016 Move stack:0x28, 0
+	017 Compare [rcx+228], 0
+	018 JumpIfNotEqual {20}
+	019 Call "il2cpp_runtime_class_init_export", rcx, rdx, r8, r9
+	020 Move rdx, 0
+	021 LoadAddress rcx, stack:0x20
+	022 Call AllocatorManager.Try, rcx, rdx
+	023 Move xmm0, stack:0x20
+	024 Move [rbx], xmm0
+	025 ShiftStack 64
+	026 Move rbx, stack:0x0
+	027 ShiftStack 8
+	028 Return 
+

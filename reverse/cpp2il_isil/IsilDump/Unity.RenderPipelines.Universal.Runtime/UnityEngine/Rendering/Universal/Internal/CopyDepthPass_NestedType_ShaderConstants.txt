@@ -1,0 +1,72 @@
+Type: UnityEngine.Rendering.Universal.Internal.CopyDepthPass+ShaderConstants
+
+Method: System.Void .cctor()
+
+Disassembly:
+	sub rsp,28h
+	cmp byte ptr [183754661h],0
+	jne short 000000018237B484h
+	lea rcx,[183560D18h]
+	call 000000018037BB90h
+	lea rcx,[183544E70h]
+	call 000000018037BB90h
+	lea rcx,[183562EF8h]
+	call 000000018037BB90h
+	lea rcx,[183544DB0h]
+	call 000000018037BB90h
+	mov byte ptr [183754661h],1
+	mov rcx,[183544DB0h]
+	xor edx,edx
+	call 00000001825FD6D0h
+	mov rcx,[183560D18h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx],eax
+	xor edx,edx
+	mov rcx,[183544E70h]
+	call 00000001825FD6D0h
+	mov rcx,[183560D18h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx+4],eax
+	xor edx,edx
+	mov rcx,[183562EF8h]
+	call 00000001825FD6D0h
+	mov rcx,[183560D18h]
+	mov rdx,[rcx+0B8h]
+	mov [rdx+8],eax
+	add rsp,28h
+	ret
+
+ISIL:
+	001 ShiftStack -40
+	002 Compare [0x183754661], 0
+	003 JumpIfNotEqual {13}
+	004 LoadAddress rcx, [0x183560D18]
+	005 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	006 LoadAddress rcx, [0x183544E70]
+	007 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	008 LoadAddress rcx, [0x183562EF8]
+	009 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	010 LoadAddress rcx, [0x183544DB0]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 Move [0x183754661], 1
+	013 Move rcx, "_CameraDepthAttachment"
+	014 Move rdx, 0
+	015 Call Shader.PropertyToID, rcx, rdx
+	016 Move rcx, typeof(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+ShaderConstants)
+	017 Move rdx, [rcx+184]
+	018 Move [rdx], rax
+	019 Move rdx, 0
+	020 Move rcx, "_CameraDepthTexture"
+	021 Call Shader.PropertyToID, rcx, rdx
+	022 Move rcx, typeof(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+ShaderConstants)
+	023 Move rdx, [rcx+184]
+	024 Move [rdx+4], rax
+	025 Move rdx, 0
+	026 Move rcx, "_ZWrite"
+	027 Call Shader.PropertyToID, rcx, rdx
+	028 Move rcx, typeof(UnityEngine.Rendering.Universal.Internal.CopyDepthPass+ShaderConstants)
+	029 Move rdx, [rcx+184]
+	030 Move [rdx+8], rax
+	031 ShiftStack 40
+	032 Return 
+

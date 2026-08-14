@@ -1,0 +1,158 @@
+Type: UnityEngine.Rendering.InstanceDataSystem+CalculateInterpolatedLightAndOcclusionProbesBatchJob
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,70h
+	cmp byte ptr [18375400Ah],0
+	mov edi,edx
+	mov rsi,rcx
+	jne short 00000001822693E4h
+	lea rcx,[18355C020h]
+	call 000000018037BB90h
+	lea rcx,[1835587E0h]
+	call 000000018037BB90h
+	lea rcx,[18355DB20h]
+	call 000000018037BB90h
+	lea rcx,[18355D520h]
+	call 000000018037BB90h
+	mov byte ptr [18375400Ah],1
+	mov ebx,[rsi]
+	lea edi,[rdi*8]
+	lea eax,[rdi+8]
+	cmp ebx,eax
+	lea rdx,[rsi+28h]
+	mov r8d,edi
+	lea rcx,[rsp+50h]
+	cmovge ebx,eax
+	mov rax,[1835587E0h]
+	sub ebx,edi
+	mov [rsp+20h],rax
+	mov r9d,ebx
+	call 0000000180AD89A0h
+	mov rax,[18355D520h]
+	lea rdx,[rsi+18h]
+	mov r9d,ebx
+	mov [rsp+20h],rax
+	mov r8d,edi
+	lea rcx,[rsp+60h]
+	call 0000000180ACB750h
+	mov rax,[18355C020h]
+	lea rdx,[rsi+38h]
+	mov r9d,ebx
+	mov [rsp+20h],rax
+	mov r8d,edi
+	lea rcx,[rsp+40h]
+	call 0000000180ACB540h
+	mov rax,[18355DB20h]
+	lea rdx,[rsi+48h]
+	mov r9d,ebx
+	mov [rsp+20h],rax
+	mov r8d,edi
+	lea rcx,[rsp+30h]
+	call 0000000180ACB5F0h
+	movaps xmm0,[rsp+30h]
+	lea rax,[rsp+30h]
+	movaps xmm1,[rsp+40h]
+	lea rcx,[rsi+8]
+	movdqa [rsp+30h],xmm0
+	lea r9,[rsp+40h]
+	movaps xmm0,[rsp+50h]
+	lea r8,[rsp+50h]
+	movdqa [rsp+40h],xmm1
+	lea rdx,[rsp+60h]
+	movaps xmm1,[rsp+60h]
+	mov qword ptr [rsp+28h],0
+	movdqa [rsp+50h],xmm0
+	movdqa [rsp+60h],xmm1
+	mov [rsp+20h],rax
+	call 00000001825D50B0h
+	lea r11,[rsp+70h]
+	mov rbx,[r11+10h]
+	mov rsi,[r11+18h]
+	mov rsp,r11
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -112
+	006 Compare [0x18375400A], 0
+	007 Move rdi, rdx
+	008 Move rsi, rcx
+	009 JumpIfNotEqual {19}
+	010 LoadAddress rcx, [0x18355C020]
+	011 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	012 LoadAddress rcx, [0x1835587E0]
+	013 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	014 LoadAddress rcx, [0x18355DB20]
+	015 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	016 LoadAddress rcx, [0x18355D520]
+	017 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	018 Move [0x18375400A], 1
+	019 Move rbx, [rsi]
+	020 LoadAddress rdi, []
+	021 LoadAddress rax, [rdi+8]
+	022 Compare rbx, rax
+	023 LoadAddress rdx, [rsi+40]
+	024 Move r8, rdi
+	025 LoadAddress rcx, stack:0x50
+	026 JumpIfLess {28}
+	027 Move rbx, rax
+	028 Nop 
+	029 Move rax, [0x1835587E0]
+	030 Subtract rbx, rbx, rdi
+	031 Move stack:0x20, rax
+	032 Move r9, rbx
+	033 Call 0x180AD89A0, rcx, rdx, r8
+	034 Move rax, [0x18355D520]
+	035 LoadAddress rdx, [rsi+24]
+	036 Move r9, rbx
+	037 Move stack:0x20, rax
+	038 Move r8, rdi
+	039 LoadAddress rcx, stack:0x60
+	040 Call 0x180ACB750, rcx, rdx, r8
+	041 Move rax, [0x18355C020]
+	042 LoadAddress rdx, [rsi+56]
+	043 Move r9, rbx
+	044 Move stack:0x20, rax
+	045 Move r8, rdi
+	046 LoadAddress rcx, stack:0x40
+	047 Call 0x180ACB540, rcx, rdx, r8
+	048 Move rax, [0x18355DB20]
+	049 LoadAddress rdx, [rsi+72]
+	050 Move r9, rbx
+	051 Move stack:0x20, rax
+	052 Move r8, rdi
+	053 LoadAddress rcx, stack:0x30
+	054 Call 0x180ACB5F0, rcx, rdx, r8
+	055 Move xmm0, stack:0x30
+	056 LoadAddress rax, stack:0x30
+	057 Move xmm1, stack:0x40
+	058 LoadAddress rcx, [rsi+8]
+	059 Move stack:0x30, xmm0
+	060 LoadAddress r9, stack:0x40
+	061 Move xmm0, stack:0x50
+	062 LoadAddress r8, stack:0x50
+	063 Move stack:0x40, xmm1
+	064 LoadAddress rdx, stack:0x60
+	065 Move xmm1, stack:0x60
+	066 Move stack:0x28, 0
+	067 Move stack:0x50, xmm0
+	068 Move stack:0x60, xmm1
+	069 Move stack:0x20, rax
+	070 Call LightProbesQuery.CalculateInterpolatedLightAndOcclusionProbes, rcx, rdx, r8, r9, stack:0x0
+	071 LoadAddress r11, stack:0x70
+	072 Move rbx, [r11+16]
+	073 Move rsi, [r11+24]
+	074 Move rsp, r11
+	075 Move rdi, stack:0x0
+	076 ShiftStack 8
+	077 Return 
+

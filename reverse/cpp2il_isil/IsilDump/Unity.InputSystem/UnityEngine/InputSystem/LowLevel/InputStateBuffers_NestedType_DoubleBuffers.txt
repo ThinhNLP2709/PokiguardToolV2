@@ -1,0 +1,172 @@
+Type: UnityEngine.InputSystem.LowLevel.InputStateBuffers+DoubleBuffers
+
+Method: System.Boolean get_valid()
+
+Disassembly:
+	cmp qword ptr [rcx],0
+	setne al
+	ret
+
+ISIL:
+	001 Compare [rcx], 0
+	002 NotImplemented "setne al"
+	003 Return rax
+
+Method: System.Void SetFrontBuffer(System.Int32 deviceIndex, System.Void* ptr)
+
+Disassembly:
+	cmp edx,[rcx+8]
+	jge short 00000001820379A2h
+	lea eax,[rdx+rdx]
+	movsxd rdx,eax
+	mov rax,[rcx]
+	mov [rax+rdx*8],r8
+	ret
+
+ISIL:
+	001 Compare rdx, [rcx+8]
+	002 JumpIfGreaterOrEqual {7}
+	003 LoadAddress rax, [rdx+rdx]
+	004 Move rdx, rax
+	005 Move rax, [rcx]
+	006 Move [rax+rdx*8], r8
+	007 Return 
+
+Method: System.Void SetBackBuffer(System.Int32 deviceIndex, System.Void* ptr)
+
+Disassembly:
+	cmp edx,[rcx+8]
+	jge short 0000000182037983h
+	lea eax,[rdx+rdx]
+	movsxd rdx,eax
+	mov rax,[rcx]
+	mov [rax+rdx*8+8],r8
+	ret
+
+ISIL:
+	001 Compare rdx, [rcx+8]
+	002 JumpIfGreaterOrEqual {7}
+	003 LoadAddress rax, [rdx+rdx]
+	004 Move rdx, rax
+	005 Move rax, [rcx]
+	006 Move [rax+8+rdx*8], r8
+	007 Return 
+
+Method: System.Void* GetFrontBuffer(System.Int32 deviceIndex)
+
+Disassembly:
+	mov r8,rcx
+	cmp edx,[rcx+8]
+	jl short 000000018203795Bh
+	xor eax,eax
+	ret
+	lea eax,[rdx+rdx]
+	movsxd rcx,eax
+	mov rax,[r8]
+	mov rax,[rax+rcx*8]
+	ret
+
+ISIL:
+	001 Move r8, rcx
+	002 Compare rdx, [rcx+8]
+	003 JumpIfLess {6}
+	004 Move rax, 0
+	005 Return rax
+	006 LoadAddress rax, [rdx+rdx]
+	007 Move rcx, rax
+	008 Move rax, [r8]
+	009 Move rax, [rax+rcx*8]
+	010 Return rax
+
+Method: System.Void* GetBackBuffer(System.Int32 deviceIndex)
+
+Disassembly:
+	mov r8,rcx
+	cmp edx,[rcx+8]
+	jl short 000000018203793Bh
+	xor eax,eax
+	ret
+	lea eax,[rdx+rdx]
+	movsxd rcx,eax
+	mov rax,[r8]
+	mov rax,[rax+rcx*8+8]
+	ret
+
+ISIL:
+	001 Move r8, rcx
+	002 Compare rdx, [rcx+8]
+	003 JumpIfLess {6}
+	004 Move rax, 0
+	005 Return rax
+	006 LoadAddress rax, [rdx+rdx]
+	007 Move rcx, rax
+	008 Move rax, [r8]
+	009 Move rax, [rax+8+rcx*8]
+	010 Return rax
+
+Method: System.Void SwapBuffers(System.Int32 deviceIndex)
+
+Disassembly:
+	sub rsp,8
+	cmp qword ptr [rcx],0
+	mov r11d,edx
+	mov r10,rcx
+	je short 0000000182037A0Bh
+	mov [rsp],rbx
+	cmp edx,[rcx+8]
+	jl short 00000001820379CDh
+	xor ebx,ebx
+	jmp short 00000001820379F2h
+	mov r8,[r10]
+	lea eax,[rdx+rdx]
+	movsxd rcx,eax
+	mov rax,[r10]
+	mov rbx,[rax+rcx*8]
+	lea eax,[rdx+rdx]
+	movsxd r9,eax
+	lea eax,[rdx+rdx]
+	movsxd rdx,eax
+	mov rax,[r8+r9*8+8]
+	mov [r8+rdx*8],rax
+	cmp r11d,[r10+8]
+	jge short 0000000182037A07h
+	lea eax,[r11+r11]
+	movsxd rcx,eax
+	mov rax,[r10]
+	mov [rax+rcx*8+8],rbx
+	mov rbx,[rsp]
+	add rsp,8
+	ret
+
+ISIL:
+	001 ShiftStack -8
+	002 Compare [rcx], 0
+	003 Move r11, rdx
+	004 Move r10, rcx
+	005 JumpIfEqual {29}
+	006 Move stack:0x0, rbx
+	007 Compare rdx, [rcx+8]
+	008 JumpIfLess {11}
+	009 Move rbx, 0
+	010 Goto {22}
+	011 Move r8, [r10]
+	012 LoadAddress rax, [rdx+rdx]
+	013 Move rcx, rax
+	014 Move rax, [r10]
+	015 Move rbx, [rax+rcx*8]
+	016 LoadAddress rax, [rdx+rdx]
+	017 Move r9, rax
+	018 LoadAddress rax, [rdx+rdx]
+	019 Move rdx, rax
+	020 Move rax, [r8+8+r9*8]
+	021 Move [r8+rdx*8], rax
+	022 Compare r11, [r10+8]
+	023 JumpIfGreaterOrEqual {28}
+	024 LoadAddress rax, [r11+r11]
+	025 Move rcx, rax
+	026 Move rax, [r10]
+	027 Move [rax+8+rcx*8], rbx
+	028 Move rbx, stack:0x0
+	029 ShiftStack 8
+	030 Return 
+

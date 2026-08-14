@@ -1,0 +1,58 @@
+Type: Unity.Collections.Long1024
+
+Method: System.Int32 get_Length()
+
+Disassembly:
+	mov eax,400h
+	ret
+
+ISIL:
+	001 Move rax, 1024
+	002 Return rax
+
+Method: System.Void set_Length(System.Int32 value)
+
+Disassembly:
+	ret 0
+
+ISIL:
+	001 Return 
+
+Method: System.Int64 ElementAt(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [183752AB2h],0
+	mov rdi,rcx
+	movsxd rbx,edx
+	jne short 0000000181EF683Ch
+	lea rcx,[18354DFC8h]
+	call 000000018037BB90h
+	mov byte ptr [183752AB2h],1
+	lea rax,[rdi+rbx*8]
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	ret
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x183752AB2], 0
+	006 Move rdi, rcx
+	007 Move rbx, rdx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x18354DFC8]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x183752AB2], 1
+	012 LoadAddress rax, [rdi+rbx*8]
+	013 Move rbx, stack:0x30
+	014 ShiftStack 32
+	015 Move rdi, stack:0x0
+	016 ShiftStack 8
+	017 Return rax
+

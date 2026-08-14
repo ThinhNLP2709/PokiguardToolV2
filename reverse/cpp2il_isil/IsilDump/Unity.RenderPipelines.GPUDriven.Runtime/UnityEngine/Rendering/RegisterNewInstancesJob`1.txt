@@ -1,0 +1,63 @@
+Type: UnityEngine.Rendering.RegisterNewInstancesJob`1
+
+Method: System.Void Execute(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	mov [rsp+10h],rsi
+	push rdi
+	sub rsp,20h
+	mov rbx,[rcx+10h]
+	mov rdi,rcx
+	movsxd rax,edx
+	lea rdx,[rax*4]
+	mov rax,[rcx]
+	mov ebx,[rdx+rbx]
+	mov esi,[rdx+rax]
+	mov rax,[r8+20h]
+	test byte ptr [rax+135h],1
+	jne short 0000000180C82F2Fh
+	mov rcx,rax
+	call 0000000180384C90h
+	mov r9,[rax+0C0h]
+	lea rcx,[rdi+20h]
+	mov r8d,ebx
+	mov edx,esi
+	mov r9,[r9+30h]
+	mov rbx,[rsp+30h]
+	mov rsi,[rsp+38h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 0000000180B82FF0h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 Move stack:0x10, rsi
+	003 ShiftStack -8
+	004 Move stack:0x0, rdi
+	005 ShiftStack -32
+	006 Move rbx, [rcx+16]
+	007 Move rdi, rcx
+	008 Move rax, rdx
+	009 LoadAddress rdx, []
+	010 Move rax, [rcx]
+	011 Move rbx, [rdx+rbx]
+	012 Move rsi, [rdx+rax]
+	013 Move rax, [r8+32]
+	014 Compare [rax+309], 1
+	015 JumpIfNotEqual {18}
+	016 Move rcx, rax
+	017 Call 0x180384C90, rcx, rdx, r8, r9
+	018 Move r9, [rax+192]
+	019 LoadAddress rcx, [rdi+32]
+	020 Move r8, rbx
+	021 Move rdx, rsi
+	022 Move r9, [r9+48]
+	023 Move rbx, stack:0x30
+	024 Move rsi, stack:0x38
+	025 ShiftStack 32
+	026 Move rdi, stack:0x0
+	027 ShiftStack 8
+	028 Call 0x180B82FF0, rcx, rdx, r8
+	029 Return 
+

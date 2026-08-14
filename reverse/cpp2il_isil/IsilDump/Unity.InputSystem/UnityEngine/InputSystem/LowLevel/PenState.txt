@@ -1,0 +1,114 @@
+Type: UnityEngine.InputSystem.LowLevel.PenState
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_Format()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,50h
+	mov [rsp+28h],rcx
+	mov r9d,4Eh
+	mov [rsp+48h],ecx
+	mov r8d,45h
+	lea rcx,[rsp+48h]
+	mov word ptr [rsp+20h],20h
+	call 0000000181F41F80h
+	mov eax,[rsp+48h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 80
+	004 Move stack:0x28, rcx
+	005 Move r9, 78
+	006 Move stack:0x48, rcx
+	007 Move r8, 69
+	008 LoadAddress rcx, stack:0x48
+	009 Move stack:0x20, 32
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x48
+	012 ShiftStack 56
+	013 Return rax
+
+Method: UnityEngine.InputSystem.LowLevel.PenState WithButton(UnityEngine.InputSystem.PenButton button, System.Boolean state = True)
+
+Disassembly:
+	and r8d,1Fh
+	mov r10,rcx
+	movzx ecx,r8b
+	mov eax,1
+	movzx r8d,word ptr [rdx+20h]
+	shl ax,cl
+	test r9b,r9b
+	jne short 000000018202D9D6h
+	not ax
+	and ax,r8w
+	jmp short 000000018202D9DAh
+	or ax,r8w
+	mov [rdx+20h],ax
+	mov eax,[rdx+20h]
+	movups xmm0,[rdx]
+	movups xmm1,[rdx+10h]
+	movups [r10],xmm0
+	movups [r10+10h],xmm1
+	mov [r10+20h],eax
+	mov rax,r10
+	ret
+
+ISIL:
+	001 And r8, r8, 31
+	002 Move r10, rcx
+	003 Move rcx, r8
+	004 Move rax, 1
+	005 Move r8, [rdx+32]
+	006 ShiftLeft rax, rcx
+	007 Compare r9, 0
+	008 JumpIfNotEqual {12}
+	009 Neg rax
+	010 And rax, rax, r8
+	011 Goto {13}
+	012 Or rax, rax, r8
+	013 Move [rdx+32], rax
+	014 Move rax, [rdx+32]
+	015 Move xmm0, [rdx]
+	016 Move xmm1, [rdx+16]
+	017 Move [r10], xmm0
+	018 Move [r10+16], xmm1
+	019 Move [r10+32], rax
+	020 Move rax, r10
+	021 Return rax
+
+Method: UnityEngine.InputSystem.Utilities.FourCC get_format()
+
+Disassembly:
+	sub rsp,38h
+	xor ecx,ecx
+	mov edx,50h
+	mov [rsp+28h],rcx
+	mov r9d,4Eh
+	mov [rsp+50h],ecx
+	mov r8d,45h
+	lea rcx,[rsp+50h]
+	mov word ptr [rsp+20h],20h
+	call 0000000181F41F80h
+	mov eax,[rsp+50h]
+	add rsp,38h
+	ret
+
+ISIL:
+	001 ShiftStack -56
+	002 Move rcx, 0
+	003 Move rdx, 80
+	004 Move stack:0x28, rcx
+	005 Move r9, 78
+	006 Move stack:0x50, rcx
+	007 Move r8, 69
+	008 LoadAddress rcx, stack:0x50
+	009 Move stack:0x20, 32
+	010 Call FourCC..ctor, rcx, rdx, r8, r9, stack:0x0
+	011 Move rax, stack:0x50
+	012 ShiftStack 56
+	013 Return rax
+

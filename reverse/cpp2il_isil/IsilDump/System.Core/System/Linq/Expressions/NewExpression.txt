@@ -1,0 +1,63 @@
+Type: System.Linq.Expressions.NewExpression
+
+Method: System.Reflection.ConstructorInfo get_Constructor()
+
+Disassembly:
+	mov rax,[rcx+18h]
+	ret
+
+ISIL:
+	001 Move rax, [rcx+24]
+	002 Return rax
+
+Method: System.Linq.Expressions.Expression GetArgument(System.Int32 index)
+
+Disassembly:
+	mov [rsp+8],rbx
+	push rdi
+	sub rsp,20h
+	cmp byte ptr [1837503E7h],0
+	mov edi,edx
+	mov rbx,rcx
+	jne short 00000001819D4DEBh
+	lea rcx,[183529D48h]
+	call 000000018037BB90h
+	mov byte ptr [1837503E7h],1
+	mov r8,[rbx+10h]
+	test r8,r8
+	je short 00000001819D4E0Fh
+	mov rdx,[183529D48h]
+	xor ecx,ecx
+	mov r9d,edi
+	mov rbx,[rsp+30h]
+	add rsp,20h
+	pop rdi
+	jmp near ptr 00000001800048B0h
+	call 000000018037BE30h
+
+ISIL:
+	001 Move stack:0x8, rbx
+	002 ShiftStack -8
+	003 Move stack:0x0, rdi
+	004 ShiftStack -32
+	005 Compare [0x1837503E7], 0
+	006 Move rdi, rdx
+	007 Move rbx, rcx
+	008 JumpIfNotEqual {12}
+	009 LoadAddress rcx, [0x183529D48]
+	010 Call "il2cpp_codegen_initialize_runtime_metadata", rcx, rdx, r8, r9
+	011 Move [0x1837503E7], 1
+	012 Move r8, [rbx+16]
+	013 Compare r8, 0
+	014 JumpIfEqual {24}
+	015 Move rdx, typeof(System.Collections.Generic.IReadOnlyList`1<Expression>)
+	016 Move rcx, 0
+	017 Move r9, rdi
+	018 Move rbx, stack:0x30
+	019 ShiftStack 32
+	020 Move rdi, stack:0x0
+	021 ShiftStack 8
+	022 Call 0x1800048B0, rcx, rdx, r8, r9
+	023 Return rax
+	024 Call 0x18037BE30, rcx, rdx, r8, r9
+
