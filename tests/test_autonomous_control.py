@@ -55,6 +55,7 @@ from tools.basic_auto_bot import (
     _idle_session_id,
     _latest_fusion_for_terminal,
     _local_turn_action_deadline_reached,
+    _local_turn_deadline_warning_seconds,
     _must_pause_for_no_safe_move,
     _observe_b4_cast_idle_reset,
     _observe_cast_idle_reset,
@@ -1124,6 +1125,32 @@ class AutonomousGuardTests(unittest.TestCase):
                 remaining_seconds=6,
                 consuming_action_turns={(session, 15)},
             )
+        )
+
+    def test_local_turn_deadline_uses_exact_four_second_action_floor(self) -> None:
+        self.assertEqual(_local_turn_deadline_warning_seconds(4), 4)
+        self.assertEqual(_local_turn_deadline_warning_seconds(10), 10)
+        with self.assertRaises(ValueError):
+            _local_turn_deadline_warning_seconds(-1)
+
+        state = self._state()
+        session = state.battle.session_key
+        common = dict(
+            session=session,
+            turn=1,
+            match_id=session.match_id,
+            current_player="happi",
+            local_username="happi",
+            warning_seconds=_local_turn_deadline_warning_seconds(4),
+            status=AutonomousStatus.RUNNING,
+            pending=None,
+            consuming_action_turns=set(),
+        )
+        self.assertFalse(
+            _local_turn_action_deadline_reached(**common, remaining_seconds=5)
+        )
+        self.assertTrue(
+            _local_turn_action_deadline_reached(**common, remaining_seconds=4)
         )
 
     def test_evolve_failure_response_is_terminal_without_optional_turn_lock(self) -> None:

@@ -10,6 +10,7 @@ policy/action path.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime
 from enum import Enum
@@ -42,6 +43,7 @@ from pokiguard_v2.boss_entry import (  # noqa: E402
     resolve_target,
 )
 from pokiguard_v2.boss_entry_ui import locate_chinh_phuc_start  # noqa: E402
+from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.boss_lobby_runtime import (  # noqa: E402
     BossLobbyRuntimeSnapshot,
     read_boss_lobby_runtime,
@@ -91,6 +93,19 @@ from tools.sequence_desync_runtime import RuntimeSequenceMonitor  # noqa: E402
 
 
 @dataclass(frozen=True)
+class SharedEntryRuntime:
+    """Farm-owned live dependencies reused for an accepted one-shot entry."""
+
+    target: Any
+    provider: MemoryBoardStateProvider
+    monitor: RuntimeSequenceMonitor
+    binding: Any
+    executor: ForegroundClickExecutor
+    backend: NativeWin32Backend
+    entry_capability: Any | None = None
+
+
+@dataclass(frozen=True)
 class EntryBaseline:
     old_match_id: str | None
     old_session_key: Any
@@ -98,6 +113,7 @@ class EntryBaseline:
     old_srv_seq: int | None
     old_local_sequence: int | None
     old_lifecycle_epoch: int
+    old_board_hash: str | None
 
 
 @dataclass(frozen=True)
@@ -281,7 +297,28 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise ValueError("scan size arguments are outside safe bounds")
 
 
-def run(args: argparse.Namespace) -> int:
+def _create_shared_entry_runtime(target: Any, args: argparse.Namespace) -> SharedEntryRuntime:
+    backend = NativeWin32Backend()
+    binding = find_window_for_pid(target.pid, backend)
+    executor = ForegroundClickExecutor(backend)
+    provider = MemoryBoardStateProvider(
+        target,
+        MemoryProviderConfig(
+            max_region_mib=args.max_region_mib,
+            chunk_mib=args.chunk_mib,
+            required_confirmations=2,
+            require_lobby_start=True,
+        ),
+    )
+    monitor = RuntimeSequenceMonitor(
+        target,
+        max_region_mib=max(args.max_region_mib, 16),
+        chunk_mib=args.chunk_mib,
+    )
+    return SharedEntryRuntime(target, provider, monitor, binding, executor, backend)
+
+
+def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None = None) -> int:
     _validate_args(args)
     farm_target = FarmTarget(args.boss_id, args.boss_name)
     artifact_dir = (
@@ -306,24 +343,14 @@ def run(args: argparse.Namespace) -> int:
         "artifacts": str(artifact_dir),
     }
 
-    with attach_target() as target, log_path.open("a", encoding="utf-8", buffering=1) as log:
-        provider = MemoryBoardStateProvider(
-            target,
-            MemoryProviderConfig(
-                max_region_mib=args.max_region_mib,
-                chunk_mib=args.chunk_mib,
-                required_confirmations=2,
-                require_lobby_start=True,
-            ),
-        )
-        monitor = RuntimeSequenceMonitor(
-            target,
-            max_region_mib=max(args.max_region_mib, 16),
-            chunk_mib=args.chunk_mib,
-        )
-        backend = NativeWin32Backend()
-        binding = find_window_for_pid(target.pid, backend)
-        executor = ForegroundClickExecutor(backend)
+    runtime_owner = attach_target() if shared_runtime is None else nullcontext(shared_runtime.target)
+    with runtime_owner as target, log_path.open("a", encoding="utf-8", buffering=1) as log:
+        runtime = shared_runtime or _create_shared_entry_runtime(target, args)
+        provider = runtime.provider
+        monitor = runtime.monitor
+        backend = runtime.backend
+        binding = runtime.binding
+        executor = runtime.executor
         hotkeys = HotkeyEdges()
         state = BossEntryState.WAIT_BOSS_LOBBY
         _write(
@@ -468,12 +495,17 @@ def run(args: argparse.Namespace) -> int:
             )
             old_match_id, old_local_sequence = _read_match_id(target)
             baseline = EntryBaseline(
-                old_match_id,
-                provider.current_session_key,
-                poll.state.battle.board_instance if poll.state is not None else None,
-                poll.state.battle.srv_seq if poll.state is not None else None,
-                old_local_sequence,
-                lobby_epoch,
+                old_match_id=old_match_id,
+                old_session_key=provider.current_session_key,
+                old_board_instance=(
+                    poll.state.battle.board_instance if poll.state is not None else None
+                ),
+                old_srv_seq=(poll.state.battle.srv_seq if poll.state is not None else None),
+                old_local_sequence=old_local_sequence,
+                old_lifecycle_epoch=lobby_epoch,
+                old_board_hash=(
+                    poll.state.battle.board_hash if poll.state is not None else None
+                ),
             )
             attempt = EntryAttemptIdentity(
                 lobby_epoch,
@@ -607,7 +639,32 @@ def run(args: argparse.Namespace) -> int:
         if result["entryClicks"] != 0:
             result["duplicateEntryClicks"] += 1
             raise RuntimeError("entry attempt was already sent")
-        click = executor.send_normalized_point(binding, location.normalized_point)
+        entry_permit = None
+        if runtime.entry_capability is not None:
+            entry_permit = runtime.entry_capability.reserve(
+                foreground=window_status.valid and window_status.foreground is True
+            )
+            if entry_permit is None:
+                result.update(status="STOPPED", stopReason="FARM_ENTRY_CAPABILITY_DENIED")
+                _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+                _beep("stop", beep_enabled)
+                summary_path.write_text(
+                    json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                return 2
+        try:
+            click = executor.send_normalized_point(binding, location.normalized_point)
+        except Exception:
+            if runtime.entry_capability is not None and entry_permit is not None:
+                runtime.entry_capability.cancel(entry_permit, detail="executor raised before result")
+            raise
+        if runtime.entry_capability is not None and entry_permit is not None:
+            runtime.entry_capability.complete(
+                entry_permit,
+                sent=click.sent,
+                detail=f"entry#{runtime.entry_capability.entry_number}:{click.status.value}",
+            )
         if not click.sent:
             result.update(status="STOPPED", stopReason=f"ENTRY_INPUT_{click.status.value}")
             _write(log, "entry_stopped", reason=result["stopReason"])
@@ -829,7 +886,7 @@ def run(args: argparse.Namespace) -> int:
                     and game_state.battle.match_id == new_match_id
                     and game_state.battle.stable
                     and game_state.battle.board_hash
-                    and game_state.battle.is_local_turn is True
+                    and game_state.battle.is_first_local_turn is True
                     and game_state.battle.local_move_sequence == 0
                     and len(cells) == 64
                     and game_state.board.production_ready
@@ -900,7 +957,8 @@ def run(args: argparse.Namespace) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     try:
-        return run(build_parser().parse_args(argv))
+        with AutomationControllerLease(PROJECT_ROOT / "logs" / ".automation_controller.lock"):
+            return run(build_parser().parse_args(argv))
     except KeyboardInterrupt:
         print("Boss entry stopped by user.", file=sys.stderr)
         return 130

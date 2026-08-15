@@ -1,0 +1,467 @@
+# PokiguardToolV2 Current State
+
+Canonical technical handoff as of **2026-08-15 (Asia/Saigon)**.
+
+Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
+canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
+technical state; use linked phase reports for detailed evidence.
+
+## Source-of-Truth Hierarchy
+
+1. [AGENTS.md](../AGENTS.md) — agent, workspace, and safety rules.
+2. [DECISIONS.md](DECISIONS.md) — gameplay/product decisions defined or
+   approved by the user.
+3. This file — latest accepted technical state.
+4. Latest phase-specific reports — detailed acceptance evidence.
+5. Logs, reference artifacts, and tests — raw/runtime evidence.
+6. Old/superseded reports — historical evidence only.
+
+When sources conflict, identify which is newer; do not silently merge them or
+rewrite history. Technical implementation does not silently override a user
+decision in `DECISIONS.md`.
+
+## Project Status
+
+| Item | Current state |
+|---|---|
+| Current completed phase | **Phase 2D.2 — PASS STRONG** |
+| Next approved/planned phase | **NONE — await user review/approval** |
+| Current controller status | **STOPPED** |
+| Current live automation | **NONE** |
+
+Phase 2D.2 attempt 3 (`20260815_203412`) structurally completed two entries and
+one autonomous combat, but is **not live-accepted**. The user disclosed after
+the run that they manually clicked `Đồng ý` on the result modal. Thus the logged
+three-second `POSTMATCH -> LOBBY` transition is not an automatic-return proof.
+The combat/session/input boundaries remain valid—entry inputs 2, sessions seen
+2, sessions played 1, combat-2 inputs 0, and all recorded safety counters 0—but
+postmatch ownership still needs a no-user-input retry. Evidence:
+[Phase 2D.2 report](phase2d2_report.md).
+
+Attempt 4 (`20260815_204412`) supplied that missing observation: with no user
+input, authoritative POSTMATCH and the result modal persisted for 60 seconds.
+Two captures prove the same WIN panel and sole `Đồng ý` control. A fail-closed,
+resolution-independent locator and single-use `POSTMATCH_UI` capability are now
+implemented offline; both real frames resolve the same normalized point with
+confidence 0.98 and zero drift. This one-click path was subsequently
+live-accepted by attempt 5.
+
+Attempt 5 (`20260815_205707`) is the accepted Phase 2D.2 run. With no user
+interaction, it completed combat #1, proved authoritative POSTMATCH across
+three stable result frames, sent exactly one capability-owned `Đồng ý` click,
+reacquired exact stable BOSS_LOBBY, entered a distinct session #2, and
+hard-stopped at opening #2. Final invariant:
+`accepted=true / PHASE2D2_BOUNDARY_PROVEN`; all safety counters and combat-2
+inputs were zero. Evidence: [Phase 2D.2 report](phase2d2_report.md).
+
+Post-acceptance, `--run-single-cycle` was added for the user's requested visible
+demonstration: entry #1 -> one B5 combat -> exact returned BOSS_LOBBY -> hard
+stop, with no entry #2 capability. First live attempt `20260815_213316`
+safe-stopped after three acknowledged SWAPs because a pre-PASS SWAP reset proof
+was incorrectly reused after PASS #1; the server correctly reported 2/3 while
+the controller expected 1/3. No wrong-turn, duplicate, stale, foreground, or
+post-combat input occurred. The reset correlation now requires the consuming
+action's source turn to be strictly after the last confirmed PASS.
+
+The user then explicitly approved reducing the local-turn deadline warning from
+the prior six-second margin to the exact four-second actionability floor. The
+controller may continue evaluation at 5+ seconds but still fail-closes at 4
+seconds before sending an unacceptably late action.
+
+The requested visible demonstration then passed on artifact
+`logs/boss_farm_cycle/20260815_214234/`. The controller entered Starburst 1289,
+completed one full B5 match, captured a visible `THẮNG` result with boss HP
+`0/84180`, sent exactly one proven `Đồng ý` click, reacquired exact stable
+BOSS_LOBBY, and hard-stopped without entry #2. Final invariant:
+`accepted=true / SINGLE_CYCLE_RETURNED_LOBBY_PROVEN`; every farm safety counter
+was zero.
+
+## Current Architecture
+
+```text
+Pokiguard.exe
+  -> ReadProcessMemory (external/read only)
+  -> MemoryBoardStateProvider
+  -> GameState
+  -> deterministic board simulator / BASIC PolicyEngine
+  -> ActionabilityGate + session/sequence/input guards
+  -> normal foreground Windows UI/input
+```
+
+Farm-side accepted entry:
+
+```text
+Boss lobby
+  -> exact target resolution
+  -> one normal foreground Windows UI entry click
+  -> new MatchId / CombatSessionKey
+  -> accepted opening board + first local turn
+  -> STOP
+```
+
+CV remains audit/reference/fallback, not the production board source. No
+production path writes game memory, calls gameplay IL2CPP methods, or
+manipulates network traffic.
+
+## Production Board Source
+
+Production source:
+
+```text
+WsCombatBatch.board / BoardCellDTO
+```
+
+Post-opening publication is current-session and highest-valid-ACK attested.
+The opening-only bootstrap may use exact current-match
+`ChatMessageDTO.MATCH_START.matchPayload.board`; it must still be 64/64,
+stable twice, session-bound, first-local-turn state with local move sequence
+zero. Normal post-opening ACK rules remain unchanged.
+
+Accepted contract:
+
+- exact 8x8, 64/64 cells, and 64 unique coordinates in `0..7 x 0..7`;
+- exact known `GemType`; multiplier x1, x2, x3, or x4;
+- valid `srvSeq` and SHA-256 `boardHash`;
+- current session, latest state, lifecycle, render/stability, and ACK/opening
+  validation;
+- invalid/ambiguous/stale/incomplete/unknown state fails closed.
+
+`Dot` is optional validation/telemetry, not a production requirement. CV is
+audit/reference, not production. See [Phase 2B.5](phase2b5_report.md).
+
+## Coordinate Model
+
+All cells use zero-based `(row, col)`:
+
+| Space | Meaning |
+|---|---|
+| Runtime/DTO | Bottom-origin row; column unchanged. |
+| Provider `BoardState` | Top-origin visible-board row. |
+| Solver | Same top-origin coordinates as provider. |
+| Screen/click | Same cell coordinates as solver, then current client geometry. |
+
+```text
+providerRow = solverRow = screenRow = 7 - runtimeRow
+providerCol = solverCol = screenCol = runtimeCol
+```
+
+`live_state.to_board_state()` flips the row once before solver publication.
+Provider-to-solver and solver-to-screen are identity mappings. Never flip again
+at the input boundary; tests cover this no-double-flip contract.
+
+## Current GameState
+
+Production state currently resolves/carries:
+
+- **Board:** `GemType`, multiplier, `srvSeq`, `boardHash`, production/stable/
+  latest/ACK flags, readiness, cascade/presentation/current state, modal/end
+  flags, `Board.Instance`, and session key.
+- **Battle:** `MatchId`, `CombatSessionKey`, turn/current player, local username,
+  first local turn, server-tick timer/duration, lifecycle, connection/reconnect/
+  resync, and local/last move sequence telemetry.
+- **Player/boss:** ownership, HP/maxHP, Mana/maxMana, Rage/Power/max, Shield.
+- **Cards:** dynamic object/data/card identity, type, current cost from
+  `manaCost` or positive `conditionUse`, interactable, pending/use/cooldown/
+  last-turn state. Observed ATTACK ID `4` is not hard-coded.
+- **Fusion:** enabled/available/used/locked, current runtime cost/UI, last
+  attempt, correlated response success/failure, and durable success state.
+- **Idle/PASS:** exact authoritative payload values, freshness/correlation, and
+  accepted reset-baseline provenance; never a local gameplay counter.
+- **Sequence desync:** a sticky, session-scoped `SequenceDesyncState` guard
+  accompanies `GameState`; it is not inferred from board motion or repaired.
+
+See [state.py](../src/pokiguard_v2/state.py),
+[Phase 2C.2C](phase2c2c_report.md), and
+[sequence-desync resolution](sequence_desync_resolution.md).
+
+## Combat Lifecycle
+
+Exact `CombatLifecycleState` members:
+
+```text
+LOBBY | ENTERING | ACTIVE | LEAVING | POSTMATCH | STALE_SERVER_MATCH | UNKNOWN
+```
+
+Boss-entry external classifications are `BOSS_LOBBY`, `LOBBY_OTHER`,
+`ENTERING_COMBAT`, `ACTIVE_COMBAT`, `POSTMATCH`, and `UNKNOWN`.
+
+A server match ID alone does not prove local/actionable combat. `ACTIVE`
+requires local rig, loader/Hub, Board/Active/ManagerMatch ownership, match ID,
+board readiness, and non-terminal flags to agree. Stale/hidden server state is
+`STALE_SERVER_MATCH` and fails closed; local lifecycle wins for UI safety.
+Leaving `ACTIVE` invalidates session-scoped board/action/idle/desync/card/Fusion
+caches. See [combat lifecycle resolution](combat_lifecycle_resolution.md).
+
+## Actionability
+
+Every gameplay input requires:
+
+- exact `ACTIVE` lifecycle and current matching session;
+- production board current/stable/ready and ACK/opening-authoritative;
+- no cascade, presentation, turn-resolution, or known modal state;
+- exact local turn, player/boss known and alive, no end state;
+- ready connection, no reconnect/resync, and no terminal sequence desync;
+- known timer above configured safety margin;
+- bound Pokiguard window valid, unchanged, and foreground;
+- no pending input/action lock or controller pause;
+- fresh proposal still matching session, turn, `srvSeq`, hash, critical state,
+  and recomputed policy immediately before input.
+
+Unknown required state fails closed. Generic unrelated Unity modal traversal is
+still UNKNOWN; known Board modal/action/end flags are the accepted gate. See
+[actionability signals](actionability_signals.md).
+
+## Autonomous Gameplay Currently Proven
+
+### SWAP — PRODUCTION ACCEPTED
+
+- Normal Windows two-click input on validated adjacent screen cells.
+- Full foreground/state revalidation, single-use identity, and ACK/current-state
+  synchronization.
+- Bounded, multi-turn, and full-match acceptance; accepted runs have no known
+  duplicate, stale, wrong-turn, boss-turn, lobby, or post-combat input issue.
+
+### EVOLVE — PRODUCTION ACCEPTED within BASIC combat
+
+- Dynamic live Fusion control and actual positive runtime cost.
+- Functional and non-turn-consuming.
+- `success=false` may retry only under fresh-state/lock/response safety.
+- `success=true` requires durable `fusion.used=true`, then full reread; a
+  consuming action may still occur on the same turn.
+- Terminal success/failure may lead to an `EVOLVE-only turn` with zero further
+  input when policy would otherwise PASS.
+
+EVOLVE idle-reset semantics: **UNKNOWN**.
+
+### CAST — PRODUCTION ACCEPTED
+
+- Dynamic current ATTACK card; no hard-coded card ID.
+- Actual cost comes from runtime data; accepted runs observed 160.
+- Consumes the turn and locks out same-turn SWAP after acceptance.
+- Card/mana/turn transition can prove acceptance if transient DTO is missed.
+
+CAST idle-reset semantics for production PASS: **UNKNOWN**.
+
+### PASS — PRODUCTION ACCEPTED, authoritative and bounded
+
+- PASS sends **zero gameplay input**.
+- Numeric state comes only from exact local-user server payloads.
+- Live acceptance observed `1/3` and `2/3`; first local turn cannot PASS.
+- At `2/3`, third PASS is prohibited and the next successful action must
+  consume the turn; EVOLVE alone is insufficient.
+- Accepted controlled cycle: `1/3 -> 2/3 -> mandatory SWAP -> 1/3`.
+- No local `idle_count += 1`, decrement, or synthetic zero.
+- UNKNOWN/stale/missing/rejected/uncorrelated evidence fails closed.
+
+SWAP reset is production-proven. CAST and EVOLVE resets remain UNKNOWN. B5's
+accepted natural full match contained no PASS (`NOT_OBSERVED` cycle coverage);
+B3 and Phase 2C.2C supply accepted autonomous PASS evidence.
+
+## BASIC Policy
+
+```text
+PlayStyle:    SIMPLE | CAREFUL
+ManaPriority: EVOLUTION | ATTACK
+Intelligence: BASIC | REASONING
+```
+
+`BASIC` is implemented/accepted. `REASONING` is represented but intentionally
+undefined/not implemented; it returns `NONE / REASONING_NOT_IMPLEMENTED`.
+Never invent REASONING behavior. See [BASIC policy](basic_gameplay_policy.md).
+Its old PASS-disabled/undefined-fallback notes are superseded by
+[Phase 2C.2C](phase2c2c_report.md) and the latest
+[Phase 2C.2B/B5 report](phase2c2b_report.md).
+
+## BASIC Resource Rules Currently Accepted
+
+1. EVOLVE first only for `ManaPriority=EVOLUTION` when live action is eligible
+   and affordable; `ATTACK` priority disables EVOLVE for that match.
+2. Sword is highest. A non-Sword direct match may win when its deterministic
+   cascade collects the better Sword result.
+3. Safe Rage has tactical priority below 100; otherwise safe Mana is preferred.
+4. Safe Health: boss HP >50%, own HP <30% (`SIMPLE`) or <50% (`CAREFUL`).
+5. CAST: player Mana strictly >480 and usable dynamic ATTACK card; accepted
+   reserve is 320 after observed cost 160.
+6. Safe Drain: boss Mana >160 and Rage >100. Safe Shield: both <50.
+   Intermediate handling prefers safe Shield. Only-safe Drain and Health-only
+   safe fallback are accepted special cases.
+7. After explicit branches, use deterministic minimum-risk safe-resource
+   fallback. Safe Rage remains useful while below max 250 even when >=100.
+8. A full resource has no value solely for filling itself; Sword/cascade/combo,
+   another resource, safety, or mandatory action may still justify the move.
+9. PASS only when no Sword-safe move remains and authoritative state permits.
+   Mandatory state uses a normal safe consuming action or deterministic
+   least-dangerous legal action.
+
+Canonical intent: [DECISIONS.md](DECISIONS.md). Exact ranking/trace:
+[basic_policy.py](../src/pokiguard_v2/basic_policy.py).
+
+## Board Simulator
+
+- Exhaustive 112 adjacent pairs: 56 horizontal + 56 vertical.
+- Separates legal, safe, and dangerous moves.
+- Resolves direct matches, known gravity, and deterministic known cascades from
+  the current 64 cells; preserves x1-x4 multiplier with each gem.
+- Off-board refill is `UNKNOWN` and earns no deterministic cascade credit.
+- Records resources, Sword potential/risk, collapse/support hazard, UNKNOWN
+  exposure, and deterministic tie-breaks.
+
+## Dead Board
+
+Not `policy returned NONE`; not `safeMoveCount=0`. Definition:
+
+```text
+ACTIVE/current/stable local-turn 64-cell board
+AND board ready / no cascade
+AND exhaustive legalMatchProducingMoves == 0
+```
+
+Missing gates yield UNKNOWN. `legal>0, safe=0` is live but dangerous. Dead board
+is a technical recovery condition: detection/artifact/replay and `EXIT_MATCH`
+proposal exist, but automatic recovery is **DISABLED**. Natural zero-legal
+runtime evidence is `NOT_OBSERVED`. See [dead-board resolution](dead_board_resolution.md).
+
+## Sequence Desync
+
+Accepted sources: `FORCE_RESYNC`, structured sequence-gap/duplicate reject, and
+`ChatMessageDTO.rejectReason` where applicable (structured payload code wins).
+
+```text
+SEQUENCE_DESYNC
+-> terminal for current session
+-> all gameplay actions blocked
+-> pending identity consumed; no retry
+-> no idle-state mutation
+```
+
+Only proven old-session end plus a different clean session clears it. Never
+repair sequence via memory/network/direct call/forged ACK/local counter. See
+[sequence-desync resolution](sequence_desync_resolution.md).
+
+## Safe UI Recovery
+
+Accepted normal Windows UI flow:
+
+```text
+ACTIVE combat -> << -> confirmation modal -> Đồng ý -> POSTMATCH -> LOBBY
+```
+
+Locator and single-step clicks are implemented. Manual F10-confirmed recovery
+is **PASS**. Automatic recovery is **DISABLED**; an implemented locator is not
+autonomous authorization. See [safe UI recovery](safe_ui_recovery.md).
+
+## Boss Entry
+
+Phase 2D.1: **PASS STRONG**. Current accepted target:
+
+```text
+Starburst
+ID = 1289
+```
+
+Architecture remains target-configurable; source does not hard-code this
+target, and CLI must receive exact ID/name.
+
+```text
+BOSS_LOBBY -> exact target -> one normal UI entry
+-> new MatchId/session -> opening 64/64 -> first local turn -> STOP
+```
+
+Accepted evidence: wrong clicks 0, duplicate clicks 0, stale-session confusion
+0, gameplay inputs after entry 0; foreground loss failed closed with zero input.
+Stop was `NEW_COMBAT_OPENING_READY`. See [Phase 2D.1](phase2d1_report.md).
+The separate WorldBoss-card path remains enumeration/read-only; live rect/
+selection calibration is not accepted.
+
+## Latest Accepted Milestones
+
+- [Phase 2B.5](phase2b5_report.md) — memory board hardening: **PASS STRONG**.
+- [Phase 2C.1](phase2c1_report.md) — single-step input: **PASS STRONG**.
+- [Phase 2C.2C](phase2c2c_report.md) — authoritative PASS/reset cycle: **PASS**.
+- [Phase 2C.2B B3/B5](phase2c2b_report.md) — full BASIC combat:
+  **FULL_MATCH_PASS** (user-confirmed WIN).
+- [Phase 2D.1](phase2d1_report.md) — one-shot boss entry: **PASS STRONG**.
+- [Phase 2D.2](phase2d2_report.md) — **PASS STRONG**; accepted attempt 5
+  autonomously completed one combat, confirmed the result, entered session #2,
+  and hard-stopped before any combat-2 input.
+
+Intermediate retries are historical evidence, not current phase status.
+
+## Current Test Baseline
+
+Verified on **2026-08-15**:
+
+```text
+python -m unittest discover -s tests -v
+Ran 348 tests
+OK
+```
+
+Current baseline: **348/348 PASS**. `python -m compileall -q src tools tests`:
+**PASS**. The suite includes the farm input capability boundary, second-combat
+hard stop, controller lease, entry-region reuse, and farm-owned auto-pause
+terminal-boundary regressions, plus result-modal visual ambiguity/stability and
+single-use postmatch capability coverage.
+
+## Current Known Limitations
+
+- No continuous farm loop; Phase 2D.2 proves only one combat and the boundary
+  through opening #2.
+- The result-modal `Đồng ý` requirement, exact locator, one-click normal-UI
+  path, and resulting lobby transition are live-accepted for the proven modal.
+- Automatic technical recovery, exit, and re-entry are disabled.
+- Combat #2, third entry, and infinite farming are outside accepted scope.
+- `REASONING` is undefined/not implemented.
+- CAST reset **UNKNOWN**; EVOLVE reset **UNKNOWN**.
+- B5 natural full-cycle PASS coverage `NOT_OBSERVED`; controlled 2C.2C proves
+  the complete SWAP reset cycle, while B5 retry 2 proves its dangerous half.
+- Natural zero-legal board `NOT_OBSERVED`; generic unrelated modal traversal
+  **UNKNOWN**.
+- Direct WorldBoss-card entry is not live-calibrated/accepted.
+
+## Superseded Historical Assumptions
+
+- Dot 64/64 is not a production requirement; CV is not production board source.
+- Older PASS-disabled text is historical; bounded authoritative PASS is accepted.
+- Early 3/10-action caps are milestones, not current B5 gameplay caps.
+- Manual opening move is superseded by exact `MATCH_START` bootstrap.
+- Old `BASIC_INTERMEDIATE_FALLBACK_UNDEFINED` behavior is superseded by accepted
+  Shield/Health/general safe-resource fallback.
+
+## Next Phase
+
+**No next phase has been started or approved. Await user review.**
+
+```text
+accepted Phase 2D.2 boundary
+-> review evidence
+-> define and explicitly approve the next bounded milestone
+```
+
+Do not infer automatic lobby return from attempt 3; attempt 5 is the accepted
+proof. Continuous farming, general recovery/retry, target rotation, and combat
+#2 automation remain outside the current accepted scope.
+
+## Update Policy for Future Phases
+
+After each accepted phase: update completed/next phase, capabilities, unresolved
+blockers, test baseline, evidence links, and superseded assumptions. Update
+[DECISIONS.md](DECISIONS.md) only when the user changes a gameplay/product rule
+or explicitly approves policy; technical discoveries normally belong here or
+in phase reports.
+
+## New Agent / New Conversation Bootstrap
+
+```text
+Read AGENTS.md first.
+Then read docs/CURRENT_STATE.md and docs/DECISIONS.md.
+
+Treat those files as the canonical current handoff.
+Use phase-specific reports and logs only for deeper evidence.
+Do not rely on previous chat history.
+Do not change gameplay rules recorded in DECISIONS.md.
+Continue only the phase explicitly requested by the user.
+```
+
+Canonical references: [AGENTS.md](../AGENTS.md) and
+[DECISIONS.md](DECISIONS.md).

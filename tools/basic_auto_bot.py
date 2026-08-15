@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 import time
 import traceback
+from contextlib import nullcontext
 from typing import Any, Sequence
 
 try:
@@ -60,6 +61,7 @@ from pokiguard_v2.board_diagnostics import (  # noqa: E402
     write_diagnostic_artifact,
 )
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
+from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.gameplay_ui import (  # noqa: E402
     GameplayControl,
     locate_gameplay_control,
@@ -118,6 +120,97 @@ from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, hex_pointer  # noqa: E402
 from tools.sequence_desync_runtime import RuntimeSequenceMonitor  # noqa: E402
 from tools.sequence_recovery import _live_exit_calibration, _locate_temporally  # noqa: E402
+
+
+@dataclass(frozen=True)
+class SharedCombatRuntime:
+    """Farm-owned live dependencies for one already-proven combat session.
+
+    Passing this object avoids a second attach/provider/executor after entry.
+    The legacy CLI leaves it unset and retains its existing construction path.
+    """
+
+    target: Any
+    provider: MemoryBoardStateProvider
+    monitor: RuntimeSequenceMonitor
+    binding: Any
+    executor: ForegroundClickExecutor
+    backend: NativeWin32Backend
+    expected_session: Any | None = None
+    gameplay_capability: Any | None = None
+
+
+def _reserve_farm_gameplay(
+    runtime: SharedCombatRuntime,
+    *,
+    action: PolicyAction,
+    session: Any,
+    foreground: bool,
+) -> tuple[bool, Any | None]:
+    """Ask the farm ledger at the final input boundary, if farm-owned."""
+
+    if runtime.gameplay_capability is None:
+        return True, None
+    permit = runtime.gameplay_capability.reserve(
+        action=action.value,
+        session=session,
+        foreground=foreground,
+    )
+    return permit is not None, permit
+
+
+def _complete_farm_gameplay(
+    runtime: SharedCombatRuntime,
+    permit: Any | None,
+    *,
+    sent: bool,
+    detail: str,
+) -> bool:
+    if runtime.gameplay_capability is None:
+        return True
+    if permit is None:
+        return False
+    return bool(runtime.gameplay_capability.complete(permit, sent=sent, detail=detail))
+
+
+def _cancel_farm_gameplay(
+    runtime: SharedCombatRuntime,
+    permit: Any | None,
+    *,
+    detail: str,
+) -> None:
+    if runtime.gameplay_capability is not None and permit is not None:
+        runtime.gameplay_capability.cancel(permit, detail=detail)
+
+
+def _prime_transport_for_runtime(
+    runtime: SharedCombatRuntime,
+    *,
+    farm_owned: bool,
+) -> dict[str, Any]:
+    """Entry already learned transport regions; do not rescan them at handoff."""
+
+    if farm_owned:
+        return {
+            "reusedEntryRegionEvidence": True,
+            "expectedSession": runtime.expected_session,
+            "additionalScanBytes": 0,
+        }
+    return runtime.monitor.prime_regions()
+
+
+def _farm_owned_guard_requires_stop(
+    *,
+    farm_owned: bool,
+    status: AutonomousStatus,
+) -> bool:
+    """A farm cycle cannot wait indefinitely for an interactive B5 takeover."""
+
+    return farm_owned and status in {
+        AutonomousStatus.PAUSED_BY_USER,
+        AutonomousStatus.AUTO_PAUSED,
+        AutonomousStatus.RECOVERY_REQUIRED,
+    }
 
 
 @dataclass
@@ -750,6 +843,14 @@ def _local_turn_action_deadline_reached(
     ):
         return False
     return (session, int(turn)) not in consuming_action_turns
+
+
+def _local_turn_deadline_warning_seconds(minimum_action_time: int) -> int:
+    """Use the user-approved actionability floor without an extra margin."""
+
+    if minimum_action_time < 0:
+        raise ValueError("minimum action time cannot be negative")
+    return min(minimum_action_time, 10)
 
 
 def _policy_branch(policy_step: str) -> str:
@@ -1540,7 +1641,41 @@ def _validate_args(args: argparse.Namespace) -> None:
             )
 
 
-def run(args: argparse.Namespace) -> int:
+def _create_shared_combat_runtime(
+    target: Any,
+    args: argparse.Namespace,
+    v1_config: dict[str, Any],
+) -> SharedCombatRuntime:
+    """Create the legacy CLI-owned runtime once, from a clean lobby."""
+
+    backend = NativeWin32Backend()
+    binding = find_window_for_pid(target.pid, backend)
+    executor = ForegroundClickExecutor(
+        backend,
+        click_delay_seconds=float(v1_config.get("click_delay_seconds", 0.25)),
+    )
+    provider = MemoryBoardStateProvider(
+        target,
+        MemoryProviderConfig(
+            max_region_mib=args.max_region_mib,
+            chunk_mib=args.chunk_mib,
+            required_confirmations=2,
+            require_lobby_start=True,
+            allow_ack_heap_scan=True,
+            ack_heap_region_mib=args.ack_heap_region_mib,
+            extended_fusion_ui_region_mib=max(args.max_region_mib, 16),
+        ),
+    )
+    monitor = RuntimeSequenceMonitor(
+        target,
+        max_region_mib=max(args.max_region_mib, 16),
+        chunk_mib=args.chunk_mib,
+        full_rescan_interval=8,
+    )
+    return SharedCombatRuntime(target, provider, monitor, binding, executor, backend)
+
+
+def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None) -> int:
     _validate_args(args)
 
     configured_mana_priority = ManaPriority(args.mana_priority)
@@ -1566,7 +1701,6 @@ def run(args: argparse.Namespace) -> int:
         / f"phase2c2b_stage_{stage_name}_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
     ).resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    backend = NativeWin32Backend()
     hotkeys = AutoHotkeyEdges()
     guard = AutonomousGuard()
     recovery = RecoveryStateMachine()
@@ -1585,48 +1719,29 @@ def run(args: argparse.Namespace) -> int:
         else None
     )
 
-    with attach_target() as target, log_path.open("a", encoding="utf-8", buffering=1) as log:
-        binding = find_window_for_pid(target.pid, backend)
-        executor = ForegroundClickExecutor(
-            backend,
-            click_delay_seconds=float(v1_config.get("click_delay_seconds", 0.25)),
-        )
-        provider = MemoryBoardStateProvider(
-            target,
-            MemoryProviderConfig(
-                max_region_mib=args.max_region_mib,
-                chunk_mib=args.chunk_mib,
-                required_confirmations=2,
-                require_lobby_start=True,
-                # Transport remains the fast path. If a short-lived Newtonsoft
-                # payload is reclaimed first, retry-8 live measurement proves
-                # a separate 16 MiB bounded WsCombatBatch scan can recover the
-                # exact latest ACK in about 1.94 s. The unrestricted 3.36 GiB
-                # process scan remains disabled (14.5 s measured).
-                allow_ack_heap_scan=True,
-                ack_heap_region_mib=args.ack_heap_region_mib,
-                # Live evidence places FusionCardUI allocations in a 14.3 MiB
-                # managed region.  Only the card class is scanned in the
-                # extension, once per game-owned eligible local turn; board
-                # and DTO scans retain the 8 MiB envelope.
-                extended_fusion_ui_region_mib=max(args.max_region_mib, 16),
-            ),
-        )
-        # On a freshly started game the managed heap contains high-density
-        # ChatMessageDTO regions just above the provider's 8 MiB board-scan
-        # envelope (live evidence: 11.5 and 12.4 MiB regions).  Widen only the
-        # short-lived MATCH_START/message scan; board/candidate scanning keeps
-        # the stricter configured limit.
+    runtime_owner = attach_target() if shared_runtime is None else nullcontext(shared_runtime.target)
+    with runtime_owner as target, log_path.open("a", encoding="utf-8", buffering=1) as log:
+        runtime = shared_runtime or _create_shared_combat_runtime(target, args, v1_config)
+        binding = runtime.binding
+        executor = runtime.executor
+        provider = runtime.provider
+        monitor = runtime.monitor
+        backend = runtime.backend
         opening_message_max_region_mib = max(args.max_region_mib, 16)
-        monitor = RuntimeSequenceMonitor(
-            target,
-            max_region_mib=opening_message_max_region_mib,
-            chunk_mib=args.chunk_mib,
-            full_rescan_interval=8,
-        )
         try:
-            transport_region_prime = monitor.prime_regions()
-            _write(log, "transport_region_prime", result=transport_region_prime)
+            transport_region_prime = _prime_transport_for_runtime(
+                runtime,
+                farm_owned=shared_runtime is not None,
+            )
+            _write(
+                log,
+                (
+                    "farm_handoff_transport_regions_reused"
+                    if shared_runtime is not None
+                    else "transport_region_prime"
+                ),
+                result=transport_region_prime,
+            )
         except (OSError, RuntimeError, ValueError) as exc:
             # Fail closed naturally until a later bounded full scan learns a
             # live region.  Controller startup remains useful for diagnostics.
@@ -1740,7 +1855,8 @@ def run(args: argparse.Namespace) -> int:
                 flush=True,
             )
 
-        active_session = None
+        active_session = runtime.expected_session
+        handoff_session_pending = runtime.expected_session is not None
         started = time.monotonic()
         last_state: GameState | None = None
         source_decisions: dict[tuple[Any, ...], tuple[PolicyAction, tuple[Any, ...]]] = {}
@@ -1830,19 +1946,35 @@ def run(args: argparse.Namespace) -> int:
                 # An accepted consuming action had no production-ready
                 # baseline at acceptance time. The exact later server payload
                 # now proves a new cycle without synthesizing idleCount=0.
-                pass_coordinator.begin_new_reset_cycle(observed_idle.session_id)
-                counters.reset_baselines_confirmed += 1
-                p3_mandatory_reset_pending = False
-                _write(
-                    log,
-                    "b5_pass_cycle_reset_from_server_idle",
-                    acceptedActivity=activity,
-                    authoritativeIdle=observed_idle,
-                    confidence=confidence,
-                    mandatoryCycleTarget=p3_reset_validation_pending,
-                    currentConfirmedPasses=pass_coordinator.confirmed_passes,
-                    nextTarget="natural BASIC PASS -> authoritative 1/3",
+                reset_accepted = pass_coordinator.begin_new_reset_cycle(
+                    observed_idle.session_id,
+                    reset_source_turn=activity.source_turn,
                 )
+                if reset_accepted:
+                    counters.reset_baselines_confirmed += 1
+                    p3_mandatory_reset_pending = False
+                    _write(
+                        log,
+                        "b5_pass_cycle_reset_from_server_idle",
+                        acceptedActivity=activity,
+                        authoritativeIdle=observed_idle,
+                        confidence=confidence,
+                        mandatoryCycleTarget=p3_reset_validation_pending,
+                        currentConfirmedPasses=pass_coordinator.confirmed_passes,
+                        nextTarget="natural BASIC PASS -> authoritative 1/3",
+                    )
+                else:
+                    _write(
+                        log,
+                        "b5_stale_reset_evidence_ignored",
+                        acceptedActivity=activity,
+                        authoritativeIdle=observed_idle,
+                        confidence=confidence,
+                        lastConfirmedPassSourceTurn=(
+                            pass_coordinator.last_confirmed_pass_source_turn
+                        ),
+                        reason="reset activity did not occur after confirmed PASS",
+                    )
 
         def complete_p3_mandatory_reset(
             activity: Any,
@@ -2272,6 +2404,24 @@ def run(args: argparse.Namespace) -> int:
                         guard.pause(automatic=False)
                     _write(log, "user_pause", key="F7", pending=pending, staleProposalRetained=False)
                     _beep("pause", not args.no_beep)
+
+            if _farm_owned_guard_requires_stop(
+                farm_owned=runtime.gameplay_capability is not None,
+                status=guard.status,
+            ):
+                paused_status = guard.status
+                guard.stop()
+                if stop_reason == "PROCESS_OR_CONTROLLER_STOPPED":
+                    stop_reason = "FARM_GAMEPLAY_AUTO_PAUSED"
+                _write(
+                    log,
+                    "farm_safe_stop_immediate",
+                    reason=stop_reason,
+                    pausedStatus=paused_status,
+                    automaticInputDisabled=True,
+                    userCanTakeOver=True,
+                )
+                break
 
             # MATCH_START may be shorter-lived than Board/Active lifecycle
             # construction. Capture and fully decode it as soon as the direct
@@ -2747,11 +2897,31 @@ def run(args: argparse.Namespace) -> int:
                     time.sleep(args.interval)
                     continue
 
-            if poll.lifecycle_event in {"board_found", "session_changed"} and poll.session_key is not None:
+            if (
+                poll.session_key is not None
+                and (
+                    poll.lifecycle_event in {"board_found", "session_changed"}
+                    or handoff_session_pending
+                )
+            ):
+                if runtime.expected_session is not None and poll.session_key != runtime.expected_session:
+                    guard.stop()
+                    stop_reason = "FARM_HANDOFF_SESSION_MISMATCH"
+                    _write(
+                        log,
+                        "farm_handoff_rejected",
+                        expectedSession=runtime.expected_session,
+                        observedSession=poll.session_key,
+                    )
+                    break
                 active_session = poll.session_key
+                handoff_session_pending = False
+                if runtime.expected_session is not None:
+                    _write(log, "farm_handoff_session_confirmed", session=active_session)
                 if preopening_session is not None:
                     monitor.end_session(preopening_session)
-                monitor.begin_session(active_session, active_session.match_id, clean=True)
+                if runtime.expected_session is None:
+                    monitor.begin_session(active_session, active_session.match_id, clean=True)
                 guard.begin_session()
                 idle_session = _idle_session_id(active_session)
                 if idle_session is None:
@@ -3549,7 +3719,9 @@ def run(args: argparse.Namespace) -> int:
                     else None
                 )
             )
-            deadline_warning_seconds = min(args.minimum_action_time + 2, 10)
+            deadline_warning_seconds = _local_turn_deadline_warning_seconds(
+                args.minimum_action_time
+            )
             if _local_turn_action_deadline_reached(
                 session=active_session,
                 turn=deadline_turn,
@@ -3584,6 +3756,16 @@ def run(args: argparse.Namespace) -> int:
                     userCanTakeOver=True,
                 )
                 _beep("pause", not args.no_beep)
+                if runtime.gameplay_capability is not None:
+                    guard.stop()
+                    _write(
+                        log,
+                        "farm_safe_stop_immediate",
+                        reason=stop_reason,
+                        automaticInputDisabled=True,
+                        userCanTakeOver=True,
+                    )
+                    break
                 time.sleep(args.interval)
                 continue
 
@@ -4557,6 +4739,27 @@ def run(args: argparse.Namespace) -> int:
                     )
                     continue
                 counters.pass_required += 1
+                farm_pass_ok, farm_pass_permit = _reserve_farm_gameplay(
+                    runtime,
+                    action=PolicyAction.PASS,
+                    session=fresh_pass.battle.session_key,
+                    foreground=(
+                        fresh_pass_window.valid
+                        and fresh_pass_window.foreground is True
+                    ),
+                )
+                if not farm_pass_ok:
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                    _write(
+                        log,
+                        "farm_gameplay_capability_denied",
+                        action="PASS",
+                        session=fresh_pass.battle.session_key,
+                        inputSent=False,
+                    )
+                    _beep("pause", not args.no_beep)
+                    break
                 try:
                     pass_attempt = pass_coordinator.start(
                         session_id=_idle_session_id(
@@ -4596,6 +4799,11 @@ def run(args: argparse.Namespace) -> int:
                         policy_selected_pass=True,
                     )
                 except (TypeError, ValueError) as exc:
+                    _cancel_farm_gameplay(
+                        runtime,
+                        farm_pass_permit,
+                        detail=f"PASS start rejected: {exc}",
+                    )
                     guard.pause(automatic=True)
                     stop_reason = "PASS_START_VALIDATION_FAILED"
                     _write(
@@ -4607,7 +4815,27 @@ def run(args: argparse.Namespace) -> int:
                         state=fresh_pass.dedup_key,
                     )
                     _beep("pause", not args.no_beep)
+                    if runtime.gameplay_capability is not None:
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
+                        break
                     continue
+                if not _complete_farm_gameplay(
+                    runtime,
+                    farm_pass_permit,
+                    sent=False,
+                    detail="authoritative PASS wait started; Windows inputs=0",
+                ):
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_COMPLETION_FAILED"
+                    _write(
+                        log,
+                        "farm_gameplay_capability_failed",
+                        action="PASS",
+                        inputSent=False,
+                    )
+                    _beep("pause", not args.no_beep)
+                    break
                 counters.auto_pass_started += 1
                 _write(
                     log,
@@ -4846,7 +5074,45 @@ def run(args: argparse.Namespace) -> int:
                     _write(log, "user_pause", key="F7", checkpoint="BEFORE_SWAP_INPUT", staleProposalRetained=False)
                     _beep("pause", not args.no_beep)
                     continue
-                click = executor.send_swap(binding, plan)
+                farm_window = executor.window_status(binding)
+                farm_swap_ok, farm_swap_permit = _reserve_farm_gameplay(
+                    runtime,
+                    action=PolicyAction.SWAP,
+                    session=fresh.battle.session_key,
+                    foreground=farm_window.valid and farm_window.foreground is True,
+                )
+                if not farm_swap_ok:
+                    _cancel_unsent(guard, identity, consuming_turns=consuming_turns)
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                    _write(
+                        log,
+                        "farm_gameplay_capability_denied",
+                        action="SWAP",
+                        session=fresh.battle.session_key,
+                        inputSent=False,
+                    )
+                    _beep("pause", not args.no_beep)
+                    break
+                try:
+                    click = executor.send_swap(binding, plan)
+                except Exception:
+                    _cancel_farm_gameplay(
+                        runtime,
+                        farm_swap_permit,
+                        detail="SWAP executor raised before result",
+                    )
+                    raise
+                if not _complete_farm_gameplay(
+                    runtime,
+                    farm_swap_permit,
+                    sent=click.sent_clicks > 0,
+                    detail=f"SWAP:{click.status.value};sentClicks={click.sent_clicks}",
+                ):
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_COMPLETION_FAILED"
+                    _beep("pause", not args.no_beep)
+                    break
                 if not click.sent:
                     if click.sent_clicks > 0:
                         # One physical click reached the game. Permanently
@@ -5005,7 +5271,45 @@ def run(args: argparse.Namespace) -> int:
                     _write(log, "user_pause", key="F7", checkpoint="BEFORE_CARD_INPUT", staleProposalRetained=False)
                     _beep("pause", not args.no_beep)
                     continue
-                click = executor.send_normalized_point(binding, locator.normalized_point)
+                farm_window = executor.window_status(binding)
+                farm_card_ok, farm_card_permit = _reserve_farm_gameplay(
+                    runtime,
+                    action=decision.action,
+                    session=fresh.battle.session_key,
+                    foreground=farm_window.valid and farm_window.foreground is True,
+                )
+                if not farm_card_ok:
+                    _cancel_unsent(guard, identity, consuming_turns=consuming_turns)
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                    _write(
+                        log,
+                        "farm_gameplay_capability_denied",
+                        action=decision.action,
+                        session=fresh.battle.session_key,
+                        inputSent=False,
+                    )
+                    _beep("pause", not args.no_beep)
+                    break
+                try:
+                    click = executor.send_normalized_point(binding, locator.normalized_point)
+                except Exception:
+                    _cancel_farm_gameplay(
+                        runtime,
+                        farm_card_permit,
+                        detail=f"{decision.action.value} executor raised before result",
+                    )
+                    raise
+                if not _complete_farm_gameplay(
+                    runtime,
+                    farm_card_permit,
+                    sent=click.sent,
+                    detail=f"{decision.action.value}:{click.status.value}",
+                ):
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_COMPLETION_FAILED"
+                    _beep("pause", not args.no_beep)
+                    break
                 if not click.sent:
                     _cancel_unsent(guard, identity, consuming_turns=consuming_turns)
                     guard.pause(automatic=True)
@@ -5185,7 +5489,8 @@ def run(args: argparse.Namespace) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        return run(args)
+        with AutomationControllerLease(PROJECT_ROOT / "logs" / ".automation_controller.lock"):
+            return run(args)
     except KeyboardInterrupt:
         print("Ctrl+C emergency stop received.")
         return 130

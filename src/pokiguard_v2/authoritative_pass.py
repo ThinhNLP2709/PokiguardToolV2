@@ -87,6 +87,7 @@ class AuthoritativePassCoordinator:
         self._attempt: PassAttempt | None = None
         self._terminal: PassTerminalResult | None = None
         self._confirmed_passes = 0
+        self._last_confirmed_pass_source_turn: int | None = None
         self._turn_end_observed = False
         self._pending_direct_idle: GameOwnedIdleState | None = None
         self._next_local_scans = 0
@@ -104,6 +105,10 @@ class AuthoritativePassCoordinator:
         return self._confirmed_passes
 
     @property
+    def last_confirmed_pass_source_turn(self) -> int | None:
+        return self._last_confirmed_pass_source_turn
+
+    @property
     def gameplay_locked(self) -> bool:
         return self.state is PassWaitState.PASS_WAIT
 
@@ -115,6 +120,7 @@ class AuthoritativePassCoordinator:
             self._attempt = None
             self._terminal = None
             self._confirmed_passes = 0
+            self._last_confirmed_pass_source_turn = None
             self._turn_end_observed = False
             self._pending_direct_idle = None
             self._next_local_scans = 0
@@ -125,6 +131,7 @@ class AuthoritativePassCoordinator:
         self._attempt = None
         self._terminal = None
         self._confirmed_passes = 0
+        self._last_confirmed_pass_source_turn = None
         self._turn_end_observed = False
         self._pending_direct_idle = None
         self._next_local_scans = 0
@@ -234,6 +241,7 @@ class AuthoritativePassCoordinator:
             if inputs != 0:
                 raise AssertionError("a confirmed PASS must send zero gameplay input")
             self._confirmed_passes += 1
+            self._last_confirmed_pass_source_turn = self._attempt.source_turn
         self._terminal = terminal
         self._pending_direct_idle = None
         self.state = PassWaitState.TERMINAL
@@ -432,14 +440,27 @@ class AuthoritativePassCoordinator:
             self.state = PassWaitState.IDLE
         return terminal
 
-    def begin_new_reset_cycle(self, session_id: str) -> None:
+    def begin_new_reset_cycle(
+        self,
+        session_id: str,
+        *,
+        reset_source_turn: int | None = None,
+    ) -> bool:
         """Reset only the bounded PASS budget after a proven consuming reset."""
 
         if self.state is not PassWaitState.IDLE:
             raise ValueError("cannot begin a reset cycle while PASS is active")
         if self._session_id != session_id:
             raise ValueError("reset cycle session mismatch")
+        if (
+            reset_source_turn is not None
+            and self._last_confirmed_pass_source_turn is not None
+            and reset_source_turn <= self._last_confirmed_pass_source_turn
+        ):
+            return False
         self._confirmed_passes = 0
+        self._last_confirmed_pass_source_turn = None
+        return True
 
 
 __all__ = [

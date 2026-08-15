@@ -192,7 +192,7 @@ class AuthoritativePassTests(unittest.TestCase):
         self.assertEqual(first.result, PassResultKind.PASS_CONFIRMED_IDLE_1)
         controller.take_terminal()
 
-        controller.begin_new_reset_cycle(SESSION)
+        self.assertTrue(controller.begin_new_reset_cycle(SESSION))
         next_attempt = self.start(controller)
         self.assertEqual(next_attempt.pass_index, 1)
         after_reset = controller.observe_authoritative_idle(
@@ -204,6 +204,53 @@ class AuthoritativePassTests(unittest.TestCase):
         self.assertEqual(
             after_reset.result, PassResultKind.PASS_CONFIRMED_IDLE_1
         )
+
+    def test_stale_pre_pass_activity_cannot_reset_confirmed_pass_budget(self) -> None:
+        controller = AuthoritativePassCoordinator(max_auto_passes=2)
+        first_attempt = self.start(controller)
+        first = controller.observe_authoritative_idle(
+            idle(1),
+            timestamp="done-1",
+            gameplay_inputs_total=4,
+            newly_observed_after_start=True,
+        )
+        self.assertEqual(first.result, PassResultKind.PASS_CONFIRMED_IDLE_1)
+        controller.take_terminal()
+
+        self.assertFalse(
+            controller.begin_new_reset_cycle(
+                SESSION,
+                reset_source_turn=first_attempt.source_turn,
+            )
+        )
+        self.assertEqual(controller.confirmed_passes, 1)
+        self.assertEqual(
+            controller.last_confirmed_pass_source_turn,
+            first_attempt.source_turn,
+        )
+        next_attempt = self.start(controller)
+        self.assertEqual(next_attempt.pass_index, 2)
+
+    def test_post_pass_activity_can_reset_confirmed_pass_budget(self) -> None:
+        controller = AuthoritativePassCoordinator(max_auto_passes=2)
+        first_attempt = self.start(controller)
+        controller.observe_authoritative_idle(
+            idle(1),
+            timestamp="done-1",
+            gameplay_inputs_total=4,
+            newly_observed_after_start=True,
+        )
+        controller.take_terminal()
+
+        self.assertTrue(
+            controller.begin_new_reset_cycle(
+                SESSION,
+                reset_source_turn=first_attempt.source_turn + 2,
+            )
+        )
+        self.assertEqual(controller.confirmed_passes, 0)
+        self.assertIsNone(controller.last_confirmed_pass_source_turn)
+        self.assertEqual(self.start(controller).pass_index, 1)
 
     def test_first_turn_never_enters_pass_wait(self) -> None:
         controller = AuthoritativePassCoordinator(max_auto_passes=1)
