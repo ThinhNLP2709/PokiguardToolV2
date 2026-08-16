@@ -167,41 +167,51 @@ def _live_exit_calibration(
     width: int,
     height: int,
 ) -> RecoveryUiLocation | None:
-    """Load the already live-proven blinking-control hitbox calibration."""
+    """Load an exact-dimension, live-proven blinking-control calibration."""
 
-    path = PROJECT_ROOT / "reference" / "exit_ui_live_calibration.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("schema") != "pokiguard.exit_ui_calibration.v1":
-            return None
-        if payload.get("processName") != "Pokiguard.exe":
-            return None
-        if payload.get("clientWidth") != width or payload.get("clientHeight") != height:
-            return None
-        point = tuple(float(value) for value in payload["normalizedPoint"])
-        evidence = payload.get("evidence") or {}
-        if (
-            len(point) != 2
-            or evidence.get("clickStatus") != "SENT"
-            or int(evidence.get("confirmModalHits", 0)) < 2
-        ):
-            return None
-        return RecoveryUiLocation(
-            RecoveryControl.EXIT_BACK,
-            True,
-            (point[0], point[1]),
-            0.99,
-            "live_proven_blinking_exit_hitbox_calibration",
-            {
-                "pid": pid,
-                "clientWidth": width,
-                "clientHeight": height,
-                "sourceLog": str(evidence.get("sourceLog")),
-                "confirmModalHits": int(evidence.get("confirmModalHits", 0)),
-            },
-        )
-    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
-        return None
+    paths = sorted(
+        (PROJECT_ROOT / "reference").glob("exit_ui_live_calibration*.json")
+    )
+    for path in paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if payload.get("schema") != "pokiguard.exit_ui_calibration.v1":
+                continue
+            if payload.get("processName") != "Pokiguard.exe":
+                continue
+            if (
+                payload.get("clientWidth") != width
+                or payload.get("clientHeight") != height
+            ):
+                continue
+            point = tuple(float(value) for value in payload["normalizedPoint"])
+            evidence = payload.get("evidence") or {}
+            if (
+                len(point) != 2
+                or evidence.get("clickStatus") != "SENT"
+                or int(evidence.get("confirmModalHits", 0)) < 2
+            ):
+                continue
+            return RecoveryUiLocation(
+                RecoveryControl.EXIT_BACK,
+                True,
+                (point[0], point[1]),
+                0.99,
+                "live_proven_blinking_exit_hitbox_calibration",
+                {
+                    "pid": pid,
+                    "clientWidth": width,
+                    "clientHeight": height,
+                    "calibrationFile": str(path),
+                    "sourceLog": str(evidence.get("sourceLog")),
+                    "confirmModalHits": int(evidence.get("confirmModalHits", 0)),
+                },
+            )
+        except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+    return None
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)

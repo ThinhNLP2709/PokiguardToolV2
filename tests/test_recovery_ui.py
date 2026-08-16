@@ -38,6 +38,9 @@ class RecoveryUiLocatorTests(unittest.TestCase):
         accepted = _live_exit_calibration(pid=2184, width=1294, height=696)
         self.assertIsNotNone(accepted)
         self.assertTrue(accepted.found)
+        current = _live_exit_calibration(pid=2184, width=1280, height=710)
+        self.assertIsNotNone(current)
+        self.assertTrue(current.found)
         self.assertIsNone(
             _live_exit_calibration(pid=2184, width=1280, height=720)
         )

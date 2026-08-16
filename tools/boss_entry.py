@@ -72,9 +72,11 @@ from pokiguard_v2.opening_snapshot import (  # noqa: E402
     JVALUE_TYPE_INFO_RVA,
     NewtonsoftClasses,
     OpeningBoardSnapshot,
+    read_match_payload_board_snapshot,
     read_match_start_opening_snapshot,
 )
 from pokiguard_v2.recovery_ui import locate_confirm_leave  # noqa: E402
+from pokiguard_v2.state import GemType  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     ForegroundClickExecutor,
     HotkeyEdges,
@@ -103,6 +105,28 @@ class SharedEntryRuntime:
     executor: ForegroundClickExecutor
     backend: NativeWin32Backend
     entry_capability: Any | None = None
+
+
+def _retryable_board_messages(
+    observation: Any,
+    decoded_addresses: set[int],
+) -> tuple[Any, ...]:
+    """Return live board DTOs that have not decoded successfully yet.
+
+    ``RuntimeSequenceMonitor.board_messages`` deliberately repeats a live DTO
+    because Newtonsoft can expose the enclosing ChatMessageDTO before its
+    payload is fully populated. A failed decode must therefore remain
+    retryable; only a successfully decoded pointer belongs in
+    ``decoded_addresses``.
+    """
+
+    return tuple(
+        message
+        for message in observation.board_messages
+        if message.event_type in {"MATCH_START", "MATCH_MOVE_RES"}
+        and message.payload_address is not None
+        and message.address not in decoded_addresses
+    )
 
 
 @dataclass(frozen=True)
@@ -701,7 +725,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         pre_session = None
         opening_classes: NewtonsoftClasses | None = None
         preloaded_opening: OpeningBoardSnapshot | None = None
+        preloaded_transports: dict[int, OpeningBoardSnapshot] = {}
+        transport_offered_messages: set[int] = set()
         offered_messages: set[int] = set()
+        opening_offer_pending_confirmation = False
+        opening_confirmation_skip_logged = False
         last_provider_status = None
 
         while target.is_running():
@@ -768,7 +796,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     _write(log, "opening_preload_started", session=pre_session)
 
             monitor_session = active_session or pre_session
-            if monitor_session is not None and new_match_id is not None:
+            if (
+                monitor_session is not None
+                and new_match_id is not None
+                and not (
+                    active_session is not None
+                    and opening_offer_pending_confirmation
+                )
+            ):
                 if opening_classes is None:
                     opening_classes = _opening_classes(target)
                 observation = monitor.poll(
@@ -778,33 +813,71 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     srv_seq=(poll.state.battle.srv_seq if poll.state else None),
                     timestamp=utc_timestamp(),
                 )
-                for message in observation.messages:
-                    if (
-                        message.event_type != "MATCH_START"
-                        or message.address in offered_messages
-                        or message.payload_address is None
-                        or opening_classes is None
-                    ):
+                for message in _retryable_board_messages(
+                    observation, offered_messages
+                ):
+                    if opening_classes is None:
                         continue
-                    offered_messages.add(message.address)
                     try:
-                        decoded = read_match_start_opening_snapshot(
-                            target.memory,
-                            match_id=new_match_id,
-                            message_address=message.address,
-                            payload_address=message.payload_address,
-                            classes=opening_classes,
-                        )
-                        preloaded_opening = decoded
-                        _write(
-                            log,
-                            "opening_snapshot_preloaded",
-                            messageAddress=hex_pointer(message.address),
-                            matchId=decoded.match_id,
-                            srvSeq=decoded.sequence,
-                            completeCells=len(decoded.cells),
-                            boardHash=board_state_hash(decoded.cells),
-                        )
+                        if message.event_type == "MATCH_START":
+                            decoded = read_match_start_opening_snapshot(
+                                target.memory,
+                                match_id=new_match_id,
+                                message_address=message.address,
+                                payload_address=message.payload_address,
+                                classes=opening_classes,
+                            )
+                            preloaded_opening = decoded
+                            offered_messages.add(message.address)
+                            accepted = None
+                            if active_session is not None:
+                                accepted = provider.offer_opening_snapshot(decoded)
+                                opening_offer_pending_confirmation = bool(accepted)
+                            _write(
+                                log,
+                                "opening_snapshot_preloaded",
+                                messageAddress=hex_pointer(message.address),
+                                matchId=decoded.match_id,
+                                srvSeq=decoded.sequence,
+                                completeCells=len(decoded.cells),
+                                boardHash=board_state_hash(decoded.cells),
+                                offeredAfterSessionBind=active_session is not None,
+                                accepted=accepted,
+                            )
+                        else:
+                            decoded = read_match_payload_board_snapshot(
+                                target.memory,
+                                match_id=new_match_id,
+                                message_address=message.address,
+                                payload_address=message.payload_address,
+                                classes=opening_classes,
+                                event_type=message.event_type,
+                            )
+                            preloaded_transports[message.address] = decoded
+                            offered_messages.add(message.address)
+                            _write(
+                                log,
+                                "transport_board_snapshot_preloaded",
+                                messageAddress=hex_pointer(message.address),
+                                matchId=decoded.match_id,
+                                srvSeq=decoded.sequence,
+                                completeCells=len(decoded.cells),
+                                boardHash=board_state_hash(decoded.cells),
+                            )
+                            if active_session is not None:
+                                accepted = provider.offer_transport_board_snapshot(
+                                    decoded,
+                                    event_type=message.event_type,
+                                )
+                                if accepted:
+                                    transport_offered_messages.add(message.address)
+                                _write(
+                                    log,
+                                    "transport_board_snapshot_offered",
+                                    messageAddress=hex_pointer(message.address),
+                                    srvSeq=decoded.sequence,
+                                    accepted=accepted,
+                                )
                     except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
                         _write(
                             log,
@@ -865,12 +938,165 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     and preloaded_opening.match_id == active_session.match_id
                 ):
                     accepted = provider.offer_opening_snapshot(preloaded_opening)
+                    opening_offer_pending_confirmation = bool(accepted)
                     _write(
                         log,
                         "opening_snapshot_offered",
                         accepted=accepted,
                         opening=preloaded_opening,
                     )
+                for message_address, snapshot in sorted(
+                    preloaded_transports.items(),
+                    key=lambda item: (item[1].sequence, item[0]),
+                ):
+                    if (
+                        message_address in transport_offered_messages
+                        or snapshot.match_id != active_session.match_id
+                    ):
+                        continue
+                    accepted = provider.offer_transport_board_snapshot(
+                        snapshot,
+                        event_type="MATCH_MOVE_RES",
+                    )
+                    if accepted:
+                        transport_offered_messages.add(message_address)
+                    _write(
+                        log,
+                        "transport_board_snapshot_offered",
+                        messageAddress=hex_pointer(message_address),
+                        srvSeq=snapshot.sequence,
+                        accepted=accepted,
+                        offeredAfterSessionBind=True,
+                    )
+
+                # Capture current owner roots and current-match transport DTOs
+                # before the next provider poll can fall back to a broad heap
+                # scan.  This is the same read-only early-transport path used
+                # by the accepted gameplay controller; exact _ackedSeqs proof
+                # is still required inside the provider.
+                captured = provider.capture_transient_batches()
+                _write(
+                    log,
+                    "entry_transient_batches_captured",
+                    identities=captured,
+                    count=len(captured),
+                )
+                if (
+                    opening_classes is not None
+                    and not opening_offer_pending_confirmation
+                ):
+                    early = monitor.poll(
+                        session_key=active_session,
+                        match_id=active_session.match_id,
+                        turn=None,
+                        srv_seq=None,
+                        timestamp=utc_timestamp(),
+                        force_full_scan=True,
+                    )
+                    _write(
+                        log,
+                        "entry_early_transport_scan",
+                        fullScan=early.full_scan_performed,
+                        messageCount=len(early.messages),
+                        boardMessageCount=len(early.board_messages),
+                        elapsedSeconds=early.scan_elapsed_seconds,
+                    )
+                    for message in _retryable_board_messages(
+                        early, offered_messages
+                    ):
+                        try:
+                            if message.event_type == "MATCH_START":
+                                snapshot = read_match_start_opening_snapshot(
+                                    target.memory,
+                                    match_id=active_session.match_id,
+                                    message_address=message.address,
+                                    payload_address=message.payload_address,
+                                    classes=opening_classes,
+                                )
+                                preloaded_opening = snapshot
+                                accepted = provider.offer_opening_snapshot(snapshot)
+                                opening_offer_pending_confirmation = bool(accepted)
+                                offered_messages.add(message.address)
+                                _write(
+                                    log,
+                                    "entry_early_opening_offered",
+                                    messageAddress=hex_pointer(message.address),
+                                    srvSeq=snapshot.sequence,
+                                    boardHash=board_state_hash(snapshot.cells),
+                                    completeCells=len(snapshot.cells),
+                                    accepted=accepted,
+                                )
+                            else:
+                                snapshot = read_match_payload_board_snapshot(
+                                    target.memory,
+                                    match_id=active_session.match_id,
+                                    message_address=message.address,
+                                    payload_address=message.payload_address,
+                                    classes=opening_classes,
+                                    event_type=message.event_type,
+                                )
+                                preloaded_transports[message.address] = snapshot
+                                accepted = provider.offer_transport_board_snapshot(
+                                    snapshot,
+                                    event_type=message.event_type,
+                                )
+                                offered_messages.add(message.address)
+                                if accepted:
+                                    transport_offered_messages.add(message.address)
+                                _write(
+                                    log,
+                                    "entry_early_transport_offered",
+                                    messageAddress=hex_pointer(message.address),
+                                    srvSeq=snapshot.sequence,
+                                    boardHash=board_state_hash(snapshot.cells),
+                                    completeCells=len(snapshot.cells),
+                                    accepted=accepted,
+                                )
+                        except (
+                            ExternalReadError,
+                            LayoutValidationError,
+                            OSError,
+                            ValueError,
+                        ) as exc:
+                            _write(
+                                log,
+                                "entry_early_board_snapshot_rejected",
+                                eventType=message.event_type,
+                                messageAddress=hex_pointer(message.address),
+                                reason=str(exc),
+                            )
+
+            if (
+                active_session is not None
+                and opening_offer_pending_confirmation
+                and not opening_confirmation_skip_logged
+            ):
+                opening_confirmation_skip_logged = True
+                _write(
+                    log,
+                    "entry_opening_confirmation_fast_path",
+                    session=active_session,
+                    reason="accepted MATCH_START opening awaits provider stability polls",
+                    transportScanDeferred=True,
+                )
+
+            if poll.publish and poll.state is not None:
+                _write(
+                    log,
+                    "entry_current_board_published",
+                    reason=poll.reason,
+                    matchId=poll.state.battle.match_id,
+                    session=poll.state.battle.session_key,
+                    turn=poll.state.battle.turn_number,
+                    currentTurnPlayer=poll.state.battle.current_turn_player,
+                    isLocalTurn=poll.state.battle.is_local_turn,
+                    firstLocalTurn=poll.state.battle.is_first_local_turn,
+                    localMoveSequence=poll.state.battle.local_move_sequence,
+                    srvSeq=poll.state.battle.srv_seq,
+                    boardHash=poll.state.battle.board_hash,
+                    sources=poll.state.battle.sources,
+                    confirmations=poll.confirmations,
+                )
 
             if (
                 poll.publish
@@ -881,6 +1107,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 game_state = poll.state
                 source_ok = "ChatMessageDTO.MATCH_START.matchPayload.board" in game_state.battle.sources
                 cells = tuple(cell for row in game_state.board.cells for cell in row)
+                unique_coordinates = len({(cell.row, cell.col) for cell in cells})
+                gem_types_valid = all(cell.gem is not GemType.UNKNOWN for cell in cells)
+                multipliers_valid = all(
+                    cell.multiplier in (1, 2, 3, 4) for cell in cells
+                )
                 opening_ok = bool(
                     game_state.battle.session_key == active_session
                     and game_state.battle.match_id == new_match_id
@@ -889,6 +1120,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     and game_state.battle.is_first_local_turn is True
                     and game_state.battle.local_move_sequence == 0
                     and len(cells) == 64
+                    and unique_coordinates == 64
+                    and gem_types_valid
+                    and multipliers_valid
                     and game_state.board.production_ready
                     and source_ok
                 )
@@ -933,7 +1167,18 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     boardHash=game_state.battle.board_hash,
                     srvSeq=game_state.battle.srv_seq,
                     openingCells=64,
+                    openingUniqueCoordinates=unique_coordinates,
+                    openingGemTypesValid=gem_types_valid,
+                    openingMultipliersValid=multipliers_valid,
+                    openingFreshDto=source_ok,
                     firstLocalTurn=True,
+                    localMoveSequence=game_state.battle.local_move_sequence,
+                    stableConfirmations=poll.confirmations,
+                    openingSource="ChatMessageDTO.MATCH_START.matchPayload.board",
+                    openingProductionReady=game_state.board.production_ready,
+                    turnTimeRemainingSeconds=(
+                        game_state.battle.turn_time_remaining_seconds
+                    ),
                     gameplayInputs=0,
                 )
                 _write(log, "entry_acceptance_complete", result=result)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
 
 from pokiguard_v2.boss_entry import (
@@ -14,7 +15,7 @@ from pokiguard_v2.boss_entry import (
 )
 from pokiguard_v2.boss_entry_ui import locate_chinh_phuc_start
 from pokiguard_v2.win32_screenshot import read_png_rgb
-from tools.boss_entry import _jsonable
+from tools.boss_entry import _jsonable, _retryable_board_messages
 
 
 V1_SCREENSHOTS = Path(r"D:\PokiguardAuto\GameScreenShoot")
@@ -74,6 +75,34 @@ class BossEntryLoggingTests(unittest.TestCase):
     def test_binary_capture_is_summarized_instead_of_serialized(self) -> None:
         self.assertEqual(_jsonable(b"rgb"), {"byteLength": 3})
         self.assertEqual(_jsonable(bytearray(b"rgba")), {"byteLength": 4})
+
+    def test_incomplete_board_dto_remains_retryable_until_decode_succeeds(self) -> None:
+        start = SimpleNamespace(
+            address=0x1000,
+            event_type="MATCH_START",
+            payload_address=0x2000,
+        )
+        move = SimpleNamespace(
+            address=0x3000,
+            event_type="MATCH_MOVE_RES",
+            payload_address=0x4000,
+        )
+        unrelated = SimpleNamespace(
+            address=0x5000,
+            event_type="MATCH_TURN_END",
+            payload_address=0x6000,
+        )
+        observation = SimpleNamespace(board_messages=(start, move, unrelated))
+
+        first = _retryable_board_messages(observation, set())
+        self.assertEqual(first, (start, move))
+        # A failed decode does not mutate the successful-address set, so the
+        # same still-live MATCH_START pointer must be retried next scan.
+        self.assertEqual(_retryable_board_messages(observation, set()), first)
+        self.assertEqual(
+            _retryable_board_messages(observation, {start.address}),
+            (move,),
+        )
 
 
 class BossTargetResolutionTests(unittest.TestCase):

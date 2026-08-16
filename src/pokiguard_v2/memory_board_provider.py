@@ -1858,6 +1858,32 @@ class MemoryBoardStateProvider(BoardStateProvider):
         )
 
         if lifecycle_state is not CombatLifecycleState.ACTIVE:
+            # POSTMATCH may still retain the exact Board -> Active ownership
+            # long enough to expose the server-applied terminal PlayerStats.
+            # Capture it before _clear_lifecycle() deliberately invalidates all
+            # session-scoped pointers.  Empty/ambiguous evidence remains
+            # UNKNOWN; never reuse the last ACTIVE stats as a terminal result.
+            terminal_participants: tuple[ParticipantState, ...] = ()
+            if (
+                lifecycle_state is CombatLifecycleState.POSTMATCH
+                and board is not None
+                and board.active is not None
+            ):
+                terminal_participants = self._participants(board.active)
+            terminal_player = next(
+                (
+                    participant
+                    for participant in terminal_participants
+                    if participant.is_local is True
+                ),
+                None,
+            )
+            terminal_opponents = tuple(
+                participant
+                for participant in terminal_participants
+                if terminal_player is None
+                or participant.actor_number != terminal_player.actor_number
+            )
             lifecycle = (
                 lifecycle_state.value
                 if lifecycle_state is not self._last_combat_lifecycle
@@ -1898,6 +1924,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         match_over=signals.match_over,
                         deferred_game_over=signals.deferred_game_over,
                     ),
+                    player=terminal_player,
+                    opponents=terminal_opponents,
+                    participants=terminal_participants,
                 ),
                 False,
                 lifecycle_observation.reason,
@@ -2389,13 +2418,29 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_cards = cards
         self._last_fusion = fusion
 
+        opening_hash = (
+            board_state_hash(self._opening_snapshot.cells)
+            if self._opening_snapshot is not None
+            and self._opening_snapshot.match_id == match_id
+            else None
+        )
+        latest_ack_hashes = {
+            identity[2]
+            for identity in self._ack_attested
+            if acked.highest is not None and identity[1] == acked.highest
+        }
+        opening_current_at_latest_ack = bool(
+            opening_hash is not None
+            and len(latest_ack_hashes) == 1
+            and opening_hash in latest_ack_hashes
+        )
         opening_authoritative = bool(
-            acked.highest is None
-            and self._opening_snapshot is not None
+            self._opening_snapshot is not None
             and self._opening_snapshot.match_id == match_id
             and action_before.local_move_sequence == 0
             and action_before.last_move_sequence in (None, -1, 0)
             and turn in (0, 1)
+            and (acked.highest is None or opening_current_at_latest_ack)
         )
         if opening_authoritative:
             opening = self._opening_snapshot

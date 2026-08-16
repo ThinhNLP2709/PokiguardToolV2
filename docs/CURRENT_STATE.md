@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-08-15 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-08-16 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,10 +24,47 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2D.2 — PASS STRONG** |
+| Current completed phase | **Phase 2D.4 — PASS STRONG** |
 | Next approved/planned phase | **NONE — await user review/approval** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
+
+Phase 2D.4 accepted both required live boundaries. Stage B1 artifact
+`logs/farm_runs/fc396e1d55dc455390e752e57eb927b2/` proves one TEST_ONLY
+technical recovery followed by a distinct current session, hardened fresh
+opening, full-state/policy recomputation, one safe SWAP, exact ACK, and stop.
+Final invariant `PHASE2D4_RECOVERY_RESUME_PROVEN`; failed MatchId
+`M_a62e5f2f`, recovered MatchId `M_c52277e6`.
+
+Stage B2 artifact
+`logs/farm_runs/8a5ad3f5d02b4871b0baf1a22935a422/` proves bounded continuous farming with
+limits `target_completed_matches=3`, `max_technical_recoveries=1`, and
+`max_match_attempts=5`. It completed three unique matches, performed three
+normal postmatch confirmations, returned to exact BOSS_LOBBY, and stopped with
+`FARM_TARGET_COMPLETED` before entry #4. All farm safety counters are zero;
+final invariant `PHASE2D4_BOUNDED_FARM_PROVEN`. Natural technical failure was
+`NOT_OBSERVED`. Evidence: [Phase 2D.4 report](phase2d4_report.md).
+
+The immutable B2 artifact's raw outcome subtype is `UNKNOWN/0 wins/0 losses`
+because the provider cleared Board/Active ownership before publishing terminal
+PlayerStats. All three stable result frames show `THẮNG` and boss HP 0, so the
+audited result is 3 wins/0 losses alongside authoritative normal POSTMATCH
+completion. Terminal PlayerStats are now captured before lifecycle cleanup;
+missing evidence still fails closed to UNKNOWN. This correction has offline
+tests and requires live re-observation in the next approved bounded run.
+
+Phase 2D.3 accepted artifact `logs/technical_recovery/20260815_232743_777/`
+proves one bounded automatic technical-recovery boundary: explicit TEST_ONLY
+ACTIVE trigger, immediate gameplay lock, exactly one `<<`, exactly one stable
+leave-modal `Đồng ý`, exact BOSS_LOBBY, old-session invalidation, exact
+Starburst 1289, exactly one re-entry, a different MatchId/session/Board/epoch,
+fresh MATCH_START opening 64/64, then hard stop before gameplay. Final invariant
+`PHASE2D3_RECOVERY_BOUNDARY_PROVEN`; all gameplay, duplicate, wrong-target,
+wrong-UI, and stale-session safety counters are zero. Production
+`SEQUENCE_DESYNC` and exact zero-legal dead-board signals dispatch through the
+same coordinator in captured replay/offline integration. Naturally occurring
+live technical failure remains `NOT_OBSERVED`. Evidence:
+[Phase 2D.3 report](phase2d3_report.md).
 
 Phase 2D.2 attempt 3 (`20260815_203412`) structurally completed two entries and
 one autonomous combat, but is **not live-accepted**. The user disclosed after
@@ -316,10 +353,12 @@ AND board ready / no cascade
 AND exhaustive legalMatchProducingMoves == 0
 ```
 
-Missing gates yield UNKNOWN. `legal>0, safe=0` is live but dangerous. Dead board
-is a technical recovery condition: detection/artifact/replay and `EXIT_MATCH`
-proposal exist, but automatic recovery is **DISABLED**. Natural zero-legal
-runtime evidence is `NOT_OBSERVED`. See [dead-board resolution](dead_board_resolution.md).
+Missing gates yield UNKNOWN. `legal>0, safe=0` is live but dangerous. Exact dead
+board now dispatches the bounded Phase 2D.3 technical-recovery coordinator;
+`POLICY_NO_SAFE_MOVE` explicitly does not. The deterministic zero-legal path is
+offline-accepted, while natural zero-legal runtime evidence remains
+`NOT_OBSERVED`. See [dead-board resolution](dead_board_resolution.md) and the
+[Phase 2D.3 report](phase2d3_report.md).
 
 ## Sequence Desync
 
@@ -347,8 +386,12 @@ ACTIVE combat -> << -> confirmation modal -> Đồng ý -> POSTMATCH -> LOBBY
 ```
 
 Locator and single-step clicks are implemented. Manual F10-confirmed recovery
-is **PASS**. Automatic recovery is **DISABLED**; an implemented locator is not
-autonomous authorization. See [safe UI recovery](safe_ui_recovery.md).
+remains **PASS**. Phase 2D.3 additionally live-accepts one coordinator-owned
+automatic recovery for exact technical triggers, with foreground revalidation,
+single-use input permits, exact lobby/target re-entry, fresh opening proof, and
+a hard stop before recovered-combat gameplay. See
+[safe UI recovery](safe_ui_recovery.md) and the
+[Phase 2D.3 report](phase2d3_report.md).
 
 ## Boss Entry
 
@@ -373,6 +416,34 @@ Stop was `NEW_COMBAT_OPENING_READY`. See [Phase 2D.1](phase2d1_report.md).
 The separate WorldBoss-card path remains enumeration/read-only; live rect/
 selection calibration is not accepted.
 
+## Bounded Farm Runner
+
+Phase 2D.4: **PASS STRONG**. The production runner owns the complete bounded
+state machine and the single automation-controller lease:
+
+```text
+BOSS_LOBBY -> exact Starburst 1289 entry -> fresh opening -> full BASIC
+-> normal POSTMATCH confirmation -> exact BOSS_LOBBY -> bounded next entry
+```
+
+Accepted default live bounds are exactly 3 completed matches, at most 1
+technical recovery, and at most 5 fresh match attempts. Progress is explicit
+`FarmRun` state; it is not inferred from MatchId count. Each entry re-resolves
+the target and requires a unique session plus hardened current 64/64 opening.
+Target completion is checked after exact lobby reacquisition, before another
+entry capability can be issued.
+
+Production `SEQUENCE_DESYNC` and exact `DEAD_BOARD_NO_REFRESH` dispatch into
+the same accepted recovery coordinator. Recovery immediately locks gameplay,
+uses normal foreground exit/confirm/re-entry inputs, rejects failed-session
+state, accepts only a distinct current session/opening, then rereads and
+recomputes BASIC. Stage B1 live-proves one accepted consuming action after this
+handoff. Stage B2 had no natural technical failure (`NOT_OBSERVED`).
+
+F9 terminally prevents future input. F7 is deliberately disabled; stale-safe
+farm-level pause/resume has not been accepted. Infinite farming and process
+restart are not implemented. See [Phase 2D.4](phase2d4_report.md).
+
 ## Latest Accepted Milestones
 
 - [Phase 2B.5](phase2b5_report.md) — memory board hardening: **PASS STRONG**.
@@ -384,39 +455,51 @@ selection calibration is not accepted.
 - [Phase 2D.2](phase2d2_report.md) — **PASS STRONG**; accepted attempt 5
   autonomously completed one combat, confirmed the result, entered session #2,
   and hard-stopped before any combat-2 input.
+- [Phase 2D.3](phase2d3_report.md) — **PASS STRONG**; one automatic technical
+  recovery exits, reacquires the exact lobby/target, enters a fresh session,
+  validates opening 64/64, and hard-stops with all safety counters zero.
+- [Phase 2D.4](phase2d4_report.md) — **PASS STRONG**; live recovery resumes
+  fresh BASIC gameplay, and a separate bounded run completes exactly three
+  matches then stops at boss lobby before entry #4 with every safety counter
+  zero.
 
 Intermediate retries are historical evidence, not current phase status.
 
 ## Current Test Baseline
 
-Verified on **2026-08-15**:
+Verified on **2026-08-16**:
 
 ```text
 python -m unittest discover -s tests -v
-Ran 348 tests
+Ran 389 tests
 OK
 ```
 
-Current baseline: **348/348 PASS**. `python -m compileall -q src tools tests`:
-**PASS**. The suite includes the farm input capability boundary, second-combat
-hard stop, controller lease, entry-region reuse, and farm-owned auto-pause
-terminal-boundary regressions, plus result-modal visual ambiguity/stability and
-single-use postmatch capability coverage.
+Current baseline: **389/389 PASS**. `python -m compileall -q src tools tests`:
+**PASS**. The suite additionally covers recovery-resume for captured sequence
+desync and deterministic dead board, target/recovery/attempt hard boundaries,
+session uniqueness, no entry #4, input after stop, single-use farm
+capabilities, exact hardened openings, one-action Stage B1, and terminal
+WIN/LOSS/UNKNOWN classification.
 
 ## Current Known Limitations
 
-- No continuous farm loop; Phase 2D.2 proves only one combat and the boundary
-  through opening #2.
+- Bounded continuous farming is accepted only for the exact Phase 2D.4 limits;
+  infinite/daemon farming and long-duration soak are not accepted.
 - The result-modal `Đồng ý` requirement, exact locator, one-click normal-UI
   path, and resulting lobby transition are live-accepted for the proven modal.
-- Automatic technical recovery, exit, and re-entry are disabled.
-- Combat #2, third entry, and infinite farming are outside accepted scope.
+- Bounded automatic technical recovery is limited to one accepted recovery per
+  Phase 2D.4 run. Recovery-to-fresh-BASIC resume is live accepted.
+- The B2 artifact predates the terminal PlayerStats capture fix, so its raw
+  WIN/LOSS fields remain UNKNOWN despite three audited WIN panels; live
+  re-observation of corrected outcome telemetry is still required.
 - `REASONING` is undefined/not implemented.
 - CAST reset **UNKNOWN**; EVOLVE reset **UNKNOWN**.
 - B5 natural full-cycle PASS coverage `NOT_OBSERVED`; controlled 2C.2C proves
   the complete SWAP reset cycle, while B5 retry 2 proves its dangerous half.
-- Natural zero-legal board `NOT_OBSERVED`; generic unrelated modal traversal
-  **UNKNOWN**.
+- Natural live sequence desync and zero-legal board recovery remain
+  `NOT_OBSERVED`; their production dispatch is replay/offline accepted and was
+  not deliberately induced. Generic unrelated modal traversal is **UNKNOWN**.
 - Direct WorldBoss-card entry is not live-calibrated/accepted.
 
 ## Superseded Historical Assumptions
@@ -433,14 +516,17 @@ single-use postmatch capability coverage.
 **No next phase has been started or approved. Await user review.**
 
 ```text
-accepted Phase 2D.2 boundary
+accepted Phase 2D.4 recovery-resume + bounded three-match farm
 -> review evidence
--> define and explicitly approve the next bounded milestone
+-> optionally define and explicitly approve Phase 2D.5
 ```
 
-Do not infer automatic lobby return from attempt 3; attempt 5 is the accepted
-proof. Continuous farming, general recovery/retry, target rotation, and combat
-#2 automation remain outside the current accepted scope.
+Potential Phase 2D.5 may add a configurable long-duration soak, richer session
+statistics, graceful scheduled stop, and explicitly bounded repeated technical
+recovery. Before relying on raw outcome totals, re-observe the corrected
+memory-backed terminal WIN/LOSS path live. Infinite farming, process relaunch,
+internet recovery, target rotation, and any expanded recovery authority remain
+outside current scope.
 
 ## Update Policy for Future Phases
 

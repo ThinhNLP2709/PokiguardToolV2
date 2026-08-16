@@ -118,7 +118,10 @@ from pokiguard_v2.win32_screenshot import capture_client_png, capture_client_rgb
 from tools.idle_state_watch import ServerMessage, read_match_runtime  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, hex_pointer  # noqa: E402
-from tools.sequence_desync_runtime import RuntimeSequenceMonitor  # noqa: E402
+from tools.sequence_desync_runtime import (  # noqa: E402
+    RuntimeSequenceMonitor,
+    RuntimeSequenceObservation,
+)
 from tools.sequence_recovery import _live_exit_calibration, _locate_temporally  # noqa: E402
 
 
@@ -138,6 +141,7 @@ class SharedCombatRuntime:
     backend: NativeWin32Backend
     expected_session: Any | None = None
     gameplay_capability: Any | None = None
+    technical_recovery_dispatcher: Any | None = None
 
 
 def _reserve_farm_gameplay(
@@ -181,6 +185,35 @@ def _cancel_farm_gameplay(
 ) -> None:
     if runtime.gameplay_capability is not None and permit is not None:
         runtime.gameplay_capability.cancel(permit, detail=detail)
+
+
+def _dispatch_technical_recovery(
+    runtime: SharedCombatRuntime,
+    *,
+    reason: str,
+    state: GameState | None,
+    desync: Any | None = None,
+    analysis: Any | None = None,
+) -> bool:
+    """Dispatch only the two Phase 2D.3 production technical reasons.
+
+    The gameplay controller owns detection and immediate action invalidation;
+    the outer Phase 2D.3 runner owns all recovery UI and re-entry.  Absence of
+    a dispatcher preserves the already accepted standalone/B5 behavior.
+    """
+
+    dispatcher = runtime.technical_recovery_dispatcher
+    if dispatcher is None:
+        return False
+    if reason == "SEQUENCE_DESYNC" and desync is not None:
+        return bool(dispatcher.dispatch_sequence_desync(desync, state=state))
+    if (
+        reason == "DEAD_BOARD_NO_REFRESH"
+        and state is not None
+        and analysis is not None
+    ):
+        return bool(dispatcher.dispatch_dead_board(state, analysis))
+    return False
 
 
 def _prime_transport_for_runtime(
@@ -781,6 +814,38 @@ def _bounded_stop_reason(
     ):
         return "AUTO_PAUSE_SAFETY_LIMIT"
     return None
+
+
+def _runtime_observation_for_controller(
+    target: Any,
+    monitor: RuntimeSequenceMonitor,
+    *,
+    session_key: Any,
+    match_id: str,
+    turn: int | None,
+    srv_seq: int | None,
+    fast_bounded_handoff: bool,
+) -> RuntimeSequenceObservation:
+    """Observe runtime without rescanning the already-proven B1 opening.
+
+    The Phase 2D.4 B1 recovery coordinator hands over the same provider and
+    sequence monitor after it has already proven a fresh opening. On only the
+    first handoff iteration, a direct MatchService read is sufficient to bind
+    turn ownership/timer while preserving those existing proofs. Every later
+    iteration uses the normal monitor so terminal server evidence is still
+    required for the one action.
+    """
+
+    if fast_bounded_handoff:
+        _service, runtime = read_match_runtime(target)
+        return RuntimeSequenceObservation(runtime, (), False)
+    return monitor.poll(
+        session_key=session_key,
+        match_id=match_id,
+        turn=turn,
+        srv_seq=srv_seq,
+        timestamp=utc_timestamp(),
+    )
 
 
 def _record_turn_observation(
@@ -1586,6 +1651,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_args(args: argparse.Namespace) -> None:
+    phase2d4_bounded_handoff = bool(
+        getattr(args, "phase2d4_bounded_handoff", False)
+    )
     if args.intelligence != Intelligence.BASIC.value:
         raise ValueError("REASONING is disabled; Phase 2C.2B Stage B3/B4/B5 supports BASIC only")
     if not 0.05 <= args.interval <= 1.0:
@@ -1598,7 +1666,11 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise ValueError("Stage B3/B4/B5 is exactly one combat; --matches must be 1")
     if args.max_actions is not None:
         raise ValueError("Stage B3/B4/B5 requires --max-actions to be omitted")
-    if args.max_turn_actions != 0:
+    if phase2d4_bounded_handoff and args.max_turn_actions != 1:
+        raise ValueError(
+            "Phase 2D.4 B1 bounded handoff requires --max-turn-actions 1"
+        )
+    if not phase2d4_bounded_handoff and args.max_turn_actions != 0:
         raise ValueError("Stage B3/B4/B5 requires --max-turn-actions 0 (disabled)")
     if not 50 <= args.max_total_input_actions <= 1000:
         raise ValueError(
@@ -1677,6 +1749,12 @@ def _create_shared_combat_runtime(
 
 def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None) -> int:
     _validate_args(args)
+
+    if (
+        bool(getattr(args, "phase2d4_bounded_handoff", False))
+        and shared_runtime is None
+    ):
+        raise ValueError("Phase 2D.4 B1 bounded handoff requires shared runtime")
 
     configured_mana_priority = ManaPriority(args.mana_priority)
     policy = BasicPolicyEngine(
@@ -2337,6 +2415,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             return True
 
         while target.is_running():
+            fast_bounded_handoff_iteration = bool(
+                getattr(args, "phase2d4_bounded_handoff", False)
+                and handoff_session_pending
+                and active_session is not None
+            )
             if b4_cast_acceptance_complete:
                 break
             if args.timeout and time.monotonic() - started >= args.timeout:
@@ -2404,6 +2487,22 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         guard.pause(automatic=False)
                     _write(log, "user_pause", key="F7", pending=pending, staleProposalRetained=False)
                     _beep("pause", not args.no_beep)
+
+            if (
+                guard.status is AutonomousStatus.RECOVERY_REQUIRED
+                and runtime.technical_recovery_dispatcher is not None
+                and runtime.technical_recovery_dispatcher.recovery_pending
+            ):
+                guard.stop()
+                _write(
+                    log,
+                    "technical_recovery_handoff",
+                    reason=stop_reason,
+                    gameplayInputDisabled=True,
+                    pending=None,
+                    automaticUiOwnedByOuterCoordinator=True,
+                )
+                break
 
             if _farm_owned_guard_requires_stop(
                 farm_owned=runtime.gameplay_capability is not None,
@@ -2548,25 +2647,52 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             early_observation = None
             if active_session is not None:
                 try:
-                    early_observation = monitor.poll(
-                        session_key=active_session,
-                        match_id=active_session.match_id,
-                        turn=(
-                            last_state.battle.turn_number
-                            if last_state is not None
-                            else None
-                        ),
-                        srv_seq=(
-                            last_state.battle.srv_seq
-                            if last_state is not None
-                            else None
-                        ),
-                        timestamp=utc_timestamp(),
-                        force_full_scan=bool(
-                            pass_coordinator is not None
-                            and pass_coordinator.gameplay_locked
-                        ),
-                    )
+                    if fast_bounded_handoff_iteration:
+                        early_observation = _runtime_observation_for_controller(
+                            target,
+                            monitor,
+                            session_key=active_session,
+                            match_id=active_session.match_id,
+                            turn=(
+                                last_state.battle.turn_number
+                                if last_state is not None
+                                else None
+                            ),
+                            srv_seq=(
+                                last_state.battle.srv_seq
+                                if last_state is not None
+                                else None
+                            ),
+                            fast_bounded_handoff=True,
+                        )
+                        _write(
+                            log,
+                            "bounded_handoff_direct_runtime_sample",
+                            session=active_session,
+                            runtime=early_observation.runtime,
+                            serverDtoScanPerformed=False,
+                            reusedProvenOpening=True,
+                        )
+                    else:
+                        early_observation = monitor.poll(
+                            session_key=active_session,
+                            match_id=active_session.match_id,
+                            turn=(
+                                last_state.battle.turn_number
+                                if last_state is not None
+                                else None
+                            ),
+                            srv_seq=(
+                                last_state.battle.srv_seq
+                                if last_state is not None
+                                else None
+                            ),
+                            timestamp=utc_timestamp(),
+                            force_full_scan=bool(
+                                pass_coordinator is not None
+                                and pass_coordinator.gameplay_locked
+                            ),
+                        )
                     early_messages = early_observation.messages
                     if (
                         pass_coordinator is not None
@@ -3422,11 +3548,37 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     except (FileExistsError, OSError, RuntimeError, ValueError):
                         pass
                 recovery.desync_detected()
+                recovery_dispatched = _dispatch_technical_recovery(
+                    runtime,
+                    reason="SEQUENCE_DESYNC",
+                    state=last_state,
+                    desync=desync,
+                )
                 _beep("recovery", not args.no_beep)
-                _write(log, "recovery_required", reason="SEQUENCE_DESYNC", automaticExit=False)
+                _write(
+                    log,
+                    "recovery_required",
+                    reason="SEQUENCE_DESYNC",
+                    automaticExit=recovery_dispatched,
+                    technicalRecoveryHandoff=recovery_dispatched,
+                )
                 stop_reason = "REJECTED_SEQUENCE_DESYNC"
 
             if guard.status is AutonomousStatus.RECOVERY_REQUIRED:
+                if (
+                    runtime.technical_recovery_dispatcher is not None
+                    and runtime.technical_recovery_dispatcher.recovery_pending
+                ):
+                    guard.stop()
+                    _write(
+                        log,
+                        "technical_recovery_handoff",
+                        reason=stop_reason,
+                        gameplayInputDisabled=True,
+                        pending=None,
+                        automaticUiOwnedByOuterCoordinator=True,
+                    )
+                    break
                 if poll.combat_lifecycle is not None:
                     recovery.observe_lifecycle(poll.combat_lifecycle.state)
                 if recovery.state is RecoveryLifecycleState.BOSS_MAP_OR_LOBBY:
@@ -3849,7 +4001,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         action=pending_at_end,
                         reason="COMBAT_LIFECYCLE_ENDED",
                     )
-                full_combat_result = _classify_combat_result(last_state)
+                # Prefer terminal PlayerStats captured from the current
+                # POSTMATCH ownership chain.  Fall back to the last ACTIVE
+                # state only when the terminal read is unavailable; that path
+                # correctly remains UNKNOWN unless death was already visible.
+                result_state = (
+                    state
+                    if state.player is not None or bool(state.opponents)
+                    else last_state
+                )
+                full_combat_result = _classify_combat_result(result_state)
                 if ended_session is not None:
                     monitor.end_session(ended_session)
                     ended_idle_session = _idle_session_id(ended_session)
@@ -4864,7 +5025,20 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 guard.require_recovery()
                 recovery.manual_test_required()
                 artifact = _terminal_artifact(root=PROJECT_ROOT / "logs" / "dead_board", event="DEAD_BOARD_NO_REFRESH", target=target, state=state, policy=policy)
-                _write(log, "recovery_required", reason="DEAD_BOARD_NO_REFRESH", artifact=artifact, automaticExit=False)
+                recovery_dispatched = _dispatch_technical_recovery(
+                    runtime,
+                    reason="DEAD_BOARD_NO_REFRESH",
+                    state=state,
+                    analysis=analysis,
+                )
+                _write(
+                    log,
+                    "recovery_required",
+                    reason="DEAD_BOARD_NO_REFRESH",
+                    artifact=artifact,
+                    automaticExit=recovery_dispatched,
+                    technicalRecoveryHandoff=recovery_dispatched,
+                )
                 _beep("recovery", not args.no_beep)
                 continue
             if decision.action is PolicyAction.NONE:

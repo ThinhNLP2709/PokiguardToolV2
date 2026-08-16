@@ -36,7 +36,12 @@ from pokiguard_v2.game_owned_idle import (
     ResetCapability,
     ResetConfidence,
 )
-from pokiguard_v2.state import CombatSessionKey
+from pokiguard_v2.state import (
+    CombatSessionKey,
+    GamePhase,
+    GameState,
+    ParticipantState,
+)
 from tests.test_basic_policy import attack_card, combat_state
 from tools.idle_state_watch import ServerMessage
 from tools.basic_auto_bot import (
@@ -52,6 +57,7 @@ from tools.basic_auto_bot import (
     _bounded_stop_reason,
     _combat_end_stop_reason,
     _fusion_terminal_result,
+    _classify_combat_result,
     _idle_session_id,
     _latest_fusion_for_terminal,
     _local_turn_action_deadline_reached,
@@ -73,6 +79,7 @@ from tools.basic_auto_bot import (
     _record_sent_input_safety,
     _record_turn_observation,
     _reported_cast_reset_confidence,
+    _runtime_observation_for_controller,
     _sent_action_count,
     _turn_consuming_action_count,
     _validate_args,
@@ -997,6 +1004,46 @@ class AutonomousGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "between 50 and 1000"):
             _validate_args(low_input_ceiling)
 
+    def test_phase2d4_b1_internal_handoff_requires_exactly_one_turn_action(self) -> None:
+        bounded = build_parser().parse_args(
+            [
+                "--watch",
+                "--pass-acceptance-stage",
+                "B5",
+                "--reset-evidence",
+                "reset.json",
+            ]
+        )
+        bounded.phase2d4_bounded_handoff = True
+        bounded.max_turn_actions = 1
+        _validate_args(bounded)
+
+        bounded.max_turn_actions = 2
+        with self.assertRaisesRegex(ValueError, "requires --max-turn-actions 1"):
+            _validate_args(bounded)
+
+    @patch("tools.basic_auto_bot.read_match_runtime")
+    def test_phase2d4_b1_fast_handoff_reuses_proven_opening_without_monitor_scan(
+        self, read_runtime
+    ) -> None:
+        runtime = SimpleNamespace(match_id="M_new", turn=1, remaining=6)
+        read_runtime.return_value = (0x1234, runtime)
+        monitor = SimpleNamespace(poll=lambda **_kwargs: self.fail("unexpected scan"))
+
+        observation = _runtime_observation_for_controller(
+            object(),
+            monitor,  # type: ignore[arg-type]
+            session_key=CombatSessionKey(2, 0x4567, "M_new"),
+            match_id="M_new",
+            turn=1,
+            srv_seq=3,
+            fast_bounded_handoff=True,
+        )
+
+        self.assertIs(observation.runtime, runtime)
+        self.assertEqual(observation.messages, ())
+        self.assertFalse(observation.scan_performed)
+
     def test_stage_b3_emergency_ceiling_waits_for_terminal_then_pauses(self) -> None:
         counters = Counters(input_actions_total=100, turn_consuming_actions_total=90)
         state = self._state()
@@ -1596,6 +1643,37 @@ class AutonomousGuardTests(unittest.TestCase):
             TurnTransitionKind.LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT,
         )
         self.assertIsNone(tracker.action)
+
+
+class CombatResultClassificationTests(unittest.TestCase):
+    def test_postmatch_terminal_boss_hp_classifies_win(self) -> None:
+        state = GameState(
+            GamePhase.UNKNOWN,
+            "2026-08-16T00:00:00Z",
+            player=ParticipantState(1, is_local=True, hp=42, max_hp=100),
+            opponents=(
+                ParticipantState(99, is_local=False, is_boss=True, hp=0, max_hp=500),
+            ),
+        )
+
+        self.assertEqual(_classify_combat_result(state), "WIN")
+
+    def test_postmatch_terminal_player_hp_classifies_loss(self) -> None:
+        state = GameState(
+            GamePhase.UNKNOWN,
+            "2026-08-16T00:00:00Z",
+            player=ParticipantState(1, is_local=True, hp=0, max_hp=100),
+            opponents=(
+                ParticipantState(99, is_local=False, is_boss=True, hp=12, max_hp=500),
+            ),
+        )
+
+        self.assertEqual(_classify_combat_result(state), "LOSS")
+
+    def test_missing_terminal_stats_stays_unknown(self) -> None:
+        state = GameState(GamePhase.UNKNOWN, "2026-08-16T00:00:00Z")
+
+        self.assertEqual(_classify_combat_result(state), "ENDED_RESULT_UNKNOWN")
 
 
 class GameplayUiTests(unittest.TestCase):
