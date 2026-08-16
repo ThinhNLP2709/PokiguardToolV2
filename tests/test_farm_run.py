@@ -272,6 +272,45 @@ class RecoveryResumeTests(unittest.TestCase):
         self.assertEqual(snapshot.technical_recoveries, 1)
         self.assertEqual(snapshot.total_recovery_inputs, 3)
 
+    def test_two_bounded_recoveries_validate_each_invocation(self) -> None:
+        run = start_run(FarmRunLimits(3, 2, 5))
+        first, second, third = session(1), session(2), session(3)
+        enter(run, first)
+
+        self.assertTrue(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+        self.assertTrue(run.begin_recovery())
+        recovery_one = complete_recovery_coordinator(first, second)
+        self.assertTrue(
+            run.record_successful_recovery(
+                recovery_one.snapshot().input_records
+            )
+        )
+        self.assertTrue(run.accept_session(second, recovered=True))
+        self.assertTrue(
+            run.accept_opening(opening(second, hash_digit="b"), recovered=True)
+        )
+        self.assertTrue(run.resume_recovered_gameplay(old_state_leak_free=True))
+
+        self.assertTrue(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+        self.assertTrue(run.begin_recovery())
+        recovery_two = complete_recovery_coordinator(second, third)
+        self.assertTrue(
+            run.record_successful_recovery(
+                recovery_two.snapshot().input_records
+            )
+        )
+        self.assertTrue(run.accept_session(third, recovered=True))
+        self.assertTrue(
+            run.accept_opening(opening(third, hash_digit="c"), recovered=True)
+        )
+        self.assertTrue(run.resume_recovered_gameplay(old_state_leak_free=True))
+
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.technical_aborts, 2)
+        self.assertEqual(snapshot.technical_recoveries, 2)
+        self.assertEqual(snapshot.total_recovery_inputs, 6)
+        self.assertEqual(snapshot.safety.nonzero(), {})
+
     def test_failed_old_state_cleanliness_blocks_gameplay(self) -> None:
         run = start_run()
         old, new = session(1), session(2)

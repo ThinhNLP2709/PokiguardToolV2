@@ -24,10 +24,30 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2D.4 — PASS STRONG** |
+| Current completed phase | **Phase 2D.5 — PASS STRONG** |
 | Next approved/planned phase | **NONE — await user review/approval** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
+
+Phase 2D.5 accepted both required live boundaries. Stage B1 artifact
+`logs/farm_runs/4f1608ed395e44e8886244587a5bb9b0/` proves a frozen,
+memory/lifecycle-backed terminal WIN before Board/Active ownership cleanup:
+MatchId `M_d8d290a1`, local HP `64900/105228`, boss HP `0/84180`, confidence
+STRONG, and a consistent `Thắng -> WIN` UI audit. It completed exactly one
+match and stopped at the exact boss lobby before entry #2. Final invariant
+`PHASE2D5_MEMORY_TERMINAL_RESULT_PROVEN`.
+
+Stage B2 artifact
+`logs/farm_runs/b63cd48b836c4aa6bb8f7092c06776aa/` proves the extended
+bounded configuration `target_completed_matches=10`,
+`max_technical_recoveries=2`, `max_match_attempts=14`. It used 10 attempts to
+complete 10 unique matches: 10 STRONG memory WINs, 0 losses, 0 unknowns, and
+10 consistent WIN UI audits. It returned to the exact boss lobby, stopped with
+`FARM_TARGET_COMPLETED`, and reserved no entry #11. Technical aborts,
+recoveries, result conflicts, input-after-stop, and every farm safety counter
+were zero. Final invariant `PHASE2D5_EXTENDED_SOAK_PROVEN`. Natural technical
+failure was `NOT_OBSERVED`; Phase 2D.4 remains the live recovery-resume proof.
+Evidence: [Phase 2D.5 report](phase2d5_report.md).
 
 Phase 2D.4 accepted both required live boundaries. Stage B1 artifact
 `logs/farm_runs/fc396e1d55dc455390e752e57eb927b2/` proves one TEST_ONLY
@@ -50,8 +70,9 @@ because the provider cleared Board/Active ownership before publishing terminal
 PlayerStats. All three stable result frames show `THẮNG` and boss HP 0, so the
 audited result is 3 wins/0 losses alongside authoritative normal POSTMATCH
 completion. Terminal PlayerStats are now captured before lifecycle cleanup;
-missing evidence still fails closed to UNKNOWN. This correction has offline
-tests and requires live re-observation in the next approved bounded run.
+missing evidence still fails closed to UNKNOWN. Phase 2D.5 subsequently
+live-proved the correction in B1 and all ten B2 matches; this paragraph remains
+the historical explanation for the immutable Phase 2D.4 artifact.
 
 Phase 2D.3 accepted artifact `logs/technical_recovery/20260815_232743_777/`
 proves one bounded automatic technical-recovery boundary: explicit TEST_ONLY
@@ -418,7 +439,7 @@ selection calibration is not accepted.
 
 ## Bounded Farm Runner
 
-Phase 2D.4: **PASS STRONG**. The production runner owns the complete bounded
+Phase 2D.5: **PASS STRONG**. The production runner owns the complete bounded
 state machine and the single automation-controller lease:
 
 ```text
@@ -426,23 +447,34 @@ BOSS_LOBBY -> exact Starburst 1289 entry -> fresh opening -> full BASIC
 -> normal POSTMATCH confirmation -> exact BOSS_LOBBY -> bounded next entry
 ```
 
-Accepted default live bounds are exactly 3 completed matches, at most 1
-technical recovery, and at most 5 fresh match attempts. Progress is explicit
+Accepted Phase 2D.5 live bounds are exactly 10 completed matches, at most 2
+technical recoveries, and at most 14 fresh match attempts. Progress is explicit
 `FarmRun` state; it is not inferred from MatchId count. Each entry re-resolves
 the target and requires a unique session plus hardened current 64/64 opening.
 Target completion is checked after exact lobby reacquisition, before another
 entry capability can be issued.
 
+Terminal classification is frozen before ownership cleanup in a session-bound
+`TerminalCombatSnapshot`. Exact terminal winner/HP evidence is primary;
+postmatch `Thắng`/`Thua` is a secondary consistency audit. Results are
+WIN/LOSS/UNKNOWN with STRONG/PARTIAL/UNKNOWN provenance. Strong results cannot
+be downgraded by later cleanup. Normal completion is counted exactly once;
+technical aborts do not increment completion; UI/memory conflict safe-stops at
+the lobby. Accepted B2 accounting is 10 wins, 0 losses, 0 unknowns, 10 unique
+MatchIds, and 10/10 memory/UI consistency.
+
 Production `SEQUENCE_DESYNC` and exact `DEAD_BOARD_NO_REFRESH` dispatch into
 the same accepted recovery coordinator. Recovery immediately locks gameplay,
 uses normal foreground exit/confirm/re-entry inputs, rejects failed-session
 state, accepts only a distinct current session/opening, then rereads and
-recomputes BASIC. Stage B1 live-proves one accepted consuming action after this
-handoff. Stage B2 had no natural technical failure (`NOT_OBSERVED`).
+recomputes BASIC. Phase 2D.4 Stage B1 live-proves one accepted consuming action
+after this handoff. Phase 2D.5 B2 had no natural technical failure
+(`NOT_OBSERVED`).
 
 F9 terminally prevents future input. F7 is deliberately disabled; stale-safe
 farm-level pause/resume has not been accepted. Infinite farming and process
-restart are not implemented. See [Phase 2D.4](phase2d4_report.md).
+restart are not implemented. See [Phase 2D.5](phase2d5_report.md) and its
+[runbook](phase2d5_runbook.md).
 
 ## Latest Accepted Milestones
 
@@ -462,6 +494,10 @@ restart are not implemented. See [Phase 2D.4](phase2d4_report.md).
   fresh BASIC gameplay, and a separate bounded run completes exactly three
   matches then stops at boss lobby before entry #4 with every safety counter
   zero.
+- [Phase 2D.5](phase2d5_report.md) — **PASS STRONG**; B1 freezes a STRONG
+  memory-backed WIN before ownership cleanup, and B2 completes exactly 10
+  STRONG/consistent wins then stops at boss lobby before entry #11 with exact
+  accounting and every safety counter zero.
 
 Intermediate retries are historical evidence, not current phase status.
 
@@ -471,28 +507,33 @@ Verified on **2026-08-16**:
 
 ```text
 python -m unittest discover -s tests -v
-Ran 389 tests
+Ran 409 tests
 OK
 ```
 
-Current baseline: **389/389 PASS**. `python -m compileall -q src tools tests`:
-**PASS**. The suite additionally covers recovery-resume for captured sequence
+Current baseline: **409/409 PASS**. `python -m compileall -q src tools tests`:
+**PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
+WIN/LOSS/UNKNOWN classification, frozen result survival after ownership
+cleanup, UI/memory consistency and conflict, idempotent accounting, two
+independent bounded recovery invocations, recovery-resume for captured sequence
 desync and deterministic dead board, target/recovery/attempt hard boundaries,
-session uniqueness, no entry #4, input after stop, single-use farm
-capabilities, exact hardened openings, one-action Stage B1, and terminal
-WIN/LOSS/UNKNOWN classification.
+session uniqueness, no entry after the configured target, input after stop,
+single-use farm capabilities, exact hardened openings, and one-action Stage B1.
 
 ## Current Known Limitations
 
-- Bounded continuous farming is accepted only for the exact Phase 2D.4 limits;
-  infinite/daemon farming and long-duration soak are not accepted.
+- Bounded continuous farming is accepted for the exact Phase 2D.5 limits:
+  10 completed matches, at most 2 technical recoveries, and at most 14 match
+  attempts. Infinite/daemon farming and process relaunch are not accepted.
 - The result-modal `Đồng ý` requirement, exact locator, one-click normal-UI
   path, and resulting lobby transition are live-accepted for the proven modal.
-- Bounded automatic technical recovery is limited to one accepted recovery per
-  Phase 2D.4 run. Recovery-to-fresh-BASIC resume is live accepted.
-- The B2 artifact predates the terminal PlayerStats capture fix, so its raw
-  WIN/LOSS fields remain UNKNOWN despite three audited WIN panels; live
-  re-observation of corrected outcome telemetry is still required.
+- Phase 2D.5 permits at most two automatic technical recoveries. The successful
+  accepted B2 run required zero; two independent invocations are offline
+  covered, while recovery-to-fresh-BASIC resume remains live accepted from
+  Phase 2D.4.
+- Terminal PlayerStats capture before cleanup is live accepted: B1 and all ten
+  B2 matches were STRONG memory WINs with consistent UI. UNKNOWN remains the
+  fail-closed outcome when evidence disappears too early.
 - `REASONING` is undefined/not implemented.
 - CAST reset **UNKNOWN**; EVOLVE reset **UNKNOWN**.
 - B5 natural full-cycle PASS coverage `NOT_OBSERVED`; controlled 2C.2C proves
@@ -516,17 +557,16 @@ WIN/LOSS/UNKNOWN classification.
 **No next phase has been started or approved. Await user review.**
 
 ```text
-accepted Phase 2D.4 recovery-resume + bounded three-match farm
+accepted Phase 2D.5 terminal-result fidelity + bounded ten-match soak
 -> review evidence
--> optionally define and explicitly approve Phase 2D.5
+-> optionally define and explicitly approve Phase 2D.6
 ```
 
-Potential Phase 2D.5 may add a configurable long-duration soak, richer session
-statistics, graceful scheduled stop, and explicitly bounded repeated technical
-recovery. Before relying on raw outcome totals, re-observe the corrected
-memory-backed terminal WIN/LOSS path live. Infinite farming, process relaunch,
-internet recovery, target rotation, and any expanded recovery authority remain
-outside current scope.
+Potential Phase 2D.6 may address production long-running operation, operator
+controls, graceful stop-after-current-match, persistent farm statistics,
+configuration profiles, and safe resume/restart semantics. Exact scope requires
+explicit approval. Infinite farming, process relaunch, internet recovery,
+target rotation, and expanded recovery authority remain outside current scope.
 
 ## Update Policy for Future Phases
 

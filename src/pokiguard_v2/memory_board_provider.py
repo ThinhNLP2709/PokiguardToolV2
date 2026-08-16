@@ -31,6 +31,7 @@ from .il2cpp_external import (
     ACTIVE_SINGLETON,
     ACTIVE_PLAYER_STATS_TYPE_INFO_RVA,
     BOARD_SINGLETON,
+    BOARD_RESULT_TITLE_OFFSET,
     CHAT_SERVICE_CONNECTING_OFFSET,
     CHAT_SERVICE_EXPLICIT_DISCONNECT_OFFSET,
     CHAT_SERVICE_IS_CONNECTED_OFFSET,
@@ -47,6 +48,7 @@ from .il2cpp_external import (
     FUSION_CARD_UI_TYPE_INFO_RVA,
     MATCH_SERVICE_CURRENT_TURN_PLAYER_OFFSET,
     MATCH_SERVICE_CURRENT_MATCH_ID_OFFSET,
+    MATCH_SERVICE_DEFERRED_WINNER_OFFSET,
     MATCH_SERVICE_PENDING_COMBAT_OFFSET,
     MATCH_SERVICE_CLOCK_PAUSED_OFFSET,
     MATCH_SERVICE_CLOCK_PAUSE_REASON_OFFSET,
@@ -65,6 +67,7 @@ from .il2cpp_external import (
     MATCH_SERVICE_TURN_NUMBER_OFFSET,
     MATCH_SERVICE_TURN_DURATION_SEC_OFFSET,
     MATCH_SERVICE_TURN_TIME_REMAINING_SEC_OFFSET,
+    UNITY_UI_TEXT_VALUE_OFFSET,
     WS_COMBAT_BATCH_TYPE_INFO_RVA,
     ExternalReadError,
     is_canonical_user_pointer,
@@ -105,7 +108,9 @@ from .state import (
     GamePhase,
     GameState,
     ParticipantState,
+    TerminalCombatSnapshot,
 )
+from .terminal_result import capture_terminal_snapshot, merge_terminal_snapshots
 
 
 UNITY_OBJECT_CACHED_PTR_OFFSET = 0x10
@@ -830,6 +835,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_cards: tuple[CardState, ...] = ()
         self._last_fusion: FusionState | None = None
         self._last_published_state: GameState | None = None
+        self._frozen_terminal_snapshot: TerminalCombatSnapshot | None = None
         self._dot_pointer_hits: set[int] = set()
         self._card_addresses: set[int] = set()
         self._fusion_ui_addresses: set[int] = set()
@@ -1283,6 +1289,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_cards = ()
         self._last_fusion = None
         self._last_published_state = None
+        # A new current session is the only point where the prior immutable
+        # POSTMATCH audit record is no longer relevant to provider consumers.
+        self._frozen_terminal_snapshot = None
         self._dot_pointer_hits.clear()
         self._card_addresses.clear()
         self._fusion_ui_addresses.clear()
@@ -1815,6 +1824,21 @@ class MemoryBoardStateProvider(BoardStateProvider):
         except (ExternalReadError, OSError, LayoutValidationError, ValueError):
             return ()
 
+    def _postmatch_ui_text(self, board_instance: int) -> str | None:
+        """Read Board.txtResultTitle.Text.m_Text as secondary UI audit only."""
+
+        try:
+            text_object = self.target.resolver.read_pointer(
+                board_instance + BOARD_RESULT_TITLE_OFFSET
+            )
+            if not is_canonical_user_pointer(text_object):
+                return None
+            return self._read_string_field(
+                text_object, UNITY_UI_TEXT_VALUE_OFFSET, max_length=128
+            )
+        except (ExternalReadError, OSError, LayoutValidationError):
+            return None
+
     def poll(self) -> ProviderPoll:
         self.metrics.polls += 1
         if not self.target.is_running():
@@ -1870,6 +1894,63 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 and board.active is not None
             ):
                 terminal_participants = self._participants(board.active)
+            prior_state = self._last_published_state
+            prior_session = self._session_key
+            terminal_session = prior_session or (
+                self._frozen_terminal_snapshot.session_key
+                if self._frozen_terminal_snapshot is not None
+                else None
+            )
+            deferred_winner: str | None = None
+            if (
+                lifecycle_state is CombatLifecycleState.POSTMATCH
+                and match_service is not None
+                and terminal_session is not None
+                and lifecycle_match_id == terminal_session.match_id
+            ):
+                try:
+                    deferred_winner = self._read_string_field(
+                        match_service, MATCH_SERVICE_DEFERRED_WINNER_OFFSET
+                    )
+                except (ExternalReadError, OSError, LayoutValidationError):
+                    deferred_winner = None
+            ui_text = (
+                self._postmatch_ui_text(board.board_instance)
+                if lifecycle_state is CombatLifecycleState.POSTMATCH
+                and board is not None
+                else None
+            )
+            observed_terminal: TerminalCombatSnapshot | None = None
+            if (
+                lifecycle_state is CombatLifecycleState.POSTMATCH
+                and terminal_session is not None
+            ):
+                observed_terminal = capture_terminal_snapshot(
+                    session_key=terminal_session,
+                    timestamp=utc_timestamp(),
+                    active_state=prior_state,
+                    terminal_participants=terminal_participants,
+                    terminal_event_type=(
+                        "MATCH_GAME_OVER" if deferred_winner else None
+                    ),
+                    terminal_winner=deferred_winner,
+                    local_username=(
+                        prior_state.battle.local_username
+                        if prior_state is not None
+                        else None
+                    ),
+                    ui_text=ui_text,
+                    captured_before_cleanup=bool(
+                        prior_session is not None
+                        or (
+                            self._frozen_terminal_snapshot is not None
+                            and self._frozen_terminal_snapshot.captured_before_cleanup
+                        )
+                    ),
+                )
+                self._frozen_terminal_snapshot = merge_terminal_snapshots(
+                    self._frozen_terminal_snapshot, observed_terminal
+                )
             terminal_player = next(
                 (
                     participant
@@ -1927,6 +2008,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     player=terminal_player,
                     opponents=terminal_opponents,
                     participants=terminal_participants,
+                    terminal_snapshot=self._frozen_terminal_snapshot,
                 ),
                 False,
                 lifecycle_observation.reason,

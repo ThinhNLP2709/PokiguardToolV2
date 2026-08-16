@@ -507,11 +507,13 @@ class GameOwnedIdleCache:
 
         self._accepted_activity = activity
         capability = self.reset_capability(kind)
-        self._baseline = (
-            ResetBaseline(session_id, activity, capability)
-            if capability.production_ready
-            else None
-        )
+        if capability.production_ready:
+            self._baseline = ResetBaseline(session_id, activity, capability)
+        # An accepted consuming action whose own reset capability is not yet
+        # production-ready does not invalidate an earlier confirmed baseline.
+        # With no intervening PASS, that older action still proves the current
+        # pass cycle was reset.  Keep the new activity as the candidate for a
+        # later server-owned reset proof, but do not discard existing proof.
         self.mark_current_state_unproven(
             session_id, f"accepted_{kind.value}_awaiting_authoritative_idle"
         )
@@ -525,7 +527,8 @@ class GameOwnedIdleCache:
         self.begin_session(session_id)
         if self._accepted_activity is not None and self._accepted_activity.kind is kind:
             self._accepted_activity = None
-        self._baseline = None
+        # Rejection of a newer attempted action cannot invalidate an already
+        # confirmed consuming-action baseline from the same session.
 
     def mark_current_state_unproven(self, session_id: str, reason: str) -> None:
         if (

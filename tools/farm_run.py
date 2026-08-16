@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 2D.4 bounded continuous farming and recovery-resume runner."""
+"""Phase 2D.4/2D.5 bounded farming with terminal-result fidelity."""
 
 from __future__ import annotations
 
@@ -35,6 +35,13 @@ from pokiguard_v2.farm_run import (  # noqa: E402
     FarmRunState,
     FarmRunStopReason,
     MatchResult,
+)
+from pokiguard_v2.state import (  # noqa: E402
+    CombatSessionKey,
+    ResultConsistency,
+    TerminalCombatSnapshot,
+    TerminalResult,
+    TerminalResultConfidence,
 )
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
@@ -92,6 +99,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="bounded production multi-match farm",
     )
+    mode.add_argument(
+        "--stage-d5-a-results",
+        action="store_true",
+        help="offline Phase 2D.5 terminal/accounting regression suite; inputs=0",
+    )
+    mode.add_argument(
+        "--stage-d5-b1-terminal",
+        action="store_true",
+        help="exactly one normal match proving memory-backed terminal result",
+    )
+    mode.add_argument(
+        "--stage-d5-b2-soak",
+        action="store_true",
+        help="extended finite Phase 2D.5 soak (recommended 10/2/14)",
+    )
     target = parser.add_mutually_exclusive_group()
     target.add_argument("--boss-id", help="exact runtime boss/enemy pet ID")
     target.add_argument("--boss-name", help="exact NFC/casefold boss name")
@@ -122,7 +144,8 @@ def _validate_args(args: Namespace) -> FarmRunLimits:
         args.max_technical_recoveries,
         args.max_match_attempts,
     )
-    if not args.stage_a_replay and not (args.boss_id or args.boss_name):
+    offline = args.stage_a_replay or args.stage_d5_a_results
+    if not offline and not (args.boss_id or args.boss_name):
         raise ValueError("live farm run requires --boss-id or --boss-name")
     if args.stage_b1_recovery_resume and args.post_recovery_test_consuming_actions != 1:
         raise ValueError("Stage B1 hard-requires exactly one consuming action")
@@ -140,7 +163,14 @@ def _validate_args(args: Namespace) -> FarmRunLimits:
         raise ValueError("scan size arguments are outside safe bounds")
     if not args.max_region_mib <= args.ack_heap_region_mib <= 32:
         raise ValueError("--ack-heap-region-mib must cover --max-region-mib and be <= 32")
-    if not args.stage_a_replay:
+    if args.stage_d5_b1_terminal:
+        limits = FarmRunLimits(1, 0, 1)
+    if args.stage_d5_b2_soak and (
+        limits.target_completed_matches <= 1
+        or limits.max_match_attempts < limits.target_completed_matches
+    ):
+        raise ValueError("Phase 2D.5 B2 requires finite multi-match bounds")
+    if not offline:
         if args.reset_evidence is None or not args.reset_evidence.is_file():
             raise FileNotFoundError("live B5 requires --reset-evidence")
     return limits
@@ -163,6 +193,10 @@ def _recovery_args(args: Namespace, artifacts: Path, *, test_only: bool) -> Name
         lobby_timeout=args.lobby_timeout,
         entry_timeout=args.entry_timeout,
         opening_timeout=args.opening_timeout,
+        # Phase 2D.3 is intentionally a one-recovery state machine per
+        # invocation.  The outer FarmRun owns the bounded soak-wide counter
+        # (for D5 B2, at most two) and creates a fresh coordinator for each
+        # naturally occurring technical failure.
         max_technical_recoveries=1,
         max_region_mib=args.max_region_mib,
         ack_heap_region_mib=args.ack_heap_region_mib,
@@ -274,13 +308,14 @@ def _confirm_postmatch(
     directory: Path,
     interval: float,
     hotkeys: HotkeyEdges,
-) -> bool:
+) -> tuple[bool, TerminalResult, str | None]:
     locations = []
+    ui_observations: list[tuple[TerminalResult, str | None]] = []
     for frame_number in range(1, 4):
         _unused, stop = hotkeys.poll()
         if stop:
             run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
-            return False
+            return False, TerminalResult.UNKNOWN, None
         poll = provider.poll()
         lifecycle = (
             poll.combat_lifecycle.state
@@ -292,7 +327,10 @@ def _confirm_postmatch(
                 FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
                 detail=f"postmatch lifecycle changed to {lifecycle.value}",
             )
-            return False
+            return False, TerminalResult.UNKNOWN, None
+        if poll.state is not None and poll.state.terminal_snapshot is not None:
+            snapshot = poll.state.terminal_snapshot
+            ui_observations.append((snapshot.ui_result, snapshot.ui_text))
         capture = capture_client_rgb(process.pid)
         write_png_rgb(
             directory / f"postmatch_result_frame_{frame_number}.png",
@@ -306,7 +344,7 @@ def _confirm_postmatch(
     proof = prove_stable_result_confirm(locations, required_frames=3)
     if not proof.proven or proof.normalized_point is None:
         run.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS, detail=proof.reason)
-        return False
+        return False, TerminalResult.UNKNOWN, None
     final = provider.poll()
     lifecycle = (
         final.combat_lifecycle.state
@@ -316,27 +354,94 @@ def _confirm_postmatch(
     window = executor.window_status(binding)
     if lifecycle is not CombatLifecycleState.POSTMATCH:
         run.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS)
-        return False
+        return False, TerminalResult.UNKNOWN, None
+    if final.state is not None and final.state.terminal_snapshot is not None:
+        snapshot = final.state.terminal_snapshot
+        ui_observations.append((snapshot.ui_result, snapshot.ui_text))
+    known_ui = [item for item in ui_observations if item[0] is not TerminalResult.UNKNOWN]
+    if len({item[0] for item in known_ui}) > 1:
+        run.safe_stop(
+            FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+            detail="result title changed between validated postmatch frames",
+        )
+        return False, TerminalResult.UNKNOWN, None
+    ui_result, ui_text = (
+        known_ui[-1] if known_ui else (TerminalResult.UNKNOWN, None)
+    )
+    run.record_postmatch_ui_audit(ui_result, ui_text=ui_text)
     permit = run.reserve_postmatch(
         foreground=window.valid and window.foreground is True
     )
     if permit is None:
-        return False
+        return False, ui_result, ui_text
     click = executor.send_normalized_point(binding, proof.normalized_point)
-    return run.complete_postmatch(
-        permit,
-        sent=click.sent,
-        detail=f"RESULT_CONFIRM:{click.status.value}",
+    return (
+        run.complete_postmatch(
+            permit,
+            sent=click.sent,
+            detail=f"RESULT_CONFIRM:{click.status.value}",
+        ),
+        ui_result,
+        ui_text,
     )
 
 
-def _classify_match_result(summary: dict[str, Any] | None) -> MatchResult:
-    value = str((summary or {}).get("fullCombatResult") or "UNKNOWN").upper()
-    if "WIN" in value:
-        return MatchResult.WIN
-    if "LOSS" in value or "LOSE" in value:
-        return MatchResult.LOSS
-    return MatchResult.UNKNOWN
+def _terminal_snapshot_from_summary(
+    summary: dict[str, Any] | None,
+    expected_session: CombatSessionKey,
+) -> TerminalCombatSnapshot:
+    raw = (summary or {}).get("terminalCombatSnapshot")
+    if not isinstance(raw, dict):
+        return TerminalCombatSnapshot(
+            match_id=expected_session.match_id,
+            session_key=expected_session,
+            lifecycle_epoch=expected_session.lifecycle_epoch,
+            timestamp=str((summary or {}).get("timestamp") or "UNKNOWN"),
+            evidence_sources=("TERMINAL_SNAPSHOT_MISSING",),
+        )
+    key_raw = raw.get("session_key") or {}
+    try:
+        key = CombatSessionKey(
+            int(key_raw["lifecycle_epoch"]),
+            int(key_raw["board_instance"]),
+            str(key_raw["match_id"]),
+        )
+        snapshot = TerminalCombatSnapshot(
+            match_id=str(raw["match_id"]),
+            session_key=key,
+            lifecycle_epoch=int(raw["lifecycle_epoch"]),
+            timestamp=str(raw["timestamp"]),
+            turn_number=raw.get("turn_number"),
+            srv_seq=raw.get("srv_seq"),
+            board_hash=raw.get("board_hash"),
+            local_actor_number=raw.get("local_actor_number"),
+            local_hp=raw.get("local_hp"),
+            local_max_hp=raw.get("local_max_hp"),
+            boss_actor_number=raw.get("boss_actor_number"),
+            boss_hp=raw.get("boss_hp"),
+            boss_max_hp=raw.get("boss_max_hp"),
+            terminal_event_type=raw.get("terminal_event_type"),
+            terminal_winner=raw.get("terminal_winner"),
+            result=TerminalResult(str(raw.get("result") or "UNKNOWN")),
+            confidence=TerminalResultConfidence(
+                str(raw.get("confidence") or "UNKNOWN")
+            ),
+            evidence_sources=tuple(raw.get("evidence_sources") or ()),
+            ui_text=raw.get("ui_text"),
+            ui_result=TerminalResult(str(raw.get("ui_result") or "UNKNOWN")),
+            captured_before_cleanup=raw.get("captured_before_cleanup") is True,
+        )
+    except (KeyError, TypeError, ValueError):
+        return TerminalCombatSnapshot(
+            match_id=expected_session.match_id,
+            session_key=expected_session,
+            lifecycle_epoch=expected_session.lifecycle_epoch,
+            timestamp=str((summary or {}).get("timestamp") or "UNKNOWN"),
+            evidence_sources=("TERMINAL_SNAPSHOT_INVALID",),
+        )
+    if snapshot.session_key != expected_session:
+        raise ValueError("terminal snapshot does not match farm-owned session")
+    return snapshot
 
 
 def _merge_combat_safety(run: FarmRun, summary: dict[str, Any] | None) -> None:
@@ -670,6 +775,9 @@ def _stage_a(args: Namespace, limits: FarmRunLimits) -> int:
 
 def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
     stage_b1 = bool(args.stage_b1_recovery_resume)
+    stage_d5_b1 = bool(args.stage_d5_b1_terminal)
+    stage_d5_b2 = bool(args.stage_d5_b2_soak)
+    phase2d5 = stage_d5_b1 or stage_d5_b2
     target = FarmTarget(args.boss_id, args.boss_name)
     run = FarmRun(target, limits=limits)
     root = (args.artifacts or PROJECT_ROOT / "logs" / "farm_runs").resolve()
@@ -705,7 +813,19 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
             writer.event(
                 "farm_run_started",
                 farmRunId=run.farm_run_id,
-                mode=("STAGE_B1_TEST_ONLY" if stage_b1 else "STAGE_B2_PRODUCTION"),
+                mode=(
+                    "PHASE2D5_B1_TERMINAL"
+                    if stage_d5_b1
+                    else (
+                        "PHASE2D5_B2_SOAK"
+                        if stage_d5_b2
+                        else (
+                            "STAGE_B1_TEST_ONLY"
+                            if stage_b1
+                            else "STAGE_B2_PRODUCTION"
+                        )
+                    )
+                ),
                 target=target,
                 limits=limits,
                 F7="DISABLED",
@@ -899,12 +1019,21 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                         run.safe_stop(FarmRunStopReason.COMBAT_SAFE_STOP, detail=combat_reason)
                     continue
 
-                result = _classify_match_result(summary)
-                if not run.normal_combat_ended(result) or not run.observe_postmatch():
+                terminal_snapshot = _terminal_snapshot_from_summary(summary, session)
+                writer.event(
+                    "terminal_result_captured",
+                    attemptIndex=attempt_index,
+                    terminalCombatSnapshot=terminal_snapshot,
+                    persistedBeforeFarmAccounting=True,
+                )
+                if (
+                    not run.normal_combat_ended(terminal_snapshot)
+                    or not run.observe_postmatch()
+                ):
                     continue
                 postmatch_ready = True
                 if combat_reason == "POSTMATCH_RESULT_UI_REQUIRED":
-                    postmatch_ready = _confirm_postmatch(
+                    postmatch_ready, ui_result, ui_text = _confirm_postmatch(
                         run=run,
                         process=process,
                         provider=provider,
@@ -913,6 +1042,18 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                         directory=match_directory,
                         interval=args.interval,
                         hotkeys=hotkeys,
+                    )
+                    writer.event(
+                        "postmatch_ui_audit",
+                        attemptIndex=attempt_index,
+                        memoryResult=terminal_snapshot.result,
+                        uiResult=ui_result,
+                        uiText=ui_text,
+                        consistency=(
+                            run.attempts[-1].result_consistency
+                            if run.attempts
+                            else None
+                        ),
                     )
                 if not postmatch_ready:
                     continue
@@ -961,6 +1102,42 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
             and safety_ok
         )
         invariant = "PHASE2D4_RECOVERY_RESUME_PROVEN" if accepted else "NOT_PROVEN"
+    elif stage_d5_b1:
+        accepted = bool(
+            snapshot.state is FarmRunState.FARM_RUN_COMPLETE
+            and snapshot.stop_reason is FarmRunStopReason.FARM_TARGET_COMPLETED
+            and snapshot.completed_matches == 1
+            and snapshot.wins + snapshot.losses == 1
+            and snapshot.unknown_results == 0
+            and snapshot.memory_terminal_result_proven
+            and snapshot.result_consistent_count == 1
+            and snapshot.result_conflict_count == 0
+            and snapshot.result_accounting_consistent
+            and snapshot.attempt_accounting_consistent
+            and safety_ok
+        )
+        invariant = (
+            "PHASE2D5_MEMORY_TERMINAL_RESULT_PROVEN"
+            if accepted
+            else "NOT_PROVEN"
+        )
+    elif stage_d5_b2:
+        accepted = bool(
+            snapshot.state is FarmRunState.FARM_RUN_COMPLETE
+            and snapshot.stop_reason is FarmRunStopReason.FARM_TARGET_COMPLETED
+            and snapshot.completed_matches == limits.target_completed_matches
+            and snapshot.match_attempts <= limits.max_match_attempts
+            and snapshot.technical_recoveries <= limits.max_technical_recoveries
+            and snapshot.unknown_results == 0
+            and snapshot.result_conflict_count == 0
+            and snapshot.result_accounting_consistent
+            and snapshot.attempt_accounting_consistent
+            and snapshot.memory_terminal_result_proven
+            and safety_ok
+        )
+        invariant = (
+            "PHASE2D5_EXTENDED_SOAK_PROVEN" if accepted else "NOT_PROVEN"
+        )
     else:
         accepted = bool(
             snapshot.state is FarmRunState.FARM_RUN_COMPLETE
@@ -973,7 +1150,11 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
     _write_model_events(writer, run)
     writer.finalize(
         run,
-        stage=("B1" if stage_b1 else "B2"),
+        stage=(
+            "D5_B1"
+            if stage_d5_b1
+            else ("D5_B2" if stage_d5_b2 else ("B1" if stage_b1 else "B2"))
+        ),
         stageResult=("PASS" if accepted else "SAFE_STOP"),
         finalInvariant=invariant,
         stageB1Proof=stage_b1_proof,
@@ -981,7 +1162,8 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
         unexpectedError=unexpected,
     )
     print(
-        f"Phase 2D.4 {'B1' if stage_b1 else 'B2'} "
+        f"{'Phase 2D.5' if phase2d5 else 'Phase 2D.4'} "
+        f"{'B1' if stage_d5_b1 or stage_b1 else 'B2'} "
         f"{'PASS' if accepted else 'STOPPED'} ({invariant}); "
         f"reason={snapshot.stop_reason}; artifacts={writer.directory}",
         flush=True,
@@ -989,8 +1171,41 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
     return 0 if accepted else 2
 
 
+def _stage_d5_a_results() -> int:
+    """Run the no-input terminal/accounting acceptance fixtures."""
+
+    import unittest
+
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    for pattern in ("test_terminal_result.py", "test_farm_run.py"):
+        suite.addTests(
+            loader.discover(str(PROJECT_ROOT / "tests"), pattern=pattern)
+        )
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    accepted = result.wasSuccessful()
+    print(
+        json.dumps(
+            {
+                "stage": "PHASE_2D5_STAGE_A_RESULT_FIDELITY",
+                "accepted": accepted,
+                "testsRun": result.testsRun,
+                "failures": len(result.failures),
+                "errors": len(result.errors),
+                "actualWindowsInputs": 0,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        flush=True,
+    )
+    return 0 if accepted else 2
+
+
 def run(args: Namespace) -> int:
     limits = _validate_args(args)
+    if args.stage_d5_a_results:
+        return _stage_d5_a_results()
     return _stage_a(args, limits) if args.stage_a_replay else _run_live(args, limits)
 
 

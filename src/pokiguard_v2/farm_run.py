@@ -17,13 +17,33 @@ from uuid import uuid4
 
 from .boss_entry import BossLobbyState, FarmTarget
 from .farm_cycle import OpeningEvidence
-from .state import CombatSessionKey
+from .state import (
+    CombatSessionKey,
+    ResultConsistency,
+    TerminalCombatSnapshot,
+    TerminalResult,
+    TerminalResultConfidence,
+)
+from .terminal_result import reconcile_results
 
 
 def utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
         "+00:00", "Z"
     )
+
+
+def _duration_seconds(start: str, end: str | None) -> float | None:
+    if end is None:
+        return None
+    try:
+        return max(
+            0.0,
+            (datetime.fromisoformat(end.replace("Z", "+00:00"))
+             - datetime.fromisoformat(start.replace("Z", "+00:00"))).total_seconds(),
+        )
+    except ValueError:
+        return None
 
 
 def _jsonable(value: Any) -> Any:
@@ -71,6 +91,7 @@ class FarmRunStopReason(str, Enum):
     RECOVERY_FAILED = "RECOVERY_FAILED"
     GAMEPLAY_CAPABILITY_DENIED = "GAMEPLAY_CAPABILITY_DENIED"
     POSTMATCH_UI_AMBIGUOUS = "POSTMATCH_UI_AMBIGUOUS"
+    RESULT_CONFLICT = "RESULT_CONFLICT"
     RETURN_LOBBY_TIMEOUT = "RETURN_LOBBY_TIMEOUT"
     FOREGROUND_LOST = "FOREGROUND_LOST"
     SAFETY_LIMIT_REACHED = "SAFETY_LIMIT_REACHED"
@@ -143,6 +164,9 @@ class FarmRunSafetyCounters:
     postmatch_gameplay_input: int = 0
     lobby_gameplay_input: int = 0
     input_after_farm_stop: int = 0
+    duplicate_postmatch_confirm: int = 0
+    result_double_count: int = 0
+    result_conflict: int = 0
 
     def nonzero(self) -> dict[str, int]:
         return {key: value for key, value in asdict(self).items() if value}
@@ -162,6 +186,7 @@ class MatchTelemetry:
     swap_sent: int = 0
     swap_acknowledged: int = 0
     swap_rejected: int = 0
+    swap_aborted_state_changed: int = 0
     cast_sent: int = 0
     cast_accepted: int = 0
     cast_rejected: int = 0
@@ -174,6 +199,24 @@ class MatchTelemetry:
     normal_postmatch: bool = False
     technical_recovery: bool = False
     next_match_id: str | None = None
+    terminal_snapshot: TerminalCombatSnapshot | None = None
+    terminal_result_confidence: TerminalResultConfidence = (
+        TerminalResultConfidence.UNKNOWN
+    )
+    terminal_result_sources: tuple[str, ...] = ()
+    terminal_local_hp: int | None = None
+    terminal_boss_hp: int | None = None
+    terminal_snapshot_timestamp: str | None = None
+    postmatch_ui_result: TerminalResult = TerminalResult.UNKNOWN
+    postmatch_ui_text: str | None = None
+    result_consistency: ResultConsistency = ResultConsistency.BOTH_UNKNOWN
+    duration_seconds: float | None = None
+    provider_read_errors: int = 0
+    provider_dto_rejections: int = 0
+    provider_stale_skips: int = 0
+    provider_unstable_skips: int = 0
+    provider_ambiguous_latest_skips: int = 0
+    provider_opening_snapshot_rejections: int = 0
 
 
 @dataclass(frozen=True)
@@ -213,6 +256,7 @@ class FarmRunSnapshot:
     completed_matches: int
     wins: int
     losses: int
+    unknown_results: int
     technical_aborts: int
     technical_recoveries: int
     safe_stops: int
@@ -227,6 +271,35 @@ class FarmRunSnapshot:
     input_records: tuple[FarmInputRecord, ...]
     safety: FarmRunSafetyCounters
     events: tuple[FarmRunEvent, ...]
+    unique_match_ids: tuple[str, ...]
+    result_accounting_consistent: bool
+    attempt_accounting_consistent: bool
+    memory_terminal_result_proven: bool
+    result_consistent_count: int
+    memory_incomplete_count: int
+    result_conflict_count: int
+    total_swap_sent: int
+    total_swap_acknowledged: int
+    total_swap_rejected: int
+    total_swap_aborted_state_changed: int
+    total_cast_sent: int
+    total_cast_accepted: int
+    total_cast_rejected: int
+    total_evolve_attempts: int
+    total_evolve_failed: int
+    total_evolve_success: int
+    total_pass_count: int
+    total_provider_read_errors: int
+    total_provider_dto_rejections: int
+    total_provider_stale_skips: int
+    total_provider_unstable_skips: int
+    total_provider_ambiguous_latest_skips: int
+    total_provider_opening_snapshot_rejections: int
+    start_timestamp: str
+    end_timestamp: str | None
+    duration_seconds: float | None
+    average_match_duration_seconds: float | None
+    longest_match_duration_seconds: float | None
 
 
 class FarmRun:
@@ -249,6 +322,7 @@ class FarmRun:
         self.completed_matches = 0
         self.wins = 0
         self.losses = 0
+        self.unknown_results = 0
         self.technical_aborts = 0
         self.technical_recoveries = 0
         self.safe_stops = 0
@@ -263,6 +337,8 @@ class FarmRun:
         self._pending: FarmInputPermit | None = None
         self._recovered_opening: OpeningEvidence | None = None
         self._test_only_recovery_required = False
+        self.start_timestamp = utc_timestamp()
+        self.end_timestamp: str | None = None
         self._event("farm_run_created", target=target, limits=self.limits)
 
     @property
@@ -288,6 +364,50 @@ class FarmRun:
             r.sent for r in self.input_records if r.domain is FarmInputDomain.POSTMATCH_CONFIRM
         )
         recovery = sum(r.sent for r in self.input_records if r.domain.recovery)
+        consistent = sum(
+            item.result_consistency is ResultConsistency.CONSISTENT
+            for item in self.attempts
+        )
+        memory_incomplete = sum(
+            item.result_consistency is ResultConsistency.MEMORY_INCOMPLETE
+            for item in self.attempts
+        )
+        conflicts = sum(
+            item.result_consistency is ResultConsistency.RESULT_CONFLICT
+            for item in self.attempts
+        )
+        accounting_consistent = (
+            self.wins + self.losses + self.unknown_results
+            == self.completed_matches
+        )
+        explicit_other_aborts = sum(
+            item.result is MatchResult.SAFE_STOP for item in self.attempts
+        )
+        attempt_accounting_consistent = (
+            self.match_attempts
+            == self.completed_matches + self.technical_aborts + explicit_other_aborts
+        )
+        memory_proven = bool(
+            self.completed_matches > 0
+            and all(
+                item.terminal_result_confidence
+                is TerminalResultConfidence.STRONG
+                and item.result in {MatchResult.WIN, MatchResult.LOSS}
+                for item in self.attempts
+                if item.result in {
+                    MatchResult.WIN,
+                    MatchResult.LOSS,
+                    MatchResult.UNKNOWN,
+                }
+                and item.end_timestamp is not None
+            )
+        )
+        duration = _duration_seconds(self.start_timestamp, self.end_timestamp)
+        match_durations = [
+            item.duration_seconds
+            for item in self.attempts
+            if item.duration_seconds is not None
+        ]
         return FarmRunSnapshot(
             self.farm_run_id,
             self.target,
@@ -297,6 +417,7 @@ class FarmRun:
             self.completed_matches,
             self.wins,
             self.losses,
+            self.unknown_results,
             self.technical_aborts,
             self.technical_recoveries,
             self.safe_stops,
@@ -311,6 +432,42 @@ class FarmRun:
             tuple(self.input_records),
             FarmRunSafetyCounters(**asdict(self.safety)),
             tuple(self.events),
+            tuple(item.match_id for item in self.attempts),
+            accounting_consistent,
+            attempt_accounting_consistent,
+            memory_proven,
+            consistent,
+            memory_incomplete,
+            conflicts,
+            sum(item.swap_sent for item in self.attempts),
+            sum(item.swap_acknowledged for item in self.attempts),
+            sum(item.swap_rejected for item in self.attempts),
+            sum(item.swap_aborted_state_changed for item in self.attempts),
+            sum(item.cast_sent for item in self.attempts),
+            sum(item.cast_accepted for item in self.attempts),
+            sum(item.cast_rejected for item in self.attempts),
+            sum(item.evolve_attempts for item in self.attempts),
+            sum(item.evolve_failed for item in self.attempts),
+            sum(item.evolve_success for item in self.attempts),
+            sum(item.pass_count for item in self.attempts),
+            sum(item.provider_read_errors for item in self.attempts),
+            sum(item.provider_dto_rejections for item in self.attempts),
+            sum(item.provider_stale_skips for item in self.attempts),
+            sum(item.provider_unstable_skips for item in self.attempts),
+            sum(item.provider_ambiguous_latest_skips for item in self.attempts),
+            sum(
+                item.provider_opening_snapshot_rejections
+                for item in self.attempts
+            ),
+            self.start_timestamp,
+            self.end_timestamp,
+            duration,
+            (
+                sum(match_durations) / len(match_durations)
+                if match_durations
+                else None
+            ),
+            max(match_durations) if match_durations else None,
         )
 
     def observe_initial_lobby(self, lobby: BossLobbyState) -> bool:
@@ -556,6 +713,9 @@ class FarmRun:
         attempt.swap_sent = int(counters.get("swap_sent") or 0)
         attempt.swap_acknowledged = int(counters.get("swap_acknowledged") or 0)
         attempt.swap_rejected = int(counters.get("swap_rejected") or 0)
+        attempt.swap_aborted_state_changed = int(
+            summary.get("swapAbortedDueLifecycle") or 0
+        )
         attempt.cast_sent = int(counters.get("cast_sent") or 0)
         attempt.cast_accepted = int(counters.get("cast_accepted") or 0)
         attempt.cast_rejected = int(counters.get("cast_rejected") or 0)
@@ -565,10 +725,83 @@ class FarmRun:
         attempt.pass_count = int(summary.get("passExecuted") or 0)
         attempt.dead_board = int(counters.get("dead_board") or 0)
         attempt.sequence_desync = int(counters.get("sequence_desync") or 0)
+        provider = summary.get("providerMetrics") or {}
+        prior_attempts = self.attempts[:-1]
+        attempt.provider_read_errors = max(
+            0,
+            int(provider.get("read_errors") or 0)
+            - sum(item.provider_read_errors for item in prior_attempts),
+        )
+        attempt.provider_dto_rejections = max(
+            0,
+            int(provider.get("dto_rejections") or 0)
+            - sum(item.provider_dto_rejections for item in prior_attempts),
+        )
+        attempt.provider_stale_skips = max(
+            0,
+            int(provider.get("stale_skips") or 0)
+            - sum(item.provider_stale_skips for item in prior_attempts),
+        )
+        attempt.provider_unstable_skips = max(
+            0,
+            int(provider.get("unstable_skips") or 0)
+            - sum(item.provider_unstable_skips for item in prior_attempts),
+        )
+        attempt.provider_ambiguous_latest_skips = max(
+            0,
+            int(provider.get("ambiguous_latest_skips") or 0)
+            - sum(
+                item.provider_ambiguous_latest_skips for item in prior_attempts
+            ),
+        )
+        attempt.provider_opening_snapshot_rejections = max(
+            0,
+            int(provider.get("opening_snapshot_rejections") or 0)
+            - sum(
+                item.provider_opening_snapshot_rejections
+                for item in prior_attempts
+            ),
+        )
 
-    def normal_combat_ended(self, result: MatchResult) -> bool:
+    def normal_combat_ended(
+        self, result: MatchResult | TerminalCombatSnapshot
+    ) -> bool:
+        terminal = result if isinstance(result, TerminalCombatSnapshot) else None
+        if (
+            self.state in {FarmRunState.WAIT_POSTMATCH, FarmRunState.WAIT_BOSS_LOBBY}
+            and self.attempts
+            and self.attempts[-1].end_timestamp is not None
+            and (
+                terminal is None
+                or terminal.match_id == self.attempts[-1].match_id
+            )
+        ):
+            # Repeated POSTMATCH provider polling is expected.  It is an
+            # idempotent observation, not a second accounting operation.
+            self._event(
+                "duplicate_terminal_observation_ignored",
+                matchId=self.attempts[-1].match_id,
+            )
+            return True
         if self.state is not FarmRunState.COMBAT_ACTIVE or self.current_attempt is None:
+            self.safety.result_double_count += 1
             return self._reject("normal_combat_end_out_of_order")
+        if terminal is not None:
+            if (
+                terminal.session_key != self.current_session
+                or terminal.match_id != self.current_attempt.match_id
+            ):
+                self.safety.stale_session_confusion += 1
+                self.safe_stop(
+                    FarmRunStopReason.INTERNAL_INVARIANT,
+                    detail="terminal snapshot session mismatch",
+                )
+                return False
+            result = {
+                TerminalResult.WIN: MatchResult.WIN,
+                TerminalResult.LOSS: MatchResult.LOSS,
+                TerminalResult.UNKNOWN: MatchResult.UNKNOWN,
+            }[terminal.result]
         if result not in {MatchResult.WIN, MatchResult.LOSS, MatchResult.UNKNOWN}:
             self.safe_stop(FarmRunStopReason.INTERNAL_INVARIANT, result=result)
             return False
@@ -578,16 +811,71 @@ class FarmRun:
         attempt = self.current_attempt
         attempt.result = result
         attempt.end_timestamp = utc_timestamp()
+        attempt.duration_seconds = _duration_seconds(
+            attempt.start_timestamp, attempt.end_timestamp
+        )
+        if terminal is not None:
+            attempt.terminal_snapshot = terminal
+            attempt.terminal_result_confidence = terminal.confidence
+            attempt.terminal_result_sources = terminal.evidence_sources
+            attempt.terminal_local_hp = terminal.local_hp
+            attempt.terminal_boss_hp = terminal.boss_hp
+            attempt.terminal_snapshot_timestamp = terminal.timestamp
+            attempt.postmatch_ui_result = terminal.ui_result
+            attempt.postmatch_ui_text = terminal.ui_text
+            attempt.result_consistency = reconcile_results(
+                terminal.result, terminal.ui_result
+            )
         self.completed_matches += 1
         if result is MatchResult.WIN:
             self.wins += 1
         elif result is MatchResult.LOSS:
             self.losses += 1
+        else:
+            self.unknown_results += 1
+        if self.wins + self.losses + self.unknown_results != self.completed_matches:
+            self.safe_stop(
+                FarmRunStopReason.INTERNAL_INVARIANT,
+                detail="RESULT_ACCOUNTING_INCONSISTENT",
+            )
+            return False
         self.current_session = None
         self._transition(FarmRunState.WAIT_POSTMATCH, "normal_combat_ended", result=result)
         return True
 
+    def record_postmatch_ui_audit(
+        self, ui_result: TerminalResult, *, ui_text: str | None = None
+    ) -> ResultConsistency | None:
+        if not self.attempts or self.attempts[-1].end_timestamp is None:
+            self._reject("postmatch_ui_audit_out_of_order")
+            return None
+        attempt = self.attempts[-1]
+        memory = {
+            MatchResult.WIN: TerminalResult.WIN,
+            MatchResult.LOSS: TerminalResult.LOSS,
+        }.get(attempt.result, TerminalResult.UNKNOWN)
+        prior = attempt.result_consistency
+        attempt.postmatch_ui_result = ui_result
+        attempt.postmatch_ui_text = ui_text
+        attempt.result_consistency = reconcile_results(memory, ui_result)
+        if (
+            attempt.result_consistency is ResultConsistency.RESULT_CONFLICT
+            and prior is not ResultConsistency.RESULT_CONFLICT
+        ):
+            self.safety.result_conflict += 1
+        self._event(
+            "result_ui_audit",
+            matchId=attempt.match_id,
+            memoryResult=memory,
+            uiResult=ui_result,
+            resultConsistency=attempt.result_consistency,
+            uiText=ui_text,
+        )
+        return attempt.result_consistency
+
     def observe_postmatch(self) -> bool:
+        if self.state is FarmRunState.WAIT_BOSS_LOBBY:
+            return True
         if self.state is not FarmRunState.WAIT_POSTMATCH:
             return self._reject("postmatch_out_of_order")
         self.attempts[-1].normal_postmatch = True
@@ -603,6 +891,7 @@ class FarmRun:
             and r.attempt_index == self.match_attempts
             for r in self.input_records
         ):
+            self.safety.duplicate_postmatch_confirm += 1
             self.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS)
             return None
         if not foreground:
@@ -636,8 +925,19 @@ class FarmRun:
         if lobby is not BossLobbyState.BOSS_LOBBY:
             self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, lobby=lobby)
             return False
+        if (
+            self.attempts
+            and self.attempts[-1].result_consistency
+            is ResultConsistency.RESULT_CONFLICT
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RESULT_CONFLICT,
+                matchId=self.attempts[-1].match_id,
+            )
+            return False
         if self.completed_matches >= self.limits.target_completed_matches:
             self.stop_reason = FarmRunStopReason.FARM_TARGET_COMPLETED
+            self.end_timestamp = utc_timestamp()
             self._transition(FarmRunState.FARM_RUN_COMPLETE, "farm_target_completed")
             return True
         if self.match_attempts >= self.limits.max_match_attempts:
@@ -666,6 +966,9 @@ class FarmRun:
         attempt = self.current_attempt
         attempt.result = MatchResult.TECHNICAL_ABORT
         attempt.end_timestamp = utc_timestamp()
+        attempt.duration_seconds = _duration_seconds(
+            attempt.start_timestamp, attempt.end_timestamp
+        )
         attempt.technical_recovery = True
         if reason == "SEQUENCE_DESYNC":
             attempt.sequence_desync += 1
@@ -692,6 +995,7 @@ class FarmRun:
         if self.state is not FarmRunState.COMBAT_ACTIVE or self._pending is not None:
             return self._reject("stage_b1_completion_out_of_order")
         self.stop_reason = FarmRunStopReason.STAGE_B1_ACTION_ACCEPTED
+        self.end_timestamp = utc_timestamp()
         self.current_session = None
         self._transition(
             FarmRunState.FARM_RUN_COMPLETE,
@@ -718,6 +1022,7 @@ class FarmRun:
             "RECOVERY_TARGET_SELECT": FarmInputDomain.RECOVERY_TARGET_SELECT,
             "RECOVERY_REENTRY": FarmInputDomain.RECOVERY_REENTRY,
         }
+        invocation_sent_domains: list[FarmInputDomain] = []
         for record in records:
             raw = getattr(record, "domain", None)
             name = getattr(raw, "value", raw)
@@ -731,14 +1036,18 @@ class FarmRun:
                 sent=bool(getattr(record, "sent", False)),
                 detail=str(getattr(record, "detail", "")),
             )
-        sent_names = [r.domain for r in self.input_records if r.domain.recovery and r.sent]
-        if sent_names.count(FarmInputDomain.RECOVERY_EXIT) != 1:
+            if bool(getattr(record, "sent", False)):
+                invocation_sent_domains.append(domain)
+        # Validate the one-shot Phase 2D.3 invocation, not the cumulative
+        # farm-run history.  A bounded D5 soak may legitimately complete a
+        # second independent recovery, producing two of each domain overall.
+        if invocation_sent_domains.count(FarmInputDomain.RECOVERY_EXIT) != 1:
             self.safe_stop(FarmRunStopReason.RECOVERY_FAILED, detail="recovery Exit count")
             return False
-        if sent_names.count(FarmInputDomain.RECOVERY_CONFIRM) != 1:
+        if invocation_sent_domains.count(FarmInputDomain.RECOVERY_CONFIRM) != 1:
             self.safe_stop(FarmRunStopReason.RECOVERY_FAILED, detail="recovery confirm count")
             return False
-        if sent_names.count(FarmInputDomain.RECOVERY_REENTRY) != 1:
+        if invocation_sent_domains.count(FarmInputDomain.RECOVERY_REENTRY) != 1:
             self.safe_stop(FarmRunStopReason.RECOVERY_FAILED, detail="recovery re-entry count")
             return False
         self.technical_recoveries += 1
@@ -757,6 +1066,7 @@ class FarmRun:
         self._pending = None
         self.safe_stops += 1
         self.stop_reason = reason
+        self.end_timestamp = self.end_timestamp or utc_timestamp()
         self._transition(FarmRunState.SAFE_STOP, "farm_run_safe_stop", reason=reason, **detail)
 
     def _entry_budget_available(self) -> bool:
@@ -879,7 +1189,10 @@ class FarmRunArtifactWriter:
         self.run_path.write_text(
             json.dumps(
                 {
-                    "schema": "pokiguard.farm_run.v1",
+                    "schema": "pokiguard.farm_run.v2",
+                    "phase2d4BaseCommit": (
+                        "f87eb9ec5f2e794de635a1d4dbe63375371a142c"
+                    ),
                     "snapshot": _jsonable(run.snapshot()),
                     **_jsonable(extra),
                     "memoryWrites": False,

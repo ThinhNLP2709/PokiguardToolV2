@@ -323,6 +323,81 @@ class GameOwnedIdleCacheTests(unittest.TestCase):
         self.assertTrue(readiness.can_pass_now)
         self.assertIsNone(readiness.state)
 
+    def test_unproven_consuming_action_preserves_prior_confirmed_baseline(self) -> None:
+        seeded = ResetCapability(
+            kind=AcceptedActivityKind.SWAP,
+            confirmations=2,
+            required_confirmations=2,
+            confidence=ResetConfidence.RESET_CONFIRMED_BY_SERVER_SEQUENCE,
+            proof_identities=(("proof-1",), ("proof-2",)),
+        )
+        cache = GameOwnedIdleCache(seeded_capabilities=(seeded,))
+        session = "epoch=1|board=0x1234|match=M_test"
+        cache.observe_accepted_activity(
+            session_id=session,
+            kind=AcceptedActivityKind.SWAP,
+            source_message_type="MATCH_MOVE_RES",
+            source_srv_seq=30,
+            source_turn=7,
+            source_timestamp="swap",
+            observed_timestamp="swap-local",
+        )
+        proven = cache.reset_baseline
+        self.assertIsNotNone(proven)
+
+        cast = cache.observe_accepted_activity(
+            session_id=session,
+            kind=AcceptedActivityKind.CAST,
+            source_message_type="DIRECT_CAST_STATE_TRANSITION",
+            source_srv_seq=32,
+            source_turn=9,
+            source_timestamp=None,
+            observed_timestamp="cast-local",
+        )
+
+        self.assertEqual(cache.pending_reset_activity, cast)
+        self.assertEqual(cache.reset_baseline, proven)
+        readiness = cache.pass_readiness(
+            current_session_id=session,
+            local_username="happi",
+            current_turn=11,
+            is_local_turn=True,
+            lifecycle_active=True,
+            is_first_local_turn=False,
+        )
+        self.assertEqual(
+            readiness.readiness, PassReadiness.RESET_BASELINE_CONFIRMED
+        )
+        self.assertEqual(readiness.reset_baseline, proven)
+
+    def test_rejected_action_preserves_prior_confirmed_baseline(self) -> None:
+        seeded = ResetCapability(
+            kind=AcceptedActivityKind.SWAP,
+            confirmations=2,
+            required_confirmations=2,
+            confidence=ResetConfidence.RESET_CONFIRMED_BY_SERVER_SEQUENCE,
+            proof_identities=(("proof-1",), ("proof-2",)),
+        )
+        cache = GameOwnedIdleCache(seeded_capabilities=(seeded,))
+        session = "epoch=1|board=0x1234|match=M_test"
+        cache.observe_accepted_activity(
+            session_id=session,
+            kind=AcceptedActivityKind.SWAP,
+            source_message_type="MATCH_MOVE_RES",
+            source_srv_seq=30,
+            source_turn=7,
+            source_timestamp="accepted",
+            observed_timestamp="accepted-local",
+        )
+        proven = cache.reset_baseline
+
+        cache.observe_rejected_activity(
+            session_id=session, kind=AcceptedActivityKind.SWAP
+        )
+
+        self.assertIsNone(cache.pending_reset_activity)
+        self.assertEqual(cache.reset_baseline, proven)
+
     def test_rejected_swap_does_not_reset_or_invalidate_exact_idle(self) -> None:
         cache = GameOwnedIdleCache()
         state = self.observe(cache, 2)

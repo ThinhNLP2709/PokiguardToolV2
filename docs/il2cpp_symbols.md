@@ -481,6 +481,7 @@ order.
 | Assembly-CSharp | global | `Board` | `isUsingMega` | field | no | `System.Boolean` | `+0x350` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `Board` | `isResuming` | field | no | `System.Boolean` | `+0x368` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `Board` | `isMega1PanelOpen` | field | no | `System.Boolean` | `+0x408` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `Board` | `txtResultTitle` | field | no | `UnityEngine.UI.Text` | `+0x270` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `Board` | `IsPlayerAllowedToMove()` | method | no | `System.Boolean ()` | N/A | UNKNOWN | HIGH; complete native body |
 | Assembly-CSharp | global | `MatchService` | `HasServerClock` backing field | field | no | `System.Boolean` | `+0x128` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `MatchService` | `ClockPaused` backing field | field | no | `System.Boolean` | `+0x129` | N/A | CONFIRMED |
@@ -493,6 +494,8 @@ order.
 | Assembly-CSharp | global | `MatchService` | `get_IsStartGatePaused()` | method | no | `System.Boolean ()` | N/A | UNKNOWN | HIGH; complete native body |
 | Assembly-CSharp | global | `MatchService` | `IsLocalTurn()` | method | no | `System.Boolean ()` | N/A | UNKNOWN | HIGH; complete native body |
 | Assembly-CSharp | global | `MatchService` | `HandleMatchGameOver(ChatMessageDTO)` | method | no | `System.Void (ChatMessageDTO)` | N/A | UNKNOWN | HIGH; complete native body |
+| Assembly-CSharp | global | `BoardWsApplier` | `HandleGameOver(String)` | method | no | `System.Void (System.String)` | N/A | UNKNOWN | HIGH; complete native body |
+| UnityEngine.UI | `UnityEngine.UI` | `Text` | `m_Text` | field | no | `System.String` | `+0xE8` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `ChatService` | type-info global slot | global | yes | `Il2CppClass*` | N/A | `0x350F718` | HIGH |
 | Assembly-CSharp | global | `ChatService` | `_instance` | field | yes | `ChatService` | static `+0x0` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `ChatService` | `isConnected` | field | no | `System.Boolean` | `+0x28` | N/A | CONFIRMED |
@@ -510,8 +513,21 @@ Evidence:
 - `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/MatchService.cs:285-354,1135,1250,1280`
 - `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/MatchService.txt`,
   `get_IsStartGatePaused`, `HandleMatchGameOver`, and `IsLocalTurn`
+- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/BoardWsApplier.cs:860`
+- `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/BoardWsApplier.txt:16799`,
+  `HandleGameOver`
+- `reverse/cpp2il_cs/DiffableCs/UnityEngine.UI/UnityEngine/UI/Text.cs:12`
 - `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/ChatService.cs:143-151,297-300,1131`
 - `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/ChatService.txt`, `get_Instance`
+
+Terminal-result semantics are also native-proven. `HandleMatchGameOver` first
+requires the message MatchId to equal `CurrentMatchId`, reads the exact
+`matchPayload["winner"]` value, sets `_matchOver`, and either raises game-over
+immediately or freezes that string in `_deferredWinner` until presentation is
+idle. `BoardWsApplier.HandleGameOver` treats an exact local
+`ChatService.username` winner as local WIN, and exact `"__BOSS__"` or
+`"BOSS"` as local LOSS. Other strings remain UNKNOWN in the external reader.
+The result-title field is retained only as secondary UI audit evidence.
 
 ### Turn countdown addendum
 

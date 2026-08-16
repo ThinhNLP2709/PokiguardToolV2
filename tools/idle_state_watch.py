@@ -112,6 +112,7 @@ SERVER_EVENT_TYPES = frozenset(
         "MATCH_SKILL_CAST",
         "MATCH_START",
         "MATCH_STARTING",
+        "MATCH_GAME_OVER",
     }
 )
 
@@ -401,6 +402,7 @@ def read_server_message(
                 "reason",
                 "message",
                 "error",
+                "winner",
             ):
                 value_address = entries.get(key)
                 if value_address is None:

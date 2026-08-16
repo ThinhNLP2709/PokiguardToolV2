@@ -103,7 +103,18 @@ from pokiguard_v2.sequence_desync import (  # noqa: E402
 from pokiguard_v2.sequence_desync_artifacts import (  # noqa: E402
     write_sequence_desync_artifact,
 )
-from pokiguard_v2.state import CardState, FusionState, GamePhase, GameState  # noqa: E402
+from pokiguard_v2.state import (  # noqa: E402
+    CardState,
+    FusionState,
+    GamePhase,
+    GameState,
+    TerminalCombatSnapshot,
+    TerminalResult,
+)
+from pokiguard_v2.terminal_result import (  # noqa: E402
+    capture_terminal_snapshot,
+    merge_terminal_snapshots,
+)
 from pokiguard_v2.v1_solver_adapter import V1SolverAdapter  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     AutoHotkeyEdges,
@@ -284,6 +295,7 @@ class Counters:
     local_turns_observed: int = 0
     boss_turns_observed: int = 0
     action_aborted_due_lifecycle: int = 0
+    swap_aborted_due_lifecycle: int = 0
     safety_limit_reached: int = 0
     boss_turn_inputs: int = 0
     postmatch_inputs: int = 0
@@ -1956,6 +1968,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         consuming_action_turns: set[tuple[Any, int]] = set()
         lifecycle_timeline: list[dict[str, Any]] = []
         full_combat_result = "NOT_COMPLETED"
+        terminal_combat_snapshot: TerminalCombatSnapshot | None = None
         session_cleared = False
         combat_ended = False
         postmatch_observation_deadline: float | None = None
@@ -2940,6 +2953,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
                 break
             state = poll.state
+            if state is not None and state.terminal_snapshot is not None:
+                terminal_combat_snapshot = merge_terminal_snapshots(
+                    terminal_combat_snapshot, state.terminal_snapshot
+                )
+                if terminal_combat_snapshot.result is not TerminalResult.UNKNOWN:
+                    full_combat_result = terminal_combat_snapshot.result.value
             if state is not None and state.phase is GamePhase.COMBAT:
                 last_state = state
                 role = _record_turn_observation(
@@ -3266,6 +3285,52 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 pass_coordinator.observe_turn_end()
 
             for message in messages:
+                if (
+                    message.event_type == "MATCH_GAME_OVER"
+                    and active_session is not None
+                    and message.match_id == active_session.match_id
+                ):
+                    winner = dict(message.payload_strings).get("winner")
+                    terminal_observation = capture_terminal_snapshot(
+                        session_key=active_session,
+                        timestamp=utc_timestamp(),
+                        active_state=last_state,
+                        terminal_participants=(
+                            state.participants if state is not None else ()
+                        ),
+                        terminal_event_type="MATCH_GAME_OVER",
+                        terminal_winner=winner,
+                        local_username=(
+                            raw_runtime.local_username
+                            if raw_runtime is not None
+                            else (
+                                last_state.battle.local_username
+                                if last_state is not None
+                                else None
+                            )
+                        ),
+                        ui_text=(
+                            state.terminal_snapshot.ui_text
+                            if state is not None
+                            and state.terminal_snapshot is not None
+                            else None
+                        ),
+                        captured_before_cleanup=True,
+                    )
+                    terminal_combat_snapshot = merge_terminal_snapshots(
+                        terminal_combat_snapshot, terminal_observation
+                    )
+                    if (
+                        terminal_combat_snapshot.result
+                        is not TerminalResult.UNKNOWN
+                    ):
+                        full_combat_result = terminal_combat_snapshot.result.value
+                    _write(
+                        log,
+                        "authoritative_terminal_event_observed",
+                        message=message,
+                        terminalCombatSnapshot=terminal_combat_snapshot,
+                    )
                 authoritative_idle = bool(
                     idle_session is not None
                     and raw_runtime is not None
@@ -3993,6 +4058,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         # transition, which cannot be invented after combat ends.
                         terminal_result = ActionResultKind.ACTION_ABORTED_STATE_CHANGED
                         counters.action_aborted_due_lifecycle += 1
+                        if pending_at_end.identity.action is PolicyAction.SWAP:
+                            counters.swap_aborted_due_lifecycle += 1
                     guard.stop()
                     _write(
                         log,
@@ -4005,12 +4072,40 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 # POSTMATCH ownership chain.  Fall back to the last ACTIVE
                 # state only when the terminal read is unavailable; that path
                 # correctly remains UNKNOWN unless death was already visible.
-                result_state = (
-                    state
-                    if state.player is not None or bool(state.opponents)
-                    else last_state
+                if terminal_combat_snapshot is None and ended_session is not None:
+                    terminal_combat_snapshot = capture_terminal_snapshot(
+                        session_key=ended_session,
+                        timestamp=utc_timestamp(),
+                        active_state=last_state,
+                        terminal_participants=(
+                            state.participants if state is not None else ()
+                        ),
+                        local_username=(
+                            last_state.battle.local_username
+                            if last_state is not None
+                            else None
+                        ),
+                        ui_text=(
+                            state.terminal_snapshot.ui_text
+                            if state is not None
+                            and state.terminal_snapshot is not None
+                            else None
+                        ),
+                        captured_before_cleanup=bool(
+                            state is not None and state.participants
+                        ),
+                    )
+                if terminal_combat_snapshot is not None:
+                    full_combat_result = terminal_combat_snapshot.result.value
+                else:
+                    full_combat_result = "UNKNOWN"
+                _write(
+                    log,
+                    "terminal_combat_snapshot",
+                    session=ended_session,
+                    terminalCombatSnapshot=terminal_combat_snapshot,
+                    persistedBeforeControllerCleanup=True,
                 )
-                full_combat_result = _classify_combat_result(result_state)
                 if ended_session is not None:
                     monitor.end_session(ended_session)
                     ended_idle_session = _idle_session_id(ended_session)
@@ -4042,6 +4137,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     pendingAtEnd=pending_at_end,
                     terminalActionResult=terminal_result,
                     fullCombatResult=full_combat_result,
+                    terminalCombatSnapshot=terminal_combat_snapshot,
                     controllerStopReason=stop_reason,
                     sessionCleared=session_cleared,
                     automaticInputDisabled=True,
@@ -5553,6 +5649,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             ),
             passCycleCoverage=_pass_cycle_coverage(counters),
             fullCombatResult=full_combat_result,
+            terminalCombatSnapshot=terminal_combat_snapshot,
+            providerMetrics=provider.metrics,
             localTurnsObserved=counters.local_turns_observed,
             bossTurnsObserved=counters.boss_turns_observed,
             totalInputs=counters.input_actions_total,
@@ -5571,6 +5669,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 counters.attack_priority_evolve_violations
             ),
             actionAbortedDueLifecycle=counters.action_aborted_due_lifecycle,
+            swapAbortedDueLifecycle=counters.swap_aborted_due_lifecycle,
             localTurnDeadlineSafeStops=counters.local_turn_deadline_safe_stops,
             safetyTelemetry={
                 "duplicate": counters.duplicate_inputs,

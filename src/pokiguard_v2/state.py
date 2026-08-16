@@ -33,6 +33,28 @@ class GamePhase(str, Enum):
     UNKNOWN = "unknown"
 
 
+class TerminalResult(str, Enum):
+    """Normal combat result; ambiguity is represented explicitly."""
+
+    WIN = "WIN"
+    LOSS = "LOSS"
+    UNKNOWN = "UNKNOWN"
+
+
+class TerminalResultConfidence(str, Enum):
+    STRONG = "STRONG"
+    PARTIAL = "PARTIAL"
+    UNKNOWN = "UNKNOWN"
+
+
+class ResultConsistency(str, Enum):
+    CONSISTENT = "CONSISTENT"
+    MEMORY_INCOMPLETE = "MEMORY_INCOMPLETE"
+    UI_INCOMPLETE = "UI_INCOMPLETE"
+    BOTH_UNKNOWN = "BOTH_UNKNOWN"
+    RESULT_CONFLICT = "RESULT_CONFLICT"
+
+
 class GameOwnedIdleStatus(str, Enum):
     """Decision status derived only from server idle/reset evidence."""
 
@@ -322,6 +344,63 @@ class ParticipantState:
 
 
 @dataclass(frozen=True)
+class TerminalCombatSnapshot:
+    """Frozen, session-attributed evidence captured before ownership cleanup.
+
+    This is an audit record, never active gameplay ownership.  A provider may
+    continue returning the immutable record during POSTMATCH after all live
+    Board/Active pointers have been invalidated.
+    """
+
+    match_id: str
+    session_key: CombatSessionKey
+    lifecycle_epoch: int
+    timestamp: str
+    turn_number: int | None = None
+    srv_seq: int | None = None
+    board_hash: str | None = None
+    local_actor_number: int | None = None
+    local_hp: int | None = None
+    local_max_hp: int | None = None
+    boss_actor_number: int | None = None
+    boss_hp: int | None = None
+    boss_max_hp: int | None = None
+    terminal_event_type: str | None = None
+    terminal_winner: str | None = None
+    result: TerminalResult = TerminalResult.UNKNOWN
+    confidence: TerminalResultConfidence = TerminalResultConfidence.UNKNOWN
+    evidence_sources: tuple[str, ...] = ()
+    ui_text: str | None = None
+    ui_result: TerminalResult = TerminalResult.UNKNOWN
+    captured_before_cleanup: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.match_id.strip() or self.match_id != self.session_key.match_id:
+            raise ValueError("terminal match_id must match its session")
+        if self.lifecycle_epoch != self.session_key.lifecycle_epoch:
+            raise ValueError("terminal lifecycle_epoch must match its session")
+        if not self.timestamp:
+            raise ValueError("terminal timestamp is required")
+        if self.turn_number is not None and self.turn_number < 0:
+            raise ValueError("terminal turn_number cannot be negative")
+        if self.srv_seq is not None and self.srv_seq < 0:
+            raise ValueError("terminal srv_seq cannot be negative")
+        for name in ("local_actor_number", "boss_actor_number"):
+            value = getattr(self, name)
+            if value is not None and value <= 0:
+                raise ValueError(f"{name} must be positive when known")
+        for name in ("local_hp", "local_max_hp", "boss_hp", "boss_max_hp"):
+            value = getattr(self, name)
+            if value is not None and value < 0:
+                raise ValueError(f"{name} cannot be negative")
+        if self.confidence is TerminalResultConfidence.STRONG:
+            if self.result is TerminalResult.UNKNOWN:
+                raise ValueError("UNKNOWN terminal result cannot be STRONG")
+            if not self.captured_before_cleanup:
+                raise ValueError("STRONG result must be captured before cleanup")
+
+
+@dataclass(frozen=True)
 class CardState:
     """Current equipped/rendered card and exact recovered CardData metadata."""
 
@@ -393,6 +472,7 @@ class GameState:
     participants: tuple[ParticipantState, ...] = ()
     cards: tuple[CardState, ...] = ()
     fusion: FusionState | None = None
+    terminal_snapshot: TerminalCombatSnapshot | None = None
 
     def __post_init__(self) -> None:
         if not self.timestamp:
