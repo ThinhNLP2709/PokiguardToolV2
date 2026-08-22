@@ -90,11 +90,22 @@ Evidence chính: `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/Board.cs:919-1111
 | Assembly-CSharp | global | Board | `allDots` | field | no | `UnityEngine.GameObject[,]` | `0x140` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `active` | field | no | `Active` | `0x158` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `isCascadeRunning` | field | no | `System.Boolean` | `0x170` | N/A | CONFIRMED |
+| Assembly-CSharp | global | Board | `selectedCards` | field | no | `System.Collections.Generic.List<CardData>` | `0x2F8` | N/A | CONFIRMED |
+| Assembly-CSharp | global | Board | `cardsInHand` | field | no | `System.Collections.Generic.List<UnityEngine.GameObject>` | `0x300` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `isBoardReady` | field | no | `System.Boolean` | `0x348` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `Awake()` | method | no | `System.Void ()` | N/A | UNKNOWN | CONFIRMED signature |
 
 `GameState` là enum global ở
 `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/GameState.cs`: `wait = 0`, `move = 1`.
+
+Cpp2IL ISIL tại
+`reverse/cpp2il_isil/IsilDump/Assembly-CSharp/Board.txt` còn xác minh thứ tự tạo
+UI: `DisplayCardsOnBoard` duyệt `selectedCards`, `EnsureFusionCards` thêm Fusion,
+và `AddFusionSkillCard` thêm skill riêng của pet sau cùng. Đây là evidence dùng
+để xác minh thành phần/thứ tự tạo, không tự nó chứng minh thứ tự hiển thị.
+Quan sát live riêng cho loadout pet chuẩn xác minh Fusion nằm ngoài cùng bên
+trái và các thẻ thường giữ nguyên thứ tự `selectedCards` ở phía sau. Layout có
+skill riêng của pet hiện được đánh dấu DEFERRED và fail-closed, không suy đoán.
 
 ### `allDots` so với `dots`
 
@@ -389,6 +400,8 @@ Evidence is recorded in detail in `docs/card_state_detection.md`.
 | Assembly-CSharp | global | `CardUI` | `lastTurnUsed` | field | no | `System.Int32` | `+0x44` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `CardUI` | `isActionPending` | field | no | `System.Boolean` | `+0x48` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `CardUI` | `isPlaceholder` | field | no | `System.Boolean` | `+0x78` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerRoom` | `selectedCards` | field | no | `System.Collections.Generic.List<CardData>` | `+0x108` | N/A | CONFIRMED; pre-entry lobby loadout |
+| Assembly-CSharp | global | `RoomDTO` | `cards` | field | no | `System.Collections.Generic.List<CardData>` | `+0x50` | N/A | CONFIRMED; room-synchronised pre-entry loadout |
 | Assembly-CSharp | global | `CardData` | `cardId` | field | no | `System.Int64` | `+0x18` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `CardData` | `description` | field | no | `System.String` | `+0x28` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `CardData` | `elementTypeCard` | field | no | `System.String` | `+0x30` | N/A | CONFIRMED |
@@ -402,6 +415,15 @@ Evidence is recorded in detail in `docs/card_state_detection.md`.
 | Assembly-CSharp | global | `CardData` | `needPerfection` | field | no | `System.Boolean` | `+0x8C` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `CardData` | `eatPerfect` / `eatGood` / `eatBad` | fields | no | `System.Int32` | `+0x90/+0x94/+0x98` | N/A | CONFIRMED |
 | UnityEngine.UI | UnityEngine.UI | `Selectable` | `m_Interactable` | field | no | `System.Boolean` | `+0xD8` | N/A | CONFIRMED |
+
+Pre-entry loadout evidence:
+
+- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/ManagerRoom.cs`
+- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/RoomDTO.cs`
+
+These two fields contain persistent `CardData` selections and are deliberately
+not treated as proof of a live combat `CardUI`. The latter still requires the
+current `Board@+0x30`, `Active@+0x38`, Unity object and Button validation.
 
 ## Phase 2B — `ObfuscatedInt` native decode addendum
 
@@ -603,3 +625,54 @@ Evidence:
 - `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/WsPlayerStateDTO.cs:14`
 - `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/WsRoomService.cs:19,220`
 - `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/Board.txt`, `Start`
+
+### Chinh Phuc map target addendum (Phase 2D.6)
+
+These members support read-only association of a configured Chinh Phuc pet
+with its ordinary map `Button`. They do not authorize direct method calls or
+memory writes.
+
+| Assembly | Namespace | Type | Member | Kind | Static | Exact declared type | Field offset | Method RVA | Confidence |
+|---|---|---|---|---|---:|---|---:|---:|---|
+| Assembly-CSharp | global | `ManagerChinhPhuc` | `panels` | field | no | `UnityEngine.GameObject[]` | `+0x28` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc` | `buttons` | field | no | `UnityEngine.UI.Button[]` | `+0x30` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc` | `cachedPetData` | field | no | `System.Collections.Generic.List<GroupDTO>` | `+0x98` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc.<>c__DisplayClass38_0` | `lockedForClick` | field | no | `System.Boolean` | `+0x10` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc.<>c__DisplayClass38_0` | `lockedOrderForClick` | field | no | `System.Int32` | `+0x14` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc.<>c__DisplayClass38_0` | `requiredAttack` | field | no | `System.Int32` | `+0x18` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc.<>c__DisplayClass38_0` | `petId` | field | no | `System.Int32` | `+0x1C` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc.<>c__DisplayClass38_0` | `reA` | field | no | `System.String` | `+0x20` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc.<>c__DisplayClass38_0` | `<>4__this` | field | no | `ManagerChinhPhuc` | `+0x28` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `GroupDTO` | `id` | field | no | `System.Int32` | `+0x10` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `GroupDTO` | `name` | field | no | `System.String` | `+0x18` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `GroupDTO` | `listPetEnemy` | field | no | `PetEnemyDTO[]` | `+0x20` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `PetEnemyDTO` | `id` | field | no | `System.Int32` | `+0x10` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `PetEnemyDTO` | `name` | field | no | `System.String` | `+0x18` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `PetEnemyDTO` | `locked` | field | no | `System.Boolean` | `+0x35` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `ManagerChinhPhuc` | `OnReceived(List<GroupDTO>)` | method | no | `System.Void (System.Collections.Generic.List<GroupDTO>)` | N/A | UNKNOWN | HIGH; complete native body |
+| Assembly-CSharp | global | `ManagerChinhPhuc` | `EnsureHuntOrderBadge(Transform,Int32,Boolean,Boolean)` | method | no | `System.Void (UnityEngine.Transform,System.Int32,System.Boolean,System.Boolean)` | N/A | UNKNOWN | HIGH; complete native body |
+
+`OnReceived` stores its input at `cachedPetData +0x98`, gets each panel's
+Button components, pairs each button index with the same `PetEnemyDTO[]` index,
+creates one `<>c__DisplayClass38_0`, copies the exact pet ID/lock/requirement
+values into it, and adds its `<OnReceived>b__0` delegate to the Button click
+event. It also calls `EnsureHuntOrderBadge` with `pet index + 1`.
+`EnsureHuntOrderBadge` loads the displayed digit sprites from
+`Image/petK/number/number_A_*`. Thus the button closure is identity evidence;
+the visible digit is only a separately checked hunt-order locator.
+
+Evidence:
+
+- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/ManagerChinhPhuc.cs:69-80,332-356,401,428`
+- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/GroupDTO.cs:3-7`
+- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/PetEnemyDTO.cs:3-15`
+- `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/ManagerChinhPhuc.txt`,
+  `OnReceived` and `EnsureHuntOrderBadge`
+- `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/ManagerChinhPhuc_NestedType___c__DisplayClass38_0.txt`,
+  `<OnReceived>b__0`
+
+Current live validation for the configured Phase 2D.6 target resolved exactly
+one unlocked/interactable closure with `petId=1289`, cached group index 5 and
+pet index 7 (hunt order 8), matching the three read-only PlayerPrefs keys.
+Runtime addresses are deliberately not documented as stable symbols because
+they are process/session allocations and subject to ASLR and Unity lifetime.

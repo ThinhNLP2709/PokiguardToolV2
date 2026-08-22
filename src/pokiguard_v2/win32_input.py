@@ -12,10 +12,11 @@ from typing import Callable, Protocol
 
 
 Cell = tuple[int, int]
+VK_F7 = 0x76
 VK_F8 = 0x77
 VK_F9 = 0x78
 VK_F10 = 0x79
-VK_F7 = 0x76
+VK_F6 = 0x75
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
 
@@ -441,7 +442,12 @@ class NativeWin32Backend:
         return ClientGeometry(int(point.x), int(point.y), width, height)
 
     def is_foreground(self, hwnd: int) -> bool:
-        return bool(hwnd) and int(_user32.GetForegroundWindow()) == int(hwnd)
+        # GetForegroundWindow returns a NULL HWND — surfaced by ctypes as None —
+        # whenever no window currently holds focus (a real, transient state
+        # during alt-tab or while a menu is closing).  That is simply "not
+        # foreground", not an error.
+        foreground = _user32.GetForegroundWindow()
+        return bool(hwnd) and foreground is not None and int(foreground) == int(hwnd)
 
     def window_pid(self, hwnd: int) -> int | None:
         if not _user32.IsWindow(hwnd):
@@ -535,6 +541,49 @@ class RecoveryHotkeyEdges:
         f9_edge = bool(f9_raw & 0x1) or (f9_down and not self._f9_down)
         self._f10_down, self._f9_down = f10_down, f9_down
         return f10_edge, f9_edge
+
+
+class FarmControlHotkeyEdges:
+    """F6 requests graceful stop (finish current match); F9 emergency stops.
+
+    The GetAsyncKeyState 0x1 "pressed since last call" bit is cleared by the
+    read itself, so it only survives until the next call *anywhere in this
+    process*.  A farm run polls this object from several places (the farm
+    boundary, the postmatch wait, the return-to-lobby wait), which means a
+    press seen by one caller would be destroyed before the caller that acts on
+    it ever runs.  Edges are therefore latched into durable counters here and
+    consumed explicitly with take(); poll() only feeds the latch.
+    """
+
+    def __init__(self) -> None:
+        self._f6_down = False
+        self._f9_down = False
+        self._f6_count = 0
+        self._f9_count = 0
+
+    def poll(self) -> tuple[bool, bool]:
+        """Read the keyboard and latch any edge.  Safe to call at any rate."""
+        if os.name != "nt":
+            return False, False
+        f6_raw = int(_user32.GetAsyncKeyState(VK_F6)) & 0xFFFF
+        f9_raw = int(_user32.GetAsyncKeyState(VK_F9)) & 0xFFFF
+        f6_down = bool(f6_raw & 0x8000)
+        f9_down = bool(f9_raw & 0x8000)
+        f6_edge = bool(f6_raw & 0x1) or (f6_down and not self._f6_down)
+        f9_edge = bool(f9_raw & 0x1) or (f9_down and not self._f9_down)
+        self._f6_down, self._f9_down = f6_down, f9_down
+        if f6_edge:
+            self._f6_count += 1
+        if f9_edge:
+            self._f9_count += 1
+        return f6_edge, f9_edge
+
+    def take(self) -> tuple[int, int]:
+        """Poll once, then consume and return counts since last take."""
+        self.poll()
+        f6, f9 = self._f6_count, self._f9_count
+        self._f6_count = self._f9_count = 0
+        return f6, f9
 
 
 class AutoHotkeyEdges:

@@ -67,6 +67,21 @@ class PostmatchUiTests(unittest.TestCase):
         self.assertFalse(rejected.proven)
         self.assertEqual(rejected.reason, "result_modal_control_moved")
 
+    def test_late_modal_can_be_proven_after_initial_animation_frames(self) -> None:
+        missing = locate_result_confirm(result_modal_rgb(panel=False), WIDTH, HEIGHT)
+        visible = locate_result_confirm(result_modal_rgb(), WIDTH, HEIGHT)
+        rolling: list[PostmatchUiLocation] = []
+        proofs = []
+        for location in (missing, missing, missing, visible, visible, visible):
+            rolling.append(location)
+            rolling = rolling[-3:]
+            proofs.append(
+                prove_stable_result_confirm(rolling, required_frames=3)
+            )
+
+        self.assertFalse(proofs[2].proven)
+        self.assertTrue(proofs[-1].proven, proofs[-1])
+
 
 if __name__ == "__main__":
     unittest.main()

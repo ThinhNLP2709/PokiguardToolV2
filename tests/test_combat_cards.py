@@ -12,8 +12,12 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from pokiguard_v2.combat_cards import (  # noqa: E402
+    BOARD_CARDS_IN_HAND_OFFSET,
+    BOARD_SELECTED_CARDS_OFFSET,
     FUSION_CARD_UI_READ_SIZE,
     SELECTABLE_INTERACTABLE_OFFSET,
+    read_cards_in_hand_anchors,
+    read_selected_card_data_addresses,
     read_combat_card,
     read_fusion_card_ui,
     read_fusion_state,
@@ -45,6 +49,58 @@ def map_string(memory: FakeMemory, address: int, value: str, class_pointer: int)
 
 class CombatCardTests(unittest.TestCase):
     BASE = 0x0000020000000000
+
+    def test_cards_in_hand_are_stable_region_anchors_only(self) -> None:
+        memory = FakeMemory()
+        board = self.BASE
+        card_list = self.BASE + 0x1000
+        items = self.BASE + 0x2000
+        game_objects = (self.BASE + 0x3000, self.BASE + 0x4000)
+        board_raw = bytearray(BOARD_CARDS_IN_HAND_OFFSET + 8)
+        struct.pack_into("<Q", board_raw, BOARD_CARDS_IN_HAND_OFFSET, card_list)
+        memory.map(board, board_raw)
+        list_raw = bytearray(0x20)
+        struct.pack_into("<Qii", list_raw, 0x10, items, len(game_objects), 7)
+        memory.map(card_list, list_raw)
+        array_raw = bytearray(0x20 + len(game_objects) * 8)
+        struct.pack_into("<Q", array_raw, 0x18, len(game_objects))
+        struct.pack_into("<2Q", array_raw, 0x20, *game_objects)
+        memory.map(items, array_raw)
+        for value in game_objects:
+            memory.map(value, bytearray(0x18))
+
+        self.assertEqual(
+            read_cards_in_hand_anchors(memory, board), game_objects
+        )
+
+        struct.pack_into("<i", list_raw, 0x18, 17)
+        memory.map(card_list, list_raw)
+        with self.assertRaises(LayoutValidationError):
+            read_cards_in_hand_anchors(memory, board)
+
+    def test_selected_cards_preserve_stable_card_data_creation_order(self) -> None:
+        memory = FakeMemory()
+        board = self.BASE
+        selected_list = self.BASE + 0x5000
+        items = self.BASE + 0x6000
+        card_data = (self.BASE + 0x7000, self.BASE + 0x8000, self.BASE + 0x9000)
+        board_raw = bytearray(BOARD_SELECTED_CARDS_OFFSET + 8)
+        struct.pack_into("<Q", board_raw, BOARD_SELECTED_CARDS_OFFSET, selected_list)
+        memory.map(board, board_raw)
+        list_raw = bytearray(0x20)
+        struct.pack_into("<Qii", list_raw, 0x10, items, len(card_data), 3)
+        memory.map(selected_list, list_raw)
+        array_raw = bytearray(0x20 + len(card_data) * 8)
+        struct.pack_into("<Q", array_raw, 0x18, len(card_data))
+        struct.pack_into("<3Q", array_raw, 0x20, *card_data)
+        memory.map(items, array_raw)
+        for value in card_data:
+            memory.map(value, bytearray(0x9C))
+
+        self.assertEqual(
+            read_selected_card_data_addresses(memory, board),
+            card_data,
+        )
 
     def test_fusion_success_and_turn_lock_are_direct_fields(self) -> None:
         memory = FakeMemory()

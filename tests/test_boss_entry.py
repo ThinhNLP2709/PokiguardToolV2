@@ -6,6 +6,7 @@ import unittest
 
 from pokiguard_v2.boss_entry import (
     BossCandidate,
+    BossLobbyState,
     BossTargetIdentity,
     FarmTarget,
     TargetResolutionStatus,
@@ -15,7 +16,12 @@ from pokiguard_v2.boss_entry import (
 )
 from pokiguard_v2.boss_entry_ui import locate_chinh_phuc_start
 from pokiguard_v2.win32_screenshot import read_png_rgb
-from tools.boss_entry import _jsonable, _retryable_board_messages
+from tools.boss_entry import (
+    _entry_preflight_runtime_valid,
+    _jsonable,
+    _preentry_optional_card_mode,
+    _retryable_board_messages,
+)
 
 
 V1_SCREENSHOTS = Path(r"D:\PokiguardAuto\GameScreenShoot")
@@ -72,6 +78,20 @@ def synthetic_button_image(
 
 
 class BossEntryLoggingTests(unittest.TestCase):
+    def test_missing_optional_attack_uses_board_only_mode(self) -> None:
+        self.assertEqual(
+            _preentry_optional_card_mode(
+                SimpleNamespace(manager_attack_card_count=0)
+            ),
+            "BOARD_ONLY_NO_ATTACK_CARD",
+        )
+        self.assertEqual(
+            _preentry_optional_card_mode(
+                SimpleNamespace(manager_attack_card_count=1)
+            ),
+            "ATTACK_CARD_AVAILABLE",
+        )
+
     def test_binary_capture_is_summarized_instead_of_serialized(self) -> None:
         self.assertEqual(_jsonable(b"rgb"), {"byteLength": 3})
         self.assertEqual(_jsonable(bytearray(b"rgba")), {"byteLength": 4})
@@ -102,6 +122,44 @@ class BossEntryLoggingTests(unittest.TestCase):
         self.assertEqual(
             _retryable_board_messages(observation, {start.address}),
             (move,),
+        )
+
+    def test_preflight_loadout_change_does_not_veto_same_target_and_button(self) -> None:
+        ready_candidate = candidate(0, "1289", "Starburst")
+        current_candidate = candidate(0, "1289", "Starburst")
+        ready = SimpleNamespace(
+            resolution=SimpleNamespace(candidate=ready_candidate),
+            lobby=SimpleNamespace(
+                chinh_phuc=SimpleNamespace(card_loadout=SimpleNamespace(identity=((1,),)))
+            ),
+        )
+        current_lobby = SimpleNamespace(
+            state=BossLobbyState.BOSS_LOBBY,
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(
+                card_loadout=SimpleNamespace(identity=((1,), (2,)))
+            ),
+        )
+        current_resolution = SimpleNamespace(
+            resolved=True,
+            candidate=current_candidate,
+        )
+
+        self.assertTrue(
+            _entry_preflight_runtime_valid(current_lobby, current_resolution, ready)
+        )
+
+        current_candidate = BossCandidate(
+            current_candidate.index,
+            current_candidate.identity,
+            current_candidate.selection,
+            current_candidate.available,
+            current_candidate.active,
+            entry_control_address=current_candidate.entry_control_address + 8,
+        )
+        current_resolution.candidate = current_candidate
+        self.assertFalse(
+            _entry_preflight_runtime_valid(current_lobby, current_resolution, ready)
         )
 
 

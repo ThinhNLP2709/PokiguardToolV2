@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -28,10 +29,27 @@ from pokiguard_v2.technical_recovery import (
     TechnicalRecoveryDispatcher,
     TechnicalRecoveryState,
 )
-from tools.farm_run import _stage_b1_action_proof
+from tools.farm_run import (
+    ClickStatus,
+    _ControllerMemorySampler,
+    _stage_b1_action_proof,
+)
 
 
 SOURCE = "ChatMessageDTO.MATCH_START.matchPayload.board"
+
+
+class ControllerMemorySamplerTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Win32 working-set sampler")
+    def test_x64_windows_working_set_is_available_and_bounded(self) -> None:
+        sampler = _ControllerMemorySampler()
+        value = sampler.sample()
+        self.assertIsNotNone(value)
+        self.assertGreater(value or 0, 0)
+        report = sampler.report()
+        self.assertTrue(report["available"])
+        self.assertEqual(report["sampleCount"], 1)
+        self.assertEqual(report["retainedSampleCap"], 512)
 
 
 def session(index: int) -> CombatSessionKey:
@@ -145,6 +163,9 @@ def complete_recovery_coordinator(
 
 
 class FarmRunBoundaryTests(unittest.TestCase):
+    def test_map_return_uses_the_runtime_click_status_enum(self) -> None:
+        self.assertEqual(ClickStatus.SENT.value, "SENT")
+
     def test_invalid_start_is_zero_input(self) -> None:
         run = FarmRun(FarmTarget(boss_id="1289"))
         self.assertFalse(run.observe_initial_lobby(BossLobbyState.ACTIVE_COMBAT))
@@ -167,6 +188,44 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertEqual(snapshot.total_lobby_inputs, 3)
         self.assertFalse(run.target_resolved())
         self.assertEqual(run.snapshot().total_lobby_inputs, 3)
+
+    def test_one_runtime_proven_map_target_select_is_allowed_during_return(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+
+        permit = run.reserve_target_select(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            run.complete_target_select(
+                permit,  # type: ignore[arg-type]
+                sent=True,
+                detail="CHINH_PHUC_MAP pet=1289 group=5 order=8:SENT",
+            )
+        )
+        self.assertEqual(run.state, FarmRunState.WAIT_BOSS_LOBBY)
+        self.assertTrue(run.observe_return_lobby(BossLobbyState.BOSS_LOBBY))
+        records = [
+            item
+            for item in run.input_records
+            if item.domain is FarmInputDomain.BOSS_TARGET_SELECT
+        ]
+        self.assertEqual(len(records), 1)
+        self.assertTrue(records[0].sent)
+        self.assertEqual(run.snapshot().total_lobby_inputs, 2)
+
+    def test_duplicate_map_target_select_fails_closed(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        permit = run.reserve_target_select(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(run.complete_target_select(permit, sent=True))  # type: ignore[arg-type]
+
+        self.assertIsNone(run.reserve_target_select(foreground=True))
+        self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
 
     def test_session_and_match_id_must_both_be_unique(self) -> None:
         run = start_run()
@@ -262,6 +321,13 @@ class RecoveryResumeTests(unittest.TestCase):
         run = self._recovery_resume("DEAD_BOARD_NO_REFRESH")
         self.assertEqual(run.snapshot().attempts[0].dead_board, 1)
         self.assertEqual(run.snapshot().technical_recoveries, 1)
+
+    def test_actionability_state_loss_uses_same_bounded_recovery_path(self) -> None:
+        run = self._recovery_resume("ACTIONABILITY_STATE_LOST")
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.technical_aborts, 1)
+        self.assertEqual(snapshot.technical_recoveries, 1)
+        self.assertTrue(snapshot.attempts[0].technical_recovery)
 
     def test_second_failure_stops_before_second_exit(self) -> None:
         run = self._recovery_resume("SEQUENCE_DESYNC")

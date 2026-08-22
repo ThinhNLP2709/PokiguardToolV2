@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
 from pokiguard_v2.farm_cycle import (
@@ -21,7 +22,11 @@ from pokiguard_v2.farm_cycle_runtime import (
     FarmGameplayCapability,
 )
 from pokiguard_v2.state import CombatSessionKey
-from tools.farm_cycle import _final_invariants, _validate_combat_summary
+from tools.farm_cycle import (
+    _final_invariants,
+    _is_transient_chinh_phuc_room_rehydration,
+    _validate_combat_summary,
+)
 
 
 MATCH_START_SOURCE = "ChatMessageDTO.MATCH_START.matchPayload.board"
@@ -53,6 +58,33 @@ def opening(key: CombatSessionKey, **changes: object) -> OpeningEvidence:
 
 
 class FarmCycleTests(unittest.TestCase):
+    def test_post_result_room_rehydration_is_distinct_from_real_map(self) -> None:
+        def lobby(*, room_id: str | None, room_data: int | None, room_type: str | None = "ChinhPhuc"):
+            return SimpleNamespace(
+                branch="WORLD_BOSS_LIST",
+                chinh_phuc=SimpleNamespace(
+                    current_room_type=room_type,
+                    current_room_id=room_id,
+                    room_data=room_data,
+                ),
+            )
+
+        self.assertTrue(
+            _is_transient_chinh_phuc_room_rehydration(
+                lobby(room_id="Coop_578601", room_data=None)
+            )
+        )
+        self.assertFalse(
+            _is_transient_chinh_phuc_room_rehydration(
+                lobby(room_id=None, room_data=None)
+            )
+        )
+        self.assertFalse(
+            _is_transient_chinh_phuc_room_rehydration(
+                lobby(room_id="Coop_578601", room_data=0x20000001000)
+            )
+        )
+
     def setUp(self) -> None:
         self.target = FarmTarget(boss_id="1289")
         self.match1 = session(1, 0x1000, "match-1")

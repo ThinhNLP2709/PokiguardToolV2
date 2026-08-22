@@ -157,6 +157,33 @@ class RuntimeSequenceMonitor:
             time.perf_counter() - started,
         )
 
+    def ensure_regions_primed(self) -> RuntimeRegionPrime:
+        """Reuse live DTO-region evidence or learn it before entry input.
+
+        A cold full ChatMessageDTO scan is deliberately paid while the game is
+        still in the boss lobby. Subsequent entries only rebind the learned
+        ranges to current VirtualQueryEx observations. If every learned range
+        disappeared (for example after a managed-heap reset), this performs a
+        fresh lobby scan instead of discovering that only after ``Bat dau``.
+        """
+
+        started = time.perf_counter()
+        current = _regions(self.target, self.max_region_mib)
+        live_learned = _current_learned_regions(current, self._learned_regions)
+        self._learned_regions = set(live_learned)
+        if live_learned:
+            return RuntimeRegionPrime(
+                self._dto_class is not None,
+                len(current),
+                0,
+                len(live_learned),
+                sum(region.size for region in live_learned),
+                0,
+                0,
+                time.perf_counter() - started,
+            )
+        return self.prime_regions()
+
     def poll(
         self,
         *,

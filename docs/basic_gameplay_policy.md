@@ -13,6 +13,11 @@ The represented configuration is:
 - `ManaPriority`: `EVOLUTION`, `ATTACK`;
 - `Intelligence`: `BASIC`, `REASONING`.
 
+The user-authored gameplay rules these steps implement live in
+`docs/gameplay_rules.md`, which is the source of truth for behaviour. Every
+numeric threshold is a `PolicyConfig` field; see that file's table for the CLI
+flags.
+
 Only `BASIC` is implemented. Selecting `REASONING` returns `NONE` with
 `REASONING_NOT_IMPLEMENTED`.
 
@@ -28,9 +33,10 @@ A proposal requires a stable combat `GameState`, proven local turn,
 
 This is a coarse server-tick value, not the game's smooth UI getter. The latter
 also subtracts `UnityEngine.Time.unscaledTime` from a local anchor; that clock
-does not yet have a proven external pointer. The policy fails closed at or
-below the configured three-second margin. It never turns a low timer into a
-generic “least-bad” move.
+does not yet have a proven external pointer. The configured action floor is
+inclusive: at exactly the floor an action may still be proposed; below it the
+policy fails closed. Production Phase 2D.6 uses a four-second floor. It never
+turns a low timer into a generic “least-bad” move.
 
 `first_local_turn` is derived only from runtime `is_local_turn` and server
 `turn_number in {0,1}`. Board discovery/lifecycle does not mark an opening.
@@ -67,19 +73,38 @@ general detector rather than a hard-coded coordinate case.
 
 ## Exact BASIC order
 
-1. `EVOLVE` when priority is EVOLUTION, Fusion has not succeeded, the runtime
-   Fusion state is available, and mana covers at least 160. It consumes no turn
-   and requires a fresh state read. ATTACK priority disables evolution for the
-   match.
+1. `EVOLVE` when priority is EVOLUTION, an evolution pet is actually selected,
+   Fusion has not succeeded, the runtime Fusion state and exact runtime card
+   slot are available, and mana covers the current runtime cost. It
+   consumes no turn and requires a fresh state read. ATTACK priority disables
+   evolution for the match. Low-boss-HP mode (boss current HP at or below the
+   enabled `cast_when_boss_hp_below` threshold) also disables EVOLVE, regardless
+   of mana priority, so the bot spends the endgame on Sword/Mana/CAST. EVOLVE
+   also has a separate inclusive `minimum_evolve_time_seconds` floor (default
+   10): below it, Step 1 is deferred for that turn and normal Sword/resource
+   selection continues. This preserves enough time for the server response,
+   animation settlement, a fresh read, and the same-turn consuming action.
+   If no evolution pet was selected, EVOLVE is skipped and board policy
+   continues; this is not an automation stop.
 2. If any deterministic result collects Sword, restrict selection to that
    group. Rank no Sword potential left, effective Sword, known combo, danger,
    then UNKNOWN exposure.
-3. With Rage below 100, select safe Rage; otherwise select safe Mana.
-4. With boss HP above 50%, select safe Health below 30% own HP for SIMPLE or
-   below 50% for CAREFUL.
-5. Above 480 mana, select a proven interactable Attack card (`CAST`), preserving
-   the 320-mana reserve after its 160 cost. Otherwise select safe Drain only
-   when boss Mana >160 and Rage >100, or safe Shield only when both are <50.
+3. Finisher: with no Sword result on the board, boss **current** HP at or below
+   `cast_when_boss_hp_below` (default 30000), and one affordable proven Attack
+   card, `CAST` immediately. This branch deliberately ignores the 480 stockpile
+   rule — it exists to close out a match instead of hoarding mana.
+   `cast_when_boss_hp_below=0` disables the whole low-boss-HP mode.
+   While that mode is active but CAST is not yet affordable/proven, select safe
+   Mana before safe Rage. Outside that mode, with Rage below `rage_target`,
+   select safe Rage; else safe Mana.
+4. With boss HP above 50%, select safe Health below `low_hp_ratio_simple` own
+   HP for SIMPLE or `low_hp_ratio_careful` for CAREFUL.
+5. Above `cast_mana_stockpile_threshold` mana, select a proven interactable
+   Attack card with a proven runtime slot (`CAST`), preserving the 320-mana
+   reserve after its 160 cost. If no Attack card is equipped, all CAST branches
+   are skipped and the same board policy continues.
+   Otherwise select safe Drain only when boss Mana >`boss_high_mana` and Rage
+   >`boss_high_rage`, or safe Shield only when both are <`boss_low_resource`.
 6. `PASS` is possible only when no safe move exists and a durable game-owned
    skip count proves another pass is legal.
 7. First runtime local turn or a game-owned count of two passes prohibits
@@ -103,6 +128,14 @@ success and failure: the server may advance either turn without an AFK warning
 because the EVOLVE attempt itself is activity. Numeric idle state continues to
 come only from server payloads; the next local turn requires a fresh full-state
 reread.
+
+If an input was sent but its response/ACK is not captured before the bounded
+deadline, the executor does not relabel it as rejected and does not resend the
+physical input. It may extend the read-only observation window once when the
+exact source turn is still local and has safe time remaining. Otherwise it
+records `ACTION_OUTCOME_UNCONFIRMED`, suppresses further input for that source
+turn, and waits for authoritative turn/AFK state. No local idle counter is
+incremented.
 
 ## Explicit fail-closed gaps
 

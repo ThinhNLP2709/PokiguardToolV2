@@ -27,10 +27,127 @@ class GameplayUiLocation:
     metrics: dict[str, float | int | str] = field(default_factory=dict)
 
 
-_ANCHORS = {
+@dataclass(frozen=True)
+class RuntimeCardStripLayout:
+    """Fail-closed mapping from current CardData pointers to visual slots."""
+
+    resolved: bool
+    slot_count: int
+    card_slots: tuple[tuple[int, int], ...]
+    fusion_slot: int | None
+    reason: str
+
+    def slot_for_card_data(self, address: int) -> int | None:
+        return next(
+            (slot for card_address, slot in self.card_slots if card_address == address),
+            None,
+        )
+
+
+# Legacy V1 calibration.  V1 required a four-tile strip (Fusion plus three
+# selected cards), so these points are kept only for callers that do not yet
+# have authoritative live CardUI cardinality.
+_LEGACY_ANCHORS = {
     GameplayControl.EVOLVE: (0.417, 0.836),
     GameplayControl.CAST_ATTACK: (0.474, 0.836),
 }
+
+# Unity centres the complete card strip and spaces neighbouring tiles by about
+# 5.8% of the client width.  Slot identity is recovered from live Board lists;
+# it is never inferred from card type or a fixed loadout.
+_CARD_STRIP_CENTER_X = 0.500
+_CARD_SLOT_SPACING_X = 0.058
+_CARD_POINT_Y = 0.836
+
+
+def resolve_runtime_card_strip(
+    *,
+    selected_card_data_addresses: tuple[int, ...],
+    rendered_card_data_addresses: tuple[int, ...],
+    cards_in_hand_count: int,
+    fusion_expected: bool,
+    fusion_skill_card_data_address: int | None,
+) -> RuntimeCardStripLayout:
+    """Resolve the standard-pet visual strip from current Board lists.
+
+    Live combat and lobby evidence shows Fusion in the leftmost slot followed
+    by ordinary ``selectedCards`` in list order.  A pet-specific skill changes
+    that layout; support for that variant is intentionally deferred and must
+    fail closed instead of guessing a click target.
+    """
+
+    selected = tuple(selected_card_data_addresses)
+    rendered = tuple(rendered_card_data_addresses)
+    skill = fusion_skill_card_data_address
+    if not 0 <= cards_in_hand_count <= 16:
+        return RuntimeCardStripLayout(False, 0, (), None, "invalid_cards_in_hand_count")
+    if any(value <= 0 for value in selected + rendered):
+        return RuntimeCardStripLayout(False, 0, (), None, "invalid_card_data_pointer")
+    if len(set(selected)) != len(selected) or len(set(rendered)) != len(rendered):
+        return RuntimeCardStripLayout(False, 0, (), None, "duplicate_card_data_pointer")
+    if skill is not None and skill <= 0:
+        return RuntimeCardStripLayout(False, 0, (), None, "invalid_pet_skill_pointer")
+    if skill is not None and not fusion_expected:
+        return RuntimeCardStripLayout(False, 0, (), None, "pet_skill_without_fusion_pet")
+    if skill is not None and skill in selected:
+        return RuntimeCardStripLayout(False, 0, (), None, "ambiguous_pet_skill_pointer")
+    if skill is not None:
+        return RuntimeCardStripLayout(
+            False,
+            cards_in_hand_count,
+            (),
+            None,
+            "pet_skill_layout_deferred",
+        )
+
+    expected_rendered = set(selected)
+    if not set(rendered).issubset(expected_rendered):
+        return RuntimeCardStripLayout(False, 0, (), None, "unexpected_live_card_data")
+
+    expected_count = len(selected) + int(fusion_expected)
+    if cards_in_hand_count != expected_count:
+        return RuntimeCardStripLayout(
+            False,
+            cards_in_hand_count,
+            (),
+            None,
+            "selected_and_rendered_card_count_mismatch",
+        )
+
+    slot_count = expected_count
+    ordinary_slot_offset = int(fusion_expected)
+    card_slots = tuple(
+        (address, selected_index + ordinary_slot_offset)
+        for selected_index, address in enumerate(selected)
+    )
+    fusion_slot = 0 if fusion_expected else None
+    return RuntimeCardStripLayout(
+        True,
+        slot_count,
+        card_slots,
+        fusion_slot,
+        "standard_fusion_left_then_selected_cards_order",
+    )
+
+
+def _layout_anchor(
+    control: GameplayControl,
+    slot_index: int | None,
+    slot_count: int | None,
+) -> tuple[float, float] | None:
+    if slot_index is None and slot_count is None:
+        return _LEGACY_ANCHORS[control]
+    if (
+        slot_index is None
+        or slot_count is None
+        or not 1 <= slot_count <= 16
+        or not 0 <= slot_index < slot_count
+    ):
+        return None
+    first_x = _CARD_STRIP_CENTER_X - (
+        _CARD_SLOT_SPACING_X * (slot_count - 1) / 2.0
+    )
+    return (first_x + slot_index * _CARD_SLOT_SPACING_X, _CARD_POINT_Y)
 
 
 def _region_metrics(
@@ -76,6 +193,9 @@ def locate_gameplay_control(
     width: int,
     height: int,
     control: GameplayControl,
+    *,
+    slot_index: int | None = None,
+    slot_count: int | None = None,
 ) -> GameplayUiLocation:
     """Validate the expected combat-card tile without doing OCR or clicking."""
 
@@ -83,8 +203,22 @@ def locate_gameplay_control(
         return GameplayUiLocation(
             control, False, None, 0.0, "invalid_client_capture"
         )
-    point = _ANCHORS[control]
+    point = _layout_anchor(control, slot_index, slot_count)
+    if point is None:
+        return GameplayUiLocation(
+            control,
+            False,
+            None,
+            0.0,
+            "invalid_runtime_card_layout",
+            {
+                "slotIndex": slot_index if slot_index is not None else -1,
+                "slotCount": slot_count if slot_count is not None else -1,
+            },
+        )
     metrics = _region_metrics(rgb, width, height, point)
+    metrics["slotIndex"] = slot_index if slot_index is not None else "legacy"
+    metrics["slotCount"] = slot_count if slot_count is not None else "legacy"
     colorful = float(metrics["colorfulRatio"])
     bright = float(metrics["brightRatio"])
     dark = float(metrics["darkRatio"])
@@ -124,7 +258,11 @@ def locate_gameplay_control(
         True,
         point,
         confidence,
-        "v1_proven_anchor_plus_current_card_tile_visual",
+        (
+            "runtime_card_slot_layout_plus_current_card_tile_visual"
+            if slot_index is not None
+            else "v1_proven_anchor_plus_current_card_tile_visual"
+        ),
         metrics,
     )
 
@@ -132,5 +270,7 @@ def locate_gameplay_control(
 __all__ = [
     "GameplayControl",
     "GameplayUiLocation",
+    "RuntimeCardStripLayout",
     "locate_gameplay_control",
+    "resolve_runtime_card_strip",
 ]

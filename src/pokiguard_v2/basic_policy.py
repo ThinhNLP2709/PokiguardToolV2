@@ -43,10 +43,57 @@ class PolicyConfig:
     mana_priority: ManaPriority = ManaPriority.EVOLUTION
     intelligence: Intelligence = Intelligence.BASIC
     minimum_turn_time_seconds: int = 3
+    # EVOLVE does not consume the turn, so it is useful only while enough of
+    # the same local turn remains for its server response/animation and the
+    # mandatory fresh-state follow-up action. Live Phase 2D.6 lag evidence
+    # showed that proposing it at 8 seconds can consume the whole turn.
+    minimum_evolve_time_seconds: int = 10
+    # Step 3 finisher: once the boss is at or below this absolute current HP,
+    # a Sword-free board casts as soon as one Attack card is affordable.
+    # 0 disables the finisher entirely.
+    cast_when_boss_hp_below: int = 30_000
+    # Step 5 stockpile rule: cast only above this mana so a 320 reserve
+    # (two casts) survives the 160 cost.
+    cast_mana_stockpile_threshold: int = 480
+    # Step 3 Rage floor; reaching it boosts Sword damage.
+    rage_target: int = 100
+    # Step 4 low-HP thresholds per play style.
+    low_hp_ratio_simple: float = 0.30
+    low_hp_ratio_careful: float = 0.50
+    # Step 5 boss-resource branches.
+    boss_high_mana: int = 160
+    boss_high_rage: int = 100
+    boss_low_resource: int = 50
 
     def __post_init__(self) -> None:
         if not 0 <= self.minimum_turn_time_seconds <= 14:
             raise ValueError("minimum_turn_time_seconds must be between 0 and 14")
+        if not self.minimum_turn_time_seconds <= self.minimum_evolve_time_seconds <= 14:
+            raise ValueError(
+                "minimum_evolve_time_seconds must be between "
+                "minimum_turn_time_seconds and 14"
+            )
+        if self.cast_when_boss_hp_below < 0:
+            raise ValueError("cast_when_boss_hp_below must be >= 0")
+        if self.cast_mana_stockpile_threshold < 0:
+            raise ValueError("cast_mana_stockpile_threshold must be >= 0")
+        if self.rage_target < 0:
+            raise ValueError("rage_target must be >= 0")
+        for name in ("boss_high_mana", "boss_high_rage", "boss_low_resource"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be >= 0")
+        for name in ("low_hp_ratio_simple", "low_hp_ratio_careful"):
+            value = getattr(self, name)
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"{name} must be between 0 and 1")
+
+    @property
+    def low_hp_ratio(self) -> float:
+        return (
+            self.low_hp_ratio_simple
+            if self.play_style is PlayStyle.SIMPLE
+            else self.low_hp_ratio_careful
+        )
 
 
 @dataclass(frozen=True)
@@ -317,7 +364,10 @@ class BasicPolicyEngine:
                 no_candidates,
                 blocker="TURN_TIMER_UNKNOWN",
             )
-        if state.battle.turn_time_remaining_seconds <= self.config.minimum_turn_time_seconds:
+        # The configured floor is inclusive.  The server timer is an integer
+        # tick, so treating exactly four seconds as expired effectively turns
+        # the user-approved 4 s floor into a 5 s floor.
+        if state.battle.turn_time_remaining_seconds < self.config.minimum_turn_time_seconds:
             return self._decision(
                 state,
                 PolicyAction.NONE,
@@ -330,16 +380,86 @@ class BasicPolicyEngine:
 
         player = state.player
         player_mana = player.mana if player is not None else None
+        boss = _boss(state)
+        boss_hp_current = boss.hp if boss is not None else None
+        finisher_threshold = self.config.cast_when_boss_hp_below
+        low_boss_hp_mode = bool(
+            finisher_threshold > 0
+            and boss_hp_current is not None
+            and boss_hp_current <= finisher_threshold
+        )
+
+        idle_status = state.battle.consecutive_pass_status
+        # Compatibility for deterministic fixtures that predate the explicit
+        # status field.  The numeric values still originate in the fixture's
+        # game-owned payload; no value is synthesized here.
+        if (
+            idle_status is GameOwnedIdleStatus.UNKNOWN
+            and state.battle.consecutive_passes is not None
+            and state.battle.consecutive_pass_threshold is not None
+            and state.battle.consecutive_pass_source is not None
+        ):
+            idle_status = (
+                GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
+                if state.battle.consecutive_passes
+                >= state.battle.consecutive_pass_threshold - 1
+                else GameOwnedIdleStatus.PASS_ALLOWED
+            )
+        mandatory = bool(
+            state.battle.is_first_local_turn is True
+            or idle_status
+            is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
+        )
 
         # STEP 1: EVOLVE is non-turn-consuming and requires a fresh GameState.
-        if self.config.mana_priority is ManaPriority.ATTACK:
+        # At the authoritative pass limit EVOLVE is deliberately deferred: it
+        # does not consume the turn and therefore cannot establish the reset
+        # the server requires.  A SWAP/CAST must be selected first.
+        if idle_status is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION:
+            failures.append(
+                "STEP_1_EVOLVE: deferred because the authoritative idle state "
+                "requires a turn-consuming SWAP or CAST"
+            )
+        elif low_boss_hp_mode:
+            failures.append(
+                "STEP_1_EVOLVE: disabled while low-boss-HP mode is active "
+                f"({boss_hp_current} <= {finisher_threshold})"
+            )
+        elif self.config.mana_priority is ManaPriority.ATTACK:
             failures.append("STEP_1_EVOLVE: disabled for the entire match by ManaPriority.ATTACK")
+        elif (
+            state.battle.turn_time_remaining_seconds
+            < self.config.minimum_evolve_time_seconds
+        ):
+            failures.append(
+                "STEP_1_EVOLVE: deferred because timer "
+                f"{state.battle.turn_time_remaining_seconds}s is below the "
+                f"{self.config.minimum_evolve_time_seconds}s same-turn "
+                "response/follow-up floor"
+            )
         elif state.fusion is None:
             failures.append("STEP_1_EVOLVE: FusionState UNKNOWN")
+        elif not (
+            (state.fusion.selected_user_pet_id or 0) > 0
+            or (state.fusion.selected_pet_id or 0) > 0
+        ):
+            failures.append(
+                "STEP_1_EVOLVE: no evolution pet is selected; continue in "
+                "board-only mode"
+            )
         elif state.fusion.used:
             failures.append("STEP_1_EVOLVE: fusion already succeeded")
         elif state.fusion.ui_interactable is not True:
             failures.append("STEP_1_EVOLVE: live FusionCardUI is not proven interactable")
+        elif (
+            state.fusion.ui_slot is None
+            or state.fusion.ui_slot_count is None
+            or not 0 <= state.fusion.ui_slot < state.fusion.ui_slot_count
+        ):
+            failures.append(
+                "STEP_1_EVOLVE: runtime Fusion card slot is not proven; "
+                "continue with board play"
+            )
         elif not state.fusion.enabled or not state.fusion.available or state.fusion.locked_this_turn:
             failures.append("STEP_1_EVOLVE: fusion is not currently available")
         elif player_mana is None:
@@ -376,28 +496,6 @@ class BasicPolicyEngine:
                 blocker="EXIT_IS_PROPOSAL_ONLY",
             )
 
-        idle_status = state.battle.consecutive_pass_status
-        # Compatibility for deterministic fixtures that predate the explicit
-        # status field.  The numeric values still originate in the fixture's
-        # game-owned payload; no value is synthesized here.
-        if (
-            idle_status is GameOwnedIdleStatus.UNKNOWN
-            and state.battle.consecutive_passes is not None
-            and state.battle.consecutive_pass_threshold is not None
-            and state.battle.consecutive_pass_source is not None
-        ):
-            idle_status = (
-                GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
-                if state.battle.consecutive_passes
-                >= state.battle.consecutive_pass_threshold - 1
-                else GameOwnedIdleStatus.PASS_ALLOWED
-            )
-        mandatory = bool(
-            state.battle.is_first_local_turn is True
-            or idle_status
-            is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
-        )
-
         # STEP 2: deterministic Sword collection includes known cascades.
         sword_moves = tuple(value for value in evaluations if value.sword_effective > 0)
         if sword_moves:
@@ -415,10 +513,89 @@ class BasicPolicyEngine:
 
         safe_moves = tuple(value for value in evaluations if value.sword_risk.safe)
 
-        # STEP 3: safe Rage below 100, otherwise safe Mana.
+        attack_cards = tuple(
+            card
+            for card in state.cards
+            if card.is_attack
+            and card.interactable
+            and not card.action_pending
+            and not card.has_used_this_turn
+            and card.ui_slot is not None
+            and card.ui_slot_count is not None
+            and 0 <= card.ui_slot < card.ui_slot_count
+        )
+
+        # STEP 3 FINISHER: a Sword-free board with the boss at or below the
+        # configured absolute HP casts as soon as one Attack card is
+        # affordable.  This deliberately ignores the 480 stockpile rule — the
+        # point is to close out the match instead of hoarding mana.
+        if finisher_threshold <= 0:
+            failures.append("STEP_3_FINISH_CAST: finisher disabled by configuration")
+        elif boss_hp_current is None:
+            failures.append("STEP_3_FINISH_CAST: boss HP UNKNOWN")
+        elif boss_hp_current > finisher_threshold:
+            failures.append(
+                f"STEP_3_FINISH_CAST: boss HP {boss_hp_current} above finisher threshold {finisher_threshold}"
+            )
+        elif player_mana is None:
+            failures.append("STEP_3_FINISH_CAST: player mana UNKNOWN")
+        else:
+            usable = tuple(card for card in attack_cards if player_mana >= _attack_cost(card))
+            if usable:
+                card = min(usable, key=lambda value: (value.card_id, value.object_address))
+                return self._decision(
+                    state,
+                    PolicyAction.CAST,
+                    "STEP_3_FINISH_CAST",
+                    (
+                        f"No Sword on board and boss HP {boss_hp_current} <= {finisher_threshold}; "
+                        f"finisher CAST with mana {player_mana}"
+                    ),
+                    failures,
+                    evaluations,
+                    card=card,
+                    candidate_count=len(usable),
+                )
+            failures.append(
+                "STEP_3_FINISH_CAST: finisher HP condition met but no affordable usable Attack card"
+            )
+
+        # LOW-BOSS-HP MODE: after Sword and an immediately affordable CAST,
+        # accumulate safe Mana before considering Rage.  This is deliberately
+        # scoped to the configurable finisher threshold; normal combat keeps
+        # the original Rage-before-Mana policy below.
+        mana_moves = tuple(
+            value for value in safe_moves if value.total.effective(GemType.MANA) > 0
+        )
+        if low_boss_hp_mode:
+            if mana_moves:
+                selected = min(
+                    mana_moves,
+                    key=lambda value: self._resource_rank(value, GemType.MANA),
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "STEP_3_LOW_BOSS_MANA",
+                    (
+                        f"Boss HP {boss_hp_current} <= {finisher_threshold}; "
+                        "no affordable CAST is proven, so selected safe Mana"
+                    ),
+                    failures,
+                    mana_moves,
+                    selected=selected,
+                )
+            failures.append(
+                "STEP_3_LOW_BOSS_MANA: low-boss-HP mode has no safe Mana move"
+            )
+
+        # STEP 3: outside low-boss-HP mode, safe Rage below the configured
+        # target remains ahead of safe Mana.  With no low-boss Mana move, Rage
+        # is still a legal fallback rather than forcing an unsafe move/PASS.
+        rage_target = self.config.rage_target
         if player is None or player.power is None:
             failures.append("STEP_3_RAGE: player Rage UNKNOWN")
-        elif player.power < 100:
+        elif player.power < rage_target:
             rage_moves = tuple(
                 value for value in safe_moves if value.total.effective(GemType.RAGE) > 0
             )
@@ -428,18 +605,15 @@ class BasicPolicyEngine:
                     state,
                     PolicyAction.SWAP,
                     "STEP_3_RAGE",
-                    f"Player Rage {player.power} < 100 and a safe Rage move exists",
+                    f"Player Rage {player.power} < {rage_target} and a safe Rage move exists",
                     failures,
                     rage_moves,
                     selected=selected,
                 )
-            failures.append("STEP_3_RAGE: Rage below 100 but no safe Rage move")
+            failures.append(f"STEP_3_RAGE: Rage below {rage_target} but no safe Rage move")
         else:
-            failures.append(f"STEP_3_RAGE: player Rage {player.power} is already >= 100")
+            failures.append(f"STEP_3_RAGE: player Rage {player.power} is already >= {rage_target}")
 
-        mana_moves = tuple(
-            value for value in safe_moves if value.total.effective(GemType.MANA) > 0
-        )
         if mana_moves:
             selected = min(mana_moves, key=lambda value: self._resource_rank(value, GemType.MANA))
             return self._decision(
@@ -454,10 +628,9 @@ class BasicPolicyEngine:
         failures.append("STEP_3_MANA: no safe Mana move")
 
         # STEP 4: health threshold depends on configured play style.
-        boss = _boss(state)
         my_hp = _ratio(player.hp, player.max_hp) if player is not None else None
         boss_hp = _ratio(boss.hp, boss.max_hp) if boss is not None else None
-        health_threshold = 0.30 if self.config.play_style is PlayStyle.SIMPLE else 0.50
+        health_threshold = self.config.low_hp_ratio
         if my_hp is None or boss_hp is None:
             failures.append("STEP_4_HEALTH: HP ratio UNKNOWN")
         elif boss_hp > 0.50 and my_hp < health_threshold:
@@ -482,16 +655,10 @@ class BasicPolicyEngine:
         else:
             failures.append("STEP_4_HEALTH: configured HP condition is not met")
 
-        # STEP 5: CAST >480, then exact high/low boss-resource branches.
-        attack_cards = tuple(
-            card
-            for card in state.cards
-            if card.is_attack
-            and card.interactable
-            and not card.action_pending
-            and not card.has_used_this_turn
-        )
-        if player_mana is not None and player_mana > 480:
+        # STEP 5: CAST above the stockpile threshold, then exact high/low
+        # boss-resource branches.  `attack_cards` was resolved before STEP 3.
+        stockpile = self.config.cast_mana_stockpile_threshold
+        if player_mana is not None and player_mana > stockpile:
             usable = tuple(card for card in attack_cards if player_mana >= _attack_cost(card))
             if usable:
                 card = min(usable, key=lambda value: (value.card_id, value.object_address))
@@ -499,25 +666,35 @@ class BasicPolicyEngine:
                     state,
                     PolicyAction.CAST,
                     "STEP_5_CAST",
-                    f"Player mana {player_mana} > 480; CAST leaves at least the 320-mana reserve",
+                    f"Player mana {player_mana} > {stockpile}; CAST preserves the configured reserve",
                     failures,
                     evaluations,
                     card=card,
                     candidate_count=len(usable),
                 )
-            failures.append("STEP_5_CAST: mana >480 but no proven usable Attack card")
+            failures.append(f"STEP_5_CAST: mana >{stockpile} but no proven usable Attack card")
         else:
-            failures.append("STEP_5_CAST: player mana is UNKNOWN or not greater than 480")
+            failures.append(
+                f"STEP_5_CAST: player mana is UNKNOWN or not greater than {stockpile}"
+            )
 
         boss_mana = boss.mana if boss is not None else None
         boss_rage = boss.power if boss is not None else None
+        high_mana = self.config.boss_high_mana
+        high_rage = self.config.boss_high_rage
+        low_resource = self.config.boss_low_resource
         drain_moves = tuple(
             value for value in safe_moves if value.total.effective(GemType.DRAIN) > 0
         )
         shield_moves = tuple(
             value for value in safe_moves if value.total.effective(GemType.SHIELD) > 0
         )
-        if boss_mana is not None and boss_rage is not None and boss_mana > 160 and boss_rage > 100:
+        if (
+            boss_mana is not None
+            and boss_rage is not None
+            and boss_mana > high_mana
+            and boss_rage > high_rage
+        ):
             if drain_moves:
                 selected = min(
                     drain_moves,
@@ -527,13 +704,18 @@ class BasicPolicyEngine:
                     state,
                     PolicyAction.SWAP,
                     "STEP_5_DRAIN",
-                    f"Boss mana {boss_mana} > 160 and Rage {boss_rage} > 100",
+                    f"Boss mana {boss_mana} > {high_mana} and Rage {boss_rage} > {high_rage}",
                     failures,
                     drain_moves,
                     selected=selected,
                 )
             failures.append("STEP_5_DRAIN: high boss resources but no safe Drain move")
-        elif boss_mana is not None and boss_rage is not None and boss_mana < 50 and boss_rage < 50:
+        elif (
+            boss_mana is not None
+            and boss_rage is not None
+            and boss_mana < low_resource
+            and boss_rage < low_resource
+        ):
             if shield_moves:
                 selected = min(
                     shield_moves,
@@ -543,7 +725,7 @@ class BasicPolicyEngine:
                     state,
                     PolicyAction.SWAP,
                     "STEP_5_SHIELD",
-                    f"Boss mana {boss_mana} and Rage {boss_rage} are both below 50",
+                    f"Boss mana {boss_mana} and Rage {boss_rage} are both below {low_resource}",
                     failures,
                     shield_moves,
                     selected=selected,

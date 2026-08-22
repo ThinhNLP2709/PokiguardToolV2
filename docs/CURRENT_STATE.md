@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-08-16 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-08-22 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,10 +24,32 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2D.5 — PASS STRONG** |
+| Current completed phase | **Phase 2D.6 — PASS STRONG** |
 | Next approved/planned phase | **NONE — await user review/approval** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
+
+Phase 2D.6 accepted graceful stop, durable checkpoint/resume, and a 25-match
+bounded soak. B1 artifact
+`logs/farm_runs/dded65a91c9d4955b9614a1b61f40904/` proves F6 during
+`ACTIVE_COMBAT` drained one STRONG/consistent WIN through postmatch to exact
+`BOSS_LOBBY`, with zero entry after the request. Final invariant
+`PHASE2D6_GRACEFUL_STOP_PROVEN`.
+
+B2 Run A `dc1d191f369449deb422f1b3c7cc209b` stopped gracefully after two
+completed WINs. Explicit resume `7afb954b302a4bdab59ff488bb56317f`
+continued the historical accounting to 5/5 WINs, including one natural
+dead-board technical abort/recovery that was not counted as completion. There
+were no duplicate MatchIds or result counts. Final invariant
+`PHASE2D6_CHECKPOINT_RESUME_PROVEN`.
+
+B3 artifact `logs/farm_runs/6f8d890137604098b6ff4a066a20d4ec/`
+completed exactly 25/25 unique matches in 25 attempts: 24 WIN, 1 LOSS, 0
+UNKNOWN, 25/25 consistent memory/UI results, 0 technical aborts/recoveries,
+and every safety counter zero. It returned to exact `BOSS_LOBBY`, stopped with
+`FARM_TARGET_COMPLETED`, and created no attempt 26. Final invariant
+`PHASE2D6_LONG_SOAK_PROVEN`. Evidence: [Phase 2D.6 report](phase2d6_report.md)
+and [runbook](phase2d6_runbook.md).
 
 Phase 2D.5 accepted both required live boundaries. Stage B1 artifact
 `logs/farm_runs/4f1608ed395e44e8886244587a5bb9b0/` proves a frozen,
@@ -332,14 +354,21 @@ Its old PASS-disabled/undefined-fallback notes are superseded by
 
 ## BASIC Resource Rules Currently Accepted
 
-1. EVOLVE first only for `ManaPriority=EVOLUTION` when live action is eligible
-   and affordable; `ATTACK` priority disables EVOLVE for that match.
+1. EVOLVE first only for `ManaPriority=EVOLUTION` when an evolution pet and
+   current live Fusion slot are proven, the action is eligible/affordable, the
+   inclusive EVOLVE time floor is met, and low-boss-HP mode is inactive.
+   `ATTACK` priority, no selected evolution pet, or boss HP at/below the
+   enabled low-HP threshold disables EVOLVE without stopping board play.
 2. Sword is highest. A non-Sword direct match may win when its deterministic
    cascade collects the better Sword result.
-3. Safe Rage has tactical priority below 100; otherwise safe Mana is preferred.
+3. At/below the configurable boss-HP threshold (default 30,000), after Sword:
+   use an affordable proven Attack card, otherwise prefer safe Mana. Outside
+   that mode, safe Rage has tactical priority below 100; otherwise safe Mana.
 4. Safe Health: boss HP >50%, own HP <30% (`SIMPLE`) or <50% (`CAREFUL`).
-5. CAST: player Mana strictly >480 and usable dynamic ATTACK card; accepted
-   reserve is 320 after observed cost 160.
+5. Normal CAST requires player Mana strictly >480 and a usable dynamic ATTACK
+   card, preserving 320 after observed cost 160. Low-boss-HP mode explicitly
+   allows an affordable CAST without that stockpile threshold. No equipped or
+   proven live Attack card disables CAST only; board policy continues.
 6. Safe Drain: boss Mana >160 and Rage >100. Safe Shield: both <50.
    Intermediate handling prefers safe Shield. Only-safe Drain and Health-only
    safe fallback are accepted special cases.
@@ -439,20 +468,22 @@ selection calibration is not accepted.
 
 ## Bounded Farm Runner
 
-Phase 2D.5: **PASS STRONG**. The production runner owns the complete bounded
-state machine and the single automation-controller lease:
+Phase 2D.6: **PASS STRONG**. The production runner owns the complete bounded
+state machine, explicit operator-control axis, durable historical checkpoint,
+and the single automation-controller lease:
 
 ```text
 BOSS_LOBBY -> exact Starburst 1289 entry -> fresh opening -> full BASIC
 -> normal POSTMATCH confirmation -> exact BOSS_LOBBY -> bounded next entry
 ```
 
-Accepted Phase 2D.5 live bounds are exactly 10 completed matches, at most 2
-technical recoveries, and at most 14 fresh match attempts. Progress is explicit
+Accepted Phase 2D.6 B3 bounds are exactly 25 completed matches, at most 3
+technical recoveries, and at most 32 fresh match attempts. Progress is explicit
 `FarmRun` state; it is not inferred from MatchId count. Each entry re-resolves
 the target and requires a unique session plus hardened current 64/64 opening.
 Target completion is checked after exact lobby reacquisition, before another
-entry capability can be issued.
+entry capability can be issued. The accepted run used exactly 25 attempts and
+did not create entry/attempt 26.
 
 Terminal classification is frozen before ownership cleanup in a session-bound
 `TerminalCombatSnapshot`. Exact terminal winner/HP evidence is primary;
@@ -460,21 +491,30 @@ postmatch `Thắng`/`Thua` is a secondary consistency audit. Results are
 WIN/LOSS/UNKNOWN with STRONG/PARTIAL/UNKNOWN provenance. Strong results cannot
 be downgraded by later cleanup. Normal completion is counted exactly once;
 technical aborts do not increment completion; UI/memory conflict safe-stops at
-the lobby. Accepted B2 accounting is 10 wins, 0 losses, 0 unknowns, 10 unique
-MatchIds, and 10/10 memory/UI consistency.
+the lobby. Accepted B3 accounting is 24 wins, 1 loss, 0 unknowns, 25 unique
+MatchIds, and 25/25 memory/UI consistency.
 
 Production `SEQUENCE_DESYNC` and exact `DEAD_BOARD_NO_REFRESH` dispatch into
 the same accepted recovery coordinator. Recovery immediately locks gameplay,
 uses normal foreground exit/confirm/re-entry inputs, rejects failed-session
 state, accepts only a distinct current session/opening, then rereads and
 recomputes BASIC. Phase 2D.4 Stage B1 live-proves one accepted consuming action
-after this handoff. Phase 2D.5 B2 had no natural technical failure
-(`NOT_OBSERVED`).
+after this handoff. Phase 2D.6 B2 naturally observed and recovered one dead
+board; B3 had no natural technical failure.
 
-F9 terminally prevents future input. F7 is deliberately disabled; stale-safe
-farm-level pause/resume has not been accepted. Infinite farming and process
-restart are not implemented. See [Phase 2D.5](phase2d5_report.md) and its
-[runbook](phase2d5_runbook.md).
+F6 is the accepted edge-triggered graceful stop: it drains an active/in-flight
+match and postmatch to exact boss lobby, then stops with a hard no-new-entry
+gate. F9 terminally prevents future input and produces a non-resumable
+emergency checkpoint. F7 is deliberately disabled; stale-safe farm-level
+pause/resume has not been accepted.
+
+Checkpoint schema `pokiguard.farm_checkpoint.v1` persists only durable history
+with atomic temp/flush/fsync/replace writes. Explicit resume is accepted only
+at freshly confirmed exact `BOSS_LOBBY` with identical target/limits. It never
+restores Board/action/sequence/idle/UI runtime state or resumes an old combat.
+Infinite farming, game launch/process restart, and automatic login are not
+implemented. See [Phase 2D.6](phase2d6_report.md) and its
+[runbook](phase2d6_runbook.md).
 
 ## Latest Accepted Milestones
 
@@ -498,49 +538,66 @@ restart are not implemented. See [Phase 2D.5](phase2d5_report.md) and its
   memory-backed WIN before ownership cleanup, and B2 completes exactly 10
   STRONG/consistent wins then stops at boss lobby before entry #11 with exact
   accounting and every safety counter zero.
+- [Phase 2D.6](phase2d6_report.md) — **PASS STRONG**; F6 drains safely to
+  lobby, explicit checkpoint resume preserves exact accounting, and B3
+  completes 25/25 unique matches (24 WIN, 1 LOSS, 0 UNKNOWN) before entry #26
+  with every safety counter zero.
 
 Intermediate retries are historical evidence, not current phase status.
 
 ## Current Test Baseline
 
-Verified on **2026-08-16**:
+Verified on **2026-08-22**:
 
 ```text
-python -m unittest discover -s tests -v
-Ran 409 tests
+python -m unittest discover -s tests
+Ran 525 tests
 OK
 ```
 
-Current baseline: **409/409 PASS**. `python -m compileall -q src tools tests`:
+Current baseline: **525/525 PASS**. `python -m compileall -q src tools tests`:
 **PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
 WIN/LOSS/UNKNOWN classification, frozen result survival after ownership
 cleanup, UI/memory consistency and conflict, idempotent accounting, two
 independent bounded recovery invocations, recovery-resume for captured sequence
 desync and deterministic dead board, target/recovery/attempt hard boundaries,
 session uniqueness, no entry after the configured target, input after stop,
-single-use farm capabilities, exact hardened openings, and one-action Stage B1.
+single-use farm capabilities, exact hardened openings, graceful-stop lifecycle
+races, F9 invalidation, checkpoint validation/atomicity/resume accounting,
+optional/dynamic card layout, recovery ACK-epoch contamination, and the x64
+working-set sampler ABI.
 
 ## Current Known Limitations
 
-- Bounded continuous farming is accepted for the exact Phase 2D.5 limits:
-  10 completed matches, at most 2 technical recoveries, and at most 14 match
-  attempts. Infinite/daemon farming and process relaunch are not accepted.
+- Bounded continuous farming is accepted for the Phase 2D.6 B3 limits: 25
+  completed matches, at most 3 technical recoveries, and at most 32 match
+  attempts. Infinite/daemon farming, game launch/login, automatic process
+  restart, and unbounded retries are not accepted.
+- Checkpoint resume is history/accounting continuation only and requires a
+  freshly confirmed exact boss lobby. Mid-combat controller restart/resume and
+  restoration of executable runtime state are not accepted.
 - The result-modal `Đồng ý` requirement, exact locator, one-click normal-UI
   path, and resulting lobby transition are live-accepted for the proven modal.
-- Phase 2D.5 permits at most two automatic technical recoveries. The successful
-  accepted B2 run required zero; two independent invocations are offline
-  covered, while recovery-to-fresh-BASIC resume remains live accepted from
-  Phase 2D.4.
-- Terminal PlayerStats capture before cleanup is live accepted: B1 and all ten
-  B2 matches were STRONG memory WINs with consistent UI. UNKNOWN remains the
-  fail-closed outcome when evidence disappears too early.
+- Phase 2D.6 B2 naturally recovered one exact dead board. B3 required zero
+  recoveries. If old MatchService ACK state persists at the lobby, technical
+  recovery now refuses re-entry; only a user-run game process restart clears
+  the observed contamination, because automatic restart is out of scope.
+- Terminal PlayerStats capture before cleanup is live accepted for all 25 B3
+  matches: 24 STRONG WINs and one STRONG LOSS, all UI-consistent. UNKNOWN
+  remains the fail-closed outcome when evidence disappears too early.
+- Accepted B3 working-set start/peak/end values are unavailable because the
+  original ctypes sampler truncated the x64 pseudo handle. The ABI is fixed and
+  regression-tested for future runs, but no retroactive RAM series is claimed.
+- Ordinary Attack/Fusion card layout is dynamic and accepted. A missing Attack
+  card or evolution pet disables that card action only. Pet-specific skill-card
+  click layout/use remains intentionally deferred.
 - `REASONING` is undefined/not implemented.
 - CAST reset **UNKNOWN**; EVOLVE reset **UNKNOWN**.
 - B5 natural full-cycle PASS coverage `NOT_OBSERVED`; controlled 2C.2C proves
   the complete SWAP reset cycle, while B5 retry 2 proves its dangerous half.
-- Natural live sequence desync and zero-legal board recovery remain
-  `NOT_OBSERVED`; their production dispatch is replay/offline accepted and was
-  not deliberately induced. Generic unrelated modal traversal is **UNKNOWN**.
+- Natural live sequence desync remains `NOT_OBSERVED`; exact zero-legal dead
+  board recovery is naturally observed in Phase 2D.6 B2. Generic unrelated
+  modal traversal is **UNKNOWN**.
 - Direct WorldBoss-card entry is not live-calibrated/accepted.
 
 ## Superseded Historical Assumptions
@@ -557,16 +614,15 @@ single-use farm capabilities, exact hardened openings, and one-action Stage B1.
 **No next phase has been started or approved. Await user review.**
 
 ```text
-accepted Phase 2D.5 terminal-result fidelity + bounded ten-match soak
+accepted Phase 2D.6 graceful stop + checkpoint resume + bounded 25-match soak
 -> review evidence
--> optionally define and explicitly approve Phase 2D.6
+-> explicitly define/approve any future phase before implementation
 ```
 
-Potential Phase 2D.6 may address production long-running operation, operator
-controls, graceful stop-after-current-match, persistent farm statistics,
-configuration profiles, and safe resume/restart semantics. Exact scope requires
-explicit approval. Infinite farming, process relaunch, internet recovery,
-target rotation, and expanded recovery authority remain outside current scope.
+No Phase 2D.7 or other future scope is inferred. Infinite farming, process
+relaunch/login, internet recovery, target rotation, pet-specific skill-card
+use, mid-combat checkpoint resume, and expanded recovery authority remain
+outside current scope unless explicitly approved.
 
 ## Update Policy for Future Phases
 

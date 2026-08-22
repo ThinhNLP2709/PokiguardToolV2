@@ -60,6 +60,8 @@ def attack_card() -> CardState:
         cooldown_turns=0,
         need_perfection=False,
         condition_use=160,
+        ui_slot=1,
+        ui_slot_count=2,
     )
 
 
@@ -73,6 +75,7 @@ def combat_state(
     fusion_locked: bool = False,
     cards: tuple[CardState, ...] = (),
     turn: int = 14,
+    boss_hp: int = 39602,
 ) -> GameState:
     player = ParticipantState(
         actor_number=1,
@@ -89,7 +92,7 @@ def combat_state(
         actor_number=99,
         is_local=False,
         is_boss=True,
-        hp=39602,
+        hp=boss_hp,
         max_hp=84180,
         mana=0,
         max_mana=445,
@@ -127,8 +130,12 @@ def combat_state(
             used=fusion_used,
             locked_this_turn=fusion_locked,
             mana_cost=160,
+            selected_user_pet_id=218166,
+            selected_pet_id=1289,
             ui_address=0x20000003000,
             ui_interactable=True,
+            ui_slot=0,
+            ui_slot_count=2,
         ),
     )
 
@@ -156,6 +163,63 @@ def no_sword_or_mana_board() -> BoardState:
 
 
 class BasicPolicyTests(unittest.TestCase):
+    def test_no_selected_fusion_pet_skips_evolve_and_plays_board(self) -> None:
+        state = combat_state(fusion_used=False, fusion_available=True, mana=500)
+        state = replace(
+            state,
+            fusion=replace(
+                state.fusion,
+                selected_user_pet_id=0,
+                selected_pet_id=0,
+                ui_address=None,
+                ui_interactable=None,
+                ui_slot=None,
+                ui_slot_count=None,
+            ),
+        )
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertIsNot(decision.action, PolicyAction.EVOLVE)
+        self.assertIn(decision.action, {PolicyAction.SWAP, PolicyAction.PASS})
+        self.assertTrue(
+            any(
+                "no evolution pet is selected" in failure
+                for failure in decision.trace.failed_higher_priority_branches
+            )
+        )
+
+    def test_no_attack_card_skips_cast_and_uses_board_policy(self) -> None:
+        state = combat_state(
+            board=no_sword_or_mana_board(),
+            mana=1200,
+            boss_hp=1,
+            cards=(),
+        )
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertIsNot(decision.action, PolicyAction.CAST)
+        self.assertIn(decision.action, {PolicyAction.SWAP, PolicyAction.PASS})
+
+    def test_unresolved_attack_slot_skips_cast_and_uses_board_policy(self) -> None:
+        unresolved_attack = replace(
+            attack_card(),
+            ui_slot=None,
+            ui_slot_count=None,
+        )
+        state = combat_state(
+            board=no_sword_or_mana_board(),
+            mana=1200,
+            boss_hp=1,
+            cards=(unresolved_attack,),
+        )
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertIsNot(decision.action, PolicyAction.CAST)
+        self.assertIn(decision.action, {PolicyAction.SWAP, PolicyAction.PASS})
+
     def test_retry18_board_uses_safe_shield_instead_of_false_no_safe_move(self) -> None:
         state = combat_state(
             board=retry18_seq11_board(),
@@ -200,6 +264,66 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertFalse(decision.consumes_turn)
         self.assertTrue(decision.requires_state_reread)
         self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
+
+    def test_evolution_is_deferred_when_same_turn_follow_up_window_is_too_short(self) -> None:
+        original = combat_state(fusion_used=False)
+        state = replace(
+            original,
+            battle=replace(original.battle, turn_time_remaining_seconds=8),
+        )
+
+        decision = BasicPolicyEngine(
+            PolicyConfig(
+                mana_priority=ManaPriority.EVOLUTION,
+                minimum_turn_time_seconds=4,
+                minimum_evolve_time_seconds=10,
+            )
+        ).decide(state)
+
+        self.assertIsNot(decision.action, PolicyAction.EVOLVE)
+        self.assertTrue(
+            any(
+                "deferred because timer 8s" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
+
+    def test_evolution_follow_up_floor_is_inclusive(self) -> None:
+        original = combat_state(fusion_used=False)
+        state = replace(
+            original,
+            battle=replace(original.battle, turn_time_remaining_seconds=10),
+        )
+
+        decision = BasicPolicyEngine(
+            PolicyConfig(
+                mana_priority=ManaPriority.EVOLUTION,
+                minimum_turn_time_seconds=4,
+                minimum_evolve_time_seconds=10,
+            )
+        ).decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
+
+    def test_low_boss_hp_mode_skips_evolution_at_inclusive_threshold(self) -> None:
+        decision = BasicPolicyEngine().decide(
+            combat_state(
+                boss_hp=30_000,
+                mana=480,
+                fusion_used=False,
+                fusion_available=True,
+            )
+        )
+
+        self.assertIsNot(decision.action, PolicyAction.EVOLVE)
+        self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD")
+        self.assertTrue(
+            any(
+                "low-boss-HP mode is active" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
 
     def test_evolution_requires_live_interactable_ui(self) -> None:
         state = combat_state(fusion_used=False)
@@ -371,6 +495,125 @@ class BasicPolicyTests(unittest.TestCase):
                 for reason in decision.trace.failed_higher_priority_branches
             )
         )
+
+    def test_finisher_casts_below_boss_hp_threshold_without_480_stockpile(self) -> None:
+        decision = BasicPolicyEngine().decide(
+            combat_state(
+                board=no_sword_or_mana_board(),
+                mana=160,
+                rage=100,
+                boss_hp=29_999,
+                cards=(attack_card(),),
+            )
+        )
+        self.assertEqual(decision.action, PolicyAction.CAST)
+        self.assertEqual(decision.trace.policy_step, "STEP_3_FINISH_CAST")
+        self.assertTrue(decision.consumes_turn)
+        self.assertEqual(decision.card_object_address, attack_card().object_address)
+
+    def test_finisher_is_not_reached_while_a_sword_move_exists(self) -> None:
+        decision = BasicPolicyEngine().decide(
+            combat_state(mana=1200, rage=100, boss_hp=1, cards=(attack_card(),))
+        )
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD")
+
+    def test_finisher_requires_affordable_card(self) -> None:
+        decision = BasicPolicyEngine().decide(
+            combat_state(
+                board=no_sword_or_mana_board(),
+                mana=159,
+                rage=100,
+                boss_hp=1_000,
+                cards=(attack_card(),),
+            )
+        )
+        self.assertIsNot(decision.action, PolicyAction.CAST)
+        self.assertTrue(
+            any(
+                "no affordable usable Attack card" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
+
+    def test_low_boss_hp_mode_prioritizes_safe_mana_before_safe_rage(self) -> None:
+        state = combat_state(
+            boss_hp=10_000,
+            mana=0,
+            rage=0,
+            fusion_used=False,
+            fusion_available=True,
+        )
+        bases = evaluate_all_moves(state.board)  # type: ignore[arg-type]
+        mana = ResourceResult(((GemType.MANA, ResourceTally(3, 3)),))
+        rage = ResourceResult(((GemType.RAGE, ResourceTally(3, 3)),))
+        mana_move = replace(
+            bases[0],
+            direct=mana,
+            cascade=ResourceResult(),
+            total=mana,
+            sword_risk=replace(bases[0].sword_risk, safe=True),
+        )
+        rage_move = replace(
+            bases[1],
+            direct=rage,
+            cascade=ResourceResult(),
+            total=rage,
+            sword_risk=replace(bases[1].sword_risk, safe=True),
+        )
+
+        with patch(
+            "pokiguard_v2.basic_policy.evaluate_all_moves",
+            return_value=(rage_move, mana_move),
+        ):
+            decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "STEP_3_LOW_BOSS_MANA")
+        self.assertEqual(decision.move, mana_move.move)
+        self.assertIsNot(decision.action, PolicyAction.CAST)
+        self.assertTrue(
+            any(
+                "no affordable usable Attack card" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
+
+    def test_finisher_can_be_disabled_by_configuration(self) -> None:
+        decision = BasicPolicyEngine(PolicyConfig(cast_when_boss_hp_below=0)).decide(
+            combat_state(
+                board=no_sword_or_mana_board(),
+                mana=200,
+                rage=100,
+                boss_hp=1,
+                cards=(attack_card(),),
+            )
+        )
+        self.assertIsNot(decision.trace.policy_step, "STEP_3_FINISH_CAST")
+        self.assertTrue(
+            any(
+                "finisher disabled by configuration" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
+
+    def test_stockpile_threshold_is_configurable(self) -> None:
+        decision = BasicPolicyEngine(
+            PolicyConfig(
+                mana_priority=ManaPriority.ATTACK,
+                cast_when_boss_hp_below=0,
+                cast_mana_stockpile_threshold=200,
+            )
+        ).decide(
+            combat_state(
+                board=no_sword_or_mana_board(),
+                mana=201,
+                rage=100,
+                cards=(attack_card(),),
+            )
+        )
+        self.assertEqual(decision.action, PolicyAction.CAST)
+        self.assertEqual(decision.trace.policy_step, "STEP_5_CAST")
 
     def test_only_safe_drain_is_used_even_when_boss_resources_are_low(self) -> None:
         board = no_sword_or_mana_board()
@@ -644,6 +887,40 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertEqual(decision.action, PolicyAction.SWAP)
         self.assertEqual(decision.trace.policy_step, "STEP_7_MANDATORY")
 
+    def test_two_game_owned_passes_defer_evolution_for_consuming_action(self) -> None:
+        state = combat_state(
+            rage=100,
+            mana=480,
+            fusion_used=False,
+            fusion_available=True,
+        )
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                consecutive_passes=2,
+                consecutive_pass_threshold=3,
+                consecutive_pass_source="test.game_owned",
+                consecutive_pass_status=(
+                    GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
+                ),
+            ),
+        )
+
+        decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(state)
+
+        self.assertIn(decision.action, {PolicyAction.SWAP, PolicyAction.CAST})
+        self.assertNotEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertTrue(decision.consumes_turn)
+        self.assertTrue(
+            any(
+                "authoritative idle state" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
+
     def test_first_turn_comes_from_runtime_turn_number(self) -> None:
         state = combat_state(rage=100, turn=1)
         self.assertTrue(state.battle.first_local_turn)
@@ -679,9 +956,23 @@ class BasicPolicyTests(unittest.TestCase):
             state,
             battle=replace(state.battle, turn_time_remaining_seconds=3),
         )
-        decision = BasicPolicyEngine().decide(state)
+        decision = BasicPolicyEngine(
+            PolicyConfig(minimum_turn_time_seconds=4)
+        ).decide(state)
         self.assertEqual(decision.action, PolicyAction.NONE)
         self.assertEqual(decision.trace.blocker, "TURN_TIMER_SAFETY_MARGIN")
+
+    def test_configured_action_floor_is_inclusive(self) -> None:
+        original = combat_state()
+        state = replace(
+            original,
+            battle=replace(original.battle, turn_time_remaining_seconds=4),
+        )
+        decision = BasicPolicyEngine(
+            PolicyConfig(minimum_turn_time_seconds=4)
+        ).decide(state)
+        self.assertIsNot(decision.action, PolicyAction.NONE)
+        self.assertNotEqual(decision.trace.blocker, "TURN_TIMER_SAFETY_MARGIN")
 
     def test_reasoning_is_formalized_but_not_implemented(self) -> None:
         decision = BasicPolicyEngine(

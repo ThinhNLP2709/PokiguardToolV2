@@ -40,6 +40,7 @@ from pokiguard_v2.autonomous_control import (  # noqa: E402
     TurnTransitionTracker,
     direct_runtime_proves_cast_accepted,
     direct_runtime_proves_swap_accepted,
+    plan_action_response_wait,
 )
 from pokiguard_v2.authoritative_pass import (  # noqa: E402
     AuthoritativePassCoordinator,
@@ -153,6 +154,12 @@ class SharedCombatRuntime:
     expected_session: Any | None = None
     gameplay_capability: Any | None = None
     technical_recovery_dispatcher: Any | None = None
+    # Farm-owned contextual F6/F9 latch. Combat calls poll(), never take().  The
+    # wrapper registers F6 with FarmRun immediately (so recovery can suppress a
+    # not-yet-sent re-entry), while this combat controller deliberately keeps
+    # playing the current match. The outer farm loop consumes the audit latch at
+    # the next boundary. This preserves F6 graceful drain != F9 emergency stop.
+    farm_control_hotkeys: Any | None = None
 
 
 def _reserve_farm_gameplay(
@@ -205,8 +212,10 @@ def _dispatch_technical_recovery(
     state: GameState | None,
     desync: Any | None = None,
     analysis: Any | None = None,
+    actionability_evidence: dict[str, Any] | None = None,
+    unconfirmed_pass_evidence: dict[str, Any] | None = None,
 ) -> bool:
-    """Dispatch only the two Phase 2D.3 production technical reasons.
+    """Dispatch only bounded, evidence-validated production technical reasons.
 
     The gameplay controller owns detection and immediate action invalidation;
     the outer Phase 2D.3 runner owns all recovery UI and re-entry.  Absence of
@@ -224,7 +233,76 @@ def _dispatch_technical_recovery(
         and analysis is not None
     ):
         return bool(dispatcher.dispatch_dead_board(state, analysis))
+    if reason == "ACTIONABILITY_STATE_LOST" and actionability_evidence is not None:
+        return bool(
+            dispatcher.dispatch_actionability_state_lost(
+                **actionability_evidence
+            )
+        )
+    if (
+        reason == "ACTIONABILITY_STATE_LOST"
+        and unconfirmed_pass_evidence is not None
+    ):
+        return bool(
+            dispatcher.dispatch_unconfirmed_pass_runtime_reset(
+                **unconfirmed_pass_evidence
+            )
+        )
     return False
+
+
+def _force_full_pass_scan_once(
+    current_attempt_identity: tuple[Any, ...] | None,
+    last_forced_identity: tuple[Any, ...] | None,
+) -> bool:
+    """Use one discovery scan per PASS attempt, then fast learned regions."""
+
+    return bool(
+        current_attempt_identity is not None
+        and current_attempt_identity != last_forced_identity
+    )
+
+
+def _dispatch_unconfirmed_pass_recovery(
+    runtime: SharedCombatRuntime,
+    *,
+    terminal: Any,
+    raw_runtime: Any,
+    active_session: Any,
+    state: GameState | None,
+) -> bool:
+    if (
+        terminal.result is not PassResultKind.PASS_STATE_UNCONFIRMED
+        or raw_runtime is None
+        or active_session is None
+    ):
+        return False
+    attempt = terminal.attempt
+    return _dispatch_technical_recovery(
+        runtime,
+        reason="ACTIONABILITY_STATE_LOST",
+        state=state,
+        unconfirmed_pass_evidence={
+            "session_key": active_session,
+            "match_id": raw_runtime.match_id,
+            "source_turn": attempt.source_turn,
+            "source_srv_seq": attempt.source_srv_seq,
+            "source_board_hash": attempt.board_hash,
+            "source_local_move_sequence": attempt.source_local_move_sequence,
+            "current_turn": raw_runtime.turn,
+            "current_player": raw_runtime.current_player,
+            "local_username": raw_runtime.local_username,
+            "current_local_move_sequence": raw_runtime.local_move_sequence,
+            "current_last_move_sequence": raw_runtime.last_move_sequence,
+            "current_highest_acked_sequence": (
+                raw_runtime.highest_acked_sequence
+            ),
+            "gameplay_inputs_during_wait": (
+                terminal.gameplay_inputs_during_wait
+            ),
+            "terminal_detail": terminal.detail,
+        },
+    )
 
 
 def _prime_transport_for_runtime(
@@ -279,6 +357,8 @@ class Counters:
     stale_actions: int = 0
     stale_actions_blocked: int = 0
     expired_actions: int = 0
+    action_response_timeouts: int = 0
+    action_response_wait_extensions: int = 0
     user_state_changes: int = 0
     pass_required: int = 0
     policy_no_safe_move: int = 0
@@ -362,12 +442,14 @@ class B4CastAcceptanceEvidence:
 
 @dataclass(frozen=True)
 class EvolveOnlyTurnWait:
-    """Zero-input wait after EVOLVE when the same-turn policy selects PASS.
+    """Zero-input wait after EVOLVE when no safe same-turn input remains.
 
     The game has now shown that a terminal EVOLVE attempt, successful or
     failed, can make the remainder of that local turn non-AFK: the opponent
-    turn arrives without a correlated AFK payload. This state therefore must
-    not borrow PASS_WAIT or mutate/count an intentional PASS.
+    turn arrives without a correlated AFK payload. An unconfirmed EVOLVE can
+    instead become a real server AFK turn. This state therefore must not borrow
+    PASS_WAIT or mutate/count an intentional PASS; it only observes the exact
+    server outcome and lets GameOwnedIdleCache ingest any real AFK payload.
     """
 
     session: Any
@@ -381,6 +463,7 @@ class EvolveOnlyTurnWait:
     opponent_turn_observed: bool = False
     authoritative_idle_observed: bool = False
     direct_idle_requires_turn_correlation: bool = False
+    origin: str = "TERMINAL_EVOLVE_POLICY_PASS"
 
 
 def _evolve_only_turn_wait_status(
@@ -416,6 +499,58 @@ def _evolve_only_turn_wait_status(
     if is_local_turn:
         return "COMPLETED_NEXT_LOCAL_TURN"
     return "WAIT_OPPONENT_TURN"
+
+
+def _can_wait_after_unconfirmed_evolve(
+    pending: PendingAutonomousAction,
+    *,
+    pass_stage: str,
+    active_session: Any,
+    current_turn: int | None,
+    is_local_turn: bool | None,
+    is_first_local_turn: bool,
+    lifecycle_active: bool,
+    board_current_valid: bool,
+    idle_can_pass: bool,
+    idle_must_act: bool,
+    sequence_desync: bool,
+    timeout_reason: str,
+) -> tuple[bool, str]:
+    """Permit a zero-input wait, never a repeated EVOLVE click.
+
+    This is deliberately limited to the production B5 controller used by the
+    Phase 2D farm. A confirmed consuming reset (or exact idle=0/1) must make
+    one AFK outcome safe. The authoritative event later decides whether the
+    server counted a pass; this function never increments idle locally.
+    """
+
+    if pass_stage != "B5":
+        return False, "NOT_B5_PRODUCTION"
+    if pending.identity.action is not PolicyAction.EVOLVE or pending.consumes_turn:
+        return False, "NOT_NONCONSUMING_EVOLVE"
+    if active_session != pending.identity.source.session:
+        return False, "SESSION_CHANGED"
+    if current_turn != pending.identity.source.turn or is_local_turn is not True:
+        return False, "SOURCE_TURN_CHANGED"
+    if is_first_local_turn:
+        return False, "FIRST_LOCAL_TURN_FORBIDDEN"
+    if not lifecycle_active or not board_current_valid:
+        return False, "CURRENT_COMBAT_BOARD_UNPROVEN"
+    if sequence_desync:
+        return False, "SEQUENCE_DESYNC"
+    # The response observer may reach the action floor immediately, or only
+    # after using its one bounded read-only extension.  Both are terminal
+    # observation timeouts and neither authorizes another EVOLVE click.  The
+    # remaining session/turn/board/idle checks above are the safety proof for
+    # waiting through the server-owned end of this turn.
+    if timeout_reason not in {
+        "INSUFFICIENT_SAFE_TURN_TIME",
+        "EXTENSION_LIMIT_REACHED",
+    }:
+        return False, "TIMEOUT_OBSERVATION_STATE_UNSAFE"
+    if not idle_can_pass or idle_must_act:
+        return False, "AUTHORITATIVE_IDLE_DOES_NOT_ALLOW_PASS"
+    return True, "SAFE_ZERO_INPUT_WAIT_AFTER_UNCONFIRMED_EVOLVE"
 
 
 def _b4_evolve_forbidden(
@@ -914,7 +1049,7 @@ def _local_turn_action_deadline_reached(
         or current_player.casefold() != local_username.casefold()
         or remaining_seconds is None
         or remaining_seconds < 0
-        or remaining_seconds > warning_seconds
+        or remaining_seconds >= warning_seconds
         or status is not AutonomousStatus.RUNNING
         or pending is not None
     ):
@@ -928,6 +1063,32 @@ def _local_turn_deadline_warning_seconds(minimum_action_time: int) -> int:
     if minimum_action_time < 0:
         raise ValueError("minimum action time cannot be negative")
     return min(minimum_action_time, 10)
+
+
+def _without_optional_card_actions(
+    state: GameState,
+    suppressed: frozenset[PolicyAction],
+) -> GameState:
+    """Mask failed optional UI actions for one source turn only.
+
+    A card locator failure is not evidence that normal board input is unsafe.
+    The controller therefore re-runs the unchanged BASIC policy with only the
+    failed optional action unavailable.  The caller scopes ``suppressed`` to
+    the authoritative combat session and turn.
+    """
+
+    cards = state.cards
+    fusion = state.fusion
+    if PolicyAction.CAST in suppressed:
+        cards = tuple(
+            replace(card, interactable=False) if card.is_attack else card
+            for card in cards
+        )
+    if PolicyAction.EVOLVE in suppressed and fusion is not None:
+        fusion = replace(fusion, ui_interactable=False)
+    if cards is state.cards and fusion is state.fusion:
+        return state
+    return replace(state, cards=cards, fusion=fusion)
 
 
 def _policy_branch(policy_step: str) -> str:
@@ -1131,6 +1292,36 @@ def _combat_end_stop_reason(
     ):
         return current_stop_reason
     return "COMBAT_LIFECYCLE_ENDED"
+
+
+def _combat_ownership_ended(
+    *,
+    lifecycle_event: str | None,
+    lifecycle_state: CombatLifecycleState | None,
+    session_seen: bool,
+    active_session: Any,
+    state: GameState | None,
+) -> bool:
+    """Recognize terminal ownership even when BoardTracker says ``postmatch``.
+
+    A terminal provider poll may clear its publishable GameState at the same
+    time that CombatLifecycle resolves POSTMATCH. Requiring the legacy literal
+    ``board_lost`` event then leaves the controller scanning forever behind a
+    visible result modal. Lifecycle ownership is the authoritative boundary;
+    no terminal value is inferred here.
+    """
+
+    if lifecycle_event == "board_lost":
+        return True
+    if not session_seen or active_session is None:
+        return False
+    if state is not None and state.phase is not GamePhase.COMBAT:
+        return True
+    return lifecycle_state in {
+        CombatLifecycleState.POSTMATCH,
+        CombatLifecycleState.LOBBY,
+        CombatLifecycleState.STALE_SERVER_MATCH,
+    }
 
 
 def _cancel_unsent(
@@ -1472,10 +1663,86 @@ def _terminal_artifact(
         return None
 
 
+def _card_diagnostics(state: GameState) -> dict[str, Any]:
+    """Read-only evidence for why a CAST was or was not affordable.
+
+    STEP_3_FINISH_CAST and STEP_5_CAST both draw from the same Attack-card
+    pool, so every decision records the exact gate each live card passed or
+    failed.  Purely observational: it never influences policy.
+    """
+    player_mana = state.player.mana if state.player is not None else None
+    cards: list[dict[str, Any]] = []
+    for card in state.cards:
+        mana_cost = card.mana_cost
+        condition_use = card.condition_use
+        if mana_cost > 0:
+            cost: int | None = mana_cost
+            cost_source = "CardData.manaCost"
+        elif condition_use is not None and condition_use > 0:
+            cost = int(condition_use)
+            cost_source = "CardData.conditionUse"
+        else:
+            cost = None
+            cost_source = "UNRESOLVED_TREATED_AS_INFINITE"
+        gates = {
+            "isAttack": card.is_attack,
+            "interactable": card.interactable,
+            "notActionPending": not card.action_pending,
+            "notUsedThisTurn": not card.has_used_this_turn,
+            "uiLocated": bool(
+                card.ui_slot is not None
+                and card.ui_slot_count is not None
+                and 0 <= card.ui_slot < card.ui_slot_count
+            ),
+        }
+        blocked_by = tuple(name for name, passed in gates.items() if not passed)
+        affordable = (
+            None
+            if cost is None or player_mana is None
+            else player_mana >= cost
+        )
+        cards.append(
+            {
+                "cardId": card.card_id,
+                "objectAddress": card.object_address,
+                "name": card.name,
+                "elementType": card.element_type,
+                "skillType": card.skill_type,
+                "manaCost": mana_cost,
+                "conditionUse": condition_use,
+                "resolvedCost": cost,
+                "costSource": cost_source,
+                "gates": gates,
+                "blockedBy": blocked_by,
+                "isPlaceholder": card.is_placeholder,
+                "hasUsedThisMatch": card.has_used_this_match,
+                "lastTurnUsed": card.last_turn_used,
+                "cooldownTurns": card.cooldown_turns,
+                "uiSlot": card.ui_slot,
+                "uiSlotCount": card.ui_slot_count,
+                "affordable": affordable,
+                "usableNow": bool(not blocked_by and affordable),
+            }
+        )
+    attack_cards = [value for value in cards if value["gates"]["isAttack"]]
+    return {
+        "playerMana": player_mana,
+        "cardCount": len(cards),
+        "attackCardCount": len(attack_cards),
+        "attackPassingGates": sum(1 for v in attack_cards if not v["blockedBy"]),
+        "attackWithUnresolvedCost": sum(
+            1 for v in attack_cards if v["resolvedCost"] is None
+        ),
+        "attackUsableNow": sum(1 for v in attack_cards if v["usableNow"]),
+        "cards": tuple(cards),
+    }
+
+
 def _decision_fields(state: GameState, decision: Any, analysis: Any) -> dict[str, Any]:
     boss = next((value for value in state.opponents if value.is_boss is True), None)
     selected = decision.trace.selected_candidate
     return {
+        "cardDiagnostics": _card_diagnostics(state),
         "session": state.battle.session_key,
         "matchId": state.battle.match_id,
         "turn": state.battle.turn_number,
@@ -1588,6 +1855,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mana-priority", choices=[value.value for value in ManaPriority], default="evolution")
     parser.add_argument("--intelligence", choices=[value.value for value in Intelligence], default="basic")
     parser.add_argument("--minimum-action-time", type=int, default=4)
+    parser.add_argument(
+        "--cast-when-boss-hp-below",
+        type=int,
+        default=30_000,
+        help=(
+            "Step 3 finisher: with no Sword on the board and boss current HP at or "
+            "below this value, CAST as soon as one Attack card is affordable. "
+            "0 disables the finisher."
+        ),
+    )
+    parser.add_argument(
+        "--cast-mana-stockpile",
+        type=int,
+        default=480,
+        help="Step 5 stockpile: CAST only above this mana (default keeps a 320 reserve).",
+    )
+    parser.add_argument(
+        "--rage-target",
+        type=int,
+        default=100,
+        help="Step 3 Rage floor to reach before switching to Mana.",
+    )
     parser.add_argument("--interval", type=float, default=0.10)
     parser.add_argument("--action-timeout", type=float, default=9.0)
     parser.add_argument("--matches", type=int, default=1)
@@ -1748,6 +2037,7 @@ def _create_shared_combat_runtime(
             allow_ack_heap_scan=True,
             ack_heap_region_mib=args.ack_heap_region_mib,
             extended_fusion_ui_region_mib=max(args.max_region_mib, 16),
+            extended_card_ui_region_mib=max(args.max_region_mib, 16),
         ),
     )
     monitor = RuntimeSequenceMonitor(
@@ -1775,6 +2065,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             mana_priority=configured_mana_priority,
             intelligence=Intelligence.BASIC,
             minimum_turn_time_seconds=args.minimum_action_time,
+            cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
+            cast_mana_stockpile_threshold=getattr(args, "cast_mana_stockpile", 480),
+            rage_target=getattr(args, "rage_target", 100),
         )
     )
     v1_config = V1SolverAdapter(args.v1_root).config
@@ -1782,7 +2075,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     stage_name = (
         "b5"
         if pass_stage == "B5"
-        else ("b4" if pass_stage == "B4" else "b3")
+        else (
+            "b4"
+            if pass_stage == "B4"
+            else ("b3" if pass_stage == "B3" else "b1")
+        )
     )
     log_path = (
         args.log
@@ -1955,6 +2252,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         consuming_turns = ConsumingTurnRegistry()
         turn_transitions = TurnTransitionTracker()
         opening_ready_logged: set[Any] = set()
+        opening_board_only_logged: set[Any] = set()
         transport_offered_messages: set[int] = set()
         fast_transition_deadline: float | None = None
         stop_reason = "PROCESS_OR_CONTROLLER_STOPPED"
@@ -1972,6 +2270,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         session_cleared = False
         combat_ended = False
         postmatch_observation_deadline: float | None = None
+        pass_full_scan_attempt_identity: tuple[Any, ...] | None = None
         p3_mandatory_reset_pending = False
         p3_reset_validation_pending = False
         p3_reset_validation_activity = None
@@ -1990,7 +2289,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         ] | None = None
         post_evolve_settle_logged = False
         terminal_evolve_activity_turns: set[tuple[Any, int]] = set()
+        unconfirmed_action_turns: set[tuple[Any, int]] = set()
         evolve_only_turn_wait: EvolveOnlyTurnWait | None = None
+        optional_card_suppressions: dict[
+            tuple[Any, int], set[PolicyAction]
+        ] = {}
 
         def observe_b5_server_reset(observed_idle: Any) -> None:
             """Consume only exact server idle evidence after a reset action."""
@@ -2440,6 +2743,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 _write(log, "controller_timeout", seconds=args.timeout)
                 break
             pause_toggle, recovery_hotkey, stop = hotkeys.poll()
+            # Keep the farm's F6 latch alive.  Latch only: combat never reads
+            # the result and never exits early on it.
+            if (
+                shared_runtime is not None
+                and shared_runtime.farm_control_hotkeys is not None
+            ):
+                shared_runtime.farm_control_hotkeys.poll()
             if stop:
                 if pass_coordinator is not None and pass_coordinator.gameplay_locked:
                     pass_terminal = pass_coordinator.abort_state_changed(
@@ -2660,6 +2970,21 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             early_observation = None
             if active_session is not None:
                 try:
+                    pass_scan_identity = None
+                    if (
+                        pass_coordinator is not None
+                        and pass_coordinator.gameplay_locked
+                        and pass_coordinator.attempt is not None
+                    ):
+                        pass_scan_identity = (
+                            pass_coordinator.attempt.session_id,
+                            pass_coordinator.attempt.source_turn,
+                            pass_coordinator.attempt.source_srv_seq,
+                        )
+                    force_full_pass_scan = _force_full_pass_scan_once(
+                        pass_scan_identity,
+                        pass_full_scan_attempt_identity,
+                    )
                     if fast_bounded_handoff_iteration:
                         early_observation = _runtime_observation_for_controller(
                             target,
@@ -2701,11 +3026,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 else None
                             ),
                             timestamp=utc_timestamp(),
-                            force_full_scan=bool(
-                                pass_coordinator is not None
-                                and pass_coordinator.gameplay_locked
-                            ),
+                            force_full_scan=force_full_pass_scan,
                         )
+                        if (
+                            force_full_pass_scan
+                            and early_observation.scan_performed
+                        ):
+                            pass_full_scan_attempt_identity = pass_scan_identity
                     early_messages = early_observation.messages
                     if (
                         pass_coordinator is not None
@@ -3082,6 +3409,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 evolve_attempts = 0
                 fusion_attempts_by_turn.clear()
                 opening_ready_logged.clear()
+                opening_board_only_logged.clear()
                 transport_offered_messages.clear()
                 fast_transition_deadline = None
                 action_baseline_ready = False
@@ -3093,7 +3421,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 post_evolve_input_settle = None
                 post_evolve_settle_logged = False
                 terminal_evolve_activity_turns.clear()
+                unconfirmed_action_turns.clear()
                 evolve_only_turn_wait = None
+                optional_card_suppressions.clear()
                 direct_pass_result_turn = None
                 counters.sessions_started += 1
                 _write(log, "combat_session_started", session=active_session)
@@ -3464,6 +3794,29 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             afkWarnPayload=terminal.authoritative_idle,
                             idleAfter=idle_cache.state,
                         )
+                        if _dispatch_unconfirmed_pass_recovery(
+                            runtime,
+                            terminal=terminal,
+                            raw_runtime=raw_runtime,
+                            active_session=active_session,
+                            state=last_state,
+                        ):
+                            guard.require_recovery()
+                            stop_reason = "ACTIONABILITY_STATE_LOST"
+                            _write(
+                                log,
+                                "technical_recovery_handoff",
+                                reason=stop_reason,
+                                passResult=terminal.result,
+                                passAttempt=terminal.attempt,
+                                runtime=raw_runtime,
+                                gameplayInputDisabled=True,
+                                automaticUiOwnedByOuterCoordinator=True,
+                            )
+                            _beep("recovery", not args.no_beep)
+                            acceptance_stop_requested = True
+                            pass_coordinator.take_terminal()
+                            continue
                         disposition = _pass_terminal_disposition(
                             pass_stage,
                             terminal.result,
@@ -3660,6 +4013,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     source_decisions.clear()
                     consuming_turns.clear()
                     consuming_action_turns.clear()
+                    unconfirmed_action_turns.clear()
+                    optional_card_suppressions.clear()
                     turn_transitions.clear()
                     session_cleared = True
                     _write(
@@ -3777,6 +4132,28 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         afkWarnPayload=pass_terminal.authoritative_idle,
                         idleAfter=idle_cache.state,
                     )
+                    if _dispatch_unconfirmed_pass_recovery(
+                        runtime,
+                        terminal=pass_terminal,
+                        raw_runtime=raw_runtime,
+                        active_session=active_session,
+                        state=last_state,
+                    ):
+                        guard.require_recovery()
+                        stop_reason = "ACTIONABILITY_STATE_LOST"
+                        _write(
+                            log,
+                            "technical_recovery_handoff",
+                            reason=stop_reason,
+                            passResult=pass_terminal.result,
+                            passAttempt=pass_terminal.attempt,
+                            runtime=raw_runtime,
+                            gameplayInputDisabled=True,
+                            automaticUiOwnedByOuterCoordinator=True,
+                        )
+                        _beep("recovery", not args.no_beep)
+                        pass_coordinator.take_terminal()
+                        break
                     disposition = _pass_terminal_disposition(
                         pass_stage,
                         pass_terminal.result,
@@ -3951,6 +4328,75 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 pending=guard.pending,
                 consuming_action_turns=consuming_action_turns,
             ):
+                diagnostics = provider.scan_diagnostics
+                accepted_consuming_actions = (
+                    counters.swap_acknowledged + counters.cast_accepted
+                )
+                recovery_dispatched = bool(
+                    raw_runtime is not None
+                    and active_session is not None
+                    and _dispatch_technical_recovery(
+                        runtime,
+                        reason="ACTIONABILITY_STATE_LOST",
+                        state=last_state,
+                        actionability_evidence={
+                            "session_key": active_session,
+                            "match_id": raw_runtime.match_id,
+                            "turn": int(raw_runtime.turn),
+                            "current_player": raw_runtime.current_player,
+                            "local_username": raw_runtime.local_username,
+                            "remaining_seconds": int(raw_runtime.remaining),
+                            "warning_seconds": deadline_warning_seconds,
+                            "local_move_sequence": (
+                                raw_runtime.local_move_sequence
+                            ),
+                            "last_move_sequence": raw_runtime.last_move_sequence,
+                            "provider_reason": poll.reason,
+                            "actionability_gate_reason": (
+                                last_gate[1]
+                                if isinstance(last_gate, tuple)
+                                and len(last_gate) > 1
+                                else None
+                            ),
+                            "accepted_consuming_actions": (
+                                accepted_consuming_actions
+                            ),
+                            "last_accepted_srv_seq": diagnostics[
+                                "lastAcceptedSeq"
+                            ],
+                            "last_accepted_board_hash": diagnostics[
+                                "lastAcceptedHash"
+                            ],
+                        },
+                    )
+                )
+                if recovery_dispatched:
+                    guard.require_recovery()
+                    stop_reason = "ACTIONABILITY_STATE_LOST"
+                    _write(
+                        log,
+                        "technical_recovery_handoff",
+                        reason=stop_reason,
+                        deadlineReason="LOCAL_TURN_ACTION_DEADLINE",
+                        session=active_session,
+                        turn=deadline_turn,
+                        remaining=deadline_remaining,
+                        providerReason=poll.reason,
+                        actionabilityGateReason=(
+                            last_gate[1]
+                            if isinstance(last_gate, tuple)
+                            and len(last_gate) > 1
+                            else None
+                        ),
+                        acceptedConsumingActions=accepted_consuming_actions,
+                        localMoveSequence=raw_runtime.local_move_sequence,
+                        lastMoveSequence=raw_runtime.last_move_sequence,
+                        lastAcceptedSequence=diagnostics["lastAcceptedSeq"],
+                        gameplayInputDisabled=True,
+                        automaticUiOwnedByOuterCoordinator=True,
+                    )
+                    _beep("recovery", not args.no_beep)
+                    break
                 guard.pause(automatic=True)
                 counters.local_turn_deadline_safe_stops += 1
                 stop_reason = "LOCAL_TURN_ACTION_DEADLINE"
@@ -3965,9 +4411,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     providerReason=poll.reason,
                     providerConfirmations=poll.confirmations,
                     highestAckedSequence=provider.metrics.highest_acked_sequence,
-                    lastAcceptedSequence=provider.scan_diagnostics[
-                        "lastAcceptedSeq"
-                    ],
+                    lastAcceptedSequence=diagnostics["lastAcceptedSeq"],
                     runtime=raw_runtime,
                     automaticPass=False,
                     userCanTakeOver=True,
@@ -4020,11 +4464,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 time.sleep(args.interval)
                 continue
 
-            if poll.lifecycle_event == "board_lost" or (
-                session_seen
-                and active_session is not None
-                and state is not None
-                and state.phase is not GamePhase.COMBAT
+            if _combat_ownership_ended(
+                lifecycle_event=poll.lifecycle_event,
+                lifecycle_state=(
+                    poll.combat_lifecycle.state
+                    if poll.combat_lifecycle is not None
+                    else None
+                ),
+                session_seen=session_seen,
+                active_session=active_session,
+                state=state,
             ):
                 ended_session = active_session
                 lifecycle_stop_reason = _combat_end_stop_reason(
@@ -4120,6 +4569,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 source_decisions.clear()
                 consuming_turns.clear()
                 consuming_action_turns.clear()
+                unconfirmed_action_turns.clear()
+                optional_card_suppressions.clear()
                 turn_transitions.clear()
                 fusion_attempts_by_turn.clear()
                 fast_transition_deadline = None
@@ -4397,38 +4848,179 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         time.sleep(args.interval)
                         continue
 
-                if time.monotonic() - pending.sent_at >= args.action_timeout:
+                response_deadline = (
+                    pending.response_deadline
+                    if pending.response_deadline is not None
+                    else pending.sent_at + args.action_timeout
+                )
+                now = time.monotonic()
+                if now >= response_deadline:
+                    timeout_turn = None
+                    timeout_remaining = None
+                    timeout_is_local: bool | None = None
+                    if raw_runtime is not None:
+                        timeout_turn = raw_runtime.turn
+                        timeout_remaining = raw_runtime.remaining
+                        if raw_runtime.current_player and raw_runtime.local_username:
+                            timeout_is_local = (
+                                raw_runtime.current_player.casefold()
+                                == raw_runtime.local_username.casefold()
+                            )
+                    elif state is not None:
+                        timeout_turn = state.battle.turn_number
+                        timeout_remaining = state.battle.turn_time_remaining_seconds
+                        timeout_is_local = state.battle.is_local_turn
+                    wait_plan = plan_action_response_wait(
+                        pending,
+                        session=active_session,
+                        turn=timeout_turn,
+                        is_local_turn=timeout_is_local,
+                        remaining_seconds=timeout_remaining,
+                        minimum_action_time=args.minimum_action_time,
+                    )
+                    if wait_plan.extend_observation:
+                        pending.response_wait_extensions += 1
+                        pending.response_deadline = now + wait_plan.extension_seconds
+                        counters.action_response_wait_extensions += 1
+                        _write(
+                            log,
+                            "action_response_wait_extended",
+                            action=pending,
+                            extensionSeconds=wait_plan.extension_seconds,
+                            extensionIndex=pending.response_wait_extensions,
+                            reason=wait_plan.reason,
+                            inputRetried=False,
+                            responseObservationRetried=True,
+                        )
+                        time.sleep(args.interval)
+                        continue
+
                     guard.complete_pending()
-                    if pending.consumes_turn:
-                        turn_transitions.clear()
-                    guard.pause(automatic=True)
-                    stop_reason = "ACTION_RESPONSE_TIMEOUT"
                     counters.expired_actions += 1
-                    result_kind = {
-                        PolicyAction.SWAP: ActionResultKind.SWAP_REJECTED,
-                        PolicyAction.CAST: ActionResultKind.CAST_REJECTED,
-                        PolicyAction.EVOLVE: ActionResultKind.ACTION_EXPIRED,
-                    }[pending.identity.action]
-                    if pending.identity.action is PolicyAction.SWAP:
-                        counters.swap_rejected += 1
-                        if pending.mandatory_after_idle_2:
-                            counters.mandatory_swap_rejected += 1
-                    elif pending.identity.action is PolicyAction.CAST:
-                        counters.cast_rejected += 1
-                        if pending.mandatory_after_idle_2:
-                            counters.mandatory_cast_rejected += 1
+                    counters.action_response_timeouts += 1
+                    turn_key = (
+                        pending.identity.source.session,
+                        pending.identity.source.turn,
+                    )
+                    unconfirmed_action_turns.add(turn_key)
+                    if pending.consumes_turn:
+                        # Keep the consuming transition tracker alive.  It may
+                        # still prove that the original input was accepted, or
+                        # observe the server-owned PASS transition when it was
+                        # not.  Re-arm only a short read-only sampling window;
+                        # never send the physical input again.
+                        fast_transition_deadline = now + 3.0
                     if pending.mandatory_after_idle_2:
                         mandatory_action_records.append(
                             {
                                 "action": pending.identity.action.value,
-                                "result": result_kind.value,
+                                "result": ActionResultKind.ACTION_OUTCOME_UNCONFIRMED.value,
                                 "identity": pending.identity,
                                 "resetEvidence": None,
                                 "resetStatus": "RESET_NOT_ESTABLISHED",
                             }
                         )
-                    _write(log, "action_result", result=result_kind, action=pending, reason="RESPONSE_OR_ACK_TIMEOUT", autoPaused=True)
-                    _beep("pause", not args.no_beep)
+                    timeout_idle_readiness = idle_cache.pass_readiness(
+                        current_session_id=_idle_session_id(active_session),
+                        local_username=(
+                            raw_runtime.local_username
+                            if raw_runtime is not None
+                            else (
+                                state.battle.local_username
+                                if state is not None
+                                else None
+                            )
+                        ),
+                        current_turn=timeout_turn,
+                        is_local_turn=timeout_is_local,
+                        lifecycle_active=bool(
+                            state is not None
+                            and state.battle.combat_lifecycle
+                            is CombatLifecycleState.ACTIVE
+                        ),
+                        is_first_local_turn=bool(
+                            state is not None
+                            and state.battle.is_first_local_turn is True
+                        ),
+                    )
+                    timeout_board_current = bool(
+                        state is not None
+                        and state.battle.session_key == active_session
+                        and state.battle.turn_number == timeout_turn
+                        and state.board.production_ready
+                        and state.battle.stable
+                        and state.battle.acknowledged
+                        and state.battle.latest
+                    )
+                    start_evolve_wait, evolve_wait_reason = (
+                        _can_wait_after_unconfirmed_evolve(
+                            pending,
+                            pass_stage=pass_stage,
+                            active_session=active_session,
+                            current_turn=timeout_turn,
+                            is_local_turn=timeout_is_local,
+                            is_first_local_turn=bool(
+                                state is not None
+                                and state.battle.is_first_local_turn is True
+                            ),
+                            lifecycle_active=bool(
+                                state is not None
+                                and state.battle.combat_lifecycle
+                                is CombatLifecycleState.ACTIVE
+                            ),
+                            board_current_valid=timeout_board_current,
+                            idle_can_pass=timeout_idle_readiness.can_pass_now,
+                            idle_must_act=timeout_idle_readiness.must_act_now,
+                            sequence_desync=(
+                                monitor.tracker.state.terminal_for_session
+                            ),
+                            timeout_reason=wait_plan.reason,
+                        )
+                    )
+                    _write(
+                        log,
+                        "action_result",
+                        result=ActionResultKind.ACTION_OUTCOME_UNCONFIRMED,
+                        action=pending,
+                        reason="RESPONSE_OR_ACK_TIMEOUT",
+                        timeoutPlan=wait_plan,
+                        autoPaused=False,
+                        countedAsRejected=False,
+                        countedAsAuthoritativePass=False,
+                        localIdleIncremented=False,
+                        sameTurnInputSuppressed=True,
+                        inputRetried=False,
+                        authoritativeIdleRequired=True,
+                        zeroInputWaitEligible=start_evolve_wait,
+                        zeroInputWaitReason=evolve_wait_reason,
+                        idleReadiness=timeout_idle_readiness,
+                    )
+                    if start_evolve_wait:
+                        evolve_only_turn_wait = EvolveOnlyTurnWait(
+                            session=pending.identity.source.session,
+                            match_id=pending.identity.source.session.match_id,
+                            source_turn=pending.identity.source.turn,
+                            source_srv_seq=pending.identity.source.srv_seq,
+                            board_hash=pending.identity.source.board_hash,
+                            source_local_move_sequence=(
+                                pending.local_move_sequence_before
+                            ),
+                            started_timestamp=utc_timestamp(),
+                            gameplay_inputs_total=counters.input_actions_total,
+                            origin="ACTION_RESPONSE_TIMEOUT",
+                        )
+                        counters.evolve_only_turn_waits += 1
+                        _write(
+                            log,
+                            "unconfirmed_evolve_zero_input_wait_started",
+                            wait=evolve_only_turn_wait,
+                            timeoutPlan=wait_plan,
+                            idleReadiness=timeout_idle_readiness,
+                            inputRetried=False,
+                            gameplayInputSent=False,
+                            localIdleMutation=False,
+                            authoritativeOutcomeRequired=True,
+                        )
                 time.sleep(args.interval)
                 continue
 
@@ -4470,7 +5062,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     and raw_runtime.local_username.casefold()
                     == raw_runtime.current_player.casefold()
                     and raw_runtime.remaining is not None
-                    and raw_runtime.remaining <= args.minimum_action_time
+                    and raw_runtime.remaining < args.minimum_action_time
                 ):
                     guard.pause(automatic=True)
                     _write(
@@ -4515,6 +5107,24 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 time.sleep(args.interval)
                 continue
             if guard.status is not AutonomousStatus.RUNNING:
+                time.sleep(args.interval)
+                continue
+
+            current_turn_key = (
+                (state.battle.session_key, int(state.battle.turn_number))
+                if state.battle.session_key is not None
+                and state.battle.turn_number is not None
+                else None
+            )
+            if (
+                current_turn_key is not None
+                and current_turn_key in unconfirmed_action_turns
+            ):
+                # The action may have reached the server even though its ACK
+                # was not captured.  Treat the rest of this source turn as a
+                # deliberate zero-input wait.  The game-owned AFK payload —
+                # not a local counter — will later determine whether it was a
+                # PASS and whether the idle budget reset.
                 time.sleep(args.interval)
                 continue
 
@@ -4573,6 +5183,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     input_locked=False,
                     auto_paused=False,
                     sequence_desync=desync,
+                    allow_opening_board_only=True,
                 ),
             )
             if poll.reason == "stable_non_board_fusion_transition":
@@ -4680,8 +5291,42 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     sources=state.battle.sources,
                 )
 
-            analysis = analyze_game_state(state, policy_engine=policy)
-            basic_decision = policy.decide(state)
+            optional_turn_key = (
+                (state.battle.session_key, int(state.battle.turn_number))
+                if state.battle.session_key is not None
+                and state.battle.turn_number is not None
+                else None
+            )
+            suppressed_optional_actions = frozenset(
+                optional_card_suppressions.get(optional_turn_key, set())
+                if optional_turn_key is not None
+                else ()
+            )
+            if gate.details.get("openingBoardOnly") is True:
+                suppressed_optional_actions = suppressed_optional_actions | frozenset(
+                    {PolicyAction.EVOLVE, PolicyAction.CAST}
+                )
+                if state.battle.session_key not in opening_board_only_logged:
+                    opening_board_only_logged.add(state.battle.session_key)
+                    _write(
+                        log,
+                        "opening_board_only_stats_fallback",
+                        session=state.battle.session_key,
+                        turn=state.battle.turn_number,
+                        srvSeq=state.battle.srv_seq,
+                        boardHash=state.battle.board_hash,
+                        playerStatsKnown=state.player is not None,
+                        bossStatsKnown=bool(state.opponents),
+                        suppressedActions=[
+                            PolicyAction.EVOLVE,
+                            PolicyAction.CAST,
+                        ],
+                    )
+            policy_state = _without_optional_card_actions(
+                state, suppressed_optional_actions
+            )
+            analysis = analyze_game_state(policy_state, policy_engine=policy)
+            basic_decision = policy.decide(policy_state)
             decision = _acceptance_forced_pass_decision(
                 state,
                 basic_decision,
@@ -4762,6 +5407,31 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 )
                 _beep("pause", not args.no_beep)
                 break
+            if (
+                p3_mandatory_reset_pending
+                and decision.action not in {PolicyAction.SWAP, PolicyAction.CAST}
+            ):
+                # Defense in depth around the policy boundary.  EVOLVE is a
+                # function card and PASS/NONE sends no consuming input; none
+                # can reset two authoritative idle turns.  Never let such a
+                # proposal reach the executor even if a future policy change
+                # accidentally reintroduces it.
+                counters.wrong_third_pass += 1
+                guard.stop()
+                stop_reason = "MANDATORY_CONSUMING_ACTION_NOT_SELECTED"
+                _write(
+                    log,
+                    "mandatory_consuming_action_assertion_failed",
+                    reason=stop_reason,
+                    session=state.battle.session_key,
+                    turn=state.battle.turn_number,
+                    decision=decision,
+                    readiness=idle_readiness,
+                    automaticInputDisabled=True,
+                    failClosed=True,
+                )
+                _beep("pause", not args.no_beep)
+                break
             if poll.reason == "stable_non_board_fusion_transition":
                 _write(
                     log,
@@ -4781,6 +5451,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 state.fusion,
                 state.battle.turn_time_remaining_seconds,
                 state.battle.client_move_allowed,
+                tuple(sorted(action.value for action in suppressed_optional_actions)),
             )
             signature = (decision.action, (decision.move, decision.card_object_address))
             previous = source_decisions.get(decision_key)
@@ -5236,7 +5907,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             fresh_window = executor.window_status(binding)
             fresh_gate = ActionabilityGate.evaluate(
                 fresh,
-                GateContext(provider.current_session_key, fresh_window.foreground, fresh_window.valid, sequence_desync=monitor.tracker.state),
+                GateContext(
+                    provider.current_session_key,
+                    fresh_window.foreground,
+                    fresh_window.valid,
+                    sequence_desync=monitor.tracker.state,
+                    allow_opening_board_only=True,
+                ),
             )
             if not fresh_gate.actionable:
                 counters.expired_actions += 1
@@ -5244,7 +5921,24 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 _write(log, "action_result", result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED, identity=identity, gate=fresh_gate)
                 time.sleep(args.interval)
                 continue
-            fresh_decision = policy.decide(fresh)
+            fresh_optional_turn_key = (
+                (fresh.battle.session_key, int(fresh.battle.turn_number))
+                if fresh.battle.session_key is not None
+                and fresh.battle.turn_number is not None
+                else None
+            )
+            fresh_suppressed_actions = frozenset(
+                optional_card_suppressions.get(fresh_optional_turn_key, set())
+                if fresh_optional_turn_key is not None
+                else ()
+            )
+            if fresh_gate.details.get("openingBoardOnly") is True:
+                fresh_suppressed_actions = fresh_suppressed_actions | frozenset(
+                    {PolicyAction.EVOLVE, PolicyAction.CAST}
+                )
+            fresh_decision = policy.decide(
+                _without_optional_card_actions(fresh, fresh_suppressed_actions)
+            )
             if (
                 fresh_decision.action is not decision.action
                 or fresh_decision.move != decision.move
@@ -5263,7 +5957,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 )
                 time.sleep(args.interval)
                 continue
-            if fresh.battle.turn_time_remaining_seconds is None or fresh.battle.turn_time_remaining_seconds <= args.minimum_action_time:
+            if fresh.battle.turn_time_remaining_seconds is None or fresh.battle.turn_time_remaining_seconds < args.minimum_action_time:
                 counters.too_late += 1
                 _cancel_unsent(guard, identity)
                 _write(log, "action_result", result=ActionResultKind.ACTION_EXPIRED, identity=identity, reason="TOO_LATE_TO_ACT")
@@ -5291,6 +5985,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     and p3_mandatory_reset_pending
                     and decision.action in {PolicyAction.SWAP, PolicyAction.CAST}
                 ),
+                response_deadline=sent_at + args.action_timeout,
             )
             if decision.action is PolicyAction.SWAP:
                 if decision.move is None or fresh_window.geometry is None:
@@ -5437,6 +6132,57 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 _write(log, "action_sent", action="SWAP", identity=identity, sentClicks=2, plan=plan, **fields)
             else:
                 control = GameplayControl.EVOLVE if decision.action is PolicyAction.EVOLVE else GameplayControl.CAST_ATTACK
+                card = None
+                if decision.action is PolicyAction.EVOLVE:
+                    fusion = fresh.fusion
+                    if (
+                        fusion is None
+                        or fusion.ui_interactable is not True
+                        or fusion.ui_address is None
+                        or fusion.ui_slot is None
+                        or fusion.ui_slot_count is None
+                    ):
+                        _cancel_unsent(guard, identity)
+                        if fresh_optional_turn_key is not None:
+                            optional_card_suppressions.setdefault(
+                                fresh_optional_turn_key, set()
+                            ).add(PolicyAction.EVOLVE)
+                        _write(
+                            log,
+                            "optional_card_action_skipped",
+                            action="EVOLVE",
+                            reason="FUSION_UI_OR_RUNTIME_SLOT_NOT_PROVEN",
+                            boardOnlyFallback=True,
+                        )
+                        continue
+                    slot_index = fusion.ui_slot
+                    slot_count = fusion.ui_slot_count
+                else:
+                    card = next((value for value in fresh.cards if value.object_address == decision.card_object_address), None)
+                    if (
+                        card is None
+                        or not card.is_attack
+                        or not card.interactable
+                        or card.action_pending
+                        or card.has_used_this_turn
+                        or card.ui_slot is None
+                        or card.ui_slot_count is None
+                    ):
+                        _cancel_unsent(guard, identity)
+                        if fresh_optional_turn_key is not None:
+                            optional_card_suppressions.setdefault(
+                                fresh_optional_turn_key, set()
+                            ).add(PolicyAction.CAST)
+                        _write(
+                            log,
+                            "optional_card_action_skipped",
+                            action="CAST",
+                            reason="ATTACK_CARD_OR_RUNTIME_SLOT_NOT_PROVEN",
+                            boardOnlyFallback=True,
+                        )
+                        continue
+                    slot_index = card.ui_slot
+                    slot_count = card.ui_slot_count
                 capture = capture_client_rgb(target.pid)
                 leave_modal = locate_confirm_leave(
                     capture.rgb, capture.width, capture.height
@@ -5453,20 +6199,36 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         autoPaused=True,
                     )
                     continue
-                locator = locate_gameplay_control(capture.rgb, capture.width, capture.height, control)
+                locator = locate_gameplay_control(
+                    capture.rgb,
+                    capture.width,
+                    capture.height,
+                    control,
+                    slot_index=slot_index,
+                    slot_count=slot_count,
+                )
                 if not locator.found or locator.normalized_point is None:
                     _cancel_unsent(guard, identity)
-                    guard.pause(automatic=True)
-                    _write(log, "action_result", result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED, reason="UI_CONTROL_NOT_CONFIDENT", locator=locator, autoPaused=True)
-                    _beep("pause", not args.no_beep)
+                    if fresh_optional_turn_key is not None:
+                        optional_card_suppressions.setdefault(
+                            fresh_optional_turn_key, set()
+                        ).add(decision.action)
+                    _write(
+                        log,
+                        "optional_card_action_skipped",
+                        action=(
+                            "EVOLVE"
+                            if decision.action is PolicyAction.EVOLVE
+                            else "CAST"
+                        ),
+                        reason="UI_CONTROL_NOT_CONFIDENT",
+                        locator=locator,
+                        boardOnlyFallback=True,
+                        autoPaused=False,
+                    )
                     continue
                 if decision.action is PolicyAction.EVOLVE:
                     fusion = fresh.fusion
-                    if fusion is None or fusion.ui_interactable is not True or fusion.ui_address is None:
-                        _cancel_unsent(guard, identity)
-                        guard.pause(automatic=True)
-                        _write(log, "action_result", result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED, reason="FUSION_UI_RUNTIME_NOT_PROVEN", autoPaused=True)
-                        continue
                     if fusion.mana_cost is None or fusion.mana_cost <= 0:
                         _cancel_unsent(guard, identity)
                         guard.pause(automatic=True)
@@ -5481,12 +6243,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         continue
                     pending_action.mana_cost = fusion.mana_cost
                 else:
-                    card = next((value for value in fresh.cards if value.object_address == decision.card_object_address), None)
-                    if card is None or not card.is_attack or not card.interactable or card.action_pending or card.has_used_this_turn:
-                        _cancel_unsent(guard, identity)
-                        guard.pause(automatic=True)
-                        _write(log, "action_result", result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED, reason="ATTACK_CARD_RUNTIME_NOT_PROVEN", autoPaused=True)
-                        continue
+                    if card is None:  # pragma: no cover - narrowed above
+                        raise AssertionError("validated Attack card disappeared")
                     turn_key = (fresh.battle.session_key, int(fresh.battle.turn_number))
                     if not consuming_turns.reserve(*turn_key):
                         counters.wrong_turn_actions_blocked += 1

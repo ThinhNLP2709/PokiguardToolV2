@@ -17,6 +17,7 @@ from pokiguard_v2.autonomous_control import (
     TurnTransitionTracker,
     direct_runtime_proves_cast_accepted,
     direct_runtime_proves_swap_accepted,
+    plan_action_response_wait,
 )
 from pokiguard_v2.authoritative_pass import (
     AuthoritativePassCoordinator,
@@ -29,7 +30,11 @@ from pokiguard_v2.basic_policy import (
     PolicyConfig,
 )
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
-from pokiguard_v2.gameplay_ui import GameplayControl, locate_gameplay_control
+from pokiguard_v2.gameplay_ui import (
+    GameplayControl,
+    locate_gameplay_control,
+    resolve_runtime_card_strip,
+)
 from pokiguard_v2.game_owned_idle import (
     AcceptedActivityKind,
     GameOwnedIdleCache,
@@ -48,6 +53,7 @@ from tools.basic_auto_bot import (
     _attack_cost_evidence,
     _b4_cast_acceptance_evidence,
     _b4_evolve_forbidden,
+    _can_wait_after_unconfirmed_evolve,
     Counters,
     EvolveOnlyTurnWait,
     _acceptance_forced_pass_decision,
@@ -56,12 +62,14 @@ from tools.basic_auto_bot import (
     _beep,
     _bounded_stop_reason,
     _combat_end_stop_reason,
+    _combat_ownership_ended,
     _fusion_terminal_result,
     _classify_combat_result,
     _idle_session_id,
     _latest_fusion_for_terminal,
     _local_turn_action_deadline_reached,
     _local_turn_deadline_warning_seconds,
+    _force_full_pass_scan_once,
     _must_pause_for_no_safe_move,
     _observe_b4_cast_idle_reset,
     _observe_cast_idle_reset,
@@ -82,6 +90,7 @@ from tools.basic_auto_bot import (
     _runtime_observation_for_controller,
     _sent_action_count,
     _turn_consuming_action_count,
+    _without_optional_card_actions,
     _validate_args,
     build_parser,
     main,
@@ -89,6 +98,69 @@ from tools.basic_auto_bot import (
 
 
 class AutonomousGuardTests(unittest.TestCase):
+    def test_action_timeout_extends_only_read_observation_on_fresh_source_turn(self) -> None:
+        state = combat_state(turn=9)
+        session = CombatSessionKey(1, state.battle.board_instance, "M_timeout")
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                match_id=session.match_id,
+                session_key=session,
+            ),
+        )
+        decision = BasicPolicyEngine().decide(state)
+        identity = AutonomousActionIdentity.from_decision(state, decision)
+        pending = PendingAutonomousAction(identity, 1.0, 241, None)
+
+        plan = plan_action_response_wait(
+            pending,
+            session=state.battle.session_key,
+            turn=9,
+            is_local_turn=True,
+            remaining_seconds=7,
+            minimum_action_time=4,
+        )
+
+        self.assertTrue(plan.extend_observation)
+        self.assertEqual(plan.extension_seconds, 2.0)
+
+    def test_action_timeout_never_extends_after_turn_changes_or_limit_is_used(self) -> None:
+        state = combat_state(turn=9)
+        session = CombatSessionKey(1, state.battle.board_instance, "M_timeout")
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                match_id=session.match_id,
+                session_key=session,
+            ),
+        )
+        decision = BasicPolicyEngine().decide(state)
+        identity = AutonomousActionIdentity.from_decision(state, decision)
+        pending = PendingAutonomousAction(identity, 1.0, 241, None)
+
+        changed = plan_action_response_wait(
+            pending,
+            session=state.battle.session_key,
+            turn=10,
+            is_local_turn=True,
+            remaining_seconds=14,
+            minimum_action_time=4,
+        )
+        pending.response_wait_extensions = 1
+        exhausted = plan_action_response_wait(
+            pending,
+            session=state.battle.session_key,
+            turn=9,
+            is_local_turn=True,
+            remaining_seconds=14,
+            minimum_action_time=4,
+        )
+
+        self.assertFalse(changed.extend_observation)
+        self.assertFalse(exhausted.extend_observation)
+
     def test_evolve_only_turn_wait_is_not_an_authoritative_pass(self) -> None:
         session = CombatSessionKey(4, 0x1234, "M_evolve_only")
         wait = EvolveOnlyTurnWait(
@@ -367,6 +439,15 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertEqual(result.session_key, session)
         self.assertIsNone(result.state)
 
+    def test_pass_wait_forces_only_one_full_message_scan_per_attempt(self) -> None:
+        identity = ("session", 17, 37)
+        self.assertTrue(_force_full_pass_scan_once(identity, None))
+        self.assertFalse(_force_full_pass_scan_once(identity, identity))
+        self.assertTrue(
+            _force_full_pass_scan_once(("session", 25, 53), identity)
+        )
+        self.assertFalse(_force_full_pass_scan_once(None, identity))
+
     @staticmethod
     def _state(**kwargs):
         state = combat_state(**kwargs)
@@ -399,6 +480,124 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertFalse(guard.input_allowed)
         self.assertTrue(guard.resume())
         self.assertTrue(guard.input_allowed)
+
+    def test_unconfirmed_evolve_can_zero_input_wait_after_proven_reset(self) -> None:
+        state = self._state(fusion_used=False)
+        decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(state)
+        identity = AutonomousActionIdentity.from_decision(
+            state, decision, attempt=1
+        )
+        pending = PendingAutonomousAction(identity, 1.0, 320, 160)
+
+        allowed, reason = _can_wait_after_unconfirmed_evolve(
+            pending,
+            pass_stage="B5",
+            active_session=state.battle.session_key,
+            current_turn=state.battle.turn_number,
+            is_local_turn=True,
+            is_first_local_turn=False,
+            lifecycle_active=True,
+            board_current_valid=True,
+            idle_can_pass=True,
+            idle_must_act=False,
+            sequence_desync=False,
+            timeout_reason="INSUFFICIENT_SAFE_TURN_TIME",
+        )
+
+        self.assertTrue(allowed)
+        self.assertEqual(reason, "SAFE_ZERO_INPUT_WAIT_AFTER_UNCONFIRMED_EVOLVE")
+        self.assertFalse(pending.consumes_turn)
+
+    def test_unconfirmed_evolve_can_wait_after_observation_extension_exhausted(self) -> None:
+        state = self._state(fusion_used=False)
+        decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(state)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision, attempt=2),
+            1.0,
+            320,
+            160,
+            response_wait_extensions=1,
+        )
+
+        allowed, reason = _can_wait_after_unconfirmed_evolve(
+            pending,
+            pass_stage="B5",
+            active_session=state.battle.session_key,
+            current_turn=state.battle.turn_number,
+            is_local_turn=True,
+            is_first_local_turn=False,
+            lifecycle_active=True,
+            board_current_valid=True,
+            idle_can_pass=True,
+            idle_must_act=False,
+            sequence_desync=False,
+            timeout_reason="EXTENSION_LIMIT_REACHED",
+        )
+
+        self.assertTrue(allowed)
+        self.assertEqual(reason, "SAFE_ZERO_INPUT_WAIT_AFTER_UNCONFIRMED_EVOLVE")
+
+    def test_unconfirmed_evolve_wait_is_denied_when_idle_requires_action(self) -> None:
+        state = self._state(fusion_used=False)
+        decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(state)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision, attempt=1),
+            1.0,
+            320,
+            160,
+        )
+
+        allowed, reason = _can_wait_after_unconfirmed_evolve(
+            pending,
+            pass_stage="B5",
+            active_session=state.battle.session_key,
+            current_turn=state.battle.turn_number,
+            is_local_turn=True,
+            is_first_local_turn=False,
+            lifecycle_active=True,
+            board_current_valid=True,
+            idle_can_pass=False,
+            idle_must_act=True,
+            sequence_desync=False,
+            timeout_reason="INSUFFICIENT_SAFE_TURN_TIME",
+        )
+
+        self.assertFalse(allowed)
+        self.assertEqual(reason, "AUTHORITATIVE_IDLE_DOES_NOT_ALLOW_PASS")
+
+    def test_unconfirmed_evolve_wait_never_applies_to_consuming_action(self) -> None:
+        state = self._state()
+        decision = BasicPolicyEngine().decide(state)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision),
+            1.0,
+            320,
+            None,
+        )
+
+        allowed, reason = _can_wait_after_unconfirmed_evolve(
+            pending,
+            pass_stage="B5",
+            active_session=state.battle.session_key,
+            current_turn=state.battle.turn_number,
+            is_local_turn=True,
+            is_first_local_turn=False,
+            lifecycle_active=True,
+            board_current_valid=True,
+            idle_can_pass=True,
+            idle_must_act=False,
+            sequence_desync=False,
+            timeout_reason="INSUFFICIENT_SAFE_TURN_TIME",
+        )
+
+        self.assertFalse(allowed)
+        self.assertEqual(reason, "NOT_NONCONSUMING_EVOLVE")
 
     def test_recovery_cancels_pending_and_cannot_resume(self) -> None:
         state = self._state(fusion_used=False)
@@ -1155,7 +1354,7 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertTrue(
             _local_turn_action_deadline_reached(
                 **common,
-                remaining_seconds=6,
+                remaining_seconds=5,
                 consuming_action_turns=set(),
             )
         )
@@ -1196,8 +1395,11 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertFalse(
             _local_turn_action_deadline_reached(**common, remaining_seconds=5)
         )
-        self.assertTrue(
+        self.assertFalse(
             _local_turn_action_deadline_reached(**common, remaining_seconds=4)
+        )
+        self.assertTrue(
+            _local_turn_action_deadline_reached(**common, remaining_seconds=3)
         )
 
     def test_evolve_failure_response_is_terminal_without_optional_turn_lock(self) -> None:
@@ -1412,6 +1614,70 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertIsNone(returned.new_source)
         self.assertIsNone(tracker.action)
 
+    def test_direct_runtime_even_turn_advance_proves_missed_opponent_sample(self) -> None:
+        first = self._state()
+        action = AutonomousActionIdentity.from_decision(
+            first, BasicPolicyEngine().decide(first), attempt=1
+        )
+        tracker = TurnTransitionTracker()
+        tracker.begin(action)
+
+        returned = tracker.observe_runtime(
+            session=first.battle.session_key,
+            turn=first.battle.turn_number + 2,
+            current_player=first.battle.current_turn_player,
+            local_username=first.battle.current_turn_player,
+        )
+
+        self.assertEqual(
+            returned.kind,
+            TurnTransitionKind.LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE,
+        )
+        self.assertIsNone(tracker.action)
+
+    def test_direct_runtime_odd_local_advance_remains_unconfirmed(self) -> None:
+        first = self._state()
+        action = AutonomousActionIdentity.from_decision(
+            first, BasicPolicyEngine().decide(first), attempt=1
+        )
+        tracker = TurnTransitionTracker()
+        tracker.begin(action)
+
+        self.assertIsNone(
+            tracker.observe_runtime(
+                session=first.battle.session_key,
+                turn=first.battle.turn_number + 3,
+                current_player=first.battle.current_turn_player,
+                local_username=first.battle.current_turn_player,
+            )
+        )
+        self.assertTrue(tracker.unconfirmed_local_seen)
+
+    def test_published_even_turn_advance_proves_missed_opponent_sample(self) -> None:
+        first = self._state()
+        action = AutonomousActionIdentity.from_decision(
+            first, BasicPolicyEngine().decide(first), attempt=1
+        )
+        tracker = TurnTransitionTracker()
+        tracker.begin(action)
+        returned_state = replace(
+            first,
+            battle=replace(
+                first.battle,
+                srv_seq=first.battle.srv_seq + 4,
+                turn_number=first.battle.turn_number + 2,
+            ),
+        )
+
+        returned = tracker.observe(returned_state)
+
+        self.assertEqual(
+            returned.kind,
+            TurnTransitionKind.LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE,
+        )
+        self.assertIsNotNone(returned.new_source)
+        self.assertIsNone(tracker.action)
+
     def test_no_safe_move_pause_allows_nonboard_actions_and_real_sword(self) -> None:
         state = self._state()
         sword = BasicPolicyEngine().decide(state)
@@ -1549,6 +1815,27 @@ class AutonomousGuardTests(unittest.TestCase):
                 "PROCESS_OR_CONTROLLER_STOPPED", AutonomousStatus.AUTO_PAUSED
             ),
             "COMBAT_LIFECYCLE_ENDED",
+        )
+
+    def test_postmatch_lifecycle_ends_ownership_without_board_lost_literal(self) -> None:
+        session = SimpleNamespace(match_id="M_terminal")
+        self.assertTrue(
+            _combat_ownership_ended(
+                lifecycle_event="postmatch",
+                lifecycle_state=CombatLifecycleState.POSTMATCH,
+                session_seen=True,
+                active_session=session,
+                state=None,
+            )
+        )
+        self.assertFalse(
+            _combat_ownership_ended(
+                lifecycle_event=None,
+                lifecycle_state=CombatLifecycleState.ACTIVE,
+                session_seen=True,
+                active_session=session,
+                state=None,
+            )
         )
 
     def test_direct_runtime_swap_acceptance_rejects_each_conflict(self) -> None:
@@ -1699,6 +1986,182 @@ class GameplayUiTests(unittest.TestCase):
             self.assertTrue(
                 locate_gameplay_control(bytes(rgb), width, height, control).found
             )
+
+    def test_runtime_slots_recenter_two_tile_loadout(self) -> None:
+        width, height = 1280, 710
+        rgb = bytearray(width * height * 3)
+        expected = {
+            GameplayControl.EVOLVE: (0.471, 0.836),
+            GameplayControl.CAST_ATTACK: (0.529, 0.836),
+        }
+        colors = {
+            GameplayControl.EVOLVE: (40, 130, 230),
+            GameplayControl.CAST_ATTACK: (230, 80, 30),
+        }
+        for control, point in expected.items():
+            cx, cy = round(point[0] * width), round(point[1] * height)
+            for y in range(cy - 35, cy + 35):
+                for x in range(cx - 24, cx + 24):
+                    offset = (y * width + x) * 3
+                    rgb[offset : offset + 3] = bytes(
+                        colors[control] if (x + y) % 3 else (245, 245, 245)
+                    )
+
+        evolve = locate_gameplay_control(
+            bytes(rgb),
+            width,
+            height,
+            GameplayControl.EVOLVE,
+            slot_index=0,
+            slot_count=2,
+        )
+        attack = locate_gameplay_control(
+            bytes(rgb),
+            width,
+            height,
+            GameplayControl.CAST_ATTACK,
+            slot_index=1,
+            slot_count=2,
+        )
+
+        self.assertTrue(evolve.found)
+        self.assertEqual(evolve.normalized_point, expected[GameplayControl.EVOLVE])
+        self.assertTrue(attack.found)
+        self.assertEqual(
+            attack.normalized_point, expected[GameplayControl.CAST_ATTACK]
+        )
+
+    def test_runtime_four_slot_strip_preserves_v1_calibration(self) -> None:
+        width, height = 800, 450
+        rgb = bytearray(width * height * 3)
+        for control, point, color in (
+            (GameplayControl.EVOLVE, (0.413, 0.836), (40, 130, 230)),
+            (GameplayControl.CAST_ATTACK, (0.471, 0.836), (230, 80, 30)),
+        ):
+            cx, cy = round(point[0] * width), round(point[1] * height)
+            for y in range(cy - 30, cy + 30):
+                for x in range(cx - 20, cx + 20):
+                    offset = (y * width + x) * 3
+                    rgb[offset : offset + 3] = bytes(
+                        color if (x + y) % 3 else (245, 245, 245)
+                    )
+            located = locate_gameplay_control(
+                bytes(rgb),
+                width,
+                height,
+                control,
+                slot_index=(0 if control is GameplayControl.EVOLVE else 1),
+                slot_count=4,
+            )
+            self.assertTrue(located.found)
+            self.assertEqual(located.normalized_point, point)
+
+    def test_special_pet_skill_layout_is_deferred_fail_closed(self) -> None:
+        layout = resolve_runtime_card_strip(
+            selected_card_data_addresses=(0x1000, 0x2000, 0x3000),
+            rendered_card_data_addresses=(0x1000, 0x2000, 0x3000, 0x4000),
+            cards_in_hand_count=5,
+            fusion_expected=True,
+            fusion_skill_card_data_address=0x4000,
+        )
+
+        self.assertFalse(layout.resolved)
+        self.assertEqual(layout.slot_count, 5)
+        self.assertIsNone(layout.fusion_slot)
+        self.assertEqual(layout.card_slots, ())
+        self.assertEqual(layout.reason, "pet_skill_layout_deferred")
+
+    def test_arbitrary_selected_order_maps_attack_by_card_data_not_type_slot(self) -> None:
+        layout = resolve_runtime_card_strip(
+            selected_card_data_addresses=(0xA000, 0xB000, 0xC000, 0xD000),
+            rendered_card_data_addresses=(0xD000, 0xA000),
+            cards_in_hand_count=5,
+            fusion_expected=True,
+            fusion_skill_card_data_address=None,
+        )
+
+        self.assertTrue(layout.resolved)
+        self.assertEqual(layout.fusion_slot, 0)
+        self.assertEqual(layout.slot_for_card_data(0xA000), 1)
+        self.assertEqual(layout.slot_for_card_data(0xD000), 4)
+
+    def test_ambiguous_or_mismatched_runtime_layout_fails_closed(self) -> None:
+        mismatch = resolve_runtime_card_strip(
+            selected_card_data_addresses=(0x1000,),
+            rendered_card_data_addresses=(0x1000,),
+            cards_in_hand_count=1,
+            fusion_expected=True,
+            fusion_skill_card_data_address=None,
+        )
+        duplicate = resolve_runtime_card_strip(
+            selected_card_data_addresses=(0x1000, 0x1000),
+            rendered_card_data_addresses=(0x1000,),
+            cards_in_hand_count=2,
+            fusion_expected=False,
+            fusion_skill_card_data_address=None,
+        )
+
+        self.assertFalse(mismatch.resolved)
+        self.assertFalse(duplicate.resolved)
+        blank = bytes(800 * 450 * 3)
+        self.assertFalse(
+            locate_gameplay_control(
+                blank,
+                800,
+                450,
+                GameplayControl.CAST_ATTACK,
+                slot_index=None,
+                slot_count=4,
+            ).found
+        )
+
+    def test_board_only_and_no_fusion_loadouts_resolve_without_fixed_slots(self) -> None:
+        empty = resolve_runtime_card_strip(
+            selected_card_data_addresses=(),
+            rendered_card_data_addresses=(),
+            cards_in_hand_count=0,
+            fusion_expected=False,
+            fusion_skill_card_data_address=None,
+        )
+        ordinary = resolve_runtime_card_strip(
+            selected_card_data_addresses=(0x1000, 0x2000, 0x3000),
+            rendered_card_data_addresses=(0x2000,),
+            cards_in_hand_count=3,
+            fusion_expected=False,
+            fusion_skill_card_data_address=None,
+        )
+
+        self.assertTrue(empty.resolved)
+        self.assertEqual((empty.slot_count, empty.fusion_slot), (0, None))
+        self.assertTrue(ordinary.resolved)
+        self.assertEqual(ordinary.slot_for_card_data(0x1000), 0)
+        self.assertEqual(ordinary.slot_for_card_data(0x3000), 2)
+
+    def test_optional_card_locator_failure_masks_only_that_turn_action(self) -> None:
+        card = attack_card()
+        state = combat_state(mana=600, cards=(card,))
+        fusion = replace(
+            state.fusion,
+            used=False,
+            available=True,
+            ui_interactable=True,
+            ui_address=0x21000000000,
+            ui_slot=0,
+            ui_slot_count=2,
+        )
+        state = replace(state, fusion=fusion)
+
+        cast_masked = _without_optional_card_actions(
+            state, frozenset({PolicyAction.CAST})
+        )
+        evolve_masked = _without_optional_card_actions(
+            state, frozenset({PolicyAction.EVOLVE})
+        )
+
+        self.assertFalse(cast_masked.cards[0].interactable)
+        self.assertTrue(cast_masked.fusion.ui_interactable)
+        self.assertTrue(evolve_masked.cards[0].interactable)
+        self.assertFalse(evolve_masked.fusion.ui_interactable)
 
 
 if __name__ == "__main__":

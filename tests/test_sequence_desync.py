@@ -175,6 +175,46 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         self.assertEqual(result.learned_regions, 1)
         self.assertEqual(result.message_hits, 1)
 
+    def test_entry_region_prime_reuses_live_process_evidence_without_scan(self) -> None:
+        old = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        current = MemoryRegion(0x1000, 0x1800, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {old}
+        monitor.prime_regions = Mock()
+
+        with patch(
+            "tools.sequence_desync_runtime._regions", return_value=(current,)
+        ):
+            result = monitor.ensure_regions_primed()
+
+        self.assertEqual(monitor._learned_regions, {current})
+        self.assertEqual(result.learned_regions, 1)
+        self.assertEqual(result.scanned_bytes, 0)
+        monitor.prime_regions.assert_not_called()
+
+    def test_entry_region_prime_rescans_at_lobby_after_heap_reset(self) -> None:
+        old = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        replacement = MemoryRegion(0x9000, 0x1000, 0x04, 0x20000)
+        expected = SimpleNamespace(scanned_bytes=123)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {old}
+        monitor.prime_regions = Mock(return_value=expected)
+
+        with patch(
+            "tools.sequence_desync_runtime._regions", return_value=(replacement,)
+        ):
+            result = monitor.ensure_regions_primed()
+
+        self.assertIs(result, expected)
+        self.assertEqual(monitor._learned_regions, set())
+        monitor.prime_regions.assert_called_once_with()
+
     def test_gap_and_duplicate_rejects(self) -> None:
         gap = classify_sequence_signal(
             event_type="MATCH_REJECT", reject_code="SEQ_GAP"

@@ -88,6 +88,9 @@ to effective collected value.
 - A failed attempt may retry only after the current-turn lock clears and fresh
   actionable state permits it; no tight loop.
 - With `ManaPriority=ATTACK`, do not evolve during that match.
+- While the boss current HP is at or below the enabled configurable low-HP
+  threshold (`cast_when_boss_hp_below`, default 30000), do not evolve even when
+  `ManaPriority=EVOLUTION`; preserve mana for the Sword/Mana/CAST finisher path.
 - EVOLVE is a functional action and does not consume the gameplay turn.
 - After successful EVOLVE, reread full `GameState`; a consuming SWAP or CAST
   may still occur in the same turn.
@@ -102,8 +105,12 @@ to effective collected value.
   is observed data, not a product rule.
 - The cost must come from current runtime card data; observed accepted cost is
   160 Mana.
-- Current BASIC CAST branch requires player Mana strictly greater than 480,
+- The normal BASIC CAST branch requires player Mana strictly greater than 480,
   preserving the accepted 320-Mana reserve after the observed 160 cost.
+- Low-boss-HP mode is the explicit exception: after Sword priority, when boss
+  current HP is at or below the enabled configurable threshold, CAST as soon as
+  a proven current Attack card is affordable. If it is not yet affordable,
+  prefer safe Mana before safe Rage. Threshold `0` disables this mode.
 - A rejected or unproven CAST is not a successful consuming reset.
 - CAST idle-reset semantics remain UNKNOWN for production PASS decisions
   unless a separately audited capability proves them.
@@ -122,6 +129,12 @@ to effective collected value.
 - SWAP or accepted CAST may satisfy the mandatory consuming action. EVOLVE
   alone does not.
 - A rejected/unproven action does not count as a successful reset.
+- `ACTION_RESPONSE_TIMEOUT` alone proves neither rejection nor acceptance and
+  never authorizes a local idle increment. The controller may retry read-only
+  response observation once while the exact source turn still has safe time;
+  it must not resend the uncertain physical input. If still unresolved, record
+  `ACTION_OUTCOME_UNCONFIRMED`, suppress more input for that source turn, and
+  wait for authoritative turn/AFK evidence.
 - A sequence-desync rejected action definitely must not be treated as reset.
 - UNKNOWN, stale, missing, or uncorrelated authoritative PASS state fails
   closed.
@@ -186,8 +199,10 @@ safe or every vertical move is dangerous.
   retained for the dynamic ATTACK-card rule.
 - Outside a higher Sword/Rage branch, safe Mana is the normal resource choice
   before the health/card/boss-resource branches.
-- CAST requires the dynamic runtime card cost and the strict `Mana > 480`
-  reserve rule described above.
+- In low-boss-HP mode, safe Mana moves ahead of safe Rage after Sword and an
+  immediately affordable CAST have both failed.
+- CAST requires the dynamic runtime card cost. The strict `Mana > 480` reserve
+  rule applies outside the explicitly approved low-boss-HP finisher mode.
 - A full resource must not be chosen solely to add more of that same resource;
   another accepted objective must justify the move.
 
@@ -309,6 +324,39 @@ silently widening a bounded acceptance phase. First prove the Phase 2D.2
 two-entry/one-combat boundary; introduce continuous farming as a separately
 reviewed phase with the same lifecycle, session, foreground, and safe-stop
 invariants.
+
+## Pre-entry Card Loadout vs Live Combat Cards
+
+Before each `Bắt đầu` input, read and cross-check both persistent lobby-owned
+loadout sources:
+
+- `ManagerRoom.selectedCards` (`List<CardData>` at `+0x108`);
+- `RoomDTO.cards` (`List<CardData>` at `+0x50`).
+
+Record their exact identities, total count and Attack-card count as the
+expected loadout for the next session. This avoids interpreting a later
+`cardCount=0` as "the account owns no cards" when the lobby already proves an
+equipped card.
+
+The pre-entry loadout is diagnostic/expectation evidence only. A playable card
+still requires a newly created `CardUI` whose class, `Board`, `Active`, live
+Unity object and `Button` all validate against the current combat. Stale
+`CardUI` objects from an earlier match must never become actionable merely
+because their `CardData` matches the lobby loadout.
+
+Lobby card lists may be refreshed asynchronously between READY and the final
+entry preflight. Re-read and log the latest value, but do not make loadout
+identity an entry gate: exact target, room, ButtonStart, foreground and visual
+button proof remain the entry invariants. A loadout change never makes a card
+actionable and never bypasses the post-entry live-CardUI validation.
+
+`CardUI` heap regions are also session-scoped. Learned regions from a prior
+combat are hints only: reset the UI discovery cadence for every new session and
+force one bounded full scan of the normal `<=8 MiB` region envelope on the
+first session scan. Only then use learned-region and extended-band retries.
+Live evidence on 2026-08-18 found the missing current cards in newly allocated
+118,784-byte and 86,016-byte regions; increasing the 16 MiB ceiling would not
+have addressed that miss.
 
 ## Agent Non-Invention Rule
 

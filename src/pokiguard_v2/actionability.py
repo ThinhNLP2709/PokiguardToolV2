@@ -59,6 +59,7 @@ class GateContext:
     input_locked: bool = False
     auto_paused: bool = False
     sequence_desync: SequenceDesyncState | None = None
+    allow_opening_board_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -189,30 +190,41 @@ class ActionabilityGate:
                 localUsername=battle.local_username,
             )
 
+        opening_board_only_allowed = bool(
+            context.allow_opening_board_only
+            and opening_authoritative
+            and battle.is_local_turn is True
+            and battle.local_move_sequence == 0
+        )
+        opening_board_only = False
         player = state.player
         if player is None or player.hp is None or player.max_hp is None:
-            return cls._reject(GateReason.PLAYER_STATS_UNKNOWN)
-        if player.max_hp <= 0:
+            if not opening_board_only_allowed:
+                return cls._reject(GateReason.PLAYER_STATS_UNKNOWN)
+            opening_board_only = True
+        elif player.max_hp <= 0:
             return cls._reject(
                 GateReason.PLAYER_STATS_UNKNOWN,
                 hp=player.hp,
                 maxHp=player.max_hp,
             )
-        if player.hp <= 0:
+        elif player.hp <= 0:
             return cls._reject(GateReason.PLAYER_DEAD, hp=player.hp)
         boss = next(
             (participant for participant in state.opponents if participant.is_boss),
             None,
         )
         if boss is None or boss.hp is None or boss.max_hp is None:
-            return cls._reject(GateReason.BOSS_STATS_UNKNOWN)
-        if boss.max_hp <= 0:
+            if not opening_board_only_allowed:
+                return cls._reject(GateReason.BOSS_STATS_UNKNOWN)
+            opening_board_only = True
+        elif boss.max_hp <= 0:
             return cls._reject(
                 GateReason.BOSS_STATS_UNKNOWN,
                 hp=boss.hp,
                 maxHp=boss.max_hp,
             )
-        if boss.hp <= 0:
+        elif boss.hp <= 0:
             return cls._reject(GateReason.BOSS_DEAD, hp=boss.hp)
 
         if battle.board_is_game_over is None or battle.match_over is None:
@@ -265,7 +277,8 @@ class ActionabilityGate:
                 "srvSeq": battle.srv_seq,
                 "boardHash": battle.board_hash,
                 "localActor": battle.local_actor_number,
-                "playerHp": player.hp,
-                "bossHp": boss.hp,
+                "playerHp": player.hp if player is not None else None,
+                "bossHp": boss.hp if boss is not None else None,
+                "openingBoardOnly": opening_board_only,
             },
         )

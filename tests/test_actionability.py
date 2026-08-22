@@ -129,6 +129,68 @@ class ActionabilityGateTests(unittest.TestCase):
         self.assertTrue(result.actionable)
         self.assertEqual(result.reason, GateReason.PASS)
 
+    def test_exact_opening_can_be_board_only_when_stats_have_not_hydrated(self) -> None:
+        state = actionable_state()
+        opening = replace(
+            state,
+            player=None,
+            opponents=(),
+            participants=(),
+            battle=replace(
+                state.battle,
+                srv_seq=3,
+                sources=("ChatMessageDTO.MATCH_START.matchPayload.board",),
+                acknowledged=False,
+                turn_number=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            ),
+        )
+
+        strict = ActionabilityGate.evaluate(opening, context())
+        self.assertEqual(strict.reason, GateReason.PLAYER_STATS_UNKNOWN)
+
+        board_only = ActionabilityGate.evaluate(
+            opening,
+            context(allow_opening_board_only=True),
+        )
+        self.assertTrue(board_only.actionable, board_only)
+        self.assertTrue(board_only.details["openingBoardOnly"])
+        self.assertIsNone(board_only.details["playerHp"])
+        self.assertIsNone(board_only.details["bossHp"])
+
+    def test_board_only_stats_exception_is_opening_and_connection_scoped(self) -> None:
+        state = actionable_state()
+        missing = replace(state, player=None, opponents=(), participants=())
+        self.assertEqual(
+            ActionabilityGate.evaluate(
+                missing,
+                context(allow_opening_board_only=True),
+            ).reason,
+            GateReason.PLAYER_STATS_UNKNOWN,
+        )
+
+        disconnected_opening = replace(
+            missing,
+            battle=replace(
+                missing.battle,
+                srv_seq=3,
+                sources=("ChatMessageDTO.MATCH_START.matchPayload.board",),
+                acknowledged=False,
+                turn_number=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+                connection_ready=False,
+            ),
+        )
+        self.assertEqual(
+            ActionabilityGate.evaluate(
+                disconnected_opening,
+                context(allow_opening_board_only=True),
+            ).reason,
+            GateReason.DISCONNECTED,
+        )
+
     def test_acked_match_move_transport_board_is_authoritative(self) -> None:
         state = actionable_state()
         transport = replace(

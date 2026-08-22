@@ -129,6 +129,40 @@ def _retryable_board_messages(
     )
 
 
+def _entry_preflight_runtime_valid(
+    current_lobby: Any,
+    current_resolution: Any,
+    ready: Any,
+) -> bool:
+    """Validate only target/control invariants immediately before entry.
+
+    Pre-entry CardData is deliberately excluded: it is asynchronously refreshed
+    expectation evidence and cannot change which boss/button may be clicked.
+    """
+
+    return bool(
+        current_lobby.state is BossLobbyState.BOSS_LOBBY
+        and current_lobby.branch == "CHINH_PHUC_ROOM"
+        and current_resolution.resolved
+        and current_resolution.candidate is not None
+        and current_resolution.candidate.identity.stable_key()
+        == ready.resolution.candidate.identity.stable_key()
+        and current_resolution.candidate.selection is TargetSelectionState.SELECTED
+        and current_resolution.candidate.entry_control_address
+        == ready.resolution.candidate.entry_control_address
+    )
+
+
+def _preentry_optional_card_mode(loadout: Any) -> str:
+    """Classify optional lobby cards without making entry depend on them."""
+
+    return (
+        "ATTACK_CARD_AVAILABLE"
+        if loadout.manager_attack_card_count > 0
+        else "BOARD_ONLY_NO_ATTACK_CARD"
+    )
+
+
 @dataclass(frozen=True)
 class EntryBaseline:
     old_match_id: str | None
@@ -430,7 +464,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 time.sleep(args.interval)
                 continue
 
-            key = (lobby.branch, tuple(c.identity.stable_key() for c in lobby.candidates))
+            key = (
+                lobby.branch,
+                tuple(c.identity.stable_key() for c in lobby.candidates),
+            )
             stable_lobby_count = stable_lobby_count + 1 if key == stable_lobby_key else 1
             stable_lobby_key = key
             if stable_lobby_count < 2:
@@ -472,6 +509,60 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 _beep("stop", beep_enabled)
                 break
             _write(log, "target_selected", candidate=candidate, selectionSource="ManagerRoom.roomData")
+            loadout = lobby.chinh_phuc.card_loadout
+            provider.set_preentry_card_loadout(
+                loadout.cards,
+                sources_agree=loadout.sources_agree,
+            )
+            result.update(
+                preentryCardCount=loadout.card_count,
+                preentryAttackCardCount=loadout.attack_card_count,
+                preentryCardSourcesAgree=loadout.sources_agree,
+                preentryCardIdentity=loadout.identity,
+                preentryOptionalCardMode=_preentry_optional_card_mode(loadout),
+            )
+            _write(
+                log,
+                "preentry_card_loadout",
+                cardCount=loadout.card_count,
+                attackCardCount=loadout.attack_card_count,
+                managerCardCount=len(loadout.manager_cards),
+                managerAttackCardCount=loadout.manager_attack_card_count,
+                managerCardIdentity=tuple(
+                    sorted(
+                        (card.data_id, card.card_id, card.element_type.upper())
+                        for card in loadout.manager_cards
+                    )
+                ),
+                roomCardCount=len(loadout.room_cards),
+                roomAttackCardCount=loadout.room_attack_card_count,
+                roomCardIdentity=tuple(
+                    sorted(
+                        (card.data_id, card.card_id, card.element_type.upper())
+                        for card in loadout.room_cards
+                    )
+                ),
+                sourcesAgree=loadout.sources_agree,
+                cards=loadout.cards,
+                reasons=loadout.reasons,
+                semantic=(
+                    "ManagerRoom.selectedCards is the next-combat expectation; "
+                    "RoomDTO.cards is comparison telemetry; live CardUI still required"
+                ),
+            )
+            _write(
+                log,
+                "preentry_optional_card_mode",
+                mode=_preentry_optional_card_mode(loadout),
+                attackCardAvailable=loadout.manager_attack_card_count > 0,
+                castEnabled=loadout.manager_attack_card_count > 0,
+                boardOnlyFallback=loadout.manager_attack_card_count == 0,
+                roomDtoAttackTelemetry=loadout.room_attack_card_count,
+                semantic=(
+                    "ordinary and pet cards are optional; missing Attack never "
+                    "blocks entry or board-only gameplay"
+                ),
+            )
             state = _transition(log, state, BossEntryState.LOCATE_ENTER_BUTTON)
 
             try:
@@ -622,22 +713,34 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             )
             return 2
 
+        # Learn the short-lived ChatMessageDTO allocation regions before the
+        # only entry click. On a cold process the full read-only heap scan can
+        # take roughly 1--2 seconds; paying that cost after clicking can miss
+        # MATCH_START and therefore the mandatory first local turn. The
+        # monitor reuses current-process evidence on later entries and rescans
+        # here only if every learned range disappeared.
+        transport_prime = monitor.ensure_regions_primed()
+        _write(
+            log,
+            "entry_transport_regions_ready",
+            prime=transport_prime,
+            coldScanPerformed=transport_prime.scanned_bytes > 0,
+            timing="before_entry_input",
+            gameplayInput=False,
+        )
+
         # Atomic preflight immediately before the only allowed entry click.
         poll = provider.poll()
         if poll.combat_lifecycle is None:
             raise RuntimeError("preflight lifecycle unavailable")
         current_lobby = read_boss_lobby_runtime(target.resolver, poll.combat_lifecycle)
         current_resolution = resolve_target(farm_target, current_lobby.candidates)
-        if (
-            current_lobby.state is not BossLobbyState.BOSS_LOBBY
-            or current_lobby.branch != "CHINH_PHUC_ROOM"
-            or not current_resolution.resolved
-            or current_resolution.candidate is None
-            or current_resolution.candidate.identity.stable_key()
-            != ready.resolution.candidate.identity.stable_key()
-            or current_resolution.candidate.selection is not TargetSelectionState.SELECTED
-            or current_resolution.candidate.entry_control_address
-            != ready.resolution.candidate.entry_control_address
+        ready_loadout = ready.lobby.chinh_phuc.card_loadout
+        current_loadout = current_lobby.chinh_phuc.card_loadout
+        if not _entry_preflight_runtime_valid(
+            current_lobby,
+            current_resolution,
+            ready,
         ):
             result.update(status="STOPPED", stopReason="ENTRY_PREFLIGHT_RUNTIME_CHANGED")
             _write(log, "entry_stopped", reason=result["stopReason"])
@@ -646,6 +749,32 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 json.dumps(_jsonable(result), ensure_ascii=False, indent=2), encoding="utf-8"
             )
             return 2
+        if current_loadout.identity != ready_loadout.identity:
+            _write(
+                log,
+                "preentry_card_loadout_refreshed",
+                readyIdentity=ready_loadout.identity,
+                preflightIdentity=current_loadout.identity,
+                readySourcesAgree=ready_loadout.sources_agree,
+                preflightSourcesAgree=current_loadout.sources_agree,
+                reasons=current_loadout.reasons,
+                inputBlocked=False,
+                semantic="loadout expectation changed; target/button entry invariant unchanged",
+            )
+            result.update(
+                preentryCardCount=current_loadout.card_count,
+                preentryAttackCardCount=current_loadout.attack_card_count,
+                preentryCardSourcesAgree=current_loadout.sources_agree,
+                preentryCardIdentity=current_loadout.identity,
+                preentryOptionalCardMode=_preentry_optional_card_mode(
+                    current_loadout
+                ),
+                preentryCardChangedDuringPreflight=True,
+            )
+        provider.set_preentry_card_loadout(
+            current_loadout.cards,
+            sources_agree=current_loadout.sources_agree,
+        )
         capture, location, signature = _capture_proof(
             target=target, executor=executor, binding=binding
         )

@@ -11,8 +11,14 @@ from pokiguard_v2.memory_board_provider import (
     MemoryProviderConfig,
     ProviderMetrics,
     _combat_type_info_blocker,
+    _drop_session_volatile_learned_regions,
     _durable_non_board_fusion_transition,
+    _extended_card_scan_relevant,
     _extended_fusion_scan_relevant,
+    _first_session_ui_scan_required,
+    _extended_card_scan_still_needed,
+    _match_start_opening_has_priority,
+    _opening_board_action_has_priority,
     _normalize_last_move_telemetry,
     _needs_immediate_full_ack_rescan,
     _next_direct_owner_grace,
@@ -43,6 +49,13 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 extended_fusion_ui_region_mib=7,
             )
 
+    def test_config_rejects_card_extension_below_normal_envelope(self) -> None:
+        with self.assertRaises(ValueError):
+            MemoryProviderConfig(
+                max_region_mib=8,
+                extended_card_ui_region_mib=7,
+            )
+
     def test_region_band_excludes_normal_and_over_limit_regions(self) -> None:
         normal = MemoryRegion(0x1000, 8 * 1024 * 1024, 0x04, 0x20000)
         evidenced = MemoryRegion(0x900000, 14 * 1024 * 1024, 0x04, 0x20000)
@@ -61,6 +74,8 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
         fusion = SimpleNamespace(
             candidate_available=True,
             mana_cost=160,
+            selected_user_pet_id=218166,
+            selected_pet_id=1289,
         )
         enough = (ParticipantState(1, is_local=True, mana=160),)
         short = (ParticipantState(1, is_local=True, mana=159),)
@@ -101,6 +116,172 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 last_scanned_turn=5,
             )
         )
+        self.assertFalse(
+            _extended_fusion_scan_relevant(
+                SimpleNamespace(
+                    candidate_available=True,
+                    mana_cost=160,
+                    selected_user_pet_id=0,
+                    selected_pet_id=0,
+                ),
+                enough,
+                is_local_turn=True,
+                turn=5,
+                last_scanned_turn=3,
+            )
+        )
+
+    def test_extended_card_scan_is_bounded_and_second_try_requires_mana(self) -> None:
+        no_mana = (ParticipantState(1, is_local=True, mana=0),)
+        has_mana = (ParticipantState(1, is_local=True, mana=160),)
+
+        self.assertTrue(
+            _extended_card_scan_relevant(
+                no_mana,
+                is_local_turn=True,
+                turn=1,
+                last_scanned_turn=None,
+                attempts=0,
+            )
+        )
+        self.assertFalse(
+            _extended_card_scan_relevant(
+                no_mana,
+                is_local_turn=True,
+                turn=3,
+                last_scanned_turn=1,
+                attempts=1,
+            )
+        )
+        self.assertTrue(
+            _extended_card_scan_relevant(
+                has_mana,
+                is_local_turn=True,
+                turn=3,
+                last_scanned_turn=1,
+                attempts=1,
+            )
+        )
+        self.assertTrue(
+            _extended_card_scan_relevant(
+                has_mana,
+                is_local_turn=True,
+                turn=5,
+                last_scanned_turn=3,
+                attempts=2,
+            )
+        )
+        self.assertFalse(
+            _extended_card_scan_relevant(
+                has_mana,
+                is_local_turn=True,
+                turn=9,
+                last_scanned_turn=7,
+                attempts=4,
+            )
+        )
+
+    def test_first_session_ui_scan_forces_full_current_region_discovery(self) -> None:
+        self.assertTrue(
+            _first_session_ui_scan_required(
+                1,
+                needs_card_scan=True,
+                needs_fusion_ui_scan=False,
+            )
+        )
+        self.assertTrue(
+            _first_session_ui_scan_required(
+                1,
+                needs_card_scan=False,
+                needs_fusion_ui_scan=True,
+            )
+        )
+        self.assertFalse(
+            _first_session_ui_scan_required(
+                2,
+                needs_card_scan=True,
+                needs_fusion_ui_scan=True,
+            )
+        )
+
+    def test_pristine_first_turn_prioritizes_match_start_before_heap_scans(self) -> None:
+        self.assertTrue(
+            _match_start_opening_has_priority(
+                opening_snapshot_available=False,
+                turn=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+        self.assertFalse(
+            _match_start_opening_has_priority(
+                opening_snapshot_available=True,
+                turn=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+
+    def test_pristine_local_opening_defers_optional_ui_discovery(self) -> None:
+        self.assertTrue(
+            _opening_board_action_has_priority(
+                is_local_turn=True,
+                turn=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+        self.assertFalse(
+            _opening_board_action_has_priority(
+                is_local_turn=False,
+                turn=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+        self.assertFalse(
+            _opening_board_action_has_priority(
+                is_local_turn=True,
+                turn=3,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+        self.assertFalse(
+            _opening_board_action_has_priority(
+                is_local_turn=True,
+                turn=1,
+                local_move_sequence=1,
+                last_move_sequence=1,
+            )
+        )
+        self.assertFalse(
+            _match_start_opening_has_priority(
+                opening_snapshot_available=False,
+                turn=3,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+
+    def test_extended_card_scan_is_skipped_when_normal_scan_found_attack(self) -> None:
+        attack = SimpleNamespace(is_attack=True)
+        mana = SimpleNamespace(is_attack=False)
+        self.assertFalse(_extended_card_scan_still_needed(True, (mana, attack)))
+        self.assertTrue(_extended_card_scan_still_needed(True, (mana,)))
+        self.assertFalse(_extended_card_scan_still_needed(False, ()))
+
+    def test_new_session_drops_only_volatile_learned_regions(self) -> None:
+        learned = {
+            "batch": {"old_batch_region"},
+            "card_ui": {"old_card_region"},
+            "fusion_ui": {"old_fusion_region"},
+            "board_ws": {"stable_owner_hint"},
+        }
+
+        _drop_session_volatile_learned_regions(learned)
+
+        self.assertEqual(learned, {"board_ws": {"stable_owner_hint"}})
 
 
 class LobbyBaselineTests(unittest.TestCase):

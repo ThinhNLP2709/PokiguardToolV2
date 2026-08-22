@@ -208,7 +208,7 @@ def _read_jobject_tokens(
     dictionary = _pointer(
         memory, properties + JPROPERTY_COLLECTION_DICTIONARY_OFFSET
     )
-    entries = _read_dictionary_entries(memory, dictionary)
+    entries = _read_dictionary_entries(memory, dictionary, max_entries=64)
     output: dict[str, int] = {}
     for key, jproperty in entries.items():
         _exact_class(memory, jproperty, classes.jproperty, "JProperty")

@@ -30,6 +30,7 @@ class ActionResultKind(str, Enum):
     CAST_REJECTED = "CAST_REJECTED"
     SEQUENCE_DESYNC = "SEQUENCE_DESYNC"
     ACTION_EXPIRED = "ACTION_EXPIRED"
+    ACTION_OUTCOME_UNCONFIRMED = "ACTION_OUTCOME_UNCONFIRMED"
     ACTION_ABORTED_STATE_CHANGED = "ACTION_ABORTED_STATE_CHANGED"
 
 
@@ -158,10 +159,60 @@ class PendingAutonomousAction:
     idle_state_before: Any | None = None
     reset_baseline_before: Any | None = None
     mandatory_after_idle_2: bool = False
+    response_deadline: float | None = None
+    response_wait_extensions: int = 0
 
     @property
     def consumes_turn(self) -> bool:
         return self.identity.action in {PolicyAction.SWAP, PolicyAction.CAST}
+
+
+@dataclass(frozen=True)
+class ActionResponseWaitPlan:
+    """A bounded read-only retry plan for an action whose ACK is late.
+
+    This never authorizes a second click.  Re-sending an input while the first
+    one may already be in the server pipeline can duplicate a CAST or corrupt a
+    SWAP.  The only safe retry is a short additional observation window while
+    the exact source turn is still local and has enough time remaining.
+    """
+
+    extend_observation: bool
+    extension_seconds: float = 0.0
+    reason: str = "RELEASE_AS_UNCONFIRMED"
+
+
+def plan_action_response_wait(
+    pending: PendingAutonomousAction,
+    *,
+    session: CombatSessionKey | None,
+    turn: int | None,
+    is_local_turn: bool | None,
+    remaining_seconds: float | int | None,
+    minimum_action_time: float,
+    max_extensions: int = 1,
+    maximum_extension_seconds: float = 2.0,
+) -> ActionResponseWaitPlan:
+    """Choose one fail-closed response-observation retry, never an input retry."""
+
+    if pending.response_wait_extensions >= max_extensions:
+        return ActionResponseWaitPlan(False, reason="EXTENSION_LIMIT_REACHED")
+    if (
+        session != pending.identity.source.session
+        or turn != pending.identity.source.turn
+        or is_local_turn is not True
+        or remaining_seconds is None
+    ):
+        return ActionResponseWaitPlan(False, reason="SOURCE_TURN_NOT_FRESH_LOCAL")
+    spare = float(remaining_seconds) - float(minimum_action_time) - 0.25
+    extension = min(float(maximum_extension_seconds), spare)
+    if extension < 0.5:
+        return ActionResponseWaitPlan(False, reason="INSUFFICIENT_SAFE_TURN_TIME")
+    return ActionResponseWaitPlan(
+        True,
+        extension_seconds=extension,
+        reason="FRESH_SOURCE_TURN_HAS_SAFE_OBSERVATION_TIME",
+    )
 
 
 def direct_runtime_proves_swap_accepted(
@@ -389,6 +440,9 @@ class ConsumingTurnRegistry:
 class TurnTransitionKind(str, Enum):
     OPPONENT_TURN = "OPPONENT_TURN"
     LOCAL_TURN_RETURNED = "LOCAL_TURN_RETURNED"
+    LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE = (
+        "LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE"
+    )
     LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT = "LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT"
 
 
@@ -465,6 +519,29 @@ class TurnTransitionTracker:
                 # transition. Wait; do not call this a new local turn.
                 return None
             if not self.opponent_seen:
+                turn_delta = (
+                    state.battle.turn_number - action.source.turn
+                    if state.battle.turn_number is not None
+                    else None
+                )
+                if (
+                    turn_delta is not None
+                    and turn_delta >= 2
+                    and turn_delta % 2 == 0
+                ):
+                    # In this two-participant boss match, an authoritative
+                    # return to the local actor two turns later necessarily
+                    # crosses the intervening boss turn. A laggy client can
+                    # publish 1 -> 3 without our sampler seeing transient turn
+                    # 2. The complete fresh Board is still required before
+                    # policy can issue another input.
+                    observation = TurnTransitionObservation(
+                        TurnTransitionKind.LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE,
+                        action,
+                        new_source,
+                    )
+                    self.clear()
+                    return observation
                 # MatchService fields are not updated atomically. Live evidence
                 # observed TurnNumber advance about 0.55 s after a SWAP while
                 # CurrentTurnPlayer still held the local actor. Keep input
@@ -518,6 +595,15 @@ class TurnTransitionTracker:
                 TurnTransitionKind.OPPONENT_TURN, action, None
             )
         if not self.opponent_seen:
+            turn_delta = turn - action.source.turn
+            if turn_delta >= 2 and turn_delta % 2 == 0:
+                observation = TurnTransitionObservation(
+                    TurnTransitionKind.LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE,
+                    action,
+                    None,
+                )
+                self.clear()
+                return observation
             self.unconfirmed_local_seen = True
             return None
         observation = TurnTransitionObservation(

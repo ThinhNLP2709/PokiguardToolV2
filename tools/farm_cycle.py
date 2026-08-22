@@ -92,6 +92,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lobby-timeout", type=float, default=180.0)
     parser.add_argument("--entry-timeout", type=float, default=45.0)
     parser.add_argument("--opening-timeout", type=float, default=35.0)
+    parser.add_argument(
+        "--postmatch-ui-timeout",
+        type=float,
+        default=15.0,
+        help="bounded wait for a stable terminal result modal",
+    )
     parser.add_argument("--return-lobby-timeout", type=float, default=90.0)
     parser.add_argument("--combat-timeout", type=float, default=1800.0)
     parser.add_argument("--max-total-input-actions", type=int, default=100)
@@ -135,6 +141,8 @@ def _validate_args(args: Namespace) -> None:
     for name in ("lobby_timeout", "entry_timeout", "opening_timeout"):
         if not 5 <= float(getattr(args, name)) <= 600:
             raise ValueError(f"--{name.replace('_', '-')} must be between 5 and 600 seconds")
+    if not 3 <= float(args.postmatch_ui_timeout) <= 60:
+        raise ValueError("--postmatch-ui-timeout must be between 3 and 60 seconds")
     for name in ("return_lobby_timeout", "combat_timeout"):
         if not 5 <= float(getattr(args, name)) <= 3600:
             raise ValueError(f"--{name.replace('_', '-')} must be between 5 and 3600 seconds")
@@ -164,6 +172,27 @@ def _entry_args(args: Namespace, artifacts: Path) -> Namespace:
     )
 
 
+def _resolve_pass_stage(args: Namespace) -> str:
+    """Pick the combat PASS-acceptance stage for a farm-driven match.
+
+    ``basic_auto_bot`` couples ``--pass-acceptance-stage`` and
+    ``--reset-evidence``: DISABLED forbids reset evidence, and every
+    P1/P2/P3/B3/B4/B5 stage requires it.  A farm run that was started with
+    ``--reset-evidence`` must therefore hand its matches a real stage rather
+    than the DISABLED default, or the combat leg raises and the farm run stops
+    with FARM_RUN_INTERNAL_INVARIANT.
+
+    An explicit ``pass_acceptance_stage`` on the caller always wins.  Otherwise
+    a run carrying reset evidence gets B5 -- one full BASIC combat with
+    production PASS/reset-cycle telemetry -- which matches the play-style
+    ``simple`` / mana-priority ``evolution`` pair _combat_args already pins.
+    """
+    explicit = getattr(args, "pass_acceptance_stage", None)
+    if explicit:
+        return explicit
+    return "B5" if getattr(args, "reset_evidence", None) is not None else "DISABLED"
+
+
 def _combat_args(args: Namespace, log_path: Path) -> Namespace:
     return Namespace(
         watch=True,
@@ -171,6 +200,9 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         mana_priority="evolution",
         intelligence="basic",
         minimum_action_time=4,
+        cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
+        cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
+        rage_target=getattr(args, "rage_target", 100),
         interval=args.interval,
         action_timeout=9.0,
         matches=1,
@@ -186,9 +218,20 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         max_region_mib=args.max_region_mib,
         ack_heap_region_mib=args.ack_heap_region_mib,
         chunk_mib=args.chunk_mib,
-        pass_acceptance_stage="B5",
-        reset_evidence=args.reset_evidence,
+        pass_acceptance_stage=_resolve_pass_stage(args),
+        reset_evidence=getattr(args, "reset_evidence", None),
         acceptance_force_pass_after_actions=0,
+    )
+
+
+def _is_transient_chinh_phuc_room_rehydration(lobby: Any) -> bool:
+    """Identify the post-result gap before ManagerRoom.roomData is rebuilt."""
+
+    return bool(
+        lobby.branch == "WORLD_BOSS_LIST"
+        and lobby.chinh_phuc.current_room_type == "ChinhPhuc"
+        and lobby.chinh_phuc.current_room_id is not None
+        and lobby.chinh_phuc.room_data is None
     )
 
 
@@ -199,12 +242,22 @@ def _wait_boss_lobby(
     timeout: float,
     interval: float,
     hotkeys: HotkeyEdges,
+    control_hotkeys: Any = None,
+    *,
+    wait_through_target_missing: bool = False,
+    transient_room_grace_seconds: float = 0.0,
 ) -> LobbyWaitResult:
     deadline = time.monotonic() + timeout
     stable_key = None
     stable_count = 0
     last_state: BossLobbyState | None = None
+    transient_room_missing_since: float | None = None
     while process.is_running() and time.monotonic() < deadline:
+        if control_hotkeys is not None:
+            # Latch only.  A graceful stop must never cut this wait short: the
+            # match has to finish returning to the lobby before the farm loop
+            # consumes the latch and refuses the *next* entry.
+            control_hotkeys.poll()
         _f8_edge, f9_edge = hotkeys.poll()
         if f9_edge:
             return LobbyWaitResult(False, last_state, None, "F9_EMERGENCY_STOP", stable_frames=stable_count)
@@ -233,7 +286,23 @@ def _wait_boss_lobby(
                 time.sleep(interval)
                 continue
             if resolution.status is not TargetResolutionStatus.RESOLVED:
+                transient_room_rehydrating = (
+                    _is_transient_chinh_phuc_room_rehydration(lobby)
+                )
+                if transient_room_rehydrating and transient_room_grace_seconds > 0:
+                    now = time.monotonic()
+                    if transient_room_missing_since is None:
+                        transient_room_missing_since = now
+                    if now - transient_room_missing_since < transient_room_grace_seconds:
+                        time.sleep(interval)
+                        continue
+                else:
+                    transient_room_missing_since = None
+                if wait_through_target_missing:
+                    time.sleep(interval)
+                    continue
                 return LobbyWaitResult(False, lobby.state, resolution.status, resolution.status.value, lobby, stable_count)
+            transient_room_missing_since = None
             if resolution.candidate is None or not resolution.candidate.available:
                 return LobbyWaitResult(False, lobby.state, resolution.status, "TARGET_NOT_AVAILABLE", lobby, stable_count)
             return LobbyWaitResult(True, lobby.state, resolution.status, "BOSS_LOBBY_READY", lobby, stable_count)
@@ -325,11 +394,20 @@ def _confirm_postmatch_result(
     executor: ForegroundClickExecutor,
     artifacts: Path,
     interval: float,
+    ui_timeout: float,
     hotkeys: HotkeyEdges,
     log: Any,
 ) -> bool:
     locations = []
-    for frame_number in range(1, 4):
+    captures = []
+    deadline = time.monotonic() + ui_timeout
+    proof = prove_stable_result_confirm((), required_frames=3)
+    sample_number = 0
+    first_wait_frame_written = False
+    last_location = None
+    last_capture = None
+    while process.is_running() and time.monotonic() < deadline:
+        sample_number += 1
         _confirm, stop = hotkeys.poll()
         if stop:
             cycle.safe_stop(FarmCycleStopReason.EMERGENCY_STOP, detail="F9 during postmatch proof")
@@ -347,26 +425,55 @@ def _confirm_postmatch_result(
             )
             return False
         capture = capture_client_rgb(process.pid)
-        frame_path = artifacts / f"postmatch_result_frame_{frame_number}.png"
-        write_png_rgb(frame_path, capture.width, capture.height, capture.rgb)
-        location = locate_result_confirm(capture.rgb, capture.width, capture.height)
-        locations.append(location)
+        last_capture = capture
+        if not first_wait_frame_written:
+            write_png_rgb(
+                artifacts / "postmatch_wait_frame_first.png",
+                capture.width,
+                capture.height,
+                capture.rgb,
+            )
+            first_wait_frame_written = True
+        last_location = locate_result_confirm(capture.rgb, capture.width, capture.height)
+        locations.append(last_location)
+        captures.append(capture)
+        locations = locations[-3:]
+        captures = captures[-3:]
+        proof = prove_stable_result_confirm(locations, required_frames=3)
         _write(
             log,
-            "postmatch_result_frame",
-            frameNumber=frame_number,
+            "postmatch_result_sample",
+            sampleNumber=sample_number,
             lifecycle=lifecycle,
-            location=location,
-            artifact=frame_path,
+            location=last_location,
+            proof=proof,
         )
-        if frame_number < 3:
-            time.sleep(max(interval, 0.25))
+        if proof.proven:
+            break
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(max(interval, 0.25), remaining))
 
-    proof = prove_stable_result_confirm(locations, required_frames=3)
     _write(log, "postmatch_result_proof", proof=proof)
     if not proof.proven or proof.normalized_point is None:
-        cycle.safe_stop(FarmCycleStopReason.POSTMATCH_UI_AMBIGUOUS, detail=proof.reason)
+        if last_capture is not None:
+            write_png_rgb(
+                artifacts / "postmatch_wait_frame_last.png",
+                last_capture.width,
+                last_capture.height,
+                last_capture.rgb,
+            )
+        detail = (
+            f"postmatch modal not stable within {ui_timeout:.1f}s; "
+            f"samples={sample_number}; "
+            f"last={getattr(last_location, 'reason', proof.reason)}"
+        )
+        cycle.safe_stop(FarmCycleStopReason.POSTMATCH_UI_AMBIGUOUS, detail=detail)
         return False
+
+    for frame_number, capture in enumerate(captures[-3:], start=1):
+        frame_path = artifacts / f"postmatch_result_frame_{frame_number}.png"
+        write_png_rgb(frame_path, capture.width, capture.height, capture.rgb)
 
     final_poll = provider.poll()
     final_lifecycle = (
@@ -587,6 +694,7 @@ def _run_cycle(args: Namespace, target: FarmTarget) -> int:
                     allow_ack_heap_scan=True,
                     ack_heap_region_mib=args.ack_heap_region_mib,
                     extended_fusion_ui_region_mib=max(args.max_region_mib, 16),
+                    extended_card_ui_region_mib=max(args.max_region_mib, 16),
                 ),
             )
             monitor = RuntimeSequenceMonitor(
@@ -665,6 +773,7 @@ def _run_cycle(args: Namespace, target: FarmTarget) -> int:
                                 executor=executor,
                                 artifacts=artifacts,
                                 interval=args.interval,
+                                ui_timeout=args.postmatch_ui_timeout,
                                 hotkeys=hotkeys,
                                 log=log,
                             )

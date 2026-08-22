@@ -16,6 +16,12 @@ from typing import Any
 from uuid import uuid4
 
 from .boss_entry import BossLobbyState, FarmTarget
+from .farm_checkpoint import (
+    CHECKPOINT_SCHEMA,
+    CheckpointPayload,
+    ResumeDecision,
+)
+from .farm_control import FarmControlState, GracefulStopController
 from .farm_cycle import OpeningEvidence
 from .state import (
     CombatSessionKey,
@@ -44,6 +50,13 @@ def _duration_seconds(start: str, end: str | None) -> float | None:
         )
     except ValueError:
         return None
+
+
+def _epoch_seconds(timestamp: str) -> float:
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
 
 
 def _jsonable(value: Any) -> Any:
@@ -100,6 +113,14 @@ class FarmRunStopReason(str, Enum):
     CONTROLLER_CONFLICT = "CONTROLLER_CONFLICT"
     STAGE_B1_ACTION_ACCEPTED = "STAGE_B1_ACTION_ACCEPTED"
     INTERNAL_INVARIANT = "FARM_RUN_INTERNAL_INVARIANT"
+    STOPPED_GRACEFULLY = "STOPPED_GRACEFULLY"
+    RESUME_START_STATE_UNSAFE = "RESUME_START_STATE_UNSAFE"
+    CHECKPOINT_INVALID = "CHECKPOINT_INVALID"
+    CHECKPOINT_SCHEMA_UNSUPPORTED = "CHECKPOINT_SCHEMA_UNSUPPORTED"
+    CHECKPOINT_CONFIG_MISMATCH = "CHECKPOINT_CONFIG_MISMATCH"
+    CHECKPOINT_MATCH_ID_CONFLICT = "CHECKPOINT_MATCH_ID_CONFLICT"
+    CHECKPOINT_ALREADY_COMPLETED = "CHECKPOINT_ALREADY_COMPLETED"
+    CHECKPOINT_NOT_RESUMABLE = "CHECKPOINT_NOT_RESUMABLE"
 
 
 class MatchResult(str, Enum):
@@ -259,6 +280,7 @@ class FarmRunSnapshot:
     unknown_results: int
     technical_aborts: int
     technical_recoveries: int
+    technical_exits: int
     safe_stops: int
     current_match_id: str | None
     current_session_key: CombatSessionKey | None
@@ -300,12 +322,20 @@ class FarmRunSnapshot:
     duration_seconds: float | None
     average_match_duration_seconds: float | None
     longest_match_duration_seconds: float | None
+    control_state: FarmControlState | None = None
+    graceful_stop_requested_at: str | None = None
+    checkpoint_seq: int = 0
+    continuation_of: str | None = None
 
 
 class FarmRun:
     """Single-owner, bounded multi-match state and capability ledger."""
 
-    _TECHNICAL_REASONS = {"SEQUENCE_DESYNC", "DEAD_BOARD_NO_REFRESH"}
+    _TECHNICAL_REASONS = {
+        "SEQUENCE_DESYNC",
+        "DEAD_BOARD_NO_REFRESH",
+        "ACTIONABILITY_STATE_LOST",
+    }
 
     def __init__(
         self,
@@ -313,6 +343,10 @@ class FarmRun:
         *,
         limits: FarmRunLimits | None = None,
         farm_run_id: str | None = None,
+        control: GracefulStopController | None = None,
+        resume: ResumeDecision | None = None,
+        continuation_of: str | None = None,
+        max_retained_events: int = 4000,
     ) -> None:
         self.farm_run_id = farm_run_id or uuid4().hex
         self.target = target
@@ -325,6 +359,7 @@ class FarmRun:
         self.unknown_results = 0
         self.technical_aborts = 0
         self.technical_recoveries = 0
+        self.technical_exits = 0
         self.safe_stops = 0
         self.current_session: CombatSessionKey | None = None
         self.stop_reason: FarmRunStopReason | None = None
@@ -332,14 +367,256 @@ class FarmRun:
         self.input_records: list[FarmInputRecord] = []
         self.safety = FarmRunSafetyCounters()
         self.events: list[FarmRunEvent] = []
+        self._max_retained_events = max(1, int(max_retained_events))
+        self._event_index = 0
         self._seen_sessions: set[CombatSessionKey] = set()
         self._seen_match_ids: set[str] = set()
         self._pending: FarmInputPermit | None = None
         self._recovered_opening: OpeningEvidence | None = None
         self._test_only_recovery_required = False
+        self._control = control
+        self.continuation_of = continuation_of
+        self.checkpoint_seq = 0
+        self.resumed = False
+        self.historical_counters: dict[str, int] = {}
+        self.historical_action_aggregates: dict[str, int] = {}
+        self.historical_consistency_aggregates: dict[str, int] = {}
+        self.historical_last_completed_match_id: str | None = None
         self.start_timestamp = utc_timestamp()
         self.end_timestamp: str | None = None
         self._event("farm_run_created", target=target, limits=self.limits)
+        if resume is not None:
+            self._seed_from_resume(resume)
+
+    def _seed_from_resume(self, resume: ResumeDecision) -> None:
+        """Restore durable HISTORY only.  No executable gameplay state ever."""
+        if not resume.allowed:
+            self.safe_stop(
+                FarmRunStopReason.CHECKPOINT_INVALID,
+                detail=resume.reason or "resume not allowed",
+            )
+            return
+        counters = resume.historical_counters
+        self.match_attempts = int(counters.get("match_attempts", 0))
+        self.completed_matches = int(counters.get("completed_matches", 0))
+        self.wins = int(counters.get("wins", 0))
+        self.losses = int(counters.get("losses", 0))
+        self.unknown_results = int(counters.get("unknown_results", 0))
+        self.technical_aborts = int(counters.get("technical_aborts", 0))
+        self.technical_recoveries = int(counters.get("technical_recoveries", 0))
+        self.technical_exits = int(counters.get("technical_exits", 0))
+        self._seen_match_ids.update(resume.seen_match_ids)
+        self.resumed = True
+        self.historical_counters = dict(counters)
+        self.historical_action_aggregates = dict(
+            resume.historical_action_aggregates
+        )
+        self.historical_consistency_aggregates = dict(
+            resume.historical_consistency_aggregates
+        )
+        self.historical_last_completed_match_id = resume.last_completed_match_id
+        if resume.run_started_at > 0:
+            self.start_timestamp = (
+                datetime.fromtimestamp(resume.run_started_at, tz=timezone.utc)
+                .isoformat(timespec="milliseconds")
+                .replace("+00:00", "Z")
+            )
+        self._event(
+            "farm_run_resumed_from_checkpoint",
+            continuationOf=self.continuation_of,
+            historicalCompleted=self.completed_matches,
+            remainingCompleted=resume.remaining_completed,
+            seenMatchIds=len(self._seen_match_ids),
+            executableGameplayStateRestored=False,
+        )
+
+    def graceful_stop_requested(self) -> bool:
+        return self._control is not None and self._control.state is not FarmControlState.RUNNING
+
+    def graceful_stop_request(
+        self, *, lifecycle: str, match_id: str | None
+    ) -> bool:
+        """Accept one operator graceful-stop press.  Edge-triggered, idempotent."""
+        now = _epoch_seconds(utc_timestamp())
+        if self._control is None:
+            self._control = GracefulStopController(timestamp=now)
+        accepted = self._control.request_graceful_stop(
+            timestamp=now,
+            farm_state=self.state.value,
+            lifecycle=lifecycle,
+            match_id=match_id,
+        )
+        if not accepted:
+            self._event("graceful_stop_duplicate_ignored", controlState=self._control.state.value)
+            return False
+        self._event(
+            "graceful_stop_requested",
+            lifecycle=lifecycle,
+            matchId=match_id,
+            farmState=self.state.value,
+        )
+        # Irrevocability is scoped to the entry permit that is currently in
+        # flight.  Once a match has drained back to the lobby, a later stop
+        # request must be allowed to stop immediately at the lobby even though
+        # an earlier entry was sent.
+        entry_pending_irrevocable = (
+            self.state is FarmRunState.ENTRY_PENDING
+            and self._control.snapshot().entry_irrevocably_sent
+        )
+        if (
+            self.current_session is None
+            and not entry_pending_irrevocable
+            and self.state in {
+                FarmRunState.WAIT_INITIAL_BOSS_LOBBY,
+                FarmRunState.RESOLVE_TARGET,
+                FarmRunState.ENTRY_READY,
+                FarmRunState.ENTRY_PENDING,
+            }
+        ):
+            # At or before boss entry: no match in flight, stop now.
+            self._control.stop_at_lobby()
+            self.stop_reason = FarmRunStopReason.STOPPED_GRACEFULLY
+            self.end_timestamp = utc_timestamp()
+            self.current_session = None
+            self._pending = None
+            self._transition(
+                FarmRunState.FARM_RUN_COMPLETE, "graceful_stop_at_boss_lobby"
+            )
+        elif self.current_session is not None:
+            self._control.mark_draining_current_match()
+        return True
+
+    def checkpoint_payload(self, *, finalized_status: str | None = None) -> CheckpointPayload:
+        snapshot = self.snapshot()
+        self.checkpoint_seq += 1
+        now = _epoch_seconds(utc_timestamp())
+        control = self._control.snapshot() if self._control is not None else None
+        return CheckpointPayload(
+            schema_version=CHECKPOINT_SCHEMA,
+            farm_run_id=self.farm_run_id,
+            continuation_of=self.continuation_of,
+            checkpoint_seq=self.checkpoint_seq,
+            created_at=_epoch_seconds(self.start_timestamp),
+            updated_at=now,
+            target_boss_id=str(self.target.boss_id),
+            target_boss_name=str(self.target.boss_name or ""),
+            configured_limits={
+                "target_completed_matches": self.limits.target_completed_matches,
+                "max_technical_recoveries": self.limits.max_technical_recoveries,
+                "max_match_attempts": self.limits.max_match_attempts,
+            },
+            run_started_at=_epoch_seconds(self.start_timestamp),
+            match_attempts=self.match_attempts,
+            completed_matches=self.completed_matches,
+            wins=self.wins,
+            losses=self.losses,
+            unknown_results=self.unknown_results,
+            technical_aborts=self.technical_aborts,
+            technical_recoveries=self.technical_recoveries,
+            technical_exits=self.technical_exits,
+            last_completed_match_id=next(
+                (
+                    item.match_id
+                    for item in reversed(self.attempts)
+                    if item.end_timestamp is not None
+                    and item.result
+                    in {MatchResult.WIN, MatchResult.LOSS, MatchResult.UNKNOWN}
+                ),
+                self.historical_last_completed_match_id,
+            ),
+            seen_match_ids=tuple(sorted(self._seen_match_ids)),
+            action_aggregates={
+                "swap_sent": snapshot.total_swap_sent,
+                "swap_acknowledged": snapshot.total_swap_acknowledged,
+                "swap_rejected": snapshot.total_swap_rejected,
+                "swap_aborted_state_changed": (
+                    snapshot.total_swap_aborted_state_changed
+                ),
+                "cast_sent": snapshot.total_cast_sent,
+                "cast_accepted": snapshot.total_cast_accepted,
+                "cast_rejected": snapshot.total_cast_rejected,
+                "evolve_attempts": snapshot.total_evolve_attempts,
+                "evolve_success": snapshot.total_evolve_success,
+                "evolve_failed": snapshot.total_evolve_failed,
+            },
+            pass_totals=snapshot.total_pass_count,
+            consistency_aggregates={
+                "consistent": snapshot.result_consistent_count,
+                "memory_incomplete": snapshot.memory_incomplete_count,
+                "conflicts": snapshot.result_conflict_count,
+                "strong_terminal_results": (
+                    self.historical_consistency_aggregates.get(
+                        "strong_terminal_results", 0
+                    )
+                    + sum(
+                        item.terminal_result_confidence
+                        is TerminalResultConfidence.STRONG
+                        and item.result in {MatchResult.WIN, MatchResult.LOSS}
+                        and item.end_timestamp is not None
+                        for item in self.attempts
+                    )
+                ),
+            },
+            last_safe_lifecycle="BOSS_LOBBY",
+            stop_request_state=(control.state.value if control is not None else None),
+            stop_reason=(self.stop_reason.value if self.stop_reason is not None else None),
+            finalized_status=finalized_status,
+        )
+
+    def record_technical_exit(self, records: Any) -> bool:
+        """Graceful stop during recovery: exit to lobby, never re-enter."""
+        exits = confirms = reentries = 0
+        domain_map = {
+            "RECOVERY_EXIT": FarmInputDomain.RECOVERY_EXIT,
+            "RECOVERY_CONFIRM": FarmInputDomain.RECOVERY_CONFIRM,
+            "RECOVERY_TARGET_SELECT": FarmInputDomain.RECOVERY_TARGET_SELECT,
+            "RECOVERY_REENTRY": FarmInputDomain.RECOVERY_REENTRY,
+        }
+        for record in records:
+            raw = getattr(record, "domain", None)
+            domain = domain_map.get(str(getattr(raw, "value", raw)))
+            if domain is None:
+                self.safe_stop(
+                    FarmRunStopReason.RECOVERY_FAILED,
+                    detail="unknown technical-exit recovery domain",
+                )
+                return False
+            sent = bool(getattr(record, "sent", False))
+            permit = FarmInputPermit(uuid4().hex, domain, None, self.match_attempts)
+            self._record_input(
+                permit,
+                sent=sent,
+                detail=str(getattr(record, "detail", "")),
+            )
+            if domain is FarmInputDomain.RECOVERY_EXIT and sent:
+                exits += 1
+            elif domain is FarmInputDomain.RECOVERY_CONFIRM and sent:
+                confirms += 1
+            elif domain is FarmInputDomain.RECOVERY_REENTRY and sent:
+                reentries += 1
+        if reentries:
+            self.safe_stop(
+                FarmRunStopReason.INTERNAL_INVARIANT,
+                detail="technical exit must not re-enter a match",
+            )
+            return False
+        if exits != 1 or confirms != 1:
+            self.safe_stop(
+                FarmRunStopReason.RECOVERY_FAILED, detail="technical exit input count"
+            )
+            return False
+        self.technical_exits += 1
+        if self._control is not None:
+            self._control.suppress_recovery_reentry()
+            self._control.stop_at_lobby()
+        self.end_timestamp = utc_timestamp()
+        self._transition(
+            FarmRunState.FARM_RUN_COMPLETE,
+            "technical_exit_completed_no_reentry",
+            technicalExits=self.technical_exits,
+        )
+        self.stop_reason = FarmRunStopReason.STOPPED_GRACEFULLY
+        return True
 
     @property
     def stopped(self) -> bool:
@@ -364,15 +641,17 @@ class FarmRun:
             r.sent for r in self.input_records if r.domain is FarmInputDomain.POSTMATCH_CONFIRM
         )
         recovery = sum(r.sent for r in self.input_records if r.domain.recovery)
-        consistent = sum(
+        consistent = self.historical_consistency_aggregates.get("consistent", 0) + sum(
             item.result_consistency is ResultConsistency.CONSISTENT
             for item in self.attempts
         )
-        memory_incomplete = sum(
+        memory_incomplete = self.historical_consistency_aggregates.get(
+            "memory_incomplete", 0
+        ) + sum(
             item.result_consistency is ResultConsistency.MEMORY_INCOMPLETE
             for item in self.attempts
         )
-        conflicts = sum(
+        conflicts = self.historical_consistency_aggregates.get("conflicts", 0) + sum(
             item.result_consistency is ResultConsistency.RESULT_CONFLICT
             for item in self.attempts
         )
@@ -387,20 +666,19 @@ class FarmRun:
             self.match_attempts
             == self.completed_matches + self.technical_aborts + explicit_other_aborts
         )
+        current_strong_results = sum(
+            item.terminal_result_confidence is TerminalResultConfidence.STRONG
+            and item.result in {MatchResult.WIN, MatchResult.LOSS}
+            and item.end_timestamp is not None
+            for item in self.attempts
+        )
         memory_proven = bool(
             self.completed_matches > 0
-            and all(
-                item.terminal_result_confidence
-                is TerminalResultConfidence.STRONG
-                and item.result in {MatchResult.WIN, MatchResult.LOSS}
-                for item in self.attempts
-                if item.result in {
-                    MatchResult.WIN,
-                    MatchResult.LOSS,
-                    MatchResult.UNKNOWN,
-                }
-                and item.end_timestamp is not None
+            and self.historical_consistency_aggregates.get(
+                "strong_terminal_results", 0
             )
+            + current_strong_results
+            == self.completed_matches
         )
         duration = _duration_seconds(self.start_timestamp, self.end_timestamp)
         match_durations = [
@@ -420,6 +698,7 @@ class FarmRun:
             self.unknown_results,
             self.technical_aborts,
             self.technical_recoveries,
+            self.technical_exits,
             self.safe_stops,
             self.current_session.match_id if self.current_session is not None else None,
             self.current_session,
@@ -432,24 +711,37 @@ class FarmRun:
             tuple(self.input_records),
             FarmRunSafetyCounters(**asdict(self.safety)),
             tuple(self.events),
-            tuple(item.match_id for item in self.attempts),
+            tuple(sorted(self._seen_match_ids)),
             accounting_consistent,
             attempt_accounting_consistent,
             memory_proven,
             consistent,
             memory_incomplete,
             conflicts,
-            sum(item.swap_sent for item in self.attempts),
-            sum(item.swap_acknowledged for item in self.attempts),
-            sum(item.swap_rejected for item in self.attempts),
-            sum(item.swap_aborted_state_changed for item in self.attempts),
-            sum(item.cast_sent for item in self.attempts),
-            sum(item.cast_accepted for item in self.attempts),
-            sum(item.cast_rejected for item in self.attempts),
-            sum(item.evolve_attempts for item in self.attempts),
-            sum(item.evolve_failed for item in self.attempts),
-            sum(item.evolve_success for item in self.attempts),
-            sum(item.pass_count for item in self.attempts),
+            self.historical_action_aggregates.get("swap_sent", 0)
+            + sum(item.swap_sent for item in self.attempts),
+            self.historical_action_aggregates.get("swap_acknowledged", 0)
+            + sum(item.swap_acknowledged for item in self.attempts),
+            self.historical_action_aggregates.get("swap_rejected", 0)
+            + sum(item.swap_rejected for item in self.attempts),
+            self.historical_action_aggregates.get(
+                "swap_aborted_state_changed", 0
+            )
+            + sum(item.swap_aborted_state_changed for item in self.attempts),
+            self.historical_action_aggregates.get("cast_sent", 0)
+            + sum(item.cast_sent for item in self.attempts),
+            self.historical_action_aggregates.get("cast_accepted", 0)
+            + sum(item.cast_accepted for item in self.attempts),
+            self.historical_action_aggregates.get("cast_rejected", 0)
+            + sum(item.cast_rejected for item in self.attempts),
+            self.historical_action_aggregates.get("evolve_attempts", 0)
+            + sum(item.evolve_attempts for item in self.attempts),
+            self.historical_action_aggregates.get("evolve_failed", 0)
+            + sum(item.evolve_failed for item in self.attempts),
+            self.historical_action_aggregates.get("evolve_success", 0)
+            + sum(item.evolve_success for item in self.attempts),
+            self.historical_counters.get("pass_totals", 0)
+            + sum(item.pass_count for item in self.attempts),
             sum(item.provider_read_errors for item in self.attempts),
             sum(item.provider_dto_rejections for item in self.attempts),
             sum(item.provider_stale_skips for item in self.attempts),
@@ -468,6 +760,20 @@ class FarmRun:
                 else None
             ),
             max(match_durations) if match_durations else None,
+            (
+                self._control.state if self._control is not None else None
+            ),
+            (
+                datetime.fromtimestamp(
+                    self._control.request.requested_at, tz=timezone.utc
+                )
+                .isoformat(timespec="milliseconds")
+                .replace("+00:00", "Z")
+                if self._control is not None and self._control.request is not None
+                else None
+            ),
+            self.checkpoint_seq,
+            self.continuation_of,
         )
 
     def observe_initial_lobby(self, lobby: BossLobbyState) -> bool:
@@ -494,6 +800,21 @@ class FarmRun:
     def reserve_entry(self, *, foreground: bool) -> FarmInputPermit | None:
         if self.stopped:
             self.safety.input_after_farm_stop += 1
+            return None
+        # Hard graceful-stop gate.  GRACEFUL_STOP_NO_NEW_ENTRY_PROVEN lives here.
+        if (
+            self._control is not None
+            and not self._control.entry_allowed()
+        ):
+            self._event("entry_denied_graceful_stop", controlState=self._control.state.value)
+            self.stop_reason = FarmRunStopReason.STOPPED_GRACEFULLY
+            self.end_timestamp = utc_timestamp()
+            self.current_session = None
+            self._pending = None
+            self._transition(
+                FarmRunState.FARM_RUN_COMPLETE,
+                "graceful_stop_blocked_new_entry",
+            )
             return None
         if self.state is not FarmRunState.ENTRY_READY or self._pending is not None:
             self.safety.duplicate_lobby_entry += 1
@@ -523,6 +844,9 @@ class FarmRun:
         if not sent:
             self.safe_stop(FarmRunStopReason.ENTRY_INPUT_FAILED, detail=detail)
             return False
+        if self._control is not None:
+            # Input already sent: this match becomes the draining current match.
+            self._control.mark_entry_irrevocable()
         return True
 
     def cancel_entry(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
@@ -537,7 +861,12 @@ class FarmRun:
             return self._reject("session_out_of_order", session=session, recovered=recovered)
         if session in self._seen_sessions or session.match_id in self._seen_match_ids:
             self.safety.stale_session_confusion += 1
-            self.safe_stop(FarmRunStopReason.SESSION_REUSE_AMBIGUOUS, session=session)
+            reason = (
+                FarmRunStopReason.CHECKPOINT_MATCH_ID_CONFLICT
+                if self.resumed
+                else FarmRunStopReason.SESSION_REUSE_AMBIGUOUS
+            )
+            self.safe_stop(reason, session=session)
             return False
         if self.match_attempts >= self.limits.max_match_attempts:
             self.safe_stop(FarmRunStopReason.MATCH_ATTEMPT_LIMIT_REACHED)
@@ -878,6 +1207,8 @@ class FarmRun:
             return True
         if self.state is not FarmRunState.WAIT_POSTMATCH:
             return self._reject("postmatch_out_of_order")
+        if self._control is not None and self.graceful_stop_requested():
+            self._control.mark_draining_postmatch()
         self.attempts[-1].normal_postmatch = True
         self._transition(FarmRunState.WAIT_BOSS_LOBBY, "normal_postmatch_observed")
         return True
@@ -919,6 +1250,68 @@ class FarmRun:
             return False
         return True
 
+    def reserve_target_select(self, *, foreground: bool) -> FarmInputPermit | None:
+        """Reserve one exact-target map selection while returning to the lobby.
+
+        This is ordinary lobby UI input, never gameplay and never a new combat
+        entry.  It is permitted while gracefully draining because reaching the
+        exact selected boss room is the required safe stop boundary.
+        """
+
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if self.state is not FarmRunState.WAIT_BOSS_LOBBY or self._pending is not None:
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="target selection reserved outside return-to-lobby state",
+            )
+            return None
+        if any(
+            record.domain is FarmInputDomain.BOSS_TARGET_SELECT
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="duplicate target selection in one return transition",
+            )
+            return None
+        if not foreground:
+            self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_TARGET_SELECT,
+            None,
+            self.match_attempts,
+        )
+        self._pending = permit
+        self._event("boss_target_select_reserved", attemptIndex=self.match_attempts)
+        return permit
+
+    def complete_target_select(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_TARGET_SELECT
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="target selection capability mismatch",
+            )
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail=detail)
+            return False
+        return True
+
     def observe_return_lobby(self, lobby: BossLobbyState) -> bool:
         if self.state is not FarmRunState.WAIT_BOSS_LOBBY:
             return self._reject("return_lobby_out_of_order")
@@ -940,9 +1333,26 @@ class FarmRun:
             self.end_timestamp = utc_timestamp()
             self._transition(FarmRunState.FARM_RUN_COMPLETE, "farm_target_completed")
             return True
+        if self.graceful_stop_requested():
+            # Drained to the exact boss lobby; never reserve the next entry.
+            if self._control is not None:
+                self._control.stop_at_lobby()
+            self.stop_reason = FarmRunStopReason.STOPPED_GRACEFULLY
+            self.end_timestamp = utc_timestamp()
+            self.current_session = None
+            self._transition(
+                FarmRunState.FARM_RUN_COMPLETE,
+                "graceful_stop_completed_at_boss_lobby",
+                completedMatches=self.completed_matches,
+            )
+            return True
         if self.match_attempts >= self.limits.max_match_attempts:
             self.safe_stop(FarmRunStopReason.MATCH_ATTEMPT_LIMIT_REACHED)
             return False
+        if self._control is not None:
+            # The irrevocable entry's match has drained; it must not exempt
+            # future entries from the graceful-stop gate.
+            self._control.clear_entry_irrevocable()
         self._transition(FarmRunState.RESOLVE_TARGET, "boss_lobby_ready_for_next_match")
         return True
 
@@ -1055,6 +1465,13 @@ class FarmRun:
         return True
 
     def safe_stop(self, reason: FarmRunStopReason, **detail: Any) -> None:
+        if (
+            reason is FarmRunStopReason.EMERGENCY_STOP
+            and self._control is not None
+        ):
+            self._control.emergency_stop(
+                timestamp=_epoch_seconds(utc_timestamp())
+            )
         if self.stopped:
             return
         if self.current_attempt is not None:
@@ -1092,15 +1509,20 @@ class FarmRun:
         )
 
     def _event(self, event: str, **detail: Any) -> None:
+        self._event_index += 1
         self.events.append(
             FarmRunEvent(
-                len(self.events) + 1,
+                self._event_index,
                 utc_timestamp(),
                 event,
                 self.state,
                 _jsonable(detail),
             )
         )
+        # Bounded in-memory ring; full history is streamed to events.jsonl.
+        excess = len(self.events) - self._max_retained_events
+        if excess > 0:
+            del self.events[:excess]
 
     def _transition(self, state: FarmRunState, event: str, **detail: Any) -> None:
         old = self.state
@@ -1155,6 +1577,10 @@ class FarmRunGameplayCapability:
     def cancel(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
         return self.run.cancel_gameplay(permit, detail=detail)
 
+    def graceful_stop_requested(self) -> bool:
+        """Combat can poll this each turn to honor F6 mid-match."""
+        return self.run.graceful_stop_requested()
+
 
 class FarmRunArtifactWriter:
     """Durable per-run audit tree under ``logs/farm_runs``."""
@@ -1207,7 +1633,9 @@ class FarmRunArtifactWriter:
 
 
 __all__ = [
+    "FarmControlState",
     "FarmInputDomain",
+    "GracefulStopController",
     "FarmInputPermit",
     "FarmInputRecord",
     "FarmRun",

@@ -2,8 +2,9 @@
 
 The coordinator is deliberately independent from the live Win32 runner.  It
 owns authorization and evidence; callers own read-only state acquisition and
-normal foreground input.  Production triggers are limited to sequence desync
-and a rigorously proven zero-legal-move board.
+normal foreground input. Production triggers are limited to sequence desync,
+a rigorously proven zero-legal-move board, and a narrowly proven loss of the
+current MatchService actionability state at the local-turn deadline.
 """
 
 from __future__ import annotations
@@ -29,11 +30,14 @@ from .state import CombatSessionKey, GameState
 class TechnicalFailureReason(str, Enum):
     SEQUENCE_DESYNC = "SEQUENCE_DESYNC"
     DEAD_BOARD_NO_REFRESH = "DEAD_BOARD_NO_REFRESH"
+    ACTIONABILITY_STATE_LOST = "ACTIONABILITY_STATE_LOST"
 
 
 class RecoveryTriggerSource(str, Enum):
     PRODUCTION_SEQUENCE_GUARD = "PRODUCTION_SEQUENCE_GUARD"
     PRODUCTION_DEAD_BOARD_DIAGNOSTIC = "PRODUCTION_DEAD_BOARD_DIAGNOSTIC"
+    PRODUCTION_ACTIONABILITY_DEADLINE = "PRODUCTION_ACTIONABILITY_DEADLINE"
+    PRODUCTION_UNCONFIRMED_PASS_RESET = "PRODUCTION_UNCONFIRMED_PASS_RESET"
     TEST_ONLY = "TEST_ONLY"
 
 
@@ -824,6 +828,151 @@ class TechnicalRecoveryDispatcher:
                 reason=TechnicalFailureReason.DEAD_BOARD_NO_REFRESH,
                 source=RecoveryTriggerSource.PRODUCTION_DEAD_BOARD_DIAGNOSTIC,
                 failed_session=failed_session_from_state(state),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_actionability_state_lost(
+        self,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        turn: int,
+        current_player: str | None,
+        local_username: str | None,
+        remaining_seconds: int,
+        warning_seconds: int,
+        local_move_sequence: int | None,
+        last_move_sequence: int | None,
+        provider_reason: str,
+        actionability_gate_reason: str | None,
+        accepted_consuming_actions: int,
+        last_accepted_srv_seq: int | None,
+        last_accepted_board_hash: str | None,
+        evidence_source: str = "MatchService actionability telemetry at deadline",
+    ) -> bool:
+        """Arm recovery only for the reconnect/reset signature seen in B3.
+
+        A plain slow policy decision remains a safe-stop. Recovery is allowed
+        only after this exact session already completed a consuming action,
+        the late local-turn telemetry regressed to the pristine ``0/None``
+        sequence pair, and the provider simultaneously lost current DTO
+        evidence. This prevents a first-turn ``0/None`` value from being
+        mistaken for a technical failure.
+        """
+
+        exact = bool(
+            match_id
+            and session_key.match_id == match_id
+            and turn > 1
+            and current_player
+            and local_username
+            and current_player.casefold() == local_username.casefold()
+            and 0 <= remaining_seconds <= warning_seconds <= 10
+            and local_move_sequence == 0
+            and last_move_sequence is None
+            and accepted_consuming_actions > 0
+            and (
+                provider_reason
+                in {
+                    "no_current_ack_attested_complete_batch",
+                    "stale_sequence",
+                }
+                or (
+                    provider_reason == "awaiting_stability_confirmation"
+                    and actionability_gate_reason
+                    in {"DISCONNECTED", "RECONNECTING"}
+                )
+            )
+            and last_accepted_srv_seq is not None
+            and last_accepted_srv_seq > 0
+            and bool(last_accepted_board_hash)
+        )
+        if not exact:
+            return False
+        failed = FailedSessionEvidence(
+            session_key=session_key,
+            match_id=match_id,
+            board_instance=session_key.board_instance,
+            lifecycle_epoch=session_key.lifecycle_epoch,
+            turn=turn,
+            srv_seq=last_accepted_srv_seq,
+            board_hash=last_accepted_board_hash,
+        )
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.ACTIONABILITY_STATE_LOST,
+                source=RecoveryTriggerSource.PRODUCTION_ACTIONABILITY_DEADLINE,
+                failed_session=failed,
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_unconfirmed_pass_runtime_reset(
+        self,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        source_turn: int,
+        source_srv_seq: int,
+        source_board_hash: str,
+        source_local_move_sequence: int | None,
+        current_turn: int,
+        current_player: str | None,
+        local_username: str | None,
+        current_local_move_sequence: int | None,
+        current_last_move_sequence: int | None,
+        current_highest_acked_sequence: int | None,
+        gameplay_inputs_during_wait: int,
+        terminal_detail: str,
+        evidence_source: str = "PASS_WAIT next-turn runtime reset",
+    ) -> bool:
+        """Recover an unconfirmed PASS only when runtime identity was reset.
+
+        Missing AFK data alone is not sufficient. The current local turn must
+        be later than the PASS source, zero input must have occurred during
+        the wait, and previously nonzero action telemetry must have regressed
+        to the reconnect-only ``0/None/None`` sequence tuple.
+        """
+
+        exact = bool(
+            match_id
+            and session_key.match_id == match_id
+            and source_turn > 1
+            and current_turn > source_turn
+            and source_srv_seq > 0
+            and bool(source_board_hash)
+            and source_local_move_sequence is not None
+            and source_local_move_sequence > 0
+            and current_player
+            and local_username
+            and current_player.casefold() == local_username.casefold()
+            and current_local_move_sequence == 0
+            and current_last_move_sequence is None
+            and current_highest_acked_sequence is None
+            and gameplay_inputs_during_wait == 0
+            and terminal_detail
+            == "next local turn reached without a correlated AFK payload"
+        )
+        if not exact:
+            return False
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.ACTIONABILITY_STATE_LOST,
+                source=RecoveryTriggerSource.PRODUCTION_UNCONFIRMED_PASS_RESET,
+                failed_session=FailedSessionEvidence(
+                    session_key=session_key,
+                    match_id=match_id,
+                    board_instance=session_key.board_instance,
+                    lifecycle_epoch=session_key.lifecycle_epoch,
+                    turn=current_turn,
+                    srv_seq=source_srv_seq,
+                    board_hash=source_board_hash,
+                ),
                 detected_at=utc_timestamp(),
                 evidence_source=evidence_source,
             )

@@ -36,11 +36,108 @@ from tools.replay_sequence_desync import replay
 from tools.technical_recovery import (
     _failed_session_still_active,
     _final_live_invariants,
+    _recovery_lobby_ack_epoch_rejection,
+    _recovered_handoff_rejection,
     _recovered_opening_from_entry,
 )
 
 
 MATCH_START = "ChatMessageDTO.MATCH_START.matchPayload.board"
+
+
+class RecoveredHandoffGuardTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session = CombatSessionKey(8, 0x20000000000, "match-new")
+
+    def opening_state(self) -> GameState:
+        state = active_state(session=self.session)
+        return replace(
+            state,
+            battle=replace(
+                state.battle,
+                srv_seq=3,
+                turn_number=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            ),
+        )
+
+    def test_clean_pristine_opening_is_accepted(self) -> None:
+        self.assertIsNone(
+            _recovered_handoff_rejection(
+                expected_session=self.session,
+                current_session=self.session,
+                highest_acked_sequence=None,
+                state=self.opening_state(),
+            )
+        )
+
+    def test_delayed_prior_match_ack_epoch_is_rejected(self) -> None:
+        self.assertEqual(
+            _recovered_handoff_rejection(
+                expected_session=self.session,
+                current_session=self.session,
+                highest_acked_sequence=27,
+                state=self.opening_state(),
+            ),
+            "RECOVERY_ACK_EPOCH_NOT_RESET",
+        )
+
+    def test_non_pristine_action_state_is_rejected(self) -> None:
+        state = self.opening_state()
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                local_move_sequence=1,
+                last_move_sequence=5,
+            ),
+        )
+        self.assertEqual(
+            _recovered_handoff_rejection(
+                expected_session=self.session,
+                current_session=self.session,
+                highest_acked_sequence=None,
+                state=state,
+            ),
+            "RECOVERY_HANDOFF_ACTION_STATE_NOT_PRISTINE",
+        )
+
+    def test_missing_state_is_tolerated_during_guard_window(self) -> None:
+        self.assertIsNone(
+            _recovered_handoff_rejection(
+                expected_session=self.session,
+                current_session=self.session,
+                highest_acked_sequence=None,
+                state=None,
+            )
+        )
+
+    def test_clean_boss_lobby_ack_epoch_allows_reentry(self) -> None:
+        self.assertIsNone(
+            _recovery_lobby_ack_epoch_rejection(
+                match_id=None,
+                highest_acked_sequence=None,
+            )
+        )
+
+    def test_dirty_boss_lobby_ack_epoch_blocks_before_reentry(self) -> None:
+        self.assertEqual(
+            _recovery_lobby_ack_epoch_rejection(
+                match_id=None,
+                highest_acked_sequence=19,
+            ),
+            "RECOVERY_ACK_EPOCH_NOT_RESET",
+        )
+
+    def test_old_match_identity_blocks_before_reentry(self) -> None:
+        self.assertEqual(
+            _recovery_lobby_ack_epoch_rejection(
+                match_id="match-old",
+                highest_acked_sequence=None,
+            ),
+            "RECOVERY_LOBBY_MATCH_NOT_CLEARED",
+        )
 
 
 def active_state(
@@ -134,6 +231,125 @@ def advance_to_target(coordinator: TechnicalRecoveryCoordinator) -> None:
 
 
 class LiveRecoveryPreflightTests(unittest.TestCase):
+    def test_actionability_state_loss_dispatch_requires_exact_reconnect_signature(
+        self,
+    ) -> None:
+        session = CombatSessionKey(7, 0x20000007000, "match-reconnect")
+
+        def dispatch(**changes):
+            coordinator = TechnicalRecoveryCoordinator()
+            evidence = {
+                "session_key": session,
+                "match_id": session.match_id,
+                "turn": 33,
+                "current_player": "happi",
+                "local_username": "happi",
+                "remaining_seconds": 4,
+                "warning_seconds": 4,
+                "local_move_sequence": 0,
+                "last_move_sequence": None,
+                "provider_reason": "stale_sequence",
+                "actionability_gate_reason": None,
+                "accepted_consuming_actions": 16,
+                "last_accepted_srv_seq": 71,
+                "last_accepted_board_hash": "a" * 64,
+            }
+            evidence.update(changes)
+            accepted = TechnicalRecoveryDispatcher(
+                coordinator
+            ).dispatch_actionability_state_lost(**evidence)
+            return accepted, coordinator
+
+        accepted, coordinator = dispatch()
+        self.assertTrue(accepted)
+        self.assertEqual(
+            coordinator.trigger.reason.value,
+            "ACTIONABILITY_STATE_LOST",
+        )
+        self.assertEqual(coordinator.trigger.failed_session.turn, 33)
+
+        reconnect_wait, reconnect_coordinator = dispatch(
+            provider_reason="awaiting_stability_confirmation",
+            actionability_gate_reason="RECONNECTING",
+        )
+        self.assertTrue(reconnect_wait)
+        self.assertEqual(
+            reconnect_coordinator.trigger.reason.value,
+            "ACTIONABILITY_STATE_LOST",
+        )
+
+        for change in (
+            {"turn": 1, "accepted_consuming_actions": 0},
+            {"local_move_sequence": 16},
+            {"last_move_sequence": 16},
+            {"provider_reason": "stable_ack_attested_dto"},
+            {
+                "provider_reason": "awaiting_stability_confirmation",
+                "actionability_gate_reason": None,
+            },
+            {"remaining_seconds": 5},
+            {"last_accepted_srv_seq": None},
+        ):
+            with self.subTest(change=change):
+                rejected, rejected_coordinator = dispatch(**change)
+                self.assertFalse(rejected)
+                self.assertEqual(
+                    rejected_coordinator.state,
+                    TechnicalRecoveryState.IDLE,
+                )
+
+    def test_unconfirmed_pass_dispatch_requires_zero_input_runtime_reset(self) -> None:
+        session = CombatSessionKey(5, 0x20000005000, "match-pass-reset")
+
+        def dispatch(**changes):
+            coordinator = TechnicalRecoveryCoordinator()
+            evidence = {
+                "session_key": session,
+                "match_id": session.match_id,
+                "source_turn": 17,
+                "source_srv_seq": 37,
+                "source_board_hash": "4" * 64,
+                "source_local_move_sequence": 8,
+                "current_turn": 19,
+                "current_player": "happi",
+                "local_username": "happi",
+                "current_local_move_sequence": 0,
+                "current_last_move_sequence": None,
+                "current_highest_acked_sequence": None,
+                "gameplay_inputs_during_wait": 0,
+                "terminal_detail": (
+                    "next local turn reached without a correlated AFK payload"
+                ),
+            }
+            evidence.update(changes)
+            accepted = TechnicalRecoveryDispatcher(
+                coordinator
+            ).dispatch_unconfirmed_pass_runtime_reset(**evidence)
+            return accepted, coordinator
+
+        accepted, coordinator = dispatch()
+        self.assertTrue(accepted)
+        self.assertEqual(
+            coordinator.trigger.reason.value,
+            "ACTIONABILITY_STATE_LOST",
+        )
+
+        for change in (
+            {"gameplay_inputs_during_wait": 1},
+            {"source_local_move_sequence": 0},
+            {"current_local_move_sequence": 8},
+            {"current_last_move_sequence": 8},
+            {"current_highest_acked_sequence": 37},
+            {"current_turn": 17},
+        ):
+            with self.subTest(change=change):
+                rejected, rejected_coordinator = dispatch(**change)
+                self.assertFalse(rejected)
+                self.assertEqual(
+                    rejected_coordinator.state,
+                    TechnicalRecoveryState.IDLE,
+                )
+
     def test_recovered_opening_uses_exact_hardened_entry_acceptance(self) -> None:
         session = CombatSessionKey(2, 0x20000001000, "match-new")
         result = {
@@ -579,6 +795,45 @@ class TechnicalRecoveryDispatchTests(unittest.TestCase):
                 analysis=analysis,
             )
         )
+
+        deadline_coordinator = TechnicalRecoveryCoordinator()
+        deadline_runtime = SharedCombatRuntime(
+            None,
+            None,  # type: ignore[arg-type]
+            None,  # type: ignore[arg-type]
+            None,
+            None,  # type: ignore[arg-type]
+            None,  # type: ignore[arg-type]
+            technical_recovery_dispatcher=TechnicalRecoveryDispatcher(
+                deadline_coordinator
+            ),
+        )
+        session = state.battle.session_key
+        assert session is not None
+        self.assertTrue(
+            _dispatch_technical_recovery(
+                deadline_runtime,
+                reason="ACTIONABILITY_STATE_LOST",
+                state=state,
+                actionability_evidence={
+                    "session_key": session,
+                    "match_id": session.match_id,
+                    "turn": 33,
+                    "current_player": "happi",
+                    "local_username": "happi",
+                    "remaining_seconds": 4,
+                    "warning_seconds": 4,
+                    "local_move_sequence": 0,
+                    "last_move_sequence": None,
+                    "provider_reason": "stale_sequence",
+                    "actionability_gate_reason": None,
+                    "accepted_consuming_actions": 8,
+                    "last_accepted_srv_seq": 71,
+                    "last_accepted_board_hash": "b" * 64,
+                },
+            )
+        )
+        self.assertTrue(deadline_coordinator.gameplay_locked)
 
     def test_artifact_writer_has_required_json_and_event_files(self) -> None:
         coordinator = TechnicalRecoveryCoordinator()

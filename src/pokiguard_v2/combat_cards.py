@@ -44,6 +44,18 @@ CARD_UI_ACTION_PENDING_OFFSET = 0x48
 CARD_UI_IS_PLACEHOLDER_OFFSET = 0x78
 CARD_UI_READ_SIZE = 0x79
 
+# Board owns both the configured CardData order and the instantiated card
+# GameObjects for the current combat.  Cpp2IL
+# DiffableCs/Assembly-CSharp/Board.cs declares selectedCards at +0x2F8 and
+# cardsInHand at +0x300.
+BOARD_SELECTED_CARDS_OFFSET = 0x2F8
+BOARD_CARDS_IN_HAND_OFFSET = 0x300
+MANAGED_LIST_ITEMS_OFFSET = 0x10
+MANAGED_LIST_SIZE_OFFSET = 0x18
+MANAGED_LIST_VERSION_OFFSET = 0x1C
+IL2CPP_ARRAY_LENGTH_OFFSET = 0x18
+IL2CPP_ARRAY_DATA_OFFSET = 0x20
+
 CARD_DATA_ID_OFFSET = 0x10
 CARD_DATA_CARD_ID_OFFSET = 0x18
 CARD_DATA_NAME_OFFSET = 0x20
@@ -215,6 +227,100 @@ class CardDataState:
     eat_perfect: int
     eat_good: int
     eat_bad: int
+
+
+def _read_stable_managed_pointer_list(
+    memory: MemoryReader,
+    owner: int,
+    field_offset: int,
+    *,
+    max_items: int,
+    label: str,
+    entry_read_size: int,
+) -> tuple[int, ...]:
+    if (
+        not is_canonical_user_pointer(owner)
+        or not memory.is_readable(owner + field_offset, 8)
+        or not 1 <= max_items <= 64
+        or entry_read_size <= 0
+    ):
+        raise LayoutValidationError(f"{label} owner is invalid")
+    list_pointer = struct.unpack(
+        "<Q", memory.read(owner + field_offset, 8)
+    )[0]
+    if not is_canonical_user_pointer(list_pointer) or not memory.is_readable(
+        list_pointer, 0x20
+    ):
+        raise LayoutValidationError(f"{label} list is invalid")
+    before = memory.read(list_pointer, 0x20)
+    items = struct.unpack_from("<Q", before, MANAGED_LIST_ITEMS_OFFSET)[0]
+    size = struct.unpack_from("<i", before, MANAGED_LIST_SIZE_OFFSET)[0]
+    version = struct.unpack_from("<i", before, MANAGED_LIST_VERSION_OFFSET)[0]
+    if not 0 <= size <= max_items or version < 0:
+        raise LayoutValidationError(f"{label} list shape is invalid")
+    if size == 0:
+        return ()
+    read_size = IL2CPP_ARRAY_DATA_OFFSET + size * 8
+    if not is_canonical_user_pointer(items) or not memory.is_readable(
+        items, read_size
+    ):
+        raise LayoutValidationError(f"{label} backing array is invalid")
+    array = memory.read(items, read_size)
+    capacity = struct.unpack_from("<Q", array, IL2CPP_ARRAY_LENGTH_OFFSET)[0]
+    if not size <= capacity <= 64:
+        raise LayoutValidationError(f"{label} capacity is invalid")
+    values = struct.unpack_from(f"<{size}Q", array, IL2CPP_ARRAY_DATA_OFFSET)
+    if len(set(values)) != size or any(
+        not is_canonical_user_pointer(value)
+        or not memory.is_readable(value, entry_read_size)
+        for value in values
+    ):
+        raise LayoutValidationError(f"{label} entries are invalid")
+    if memory.read(list_pointer, 0x20) != before:
+        raise LayoutValidationError(f"{label} changed during read")
+    return tuple(values)
+
+
+def read_selected_card_data_addresses(
+    memory: MemoryReader,
+    board: int,
+    *,
+    max_cards: int = 16,
+) -> tuple[int, ...]:
+    """Read stable ``Board.selectedCards : List<CardData>`` creation order."""
+
+    return _read_stable_managed_pointer_list(
+        memory,
+        board,
+        BOARD_SELECTED_CARDS_OFFSET,
+        max_items=max_cards,
+        label="Board.selectedCards",
+        entry_read_size=CARD_DATA_READ_SIZE,
+    )
+
+
+def read_cards_in_hand_anchors(
+    memory: MemoryReader,
+    board: int,
+    *,
+    max_cards: int = 16,
+) -> tuple[int, ...]:
+    """Read the stable ``Board.cardsInHand : List<GameObject>`` references.
+
+    These references are allocation-region anchors only.  They are never
+    treated as CardUI objects or as permission to click; every candidate found
+    through their regions must still pass the full live CardUI ownership and
+    Unity Button validation in :func:`validate_combat_card_hits`.
+    """
+
+    return _read_stable_managed_pointer_list(
+        memory,
+        board,
+        BOARD_CARDS_IN_HAND_OFFSET,
+        max_items=max_cards,
+        label="Board.cardsInHand",
+        entry_read_size=UNITY_OBJECT_CACHED_PTR_OFFSET + 8,
+    )
 
 
 def read_card_data(memory: MemoryReader, card_data: int) -> CardDataState:

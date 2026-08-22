@@ -187,6 +187,19 @@ short-lived authoritative `BoardWsApplier.ApplyCardUse` operation.
 `skillType`, UI interactability, match/turn usage flags, costs/cooldown, and all
 declared `CardData` metadata through `eatBad +0x98`.
 
+Runtime click placement is loadout-independent. The provider reads the ordered
+`Board.selectedCards : List<CardData>` at `+0x2F8` and the instantiated
+`Board.cardsInHand : List<GameObject>` at `+0x300`. Reverse output proves the
+creation sequence is ordinary selected cards, Fusion when a fusion pet is
+selected, then the optional fusion-pet skill card. Live standard-pet combat and
+lobby evidence separately establishes the visual order: Fusion is leftmost and
+ordinary cards retain `selectedCards` list order after it. Each canonical card
+and Fusion state receives `ui_slot/ui_slot_count` only when list shape, pointer
+identity, and rendered count agree. Pet-specific skill layout support is
+explicitly deferred; detecting its pointer leaves every card slot unresolved.
+Missing, deferred, or ambiguous layout data disables only card input and
+preserves board-only gameplay.
+
 The additional exact `CardData` fields are `description +0x28`, `value +0x38`,
 `maxLevel +0x3C`, `count +0x40`, `level +0x44`, `conditionUse +0x48`, `power
 +0x50`, color values `green..purple +0x58..+0x6C`, `damageMultiplier +0x70`,

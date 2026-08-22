@@ -431,6 +431,12 @@ class CardState:
     damage_multiplier: float | None = None
     color_requirements: tuple[tuple[str, int], ...] = ()
     quality_values: tuple[tuple[str, int], ...] = ()
+    # Zero-based visual slot in the centered runtime card strip.  These are
+    # populated only when Board.selectedCards and Board.cardsInHand agree.
+    # Missing metadata disables this card action but must not disable board
+    # gameplay.
+    ui_slot: int | None = None
+    ui_slot_count: int | None = None
 
     @property
     def is_attack(self) -> bool:
@@ -457,6 +463,8 @@ class FusionState:
     drop_reason: str | None = None
     ui_address: int | None = None
     ui_interactable: bool | None = None
+    ui_slot: int | None = None
+    ui_slot_count: int | None = None
 
 
 @dataclass(frozen=True)

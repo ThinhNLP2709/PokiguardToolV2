@@ -17,6 +17,7 @@ from .boss_entry import (
     TargetSelectionState,
 )
 from .combat_lifecycle import CombatLifecycleObservation, CombatLifecycleState
+from .combat_cards import ATTACK_ELEMENT_TYPES, CardDataState, read_card_data
 from .il2cpp_external import (
     CHAT_SERVICE_SINGLETON,
     IL2CPP_CLASS_STATIC_FIELDS_OFFSET,
@@ -42,6 +43,7 @@ MANAGER_ROOM_ROOM_PANEL_OFFSET = 0x20
 MANAGER_ROOM_BUTTON_START_OFFSET = 0x28
 MANAGER_ROOM_LOADING_OFFSET = 0x30
 MANAGER_ROOM_ROOM_DATA_OFFSET = 0x100
+MANAGER_ROOM_SELECTED_CARDS_OFFSET = 0x108
 MANAGER_ROOM_IS_OPENING_FLOW_OFFSET = 0x125
 
 # RoomDTO.
@@ -51,6 +53,7 @@ ROOM_LOCAL_PET_ID_OFFSET = 0x34
 ROOM_ENEMY_PET_ID_OFFSET = 0x38
 ROOM_ENEMY_PET_LEVEL_OFFSET = 0x3C
 ROOM_ENEMY_PET_NAME_OFFSET = 0x40
+ROOM_CARDS_OFFSET = 0x50
 
 # WsRoomService.
 WS_CURRENT_ROOM_ID_OFFSET = 0x10
@@ -79,6 +82,57 @@ LIST_VERSION_OFFSET = 0x1C
 
 
 @dataclass(frozen=True)
+class LobbyCardLoadoutSnapshot:
+    """Read-only pre-entry card loadout from both lobby-owned sources.
+
+    These are persistent ``CardData`` records, not live combat ``CardUI``
+    instances.  They prove which cards the room intends to carry into the
+    next match, but never prove that a combat button exists or is clickable.
+    """
+
+    manager_list: int | None
+    room_list: int | None
+    manager_cards: tuple[CardDataState, ...]
+    room_cards: tuple[CardDataState, ...]
+    cards: tuple[CardDataState, ...]
+    sources_agree: bool | None
+    reasons: tuple[str, ...]
+
+    @property
+    def card_count(self) -> int:
+        return len(self.cards)
+
+    @property
+    def attack_card_count(self) -> int:
+        return sum(
+            card.element_type.upper() in ATTACK_ELEMENT_TYPES for card in self.cards
+        )
+
+    @property
+    def manager_attack_card_count(self) -> int:
+        return sum(
+            card.element_type.upper() in ATTACK_ELEMENT_TYPES
+            for card in self.manager_cards
+        )
+
+    @property
+    def room_attack_card_count(self) -> int:
+        return sum(
+            card.element_type.upper() in ATTACK_ELEMENT_TYPES
+            for card in self.room_cards
+        )
+
+    @property
+    def identity(self) -> tuple[tuple[int, int, str], ...]:
+        return tuple(
+            sorted(
+                (card.data_id, card.card_id, card.element_type.upper())
+                for card in self.cards
+            )
+        )
+
+
+@dataclass(frozen=True)
 class ChinhPhucRoomSnapshot:
     manager_room: int | None
     manager_room_native: int | None
@@ -90,6 +144,7 @@ class ChinhPhucRoomSnapshot:
     loading: int | None
     is_opening_flow: bool | None
     room_data: int | None
+    card_loadout: LobbyCardLoadoutSnapshot
     room_dto_id: int | None
     room_name: str | None
     local_pet_id: int | None
@@ -206,6 +261,86 @@ def _read_managed_list(
     return tuple(values[:size])
 
 
+def _read_card_list(
+    resolver: object,
+    address: int | None,
+    *,
+    label: str,
+) -> tuple[tuple[CardDataState, ...], str | None]:
+    if address is None:
+        return (), f"{label} is null"
+    try:
+        pointers = _read_managed_list(resolver, address, max_items=16)
+        cards = tuple(read_card_data(resolver.memory, pointer) for pointer in pointers)
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
+        return (), f"{label} is invalid: {exc}"
+    return cards, None
+
+
+def _read_lobby_card_loadout(
+    resolver: object,
+    manager_room: int | None,
+    room_data: int | None,
+) -> LobbyCardLoadoutSnapshot:
+    manager_list = room_list = None
+    manager_cards: tuple[CardDataState, ...] = ()
+    room_cards: tuple[CardDataState, ...] = ()
+    reasons: list[str] = []
+
+    try:
+        if manager_room is not None:
+            manager_list = _read_pointer(
+                resolver, manager_room, MANAGER_ROOM_SELECTED_CARDS_OFFSET
+            )
+        if room_data is not None:
+            room_list = _read_pointer(resolver, room_data, ROOM_CARDS_OFFSET)
+    except (ExternalReadError, OSError, ValueError) as exc:
+        reasons.append(f"card-list pointer read failed: {exc}")
+
+    manager_cards, manager_reason = _read_card_list(
+        resolver,
+        manager_list,
+        label="ManagerRoom.selectedCards",
+    )
+    room_cards, room_reason = _read_card_list(
+        resolver,
+        room_list,
+        label="RoomDTO.cards",
+    )
+    if manager_reason is not None:
+        reasons.append(manager_reason)
+    if room_reason is not None:
+        reasons.append(room_reason)
+
+    manager_identity = tuple(
+        sorted((card.data_id, card.card_id, card.element_type.upper()) for card in manager_cards)
+    )
+    room_identity = tuple(
+        sorted((card.data_id, card.card_id, card.element_type.upper()) for card in room_cards)
+    )
+    sources_agree: bool | None = None
+    if manager_list is not None and room_list is not None:
+        sources_agree = manager_identity == room_identity
+        if not sources_agree:
+            reasons.append("ManagerRoom.selectedCards and RoomDTO.cards disagree")
+
+    # ManagerRoom.selectedCards is the UI-owned selection that the next combat
+    # actually materializes. Live Phase 2D.6 restart evidence proved that a
+    # stale RoomDTO can retain four cards while this list is empty and the
+    # combat creates zero CardUI objects. Keep RoomDTO as comparison telemetry
+    # only; never promote it into a claimed pre-entry live selection.
+    cards = manager_cards
+    return LobbyCardLoadoutSnapshot(
+        manager_list=manager_list,
+        room_list=room_list,
+        manager_cards=manager_cards,
+        room_cards=room_cards,
+        cards=cards,
+        sources_agree=sources_agree,
+        reasons=tuple(reasons),
+    )
+
+
 def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple[BossCandidate, ...]]:
     reasons: list[str] = []
     manager_room = manager_native = None
@@ -213,6 +348,7 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
     button_interactable = button_groups = opening = None
     room_dto_id = local_pet_id = enemy_pet_id = enemy_level = None
     room_name = enemy_name = None
+    card_loadout = _read_lobby_card_loadout(resolver, None, None)
     ws = properties = None
     room_id = room_type = owner = local_username = None
     is_host: bool | None = None
@@ -244,7 +380,7 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
                     reasons.append("ButtonStart is not interactable")
             if opening is not False:
                 reasons.append("ManagerRoom opening flow already pending")
-            if room_data is None or not resolver.memory.is_readable(room_data, 0x50):
+            if room_data is None or not resolver.memory.is_readable(room_data, 0x58):
                 reasons.append("ManagerRoom.roomData unavailable")
             else:
                 room_dto_id = resolver.read_i32(room_data + ROOM_ID_OFFSET)
@@ -257,6 +393,8 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
                     reasons.append("RoomDTO target identity is invalid")
     except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
         reasons.append(f"ManagerRoom read error: {exc}")
+
+    card_loadout = _read_lobby_card_loadout(resolver, manager_room, room_data)
 
     try:
         ws = _static_instance(resolver, WS_ROOM_SERVICE_TYPE_INFO_RVA, size=0xD0)
@@ -297,6 +435,7 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
         loading,
         opening,
         room_data,
+        card_loadout,
         room_dto_id,
         room_name,
         local_pet_id,
