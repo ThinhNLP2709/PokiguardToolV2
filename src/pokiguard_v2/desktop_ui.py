@@ -1,9 +1,4 @@
-"""Tkinter/ttk desktop shell for Phase 2E.1.
-
-Only session-local draft validation and immutable status rendering are exposed.
-There are intentionally no Start, graceful-stop, emergency-stop, resume, boss
-entry, postmatch, or gameplay commands in this module.
-"""
+"""Minimal Phase 2E.2 Tkinter control surface over immutable snapshots."""
 
 from __future__ import annotations
 
@@ -38,6 +33,7 @@ class DesktopPresentation:
     error: str
     refreshed: str
     read_only_notice: str
+    controller: str
 
 
 @dataclass(frozen=True)
@@ -93,6 +89,7 @@ class DesktopEventLog:
             providerReason=runtime.provider_reason,
             error=snapshot.last_error,
             safety=asdict(snapshot.safety),
+            controller=asdict(snapshot.controller),
         )
 
     def close(self) -> None:
@@ -105,7 +102,7 @@ class DesktopEventLog:
 
 
 class DesktopViewModel:
-    """Presentation mapping and canonical draft validation, with no commands."""
+    """Presentation mapping and short control-plane command submissions."""
 
     def __init__(
         self,
@@ -124,6 +121,18 @@ class DesktopViewModel:
         config = DesktopConfig.from_strings(**fields)
         self.control_plane.update_config(config)
         return config
+
+    def start_farm(self) -> Any:
+        return self.control_plane.start_farm()
+
+    def request_graceful_stop(self, generation: int) -> Any:
+        return self.control_plane.request_graceful_stop(generation)
+
+    def emergency_stop(self, generation: int) -> Any:
+        return self.control_plane.emergency_stop(generation)
+
+    def resume_from_checkpoint(self) -> Any:
+        return self.control_plane.resume_from_checkpoint()
 
     def presentation(self, *, now_monotonic: float | None = None) -> DesktopPresentation:
         snapshot = self.control_plane.snapshot()
@@ -169,6 +178,13 @@ class DesktopViewModel:
         else:
             checkpoint_text = "NONE"
         health = "STALE" if stale and snapshot.health == "OK" else snapshot.health
+        controller = snapshot.controller
+        controller_text = (
+            f"{controller.state.value} — run={controller.farm_run_id or 'PENDING'} — "
+            f"completed={controller.completed_matches}/"
+            f"{controller.target_completed_matches} — attempts={controller.match_attempts} — "
+            f"W/L/U={controller.wins}/{controller.losses}/{controller.unknown_results}"
+        )
         return DesktopPresentation(
             connection=detected,
             attachment=attachment,
@@ -182,9 +198,10 @@ class DesktopViewModel:
             error=snapshot.last_error or "NONE",
             refreshed=f"{snapshot.timestamp} (age {age:.1f}s, version {snapshot.version})",
             read_only_notice=(
-                "PHASE 2E.1 READ-ONLY — no Start, Stop, Resume, boss-entry, "
-                "postmatch, or gameplay commands"
+                "PHASE 2E.2 — READ-ONLY game memory; all actions use the "
+                "accepted bounded FarmRunner and normal foreground input"
             ),
+            controller=controller_text,
         )
 
 
@@ -213,9 +230,9 @@ class DesktopApplication:
         self._render_after: str | None = None
         self._auto_close_after: str | None = None
 
-        root.title("PokiguardToolV2 — Read-Only Control UI")
-        root.geometry("780x640")
-        root.minsize(700, 560)
+        root.title("PokiguardToolV2 — Bounded Farm Control")
+        root.geometry("520x940")
+        root.minsize(460, 760)
         root.protocol("WM_DELETE_WINDOW", self.close)
 
         outer = ttk.Frame(root, padding=14)
@@ -228,9 +245,12 @@ class DesktopApplication:
         )
         title.pack(anchor=tk.W)
         self.notice_var = tk.StringVar()
-        ttk.Label(outer, textvariable=self.notice_var, foreground="#8a4b08").pack(
-            anchor=tk.W, pady=(0, 10)
-        )
+        ttk.Label(
+            outer,
+            textvariable=self.notice_var,
+            foreground="#8a4b08",
+            wraplength=470,
+        ).pack(anchor=tk.W, pady=(0, 10))
 
         runtime_frame = ttk.LabelFrame(outer, text="Connection / Runtime Status", padding=10)
         runtime_frame.pack(fill=tk.X, pady=(0, 10))
@@ -250,7 +270,7 @@ class DesktopApplication:
             )
             variable = tk.StringVar(value="UNKNOWN")
             self.status_vars[key] = variable
-            ttk.Label(runtime_frame, textvariable=variable, wraplength=610).grid(
+            ttk.Label(runtime_frame, textvariable=variable, wraplength=350).grid(
                 row=row, column=1, sticky=tk.NW, pady=2
             )
         runtime_frame.columnconfigure(1, weight=1)
@@ -268,7 +288,7 @@ class DesktopApplication:
         self.target_matches = tk.StringVar(value=str(config.target_completed_matches))
         self.max_recoveries = tk.StringVar(value=str(config.max_technical_recoveries))
         self.max_attempts = tk.StringVar(value=str(config.max_match_attempts))
-        self.config_feedback = tk.StringVar(value="Draft is not persisted and cannot start farming.")
+        self.config_feedback = tk.StringVar(value="Draft is session-local and not persisted.")
 
         fields = (
             (
@@ -312,24 +332,64 @@ class DesktopApplication:
         config_frame.columnconfigure(1, weight=1)
         ttk.Button(
             config_frame,
-            text="Validate Draft (no gameplay action)",
+            text="Validate Draft",
             command=self._validate_draft,
         ).grid(row=len(fields), column=0, columnspan=2, sticky=tk.W, pady=(8, 2))
         ttk.Label(
             config_frame,
             textvariable=self.config_feedback,
-            wraplength=640,
+            wraplength=410,
         ).grid(row=len(fields) + 1, column=0, columnspan=2, sticky=tk.W)
 
+        control_frame = ttk.LabelFrame(
+            outer, text="Bounded FarmRunner Control", padding=10
+        )
+        control_frame.pack(fill=tk.X, pady=(0, 10))
+        self.controller_var = tk.StringVar(value="IDLE")
+        self.command_feedback = tk.StringVar(value="No command submitted.")
+        ttk.Label(
+            control_frame,
+            textvariable=self.controller_var,
+            wraplength=410,
+        ).grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=(0, 6))
+        self.start_button = ttk.Button(
+            control_frame, text="Start", command=self._start_farm
+        )
+        self.graceful_button = ttk.Button(
+            control_frame,
+            text="Stop After Current Match",
+            command=self._graceful_stop,
+        )
+        self.emergency_button = ttk.Button(
+            control_frame, text="Emergency Stop", command=self._emergency_stop
+        )
+        self.resume_button = ttk.Button(
+            control_frame,
+            text="Resume Checkpoint",
+            command=self._resume_checkpoint,
+        )
+        for row, column, button in (
+            (1, 0, self.start_button),
+            (1, 1, self.graceful_button),
+            (2, 0, self.emergency_button),
+            (2, 1, self.resume_button),
+        ):
+            button.grid(row=row, column=column, padx=(0, 6), pady=2, sticky=tk.W)
+        ttk.Label(
+            control_frame,
+            textvariable=self.command_feedback,
+            wraplength=410,
+        ).grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(6, 0))
+
         checkpoint_frame = ttk.LabelFrame(
-            outer, text="Read-Only Run / Checkpoint", padding=10
+            outer, text="Run / Checkpoint", padding=10
         )
         checkpoint_frame.pack(fill=tk.X, pady=(0, 10))
         self.checkpoint_var = tk.StringVar(value="NONE")
         ttk.Label(
             checkpoint_frame,
             textvariable=self.checkpoint_var,
-            wraplength=700,
+            wraplength=410,
         ).pack(anchor=tk.W)
 
         health_frame = ttk.LabelFrame(outer, text="Backend Health", padding=10)
@@ -343,24 +403,15 @@ class DesktopApplication:
             ("Snapshot", self.refreshed_var),
         ):
             ttk.Label(health_frame, text=f"{label}:").pack(anchor=tk.W)
-            ttk.Label(health_frame, textvariable=variable, wraplength=700).pack(
+            ttk.Label(health_frame, textvariable=variable, wraplength=410).pack(
                 anchor=tk.W, pady=(0, 5)
             )
 
     def _validate_draft(self) -> None:
         try:
-            config = self.view_model.apply_draft(
-                play_style=self.play_style.get(),
-                mana_priority=self.mana_priority.get(),
-                intelligence=self.intelligence.get(),
-                boss_id=self.boss_id.get(),
-                boss_name=self.boss_name.get(),
-                target_completed_matches=self.target_matches.get(),
-                max_technical_recoveries=self.max_recoveries.get(),
-                max_match_attempts=self.max_attempts.get(),
-            )
+            config = self.view_model.apply_draft(**self._draft_fields())
             self.config_feedback.set(
-                "VALID session draft — read-only; no FarmRunner command was generated. "
+                "VALID session draft. "
                 f"Target={config.normalized_boss_name or config.normalized_boss_id}, "
                 f"matches={config.target_completed_matches}."
             )
@@ -370,6 +421,58 @@ class DesktopApplication:
             self.event_log.write(
                 "draft_config_rejected", error=f"{type(exc).__name__}: {exc}"
             )
+
+    def _draft_fields(self) -> dict[str, str]:
+        return {
+            "play_style": self.play_style.get(),
+            "mana_priority": self.mana_priority.get(),
+            "intelligence": self.intelligence.get(),
+            "boss_id": self.boss_id.get(),
+            "boss_name": self.boss_name.get(),
+            "target_completed_matches": self.target_matches.get(),
+            "max_technical_recoveries": self.max_recoveries.get(),
+            "max_match_attempts": self.max_attempts.get(),
+        }
+
+    def _publish_command(self, command: str, result: Any) -> None:
+        self.command_feedback.set(
+            f"{command}: {'ACCEPTED' if result.accepted else 'REJECTED'} — "
+            f"{result.reason} — generation {result.generation}"
+        )
+        self.event_log.write(command, result=asdict(result))
+
+    def _start_farm(self) -> None:
+        try:
+            self.view_model.apply_draft(**self._draft_fields())
+            self._publish_command("start_farm", self.view_model.start_farm())
+        except Exception as exc:
+            self.command_feedback.set(f"Start rejected — {exc}")
+            self.event_log.write("start_farm_rejected", error=str(exc))
+
+    def _resume_checkpoint(self) -> None:
+        try:
+            self.view_model.apply_draft(**self._draft_fields())
+            self._publish_command(
+                "resume_from_checkpoint",
+                self.view_model.resume_from_checkpoint(),
+            )
+        except Exception as exc:
+            self.command_feedback.set(f"Resume rejected — {exc}")
+            self.event_log.write("resume_checkpoint_rejected", error=str(exc))
+
+    def _graceful_stop(self) -> None:
+        generation = self.view_model.control_plane.snapshot().controller.generation
+        self._publish_command(
+            "request_graceful_stop",
+            self.view_model.request_graceful_stop(generation),
+        )
+
+    def _emergency_stop(self) -> None:
+        generation = self.view_model.control_plane.snapshot().controller.generation
+        self._publish_command(
+            "emergency_stop",
+            self.view_model.emergency_stop(generation),
+        )
 
     def _render(self) -> None:
         if self._closed:
@@ -388,9 +491,35 @@ class DesktopApplication:
             ):
                 self.status_vars[key].set(getattr(presentation, key))
             self.checkpoint_var.set(presentation.checkpoint)
+            self.controller_var.set(presentation.controller)
             self.health_var.set(presentation.health)
             self.error_var.set(presentation.error)
             self.refreshed_var.set(presentation.refreshed)
+            snapshot = self.view_model.control_plane.snapshot()
+            active = snapshot.controller.active
+            safe_start = bool(
+                not active
+                and not snapshot.stale
+                and snapshot.health == "OK"
+                and snapshot.runtime.attached
+                and snapshot.runtime.lifecycle == "BOSS_LOBBY"
+            )
+            self.start_button.configure(
+                state="normal" if safe_start else "disabled"
+            )
+            self.resume_button.configure(
+                state=(
+                    "normal"
+                    if safe_start and snapshot.checkpoint.resumable_candidate
+                    else "disabled"
+                )
+            )
+            self.graceful_button.configure(
+                state="normal" if active else "disabled"
+            )
+            self.emergency_button.configure(
+                state="normal" if active else "disabled"
+            )
             self.render_ticks += 1
         except Exception as exc:  # keep Tk event loop alive and visibly safe
             self.handled_ui_errors += 1
@@ -405,8 +534,8 @@ class DesktopApplication:
         self.event_log.write(
             "ui_launched",
             framework="tkinter/ttk",
-            readOnly=True,
-            farmRunnerCommandsAvailable=False,
+            readOnlyMemory=True,
+            farmRunnerCommandsAvailable=True,
         )
         if not self.view_model.poller.start():
             raise RuntimeError("desktop poller refused its single start")
@@ -427,6 +556,17 @@ class DesktopApplication:
 
     def close(self) -> None:
         if self._closed:
+            return
+        controller = self.view_model.control_plane.snapshot().controller
+        if controller.active:
+            self.command_feedback.set(
+                "Close blocked while FarmRunner is active. Stop it first."
+            )
+            self.event_log.write(
+                "ui_close_blocked_active_controller",
+                generation=controller.generation,
+                state=controller.state.value,
+            )
             return
         self._closed = True
         self.event_log.write("ui_close_requested")

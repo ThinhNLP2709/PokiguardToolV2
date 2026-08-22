@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Launch the Phase 2E.1 read-only desktop control UI.
-
-This entry point has no FarmRunner, boss-entry, postmatch, recovery, hotkey,
-mouse, or keyboard command path.  It attaches with the existing read-only
-runtime helper solely to publish status snapshots.
-"""
+"""Launch the Phase 2E.2 bounded FarmRunner desktop control UI."""
 
 from __future__ import annotations
 
@@ -32,6 +27,9 @@ from pokiguard_v2.desktop_control_plane import (  # noqa: E402
     StaticUnavailableRuntimeProvider,
 )
 from pokiguard_v2.desktop_runtime import ReadOnlyGameStatusProvider  # noqa: E402
+from pokiguard_v2.desktop_farm_controller import (  # noqa: E402
+    DesktopFarmControllerManager,
+)
 from pokiguard_v2.desktop_ui import (  # noqa: E402
     DesktopApplication,
     DesktopEventLog,
@@ -67,6 +65,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--artifacts",
         type=Path,
         help="new artifact directory (default: logs/desktop_ui/<timestamp>)",
+    )
+    parser.add_argument(
+        "--reset-evidence",
+        type=Path,
+        default=PROJECT_ROOT / "logs" / "phase2c2c_reset_capabilities.json",
+        help="accepted reset capability evidence used by FarmRunner",
     )
     return parser
 
@@ -153,10 +157,15 @@ def run(args: argparse.Namespace) -> int:
     checkpoint = LatestCheckpointSummaryProvider(
         PROJECT_ROOT / "logs" / "farm_runs"
     )
+    controller = DesktopFarmControllerManager(
+        PROJECT_ROOT,
+        reset_evidence=args.reset_evidence,
+    )
     control_plane = DesktopControlPlane(
         runtime,
         checkpoint=checkpoint,
         config=DesktopConfig(),
+        controller=controller,
     )
     evidence = _EvidenceSink(event_log)
     poller = SnapshotPoller(
@@ -174,14 +183,14 @@ def run(args: argparse.Namespace) -> int:
     exit_code = 0
     event_log.write(
         "desktop_ui_process_started",
-        mode="OFFLINE_FAKE" if args.offline else "LIVE_READ_ONLY",
+        mode="OFFLINE_FAKE" if args.offline else "LIVE_CONTROLLED",
         processAccess=(
             []
             if args.offline
             else ["PROCESS_QUERY_INFORMATION", "PROCESS_VM_READ"]
         ),
-        autonomousInputAuthority=False,
-        farmRunnerCommandPathAvailable=False,
+        autonomousInputAuthority=not args.offline,
+        farmRunnerCommandPathAvailable=True,
         checkpointMutationAuthority=False,
     )
     try:
@@ -202,9 +211,9 @@ def run(args: argparse.Namespace) -> int:
 
     final_snapshot = control_plane.snapshot()
     summary = {
-        "schema": "pokiguard.desktop_ui.phase2e1.v1",
+        "schema": "pokiguard.desktop_ui.phase2e2.v1",
         "timestamp": utc_timestamp(),
-        "mode": "OFFLINE_FAKE" if args.offline else "LIVE_READ_ONLY",
+        "mode": "OFFLINE_FAKE" if args.offline else "LIVE_CONTROLLED",
         "artifactDirectory": str(artifact_dir),
         "uiFramework": "tkinter/ttk",
         "readOnly": True,
@@ -224,10 +233,11 @@ def run(args: argparse.Namespace) -> int:
         "finalRuntime": asdict(final_snapshot.runtime),
         "finalCheckpoint": asdict(final_snapshot.checkpoint),
         "finalConfig": asdict(final_snapshot.config),
+        "finalController": asdict(final_snapshot.controller),
         "safety": asdict(final_snapshot.safety),
-        "phase2e2CommandsAvailable": False,
-        "farmRunnerStarted": False,
-        "controllerStopped": True,
+        "phase2e2CommandsAvailable": True,
+        "farmRunnerStarted": final_snapshot.controller.safety.starts > 0,
+        "controllerStopped": not final_snapshot.controller.active,
         "unexpectedError": unexpected,
     }
     summary_path.write_text(
@@ -236,9 +246,11 @@ def run(args: argparse.Namespace) -> int:
     )
     event_log.write("desktop_ui_process_finished", summary=str(summary_path))
     event_log.close()
-    print(f"Phase 2E.1 desktop UI artifacts: {artifact_dir}", flush=True)
+    print(f"Phase 2E.2 desktop UI artifacts: {artifact_dir}", flush=True)
     print(
-        "Read-only safety: FarmRunner starts=0; autonomous Windows inputs=0; "
+        "Controller safety: "
+        f"FarmRunner starts={final_snapshot.controller.safety.starts}; "
+        f"active={final_snapshot.controller.active}; "
         f"pollerAliveAfterClose={summary['pollerAliveAfterClose']}",
         flush=True,
     )

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import threading
+import time
 import unittest
 
 
@@ -17,6 +19,7 @@ from pokiguard_v2.win32_input import (
     ClientGeometry,
     CoordinateSafetyError,
     ForegroundClickExecutor,
+    FarmControlHotkeyEdges,
     WindowBinding,
     map_swap_to_pixels,
     provider_to_solver,
@@ -135,6 +138,43 @@ class ForegroundExecutorTests(unittest.TestCase):
         self.assertEqual(result.status, ClickStatus.PARTIAL_INPUT)
         self.assertEqual(result.sent_clicks, 1)
         self.assertEqual(backend.clicks, 1)
+
+
+class FarmControlAuthorityTests(unittest.TestCase):
+    def test_emergency_ack_waits_for_started_atomic_input_then_denies_future(self) -> None:
+        edges = FarmControlHotkeyEdges()
+        input_started = threading.Event()
+        release_input = threading.Event()
+        input_finished = threading.Event()
+
+        def operation() -> str:
+            input_started.set()
+            release_input.wait(2.0)
+            input_finished.set()
+            return "sent"
+
+        worker = threading.Thread(target=lambda: edges.execute_if_authorized(operation))
+        worker.start()
+        self.assertTrue(input_started.wait(1.0))
+
+        acknowledged = threading.Event()
+        stopper = threading.Thread(
+            target=lambda: (edges.request_emergency_stop(), acknowledged.set())
+        )
+        stopper.start()
+        time.sleep(0.02)
+        self.assertFalse(acknowledged.is_set())
+        release_input.set()
+        self.assertTrue(input_finished.wait(1.0))
+        self.assertTrue(acknowledged.wait(1.0))
+        worker.join(1.0)
+        stopper.join(1.0)
+
+        authorized, result = edges.execute_if_authorized(lambda: "forbidden")
+        self.assertFalse(authorized)
+        self.assertIsNone(result)
+        self.assertEqual(edges.authorized_operations_started, 1)
+        self.assertEqual(edges.authorized_operations_after_emergency_ack, 0)
 
 
 if __name__ == "__main__":

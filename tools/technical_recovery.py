@@ -459,6 +459,37 @@ def _poll_farm_graceful_stop(shared_runtime: Any | None) -> bool:
     return bool(checker is not None and checker())
 
 
+def _farm_emergency_requested(shared_runtime: Any | None) -> bool:
+    if shared_runtime is None:
+        return False
+    farm_hotkeys = getattr(shared_runtime, "farm_control_hotkeys", None)
+    if farm_hotkeys is None:
+        return False
+    _graceful, emergency = farm_hotkeys.poll()
+    return bool(emergency or getattr(farm_hotkeys, "emergency_requested", False))
+
+
+def _any_emergency_stop_requested(
+    hotkeys: HotkeyEdges,
+    shared_runtime: Any | None,
+) -> bool:
+    return _stop_requested(hotkeys) or _farm_emergency_requested(shared_runtime)
+
+
+def _execute_farm_controlled_input(
+    shared_runtime: Any | None,
+    operation: Any,
+) -> tuple[bool, Any | None]:
+    farm_hotkeys = (
+        getattr(shared_runtime, "farm_control_hotkeys", None)
+        if shared_runtime is not None
+        else None
+    )
+    if farm_hotkeys is None:
+        return True, operation()
+    return farm_hotkeys.execute_if_authorized(operation)
+
+
 def _failed_session_still_active(poll: Any, failed: FailedSessionEvidence) -> bool:
     lifecycle = poll.combat_lifecycle
     if lifecycle is not None and lifecycle.state is CombatLifecycleState.ACTIVE:
@@ -744,7 +775,7 @@ def _run_live(
             and time.monotonic() < deadline
         ):
             _poll_farm_graceful_stop(shared_runtime)
-            if _stop_requested(hotkeys):
+            if _any_emergency_stop_requested(hotkeys, shared_runtime):
                 coordinator.emergency_stop(detail="F9 before recovery trigger")
                 return 130
             poll = provider.poll()
@@ -889,7 +920,7 @@ def _run_live(
         # locator and exact-dimension live calibration fallback.  The accepted
         # manual recovery first hovered this normalized combat-only anchor so
         # the blinking control became observable; moving sends no click.
-        if _stop_requested(hotkeys):
+        if _any_emergency_stop_requested(hotkeys, shared_runtime):
             coordinator.emergency_stop()
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
             return 130
@@ -903,10 +934,20 @@ def _run_live(
                 "foreground lost before recovery Exit hover probe",
                 event="recovery_exit_hover_blocked",
             )
-        hover = executor.move_normalized_point(
-            binding,
-            (0.04134466769706337, 0.06824712643678162),
+        hover_authorized, hover = _execute_farm_controlled_input(
+            shared_runtime,
+            lambda: executor.move_normalized_point(
+                binding,
+                (0.04134466769706337, 0.06824712643678162),
+            ),
         )
+        if not hover_authorized or hover is None:
+            coordinator.emergency_stop(
+                detail="emergency authority revoked before recovery Exit hover"
+            )
+            artifacts.event("emergency_stop", stage="EXIT_HOVER", inputSent=False)
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
+            return 130
         artifacts.event(
             "recovery_exit_hover_probe",
             normalizedPoint=(0.04134466769706337, 0.06824712643678162),
@@ -925,7 +966,7 @@ def _run_live(
         exit_location = None
         while process.is_running() and time.monotonic() < exit_deadline:
             _poll_farm_graceful_stop(shared_runtime)
-            if _stop_requested(hotkeys):
+            if _any_emergency_stop_requested(hotkeys, shared_runtime):
                 coordinator.emergency_stop()
                 artifacts.event("emergency_stop", stage="EXIT_LOCATOR")
                 artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
@@ -965,7 +1006,7 @@ def _run_live(
                 event="recovery_exit_control_rejected",
             )
 
-        if _stop_requested(hotkeys):
+        if _any_emergency_stop_requested(hotkeys, shared_runtime):
             coordinator.emergency_stop()
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
             return 130
@@ -1002,7 +1043,22 @@ def _run_live(
         if permit is None:
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
             return 2
-        click = executor.send_normalized_point(binding, exit_location.normalized_point)
+        click_authorized, click = _execute_farm_controlled_input(
+            shared_runtime,
+            lambda: executor.send_normalized_point(
+                binding, exit_location.normalized_point
+            ),
+        )
+        if not click_authorized or click is None:
+            coordinator.cancel_input(
+                permit, detail="emergency authority revoked before recovery Exit input"
+            )
+            coordinator.emergency_stop(
+                detail="emergency authority revoked before recovery Exit input"
+            )
+            artifacts.event("emergency_stop", stage="EXIT_INPUT", inputSent=False)
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
+            return 130
         coordinator.complete_input(
             permit,
             sent=click.sent,
@@ -1022,7 +1078,7 @@ def _run_live(
         confirm_location = None
         while process.is_running() and time.monotonic() < modal_deadline:
             _poll_farm_graceful_stop(shared_runtime)
-            if _stop_requested(hotkeys):
+            if _any_emergency_stop_requested(hotkeys, shared_runtime):
                 coordinator.emergency_stop()
                 artifacts.event("emergency_stop", stage="CONFIRM_MODAL")
                 artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
@@ -1056,7 +1112,7 @@ def _run_live(
                 event="recovery_confirm_modal_rejected",
             )
 
-        if _stop_requested(hotkeys):
+        if _any_emergency_stop_requested(hotkeys, shared_runtime):
             coordinator.emergency_stop()
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
             return 130
@@ -1095,7 +1151,23 @@ def _run_live(
         if permit is None:
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
             return 2
-        click = executor.send_normalized_point(binding, confirm_location.normalized_point)
+        click_authorized, click = _execute_farm_controlled_input(
+            shared_runtime,
+            lambda: executor.send_normalized_point(
+                binding, confirm_location.normalized_point
+            ),
+        )
+        if not click_authorized or click is None:
+            coordinator.cancel_input(
+                permit,
+                detail="emergency authority revoked before recovery confirm input",
+            )
+            coordinator.emergency_stop(
+                detail="emergency authority revoked before recovery confirm input"
+            )
+            artifacts.event("emergency_stop", stage="CONFIRM_INPUT", inputSent=False)
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
+            return 130
         coordinator.complete_input(
             permit,
             sent=click.sent,
@@ -1115,7 +1187,7 @@ def _run_live(
         lifecycle_history: list[str] = []
         while process.is_running() and time.monotonic() < local_exit_deadline:
             _poll_farm_graceful_stop(shared_runtime)
-            if _stop_requested(hotkeys):
+            if _any_emergency_stop_requested(hotkeys, shared_runtime):
                 coordinator.emergency_stop()
                 artifacts.event("emergency_stop", stage="WAIT_LOCAL_COMBAT_END")
                 artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
@@ -1191,6 +1263,17 @@ def _run_live(
         # normal Exit/confirm sequence. At the first exact clean boss-lobby
         # boundary, suppress re-entry and hand the technical-exit accounting to
         # the outer FarmRun. No gameplay or RECOVERY_REENTRY input is sent.
+        if _any_emergency_stop_requested(hotkeys, shared_runtime):
+            coordinator.emergency_stop(
+                detail="emergency stop at recovery boss-lobby boundary"
+            )
+            artifacts.event(
+                "emergency_stop",
+                stage="BOSS_LOBBY_BOUNDARY",
+                recoveryReentrySent=False,
+            )
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
+            return 130
         if _poll_farm_graceful_stop(shared_runtime):
             artifacts.event(
                 "recovery_graceful_stop_at_lobby",
@@ -1282,7 +1365,10 @@ def _run_live(
             binding,
             executor,
             backend,
-            RecoveryReentryCapability(coordinator),
+            RecoveryReentryCapability(
+                coordinator,
+                getattr(shared_runtime, "farm_control_hotkeys", None),
+            ),
         )
         boss_entry.run(_entry_args(args, reentry_dir), shared_runtime=runtime)
         try:

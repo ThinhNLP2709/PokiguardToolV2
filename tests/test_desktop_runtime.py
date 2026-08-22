@@ -150,6 +150,23 @@ class _SimpleRuntime:
 
 
 class DesktopViewModelTests(unittest.TestCase):
+    def test_control_commands_delegate_once_without_running_backend_inline(self) -> None:
+        plane = Mock()
+        plane.start_farm.return_value = "start"
+        plane.request_graceful_stop.return_value = "graceful"
+        plane.emergency_stop.return_value = "emergency"
+        plane.resume_from_checkpoint.return_value = "resume"
+        poller = Mock()
+        view_model = DesktopViewModel(plane, poller, stale_after_seconds=3.0)
+        self.assertEqual(view_model.start_farm(), "start")
+        self.assertEqual(view_model.request_graceful_stop(7), "graceful")
+        self.assertEqual(view_model.emergency_stop(7), "emergency")
+        self.assertEqual(view_model.resume_from_checkpoint(), "resume")
+        plane.start_farm.assert_called_once_with()
+        plane.request_graceful_stop.assert_called_once_with(7)
+        plane.emergency_stop.assert_called_once_with(7)
+        plane.resume_from_checkpoint.assert_called_once_with()
+
     def test_stale_snapshot_is_explicitly_non_actionable(self) -> None:
         plane = DesktopControlPlane(_SimpleRuntime())
         plane.refresh()

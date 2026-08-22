@@ -17,7 +17,7 @@ import os
 import sys
 import time
 import traceback
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -158,12 +158,27 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="long bounded soak (recommended 25/3/32); still finite",
     )
+    mode.add_argument(
+        "--stage-e2-ui",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     target = parser.add_mutually_exclusive_group()
     target.add_argument("--boss-id", help="exact runtime boss/enemy pet ID")
     target.add_argument("--boss-name", help="exact NFC/casefold boss name")
     parser.add_argument("--target-matches", type=int, default=3)
     parser.add_argument("--max-technical-recoveries", type=int, default=1)
     parser.add_argument("--max-match-attempts", type=int, default=5)
+    parser.add_argument(
+        "--play-style",
+        choices=("simple", "careful"),
+        default="simple",
+    )
+    parser.add_argument(
+        "--mana-priority",
+        choices=("evolution", "attack"),
+        default="evolution",
+    )
     parser.add_argument("--post-recovery-test-consuming-actions", type=int, default=1)
     resume_group = parser.add_mutually_exclusive_group()
     resume_group.add_argument(
@@ -265,6 +280,7 @@ def _validate_args(args: Namespace) -> FarmRunLimits:
         or args.stage_d6_b2_resume
         or args.stage_d6_b3_soak
     )
+    controlled_live = d6_live or args.stage_e2_ui
     if args.stage_d6_b1_graceful:
         # One entry, one match, stopped by the operator's F6 press.
         if limits.target_completed_matches < 2:
@@ -280,13 +296,16 @@ def _validate_args(args: Namespace) -> FarmRunLimits:
     ):
         raise ValueError("Stage D6 B3 requires a finite multi-match soak (>=5)")
     if args.resume is not None:
-        if not d6_live:
-            raise ValueError("--resume is only valid for Phase 2D.6 live stages")
+        if not controlled_live:
+            raise ValueError(
+                "--resume is only valid for Phase 2D.6 or Phase 2E.2 "
+                "controlled live stages"
+            )
         if not args.resume.is_file():
             raise FileNotFoundError(f"checkpoint not found: {args.resume}")
-    if d6_live and not (args.new_run or args.resume):
+    if controlled_live and not (args.new_run or args.resume):
         raise ValueError(
-            "Phase 2D.6 live stages require an explicit --new-run or "
+            "controlled live stages require an explicit --new-run or "
             "--resume <checkpoint.json>; auto-resume is never performed"
         )
     if not offline:
@@ -525,6 +544,7 @@ def _run_entry(
     binding: Any,
     executor: ForegroundClickExecutor,
     backend: NativeWin32Backend,
+    control_hotkeys: Any | None = None,
     test_only_recovery: bool = False,
 ) -> tuple[OpeningEvidence | None, dict[str, Any] | None]:
     if not run.target_resolved(exact=True):
@@ -537,7 +557,7 @@ def _run_entry(
         binding,
         executor,
         backend,
-        FarmRunEntryCapability(run),
+        FarmRunEntryCapability(run, control_hotkeys),
     )
     boss_entry.run(_entry_args(args, entry_directory), shared_runtime=runtime)
     try:
@@ -611,6 +631,7 @@ class _ContextualFarmHotkeys:
         self._run_getter = run_getter
         self.presses: list[dict[str, Any]] = []
         self.total_f6_edges = 0
+        self._f9_pending = False
 
     def _context(self) -> dict[str, Any]:
         run = self._run_getter()
@@ -650,7 +671,9 @@ class _ContextualFarmHotkeys:
         f6_edge, f9_edge = self._edges.poll()
         if f6_edge:
             self._register_f6()
-        return f6_edge, f9_edge
+        if f9_edge:
+            self._f9_pending = True
+        return f6_edge, self._f9_pending
 
     def take(self) -> tuple[int, int]:
         # First route a new edge through this contextual wrapper.  The native
@@ -661,11 +684,38 @@ class _ContextualFarmHotkeys:
         f6_count, f9_count = self._edges.take()
         while len(self.presses) < f6_count:
             self._register_f6()
+        self._f9_pending = False
         return f6_count, f9_count
 
     def take_presses(self) -> list[dict[str, Any]]:
         captured, self.presses = self.presses, []
         return captured
+
+    @property
+    def emergency_requested(self) -> bool:
+        return bool(getattr(self._edges, "emergency_requested", False))
+
+    def execute_if_authorized(self, operation: Any) -> tuple[bool, Any | None]:
+        executor = getattr(self._edges, "execute_if_authorized", None)
+        if executor is None:
+            return (False, None) if self._f9_pending else (True, operation())
+        return executor(operation)
+
+
+def _control_emergency_requested(control_hotkeys: Any | None) -> bool:
+    if control_hotkeys is None:
+        return False
+    _graceful, emergency = control_hotkeys.poll()
+    return bool(emergency or control_hotkeys.emergency_requested)
+
+
+def _execute_controlled_input(
+    control_hotkeys: Any | None,
+    operation: Any,
+) -> tuple[bool, Any | None]:
+    if control_hotkeys is None:
+        return True, operation()
+    return control_hotkeys.execute_if_authorized(operation)
 
 
 def _confirm_postmatch(
@@ -697,11 +747,12 @@ def _confirm_postmatch(
     last_capture = None
     while process.is_running() and time.monotonic() < deadline:
         sample_number += 1
+        external_stop = False
         if control_hotkeys is not None:
             # Latch only; the postmatch confirmation must still complete.
-            control_hotkeys.poll()
+            external_stop = _control_emergency_requested(control_hotkeys)
         _unused, stop = hotkeys.poll()
-        if stop:
+        if stop or external_stop:
             run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
             return False, TerminalResult.UNKNOWN, None
         poll = provider.poll()
@@ -788,12 +839,21 @@ def _confirm_postmatch(
         known_ui[-1] if known_ui else (TerminalResult.UNKNOWN, None)
     )
     run.record_postmatch_ui_audit(ui_result, ui_text=ui_text)
+    if _control_emergency_requested(control_hotkeys):
+        run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
+        return False, ui_result, ui_text
     permit = run.reserve_postmatch(
         foreground=window.valid and window.foreground is True
     )
     if permit is None:
         return False, ui_result, ui_text
-    click = executor.send_normalized_point(binding, proof.normalized_point)
+    authorized, click = _execute_controlled_input(
+        control_hotkeys,
+        lambda: executor.send_normalized_point(binding, proof.normalized_point),
+    )
+    if not authorized or click is None:
+        run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
+        return False, ui_result, ui_text
     return (
         run.complete_postmatch(
             permit,
@@ -844,10 +904,9 @@ def _return_from_chinh_phuc_map(
     ):
         return None
 
-    if control_hotkeys is not None:
-        control_hotkeys.poll()
+    external_f9 = _control_emergency_requested(control_hotkeys)
     _unused, f9 = hotkeys.poll()
-    if f9:
+    if f9 or external_f9:
         run.safe_stop(FarmRunStopReason.EMERGENCY_STOP, detail="F9 during map return")
         return LobbyWaitResult(False, lobby.state, None, "F9_EMERGENCY_STOP", lobby)
 
@@ -879,7 +938,18 @@ def _return_from_chinh_phuc_map(
     # target can fail the two-frame visual proof.  Park the pointer in a
     # non-interactive strip before capturing; this is deliberately movement
     # only and does not consume the run's single target-select click permit.
-    cursor_park = executor.move_normalized_point(binding, (0.50, 0.015))
+    authorized, cursor_park = _execute_controlled_input(
+        control_hotkeys,
+        lambda: executor.move_normalized_point(binding, (0.50, 0.015)),
+    )
+    if not authorized or cursor_park is None:
+        run.safe_stop(
+            FarmRunStopReason.EMERGENCY_STOP,
+            detail="emergency authority revoked before map cursor park",
+        )
+        return LobbyWaitResult(
+            False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+        )
     if cursor_park is not ClickStatus.SENT:
         run._event(  # noqa: SLF001
             "chinh_phuc_map_return_rejected",
@@ -977,12 +1047,33 @@ def _return_from_chinh_phuc_map(
         )
         return None
     status = executor.window_status(binding)
+    if _control_emergency_requested(control_hotkeys):
+        run.safe_stop(
+            FarmRunStopReason.EMERGENCY_STOP,
+            detail="emergency authority revoked before map target selection",
+        )
+        return LobbyWaitResult(
+            False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+        )
     permit = run.reserve_target_select(
         foreground=status.valid and status.foreground is True
     )
     if permit is None or second_location.normalized_point is None:
         return None
-    click = executor.send_normalized_point(binding, second_location.normalized_point)
+    authorized, click = _execute_controlled_input(
+        control_hotkeys,
+        lambda: executor.send_normalized_point(
+            binding, second_location.normalized_point
+        ),
+    )
+    if not authorized or click is None:
+        run.safe_stop(
+            FarmRunStopReason.EMERGENCY_STOP,
+            detail="emergency authority revoked before map target input",
+        )
+        return LobbyWaitResult(
+            False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+        )
     if not run.complete_target_select(
         permit,
         sent=click.sent,
@@ -1431,15 +1522,38 @@ def _stage_a(args: Namespace, limits: FarmRunLimits) -> int:
     return 0 if passed else 2
 
 
-def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
+def _notify_run_observer(
+    observer: Callable[[Any, str], None] | None,
+    run: FarmRun,
+    phase: str,
+) -> None:
+    if observer is None:
+        return
+    try:
+        observer(run.snapshot(), phase)
+    except Exception:
+        # The UI/status projection is diagnostic.  It must never terminate or
+        # mutate the accepted FarmRunner state machine.
+        return
+
+
+def _run_live(
+    args: Namespace,
+    limits: FarmRunLimits,
+    *,
+    control_edges: FarmControlHotkeyEdges | None = None,
+    observer: Callable[[Any, str], None] | None = None,
+) -> int:
     stage_b1 = bool(args.stage_b1_recovery_resume)
     stage_d5_b1 = bool(args.stage_d5_b1_terminal)
     stage_d5_b2 = bool(args.stage_d5_b2_soak)
     stage_d6_b1 = bool(args.stage_d6_b1_graceful)
     stage_d6_b2 = bool(args.stage_d6_b2_resume)
     stage_d6_b3 = bool(args.stage_d6_b3_soak)
+    phase2e2 = bool(args.stage_e2_ui)
     phase2d5 = stage_d5_b1 or stage_d5_b2
     phase2d6 = stage_d6_b1 or stage_d6_b2 or stage_d6_b3
+    controlled_run = phase2d6 or phase2e2
     target = FarmTarget(args.boss_id, args.boss_name)
 
     resume_payload = None
@@ -1464,7 +1578,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
             )
             return 1
 
-    control = GracefulStopController(timestamp=time.time()) if phase2d6 else None
+    control = GracefulStopController(timestamp=time.time()) if controlled_run else None
     run = FarmRun(
         target,
         limits=limits,
@@ -1483,6 +1597,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
     natural_technical_failure = False
     graceful_stop_observed = False
     emergency_stop_observed = False
+    _notify_run_observer(observer, run, "CREATED")
 
     if resume_decision is not None:
         interrupted_checkpoint = bool(
@@ -1528,8 +1643,10 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
             )
             hotkeys = HotkeyEdges()
             control_hotkeys = (
-                _ContextualFarmHotkeys(FarmControlHotkeyEdges(), lambda: run)
-                if phase2d6
+                _ContextualFarmHotkeys(
+                    control_edges or FarmControlHotkeyEdges(), lambda: run
+                )
+                if controlled_run
                 else None
             )
             writer.event(
@@ -1544,34 +1661,44 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                         "PHASE2D6_B2_RESUME"
                         if stage_d6_b2
                         else (
-                            "PHASE2D6_B3_SOAK"
-                            if stage_d6_b3
-                            else (
-                                "PHASE2D5_B1_TERMINAL"
-                                if stage_d5_b1
+                                "PHASE2D6_B3_SOAK"
+                                if stage_d6_b3
                                 else (
-                                    "PHASE2D5_B2_SOAK"
-                                    if stage_d5_b2
+                                    "PHASE2E2_UI_CONTROLLED"
+                                    if phase2e2
                                     else (
-                                        "STAGE_B1_TEST_ONLY"
-                                        if stage_b1
-                                        else "STAGE_B2_PRODUCTION"
+                                        "PHASE2D5_B1_TERMINAL"
+                                        if stage_d5_b1
+                                        else (
+                                            "PHASE2D5_B2_SOAK"
+                                            if stage_d5_b2
+                                            else (
+                                                "STAGE_B1_TEST_ONLY"
+                                                if stage_b1
+                                                else "STAGE_B2_PRODUCTION"
+                                            )
+                                        )
                                     )
                                 )
-                            )
                         )
                     )
                 ),
                 target=target,
                 limits=limits,
-                F6=("GRACEFUL_STOP" if phase2d6 else "UNUSED"),
+                F6=("GRACEFUL_STOP" if controlled_run else "UNUSED"),
                 F7="DISABLED",
                 F8="ENTRY_CONFIRM",
                 F9="EMERGENCY_STOP",
                 infiniteFarmingMode=False,
             )
             initial = _wait_boss_lobby(
-                process, provider, target, args.lobby_timeout, args.interval, hotkeys
+                process,
+                provider,
+                target,
+                args.lobby_timeout,
+                args.interval,
+                hotkeys,
+                control_hotkeys,
             )
             writer.event("initial_boss_lobby", result=initial)
             if not initial.ready:
@@ -1583,13 +1710,15 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                 run.safe_stop(initial_reason, detail=initial.reason)
             else:
                 run.observe_initial_lobby(BossLobbyState.BOSS_LOBBY)
-            if phase2d6:
+            if controlled_run:
                 # Create the first durable checkpoint only after a fresh clean
                 # boss lobby is proven. It contains history/config, never live
                 # executable gameplay state.
                 _persist_checkpoint(run, writer, finalized_status=None)
+            _notify_run_observer(observer, run, "INITIAL_LOBBY")
 
             while process.is_running() and not run.stopped:
+                _notify_run_observer(observer, run, "FARM_BOUNDARY")
                 if control_hotkeys is not None:
                     # take() consumes every edge latched since the last farm
                     # boundary, including presses made during combat, the
@@ -1677,6 +1806,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                         binding=binding,
                         executor=executor,
                         backend=backend,
+                        control_hotkeys=control_hotkeys,
                         test_only_recovery=stage_b1,
                     )
                     writer.event(
@@ -1685,6 +1815,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                         opening=opening,
                         entry=entry_result,
                     )
+                    _notify_run_observer(observer, run, "ENTRY_RETURNED")
                     if opening is None:
                         continue
 
@@ -1697,7 +1828,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                 attempt_index = run.match_attempts
                 match_directory = writer.directory / "matches" / f"attempt_{attempt_index:03d}"
                 match_directory.mkdir(parents=True, exist_ok=True)
-                if phase2d6:
+                if controlled_run:
                     _print_farm_status(run, lifecycle="ACTIVE_COMBAT")
 
                 coordinator = TechnicalRecoveryCoordinator(max_technical_recoveries=1)
@@ -1710,7 +1841,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                     executor,
                     backend,
                     session,
-                    FarmRunGameplayCapability(run, session),
+                    FarmRunGameplayCapability(run, session, control_hotkeys),
                     dispatcher if run.technical_recoveries < limits.max_technical_recoveries else None,
                     control_hotkeys,
                 )
@@ -1762,8 +1893,9 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                         executor,
                         backend,
                         session,
-                        FarmRunGameplayCapability(run, session),
+                        FarmRunGameplayCapability(run, session, control_hotkeys),
                         None,
+                        control_hotkeys,
                     )
                     basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime)
                     records = _read_jsonl(combat_log)
@@ -1807,6 +1939,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                     summary=summary,
                     recoveryTrigger=coordinator.trigger,
                 )
+                _notify_run_observer(observer, run, "COMBAT_RETURNED")
 
                 if coordinator.trigger is not None:
                     reason = _technical_reason(coordinator)
@@ -1817,7 +1950,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                     failure_state = provider.poll().state
                     if not run.technical_failure(reason):
                         continue
-                    if phase2d6:
+                    if controlled_run:
                         _persist_checkpoint(run, writer, finalized_status=None)
                     _run_recovery(
                         run=run,
@@ -1846,7 +1979,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                             else combat_reason
                         )
                         run.technical_failure(reason)
-                        if phase2d6:
+                        if controlled_run:
                             _persist_checkpoint(run, writer, finalized_status=None)
                     else:
                         run.safe_stop(FarmRunStopReason.COMBAT_SAFE_STOP, detail=combat_reason)
@@ -1864,7 +1997,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                     or not run.observe_postmatch()
                 ):
                     continue
-                if phase2d6:
+                if controlled_run:
                     # Persist terminal classification/accounting before
                     # postmatch ownership and UI cleanup.
                     _persist_checkpoint(run, writer, finalized_status=None)
@@ -1906,13 +2039,13 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                     control_hotkeys,
                     transient_room_grace_seconds=(
                         min(45.0, args.return_lobby_timeout * 0.75)
-                        if phase2d6
+                        if controlled_run
                         else 0.0
                     ),
                 )
                 writer.event("normal_return_boss_lobby", attemptIndex=attempt_index, result=returned)
                 if (
-                    phase2d6
+                    controlled_run
                     and not returned.ready
                     and returned.reason == "TARGET_MISSING"
                 ):
@@ -1952,7 +2085,8 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                     continue
                 run.observe_return_lobby(BossLobbyState.BOSS_LOBBY)
                 memory.sample()
-                if phase2d6:
+                _notify_run_observer(observer, run, "RETURNED_BOSS_LOBBY")
+                if controlled_run:
                     # Checkpoint at the safest possible boundary: a clean boss
                     # lobby with no combat owner and no pending input.
                     finalized = None
@@ -1968,7 +2102,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                             )
                         )
                     _persist_checkpoint(run, writer, finalized_status=finalized)
-                if phase2d6:
+                if controlled_run:
                     _print_farm_status(run, lifecycle="BOSS_LOBBY")
 
             if not process.is_running() and not run.stopped:
@@ -2008,6 +2142,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
     if control_hotkeys is not None and control_hotkeys.total_f6_edges > 0:
         graceful_stop_observed = True
     snapshot = run.snapshot()
+    _notify_run_observer(observer, run, "FINISHING")
     memory.sample()
     safety_ok = snapshot.safety.nonzero() == {}
     final_lifecycle = (
@@ -2021,7 +2156,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
         else "UNKNOWN"
     )
     entry_inputs_after_stop = 0
-    if phase2d6:
+    if controlled_run:
         # GRACEFUL_STOP_NO_NEW_ENTRY_PROVEN: count BOSS_ENTRY inputs that were
         # actually sent after the stop request timestamp.  Must be zero.
         requested_at = snapshot.graceful_stop_requested_at
@@ -2033,7 +2168,55 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                 and record.sent
                 and getattr(record, "timestamp", "") > requested_at
             )
-    if stage_d6_b1:
+    emergency_gate_ok = bool(
+        control_edges is None
+        or control_edges.authorized_operations_after_emergency_ack == 0
+    )
+    if phase2e2:
+        if snapshot.stop_reason is FarmRunStopReason.EMERGENCY_STOP:
+            accepted = bool(
+                emergency_stop_observed
+                and snapshot.state is FarmRunState.SAFE_STOP
+                and emergency_gate_ok
+                and safety_ok
+            )
+            invariant = (
+                "PHASE2E2_UI_EMERGENCY_STOPPED" if accepted else "NOT_PROVEN"
+            )
+        elif snapshot.stop_reason is FarmRunStopReason.STOPPED_GRACEFULLY:
+            accepted = bool(
+                graceful_stop_observed
+                and snapshot.state is FarmRunState.FARM_RUN_COMPLETE
+                and snapshot.control_state is FarmControlState.STOPPED_AT_LOBBY
+                and snapshot.completed_matches < limits.target_completed_matches
+                and entry_inputs_after_stop == 0
+                and snapshot.result_accounting_consistent
+                and snapshot.attempt_accounting_consistent
+                and snapshot.result_conflict_count == 0
+                and final_lifecycle == "BOSS_LOBBY"
+                and safety_ok
+            )
+            invariant = (
+                "PHASE2E2_UI_GRACEFUL_STOPPED" if accepted else "NOT_PROVEN"
+            )
+        else:
+            accepted = bool(
+                snapshot.state is FarmRunState.FARM_RUN_COMPLETE
+                and snapshot.stop_reason is FarmRunStopReason.FARM_TARGET_COMPLETED
+                and snapshot.completed_matches == limits.target_completed_matches
+                and snapshot.match_attempts <= limits.max_match_attempts
+                and snapshot.unknown_results == 0
+                and snapshot.result_conflict_count == 0
+                and snapshot.result_accounting_consistent
+                and snapshot.attempt_accounting_consistent
+                and snapshot.memory_terminal_result_proven
+                and final_lifecycle == "BOSS_LOBBY"
+                and safety_ok
+            )
+            invariant = (
+                "PHASE2E2_UI_BOUNDED_COMPLETED" if accepted else "NOT_PROVEN"
+            )
+    elif stage_d6_b1:
         accepted = bool(
             graceful_stop_observed
             and not emergency_stop_observed
@@ -2167,7 +2350,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
         )
         invariant = "PHASE2D4_BOUNDED_FARM_PROVEN" if accepted else "NOT_PROVEN"
     _write_model_events(writer, run)
-    if phase2d6:
+    if controlled_run:
         final_status = (
             "COMPLETED"
             if snapshot.stop_reason is FarmRunStopReason.FARM_TARGET_COMPLETED
@@ -2192,21 +2375,25 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
     writer.finalize(
         run,
         stage=(
-            "D6_B1"
-            if stage_d6_b1
+            "E2_UI"
+            if phase2e2
             else (
-                "D6_B2"
-                if stage_d6_b2
+                "D6_B1"
+                if stage_d6_b1
                 else (
-                    "D6_B3"
-                    if stage_d6_b3
+                    "D6_B2"
+                    if stage_d6_b2
                     else (
-                        "D5_B1"
-                        if stage_d5_b1
+                        "D6_B3"
+                        if stage_d6_b3
                         else (
-                            "D5_B2"
-                            if stage_d5_b2
-                            else ("B1" if stage_b1 else "B2")
+                            "D5_B1"
+                            if stage_d5_b1
+                            else (
+                                "D5_B2"
+                                if stage_d5_b2
+                                else ("B1" if stage_b1 else "B2")
+                            )
                         )
                     )
                 )
@@ -2228,9 +2415,26 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
             "bossEntryInputsAfterRequest": entry_inputs_after_stop,
             "emergencyStopUsed": emergency_stop_observed,
         },
+        emergencyControl={
+            "acknowledgedMonotonic": (
+                control_edges.emergency_ack_monotonic
+                if control_edges is not None
+                else None
+            ),
+            "authorizedInputOperationsStarted": (
+                control_edges.authorized_operations_started
+                if control_edges is not None
+                else None
+            ),
+            "authorizedInputOperationsAfterAcknowledgement": (
+                control_edges.authorized_operations_after_emergency_ack
+                if control_edges is not None
+                else None
+            ),
+        },
         checkpoint={
             "path": (
-                str(_checkpoint_path(writer.directory)) if phase2d6 else None
+                str(_checkpoint_path(writer.directory)) if controlled_run else None
             ),
             "sequence": snapshot.checkpoint_seq,
             "continuationOf": snapshot.continuation_of,
@@ -2246,7 +2450,10 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
         infiniteFarmingMode=False,
         unexpectedError=unexpected,
     )
-    if phase2d6:
+    if phase2e2:
+        label = "Phase 2E.2"
+        stage_label = "UI"
+    elif phase2d6:
         label = "Phase 2D.6"
         stage_label = "B1" if stage_d6_b1 else ("B2" if stage_d6_b2 else "B3")
     elif phase2d5:
@@ -2288,7 +2495,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
             "was sent.",
             flush=True,
         )
-    if phase2d6:
+    if controlled_run:
         report = memory.report()
         if report.get("available"):
             print(
@@ -2305,6 +2512,7 @@ def _run_live(args: Namespace, limits: FarmRunLimits) -> int:
                 f"  --resume {_checkpoint_path(writer.directory)}",
                 flush=True,
             )
+    _notify_run_observer(observer, run, "FINISHED")
     return 0 if accepted else 2
 
 
@@ -2377,13 +2585,27 @@ def _stage_d6_a_control() -> int:
     return 0 if accepted else 2
 
 
-def run(args: Namespace) -> int:
+def run(
+    args: Namespace,
+    *,
+    control_edges: FarmControlHotkeyEdges | None = None,
+    observer: Callable[[Any, str], None] | None = None,
+) -> int:
     limits = _validate_args(args)
     if args.stage_d5_a_results:
         return _stage_d5_a_results()
     if args.stage_d6_a_control:
         return _stage_d6_a_control()
-    return _stage_a(args, limits) if args.stage_a_replay else _run_live(args, limits)
+    return (
+        _stage_a(args, limits)
+        if args.stage_a_replay
+        else _run_live(
+            args,
+            limits,
+            control_edges=control_edges,
+            observer=observer,
+        )
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

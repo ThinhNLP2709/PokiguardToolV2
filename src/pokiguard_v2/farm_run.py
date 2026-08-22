@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from enum import Enum
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from .boss_entry import BossLobbyState, FarmTarget
@@ -1535,11 +1535,18 @@ class FarmRun:
 
 
 class FarmRunEntryCapability:
-    def __init__(self, run: FarmRun) -> None:
+    def __init__(self, run: FarmRun, authority: Any | None = None) -> None:
         self.run = run
         self.entry_number = run.match_attempts + 1
+        self._authority = authority
 
     def reserve(self, *, foreground: bool) -> FarmInputPermit | None:
+        if self._authority is not None and self._authority.emergency_requested:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before boss entry reserve",
+            )
+            return None
         return self.run.reserve_entry(foreground=foreground)
 
     def complete(self, permit: FarmInputPermit, *, sent: bool, detail: str = "") -> bool:
@@ -1547,6 +1554,17 @@ class FarmRunEntryCapability:
 
     def cancel(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
         return self.run.cancel_entry(permit, detail=detail)
+
+    def execute(self, operation: Callable[[], Any]) -> tuple[bool, Any | None]:
+        if self._authority is None:
+            return True, operation()
+        authorized, result = self._authority.execute_if_authorized(operation)
+        if not authorized and not self.run.stopped:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before boss entry input",
+            )
+        return authorized, result
 
 
 _ACTION_DOMAINS = {
@@ -1558,13 +1576,25 @@ _ACTION_DOMAINS = {
 
 
 class FarmRunGameplayCapability:
-    def __init__(self, run: FarmRun, session: CombatSessionKey) -> None:
+    def __init__(
+        self,
+        run: FarmRun,
+        session: CombatSessionKey,
+        authority: Any | None = None,
+    ) -> None:
         self.run = run
         self.session = session
+        self._authority = authority
 
     def reserve(
         self, *, action: str, session: CombatSessionKey, foreground: bool
     ) -> FarmInputPermit | None:
+        if self._authority is not None and self._authority.emergency_requested:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail=f"emergency authority revoked before {action} reserve",
+            )
+            return None
         domain = _ACTION_DOMAINS.get(action.upper())
         if domain is None:
             self.run.safe_stop(FarmRunStopReason.GAMEPLAY_CAPABILITY_DENIED, action=action)
@@ -1580,6 +1610,17 @@ class FarmRunGameplayCapability:
     def graceful_stop_requested(self) -> bool:
         """Combat can poll this each turn to honor F6 mid-match."""
         return self.run.graceful_stop_requested()
+
+    def execute(self, operation: Callable[[], Any]) -> tuple[bool, Any | None]:
+        if self._authority is None:
+            return True, operation()
+        authorized, result = self._authority.execute_if_authorized(operation)
+        if not authorized and not self.run.stopped:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before gameplay input",
+            )
+        return authorized, result
 
 
 class FarmRunArtifactWriter:

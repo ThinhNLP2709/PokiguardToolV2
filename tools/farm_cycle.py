@@ -196,8 +196,8 @@ def _resolve_pass_stage(args: Namespace) -> str:
 def _combat_args(args: Namespace, log_path: Path) -> Namespace:
     return Namespace(
         watch=True,
-        play_style="simple",
-        mana_priority="evolution",
+        play_style=getattr(args, "play_style", "simple"),
+        mana_priority=getattr(args, "mana_priority", "evolution"),
         intelligence="basic",
         minimum_action_time=4,
         cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
@@ -253,13 +253,14 @@ def _wait_boss_lobby(
     last_state: BossLobbyState | None = None
     transient_room_missing_since: float | None = None
     while process.is_running() and time.monotonic() < deadline:
+        external_f9 = False
         if control_hotkeys is not None:
             # Latch only.  A graceful stop must never cut this wait short: the
             # match has to finish returning to the lobby before the farm loop
             # consumes the latch and refuses the *next* entry.
-            control_hotkeys.poll()
+            _graceful, external_f9 = control_hotkeys.poll()
         _f8_edge, f9_edge = hotkeys.poll()
-        if f9_edge:
+        if f9_edge or external_f9:
             return LobbyWaitResult(False, last_state, None, "F9_EMERGENCY_STOP", stable_frames=stable_count)
         poll = provider.poll()
         if poll.combat_lifecycle is None:

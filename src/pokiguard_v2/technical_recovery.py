@@ -1018,10 +1018,20 @@ class RecoveryReentryCapability:
 
     entry_number = 1
 
-    def __init__(self, coordinator: TechnicalRecoveryCoordinator) -> None:
+    def __init__(
+        self,
+        coordinator: TechnicalRecoveryCoordinator,
+        authority: Any | None = None,
+    ) -> None:
         self.coordinator = coordinator
+        self._authority = authority
 
     def reserve(self, *, foreground: bool) -> RecoveryPermit | None:
+        if self._authority is not None and self._authority.emergency_requested:
+            self.coordinator.emergency_stop(
+                detail="emergency authority revoked before recovery re-entry"
+            )
+            return None
         if self.coordinator.state is TechnicalRecoveryState.VERIFY_REENTRY_TARGET:
             if not self.coordinator.reentry_ready(
                 proof="Phase2D1 exact target + stable Start + atomic preflight"
@@ -1034,6 +1044,16 @@ class RecoveryReentryCapability:
 
     def cancel(self, permit: RecoveryPermit, *, detail: str = "") -> bool:
         return self.coordinator.cancel_input(permit, detail=detail)
+
+    def execute(self, operation: Any) -> tuple[bool, Any | None]:
+        if self._authority is None:
+            return True, operation()
+        authorized, result = self._authority.execute_if_authorized(operation)
+        if not authorized:
+            self.coordinator.emergency_stop(
+                detail="emergency authority revoked before recovery re-entry input"
+            )
+        return authorized, result
 
 
 class RecoveryArtifactWriter:

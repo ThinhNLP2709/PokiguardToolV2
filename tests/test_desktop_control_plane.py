@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 import unittest
 
@@ -210,21 +211,17 @@ class ControlPlaneSnapshotTests(unittest.TestCase):
         self.assertEqual(second.health, "ERROR")
         self.assertIn("temporary read failure", second.last_error or "")
 
-    def test_draft_update_only_changes_config_and_has_no_command_api(self) -> None:
+    def test_draft_update_only_changes_config_without_dispatch(self) -> None:
         runtime = _Runtime([RuntimeObservation(False, False)])
         plane = DesktopControlPlane(runtime)
         config = DesktopConfig(play_style=PlayStyle.CAREFUL)
         updated = plane.update_config(config)
         self.assertIs(updated.config.play_style, PlayStyle.CAREFUL)
         self.assertEqual(runtime.reads, 0)
-        for name in (
-            "start_farm",
-            "boss_entry",
-            "graceful_stop",
-            "emergency_stop",
-            "resume_checkpoint",
-        ):
-            self.assertFalse(hasattr(plane, name))
+        self.assertTrue(hasattr(plane, "start_farm"))
+        self.assertTrue(hasattr(plane, "request_graceful_stop"))
+        self.assertTrue(hasattr(plane, "emergency_stop"))
+        self.assertTrue(hasattr(plane, "resume_from_checkpoint"))
         self.assertEqual(updated.safety.nonzero(), {})
 
     def test_close_is_idempotent(self) -> None:
@@ -244,6 +241,7 @@ class CheckpointSummaryTests(unittest.TestCase):
             provider = LatestCheckpointSummaryProvider(root)
             summary = provider.read_latest()
             self.assertTrue(summary.available)
+            self.assertTrue(summary.resumable_candidate)
             self.assertEqual(summary.farm_run_id, "ui-summary-run")
             self.assertEqual(summary.target_completed_matches, 3)
             self.assertEqual(path.read_text(encoding="utf-8").count("farm_run_id"), 1)
@@ -255,7 +253,57 @@ class CheckpointSummaryTests(unittest.TestCase):
             path.write_text("{broken", encoding="utf-8")
             summary = LatestCheckpointSummaryProvider(Path(temporary)).read_latest()
             self.assertFalse(summary.available)
+            self.assertFalse(summary.resumable_candidate)
             self.assertIn("CHECKPOINT_INVALID", summary.error or "")
+
+    def test_completed_checkpoint_is_not_a_resume_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "run" / "checkpoint.json"
+            payload = _checkpoint_payload()
+            payload = replace(
+                payload,
+                match_attempts=3,
+                completed_matches=3,
+                wins=3,
+                last_completed_match_id="match-3",
+                seen_match_ids=("match-1", "match-2", "match-3"),
+                finalized_status="COMPLETED",
+            )
+            write_checkpoint(path, payload)
+            summary = LatestCheckpointSummaryProvider(root).read_latest()
+            self.assertTrue(summary.available)
+            self.assertFalse(summary.resumable_candidate)
+
+    def test_emergency_checkpoint_is_not_a_resume_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "run" / "checkpoint.json"
+            payload = replace(
+                _checkpoint_payload(),
+                last_safe_lifecycle="ACTIVE_COMBAT",
+                stop_request_state="EMERGENCY_STOPPED",
+                stop_reason="F9_EMERGENCY_STOP",
+                finalized_status="EMERGENCY_STOPPED",
+            )
+            write_checkpoint(path, payload)
+            summary = LatestCheckpointSummaryProvider(root).read_latest()
+            self.assertTrue(summary.available)
+            self.assertFalse(summary.resumable_candidate)
+
+    def test_graceful_lobby_checkpoint_is_a_resume_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "run" / "checkpoint.json"
+            payload = replace(
+                _checkpoint_payload(),
+                stop_request_state="STOPPED_AT_LOBBY",
+                stop_reason="STOPPED_GRACEFULLY",
+                finalized_status="STOPPED_GRACEFULLY",
+            )
+            write_checkpoint(path, payload)
+            summary = LatestCheckpointSummaryProvider(root).read_latest()
+            self.assertTrue(summary.resumable_candidate)
 
 
 class SnapshotPollerTests(unittest.TestCase):

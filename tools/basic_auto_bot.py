@@ -195,6 +195,26 @@ def _complete_farm_gameplay(
     return bool(runtime.gameplay_capability.complete(permit, sent=sent, detail=detail))
 
 
+def _execute_farm_gameplay_input(
+    runtime: SharedCombatRuntime,
+    operation: Any,
+) -> tuple[bool, Any | None]:
+    """Serialize a farm-owned physical input against emergency revocation."""
+
+    capability = runtime.gameplay_capability
+    executor = getattr(capability, "execute", None)
+    if executor is None:
+        return True, operation()
+    return executor(operation)
+
+
+def _farm_emergency_requested(runtime: SharedCombatRuntime | None) -> bool:
+    if runtime is None or runtime.farm_control_hotkeys is None:
+        return False
+    _graceful, emergency = runtime.farm_control_hotkeys.poll()
+    return bool(emergency)
+
+
 def _cancel_farm_gameplay(
     runtime: SharedCombatRuntime,
     permit: Any | None,
@@ -2749,7 +2769,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 shared_runtime is not None
                 and shared_runtime.farm_control_hotkeys is not None
             ):
-                shared_runtime.farm_control_hotkeys.poll()
+                _graceful, farm_emergency = (
+                    shared_runtime.farm_control_hotkeys.poll()
+                )
+                stop = stop or farm_emergency
             if stop:
                 if pass_coordinator is not None and pass_coordinator.gameplay_locked:
                     pass_terminal = pass_coordinator.abort_state_changed(
@@ -3266,7 +3289,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     diagnostics=provider.scan_diagnostics,
                 )
                 last_provider_status = provider_status
-            if hotkeys.emergency_stop_requested():
+            if hotkeys.emergency_stop_requested() or _farm_emergency_requested(
+                shared_runtime
+            ):
                 aborted = guard.stop()
                 stop_reason = "EMERGENCY_STOP"
                 _write(log, "emergency_stop", key="F9", pending=aborted, checkpoint="AFTER_PROVIDER_POLL")
@@ -5554,7 +5579,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     _beep("pause", not args.no_beep)
                     continue
                 fresh_pass_poll = provider.poll()
-                if hotkeys.emergency_stop_requested():
+                if hotkeys.emergency_stop_requested() or _farm_emergency_requested(
+                    shared_runtime
+                ):
                     guard.stop()
                     stop_reason = "EMERGENCY_STOP"
                     _write(log, "emergency_stop", key="F9", checkpoint="BEFORE_PASS_WAIT")
@@ -5867,7 +5894,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
 
             identity = AutonomousActionIdentity.from_decision(state, decision, attempt=evolve_attempts + 1)
             fresh_poll = provider.poll()
-            if hotkeys.emergency_stop_requested():
+            if hotkeys.emergency_stop_requested() or _farm_emergency_requested(
+                shared_runtime
+            ):
                 aborted = guard.stop()
                 stop_reason = "EMERGENCY_STOP"
                 _write(log, "emergency_stop", key="F9", pending=aborted, checkpoint="AFTER_FRESH_POLL")
@@ -6028,7 +6057,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
                     continue
                 plan = map_swap_to_pixels(decision.move.first, decision.move.second, calibration, fresh_window.geometry, virtual_screen=backend.virtual_screen())
-                if hotkeys.emergency_stop_requested():
+                if hotkeys.emergency_stop_requested() or _farm_emergency_requested(
+                    shared_runtime
+                ):
                     guard.stop()
                     stop_reason = "EMERGENCY_STOP"
                     _write(log, "emergency_stop", key="F9", checkpoint="BEFORE_SWAP_INPUT")
@@ -6060,7 +6091,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     _beep("pause", not args.no_beep)
                     break
                 try:
-                    click = executor.send_swap(binding, plan)
+                    input_authorized, click = _execute_farm_gameplay_input(
+                        runtime,
+                        lambda: executor.send_swap(binding, plan),
+                    )
                 except Exception:
                     _cancel_farm_gameplay(
                         runtime,
@@ -6068,6 +6102,17 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         detail="SWAP executor raised before result",
                     )
                     raise
+                if not input_authorized or click is None:
+                    guard.stop()
+                    stop_reason = "EMERGENCY_STOP"
+                    _write(
+                        log,
+                        "emergency_stop",
+                        key="UI",
+                        checkpoint="ATOMIC_SWAP_INPUT_GATE",
+                        inputSent=False,
+                    )
+                    break
                 if not _complete_farm_gameplay(
                     runtime,
                     farm_swap_permit,
@@ -6288,7 +6333,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     pending_action.card_has_used_this_turn_before = (
                         card.has_used_this_turn
                     )
-                if hotkeys.emergency_stop_requested():
+                if hotkeys.emergency_stop_requested() or _farm_emergency_requested(
+                    shared_runtime
+                ):
                     guard.stop()
                     stop_reason = "EMERGENCY_STOP"
                     _write(log, "emergency_stop", key="F9", checkpoint="BEFORE_CARD_INPUT")
@@ -6320,7 +6367,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     _beep("pause", not args.no_beep)
                     break
                 try:
-                    click = executor.send_normalized_point(binding, locator.normalized_point)
+                    input_authorized, click = _execute_farm_gameplay_input(
+                        runtime,
+                        lambda: executor.send_normalized_point(
+                            binding, locator.normalized_point
+                        ),
+                    )
                 except Exception:
                     _cancel_farm_gameplay(
                         runtime,
@@ -6328,6 +6380,17 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         detail=f"{decision.action.value} executor raised before result",
                     )
                     raise
+                if not input_authorized or click is None:
+                    guard.stop()
+                    stop_reason = "EMERGENCY_STOP"
+                    _write(
+                        log,
+                        "emergency_stop",
+                        key="UI",
+                        checkpoint="ATOMIC_CARD_INPUT_GATE",
+                        inputSent=False,
+                    )
+                    break
                 if not _complete_farm_gameplay(
                     runtime,
                     farm_card_permit,

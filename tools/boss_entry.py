@@ -807,7 +807,35 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 )
                 return 2
         try:
-            click = executor.send_normalized_point(binding, location.normalized_point)
+            if (
+                runtime.entry_capability is not None
+                and hasattr(runtime.entry_capability, "execute")
+            ):
+                authorized, click = runtime.entry_capability.execute(
+                    lambda: executor.send_normalized_point(
+                        binding, location.normalized_point
+                    )
+                )
+                if not authorized or click is None:
+                    result.update(
+                        status="STOPPED",
+                        stopReason="F9_EMERGENCY_STOP",
+                    )
+                    _write(
+                        log,
+                        "entry_stopped",
+                        reason=result["stopReason"],
+                        inputSent=False,
+                    )
+                    summary_path.write_text(
+                        json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                    return 2
+            else:
+                click = executor.send_normalized_point(
+                    binding, location.normalized_point
+                )
         except Exception:
             if runtime.entry_capability is not None and entry_permit is not None:
                 runtime.entry_capability.cancel(entry_permit, detail="executor raised before result")

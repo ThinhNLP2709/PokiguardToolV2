@@ -7,6 +7,7 @@ from ctypes import wintypes
 from dataclasses import dataclass
 from enum import Enum
 import os
+import threading
 import time
 from typing import Callable, Protocol
 
@@ -19,6 +20,7 @@ VK_F10 = 0x79
 VK_F6 = 0x75
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
+SW_RESTORE = 9
 
 
 @dataclass(frozen=True)
@@ -193,6 +195,7 @@ class Win32Backend(Protocol):
     def set_cursor_pos(self, x: int, y: int) -> bool: ...
     def click_mouse(self) -> None: ...
     def virtual_screen(self) -> tuple[int, int, int, int]: ...
+    def restore_and_foreground(self, hwnd: int) -> bool: ...
 
 
 class ClickStatus(str, Enum):
@@ -395,6 +398,12 @@ if os.name == "nt":
     _user32.IsWindowVisible.restype = wintypes.BOOL
     _user32.IsIconic.argtypes = [wintypes.HWND]
     _user32.IsIconic.restype = wintypes.BOOL
+    _user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+    _user32.ShowWindow.restype = wintypes.BOOL
+    _user32.BringWindowToTop.argtypes = [wintypes.HWND]
+    _user32.BringWindowToTop.restype = wintypes.BOOL
+    _user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+    _user32.SetForegroundWindow.restype = wintypes.BOOL
     _user32.GetClientRect.argtypes = [
         wintypes.HWND,
         ctypes.POINTER(_RECT),
@@ -449,6 +458,22 @@ class NativeWin32Backend:
         foreground = _user32.GetForegroundWindow()
         return bool(hwnd) and foreground is not None and int(foreground) == int(hwnd)
 
+    def restore_and_foreground(self, hwnd: int) -> bool:
+        """Restore and foreground one already validated game window.
+
+        This is a focus handoff only.  It sends no mouse/keyboard input and is
+        intentionally separate from :class:`ForegroundClickExecutor`.
+        """
+
+        if not hwnd or not _user32.IsWindow(hwnd) or not _user32.IsWindowVisible(hwnd):
+            return False
+        if _user32.IsIconic(hwnd):
+            _user32.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.15)
+        _user32.BringWindowToTop(hwnd)
+        requested = bool(_user32.SetForegroundWindow(hwnd))
+        return requested or self.is_foreground(hwnd)
+
     def window_pid(self, hwnd: int) -> int | None:
         if not _user32.IsWindow(hwnd):
             return None
@@ -500,6 +525,16 @@ def find_window_for_pid(pid: int, backend: NativeWin32Backend) -> WindowBinding:
         matches, key=lambda item: item[2].width * item[2].height
     )
     return WindowBinding(hwnd, pid, title, geometry.width, geometry.height)
+
+
+def foreground_process_window(
+    pid: int, backend: NativeWin32Backend | None = None
+) -> bool:
+    """Best-effort focus handoff to the largest visible window owned by PID."""
+
+    active_backend = backend or NativeWin32Backend()
+    binding = find_window_for_pid(pid, active_backend)
+    return active_backend.restore_and_foreground(binding.hwnd)
 
 
 class HotkeyEdges:
@@ -560,6 +595,67 @@ class FarmControlHotkeyEdges:
         self._f9_down = False
         self._f6_count = 0
         self._f9_count = 0
+        self._programmatic_f6_unseen = 0
+        self._programmatic_f9_unseen = 0
+        self._emergency_requested = False
+        self._emergency_ack_monotonic: float | None = None
+        self._authorized_operations_started = 0
+        self._authorized_operations_after_emergency_ack = 0
+        self._lock = threading.Lock()
+
+    @property
+    def emergency_requested(self) -> bool:
+        """Sticky controller-authority revocation for final input gates."""
+
+        with self._lock:
+            return self._emergency_requested
+
+    @property
+    def emergency_ack_monotonic(self) -> float | None:
+        with self._lock:
+            return self._emergency_ack_monotonic
+
+    @property
+    def authorized_operations_started(self) -> int:
+        with self._lock:
+            return self._authorized_operations_started
+
+    @property
+    def authorized_operations_after_emergency_ack(self) -> int:
+        with self._lock:
+            return self._authorized_operations_after_emergency_ack
+
+    def request_graceful_stop(self) -> None:
+        """Latch one programmatic F6-equivalent command without key input."""
+
+        with self._lock:
+            self._f6_count += 1
+            self._programmatic_f6_unseen = 1
+
+    def request_emergency_stop(self) -> None:
+        """Latch F9-equivalent authority revocation without sending a key."""
+
+        with self._lock:
+            self._f9_count += 1
+            self._programmatic_f9_unseen = 1
+            self._emergency_requested = True
+            self._emergency_ack_monotonic = (
+                self._emergency_ack_monotonic or time.monotonic()
+            )
+
+    def execute_if_authorized(self, operation: Callable[[], object]) -> tuple[bool, object | None]:
+        """Serialize emergency acknowledgement against one atomic input send.
+
+        If an input already owns the lock, the emergency request is
+        acknowledged only after that send returns.  Once the request has been
+        acknowledged, no later operation can begin through this gate.
+        """
+
+        with self._lock:
+            if self._emergency_requested:
+                return False, None
+            self._authorized_operations_started += 1
+            return True, operation()
 
     def poll(self) -> tuple[bool, bool]:
         """Read the keyboard and latch any edge.  Safe to call at any rate."""
@@ -572,17 +668,29 @@ class FarmControlHotkeyEdges:
         f6_edge = bool(f6_raw & 0x1) or (f6_down and not self._f6_down)
         f9_edge = bool(f9_raw & 0x1) or (f9_down and not self._f9_down)
         self._f6_down, self._f9_down = f6_down, f9_down
-        if f6_edge:
-            self._f6_count += 1
-        if f9_edge:
-            self._f9_count += 1
-        return f6_edge, f9_edge
+        with self._lock:
+            programmatic_f6 = self._programmatic_f6_unseen > 0
+            programmatic_f9 = self._programmatic_f9_unseen > 0
+            if programmatic_f6:
+                self._programmatic_f6_unseen -= 1
+            if programmatic_f9:
+                self._programmatic_f9_unseen -= 1
+            if f6_edge:
+                self._f6_count += 1
+            if f9_edge:
+                self._f9_count += 1
+                self._emergency_requested = True
+                self._emergency_ack_monotonic = (
+                    self._emergency_ack_monotonic or time.monotonic()
+                )
+        return f6_edge or programmatic_f6, f9_edge or programmatic_f9
 
     def take(self) -> tuple[int, int]:
         """Poll once, then consume and return counts since last take."""
         self.poll()
-        f6, f9 = self._f6_count, self._f9_count
-        self._f6_count = self._f9_count = 0
+        with self._lock:
+            f6, f9 = self._f6_count, self._f9_count
+            self._f6_count = self._f9_count = 0
         return f6, f9
 
 

@@ -18,6 +18,12 @@ from .basic_policy import Intelligence, ManaPriority, PlayStyle, PolicyConfig
 from .boss_entry import FarmTarget
 from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
 from .farm_run import FarmRunLimits
+from .desktop_farm_controller import (
+    ControllerCommandResult,
+    DesktopControllerSnapshot,
+    DesktopControllerState,
+    DesktopFarmControllerManager,
+)
 
 
 def utc_timestamp() -> str:
@@ -120,8 +126,36 @@ class CheckpointSummary:
     wins: int | None = None
     losses: int | None = None
     unknown_results: int | None = None
+    last_safe_lifecycle: str | None = None
+    stop_request_state: str | None = None
+    stop_reason: str | None = None
     updated_at: float | None = None
     error: str | None = None
+
+    @property
+    def resumable_candidate(self) -> bool:
+        """Cheap UI hint; canonical resume validation remains in FarmRunner."""
+
+        graceful_lobby_stop = bool(
+            self.finalized_status == "STOPPED_GRACEFULLY"
+            and self.last_safe_lifecycle == "BOSS_LOBBY"
+            and self.stop_reason == "STOPPED_GRACEFULLY"
+            and self.stop_request_state == "STOPPED_AT_LOBBY"
+        )
+        interrupted_at_durable_lobby_boundary = bool(
+            self.finalized_status is None
+            and self.last_safe_lifecycle == "BOSS_LOBBY"
+            and self.stop_reason is None
+            and self.stop_request_state == "RUNNING"
+        )
+        return bool(
+            self.available
+            and self.path
+            and self.completed_matches is not None
+            and self.target_completed_matches is not None
+            and self.completed_matches < self.target_completed_matches
+            and (graceful_lobby_stop or interrupted_at_durable_lobby_boundary)
+        )
 
 
 @dataclass(frozen=True)
@@ -159,6 +193,7 @@ class ControlPlaneSnapshot:
     refresh_errors: int
     read_only: bool
     safety: UiSafetyEvidence
+    controller: DesktopControllerSnapshot
 
 
 class RuntimeStatusProvider(Protocol):
@@ -226,6 +261,9 @@ def _checkpoint_summary(path: Path, payload: CheckpointPayload) -> CheckpointSum
         wins=payload.wins,
         losses=payload.losses,
         unknown_results=payload.unknown_results,
+        last_safe_lifecycle=payload.last_safe_lifecycle,
+        stop_request_state=payload.stop_request_state,
+        stop_reason=payload.stop_reason,
         updated_at=payload.updated_at,
     )
 
@@ -246,7 +284,7 @@ class StaticUnavailableRuntimeProvider:
 
 
 class DesktopControlPlane:
-    """Thread-safe snapshot owner with no gameplay command surface."""
+    """Thread-safe UI application boundary and single command gateway."""
 
     def __init__(
         self,
@@ -254,9 +292,11 @@ class DesktopControlPlane:
         *,
         checkpoint: CheckpointSummaryProvider | None = None,
         config: DesktopConfig | None = None,
+        controller: DesktopFarmControllerManager | None = None,
     ) -> None:
         self._runtime = runtime
         self._checkpoint = checkpoint or NullCheckpointSummaryProvider()
+        self._controller = controller
         self._lock = threading.RLock()
         self._closed = False
         self._safety = UiSafetyEvidence()
@@ -281,7 +321,123 @@ class DesktopControlPlane:
             refresh_errors=0,
             read_only=True,
             safety=self._safety,
+            controller=(
+                controller.snapshot()
+                if controller is not None
+                else DesktopControllerSnapshot(updated_at=utc_timestamp())
+            ),
         )
+
+    @staticmethod
+    def _ui_safety(controller: DesktopControllerSnapshot) -> UiSafetyEvidence:
+        evidence = controller.safety
+        return UiSafetyEvidence(
+            farm_runner_starts=evidence.starts,
+            gameplay_windows_inputs=(
+                controller.total_gameplay_inputs
+                + controller.total_postmatch_inputs
+                + controller.total_recovery_inputs
+            ),
+            boss_entry_commands=controller.total_lobby_inputs,
+            graceful_stop_commands=evidence.graceful_stop_commands,
+            emergency_stop_commands=evidence.emergency_stop_commands,
+            checkpoint_resume_commands=evidence.resumes,
+        )
+
+    def _controller_snapshot(self) -> DesktopControllerSnapshot:
+        if self._controller is None:
+            return self._snapshot.controller
+        return self._controller.snapshot()
+
+    def _publish_controller(self) -> None:
+        controller = self._controller_snapshot()
+        self._safety = self._ui_safety(controller)
+        self._snapshot = replace(
+            self._snapshot,
+            version=self._snapshot.version + 1,
+            timestamp=utc_timestamp(),
+            sampled_monotonic=time.monotonic(),
+            controller=controller,
+            safety=self._safety,
+        )
+
+    def _command_preflight(self) -> str | None:
+        snapshot = self._snapshot
+        runtime = snapshot.runtime
+        if self._controller is None:
+            return "CONTROLLER_UNAVAILABLE"
+        if snapshot.stale or snapshot.health != "OK":
+            return "RUNTIME_SNAPSHOT_NOT_ACTIONABLE"
+        if not runtime.attached:
+            return "GAME_NOT_ATTACHED"
+        if runtime.lifecycle != "BOSS_LOBBY":
+            return f"START_REQUIRES_BOSS_LOBBY:{runtime.lifecycle}"
+        if snapshot.controller.active:
+            return "CONTROLLER_ALREADY_ACTIVE"
+        return None
+
+    def _rejected_command(self, reason: str) -> ControllerCommandResult:
+        controller = self._controller_snapshot()
+        return ControllerCommandResult(
+            False,
+            reason,
+            controller.state,
+            controller.generation,
+            utc_timestamp(),
+            controller.farm_run_id,
+        )
+
+    def start_farm(self) -> ControllerCommandResult:
+        with self._lock:
+            if self._closed:
+                return self._rejected_command("CONTROL_PLANE_CLOSED")
+            reason = self._command_preflight()
+            if reason is not None:
+                return self._rejected_command(reason)
+            assert self._controller is not None
+            result = self._controller.start(
+                self._snapshot.config,
+                game_pid=self._snapshot.runtime.pid,
+            )
+            self._publish_controller()
+            return result
+
+    def resume_from_checkpoint(self) -> ControllerCommandResult:
+        with self._lock:
+            if self._closed:
+                return self._rejected_command("CONTROL_PLANE_CLOSED")
+            reason = self._command_preflight()
+            if reason is not None:
+                return self._rejected_command(reason)
+            checkpoint = self._snapshot.checkpoint
+            if not checkpoint.available or checkpoint.path is None:
+                return self._rejected_command(
+                    checkpoint.error or "NO_RESUMABLE_CHECKPOINT"
+                )
+            assert self._controller is not None
+            result = self._controller.resume(
+                self._snapshot.config,
+                Path(checkpoint.path),
+                game_pid=self._snapshot.runtime.pid,
+            )
+            self._publish_controller()
+            return result
+
+    def request_graceful_stop(self, generation: int) -> ControllerCommandResult:
+        with self._lock:
+            if self._controller is None:
+                return self._rejected_command("CONTROLLER_UNAVAILABLE")
+            result = self._controller.request_graceful_stop(generation)
+            self._publish_controller()
+            return result
+
+    def emergency_stop(self, generation: int) -> ControllerCommandResult:
+        with self._lock:
+            if self._controller is None:
+                return self._rejected_command("CONTROLLER_UNAVAILABLE")
+            result = self._controller.emergency_stop(generation)
+            self._publish_controller()
+            return result
 
     def snapshot(self) -> ControlPlaneSnapshot:
         with self._lock:
@@ -309,7 +465,33 @@ class DesktopControlPlane:
             previous = self._snapshot
             attempts = previous.refresh_attempts + 1
         try:
-            runtime = self._runtime.read()
+            controller = self._controller_snapshot()
+            if controller.active:
+                lifecycle_map = {
+                    "WAIT_INITIAL_BOSS_LOBBY": "BOSS_LOBBY",
+                    "RESOLVE_TARGET": "BOSS_LOBBY",
+                    "ENTRY_READY": "ENTERING_COMBAT",
+                    "ENTRY_PENDING": "ENTERING_COMBAT",
+                    "WAIT_OPENING": "ENTERING_COMBAT",
+                    "COMBAT_ACTIVE": "ACTIVE_COMBAT",
+                    "WAIT_POSTMATCH": "POSTMATCH",
+                    "WAIT_BOSS_LOBBY": "RETURNING_TO_LOBBY",
+                    "RECOVERY_PENDING": "ACTIVE_COMBAT",
+                    "RECOVERY_ACTIVE": "ACTIVE_COMBAT",
+                    "RECOVERY_OPENING_READY": "ENTERING_COMBAT",
+                }
+                runtime = replace(
+                    previous.runtime,
+                    lifecycle=lifecycle_map.get(
+                        controller.run_state or "",
+                        previous.runtime.lifecycle,
+                    ),
+                    match_id=controller.current_match_id,
+                    provider_reason="farm_controller_snapshot",
+                    error=None,
+                )
+            else:
+                runtime = self._runtime.read()
             checkpoint = self._checkpoint.read_latest()
             error = runtime.error or checkpoint.error
             stale = bool(error)
@@ -321,6 +503,8 @@ class DesktopControlPlane:
                 health = "UNAVAILABLE" if error else "DETACHED"
             with self._lock:
                 current = self._snapshot
+                controller = self._controller_snapshot()
+                self._safety = self._ui_safety(controller)
                 self._snapshot = ControlPlaneSnapshot(
                     version=current.version + 1,
                     timestamp=utc_timestamp(),
@@ -336,6 +520,7 @@ class DesktopControlPlane:
                     refresh_errors=current.refresh_errors + (1 if error else 0),
                     read_only=True,
                     safety=self._safety,
+                    controller=controller,
                 )
                 return self._snapshot
         except Exception as exc:  # noqa: BLE001 - UI must survive provider faults
@@ -364,6 +549,7 @@ class DesktopControlPlane:
                     refresh_errors=current.refresh_errors + 1,
                     read_only=True,
                     safety=self._safety,
+                    controller=self._controller_snapshot(),
                 )
                 return self._snapshot
 

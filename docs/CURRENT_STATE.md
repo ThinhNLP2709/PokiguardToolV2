@@ -24,39 +24,34 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2E.1 — PASS STRONG** |
-| Next approved/planned phase | **NONE — await user review/approval** |
+| Current completed phase | **Phase 2E.2 — PASS STRONG** |
+| Next approved/planned phase | **Phase 2E.3 NOT IMPLEMENTED — await explicit approval** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
 
-Phase 2E.1 added a Tkinter/ttk Windows desktop shell around a new read-only
-control-plane boundary. It presents canonical BASIC configuration, process/
-attachment/lifecycle status, runtime target diagnostics, latest checkpoint
-summary, snapshot health, and errors. A single polling worker performs the
-potentially slow memory reads; the Tk event thread renders immutable snapshots
-and marks unknown/stale data non-actionable.
+Phase 2E.2 connects the Phase 2E.1 desktop UI to the accepted Phase 2D.6
+FarmRunner through one asynchronous controller and one authoritative command
+owner. Start, Stop After Current Match, Emergency Stop, and durable checkpoint
+Resume are live, bounded, and fail closed. Start foregrounds the verified game
+PID before normal input; graceful stop drains the current match and returns
+focus to the game, while emergency stop invalidates future actions immediately
+and never synthesizes an unfinished result.
 
-Offline Stage A passed with a real window, 12 refreshes, one poller, clean
-close, and zero input/commands. Live Stage B1 observed PID `18356` for a
-bounded 600-second read-only smoke: 287/287 attached refreshes, 2,945 render
-ticks, zero read/UI errors, and a clean final `BOSS_LOBBY`. The observer also
-recorded meaningful lifecycle transitions through combat, postmatch, boss
-lobby, and other lobby states. FarmRunner starts, Windows gameplay input,
-boss entry, graceful/emergency stop, and checkpoint-resume commands were all
-zero; no polling worker remained after close. Evidence: [Phase 2E.1 report](phase2e1_report.md)
-and [runbook](phase2e1_runbook.md).
+Live UI acceptance passed every required stage. B1 completed exactly 1/1 WIN.
+B2 stopped gracefully after the current WIN at exact `BOSS_LOBBY`, with no
+second entry. B3 resumed a durable 1/5 lobby checkpoint and reached exactly
+5/5 WINs without attempt 6. B4 acknowledged an emergency stop during active
+combat and sent zero actions or entries after the ACK. B5 completed exactly
+5/5 matches (4 WIN, 1 LOSS, 0 UNKNOWN), returned to exact `BOSS_LOBBY`, created
+no attempt 6, and kept every safety aggregate at zero. Evidence:
+[Phase 2E.2 report](phase2e2_report.md) and
+[runbook](phase2e2_runbook.md).
 
-The following remain **NOT IMPLEMENTED** and are reserved for Phase 2E.2:
-
-- UI FarmRunner Start;
-- UI Stop After Current Match / graceful stop;
-- UI Emergency Stop;
-- UI checkpoint resume;
-- UI-driven bounded farming.
-
-The UI has no hidden start-on-launch behavior. Phase 2D.6 remains the accepted
-gameplay/farming foundation; its missing historical B3 process-RAM telemetry
-was not fabricated or reconstructed.
+Phase 2E.1 remains the accepted read-only UI/control-plane foundation. Its
+offline and live observer evidence is retained in the
+[Phase 2E.1 report](phase2e1_report.md) and
+[runbook](phase2e1_runbook.md). There is still no hidden start-on-launch
+behavior. Phase 2E.3 has not been implemented.
 
 Phase 2D.6 accepted graceful stop, durable checkpoint/resume, and a 25-match
 bounded soak. B1 artifact
@@ -571,6 +566,11 @@ implemented. See [Phase 2D.6](phase2d6_report.md) and its
   lobby, explicit checkpoint resume preserves exact accounting, and B3
   completes 25/25 unique matches (24 WIN, 1 LOSS, 0 UNKNOWN) before entry #26
   with every safety counter zero.
+- [Phase 2E.1](phase2e1_report.md) — **PASS STRONG**; read-only desktop UI and
+  control-plane observer, with one poller, immutable snapshots, and clean close.
+- [Phase 2E.2](phase2e2_report.md) — **PASS STRONG**; UI Start, graceful stop,
+  emergency stop, durable resume, foreground handoff, and an exact 5-match
+  bounded run passed live with no post-boundary input or extra entry.
 
 Intermediate retries are historical evidence, not current phase status.
 
@@ -580,11 +580,12 @@ Verified on **2026-08-22**:
 
 ```text
 python -m unittest discover -s tests
-Ran 525 tests
+Ran 564 tests
 OK
 ```
 
-Current baseline: **525/525 PASS**. `python -m compileall -q src tools tests`:
+Current baseline: **564/564 PASS**. Phase 2E desktop/controller focus suites:
+**46/46 PASS**. `python -m compileall -q src tools tests`:
 **PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
 WIN/LOSS/UNKNOWN classification, frozen result survival after ownership
 cleanup, UI/memory consistency and conflict, idempotent accounting, two
@@ -594,10 +595,22 @@ session uniqueness, no entry after the configured target, input after stop,
 single-use farm capabilities, exact hardened openings, graceful-stop lifecycle
 races, F9 invalidation, checkpoint validation/atomicity/resume accounting,
 optional/dynamic card layout, recovery ACK-epoch contamination, and the x64
-working-set sampler ABI.
+working-set sampler ABI. Phase 2E.2 adds controller ownership/generation,
+command gating, verified-PID foreground transfer, graceful and emergency stop
+handoffs, exact resumable-checkpoint boundaries, and clean worker shutdown.
 
 ## Current Known Limitations
 
+- The Phase 2E.2 UI intentionally exposes only finite target/attempt/recovery
+  limits. Infinite/daemon operation, automatic game launch/login/process
+  restart, target rotation, scheduling, and remote control are not implemented.
+- Emergency Stop is terminal for the current UI controller generation. It can
+  leave the game combat itself running; the user may finish/exit normally, but
+  the stopped controller sends no further input and its checkpoint is not
+  resumable.
+- UI Resume accepts only a durable checkpoint at an exact boss-lobby boundary.
+  Completed, emergency, malformed, stale, or mid-combat checkpoints remain
+  disabled in the UI and are rejected again by the backend authority.
 - Bounded continuous farming is accepted for the Phase 2D.6 B3 limits: 25
   completed matches, at most 3 technical recoveries, and at most 32 match
   attempts. Infinite/daemon farming, game launch/login, automatic process
@@ -640,15 +653,15 @@ working-set sampler ABI.
 
 ## Next Phase
 
-**No next phase has been started or approved. Await user review.**
+**Phase 2E.3 is not implemented. Await explicit user review and approval.**
 
 ```text
-accepted Phase 2D.6 graceful stop + checkpoint resume + bounded 25-match soak
+accepted Phase 2E.2 live UI/FarmRunner control integration
 -> review evidence
--> explicitly define/approve any future phase before implementation
+-> explicitly define/approve Phase 2E.3 before implementation
 ```
 
-No Phase 2D.7 or other future scope is inferred. Infinite farming, process
+No Phase 2E.3 or other future scope is inferred. Infinite farming, process
 relaunch/login, internet recovery, target rotation, pet-specific skill-card
 use, mid-combat checkpoint resume, and expanded recovery authority remain
 outside current scope unless explicitly approved.
