@@ -24,10 +24,39 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2D.6 — PASS STRONG** |
+| Current completed phase | **Phase 2E.1 — PASS STRONG** |
 | Next approved/planned phase | **NONE — await user review/approval** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
+
+Phase 2E.1 added a Tkinter/ttk Windows desktop shell around a new read-only
+control-plane boundary. It presents canonical BASIC configuration, process/
+attachment/lifecycle status, runtime target diagnostics, latest checkpoint
+summary, snapshot health, and errors. A single polling worker performs the
+potentially slow memory reads; the Tk event thread renders immutable snapshots
+and marks unknown/stale data non-actionable.
+
+Offline Stage A passed with a real window, 12 refreshes, one poller, clean
+close, and zero input/commands. Live Stage B1 observed PID `18356` for a
+bounded 600-second read-only smoke: 287/287 attached refreshes, 2,945 render
+ticks, zero read/UI errors, and a clean final `BOSS_LOBBY`. The observer also
+recorded meaningful lifecycle transitions through combat, postmatch, boss
+lobby, and other lobby states. FarmRunner starts, Windows gameplay input,
+boss entry, graceful/emergency stop, and checkpoint-resume commands were all
+zero; no polling worker remained after close. Evidence: [Phase 2E.1 report](phase2e1_report.md)
+and [runbook](phase2e1_runbook.md).
+
+The following remain **NOT IMPLEMENTED** and are reserved for Phase 2E.2:
+
+- UI FarmRunner Start;
+- UI Stop After Current Match / graceful stop;
+- UI Emergency Stop;
+- UI checkpoint resume;
+- UI-driven bounded farming.
+
+The UI has no hidden start-on-launch behavior. Phase 2D.6 remains the accepted
+gameplay/farming foundation; its missing historical B3 process-RAM telemetry
+was not fabricated or reconstructed.
 
 Phase 2D.6 accepted graceful stop, durable checkpoint/resume, and a 25-match
 bounded soak. B1 artifact
