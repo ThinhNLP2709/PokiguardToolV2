@@ -96,6 +96,13 @@ to effective collected value.
   may still occur in the same turn.
 - Do not claim that EVOLVE resets idle/PASS. Its reset semantics remain
   UNKNOWN until authoritative evidence changes that classification.
+- `Board.cardsInHand` may select the bounded allocation regions used to
+  discover the current `FusionCardUI`: reverse evidence proves that
+  `FusionCardUI.Spawn` returns a GameObject which `Board.LoadSelectedCards`
+  appends to this current Board-owned list. This anchor does not itself make a
+  card actionable. The exact Fusion class, native object, Button pointer and
+  `Button.interactable` state must still validate; zero or ambiguous validated
+  candidates fail closed and board gameplay continues.
 
 ## CAST / Chưởng
 
@@ -319,6 +326,96 @@ screen coordinate. CLI/configuration is an acceptable intermediate target
 source; the final tool should obtain/confirm the user's current target choice
 at Start.
 
+For the Desktop UI, the user is not required to know or enter a pet ID. An
+explicit Start/Resume made while the exact `CHINH_PHUC_ROOM` is proven pins
+that room's positive numeric runtime `enemyPetId` and name into the immutable
+FarmRun config. `WORLD_BOSS_LIST`, a missing/invalid pet ID, or ambiguous room
+identity keeps Start/Resume disabled and is revalidated again by the backend.
+Preferences never provide target authority and do not persist a pet ID.
+
+Desktop Start/Resume also owns the game-window calibration boundary. Before
+FarmRunner binds an HWND or sends any normal UI/gameplay input, it must restore
+only the verified game PID's window and normalize the client to canonical
+`1280x720`. This is the accepted reference size for the current V1-derived
+board click calibration. The result must be reread as exact PID, foreground and
+exact client dimensions; otherwise Start fails closed. A user-resized game is
+therefore supported by normalization at Start, not by trusting stale normalized
+tile coordinates. Any later mid-run size change invalidates the window binding
+and blocks input.
+
+A SWAP is accepted only from exact durable runtime evidence: the same combat
+session, the expected local move-sequence advance, and MatchService LastMove
+from/to coordinates equal to the solver's intended cells. A bare `_ackedSeqs`
+or general server-sequence advance is diagnostic only because timeout, AFK and
+boss activity can advance it after unregistered clicks. It must not complete a
+pending SWAP or locally establish an authoritative idle reset.
+
+The pinned pet ID is valid only for that one farm session. If the session loses
+the selected Chinh Phuc room and read-only evidence proves settled
+`WORLD_BOSS_LIST` with no combat owner, the controller may use the accepted
+bounded exact-ID map resolver to select that same pet. The resolver must again
+cross-check Button closure identity, cached Group/Pet DTOs, PlayerPrefs panel
+selection and two stable visual frames before one normal target-selection
+click. It may never choose the first pet, fuzzy-match, or fall back to a saved
+preference. A room ejection is a technical abort, never a completed UNKNOWN,
+and consumes one bounded technical-recovery slot before normal farming resumes.
+
+When the target count, graceful stop, emergency stop, safety stop, or error ends
+the farm session, the live Desktop config clears the pinned pet ID/name. The
+completed artifact/checkpoint may retain it only as immutable audit history.
+A later Start/Resume again requires the user to be inside an exact boss room and
+pins the ID afresh. Automation still does not navigate from the general game
+lobby through Chinh Phuc islands to find a boss.
+
+Technical recovery is distinct from map re-entry. While the farm controller
+still owns the exact ACTIVE combat session, a proven technical failure may use
+the existing bounded normal-UI recovery path to leave combat, return to that
+same Chinh Phuc boss room, and start a fresh session before later idle turns can
+eject the player. A local-turn controller deadline qualifies only when the same
+current snapshot passes the complete production actionability gate: exact
+session and turn, local turn, stable/current board, no pending action, no
+authoritative PASS/Fusion wait, no animation/modal/end state, connection ready,
+valid foreground window, and no sequence-desync overlap. A normal PASS, boss
+turn, short lag/reconnect, presentation/cascade wait, foreground loss, or an
+unproven/stale state does not qualify. If recovery itself observes that the
+room has already been lost to the world boss map, the same exact session-pinned
+ID fallback may run only when no recovery re-entry input was already sent;
+otherwise it fails closed to prevent duplicate/ambiguous entry.
+
+If recovery has already sent its single normal `Exit + Confirm` pair and then
+fails before sending any re-entry/target-selection input, the outer FarmRunner
+may continue from the exact pinned Chinh Phuc room instead of stopping. This
+requires independent proof of the same positive numeric pet ID, the exact
+`CHINH_PHUC_ROOM` branch, and no live combat owner. The failed recovery's old
+session, opening, ACK epoch, proposal, and action state are never reused; the
+next combat uses the ordinary fresh-entry path and consumes one bounded
+technical-recovery slot.
+
+Production uses the user-confirmed **one-second inclusive** action floor. A
+SWAP/CAST may still be sent while the authoritative display shows `1`, but only
+after the ordinary fresh reread proves the same ACTIVE session, exact local
+turn, current board, valid foreground and complete actionability. At `0` the
+controller sends no new gameplay input and may dispatch bounded technical
+recovery when the exact farm-owned evidence is available.
+
+Run `0d465c3f5d4b40aa94abf62bb0b00b13` recorded two late SWAP inputs at one/two
+ticks without ACK before ownership disappeared. This is lag/unconfirmed-action
+evidence, not evidence that a displayed `1` is inherently unclickable: the user
+has separately confirmed that the game accepts and animates such moves. The
+controller must therefore account for a missing ACK as a possible skipped turn
+and rely on authoritative idle/reset state, while retaining the one-second
+floor. The same floor applies after authoritative idle `2/3`; this is not a new
+PASS counter and does not apply to boss turns or unproven/stale state.
+
+An active-run desktop close chooser is presentation only. Opening that modal
+must immediately return foreground to the verified game PID while leaving the
+chooser visible, because merely asking the operator for Cancel, graceful close,
+or emergency close must not consume a local turn. This focus handoff sends no
+gameplay input and does not latch either stop edge. Selecting graceful close
+then latches the existing stop-after-current-match edge and repeats the game
+focus handoff; selecting emergency close keeps the accepted immediate authority
+revocation semantics.
+
 Continuous looping is the approved product goal, but it must not be enabled by
 silently widening a bounded acceptance phase. First prove the Phase 2D.2
 two-entry/one-combat boundary; introduce continuous farming as a separately
@@ -352,11 +449,37 @@ actionable and never bypasses the post-entry live-CardUI validation.
 
 `CardUI` heap regions are also session-scoped. Learned regions from a prior
 combat are hints only: reset the UI discovery cadence for every new session and
-force one bounded full scan of the normal `<=8 MiB` region envelope on the
-first session scan. Only then use learned-region and extended-band retries.
+force one full scan of the normal `<=8 MiB` region envelope on the first
+observed opponent turn after the mandatory opening action. Only then use
+learned-region and bounded extended-band retries.
 Live evidence on 2026-08-18 found the missing current cards in newly allocated
 118,784-byte and 86,016-byte regions; increasing the 16 MiB ceiling would not
 have addressed that miss.
+
+Optional-card discovery is not gated by current Mana. Preserve the mandatory
+opening window for authoritative board publication and its first SWAP, then on
+the first observed boss turn (`turn >= 2`) perform one current-session warm-up
+for all equipped `CardUI` plus the selected pet's `FusionCardUI`. Cache only
+exactly validated live wrappers. Current Mana, low-boss-HP mode, cooldown,
+game-owned `FusionEnabled`, per-turn lock and Button interactability remain
+action gates for CAST/EVOLVE; they must never postpone initial UI discovery.
+If the user did not equip an
+Attack card or did not select a valid evolution pet/skill card, that action is
+simply unavailable and normal board gameplay continues.
+
+When a new/re-entered Chinh Phuc room has cleared
+`ManagerRoom.selectedCards`, but `RoomDTO.cards` exposes exactly one owned
+ordinary `ATTACK` card and its runtime-indexed room Toggle is proven in two
+stable UI frames, FarmRunner must select that Attack card before `Bắt đầu`.
+This is one bounded normal lobby click, separately recorded from entry and
+gameplay. `RoomDTO.cards` supplies only the exact identity/order used to locate
+the Toggle; selection is not accepted until a fresh read proves the same card
+inside authoritative `ManagerRoom.selectedCards`. Zero or multiple available
+Attack candidates, a changed room/pet/session, unstable pixels, lost
+foreground, or failed memory confirmation sends no Start click and fails
+closed. Support/function cards do not need to be restored in this milestone.
+If no owned Attack card is available at all, card use remains optional and the
+existing board-only gameplay fallback applies.
 
 ## Agent Non-Invention Rule
 
@@ -376,3 +499,67 @@ Instead:
 Technical evidence alone does not authorize a new gameplay preference.
 Update this file only when the user changes a product/gameplay rule or
 explicitly approves new policy behavior.
+
+## Pre-MVP Desktop Version Label
+
+The Desktop title and visible product heading use
+`Pokiguard Tool V2 - v1.0.0+N`. The current first tracked build is
+`v1.0.0+1`; the current local-actor/late-SWAP revision is `v1.0.0+13`. Before MVP completion,
+each shipped tool-code revision increments only the build suffix (`+12`, `+13`,
+...). The semantic `v1.0.0` component changes
+only after the MVP is declared complete and normal release versioning begins.
+
+Preference layout is cluster-based: two sibling clusters share their row 50/50,
+while a row with only one cluster spans the full width. A cluster's label keeps
+its natural width directly beside its expanding control.
+
+## Technical Recovery Has No Farm-Lifetime Budget
+
+Technical recovery is mandatory operational plumbing, not a consumable
+gameplay resource. Every independently proven technical incident must be
+offered the existing recovery path, regardless of how many earlier recoveries
+completed during the same farm session. This includes sequence desync, dead
+board, controller stall, active-combat actionability loss, late mandatory
+reset, entry-opening timeout, room ejection, and a validated local actor in
+`Board._leftActorNumbers` while combat ownership is still active.
+
+There is no operator-facing `Max recoveries` setting and no lifetime recovery
+cap. The cumulative recovery count remains telemetry only. Safety remains
+incident-local: one coordinator may arm only one trigger and authorize only
+one bounded Exit/Confirm/exact-target re-entry sequence; failed or ambiguous
+identity/lifecycle proof still stops fail-closed. Recovery never restores old
+board, action, ACK, pointer, card UI, or gameplay state.
+
+An exact active combat that makes no authoritative progress for 45 seconds is
+a technical recovery condition regardless of whether MatchService still names
+the local player or boss as current owner. Progress means any change in the
+exact session, turn, current owner, displayed server timer, local/last move
+sequence, or highest acknowledged server sequence. The proof requires at least
+four valid read-only samples, a production-ready ACTIVE board, prior accepted
+gameplay, valid foreground/window ownership, and no pending action, PASS,
+Fusion or sequence-desync flow. Missing or ambiguous evidence resets the proof;
+this watchdog never authorizes a gameplay input.
+
+Normal SWAP input keeps the established 0.25-second two-click gap while
+delivery is healthy. A proven technical recovery/exact room re-entry or an
+unconfirmed SWAP may raise that gap adaptively, capped at 1.5 seconds. Pacing
+must use read-only/action-outcome evidence, remain logged per SWAP, decay only
+after sustained clean acknowledgements, and preserve the remaining server
+timer margin. Failure to read the unverified visual Ping/FPS overlay is not a
+reason to guess or add a blind OCR dependency.
+
+## Local actor ownership and final SWAP preflight
+
+Do not infer the local user by requiring exactly one non-boss PlayerStats.
+Fusion can publish an additional non-boss pet actor. Resolve the local actor
+read-only through the exact chain implemented by Active itself:
+`ChatService.Username -> MatchService.Players[username] ->
+MatchPlayerSnapshotDTO.actorNumber`. Missing, changing or ambiguous mapping
+remains UNKNOWN; actor `1` is never hard-coded.
+
+The stable provider/policy reread is not the final SWAP authorization. Modal
+capture and coordinate preparation can consume a late turn. Immediately before
+the ordinary two-click input, reread MatchService and require the same MatchId,
+turn, local owner and local move sequence, with timer strictly above the
+configured one-second floor. A failure cancels the unsent permit and proposal;
+it is not a server rejection and must not pause the whole farm.

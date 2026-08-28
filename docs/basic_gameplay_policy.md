@@ -35,7 +35,10 @@ This is a coarse server-tick value, not the game's smooth UI getter. The latter
 also subtracts `UnityEngine.Time.unscaledTime` from a local anchor; that clock
 does not yet have a proven external pointer. The configured action floor is
 inclusive: at exactly the floor an action may still be proposed; below it the
-policy fails closed. Production Phase 2D.6 uses a four-second floor. It never
+policy fails closed. Production auto-farm uses a one-second floor because live
+gameplay confirms that an input sent while the display shows `1` is accepted.
+A missing ACK at one/two ticks is treated as a lag/unconfirmed-action event,
+not proof that those timer values are intrinsically invalid. The policy never
 turns a low timer into a generic “least-bad” move.
 
 `first_local_turn` is derived only from runtime `is_local_turn` and server

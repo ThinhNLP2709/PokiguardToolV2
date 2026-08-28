@@ -1,8 +1,8 @@
-"""Read-only application boundary for the Phase 2E.1 desktop UI.
+"""Authoritative application boundary for the desktop control UI.
 
 The desktop view never owns a FarmRun, input capability, or Win32 input
-backend.  It consumes immutable snapshots produced by one bounded polling
-worker and may edit only a session-local, canonically validated draft config.
+backend. It consumes immutable snapshots produced by one bounded polling
+worker and submits short commands that are revalidated at this boundary.
 """
 
 from __future__ import annotations
@@ -39,8 +39,12 @@ class DesktopConfig:
     play_style: PlayStyle = PlayStyle.SIMPLE
     mana_priority: ManaPriority = ManaPriority.EVOLUTION
     intelligence: Intelligence = Intelligence.BASIC
-    boss_id: str | None = "1289"
-    boss_name: str | None = "Starburst"
+    # The desktop draft may be target-unbound while idle.  Start/Resume pins
+    # the exact target proven by the current Chinh Phuc room before handing an
+    # immutable config to FarmRunner.  This avoids a product dependency on a
+    # user-known or hard-coded pet ID.
+    boss_id: str | None = None
+    boss_name: str | None = None
     target_completed_matches: int = 3
     max_technical_recoveries: int = 1
     max_match_attempts: int = 5
@@ -55,7 +59,8 @@ class DesktopConfig:
             mana_priority=self.mana_priority,
             intelligence=self.intelligence,
         )
-        FarmTarget(self.normalized_boss_id, self.normalized_boss_name)
+        if self.normalized_boss_id is not None or self.normalized_boss_name is not None:
+            FarmTarget(self.normalized_boss_id, self.normalized_boss_name)
         FarmRunLimits(
             self.target_completed_matches,
             self.max_technical_recoveries,
@@ -71,6 +76,18 @@ class DesktopConfig:
     def normalized_boss_name(self) -> str | None:
         value = self.boss_name.strip() if self.boss_name is not None else ""
         return value or None
+
+    def with_target(
+        self, boss_id: str | None, boss_name: str | None
+    ) -> "DesktopConfig":
+        """Return a validated run draft pinned to one runtime-proven target."""
+
+        return replace(self, boss_id=boss_id, boss_name=boss_name)
+
+    def without_target(self) -> "DesktopConfig":
+        """Drop the farm-session pet identity while retaining user policy."""
+
+        return replace(self, boss_id=None, boss_name=None)
 
     @classmethod
     def from_strings(
@@ -112,6 +129,9 @@ class RuntimeObservation:
     target_name: str | None = None
     provider_reason: str | None = None
     error: str | None = None
+    target_candidates: tuple[tuple[str | None, str | None], ...] = ()
+    lobby_branch: str | None = None
+    current_room_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -148,13 +168,23 @@ class CheckpointSummary:
             and self.stop_reason is None
             and self.stop_request_state == "RUNNING"
         )
+        recoverable_legacy_technical_stop = bool(
+            self.finalized_status == "SAFE_STOP"
+            and self.last_safe_lifecycle == "BOSS_LOBBY"
+            and self.stop_reason in {"COMBAT_SAFE_STOP", "RECOVERY_LIMIT_REACHED"}
+            and self.stop_request_state == "RUNNING"
+        )
         return bool(
             self.available
             and self.path
             and self.completed_matches is not None
             and self.target_completed_matches is not None
             and self.completed_matches < self.target_completed_matches
-            and (graceful_lobby_stop or interrupted_at_durable_lobby_boundary)
+            and (
+                graceful_lobby_stop
+                or interrupted_at_durable_lobby_boundary
+                or recoverable_legacy_technical_stop
+            )
         )
 
 
@@ -178,6 +208,23 @@ class UiSafetyEvidence:
 
 
 @dataclass(frozen=True)
+class CommandAvailability:
+    actionable: bool = False
+    reason: str = "INITIALIZING"
+
+
+@dataclass(frozen=True)
+class ControlAvailability:
+    """Backend-derived operator guidance; never an authorization boundary."""
+
+    start: CommandAvailability = CommandAvailability()
+    resume: CommandAvailability = CommandAvailability()
+    graceful_stop: CommandAvailability = CommandAvailability()
+    emergency_stop: CommandAvailability = CommandAvailability()
+    config_editable: bool = True
+
+
+@dataclass(frozen=True)
 class ControlPlaneSnapshot:
     version: int
     timestamp: str
@@ -194,6 +241,7 @@ class ControlPlaneSnapshot:
     read_only: bool
     safety: UiSafetyEvidence
     controller: DesktopControllerSnapshot
+    controls: ControlAvailability = ControlAvailability()
 
 
 class RuntimeStatusProvider(Protocol):
@@ -327,6 +375,7 @@ class DesktopControlPlane:
                 else DesktopControllerSnapshot(updated_at=utc_timestamp())
             ),
         )
+        self._refresh_controls_locked()
 
     @staticmethod
     def _ui_safety(controller: DesktopControllerSnapshot) -> UiSafetyEvidence:
@@ -351,6 +400,9 @@ class DesktopControlPlane:
 
     def _publish_controller(self) -> None:
         controller = self._controller_snapshot()
+        config = self._snapshot.config
+        if self._snapshot.controller.active and not controller.active:
+            config = config.without_target()
         self._safety = self._ui_safety(controller)
         self._snapshot = replace(
             self._snapshot,
@@ -358,23 +410,139 @@ class DesktopControlPlane:
             timestamp=utc_timestamp(),
             sampled_monotonic=time.monotonic(),
             controller=controller,
+            config=config,
             safety=self._safety,
         )
 
-    def _command_preflight(self) -> str | None:
-        snapshot = self._snapshot
+        self._refresh_controls_locked()
+
+    def _runtime_command_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
         runtime = snapshot.runtime
+        if self._closed:
+            return "CONTROL_PLANE_CLOSED"
         if self._controller is None:
             return "CONTROLLER_UNAVAILABLE"
-        if snapshot.stale or snapshot.health != "OK":
-            return "RUNTIME_SNAPSHOT_NOT_ACTIONABLE"
-        if not runtime.attached:
-            return "GAME_NOT_ATTACHED"
-        if runtime.lifecycle != "BOSS_LOBBY":
-            return f"START_REQUIRES_BOSS_LOBBY:{runtime.lifecycle}"
         if snapshot.controller.active:
             return "CONTROLLER_ALREADY_ACTIVE"
+        if snapshot.stale:
+            return "STALE_RUNTIME_SNAPSHOT"
+        if runtime.game_detected is False:
+            return "GAME_NOT_DETECTED"
+        if not runtime.attached:
+            return "GAME_NOT_ATTACHED"
+        architecture = (runtime.architecture or "").strip().lower()
+        if architecture not in {"x64", "amd64", "x86_64"}:
+            return f"UNSUPPORTED_ARCHITECTURE:{runtime.architecture or 'UNKNOWN'}"
+        if snapshot.health != "OK":
+            return f"BACKEND_NOT_HEALTHY:{snapshot.health}"
+        if runtime.lifecycle != "BOSS_LOBBY":
+            return f"START_REQUIRES_BOSS_LOBBY:{runtime.lifecycle}"
         return None
+
+    @staticmethod
+    def _pin_current_room_target(
+        snapshot: ControlPlaneSnapshot,
+    ) -> tuple[DesktopConfig | None, str | None]:
+        """Pin the selected target only from an exact current boss room.
+
+        A WORLD_BOSS_LIST observation is deliberately insufficient even when
+        it exposes the same pet in its candidate list.  Selecting a map item
+        is a distinct automation action and must never be inferred by Start.
+        """
+
+        runtime = snapshot.runtime
+        if runtime.lobby_branch != "CHINH_PHUC_ROOM":
+            return None, "CURRENT_BOSS_ROOM_NOT_PROVEN"
+        target_id = runtime.target_id.strip() if runtime.target_id else None
+        target_name = runtime.target_name.strip() if runtime.target_name else None
+        if target_id is None:
+            return None, "CURRENT_ROOM_PET_ID_NOT_PROVEN"
+        try:
+            if int(target_id) <= 0:
+                raise ValueError("pet ID must be positive")
+        except ValueError:
+            return None, "CURRENT_ROOM_PET_ID_INVALID"
+
+        candidates = {
+            (
+                candidate_id.strip() if candidate_id else None,
+                candidate_name.strip() if candidate_name else None,
+            )
+            for candidate_id, candidate_name in runtime.target_candidates
+        }
+        if candidates and (target_id, target_name) not in candidates:
+            return None, "CURRENT_ROOM_TARGET_AMBIGUOUS"
+        try:
+            pinned = snapshot.config.with_target(target_id, target_name)
+            FarmTarget(pinned.normalized_boss_id, pinned.normalized_boss_name)
+        except (TypeError, ValueError):
+            return None, "CURRENT_ROOM_TARGET_INVALID"
+        return pinned, None
+
+    def _start_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
+        reason = self._runtime_command_preflight(snapshot)
+        if reason is not None:
+            return reason
+        pinned, reason = self._pin_current_room_target(snapshot)
+        if reason is not None:
+            return reason
+        assert pinned is not None
+        assert self._controller is not None
+        return self._controller.launch_rejection_reason(pinned)
+
+    def _resume_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
+        reason = self._runtime_command_preflight(snapshot)
+        if reason is not None:
+            return reason
+        pinned, reason = self._pin_current_room_target(snapshot)
+        if reason is not None:
+            return reason
+        assert pinned is not None
+        checkpoint = snapshot.checkpoint
+        if not checkpoint.available or checkpoint.path is None:
+            return checkpoint.error or "NO_RESUMABLE_CHECKPOINT"
+        assert self._controller is not None
+        return self._controller.launch_rejection_reason(
+            pinned,
+            Path(checkpoint.path),
+        )
+
+    @staticmethod
+    def _command_availability(reason: str | None) -> CommandAvailability:
+        return CommandAvailability(reason is None, reason or "AVAILABLE")
+
+    def _calculate_controls(
+        self, snapshot: ControlPlaneSnapshot
+    ) -> ControlAvailability:
+        controller = snapshot.controller
+        if not controller.active:
+            graceful_reason = "NO_ACTIVE_CONTROLLER"
+            emergency_reason = "NO_ACTIVE_CONTROLLER"
+        elif controller.state is DesktopControllerState.EMERGENCY_STOPPING:
+            graceful_reason = "EMERGENCY_STOP_ACKNOWLEDGED"
+            emergency_reason = "EMERGENCY_STOP_ALREADY_ACKNOWLEDGED"
+        else:
+            graceful_reason = (
+                "GRACEFUL_STOP_PENDING"
+                if controller.graceful_stop_requested
+                else None
+            )
+            # Emergency Stop deliberately remains available while graceful
+            # stop is pending.
+            emergency_reason = None
+        return ControlAvailability(
+            start=self._command_availability(self._start_preflight(snapshot)),
+            resume=self._command_availability(self._resume_preflight(snapshot)),
+            graceful_stop=self._command_availability(graceful_reason),
+            emergency_stop=self._command_availability(emergency_reason),
+            config_editable=not controller.active and not self._closed,
+        )
+
+    def _refresh_controls_locked(self) -> None:
+        self._snapshot = replace(
+            self._snapshot,
+            controls=self._calculate_controls(self._snapshot),
+        )
 
     def _rejected_command(self, reason: str) -> ControllerCommandResult:
         controller = self._controller_snapshot()
@@ -391,12 +559,18 @@ class DesktopControlPlane:
         with self._lock:
             if self._closed:
                 return self._rejected_command("CONTROL_PLANE_CLOSED")
-            reason = self._command_preflight()
+            reason = self._start_preflight(self._snapshot)
             if reason is not None:
                 return self._rejected_command(reason)
+            pinned, reason = self._pin_current_room_target(self._snapshot)
+            if reason is not None or pinned is None:
+                return self._rejected_command(
+                    reason or "CURRENT_ROOM_TARGET_NOT_PROVEN"
+                )
+            self._snapshot = replace(self._snapshot, config=pinned)
             assert self._controller is not None
             result = self._controller.start(
-                self._snapshot.config,
+                pinned,
                 game_pid=self._snapshot.runtime.pid,
             )
             self._publish_controller()
@@ -406,17 +580,20 @@ class DesktopControlPlane:
         with self._lock:
             if self._closed:
                 return self._rejected_command("CONTROL_PLANE_CLOSED")
-            reason = self._command_preflight()
+            reason = self._resume_preflight(self._snapshot)
             if reason is not None:
                 return self._rejected_command(reason)
             checkpoint = self._snapshot.checkpoint
-            if not checkpoint.available or checkpoint.path is None:
+            assert checkpoint.path is not None
+            pinned, target_reason = self._pin_current_room_target(self._snapshot)
+            if target_reason is not None or pinned is None:
                 return self._rejected_command(
-                    checkpoint.error or "NO_RESUMABLE_CHECKPOINT"
+                    target_reason or "CURRENT_ROOM_TARGET_NOT_PROVEN"
                 )
+            self._snapshot = replace(self._snapshot, config=pinned)
             assert self._controller is not None
             result = self._controller.resume(
-                self._snapshot.config,
+                pinned,
                 Path(checkpoint.path),
                 game_pid=self._snapshot.runtime.pid,
             )
@@ -428,6 +605,14 @@ class DesktopControlPlane:
             if self._controller is None:
                 return self._rejected_command("CONTROLLER_UNAVAILABLE")
             result = self._controller.request_graceful_stop(generation)
+            self._publish_controller()
+            return result
+
+    def restore_game_foreground(self, generation: int) -> ControllerCommandResult:
+        with self._lock:
+            if self._controller is None:
+                return self._rejected_command("CONTROLLER_UNAVAILABLE")
+            result = self._controller.restore_game_foreground(generation)
             self._publish_controller()
             return result
 
@@ -449,6 +634,8 @@ class DesktopControlPlane:
         with self._lock:
             if self._closed:
                 raise RuntimeError("control plane is closed")
+            if self._controller_snapshot().active:
+                raise RuntimeError("CONFIG_LOCKED_CONTROLLER_ACTIVE")
             self._snapshot = replace(
                 self._snapshot,
                 version=self._snapshot.version + 1,
@@ -456,6 +643,7 @@ class DesktopControlPlane:
                 sampled_monotonic=time.monotonic(),
                 config=config,
             )
+            self._refresh_controls_locked()
             return self._snapshot
 
     def refresh(self) -> ControlPlaneSnapshot:
@@ -504,12 +692,15 @@ class DesktopControlPlane:
             with self._lock:
                 current = self._snapshot
                 controller = self._controller_snapshot()
+                config = current.config
+                if current.controller.active and not controller.active:
+                    config = config.without_target()
                 self._safety = self._ui_safety(controller)
                 self._snapshot = ControlPlaneSnapshot(
                     version=current.version + 1,
                     timestamp=utc_timestamp(),
                     sampled_monotonic=time.monotonic(),
-                    config=current.config,
+                    config=config,
                     runtime=runtime,
                     checkpoint=checkpoint,
                     stale=stale,
@@ -522,6 +713,7 @@ class DesktopControlPlane:
                     safety=self._safety,
                     controller=controller,
                 )
+                self._refresh_controls_locked()
                 return self._snapshot
         except Exception as exc:  # noqa: BLE001 - UI must survive provider faults
             with self._lock:
@@ -551,6 +743,7 @@ class DesktopControlPlane:
                     safety=self._safety,
                     controller=self._controller_snapshot(),
                 )
+                self._refresh_controls_locked()
                 return self._snapshot
 
     def close(self) -> None:
@@ -635,6 +828,8 @@ class SnapshotPoller:
 
 __all__ = [
     "CheckpointSummary",
+    "CommandAvailability",
+    "ControlAvailability",
     "ControlPlaneSnapshot",
     "DesktopConfig",
     "DesktopControlPlane",

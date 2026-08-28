@@ -478,16 +478,34 @@ while `CurrentMatchId=null` at the boss lobby, the same MatchService still held
 `highestAckedSequence=19`. The value also survived normal foreground
 navigation from the boss room to the Chinh Phuc pet map, the region map and
 the game home screen. This is persistent client state, not scan latency.
-Technical recovery therefore now reads MatchService at the exact boss-lobby
+Technical recovery therefore reads MatchService at the exact boss-lobby
 boundary *before* reserving RECOVERY_REENTRY. A non-null MatchId records
-`RECOVERY_LOBBY_MATCH_NOT_CLEARED`; a non-empty ACK set records
-`RECOVERY_ACK_EPOCH_NOT_RESET`; an unreadable epoch records
-`RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE`. Every case fails closed with zero
-re-entry inputs. The 2.5-second post-opening guard remains as a secondary
-defense for otherwise clean epochs. Neither path clears, repairs, ignores or
-forges sequence state. If the client remains contaminated, the operator must
-restart the game process before another bounded B3 run; automatic game restart
-remains outside Phase 2D.6 scope.
+`RECOVERY_LOBBY_MATCH_NOT_CLEARED`; an unreadable epoch records
+`RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE`; an advancing ACK/local-move watermark
+records `RECOVERY_ACK_EPOCH_NOT_RESET`. Those cases fail closed with zero
+re-entry inputs.
+
+Exact-25 Phase 2E.3 run `33f02803c0b2464cb3a0da22b05eff09`
+provided the missing distinction. After six strong WINs, attempt 7 hit an
+exact `DEAD_BOARD_NO_REFRESH`; recovery exited normally and proved the exact
+owner-free Starburst boss lobby for 120 samples over 15 seconds. Throughout
+that interval `CurrentMatchId=null`, the provider session was null and the
+same MatchService retained the *unchanged* pair
+`highestAckedSequence=29/localMoveSequence=6`. Ordinary successful entries in
+the same run also began from stale lobby ACK telemetry and obtained a clean
+epoch only while the new MATCH_START session was bound. The pre-entry guard
+now permits this one deferred-reset case after at least eight identical
+samples spanning two seconds, including an unchanged MatchService address,
+ACK and local sequence. The exact lobby is re-proved before the click. The
+2.5-second post-opening guard remains mandatory. Build `v1.0.0+11`
+supersedes the earlier assumption that every non-null raw ACK must block: run
+`4ab9bda9429144f991dd8bdcd6e83956` proved that the frozen value can survive
+the distinct pristine MATCH_START itself. Only an explicitly armed frozen
+lobby residue may be isolated, and then only exact current-session
+ChatMessageDTO/BoardWs evidence is eligible; the raw ACK remains audit
+telemetry. A reused/changed session, non-pristine action state, unsafe timer or
+unexplained ACK advance still fails closed. The tool never clears, repairs or
+writes the game's ACK set.
 
 **`PASS_STATE_UNCONFIRMED` during reconnect** — PASS_WAIT still requires the
 game-owned AFK payload and never increments idle locally. The transport monitor

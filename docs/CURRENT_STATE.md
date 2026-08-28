@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-08-22 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-08-29 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,34 +24,39 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2E.2 — PASS STRONG** |
-| Next approved/planned phase | **Phase 2E.3 NOT IMPLEMENTED — await explicit approval** |
+| Current completed phase | **Phase 2E.3 — PASS STRONG** |
+| Active phase | **NONE — awaiting the user's next explicit phase** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
 
-Phase 2E.2 connects the Phase 2E.1 desktop UI to the accepted Phase 2D.6
-FarmRunner through one asynchronous controller and one authoritative command
-owner. Start, Stop After Current Match, Emergency Stop, and durable checkpoint
-Resume are live, bounded, and fail closed. Start foregrounds the verified game
-PID before normal input; graceful stop drains the current match and returns
-focus to the game, while emergency stop invalidates future actions immediately
-and never synthesizes an unfinished result.
+Phase 2E.3 completes the compact Desktop UI and its finite UI-controlled
+FarmRunner. Start, Stop After Current Match, Emergency Stop and durable lobby
+checkpoint Resume share one generation-bound controller owner. Preferences
+never auto-start or auto-resume. Accepted configuration is immutable while a
+run is active, the verified game PID is foregrounded and normalized before
+input, operator logging is bounded, and UI shutdown drains its single poller.
 
-Live UI acceptance passed every required stage. B1 completed exactly 1/1 WIN.
-B2 stopped gracefully after the current WIN at exact `BOSS_LOBBY`, with no
-second entry. B3 resumed a durable 1/5 lobby checkpoint and reached exactly
-5/5 WINs without attempt 6. B4 acknowledged an emergency stop during active
-combat and sent zero actions or entries after the ACK. B5 completed exactly
-5/5 matches (4 WIN, 1 LOSS, 0 UNKNOWN), returned to exact `BOSS_LOBBY`, created
-no attempt 6, and kept every safety aggregate at zero. Evidence:
-[Phase 2E.2 report](phase2e2_report.md) and
-[runbook](phase2e2_runbook.md).
+Start/Resume still requires an exact `CHINH_PHUC_ROOM` and pins that room's
+positive runtime `enemyPetId` only for the farm session. A proven ejection or
+technical incident may re-enter only that exact pet. Each independently proven
+incident receives a fresh one-shot recovery coordinator; there is no
+farm-lifetime recovery ceiling. Ambiguous room/map ownership, stale state or a
+failed recovery still stops fail-closed. The pin is cleared when the controller
+ends, and the tool does not navigate from the general lobby through islands.
 
-Phase 2E.1 remains the accepted read-only UI/control-plane foundation. Its
-offline and live observer evidence is retained in the
-[Phase 2E.1 report](phase2e1_report.md) and
-[runbook](phase2e1_runbook.md). There is still no hidden start-on-launch
-behavior. Phase 2E.3 has not been implemented.
+Final B6 FarmRun `3aa7b7e1279a4c91a03c2f72dd9d48c4` completed exactly
+25 evidence-backed results in 27 attempts: 25 WIN, 0 LOSS, 0 UNKNOWN, 25
+STRONG/CONSISTENT terminals, and two independent dead-board technical aborts
+whose exact-Starburst `1289` recoveries succeeded. Attempt 27 produced the 25th
+completion and no attempt 28 was created. The run ended
+`FARM_TARGET_COMPLETED` at `BOSS_LOBBY`. After idle UI close, the summary proved
+one poller, one maximum controller, 67/500 operator-log entries, zero UI/thread
+errors, a stopped poller/process and the game process still alive. Evidence:
+[Phase 2E.3 report](phase2e3_report.md) and
+[runbook](phase2e3_runbook.md).
+
+The accepted Phase 2E.2 and Phase 2E.1 foundations remain documented in their
+respective reports. There is still no hidden start-on-launch behavior.
 
 Phase 2D.6 accepted graceful stop, durable checkpoint/resume, and a 25-match
 bounded soak. B1 artifact
@@ -167,10 +172,9 @@ the controller expected 1/3. No wrong-turn, duplicate, stale, foreground, or
 post-combat input occurred. The reset correlation now requires the consuming
 action's source turn to be strictly after the last confirmed PASS.
 
-The user then explicitly approved reducing the local-turn deadline warning from
-the prior six-second margin to the exact four-second actionability floor. The
-controller may continue evaluation at 5+ seconds but still fail-closes at 4
-seconds before sending an unacceptably late action.
+The user then explicitly approved reducing the local-turn deadline warning to
+an inclusive one-second actionability floor. The controller may send at a
+displayed `1` after its ordinary fresh preflight, and fail-closes at `0`.
 
 The requested visible demonstration then passed on artifact
 `logs/boss_farm_cycle/20260815_214234/`. The controller entered Starburst 1289,
@@ -209,7 +213,7 @@ manipulates network traffic.
 
 ## Production Board Source
 
-Production source:
+Primary production source:
 
 ```text
 WsCombatBatch.board / BoardCellDTO
@@ -230,8 +234,15 @@ Accepted contract:
   validation;
 - invalid/ambiguous/stale/incomplete/unknown state fails closed.
 
-`Dot` is optional validation/telemetry, not a production requirement. CV is
-audit/reference, not production. See [Phase 2B.5](phase2b5_report.md).
+Phase 2E.3 B6 retries exposed a remaining post-opening gap when Unity reclaims
+the current `WsCombatBatch`/transport DTO after its durable ACK becomes visible
+but before the external poll captures it. `Board.allDots` cannot close this gap
+directly: Cpp2IL proves that its elements are `GameObject` references, not
+`Dot` component pointers, and the external `GameObject -> Dot` traversal is
+still UNKNOWN. The rejected experimental `GameObject + 0x48` path was removed;
+it never resolved a live Dot and had no valid layout evidence. DTO remains the
+only production board source. CV remains audit/reference, not production. See
+[Phase 2B.5](phase2b5_report.md) for the accepted DTO-only boundary.
 
 ## Coordinate Model
 
@@ -328,6 +339,11 @@ still UNKNOWN; known Board modal/action/end flags are the accepted gate. See
 ### EVOLVE — PRODUCTION ACCEPTED within BASIC combat
 
 - Dynamic live Fusion control and actual positive runtime cost.
+- Live control discovery first scans only the allocation regions anchored by
+  the current `Board.cardsInHand` GameObjects. Cpp2IL proves that
+  `FusionCardUI.Spawn`'s returned GameObject is appended to this list. Region
+  membership is discovery evidence only; the exact `FusionCardUI` class,
+  native object and live Button must still validate before input.
 - Functional and non-turn-consuming.
 - `success=false` may retry only under fresh-state/lock/response safety.
 - `success=true` requires durable `fusion.used=true`, then full reread; a
@@ -336,6 +352,15 @@ still UNKNOWN; known Board modal/action/end flags are the accepted gate. See
   input when policy would otherwise PASS.
 
 EVOLVE idle-reset semantics: **UNKNOWN**.
+
+Phase 2E.3 B6 retry 31 exposed a discovery regression rather than an evolution
+failure: Mana reached 175/280/385, but no EVOLVE input was sent. At turns with
+six seconds left the inclusive ten-second EVOLVE response/follow-up floor
+correctly deferred the action; at the ten-second opportunity the rotating
+extended scan had not found a current `FusionCardUI`
+(`cachedFusionUiAddresses=0`). The new cards-in-hand owner-anchor discovery is
+offline-tested and still requires a fresh live EVOLVE observation before B6
+can continue.
 
 ### CAST — PRODUCTION ACCEPTED
 
@@ -571,21 +596,25 @@ implemented. See [Phase 2D.6](phase2d6_report.md) and its
 - [Phase 2E.2](phase2e2_report.md) — **PASS STRONG**; UI Start, graceful stop,
   emergency stop, durable resume, foreground handoff, and an exact 5-match
   bounded run passed live with no post-boundary input or extra entry.
+- [Phase 2E.3](phase2e3_report.md) — **PASS STRONG**; compact operator UX,
+  session-pinned exact-pet recovery, card/Fusion and latency hardening, two
+  naturally recovered dead boards, and an exact 25/25 STRONG/CONSISTENT WIN
+  UI soak with clean UI/poller shutdown.
 
 Intermediate retries are historical evidence, not current phase status.
 
 ## Current Test Baseline
 
-Verified on **2026-08-22**:
+Verified on **2026-08-29**:
 
 ```text
-python -m unittest discover -s tests
-Ran 564 tests
+python -m unittest discover -s tests -p 'test_*.py'
+Ran 725 tests
 OK
 ```
 
-Current baseline: **564/564 PASS**. Phase 2E desktop/controller focus suites:
-**46/46 PASS**. `python -m compileall -q src tools tests`:
+Current baseline: **725/725 PASS**. Phase 2E desktop/controller and terminal
+hardening focused suites: **PASS**. `python -m compileall -q src tools tests`:
 **PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
 WIN/LOSS/UNKNOWN classification, frozen result survival after ownership
 cleanup, UI/memory consistency and conflict, idempotent accounting, two
@@ -601,7 +630,7 @@ handoffs, exact resumable-checkpoint boundaries, and clean worker shutdown.
 
 ## Current Known Limitations
 
-- The Phase 2E.2 UI intentionally exposes only finite target/attempt/recovery
+- The Phase 2E.3 UI intentionally exposes only finite target and attempt
   limits. Infinite/daemon operation, automatic game launch/login/process
   restart, target rotation, scheduling, and remote control are not implemented.
 - Emergency Stop is terminal for the current UI controller generation. It can
@@ -611,25 +640,25 @@ handoffs, exact resumable-checkpoint boundaries, and clean worker shutdown.
 - UI Resume accepts only a durable checkpoint at an exact boss-lobby boundary.
   Completed, emergency, malformed, stale, or mid-combat checkpoints remain
   disabled in the UI and are rejected again by the backend authority.
-- Bounded continuous farming is accepted for the Phase 2D.6 B3 limits: 25
-  completed matches, at most 3 technical recoveries, and at most 32 match
-  attempts. Infinite/daemon farming, game launch/login, automatic process
-  restart, and unbounded retries are not accepted.
+- Bounded continuous farming is accepted for 25 completed matches with an
+  explicit match-attempt ceiling. Successful technical recovery has no
+  farm-lifetime cap, but every proven incident still receives only one bounded
+  Exit/Confirm/Re-entry coordinator. Infinite/daemon farming, game launch/login,
+  automatic process restart and ambiguous retries are not accepted.
 - Checkpoint resume is history/accounting continuation only and requires a
   freshly confirmed exact boss lobby. Mid-combat controller restart/resume and
   restoration of executable runtime state are not accepted.
 - The result-modal `Đồng ý` requirement, exact locator, one-click normal-UI
   path, and resulting lobby transition are live-accepted for the proven modal.
-- Phase 2D.6 B2 naturally recovered one exact dead board. B3 required zero
-  recoveries. If old MatchService ACK state persists at the lobby, technical
-  recovery now refuses re-entry; only a user-run game process restart clears
-  the observed contamination, because automatic restart is out of scope.
-- Terminal PlayerStats capture before cleanup is live accepted for all 25 B3
-  matches: 24 STRONG WINs and one STRONG LOSS, all UI-consistent. UNKNOWN
-  remains the fail-closed outcome when evidence disappears too early.
-- Accepted B3 working-set start/peak/end values are unavailable because the
-  original ctypes sampler truncated the x64 pseudo handle. The ABI is fixed and
-  regression-tested for future runs, but no retroactive RAM series is claimed.
+- Phase 2E.3 B6 naturally recovered two exact dead boards. Session-scoped ACK
+  isolation accepted both fresh recovered openings; an unexplained current-
+  session ACK conflict still stops fail-closed. Automatic process restart
+  remains out of scope.
+- Terminal PlayerStats capture before cleanup is live accepted for all 25 B6
+  matches: 25 STRONG WINs, all UI-consistent. UNKNOWN remains the fail-closed
+  outcome when evidence disappears too early.
+- The accepted B6 working-set sampler observed start/peak/end values of roughly
+  52/106/106 MiB across 27 attempts, with no observed unbounded growth.
 - Ordinary Attack/Fusion card layout is dynamic and accepted. A missing Attack
   card or evolution pet disables that card action only. Pet-specific skill-card
   click layout/use remains intentionally deferred.
@@ -641,6 +670,492 @@ handoffs, exact resumable-checkpoint boundaries, and clean worker shutdown.
   board recovery is naturally observed in Phase 2D.6 B2. Generic unrelated
   modal traversal is **UNKNOWN**.
 - Direct WorldBoss-card entry is not live-calibrated/accepted.
+- Desktop Start/Resume remains current-room-only, but an active farm session may
+  re-enter its exact pinned positive numeric pet ID from a proven settled world
+  boss map. Each incident uses a fresh one-shot recovery coordinator;
+  ambiguous target evidence or an already-sent recovery re-entry fails closed.
+  The pin is cleared when the
+  controller ends, so a later Start again requires an exact current boss room.
+
+### Superseded Phase 2E.3 live-retry evidence
+
+The following entries explain the defects found on the route to acceptance.
+Their statements that another exact-25 run was required are superseded by the
+accepted FarmRun documented in [Phase 2E.3 report](phase2e3_report.md).
+
+- Phase 2E.3 B6 attempt `phase2e3_b6_25_match_soak_01` stopped safely after
+  seven STRONG/CONSISTENT wins when attempt 8 lost combat ownership at turn 5
+  and returned directly to `WORLD_BOSS_LIST`. The attempt had three local
+  SWAP inputs, no terminal participants/HP/event/UI evidence, and therefore
+  cannot be called a completed match. The discovered accounting bug that had
+  promoted this lifecycle loss to completed `UNKNOWN` is fixed: both the
+  combat-summary validator and `FarmRun.normal_combat_ended` now reject an
+  evidence-free UNKNOWN terminal. Evidence-backed UNKNOWN captured before
+  cleanup remains supported. B6 retry
+  `b049492a1bf94becb8d974c3321041fd` then proved the guard: its second attempt
+  was not counted when a mandatory idle-2 turn arrived with six seconds, the
+  selected SWAP was sent promptly but never ACKed, and the room was lost. The
+  new late-mandatory recovery dispatch and exact-pet ejection fallback are now
+  covered offline. B6 run `7509b0e5526c41eeab443a9332f6a457` then provided
+  live exact-pet re-entry evidence: attempt 4 lost its terminal evidence,
+  settled at `WORLD_BOSS_LIST`, selected only pinned pet `1289` (`Starburst`),
+  restored exact room `Coop_581981`, and entered attempt 5 without counting a
+  completed UNKNOWN. The same run later hit a genuine
+  `DEAD_BOARD_NO_REFRESH` on attempt 8. Recovery sent one `Exit + Confirm` and
+  returned to the exact pinned room, but its internal ACK-epoch guard blocked
+  before re-entry; the outer runner previously stopped because it accepted only
+  a world-map fallback. It now also accepts this independently proven exact-room
+  boundary, audits that no recovery re-entry/target-selection input was sent,
+  discards all old combat state, consumes one bounded recovery, and uses the
+  normal fresh-entry flow. Fresh retry `23389f2475ed4b9db3dea884dd3ee4e6`
+  live-proved another exact `1289` map re-entry and then exposed a separate
+  PASS-correlation bug at attempt 10: the server reported authoritative idle
+  `1/3` before PASS and `2/3` after PASS, but the coordinator compared `2/3`
+  with its local first-pass index and stopped. PASS confirmation now derives
+  the expected transition from the exact game-owned idle-before value
+  (`1 -> 2` here), falling back to the local bounded index only for an accepted
+  non-numeric reset baseline. It still rejects stale, mismatched, threshold-3,
+  and otherwise unproven observations. The next live retry
+  `92a1d2643da34079b35d0709a822073c` completed one STRONG/CONSISTENT WIN, then
+  exposed two independent input-boundary regressions on attempt 2. First,
+  ejection re-entry stopped at `WORLD_BOSS_LIST` because the desktop UI owned
+  foreground; re-entry now restores only the already bound exact-PID HWND and
+  then reacquires all runtime/two-frame target evidence before its maximum-one
+  normal click. Second, the resized `1181x617` game client inherited V1's
+  `board_first_center_y=.146` / `board_step_y=.0725` calibration. The planned
+  bottom-row `(7,2)<->(7,3)` was a real match on the authoritative board, but
+  its physical y=402 landed at the row-6/row-7 boundary rather than the tile
+  centre near y=426. Exact evidence was board hash unchanged, LocalSeqNum still
+  zero and authoritative AFK advancing to 1/3 then 2/3. Desktop Start now
+  restores the verified HWND/PID and normalizes the client to canonical
+  `1280x720` before FarmRunner binds it; a live zero-input preflight changed
+  PID 3504 from `1181x617@(717,206)` to `1280x720@(632,206)` while retaining
+  the exact HWND/PID and foreground. A bare MatchService `_ackedSeqs` advance
+  is no longer SWAP acceptance or idle-reset evidence: only the exact durable
+  local move-sequence plus matching from/to coordinates can acknowledge a
+  SWAP. Later B6 retries `_28`, `_29`, and `_30` all stopped safely with zero
+  invented completion when Unity's short-lived transport DTO and
+  `WsCombatBatch` were reclaimed after the durable ACK became visible. That
+  transport gap remains unresolved; `Board.allDots` must not be treated as a
+  `Dot[,]` or promoted into a production board without a proven component
+  traversal. A fresh exact-25 B6 run is still required after the provider
+  timing/current-DTO path is corrected.
+- The first live EVOLVE regression retry after the Fusion owner-anchor change
+  proved a separate timing defect: current `FusionCardUI` discovery did not
+  start until local Mana reached the runtime cost. By turn 13 it had spent two
+  owner-anchor attempts plus two extended scans (33,554,530 bytes) and still
+  had no cached Fusion wrapper; zero EVOLVE inputs were sent. Discovery is now
+  explicitly independent from Mana. Turn 1 remains reserved for the opening
+  board/SWAP, while the first observed boss turn performs one full normal-region
+  current-session CardUI/FusionCardUI warm-up and caches only exact validators.
+  The first live warm-up retry then proved its board/CardUI half: turn 1 SWAP
+  was acknowledged, and turn 2 performed a full normal scan at zero Mana which
+  resolved all three equipped CardUI wrappers. It also exposed that the
+  game-owned `FusionEnabled` flag is false before affordability, so using that
+  flag as a discovery prerequisite still skipped FusionUI. `FusionEnabled` is
+  now removed from discovery while remaining an EVOLVE action gate. Later
+  retries remain bounded. This final adjustment is offline-tested but still
+  requires a fresh live EVOLVE acceptance run.
+- Phase 2E.3 B6 exact-25 retry `65095df6d2c24cd49274def942f39d83`
+  exercised the production one-second inclusive action floor and the post-IDLE-2
+  cached-board fast path. It completed three STRONG WIN results with 80
+  gameplay inputs, including confirmed SWAP, EVOLVE success and accepted CAST,
+  before attempt 4 stopped at `PASS_STATE_UNKNOWN`. Exact evidence showed a
+  policy-selected zero-input PASS while the authoritative board/local turn and
+  live boss remained current but the transient board-only stats fallback had
+  no local `Player` object. The PASS preflight was abandoned, the server later
+  emitted exact `MATCH_AFK_WARN 1/3`, and the next local turn could not bind
+  that numeric result to an active PASS coordinator. The controller stopped
+  fail-closed; the user then manually returned to the boss lobby. This was not
+  an automatic recovery or game ejection.
+- Farm-owned zero-input PASS tracking now tolerates only that exact stats-only
+  gap: local player absent, boss present with positive HP, same ACTIVE local
+  session, production-ready stable/ACK/latest board. It still sends no Windows
+  input and lets authoritative AFK/lifecycle evidence determine the terminal
+  result. As defense in depth, a remaining farm-owned `PASS_STATE_UNKNOWN`
+  with a live bounded recovery dispatcher no longer auto-pauses immediately;
+  it sends no input and waits for either authoritative state change or the
+  existing terminal active-turn recovery gate. Standalone/no-recovery behavior
+  remains fail-closed.
+- Phase 2E.3 B6 exact-25 retry
+  `dea1b8b2eb8e42b98616018dcd4133c6` completed 13/13
+  STRONG/CONSISTENT WINs with 258 gameplay inputs and zero technical
+  recoveries. Entry 14 then created exact session `M_31f7fb40`, but its
+  short-lived `MATCH_START` opening DTO was reclaimed before the provider could
+  publish a stable immutable opening. A later exact current-session
+  `MATCH_MOVE_RES` board proved that the untouched combat had already advanced
+  beyond turn 1 (`turn=3`, `LocalMoveSequence=0`, one entry click, zero gameplay
+  inputs). The old entry boundary correctly refused to treat that later board
+  as an opening, but stopped the whole run with `ENTRY_TIMEOUT_OPENING_BOARD`.
+  The controller stopped at `11:57:11Z` while the combat remained active. At
+  `11:57:23Z` the observer saw `LOBBY_OTHER` with no combat/room owner: the
+  untouched match was ejected to the boss map after the controller had stopped.
+  The user did not manually return to the lobby and no automatic recovery ran.
+- That exact missed-opening case now routes to bounded technical recovery only
+  when session/match ownership, one entry click, zero gameplay input, turn > 1,
+  `firstLocalTurn=false`, `LocalMoveSequence=0`, positive `srvSeq`, board hash,
+  and exact `ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board` source all agree.
+  The route is immediate on that first proven advanced current board; it does
+  not wait out the remaining opening timeout and abandon the game near the idle
+  ejection boundary. It remains a technical abort, never a completed match,
+  and the recovery path still revalidates the failed live session immediately
+  before normal Exit UI input. Any mismatch remains fail-closed. Offline
+  verification after the PASS and missed-opening fixes was 650 tests PASS and
+  compileall clean.
+- Phase 2E.3 B6 exact-25 retry
+  `56c884d710e94dbaad8c0c6a3379c639` completed 11/11
+  STRONG/CONSISTENT WINs with 229 gameplay inputs and zero technical aborts or
+  recoveries. Attempt 11 sent exactly one audited `POSTMATCH_CONFIRM` only
+  after memory proved WIN and the UI proved `Thắng`. The server then removed
+  `WsRoomService.CurrentRoomId` while Unity continued rendering the exact
+  Starburst/Ready room shell. Read-only evidence was lifecycle `LOBBY`, no
+  combat owner, stale `RoomDTO.enemyPetId=1289`, exact clean runtime pet-button
+  closure/PlayerPrefs for 1289, but `ManagerBoss=null`; the old lobby waiter
+  discarded this as generic `LOBBY_OTHER` until `RETURN_LOBBY_TIMEOUT`.
+  The detached-shell locator already existed, but its atomic gate incorrectly
+  required the mutually exclusive `WORLD_BOSS_LIST` branch. The waiter now
+  surfaces only a stable exact-pet detached-shell candidate after the existing
+  room-rehydration grace. Re-entry still requires the current pinned positive
+  pet ID, no combat owner, exact read-only Button/cached-group/PlayerPrefs
+  association, and two stable visual frames before one shell-exit click; it
+  then requires the fully proven world-boss map before the existing maximum-one
+  exact target selection. Wrong pet, live session, ambiguous runtime or
+  unstable UI sends no click and fails closed. The captured live shell satisfies
+  both the new read-only candidate and visual locator (`confidence=0.9698`).
+  Offline verification is now **652/652 PASS**, compileall clean and
+  `git diff --check` clean apart from existing CRLF conversion warnings. A
+  fresh exact-25 B6 live run is still required; Phase 2E.3 remains NOT PASS.
+- Run `0d465c3f5d4b40aa94abf62bb0b00b13` also exposed the gameplay-latency
+  regression behind its late turns. At turn 27, the local turn was visible at
+  about `17:10:17`, but policy did not receive a stable board until
+  `17:10:25.684`. The blocking step was
+  `LOCAL_TURN_ACK_GAP_FULL_ESCALATION`: 510 regions / 571,180,289 bytes / 3.50
+  seconds, followed by board stabilization. `RuntimeSequenceMonitor` retained
+  only ChatMessageDTO regions even when the same scan found WsCombatBatch in a
+  batch-only 8-16 MiB region, so later ACK gaps repeatedly fell back to broad
+  heap scans during the player's turn. The monitor now learns both DTO and
+  batch regions during the safe pre-entry lobby prime, retains batch-only hits
+  after every scan, and receives both hint types from the shared provider.
+  Ordinary scans use exact learned regions; allocator neighbours are added only
+  for a new ACK gap. A live lobby measurement on PID 5748 reduced the repeated
+  scan set from 429.62 MiB to 39.04 MiB and measured the learned scan at 0.206
+  seconds (the one-time 429.62 MiB prime remained in the lobby at 2.94 seconds).
+  Fresh combat evidence is still required before declaring the latency fix
+  live-accepted.
+- A manual room re-entry after that stop proved another lifecycle boundary:
+  `ManagerRoom.selectedCards` was empty while stale `RoomDTO.cards` still held
+  Mana/Rage/Health/Attack, so the authoritative next-combat loadout contained
+  zero cards. Cpp2IL/ISIL proves that `ManagerRoom.DisplayCardsForSelection`
+  creates and registers room Toggles in exact `RoomDTO.cards` order. The live
+  room had one owned Attack candidate at index 3 (`data_id=64647`, `card_id=4`).
+  One diagnostic normal click changed the manager list from empty to exactly
+  `((64647,4,ATTACK))`. The production path now plans only a unique owned
+  Attack card, requires the exact room/pet and no combat owner, proves the
+  runtime-indexed Toggle in two frames, records one `BOSS_CARD_SELECT`, and
+  rereads `ManagerRoom.selectedCards` before permitting the independent Start
+  capability. A live no-entry probe repeated the complete empty -> auto-select
+  -> memory-confirm sequence successfully; locator confidence was `0.9690`.
+  No function/support card is restored in this milestone, and a genuinely
+  unavailable Attack card retains board-only fallback. Offline verification is
+  now **658/658 PASS**, compileall clean and `git diff --check` clean apart from
+  existing CRLF conversion warnings. The UI must be reloaded before the fresh
+  exact-25 run; Phase 2E.3 remains NOT PASS.
+- Fresh exact-25 run `15cb5cf6be3648e19d4090a9b26c2956` proved the
+  pre-entry Attack contract end to end for three completed STRONG/CONSISTENT
+  WINs: every entry had `preentryCardCount=1`,
+  `preentryAttackCardCount=1`, and the live combat used the card (attempt 3 had
+  four accepted casts). Attempt 4 then exposed a separate dead-board routing
+  defect. After two authoritative passes and one acknowledged mandatory reset,
+  the exhaustive 112-pair scan again returned `NO_LEGAL_MOVE_BUG` at idle 2.
+  The generic mandatory SWAP/CAST assertion ran before the existing
+  `EXIT_MATCH`/dead-board recovery branch, producing
+  `MANDATORY_CONSUMING_ACTION_NOT_SELECTED` and safely stopping the run at
+  3/25. Verified dead-board evidence now preempts only that generic assertion
+  and dispatches the existing bounded `DEAD_BOARD_NO_REFRESH` technical
+  recovery to the outer farm coordinator. PASS, NONE and EVOLVE at idle 2
+  remain fail-closed and cannot use this exception. Offline verification is
+  now **660/660 PASS**, compileall clean and `git diff --check` clean apart
+  from existing CRLF conversion warnings. Because the run ended before this
+  fix was loaded, a new exact-25 run is still required; Phase 2E.3 remains NOT
+  PASS.
+- After a machine reset, fresh run `8116549228b4419bb518f95fb6fe1a18`
+  completed one STRONG/CONSISTENT WIN, then reproduced the real postmatch card
+  reset: `ManagerRoom.selectedCards=[]` while `RoomDTO.cards` still exposed one
+  Attack at index 3. The selection path correctly planned that exact card, but
+  Unity rendered the cyan cost header one frame before the card body. The first
+  locator frame was incomplete; the very next frame proved the exact Attack
+  Toggle with confidence `0.9815`. Requiring exactly the first two frames
+  therefore produced the false stop `ATTACK_CARD_TOGGLE_UNPROVEN`. Selection
+  now remains zero-input for a bounded three-second window and requires two
+  consecutive complete proofs at the same runtime-derived point and unchanged
+  foreground geometry. Thresholds are unchanged; an unstable, missing or
+  changed Toggle still fails closed. Offline verification is now **662/662
+  PASS**, compileall clean and `git diff --check` clean apart from existing
+  CRLF conversion warnings. A reloaded UI and fresh live run must prove the
+  empty-manager-list -> selected Attack -> Start sequence and continue the
+  exact-25 soak; Phase 2E.3 remains NOT PASS.
+- The first live retry with the bounded visual wait,
+  `70e86e4434cd4859aa826cf4f9cce2e1`, completed another
+  STRONG/CONSISTENT WIN. Its next entry reproduced the asynchronous state more
+  precisely: the locator obtained two consecutive complete Attack frames after
+  four captures (`confidence=0.9690`), while the atomic read-only preflight
+  found that Unity/server had independently repopulated the same Attack into
+  `ManagerRoom.selectedCards`. The old strict REQUIRED-only preflight rejected
+  this desired `REQUIRED -> ALREADY_SELECTED` transition as
+  `ATTACK_CARD_RUNTIME_CHANGED`. The preflight now accepts only that transition
+  when the exact card identity, room, pet and no-combat-owner invariants still
+  match, records `preentry_attack_selection_rehydrated`, and sends zero card
+  clicks. Different card identity or any other runtime change still fails
+  closed. Offline verification is now **664/664 PASS**, compileall clean and
+  `git diff --check` clean apart from existing CRLF conversion warnings. The
+  UI must be reloaded again and the next postmatch entry must prove this live;
+  Phase 2E.3 remains NOT PASS.
+- Post-reset exact-25 run `77e182eb460b43a1802daa8e6601aa46`
+  completed 21 matches (19 WIN, 2 LOSS) with zero technical aborts/recoveries,
+  including the previously problematic attempt 16 and a live
+  `REQUIRED -> ALREADY_SELECTED` Attack-card rehydration. Attempt 22 then
+  stopped making progress on boss turn 6: `MatchService` remained at timer 14
+  and `ClockPauseReason=ACK_WAIT`, with no pending bot action, while the ACK set
+  had already advanced from `srvSeq=11` to 13. Read-only runtime evidence found
+  local actor 1 in `Board._leftActorNumbers`; the game UI independently showed
+  the local player as left. `MatchService.Players["happi"]` remained stale at
+  `inMatch=true`, proving it is not a safe membership source for this failure.
+  The provider now validates the exact `HashSet<int>` layout at `Board+0x2B0`,
+  publishes `local_has_left_match`, blocks all gameplay when true, and routes
+  only an exact farm-owned ACTIVE session to bounded technical recovery. Boss
+  turns without this durable signal remain zero-input waits; no generic boss
+  timeout was added. Offline verification is now **671/671 PASS**, compileall
+  clean. The running UI predates this fix and must be reloaded before live
+  recovery/soak validation; Phase 2E.3 remains NOT PASS.
+- Fresh exact-25 run `786ab019a93e4c8abb3d424c10b1c20a` completed
+  7/7 STRONG/CONSISTENT WINs with zero technical aborts/recoveries, including
+  Attack casts and successful EVOLVE-follow-up gameplay. After attempt 7 the
+  server again removed room ownership while Unity rendered the exact Starburst
+  shell. Production correctly surfaced `DETACHED_ROOM_SHELL_CANDIDATE` and
+  sent one proven shell-exit click, but then timed out because the map badge
+  locator's single historical `number_A_8` template did not match Unity's
+  1280x720 rasterization. A direct live capture classified the displayed 8 as
+  the old 6 template (`targetScore=7`); the measured 1280x720 variant now
+  identifies only that badge with `digitScore=0`, `digitMargin=6`, and
+  confidence `0.955`. The post-shell transition now accepts exactly two
+  bounded paths: two stable runtime-derived target-badge frames for direct map
+  navigation, or three stable leave-modal frames followed by one separately
+  audited `BOSS_ROOM_SHELL_CONFIRM`, unchanged exact-pet/no-owner runtime
+  proof, then stable map proof. Neither path may click on ambiguity. Live
+  read-only verification on the resulting map resolved Starburst/1289,
+  `huntOrder=8`, the unique badge, and one exact normal click returned to a
+  true inspect-ready boss room. Offline verification is now **674/674 PASS**,
+  compileall and `git diff --check` clean apart from existing CRLF warnings. A
+  new exact-25 run is required; Phase 2E.3 remains NOT PASS.
+- Exact-25 retry `653bac40fc0c443ea465d9c4294b31bb` completed attempt 1 as
+  a STRONG/CONSISTENT WIN with successful Attack cast and EVOLVE, then the
+  first Start input for attempt 2 received no game response. The exact target,
+  Attack loadout, two-frame Start locator, foreground geometry and normal
+  input dispatch were all valid, but 45 seconds later there was still no
+  session/loading owner and the same Start control remained visible. The old
+  one-click entry contract therefore stopped at `ENTRY_TIMEOUT_NEW_SESSION`.
+  Farm-owned entry now has one separately audited `BOSS_ENTRY_RETRY` permit:
+  it is available only in the still-pending same attempt after exactly one
+  sent Start, with no combat owner, unchanged clean room ID/pet/Button address,
+  and two stable frames of the same Start signature. It cannot create a new
+  match attempt, cannot be repeated, and a changed/ambiguous proof sends zero
+  retry input and fails closed. Standalone BossEntry remains one-shot because
+  it has no farm retry capability. Offline verification is now **677/677
+  PASS** and compileall clean. A fresh exact-25 run is still required; Phase
+  2E.3 remains NOT PASS.
+- Exact-25 run `33f02803c0b2464cb3a0da22b05eff09` completed six consecutive
+  STRONG/CONSISTENT WINs. Attempt 7 naturally hit an exact dead board and the
+  bounded technical recovery correctly sent one Exit plus one Confirm, cleared
+  the old provider session and returned to the true exact Starburst boss
+  lobby. It then stopped before re-entry because the original lobby ACK guard
+  required `MatchService._ackedSeqs` to be empty. Live read-only evidence over
+  120 samples/15 seconds proved `CurrentMatchId=null`, no provider session and
+  an unchanged stale pair `highestAckedSequence=29/localMoveSequence=6`.
+  Successful ordinary entries in the same process prove that Unity clears
+  this residue while binding the next MATCH_START, not necessarily while idle
+  in the lobby. Recovery now accepts only a frozen owner-free residue after at
+  least eight identical samples spanning two seconds; advancing, unreadable or
+  owned epochs still block. It then re-proves the exact lobby and keeps
+  gameplay locked until a distinct pristine MATCH_START shows a null ACK epoch
+  throughout the existing 2.5-second handoff guard. Focused offline recovery
+  tests are PASS; full-suite and new exact-25 live evidence are pending, so
+  Phase 2E.3 remains NOT PASS.
+- Exact-25 run `f4ea08261b1e4b41a9c997c46e7f5a25` completed 16/16
+  normal results before an operator-requested graceful stop at the exact boss
+  lobby: 13 WIN, 1 LOSS and 2 evidence-backed UNKNOWN, with zero technical
+  aborts/recoveries. Attempts 1-13 had complete local PlayerStats. On attempts
+  14-16 every policy sample retained boss stats but lost the local participant;
+  Attack remained discoverable, yet affordability was UNKNOWN and no
+  EVOLVE/CAST was permitted. This was not merely terminal cleanup: it affected
+  every active-turn policy decision in those three matches. Reverse evidence
+  confirms `Active.playerStatsList +0x28` is the serialized inspector view,
+  while `Active.playerStatsMap +0x20` is the game-owned
+  `Dictionary<int, Active.PlayerStats>` used by combat actor lookup. Participant
+  decoding now structurally validates both sources and uses the current map as
+  primary, with the list only as an overlapping pointer-consistency check and
+  fallback when no map object is published. A declared malformed/changing map,
+  key/actor mismatch or map/list pointer conflict fails closed; no prior-call
+  participant is cached or reused. The exact list-only-boss/map-player+boss
+  regression and conflict cases are covered offline. Full verification is now
+  **685/685 PASS**, compileall clean. A fresh live run must prove map-backed
+  local HP/mana and card use beyond the old long-session boundary before B6
+  can be accepted; Phase 2E.3 remains NOT PASS.
+- Exact-25 retry `bbb76d27b1ef403fb4530d3a57937c5c` proved the new
+  `playerStatsMap` path in three consecutive STRONG/CONSISTENT WINs. Every
+  local/boss sample was map-backed; EVOLVE succeeded and was followed by a
+  fresh-state same-turn SWAP, while three ATTACK casts were accepted. Attempt
+  4 naturally hit a proven `DEAD_BOARD_NO_REFRESH`. Bounded recovery sent one
+  Exit and one Confirm, returned to the exact Starburst room, sent one re-entry
+  click and obtained a distinct pristine 64/64 MATCH_START. The handoff then
+  falsely stopped because the provider instance reused by recovery retained
+  `metrics.highest_acked_sequence=43` from the failed session even though the
+  new runtime ACK epoch was empty. This field is a current-session gauge, not
+  a cumulative metric: both lifecycle reset and lifecycle clear now set it to
+  `None`. The handoff guard also keeps gameplay locked for its complete bounded
+  window when it initially sees a dirty gauge, accepting only after the gauge
+  clears and at least two clean pristine states remain with more than four
+  seconds; a persistent/delayed ACK still fails closed as
+  `RECOVERY_ACK_EPOCH_NOT_RESET`, and session/action mismatches still reject
+  immediately. Regression coverage includes both provider lifecycle paths,
+  stale-gauge settlement, persistent contamination and session change. Full
+  verification is **690/690 PASS**, compileall clean and `git diff --check`
+  clean apart from existing CRLF warnings. The run stopped at the guard and
+  therefore a fresh exact-25 B6 run is still required; Phase 2E.3 remains NOT
+  PASS.
+- Exact-25 retry `1f605aeb308e4b09a95878fcb37ec398` completed 19
+  STRONG/CONSISTENT results (18 WIN, 1 LOSS) with zero technical aborts or
+  recoveries. It passed the old attempt-14--16 failure boundary with every
+  local/boss policy sample sourced from
+  `Active.playerStatsMap/ObfuscatedInt.Value`; Attack affordability, fourteen
+  successful EVOLVEs and thirty accepted CASTs remained available in the long
+  process. After result 19, Unity produced a detached room shell. The runner
+  proved and clicked exactly one shell exit, then proved the exact Starburst
+  hunt-order-8 badge in two frames. The final atomic preflight rejected only
+  because the generic lobby classifier reported the expected owner-free
+  post-shell transition as `LOBBY_OTHER/branch=None`, rather than the normal
+  `BOSS_LOBBY/WORLD_BOSS_LIST`; exact Button/Pet/PlayerPrefs identity and all
+  no-owner evidence were unchanged. Map preflight now accepts exactly those
+  two owner-free shapes. It still requires lobby lifecycle, null room ID/type,
+  null owner, `is_host=false`, no provider session, the exact runtime target
+  association and stable badge proof. Any owned room, ACTIVE lifecycle or
+  different state/branch remains fail-closed. Full verification is now
+  **693/693 PASS**, compileall clean and `git diff --check` clean apart from
+  existing CRLF warnings. The safety stop means this run is not B6 acceptance;
+  a fresh exact-25 run is still required. Phase 2E.3 remains NOT PASS.
+- Exact-25 retry `5fb7ac622bd1476babe099e0dab0bfb3` completed three
+  STRONG/CONSISTENT WINs with zero aborts/recoveries, then stopped before
+  attempt 4 with zero new input. `ManagerRoom.selectedCards` had correctly
+  reset while `RoomDTO.cards` still proved the unique Attack at index 3, but
+  Unity rendered only the cyan strip/header throughout the former three-second
+  visual window; both Attack body metrics remained exactly zero. The saved
+  frames prove this was an incomplete strip rather than a wrong card. The live
+  room later rendered all four bodies normally. Required-Attack discovery now
+  remains zero-input for a bounded 15 seconds and still requires two complete
+  consecutive frames with the original thresholds, exact foreground geometry
+  and unchanged room/runtime identity. The post-click read-only verification
+  window is separately bounded at ten seconds. These waits are lobby-only and
+  do not affect first-turn or combat action latency. Full verification is now
+  **694/694 PASS**, compileall clean and `git diff --check` clean apart from
+  existing CRLF warnings. The safety stop invalidates B6 acceptance; a fresh
+  exact-25 run remains required. Phase 2E.3 remains NOT PASS.
+- Exact-25 retry `0d465c3f5d4b40aa94abf62bb0b00b13` completed 14
+  evidence-backed matches in 16 attempts (8 WIN, 1 LOSS, 5 UI-audited
+  MEMORY_INCOMPLETE UNKNOWN), with one dead-board technical recovery. Attempt
+  10 itself ended with stable `Thắng/WIN`; it was not the ejection. Attempt 16
+  reproduced the actual failure: after authoritative PASS at turn 25 produced
+  idle `1/3`, a Sword SWAP was selected/sent at one remaining server tick and
+  expired with `RESPONSE_OR_ACK_TIMEOUT`. The next local turn was first usable
+  at two ticks; another SWAP was sent without ACK, after which combat ownership
+  disappeared with no terminal HP/event/UI evidence. This is consistent with
+  the server counting the missed inputs as idle 2/3 and 3/3. The user separately
+  confirmed that moves sent at displayed `1` are accepted and animate normally,
+  so this is classified as lag/unconfirmed-action evidence rather than a reason
+  to raise the timer floor. Production keeps the inclusive one-second floor;
+  only `0` blocks new input. A fresh exact-25 run is required;
+  Phase 2E.3 remains NOT PASS.
+- First-turn retry `6f865ca238134733b1d252f6a876e885` proved that the
+  remaining opening failure was latency, not a wrong swap coordinate. Entry
+  had already accepted a pristine 64/64 opening at timer 10, but the combat
+  controller repeated provider stabilization. An equivalent later
+  `MATCH_START` publication changed the sequence identity, so the policy
+  proposal at timer 6 was rejected; the replacement proposal reached the
+  input executor only after a timer-3 preflight and received no ACK before the
+  user stopped. Production handoff now reuses the entry-proven immutable board
+  for only the pristine first local action. A cheap direct MatchService read
+  must still prove the exact session/match, local owner, turn 0/1, local move
+  sequence 0, no prior move and timer >= 1 both at controller publication and
+  immediately before input. Any mismatch falls back to the normal provider;
+  any successful SWAP, EVOLVE or CAST permanently invalidates this fast path.
+  Transport scans also retain both ChatMessageDTO and WsCombatBatch regions;
+  a live read-only benchmark reduced the ordinary learned scan from about
+  429.62 MiB to 39.04 MiB (0.206 s on that sample). Offline verification is
+  **696/696 PASS**, compileall and `git diff --check` are clean. A fresh live
+  manual-Start retry is still required; Phase 2E.3 remains NOT PASS.
+- Live run `5048e07b690d456ca0783ff6b949dc4e` proved the opening
+  fast path in repeated real combats. Attempts 1, 3, 4 and 5 were accounted as
+  STRONG/CONSISTENT WINs; attempt 2 was a true dead-board technical abort whose
+  bounded Exit/Confirm/exact-Starburst re-entry completed successfully. The
+  first SWAP in attempts 5 and 6 was decided immediately from the pristine
+  handoff and acknowledged by the server. Attempt 6 additionally proved three
+  failed EVOLVE responses each fell through to a same-turn acknowledged SWAP,
+  a later EVOLVE succeeded, two ATTACK cards were accepted with exact 160-Mana
+  deltas, and authoritative idle 1/3 then 2/3 forced an acknowledged mandatory
+  SWAP instead of a third pass. It reached a STRONG WIN with zero duplicate,
+  stale, wrong-turn, postmatch or lobby input and zero response timeouts. An F9
+  edge arrived about two seconds after the terminal WIN and finalized the run
+  as `EMERGENCY_STOPPED`, so attempt 6 was deliberately not counted in the
+  checkpoint; this is operator/control evidence, not a combat failure.
+  Optional-card publication was intermittent after rapid ordinary postmatch
+  returns: attempts 2 and 4 had no live CardUI/FusionCardUI, whereas attempts
+  1, 3, 5 and 6 resolved both. Pre-entry now maps an already-selected unique
+  RoomDTO Attack back to its exact visual slot and requires the selected body
+  proof to remain stable for three seconds before Start. It sends no extra card
+  click; ambiguous/no-slot telemetry keeps the Manager selection authoritative
+  and records that the settle proof was unavailable. This lobby-settle patch
+  is offline verified but was not loaded by the UI process used for the run.
+  Full verification remains **696/696 PASS**, compileall and
+  `git diff --check` clean. Restart the Desktop UI and run a fresh bounded soak
+  to validate the settle patch; Phase 2E.3 remains NOT PASS.
+- Exact-25 run `0345ab13927c4607bf9d381c97085725` loaded the lobby
+  settle patch and reached 19/25 completed matches: 19 STRONG/CONSISTENT WIN,
+  0 LOSS, 0 UNKNOWN, 3 earlier successful technical recoveries. Attempt 23
+  accepted a pristine 64/64 opening at timer 13 but then published the local
+  actor inside validated `Board._leftActorNumbers`; the game UI showed timer 0
+  and `[đã thoát]` while lifecycle remained `ACTIVE_COMBAT`. The detector
+  produced `LOCAL_PLAYER_LEFT_ACTIVE_COMBAT`, but the old run-level recovery
+  cap had withheld the per-combat dispatcher, so `recoveryTrigger` remained
+  null and the run finalized `COMBAT_SAFE_STOP`. Recovery is now farm-lifetime
+  unbounded: each proven incident always receives a fresh one-shot coordinator,
+  while ambiguous/failed recovery remains fail-closed. `Max recoveries` was
+  removed from the UI and CLI help; old persisted/checkpoint values are ignored
+  for enforcement and resume compatibility. A narrow history-only migration
+  can resume this exact legacy cap-stop shape from an independently proven
+  exact boss lobby, accounting its single orphan attempt as technical abort and
+  restoring no executable state. Offline verification is **701/701 PASS**.
+  The patch requires a Desktop UI restart and live resume/continuation; Phase
+  2E.3 remains NOT PASS until the exact-25 target completes.
+- Exact-25 retry `40e07464eebd4509a91439877d63c6f2` reached 21/25
+  completed matches in 23 attempts: 17 WIN, 0 LOSS, 4 UI-audited
+  MEMORY_INCOMPLETE UNKNOWN, one dead-board abort and one successful recovery.
+  Attempt 23 then proved a different game/server freeze. After three accepted
+  SWAPs, direct MatchService state became permanently fixed at match
+  `M_ef4e8a78`, turn 10, owner `__BOSS__`, timer 14, local/last move sequence
+  3 and highest ACK 24. Across 187 full scans there were no new messages,
+  batches, timer ticks, turn transitions or sequence progress; the controller
+  waited until its 1800-second timeout. The screenshot also displayed
+  `happi [đã thoát]`, but `Board._leftActorNumbers` did not publish a fresh
+  `GameState`, so the existing player-left detector could not arm recovery.
+  Build `v1.0.0+10` adds an exact-session active-combat progress watchdog for
+  either turn owner. Any change to session, turn, owner, timer, local/last move
+  sequence or highest ACK resets the proof; missing evidence, foreground loss,
+  a pristine opening, pending action, PASS/Fusion wait or sequence desync also
+  resets it. Only a production-ready ACTIVE board with prior accepted gameplay
+  and at least four unchanged samples over 45 seconds dispatches
+  `ACTIVE_COMBAT_PROGRESS_STALLED` into the existing farm-lifetime-unbounded
+  recovery path. Replaying the real attempt-23 log would trigger at
+  `2026-08-27T13:31:43.748Z` after 50.343 seconds, rather than at the 30-minute
+  controller timeout. Offline verification is **713/713 PASS**; a restarted UI
+  and fresh bounded continuation are still required before Phase 2E.3 PASS.
 
 ## Superseded Historical Assumptions
 
@@ -653,18 +1168,18 @@ handoffs, exact resumable-checkpoint boundaries, and clean worker shutdown.
 
 ## Next Phase
 
-**Phase 2E.3 is not implemented. Await explicit user review and approval.**
+**Phase 2E.3 is PASS STRONG. No next phase is active.**
 
 ```text
-accepted Phase 2E.2 live UI/FarmRunner control integration
--> review evidence
--> explicitly define/approve Phase 2E.3 before implementation
+accepted Phase 2E.2 live UI/FarmRunner integration
+-> accepted Phase 2E.3 operator UX + exact-pet recovery + 25-match UI soak
+-> wait for the user's explicit next-phase scope
 ```
 
-No Phase 2E.3 or other future scope is inferred. Infinite farming, process
-relaunch/login, internet recovery, target rotation, pet-specific skill-card
-use, mid-combat checkpoint resume, and expanded recovery authority remain
-outside current scope unless explicitly approved.
+No Phase 2F.1 or other future scope is inferred. Infinite farming, process
+relaunch/login, internet recovery, target rotation, pet-specific skill-card use,
+mid-combat checkpoint resume, and navigation from the general game lobby through
+Chinh Phuc islands remain outside current scope unless explicitly approved.
 
 ## Update Policy for Future Phases
 
@@ -689,3 +1204,119 @@ Continue only the phase explicitly requested by the user.
 
 Canonical references: [AGENTS.md](../AGENTS.md) and
 [DECISIONS.md](DECISIONS.md).
+
+## Desktop Compact Layout / Build Label
+
+The Control tab now hides Attachment, Process, Session, pinned pet ID and
+pinned pet name. These values remain internal read-only controller/recovery
+state and diagnostics evidence; only their redundant widgets were removed.
+PlayStyle/Intelligence share one equal-width row, Target matches/Max attempts
+share another, and the explanatory pet/preferences subtitles were removed.
+The pre-MVP Desktop title is now `Pokiguard Tool V2 - v1.0.0+13`. PlayStyle and
+Intelligence are two equal-width **clusters** on the first row. Target matches
+and Max attempts use the same two-cluster 50/50 outer layout. Inside every
+cluster, the label keeps its natural width immediately beside the control; the
+label and control are never forced to 50/50. ManaPriority is the only cluster on
+its following row, so that cluster spans the full row with no empty sibling.
+Subsequent pre-MVP tool-code revisions increment only
+the `+N` build suffix.
+
+Build `+5` fixes the compact-panel render contract: removing Attachment,
+Process and Session widgets must also remove those keys from the Tk update loop.
+The runtime poller was still healthy in the incident evidence, but the stale
+hidden-key lookup raised `KeyError: 'attachment'` before lifecycle values and
+controller button state could render. A regression test now covers this exact
+hidden-widget failure mode. Timed UI smoke runs now also fail closed unless they
+complete at least one render with zero handled UI errors and stop their poller.
+
+Build `+6` also removes MatchId from both the compact runtime panel and its Tk
+update set. Match identity remains internal controller/gameplay evidence only;
+the operator UI no longer creates or updates a MatchId widget.
+
+Build `+7` separates gameplay preferences into the second `Preferences` tab.
+PlayStyle, Intelligence and ManaPriority use a two-column 30/70 table so all
+controls share one left edge. The Control tab keeps only Target matches and Max
+attempts from the editable settings, places them inside the FarmRunner control
+area, and renders the completed/attempt/W-L-U run report below the buttons.
+
+Build `+8` gives initial keyboard focus to the notebook/tab surface instead of
+the first Target matches entry. The limits remain normally mouse-editable, but
+opening or initially activating the tool no longer selects that field.
+
+Build `+9` adds background-click defocus without intercepting clicks on Entry,
+Combobox, Button, Text or Notebook controls. Start/Resume parses the two limit
+StringVars through canonical `DesktopConfig`, hands that immutable config to the
+controller, immediately disables the editable settings on acceptance, and
+reasserts the accepted Target matches / Max attempts values until the controller
+stops. The fields become editable again only after backend controller truth is
+inactive.
+
+Build `+10` adds the read-only active-combat progress watchdog described above.
+It closes the boss-turn/timer-14 freeze gap without using screenshots or
+relaxing any gameplay-input gate.
+
+Build `+11` fixes exact-25 run `4ab9bda9429144f991dd8bdcd6e83956`.
+The run completed 11 STRONG WINs, then attempt 12 correctly detected
+`DEAD_BOARD_NO_REFRESH`, exited and re-entered exact Starburst `1289` as new
+match `M_d624138a`. The recovered MATCH_START was complete (64/64), but the
+failed match's frozen raw ACK maximum `53` persisted while current-session
+batches were only `3..7`; treating the process-wide maximum as current caused
+`ENTRY_TIMEOUT_OPENING_BOARD`. Recovery ACK isolation is now armed only after
+the exact owner-free room proves a frozen lobby ACK/local-sequence pair. The
+raw value remains visible for audit, while publication may use only the exact
+new MATCH_START or batches independently tied to the current BoardWs owner or
+current-match ChatMessageDTO. An unexplained ACK advance still fails closed.
+The same incident ended in a proven `DETACHED_ROOM_SHELL_CANDIDATE`; failed
+recovery fallback now audits one prior re-entry and continues through that
+exact-pet/no-owner shell into the existing map-target recovery path instead of
+immediately finalizing `RECOVERY_FAILED`. Offline verification is **719/719
+PASS** with compileall and diff checks clean.
+
+Build `+12` addresses live run `73b33c680535474fba7031732bd6347f`,
+which completed 24/25 STRONG/CONSISTENT WINs. Attempt 25 hit a technical
+failure; recovery could not complete in-room after the game reported a lost
+room connection, but the existing exact-pet fallback restored Starburst
+`1289` and attempt 26 entered combat successfully. That recovered combat then
+sent 11 SWAPs but confirmed only 8. Two SWAPs timed out, and the mandatory
+SWAP after authoritative idle `2/3` received no response before the game
+ejected the player. Every physical SWAP still used the fixed 0.25-second
+two-click gap, even while the observed client was running at roughly 3-4 FPS.
+
+There is no verified read-only game field for overlay Ping/FPS and no OCR
+dependency is added. The ordinary-input executor now uses auditable adaptive
+pacing instead: 0.25 seconds normally, 1.0 second after a proven recovery or
+exact room re-entry, and at most 1.5 seconds after an unconfirmed SWAP. Slow
+accepted transitions retain degraded pacing; only eight consecutive accepted
+SWAPs within the fast threshold decay one level. A late integer server timer
+may clamp the delay so the second click retains a 1.25-second delivery margin.
+Each `action_sent` records the selected delay, mode, reason and lag score.
+
+The same run also proved that ordinary `COMBAT_TERMINAL_UNPROVEN` ejection can
+settle at the exact-pet/no-owner `DETACHED_ROOM_SHELL_CANDIDATE`, not only the
+fully loaded `WORLD_BOSS_LIST`. That branch now uses the same centralized
+owner-free ejection proof and exact pinned-pet restoration path instead of
+finalizing `COMBAT_SAFE_STOP`. Match completion is still not counted, old
+combat state is never reused, and ambiguous ownership/target evidence remains
+fail-closed. Offline verification is **722/722 PASS** with compileall and diff
+checks clean.
+
+Build `+13` diagnoses the two starts in runs
+`06b9fa00bcbe43caa37266cd06367bf2` and
+`77de198ab03e413694182a11c5099a03`. The first run's dead-board artifact proved
+three valid stats actors: local user `1` at `716/1563` Mana, Fusion pet `2`,
+and boss `99`; Fusion UI was live and interactable. The old "one non-boss"
+heuristic therefore made player/Mana UNKNOWN and suppressed EVOLVE for the
+wrong ownership reason. The provider now mirrors the read-only
+`Active.LocalActorNumberOrZero` primary chain through
+`MatchService.Players[ChatService.Username].actorNumber`, without hard-coding
+an actor number.
+
+The second run selected a SWAP at timer 2, spent about 1.46 seconds between the
+policy record and completed click pair, then received the exact server reject
+`Không phải lượt bạn`. Its logged adaptive delay was the normal 0.25 seconds,
+so build `+12` did not cause that rejection. Build `+13` adds a cheap direct
+MatchService preflight immediately before SWAP input and cancels the unsent
+action if match, turn, owner, timer or local move sequence changed. Response
+deadlines now start at the actual input boundary rather than before modal and
+coordinate preparation. Offline verification is **725/725 PASS** with
+compileall and diff checks clean.

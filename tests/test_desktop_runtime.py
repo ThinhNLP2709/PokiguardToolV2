@@ -109,6 +109,8 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         )
         read_lobby.return_value = SimpleNamespace(
             state=SimpleNamespace(value="BOSS_LOBBY"),
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(current_room_id="room-1289"),
             reasons=(),
             candidates=(candidate,),
         )
@@ -117,6 +119,8 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         self.assertEqual(observation.lifecycle, "BOSS_LOBBY")
         self.assertEqual(observation.target_id, "1289")
         self.assertEqual(observation.target_name, "Starburst")
+        self.assertEqual(observation.lobby_branch, "CHINH_PHUC_ROOM")
+        self.assertEqual(observation.current_room_id, "room-1289")
 
     @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
     def test_process_exit_closes_attachment(self, provider_class: Mock) -> None:
@@ -154,16 +158,19 @@ class DesktopViewModelTests(unittest.TestCase):
         plane = Mock()
         plane.start_farm.return_value = "start"
         plane.request_graceful_stop.return_value = "graceful"
+        plane.restore_game_foreground.return_value = "foreground"
         plane.emergency_stop.return_value = "emergency"
         plane.resume_from_checkpoint.return_value = "resume"
         poller = Mock()
         view_model = DesktopViewModel(plane, poller, stale_after_seconds=3.0)
         self.assertEqual(view_model.start_farm(), "start")
         self.assertEqual(view_model.request_graceful_stop(7), "graceful")
+        self.assertEqual(view_model.restore_game_foreground(7), "foreground")
         self.assertEqual(view_model.emergency_stop(7), "emergency")
         self.assertEqual(view_model.resume_from_checkpoint(), "resume")
         plane.start_farm.assert_called_once_with()
         plane.request_graceful_stop.assert_called_once_with(7)
+        plane.restore_game_foreground.assert_called_once_with(7)
         plane.emergency_stop.assert_called_once_with(7)
         plane.resume_from_checkpoint.assert_called_once_with()
 
@@ -178,6 +185,8 @@ class DesktopViewModelTests(unittest.TestCase):
         )
         self.assertIn("STALE / NON-ACTIONABLE", presentation.lifecycle)
         self.assertIn("READ-ONLY", presentation.read_only_notice)
+        self.assertFalse(presentation.snapshot_actionable)
+        self.assertEqual("STALE_RUNTIME_SNAPSHOT", presentation.operator_status)
 
     def test_editing_draft_does_not_poll_or_dispatch(self) -> None:
         runtime = Mock(spec=["read", "close"])
@@ -212,6 +221,21 @@ class DesktopViewModelTests(unittest.TestCase):
             self.assertNotIn(forbidden, destinations)
         args = parser.parse_args(["--offline", "--smoke-seconds", "1"])
         self.assertTrue(args.offline)
+
+    def test_smoke_gate_rejects_handled_render_errors(self) -> None:
+        healthy = SimpleNamespace(
+            render_ticks=5,
+            handled_ui_errors=0,
+            poller_alive_after_close=False,
+        )
+        render_error = SimpleNamespace(
+            render_ticks=0,
+            handled_ui_errors=5,
+            poller_alive_after_close=False,
+        )
+        self.assertTrue(desktop_ui_tool.smoke_result_is_healthy(healthy))
+        self.assertFalse(desktop_ui_tool.smoke_result_is_healthy(render_error))
+        self.assertFalse(desktop_ui_tool.smoke_result_is_healthy(None))
 
 
 if __name__ == "__main__":

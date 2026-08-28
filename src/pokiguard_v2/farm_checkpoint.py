@@ -200,13 +200,30 @@ def validate_for_resume(
         and payload.stop_reason is None
         and payload.stop_request_state == "RUNNING"
     )
-    if not (graceful_lobby_stop or interrupted_at_durable_lobby_boundary):
+    # Compatibility bridge for runs produced before technical recovery became
+    # unbounded. Such a run could safe-stop an otherwise valid active combat
+    # after its old lifetime recovery budget was exhausted. The executable
+    # combat state is never resumed. Once the desktop preflight independently
+    # proves the exact pinned boss lobby, preserve history and account the one
+    # orphaned active attempt as a technical abort.
+    recoverable_legacy_technical_stop = bool(
+        payload.finalized_status == "SAFE_STOP"
+        and payload.stop_reason in {"COMBAT_SAFE_STOP", "RECOVERY_LIMIT_REACHED"}
+        and payload.stop_request_state == "RUNNING"
+        and payload.last_safe_lifecycle == "BOSS_LOBBY"
+        and payload.match_attempts
+        == payload.completed_matches + payload.technical_aborts + 1
+    )
+    if not (
+        graceful_lobby_stop
+        or interrupted_at_durable_lobby_boundary
+        or recoverable_legacy_technical_stop
+    ):
         return ResumeDecision(False, "CHECKPOINT_NOT_RESUMABLE", {}, (), 0)
     if (
         payload.target_boss_id != target_boss_id
         or payload.target_boss_name != target_boss_name
         or payload.configured_limits.get("target_completed_matches") != target_completed_matches
-        or payload.configured_limits.get("max_technical_recoveries") != max_technical_recoveries
         or payload.configured_limits.get("max_match_attempts") != max_match_attempts
     ):
         return ResumeDecision(False, "CHECKPOINT_CONFIG_MISMATCH", {}, (), 0)
@@ -218,7 +235,8 @@ def validate_for_resume(
         "wins": payload.wins,
         "losses": payload.losses,
         "unknown_results": payload.unknown_results,
-        "technical_aborts": payload.technical_aborts,
+        "technical_aborts": payload.technical_aborts
+        + (1 if recoverable_legacy_technical_stop else 0),
         "technical_recoveries": payload.technical_recoveries,
         "technical_exits": payload.technical_exits,
         "pass_totals": payload.pass_totals,
@@ -372,8 +390,6 @@ def _validate_payload(payload: CheckpointPayload) -> None:
         or payload.configured_limits["max_match_attempts"] < 1
         or payload.configured_limits["max_match_attempts"]
         < payload.configured_limits["target_completed_matches"]
-        or payload.technical_recoveries
-        > payload.configured_limits["max_technical_recoveries"]
         or payload.match_attempts > payload.configured_limits["max_match_attempts"]
     ):
         raise CheckpointError("CHECKPOINT_INVALID", "configured limits are inconsistent")

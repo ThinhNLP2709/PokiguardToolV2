@@ -3,8 +3,11 @@
 The coordinator is deliberately independent from the live Win32 runner.  It
 owns authorization and evidence; callers own read-only state acquisition and
 normal foreground input. Production triggers are limited to sequence desync,
-a rigorously proven zero-legal-move board, and a narrowly proven loss of the
-current MatchService actionability state at the local-turn deadline.
+a rigorously proven zero-legal-move board, a narrowly proven loss of the
+current MatchService actionability state, a durable Board player-left signal,
+a fully actionable local combat turn on which the farm controller nevertheless
+reaches its terminal deadline, and a bounded exact-session watchdog proving
+that all authoritative combat-progress fields are frozen.
 """
 
 from __future__ import annotations
@@ -18,19 +21,174 @@ import re
 from typing import Any
 from uuid import uuid4
 
+from .actionability import ActionabilityGate, GateContext
 from .board_diagnostics import (
     BoardDiagnosticResult,
     diagnostic_board_hash,
     game_state_payload,
 )
 from .combat_lifecycle import CombatLifecycleState
-from .state import CombatSessionKey, GameState
+from .state import (
+    CombatSessionKey,
+    GameOwnedIdleStatus,
+    GamePhase,
+    GameState,
+)
+
+
+# Product rule confirmed live: gameplay input is accepted while the
+# authoritative timer displays 1 second. Only 0 is terminal for new input and
+# routes the exact farm-owned recovery gate instead.
+MANDATORY_RESET_RECOVERY_FLOOR_SECONDS = 1
+
+# A normal 14-second turn changes at least the server timer or turn/sequence
+# identity. Give reconnects, animations and short server stalls substantially
+# longer than one whole turn before declaring the exact active combat frozen.
+# This watchdog authorizes recovery only; it never authorizes gameplay input.
+ACTIVE_COMBAT_PROGRESS_STALL_SECONDS = 45.0
+ACTIVE_COMBAT_PROGRESS_STALL_MIN_SAMPLES = 4
+
+
+@dataclass(frozen=True)
+class ActiveCombatProgressStall:
+    session_key: CombatSessionKey
+    match_id: str
+    turn: int
+    current_player: str
+    local_username: str
+    remaining_seconds: int
+    local_move_sequence: int
+    last_move_sequence: int
+    highest_acked_sequence: int
+    unchanged_seconds: float
+    sample_count: int
+
+
+class ActiveCombatProgressWatchdog:
+    """Prove that a live MatchService combat signature stopped advancing.
+
+    Every field comes from the read-only direct MatchService/runtime roots. Any
+    identity, timer, turn, move-sequence or ACK progress restarts the clock.
+    Missing/invalid evidence also resets the clock so an absence of data can
+    never be promoted into recovery authority.
+    """
+
+    def __init__(
+        self,
+        *,
+        stall_seconds: float = ACTIVE_COMBAT_PROGRESS_STALL_SECONDS,
+        minimum_samples: int = ACTIVE_COMBAT_PROGRESS_STALL_MIN_SAMPLES,
+    ) -> None:
+        if stall_seconds <= 0:
+            raise ValueError("active-combat stall seconds must be positive")
+        if minimum_samples < 2:
+            raise ValueError("active-combat stall requires at least two samples")
+        self.stall_seconds = float(stall_seconds)
+        self.minimum_samples = int(minimum_samples)
+        self._signature: tuple[Any, ...] | None = None
+        self._unchanged_since: float | None = None
+        self._sample_count = 0
+
+    def reset(self) -> None:
+        self._signature = None
+        self._unchanged_since = None
+        self._sample_count = 0
+
+    def observe(
+        self,
+        *,
+        sampled_at: float,
+        session_key: CombatSessionKey | None,
+        match_id: str | None,
+        turn: int | None,
+        current_player: str | None,
+        local_username: str | None,
+        remaining_seconds: int | None,
+        local_move_sequence: int | None,
+        last_move_sequence: int | None,
+        highest_acked_sequence: int | None,
+        eligible: bool,
+    ) -> ActiveCombatProgressStall | None:
+        exact = bool(
+            eligible
+            and session_key is not None
+            and match_id
+            and session_key.match_id == match_id
+            and turn is not None
+            and turn >= 2
+            and current_player
+            and local_username
+            and remaining_seconds is not None
+            and remaining_seconds >= 0
+            and local_move_sequence is not None
+            and local_move_sequence >= 1
+            and last_move_sequence is not None
+            and last_move_sequence >= 0
+            and highest_acked_sequence is not None
+            and highest_acked_sequence > 0
+        )
+        if not exact:
+            self.reset()
+            return None
+
+        assert session_key is not None
+        assert match_id is not None
+        assert turn is not None
+        assert current_player is not None
+        assert local_username is not None
+        assert remaining_seconds is not None
+        assert local_move_sequence is not None
+        assert last_move_sequence is not None
+        assert highest_acked_sequence is not None
+        signature = (
+            session_key,
+            match_id,
+            int(turn),
+            current_player.casefold(),
+            local_username.casefold(),
+            int(remaining_seconds),
+            int(local_move_sequence),
+            int(last_move_sequence),
+            int(highest_acked_sequence),
+        )
+        if signature != self._signature:
+            self._signature = signature
+            self._unchanged_since = float(sampled_at)
+            self._sample_count = 1
+            return None
+
+        self._sample_count += 1
+        assert self._unchanged_since is not None
+        unchanged_seconds = max(0.0, float(sampled_at) - self._unchanged_since)
+        if (
+            self._sample_count < self.minimum_samples
+            or unchanged_seconds < self.stall_seconds
+        ):
+            return None
+        return ActiveCombatProgressStall(
+            session_key=session_key,
+            match_id=match_id,
+            turn=int(turn),
+            current_player=current_player,
+            local_username=local_username,
+            remaining_seconds=int(remaining_seconds),
+            local_move_sequence=int(local_move_sequence),
+            last_move_sequence=int(last_move_sequence),
+            highest_acked_sequence=int(highest_acked_sequence),
+            unchanged_seconds=unchanged_seconds,
+            sample_count=self._sample_count,
+        )
 
 
 class TechnicalFailureReason(str, Enum):
     SEQUENCE_DESYNC = "SEQUENCE_DESYNC"
     DEAD_BOARD_NO_REFRESH = "DEAD_BOARD_NO_REFRESH"
     ACTIONABILITY_STATE_LOST = "ACTIONABILITY_STATE_LOST"
+    CONTROLLER_STALLED_ACTIVE_COMBAT = "CONTROLLER_STALLED_ACTIVE_COMBAT"
+    ACTIVE_COMBAT_PROGRESS_STALLED = "ACTIVE_COMBAT_PROGRESS_STALLED"
+    LOCAL_PLAYER_LEFT_ACTIVE_COMBAT = "LOCAL_PLAYER_LEFT_ACTIVE_COMBAT"
+    LATE_MANDATORY_RESET = "LATE_MANDATORY_RESET"
+    ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT = "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
 
 
 class RecoveryTriggerSource(str, Enum):
@@ -38,6 +196,13 @@ class RecoveryTriggerSource(str, Enum):
     PRODUCTION_DEAD_BOARD_DIAGNOSTIC = "PRODUCTION_DEAD_BOARD_DIAGNOSTIC"
     PRODUCTION_ACTIONABILITY_DEADLINE = "PRODUCTION_ACTIONABILITY_DEADLINE"
     PRODUCTION_UNCONFIRMED_PASS_RESET = "PRODUCTION_UNCONFIRMED_PASS_RESET"
+    PRODUCTION_CONTROLLER_STALL = "PRODUCTION_CONTROLLER_STALL"
+    PRODUCTION_ACTIVE_COMBAT_PROGRESS_STALL = (
+        "PRODUCTION_ACTIVE_COMBAT_PROGRESS_STALL"
+    )
+    PRODUCTION_BOARD_LEFT_ACTOR_SET = "PRODUCTION_BOARD_LEFT_ACTOR_SET"
+    PRODUCTION_LATE_MANDATORY_RESET = "PRODUCTION_LATE_MANDATORY_RESET"
+    PRODUCTION_ENTRY_OPENING_TIMEOUT = "PRODUCTION_ENTRY_OPENING_TIMEOUT"
     TEST_ONLY = "TEST_ONLY"
 
 
@@ -850,6 +1015,8 @@ class TechnicalRecoveryDispatcher:
         accepted_consuming_actions: int,
         last_accepted_srv_seq: int | None,
         last_accepted_board_hash: str | None,
+        highest_acked_sequence: int | None = None,
+        last_published_turn: int | None = None,
         evidence_source: str = "MatchService actionability telemetry at deadline",
     ) -> bool:
         """Arm recovery only for the reconnect/reset signature seen in B3.
@@ -862,17 +1029,9 @@ class TechnicalRecoveryDispatcher:
         mistaken for a technical failure.
         """
 
-        exact = bool(
-            match_id
-            and session_key.match_id == match_id
-            and turn > 1
-            and current_player
-            and local_username
-            and current_player.casefold() == local_username.casefold()
-            and 0 <= remaining_seconds <= warning_seconds <= 10
-            and local_move_sequence == 0
+        reconnect_signature = bool(
+            local_move_sequence == 0
             and last_move_sequence is None
-            and accepted_consuming_actions > 0
             and (
                 provider_reason
                 in {
@@ -885,6 +1044,28 @@ class TechnicalRecoveryDispatcher:
                     in {"DISCONNECTED", "RECONNECTING"}
                 )
             )
+        )
+        unresolved_acked_transport = bool(
+            provider_reason == "latest_acked_batch_not_resolved"
+            and local_move_sequence is not None
+            and local_move_sequence > 0
+            and last_move_sequence == local_move_sequence
+            and highest_acked_sequence is not None
+            and last_accepted_srv_seq is not None
+            and highest_acked_sequence > last_accepted_srv_seq
+            and last_published_turn is not None
+            and last_published_turn < turn
+        )
+        exact = bool(
+            match_id
+            and session_key.match_id == match_id
+            and turn > 1
+            and current_player
+            and local_username
+            and current_player.casefold() == local_username.casefold()
+            and 0 <= remaining_seconds <= warning_seconds <= 10
+            and accepted_consuming_actions > 0
+            and (reconnect_signature or unresolved_acked_transport)
             and last_accepted_srv_seq is not None
             and last_accepted_srv_seq > 0
             and bool(last_accepted_board_hash)
@@ -973,6 +1154,409 @@ class TechnicalRecoveryDispatcher:
                     srv_seq=source_srv_seq,
                     board_hash=source_board_hash,
                 ),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_controller_stalled_active_combat(
+        self,
+        state: GameState,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        turn: int,
+        remaining_seconds: int,
+        warning_seconds: int,
+        game_foreground: bool,
+        window_valid: bool,
+        controller_running: bool,
+        pending_action: bool,
+        consuming_action_sent: bool,
+        authoritative_pass_wait_active: bool,
+        evolve_wait_active: bool,
+        sequence_desync: Any | None,
+        evidence_source: str = (
+            "fully actionable ACTIVE local turn at terminal controller deadline"
+        ),
+    ) -> bool:
+        """Recover a proven controller stall before later idle turns can eject.
+
+        This is deliberately not a generic timeout trigger. The same current
+        state must still pass the complete production actionability gate, the
+        normal controller must still own the turn, and no gameplay/PASS/Fusion
+        outcome may be pending. Reconnects, animations, boss turns, modal UI,
+        foreground loss and valid authoritative PASS waits remain zero-input
+        waits or safe stops.
+        """
+
+        battle = state.battle
+        exact_identity = bool(
+            match_id
+            and session_key.match_id == match_id
+            and state.phase is GamePhase.COMBAT
+            and battle.combat_lifecycle is CombatLifecycleState.ACTIVE
+            and battle.session_key == session_key
+            and battle.match_id == match_id
+            and battle.board_instance == session_key.board_instance
+            and battle.turn_number == turn
+            and turn > 0
+            and battle.is_local_turn is True
+            and battle.current_turn_player
+            and battle.local_username
+            and battle.current_turn_player.casefold()
+            == battle.local_username.casefold()
+            and 0 <= remaining_seconds < warning_seconds <= 10
+        )
+        if not exact_identity:
+            return False
+        if (
+            not controller_running
+            or pending_action
+            or consuming_action_sent
+            or authoritative_pass_wait_active
+            or evolve_wait_active
+            or (
+                sequence_desync is not None
+                and bool(getattr(sequence_desync, "terminal_for_session", False))
+            )
+        ):
+            return False
+
+        gate = ActionabilityGate.evaluate(
+            state,
+            GateContext(
+                current_session=session_key,
+                game_foreground=game_foreground,
+                window_valid=window_valid,
+                input_locked=False,
+                auto_paused=False,
+                sequence_desync=sequence_desync,
+                allow_opening_board_only=True,
+                allow_authoritative_board_only_stats=True,
+            ),
+        )
+        if not gate.actionable:
+            return False
+
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.CONTROLLER_STALLED_ACTIVE_COMBAT,
+                source=RecoveryTriggerSource.PRODUCTION_CONTROLLER_STALL,
+                failed_session=failed_session_from_state(state),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_active_combat_progress_stalled(
+        self,
+        state: GameState,
+        *,
+        stall: ActiveCombatProgressStall,
+        game_foreground: bool,
+        window_valid: bool,
+        controller_running: bool,
+        pending_action: bool,
+        accepted_consuming_actions: int,
+        authoritative_pass_wait_active: bool,
+        evolve_wait_active: bool,
+        sequence_desync: Any | None,
+        evidence_source: str = (
+            "unchanged direct MatchService turn/timer/move/ACK signature"
+        ),
+    ) -> bool:
+        """Recover a whole-combat freeze on either the local or boss turn.
+
+        Unlike the local deadline detector, this path does not assume which
+        player should act. It requires a previously productive, exact ACTIVE
+        session plus 45 seconds of unchanged authoritative progress fields.
+        Short lag, animation, reconnect, foreground loss, missing reads and all
+        pending gameplay/PASS/Fusion states remain non-authoritative.
+        """
+
+        battle = state.battle
+        exact_identity = bool(
+            stall.match_id
+            and stall.session_key.match_id == stall.match_id
+            and state.phase is GamePhase.COMBAT
+            and battle.combat_lifecycle is CombatLifecycleState.ACTIVE
+            and battle.session_key == stall.session_key
+            and battle.match_id == stall.match_id
+            and battle.board_instance == stall.session_key.board_instance
+            and battle.turn_number == stall.turn
+            and battle.current_turn_player
+            and battle.current_turn_player.casefold()
+            == stall.current_player.casefold()
+            and battle.local_username
+            and battle.local_username.casefold() == stall.local_username.casefold()
+            and state.board is not None
+            and state.board.production_ready
+            and stall.turn >= 2
+            and stall.remaining_seconds >= 0
+            and stall.local_move_sequence >= 1
+            and stall.last_move_sequence >= 0
+            and stall.highest_acked_sequence > 0
+            and stall.unchanged_seconds >= ACTIVE_COMBAT_PROGRESS_STALL_SECONDS
+            and stall.sample_count >= ACTIVE_COMBAT_PROGRESS_STALL_MIN_SAMPLES
+        )
+        if not exact_identity:
+            return False
+        if (
+            not game_foreground
+            or not window_valid
+            or not controller_running
+            or pending_action
+            or accepted_consuming_actions < 1
+            or authoritative_pass_wait_active
+            or evolve_wait_active
+            or (
+                sequence_desync is not None
+                and bool(getattr(sequence_desync, "terminal_for_session", False))
+            )
+        ):
+            return False
+
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.ACTIVE_COMBAT_PROGRESS_STALLED,
+                source=(
+                    RecoveryTriggerSource.PRODUCTION_ACTIVE_COMBAT_PROGRESS_STALL
+                ),
+                failed_session=failed_session_from_state(state),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_local_player_left_active_combat(
+        self,
+        state: GameState,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        evidence_source: str = (
+            "local actor is present in validated Board._leftActorNumbers"
+        ),
+    ) -> bool:
+        """Recover only when the game durably marks the local actor as left.
+
+        ``MatchService.Players`` is a server snapshot and may remain stale in
+        this state. ``Board._leftActorNumbers`` is updated by the client-side
+        player-left handler and directly drives the in-combat "left" visual.
+        The exact farm-owned combat identity must still agree before recovery
+        is armed; this path never authorizes a gameplay action.
+        """
+
+        battle = state.battle
+        exact_identity = bool(
+            match_id
+            and session_key.match_id == match_id
+            and state.phase is GamePhase.COMBAT
+            and battle.combat_lifecycle is CombatLifecycleState.ACTIVE
+            and battle.session_key == session_key
+            and battle.match_id == match_id
+            and battle.board_instance == session_key.board_instance
+            and battle.local_actor_number is not None
+            and battle.local_actor_number > 0
+            and battle.local_has_left_match is True
+        )
+        if not exact_identity:
+            return False
+
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.LOCAL_PLAYER_LEFT_ACTIVE_COMBAT,
+                source=RecoveryTriggerSource.PRODUCTION_BOARD_LEFT_ACTOR_SET,
+                failed_session=failed_session_from_state(state),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_entry_opening_timeout_active_combat(
+        self,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        provider_session: CombatSessionKey | None,
+        entry_clicks: int,
+        gameplay_inputs: int,
+        published_turn: int,
+        first_local_turn: bool,
+        local_move_sequence: int | None,
+        srv_seq: int,
+        board_hash: str,
+        board_source: str,
+        evidence_source: str = (
+            "entry missed opening after current ACK-attested combat board advanced"
+        ),
+    ) -> bool:
+        """Recover when entry missed the immutable opening but combat is live.
+
+        The entry click is already irreversible. Gameplay never started, and a
+        later current MATCH_MOVE_RES board proves the game advanced beyond the
+        pristine opening. Recovery preflight still revalidates the exact failed
+        session immediately before any normal Exit UI input.
+        """
+
+        exact = bool(
+            match_id
+            and session_key.match_id == match_id
+            and provider_session == session_key
+            and entry_clicks == 1
+            and gameplay_inputs == 0
+            and published_turn > 1
+            and first_local_turn is False
+            and local_move_sequence == 0
+            and srv_seq > 0
+            and bool(board_hash)
+            and board_source
+            == "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+        )
+        if not exact:
+            return False
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT,
+                source=RecoveryTriggerSource.PRODUCTION_ENTRY_OPENING_TIMEOUT,
+                failed_session=FailedSessionEvidence(
+                    session_key=session_key,
+                    match_id=match_id,
+                    board_instance=session_key.board_instance,
+                    lifecycle_epoch=session_key.lifecycle_epoch,
+                    turn=published_turn,
+                    srv_seq=srv_seq,
+                    board_hash=board_hash,
+                ),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_late_mandatory_reset(
+        self,
+        state: GameState,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        turn: int,
+        remaining_seconds: int,
+        minimum_action_time: int,
+        recovery_warning_seconds: int,
+        selected_action: str,
+        policy_blocker: str | None = None,
+        mandatory_reset_pending: bool,
+        game_foreground: bool,
+        window_valid: bool,
+        controller_running: bool,
+        pending_action: bool,
+        consuming_action_sent: bool,
+        authoritative_pass_wait_active: bool,
+        evolve_wait_active: bool,
+        sequence_desync: Any | None,
+        evidence_source: str = (
+            "authoritative idle threshold reached on a late mandatory reset turn"
+        ),
+    ) -> bool:
+        """Recover before idle ejection when a reset turn arrives unusually late.
+
+        This is separate from the normal user-approved action floor.  It is
+        armed only by an exact server-owned ``threshold - 1`` idle state on the
+        same actionable local turn, before any consuming input is sent.  A
+        first-turn mandatory action, ordinary slow decision, locally counted
+        PASS, or unproven/stale idle state cannot trigger this path.
+        """
+
+        battle = state.battle
+        # PolicyAction values cross this boundary as lower-case wire values
+        # (``swap``/``cast``), while older direct dispatcher callers used enum
+        # names (``SWAP``/``CAST``).  Normalize once at the boundary so an
+        # otherwise exact authoritative 2/3 recovery proof cannot be rejected
+        # solely because of enum serialization casing.
+        normalized_selected_action = str(selected_action).strip().upper()
+        threshold = battle.consecutive_pass_threshold
+        idle_count = battle.consecutive_passes
+        selected_action_is_safe_recovery_evidence = bool(
+            normalized_selected_action in {"SWAP", "CAST"}
+            or (
+                normalized_selected_action == "NONE"
+                and policy_blocker == "TURN_TIMER_SAFETY_MARGIN"
+            )
+        )
+        exact_identity_and_idle = bool(
+            mandatory_reset_pending
+            and selected_action_is_safe_recovery_evidence
+            and match_id
+            and session_key.match_id == match_id
+            and state.phase is GamePhase.COMBAT
+            and battle.combat_lifecycle is CombatLifecycleState.ACTIVE
+            and battle.session_key == session_key
+            and battle.match_id == match_id
+            and battle.board_instance == session_key.board_instance
+            and battle.turn_number == turn
+            and turn > 0
+            and battle.is_local_turn is True
+            and battle.current_turn_player
+            and battle.local_username
+            and battle.current_turn_player.casefold()
+            == battle.local_username.casefold()
+            and battle.turn_time_remaining_seconds == remaining_seconds
+            and 1 <= minimum_action_time <= 10
+            and recovery_warning_seconds
+            == max(
+                minimum_action_time,
+                MANDATORY_RESET_RECOVERY_FLOOR_SECONDS,
+            )
+            and 0 <= remaining_seconds < recovery_warning_seconds <= 10
+            and threshold is not None
+            and threshold > 1
+            and idle_count == threshold - 1
+            and battle.consecutive_pass_status
+            is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
+            and bool(battle.consecutive_pass_source)
+        )
+        if not exact_identity_and_idle:
+            return False
+        if (
+            not controller_running
+            or pending_action
+            or consuming_action_sent
+            or authoritative_pass_wait_active
+            or evolve_wait_active
+            or (
+                sequence_desync is not None
+                and bool(getattr(sequence_desync, "terminal_for_session", False))
+            )
+        ):
+            return False
+
+        gate = ActionabilityGate.evaluate(
+            state,
+            GateContext(
+                current_session=session_key,
+                game_foreground=game_foreground,
+                window_valid=window_valid,
+                input_locked=False,
+                auto_paused=False,
+                sequence_desync=sequence_desync,
+                allow_opening_board_only=True,
+                allow_authoritative_board_only_stats=True,
+            ),
+        )
+        if not gate.actionable:
+            return False
+
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.LATE_MANDATORY_RESET,
+                source=RecoveryTriggerSource.PRODUCTION_LATE_MANDATORY_RESET,
+                failed_session=failed_session_from_state(state),
                 detected_at=utc_timestamp(),
                 evidence_source=evidence_source,
             )
@@ -1132,6 +1716,11 @@ class RecoveryArtifactWriter:
 
 
 __all__ = [
+    "ACTIVE_COMBAT_PROGRESS_STALL_MIN_SAMPLES",
+    "ACTIVE_COMBAT_PROGRESS_STALL_SECONDS",
+    "ActiveCombatProgressStall",
+    "ActiveCombatProgressWatchdog",
+    "MANDATORY_RESET_RECOVERY_FLOOR_SECONDS",
     "FailedSessionEvidence",
     "RecoveredOpeningEvidence",
     "RecoveryArtifactWriter",

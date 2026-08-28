@@ -111,6 +111,20 @@ class ActionabilityGateTests(unittest.TestCase):
         self.assertTrue(result.actionable)
         self.assertEqual(result.reason, GateReason.PASS)
 
+    def test_local_player_left_signal_blocks_all_gameplay(self) -> None:
+        state = actionable_state()
+        left = replace(
+            state,
+            battle=replace(
+                state.battle,
+                local_has_left_match=True,
+                client_move_allowed=False,
+            ),
+        )
+        result = ActionabilityGate.evaluate(left, context())
+        self.assertFalse(result.actionable)
+        self.assertEqual(result.reason, GateReason.LOCAL_PLAYER_LEFT)
+
     def test_exact_match_start_sequence_is_authoritative_without_ack(self) -> None:
         state = actionable_state()
         opening = replace(
@@ -189,6 +203,33 @@ class ActionabilityGateTests(unittest.TestCase):
                 context(allow_opening_board_only=True),
             ).reason,
             GateReason.DISCONNECTED,
+        )
+
+    def test_explicit_authoritative_board_only_stats_fallback_is_not_opening_only(self) -> None:
+        state = actionable_state()
+        missing = replace(state, player=None, opponents=(), participants=())
+
+        strict = ActionabilityGate.evaluate(missing, context())
+        self.assertEqual(GateReason.PLAYER_STATS_UNKNOWN, strict.reason)
+
+        fallback = ActionabilityGate.evaluate(
+            missing,
+            context(allow_authoritative_board_only_stats=True),
+        )
+        self.assertTrue(fallback.actionable, fallback)
+        self.assertTrue(fallback.details["boardOnlyStatsFallback"])
+        self.assertFalse(fallback.details["openingBoardOnly"])
+
+        disconnected = replace(
+            missing,
+            battle=replace(missing.battle, connection_ready=False),
+        )
+        self.assertEqual(
+            GateReason.DISCONNECTED,
+            ActionabilityGate.evaluate(
+                disconnected,
+                context(allow_authoritative_board_only_stats=True),
+            ).reason,
         )
 
     def test_acked_match_move_transport_board_is_authoritative(self) -> None:

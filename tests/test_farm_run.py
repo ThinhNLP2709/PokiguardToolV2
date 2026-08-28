@@ -4,6 +4,7 @@ from dataclasses import replace
 import os
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
@@ -21,6 +22,11 @@ from pokiguard_v2.farm_run import (
     MatchResult,
 )
 from pokiguard_v2.state import CombatSessionKey
+from pokiguard_v2.win32_input import (
+    ClientGeometry,
+    ForegroundClickExecutor,
+    WindowBinding,
+)
 from pokiguard_v2.technical_recovery import (
     FailedSessionEvidence,
     RecoveredOpeningEvidence,
@@ -32,11 +38,156 @@ from pokiguard_v2.technical_recovery import (
 from tools.farm_run import (
     ClickStatus,
     _ControllerMemorySampler,
+    _exact_target_room_restored,
+    _failed_recovery_fallback_allowed,
+    _farm_room_ejection_sources,
+    _outside_current_boss_room,
+    _owner_free_chinh_phuc_map_snapshot,
+    _postmatch_reentry_source,
+    _restore_bound_game_foreground,
+    _stable_visual_proof,
     _stage_b1_action_proof,
+    _world_map_ejection_proven,
 )
+from tools.farm_cycle import LobbyWaitResult
 
 
 SOURCE = "ChatMessageDTO.MATCH_START.matchPayload.board"
+
+
+class _ForegroundBackend:
+    def __init__(self, *, restore_ok: bool = True, pid: int = 123) -> None:
+        self.pid = pid
+        self.restore_ok = restore_ok
+        self.foreground = False
+        self.geometry = ClientGeometry(100, 100, 1280, 720)
+        self.restore_calls = 0
+
+    def window_pid(self, _hwnd: int) -> int | None:
+        return self.pid
+
+    def client_geometry(self, _hwnd: int) -> ClientGeometry | None:
+        return self.geometry
+
+    def is_foreground(self, _hwnd: int) -> bool:
+        return self.foreground
+
+    def restore_and_foreground(self, _hwnd: int) -> bool:
+        self.restore_calls += 1
+        if self.restore_ok:
+            self.foreground = True
+        return self.restore_ok
+
+
+class ReentryForegroundTests(unittest.TestCase):
+    def test_reentry_restores_exact_bound_game_before_target_proof(self) -> None:
+        backend = _ForegroundBackend()
+        executor = ForegroundClickExecutor(backend, sleeper=lambda _seconds: None)
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+
+        self.assertTrue(
+            _restore_bound_game_foreground(
+                binding,
+                executor,
+                sleeper=lambda _seconds: None,
+            )
+        )
+        self.assertEqual(backend.restore_calls, 1)
+
+    def test_reentry_wrong_pid_fails_without_foreground_transfer(self) -> None:
+        backend = _ForegroundBackend(pid=999)
+        executor = ForegroundClickExecutor(backend, sleeper=lambda _seconds: None)
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+
+        self.assertFalse(
+            _restore_bound_game_foreground(
+                binding,
+                executor,
+                sleeper=lambda _seconds: None,
+            )
+        )
+        self.assertEqual(backend.restore_calls, 0)
+
+
+class ChinhPhucMapSnapshotTests(unittest.TestCase):
+    @staticmethod
+    def lobby(
+        *,
+        state: BossLobbyState,
+        branch: str | None,
+        current_room_id: str | None = None,
+        current_room_type: str | None = None,
+        owner_username: str | None = None,
+        is_host: bool = False,
+        lifecycle: CombatLifecycleState = CombatLifecycleState.LOBBY,
+    ) -> SimpleNamespace:
+        return SimpleNamespace(
+            state=state,
+            branch=branch,
+            combat_lifecycle=SimpleNamespace(state=lifecycle),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=current_room_id,
+                current_room_type=current_room_type,
+                owner_username=owner_username,
+                is_host=is_host,
+            ),
+        )
+
+    def test_exact_world_list_map_is_accepted(self) -> None:
+        self.assertTrue(
+            _owner_free_chinh_phuc_map_snapshot(
+                self.lobby(
+                    state=BossLobbyState.BOSS_LOBBY,
+                    branch="WORLD_BOSS_LIST",
+                )
+            )
+        )
+
+    def test_owner_free_post_shell_transitional_map_is_accepted(self) -> None:
+        self.assertTrue(
+            _owner_free_chinh_phuc_map_snapshot(
+                self.lobby(
+                    state=BossLobbyState.LOBBY_OTHER,
+                    branch=None,
+                )
+            )
+        )
+
+    def test_room_or_owned_transitional_shape_is_rejected(self) -> None:
+        cases = (
+            self.lobby(
+                state=BossLobbyState.LOBBY_OTHER,
+                branch=None,
+                current_room_id="Coop_123",
+            ),
+            self.lobby(
+                state=BossLobbyState.LOBBY_OTHER,
+                branch=None,
+                current_room_type="ChinhPhuc",
+            ),
+            self.lobby(
+                state=BossLobbyState.LOBBY_OTHER,
+                branch=None,
+                owner_username="happi",
+            ),
+            self.lobby(
+                state=BossLobbyState.LOBBY_OTHER,
+                branch=None,
+                is_host=True,
+            ),
+            self.lobby(
+                state=BossLobbyState.LOBBY_OTHER,
+                branch=None,
+                lifecycle=CombatLifecycleState.ACTIVE,
+            ),
+            self.lobby(
+                state=BossLobbyState.LOBBY_OTHER,
+                branch="WORLD_BOSS_LIST",
+            ),
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                self.assertFalse(_owner_free_chinh_phuc_map_snapshot(case))
 
 
 class ControllerMemorySamplerTests(unittest.TestCase):
@@ -163,8 +314,394 @@ def complete_recovery_coordinator(
 
 
 class FarmRunBoundaryTests(unittest.TestCase):
+    def test_one_exact_entry_retry_is_allowed_without_new_match_attempt(self) -> None:
+        run = start_run()
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        first = capability.reserve(foreground=True)
+        self.assertIsNotNone(first)
+        self.assertTrue(capability.complete(first, sent=True))  # type: ignore[arg-type]
+        retry = capability.reserve_retry(
+            foreground=True,
+            exact_same_target=True,
+            no_combat_owner=True,
+            stable_same_button=True,
+        )
+        self.assertIsNotNone(retry)
+        self.assertTrue(capability.complete_retry(retry, sent=True))  # type: ignore[arg-type]
+        self.assertEqual(run.match_attempts, 0)
+        self.assertEqual(run.state, FarmRunState.ENTRY_PENDING)
+        self.assertEqual(run.snapshot().total_lobby_inputs, 2)
+        self.assertEqual(run.snapshot().safety.nonzero(), {})
+
+        self.assertIsNone(
+            capability.reserve_retry(
+                foreground=True,
+                exact_same_target=True,
+                no_combat_owner=True,
+                stable_same_button=True,
+            )
+        )
+        self.assertEqual(run.stop_reason, FarmRunStopReason.ENTRY_CAPABILITY_DENIED)
+
+    def test_entry_retry_rejects_changed_target_without_input(self) -> None:
+        run = start_run()
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        first = capability.reserve(foreground=True)
+        self.assertIsNotNone(first)
+        self.assertTrue(capability.complete(first, sent=True))  # type: ignore[arg-type]
+        self.assertIsNone(
+            capability.reserve_retry(
+                foreground=True,
+                exact_same_target=False,
+                no_combat_owner=True,
+                stable_same_button=True,
+            )
+        )
+        retries = [
+            record
+            for record in run.input_records
+            if record.domain is FarmInputDomain.BOSS_ENTRY_RETRY
+        ]
+        self.assertEqual(retries, [])
+
+    def test_one_attack_card_selection_precedes_independent_entry_permit(self) -> None:
+        run = start_run(FarmRunLimits(1, 0, 1))
+        self.assertTrue(run.target_resolved())
+        card_permit = run.reserve_lobby_card_select(
+            foreground=True,
+            exact_attack_identity=True,
+            no_combat_owner=True,
+            selected_attack_missing=True,
+            unique_room_attack=True,
+        )
+        self.assertIsNotNone(card_permit)
+        self.assertTrue(
+            run.complete_lobby_card_select(
+                card_permit,  # type: ignore[arg-type]
+                sent=True,
+                detail="ATTACK data=64647 card=4 roomIndex=3:SENT",
+            )
+        )
+        self.assertEqual(run.state, FarmRunState.ENTRY_READY)
+        entry_permit = run.reserve_entry(foreground=True)
+        self.assertIsNotNone(entry_permit)
+        self.assertTrue(
+            run.complete_entry(entry_permit, sent=True)  # type: ignore[arg-type]
+        )
+        self.assertEqual(run.snapshot().total_lobby_inputs, 2)
+
+    def test_duplicate_or_unproven_attack_card_selection_fails_closed(self) -> None:
+        run = start_run(FarmRunLimits(1, 0, 1))
+        self.assertTrue(run.target_resolved())
+        denied = run.reserve_lobby_card_select(
+            foreground=True,
+            exact_attack_identity=False,
+            no_combat_owner=True,
+            selected_attack_missing=True,
+            unique_room_attack=True,
+        )
+        self.assertIsNone(denied)
+        self.assertTrue(run.stopped)
+
+    def test_postmatch_reentry_accepts_exact_detached_shell_only(self) -> None:
+        chinh_phuc = SimpleNamespace(
+            current_room_id=None,
+            current_room_type=None,
+            room_data=0x20000001000,
+            enemy_pet_id=1289,
+            button_start=0x20000002000,
+            button_native=0x10000002000,
+            button_interactable=True,
+            is_host=False,
+        )
+        lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=chinh_phuc,
+        )
+        candidate = LobbyWaitResult(
+            False,
+            BossLobbyState.LOBBY_OTHER,
+            None,
+            "DETACHED_ROOM_SHELL_CANDIDATE",
+            lobby,
+            2,
+        )
+        self.assertEqual(
+            "DETACHED_ROOM_SHELL",
+            _postmatch_reentry_source(
+                candidate, target_pet_id=1289, current_session=None
+            ),
+        )
+        self.assertEqual(
+            (False, True),
+            _farm_room_ejection_sources(
+                candidate,
+                target_boss_id="1289",
+                current_session=None,
+            ),
+        )
+        self.assertIsNone(
+            _postmatch_reentry_source(
+                candidate, target_pet_id=2243, current_session=None
+            )
+        )
+        self.assertIsNone(
+            _postmatch_reentry_source(
+                candidate, target_pet_id=1289, current_session=object()
+            )
+        )
+
+    def test_current_room_only_distinguishes_room_from_world_boss_map(self) -> None:
+        room = LobbyWaitResult(
+            True,
+            BossLobbyState.BOSS_LOBBY,
+            None,
+            "BOSS_LOBBY_READY",
+            type("Lobby", (), {"branch": "CHINH_PHUC_ROOM"})(),
+        )
+        world_map = replace(
+            room,
+            lobby=type("Lobby", (), {"branch": "WORLD_BOSS_LIST"})(),
+        )
+        self.assertFalse(_outside_current_boss_room(room))
+        self.assertTrue(_outside_current_boss_room(world_map))
+
+    def test_ejection_and_restored_room_require_exact_branch_and_no_owner(self) -> None:
+        chinh_phuc = type("ChinhPhuc", (), {"current_room_id": None})()
+        world_map = LobbyWaitResult(
+            False,
+            BossLobbyState.BOSS_LOBBY,
+            None,
+            "TARGET_MISSING",
+            type(
+                "Lobby",
+                (),
+                {"branch": "WORLD_BOSS_LIST", "chinh_phuc": chinh_phuc},
+            )(),
+        )
+        room = replace(
+            world_map,
+            ready=True,
+            reason="BOSS_LOBBY_READY",
+            lobby=type(
+                "Lobby",
+                (),
+                {"branch": "CHINH_PHUC_ROOM", "chinh_phuc": chinh_phuc},
+            )(),
+        )
+        self.assertTrue(
+            _world_map_ejection_proven(world_map, current_session=None)
+        )
+        self.assertEqual(
+            (True, False),
+            _farm_room_ejection_sources(
+                world_map,
+                target_boss_id="1289",
+                current_session=None,
+            ),
+        )
+        self.assertFalse(
+            _world_map_ejection_proven(world_map, current_session=object())
+        )
+        self.assertTrue(
+            _exact_target_room_restored(room, current_session=None)
+        )
+        self.assertFalse(
+            _exact_target_room_restored(room, current_session=object())
+        )
+
+    def test_ejected_map_reentry_is_bounded_and_does_not_count_match(self) -> None:
+        run = start_run(FarmRunLimits(3, 2, 5))
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"))
+        self.assertTrue(
+            run.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=True,
+                no_combat_owner=True,
+            )
+        )
+        permit = run.reserve_target_select(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            run.complete_target_select(permit, sent=True, detail="exact pet 1289")
+        )
+        self.assertTrue(
+            run.complete_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_target_room=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertTrue(run.observe_return_lobby(BossLobbyState.BOSS_LOBBY))
+        snapshot = run.snapshot()
+        self.assertEqual(0, snapshot.completed_matches)
+        self.assertEqual(1, snapshot.technical_aborts)
+        self.assertEqual(1, snapshot.technical_recoveries)
+        self.assertEqual(FarmRunState.RESOLVE_TARGET, snapshot.state)
+
+    def test_failed_recovery_fallback_accepts_one_audited_prior_reentry(self) -> None:
+        run = start_run(FarmRunLimits(3, 2, 5))
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("LATE_MANDATORY_RESET"))
+        self.assertTrue(run.begin_recovery())
+        records = (
+            SimpleNamespace(
+                domain=RecoveryInputDomain.RECOVERY_EXIT,
+                sent=True,
+                detail="normal Exit",
+            ),
+            SimpleNamespace(
+                domain=RecoveryInputDomain.RECOVERY_CONFIRM,
+                sent=True,
+                detail="normal confirm",
+            ),
+        )
+        self.assertTrue(run.prepare_failed_recovery_map_fallback(records))
+        self.assertTrue(
+            run.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=True,
+                no_combat_owner=True,
+            )
+        )
+
+        after_reentry = start_run(FarmRunLimits(3, 2, 5))
+        enter(after_reentry, session(2))
+        self.assertTrue(after_reentry.technical_failure("LATE_MANDATORY_RESET"))
+        self.assertTrue(after_reentry.begin_recovery())
+        self.assertTrue(
+            after_reentry.prepare_failed_recovery_map_fallback(
+                (
+                    SimpleNamespace(
+                        domain=RecoveryInputDomain.RECOVERY_REENTRY,
+                        sent=True,
+                        detail="one recovered combat entry",
+                    ),
+                )
+            )
+        )
+        self.assertTrue(
+            after_reentry.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=False,
+                detached_room_shell=True,
+                no_combat_owner=True,
+            )
+        )
+
+        duplicate = start_run(FarmRunLimits(3, 2, 5))
+        enter(duplicate, session(3))
+        self.assertTrue(duplicate.technical_failure("LATE_MANDATORY_RESET"))
+        self.assertTrue(duplicate.begin_recovery())
+        self.assertFalse(
+            duplicate.prepare_failed_recovery_map_fallback(
+                tuple(
+                    SimpleNamespace(
+                        domain=RecoveryInputDomain.RECOVERY_REENTRY,
+                        sent=True,
+                        detail=f"re-entry {index}",
+                    )
+                    for index in range(2)
+                )
+            )
+        )
+
+    def test_failed_recovery_can_resume_from_exact_pinned_room(self) -> None:
+        run = start_run(FarmRunLimits(3, 2, 5))
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+        self.assertTrue(run.begin_recovery())
+        records = (
+            SimpleNamespace(
+                domain=RecoveryInputDomain.RECOVERY_EXIT,
+                sent=True,
+                detail="normal Exit",
+            ),
+            SimpleNamespace(
+                domain=RecoveryInputDomain.RECOVERY_CONFIRM,
+                sent=True,
+                detail="normal confirm",
+            ),
+        )
+        self.assertTrue(run.prepare_failed_recovery_map_fallback(records))
+        self.assertTrue(
+            run.complete_failed_recovery_room_fallback(
+                target_boss_id="1289",
+                exact_target_room=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertTrue(run.observe_return_lobby(BossLobbyState.BOSS_LOBBY))
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.state, FarmRunState.RESOLVE_TARGET)
+        self.assertEqual(snapshot.technical_recoveries, 1)
+        self.assertIsNone(run.current_session)
+        self.assertEqual(snapshot.completed_matches, 0)
+        self.assertEqual(snapshot.technical_aborts, 1)
+
+    def test_dirty_ack_epoch_can_never_use_failed_recovery_fallback(self) -> None:
+        for detail in (
+            "RECOVERY_ACK_EPOCH_NOT_RESET",
+            "RECOVERY_LOBBY_MATCH_NOT_CLEARED",
+            "RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE",
+        ):
+            with self.subTest(detail=detail):
+                self.assertFalse(
+                    _failed_recovery_fallback_allowed(
+                        SimpleNamespace(result_detail=detail)
+                    )
+                )
+        self.assertTrue(
+            _failed_recovery_fallback_allowed(
+                SimpleNamespace(result_detail="ROOM_EJECTED_TO_BOSS_MAP")
+            )
+        )
+
+    def test_failed_recovery_exact_room_requires_the_pinned_target(self) -> None:
+        run = start_run(FarmRunLimits(3, 2, 5))
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+        self.assertTrue(run.begin_recovery())
+        self.assertFalse(
+            run.complete_failed_recovery_room_fallback(
+                target_boss_id="9999",
+                exact_target_room=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertEqual(run.snapshot().stop_reason, FarmRunStopReason.RECOVERY_FAILED)
+
     def test_map_return_uses_the_runtime_click_status_enum(self) -> None:
         self.assertEqual(ClickStatus.SENT.value, "SENT")
+
+    def test_map_return_visual_proof_requires_two_stable_found_frames(self) -> None:
+        capture = SimpleNamespace(width=1280, height=720)
+        found = SimpleNamespace(found=True, normalized_point=(0.05, 0.62))
+        shifted = SimpleNamespace(found=True, normalized_point=(0.08, 0.62))
+        missing = SimpleNamespace(found=False, normalized_point=None)
+
+        self.assertTrue(
+            _stable_visual_proof(capture, found, capture, found)
+        )
+        self.assertFalse(
+            _stable_visual_proof(capture, found, capture, shifted)
+        )
+        self.assertFalse(
+            _stable_visual_proof(capture, missing, capture, found)
+        )
+        self.assertFalse(
+            _stable_visual_proof(
+                capture,
+                found,
+                SimpleNamespace(width=960, height=540),
+                found,
+            )
+        )
 
     def test_invalid_start_is_zero_input(self) -> None:
         run = FarmRun(FarmTarget(boss_id="1289"))
@@ -214,6 +751,122 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
         self.assertTrue(records[0].sent)
         self.assertEqual(run.snapshot().total_lobby_inputs, 2)
+
+    def test_one_detached_room_shell_exit_can_precede_exact_target_select(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+
+        shell = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(shell)
+        self.assertTrue(
+            run.complete_room_shell_exit(
+                shell,  # type: ignore[arg-type]
+                sent=True,
+                detail="detached exact pet room shell",
+            )
+        )
+        confirm = run.reserve_room_shell_confirm(foreground=True)
+        self.assertIsNotNone(confirm)
+        self.assertTrue(
+            run.complete_room_shell_confirm(
+                confirm,  # type: ignore[arg-type]
+                sent=True,
+                detail="leave detached exact pet room shell",
+            )
+        )
+        target = run.reserve_target_select(foreground=True)
+        self.assertIsNotNone(target)
+        self.assertTrue(
+            run.complete_target_select(
+                target,  # type: ignore[arg-type]
+                sent=True,
+                detail="exact pet 1289 after shell exit",
+            )
+        )
+        self.assertTrue(run.observe_return_lobby(BossLobbyState.BOSS_LOBBY))
+        records = [
+            item
+            for item in run.input_records
+            if item.domain
+            in {
+                FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
+                FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
+                FarmInputDomain.BOSS_TARGET_SELECT,
+            }
+        ]
+        self.assertEqual(
+            [item.domain for item in records],
+            [
+                FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
+                FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
+                FarmInputDomain.BOSS_TARGET_SELECT,
+            ],
+        )
+        self.assertTrue(all(item.sent for item in records))
+        self.assertEqual(run.snapshot().total_lobby_inputs, 4)
+
+    def test_detached_room_shell_confirm_requires_one_exit_and_is_single_use(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+
+        self.assertIsNone(run.reserve_room_shell_confirm(foreground=True))
+        self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
+
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        shell = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(shell)
+        self.assertTrue(run.complete_room_shell_exit(shell, sent=True))  # type: ignore[arg-type]
+        confirm = run.reserve_room_shell_confirm(foreground=True)
+        self.assertIsNotNone(confirm)
+        self.assertTrue(run.complete_room_shell_confirm(confirm, sent=True))  # type: ignore[arg-type]
+        self.assertIsNone(run.reserve_room_shell_confirm(foreground=True))
+        self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
+
+    def test_duplicate_detached_room_shell_exit_fails_closed(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        permit = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            run.complete_room_shell_exit(permit, sent=True)  # type: ignore[arg-type]
+        )
+
+        self.assertIsNone(run.reserve_room_shell_exit(foreground=True))
+        self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
+
+    def test_direct_map_proof_can_replace_shell_confirm_but_is_explicit(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        shell = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(shell)
+        self.assertTrue(run.complete_room_shell_exit(shell, sent=True))  # type: ignore[arg-type]
+        target = run.reserve_target_select(
+            foreground=True,
+            direct_map_after_shell_exit=True,
+        )
+        self.assertIsNotNone(target)
+        self.assertTrue(run.complete_target_select(target, sent=True))  # type: ignore[arg-type]
+
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        shell = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(shell)
+        self.assertTrue(run.complete_room_shell_exit(shell, sent=True))  # type: ignore[arg-type]
+        self.assertIsNone(run.reserve_target_select(foreground=True))
+        self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
 
     def test_duplicate_map_target_select_fails_closed(self) -> None:
         run = start_run()
@@ -273,6 +926,36 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertTrue(capability.complete(permit, sent=False, detail="authoritative wait"))  # type: ignore[arg-type]
         self.assertEqual(run.snapshot().total_gameplay_inputs, 0)
 
+    def test_transient_pass_preflight_can_release_zero_input_permit(self) -> None:
+        run = start_run()
+        key = session(1)
+        enter(run, key)
+        capability = FarmRunGameplayCapability(run, key)
+        permit = capability.reserve(action="PASS", session=key, foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            capability.abandon_pass_preflight(  # type: ignore[arg-type]
+                permit,
+                detail="transient board-only participant gap",
+            )
+        )
+        self.assertEqual(run.state, FarmRunState.COMBAT_ACTIVE)
+        self.assertIsNone(run.stop_reason)
+        self.assertEqual(run.snapshot().total_gameplay_inputs, 0)
+        self.assertEqual(run.snapshot().safety.nonzero(), {})
+
+        next_permit = capability.reserve(
+            action="SWAP", session=key, foreground=True
+        )
+        self.assertIsNotNone(next_permit)
+        self.assertTrue(
+            capability.complete(  # type: ignore[arg-type]
+                next_permit,
+                sent=True,
+                detail="fresh recomputed swap",
+            )
+        )
+
     def test_input_after_terminal_stop_is_denied_and_counted(self) -> None:
         run = start_run(FarmRunLimits(1, 0, 1))
         key = session(1)
@@ -286,6 +969,49 @@ class FarmRunBoundaryTests(unittest.TestCase):
 
 
 class RecoveryResumeTests(unittest.TestCase):
+    def test_missed_opening_can_abort_only_untouched_wait_opening_attempt(self) -> None:
+        run = start_run(FarmRunLimits(3, 1, 5))
+        key = session(1)
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        permit = capability.reserve(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            capability.complete(permit, sent=True, detail="Start:SENT")  # type: ignore[arg-type]
+        )
+        self.assertTrue(run.accept_session(key))
+        self.assertEqual(run.state, FarmRunState.WAIT_OPENING)
+
+        self.assertTrue(
+            run.technical_failure("ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT")
+        )
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.state, FarmRunState.RECOVERY_PENDING)
+        self.assertEqual(snapshot.match_attempts, 1)
+        self.assertEqual(snapshot.completed_matches, 0)
+        self.assertEqual(snapshot.technical_aborts, 1)
+        self.assertEqual(snapshot.attempts[0].result, MatchResult.TECHNICAL_ABORT)
+        self.assertEqual(snapshot.total_gameplay_inputs, 0)
+        self.assertEqual(snapshot.safety.nonzero(), {})
+
+    def test_other_technical_reason_cannot_abort_wait_opening(self) -> None:
+        run = start_run(FarmRunLimits(3, 1, 5))
+        key = session(1)
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        permit = capability.reserve(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            capability.complete(permit, sent=True, detail="Start:SENT")  # type: ignore[arg-type]
+        )
+        self.assertTrue(run.accept_session(key))
+
+        self.assertFalse(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.state, FarmRunState.WAIT_OPENING)
+        self.assertEqual(snapshot.technical_aborts, 0)
+        self.assertEqual(snapshot.attempts[0].result, MatchResult.UNKNOWN)
+
     def _recovery_resume(self, reason: str) -> FarmRun:
         run = start_run(FarmRunLimits(3, 1, 5))
         old, new = session(1), session(2)
@@ -329,17 +1055,53 @@ class RecoveryResumeTests(unittest.TestCase):
         self.assertEqual(snapshot.technical_recoveries, 1)
         self.assertTrue(snapshot.attempts[0].technical_recovery)
 
-    def test_second_failure_stops_before_second_exit(self) -> None:
-        run = self._recovery_resume("SEQUENCE_DESYNC")
-        self.assertFalse(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+    def test_controller_stall_uses_same_bounded_recovery_path(self) -> None:
+        run = self._recovery_resume("CONTROLLER_STALLED_ACTIVE_COMBAT")
         snapshot = run.snapshot()
-        self.assertEqual(snapshot.stop_reason, FarmRunStopReason.RECOVERY_LIMIT_REACHED)
-        self.assertEqual(snapshot.technical_aborts, 2)
+        self.assertEqual(snapshot.technical_aborts, 1)
         self.assertEqual(snapshot.technical_recoveries, 1)
-        self.assertEqual(snapshot.total_recovery_inputs, 3)
+        self.assertTrue(snapshot.attempts[0].technical_recovery)
 
-    def test_two_bounded_recoveries_validate_each_invocation(self) -> None:
-        run = start_run(FarmRunLimits(3, 2, 5))
+    def test_active_combat_progress_stall_uses_same_unbounded_recovery_path(self) -> None:
+        run = self._recovery_resume("ACTIVE_COMBAT_PROGRESS_STALLED")
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.technical_aborts, 1)
+        self.assertEqual(snapshot.technical_recoveries, 1)
+        self.assertTrue(snapshot.attempts[0].technical_recovery)
+
+    def test_local_player_left_uses_same_bounded_recovery_path(self) -> None:
+        run = self._recovery_resume("LOCAL_PLAYER_LEFT_ACTIVE_COMBAT")
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.technical_aborts, 1)
+        self.assertEqual(snapshot.technical_recoveries, 1)
+        self.assertTrue(snapshot.attempts[0].technical_recovery)
+
+    def test_late_mandatory_reset_uses_same_bounded_recovery_path(self) -> None:
+        run = self._recovery_resume("LATE_MANDATORY_RESET")
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.technical_aborts, 1)
+        self.assertEqual(snapshot.technical_recoveries, 1)
+        self.assertTrue(snapshot.attempts[0].technical_recovery)
+
+    def test_second_failure_remains_recoverable_after_legacy_limit(self) -> None:
+        run = self._recovery_resume("SEQUENCE_DESYNC")
+        current = run.current_session
+        assert current is not None
+        next_session = session(3)
+        self.assertTrue(run.technical_failure("DEAD_BOARD_NO_REFRESH"))
+        self.assertTrue(run.begin_recovery())
+        recovery = complete_recovery_coordinator(current, next_session)
+        self.assertTrue(
+            run.record_successful_recovery(recovery.snapshot().input_records)
+        )
+        snapshot = run.snapshot()
+        self.assertIsNone(snapshot.stop_reason)
+        self.assertEqual(snapshot.technical_aborts, 2)
+        self.assertEqual(snapshot.technical_recoveries, 2)
+        self.assertEqual(snapshot.total_recovery_inputs, 6)
+
+    def test_two_recoveries_validate_each_invocation_even_with_legacy_limit_one(self) -> None:
+        run = start_run(FarmRunLimits(3, 1, 5))
         first, second, third = session(1), session(2), session(3)
         enter(run, first)
 

@@ -45,9 +45,12 @@ from pokiguard_v2.sequence_desync_artifacts import (  # noqa: E402
 )
 from pokiguard_v2.win32_screenshot import write_png_rgb  # noqa: E402
 from tools.replay_sequence_desync import replay  # noqa: E402
+from tools.idle_state_watch import ServerMessage  # noqa: E402
 from tools.sequence_desync_runtime import (  # noqa: E402
     RuntimeSequenceMonitor,
     _current_learned_regions,
+    _learned_regions_with_allocator_neighbors,
+    _transport_gap_scan_identity,
 )
 try:  # unittest discovery adds tests/ directly; module execution does not.
     from test_actionability import SESSION, actionable_state, context  # type: ignore  # noqa: E402
@@ -66,6 +69,86 @@ class SequenceClassificationTests(unittest.TestCase):
 
 
 class RuntimeRegionLearningTests(unittest.TestCase):
+    def test_shared_transport_scan_surfaces_validated_combat_batch(self) -> None:
+        learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._batch_class = 0xDEF
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_fixture",
+            turn=3,
+            current_player="happi",
+            local_username="happi",
+            local_move_sequence=1,
+            last_move_sequence=1,
+            highest_acked_sequence=7,
+            remaining=14,
+        )
+        batch = SimpleNamespace(address=0x5000, sequence=7)
+        scan = QwordScanResult(
+            {"chat_message": (), "batch": (batch.address,)}, 1, 0x1000, 0
+        )
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(learned,),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ) as scanner,
+            patch(
+                "tools.sequence_desync_runtime.validate_combat_batch_hits",
+                return_value=(batch,),
+            ) as validator,
+        ):
+            observation = monitor.poll(
+                session_key=(1,),
+                match_id="M_fixture",
+                turn=3,
+                srv_seq=7,
+                timestamp="now",
+            )
+
+        self.assertEqual(scanner.call_args.args[2]["batch"], 0xDEF)
+        validator.assert_called_once()
+        self.assertEqual(observation.combat_batches, (batch,))
+
+    def test_shared_provider_scan_hints_are_non_authoritative_regions_only(self) -> None:
+        existing = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        rebound_existing = MemoryRegion(0x1000, 0x1000, 0x02, 0x10000)
+        shared = MemoryRegion(0x4000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor._learned_regions = {existing}
+        monitor._scans = 0
+
+        self.assertEqual(
+            monitor.absorb_region_hints((existing, rebound_existing, shared)),
+            1,
+        )
+        self.assertEqual(monitor._learned_regions, {existing, shared})
+        self.assertFalse(monitor.has_scanned)
+
     def test_pass_wait_can_force_all_candidate_regions(self) -> None:
         learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
         newly_allocated = MemoryRegion(0x4000, 0x1000, 0x04, 0x20000)
@@ -120,6 +203,66 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         self.assertTrue(observation.scan_performed)
         self.assertTrue(observation.full_scan_performed)
 
+    def test_periodic_full_refresh_is_deferred_off_local_action_window(self) -> None:
+        learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        adjacent = MemoryRegion(0x3000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 8
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 7
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_fixture",
+            turn=9,
+            current_player="happi",
+            local_username="happi",
+            local_move_sequence=2,
+            last_move_sequence=2,
+            highest_acked_sequence=17,
+        )
+        scan = QwordScanResult({"chat_message": ()}, 0, 0x2000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(learned, adjacent),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ),
+        ):
+            observation = monitor.poll(
+                session_key=(1,),
+                match_id="M_fixture",
+                turn=9,
+                srv_seq=17,
+                timestamp="now",
+                enable_gap_full_scan=False,
+            )
+
+        self.assertFalse(observation.full_scan_performed)
+        self.assertEqual(
+            observation.scan_reason,
+            "LEARNED_REGIONS_WITH_NEIGHBORS",
+        )
+        self.assertTrue(monitor._periodic_full_pending)
+
     def test_rebinds_evidenced_range_to_current_region_descriptor(self) -> None:
         old = MemoryRegion(0x1000, 0x2000, 0x04, 0x20000)
         grown = MemoryRegion(0x1000, 0x3000, 0x04, 0x20000)
@@ -129,6 +272,458 @@ class RuntimeRegionLearningTests(unittest.TestCase):
             _current_learned_regions((grown, unrelated), (old,)),
             (grown,),
         )
+
+    def test_fast_dto_scan_includes_only_immediate_allocator_neighbors(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x2000, 0x1000, 0x04, 0x20000)
+            for index in range(6)
+        )
+
+        self.assertEqual(
+            _learned_regions_with_allocator_neighbors(
+                regions,
+                (regions[2],),
+            ),
+            regions[1:4],
+        )
+
+    def test_transport_gap_scan_identity_includes_ack_watermark(self) -> None:
+        runtime = SimpleNamespace(
+            match_id="M_current",
+            turn=21,
+            highest_acked_sequence=44,
+            current_player="happi",
+            local_username="HAPPI",
+        )
+
+        self.assertEqual(
+            _transport_gap_scan_identity(
+                runtime,
+                published_srv_seq=42,
+            ),
+            ("M_current", 21, 44),
+        )
+        self.assertEqual(
+            _transport_gap_scan_identity(
+                runtime,
+                published_srv_seq=43,
+            ),
+            ("M_current", 21, 44),
+        )
+        self.assertIsNone(
+            _transport_gap_scan_identity(
+                runtime,
+                published_srv_seq=44,
+            )
+        )
+        self.assertEqual(
+            _transport_gap_scan_identity(
+                SimpleNamespace(
+                    **{
+                        **runtime.__dict__,
+                        "current_player": "Starburst",
+                    }
+                ),
+                published_srv_seq=42,
+            ),
+            ("M_current", 21, 44),
+        )
+
+    def test_transport_gap_refresh_reopens_when_ack_advances_same_turn(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x2000, 0x1000, 0x04, 0x20000)
+            for index in range(5)
+        )
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {regions[2]}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_current",
+            turn=21,
+            current_player="happi",
+            local_username="HAPPI",
+            local_move_sequence=3,
+            last_move_sequence=3,
+            highest_acked_sequence=44,
+        )
+        scan = QwordScanResult({"chat_message": ()}, 0, 0x3000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=regions,
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ) as scanner,
+        ):
+            first = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="now",
+            )
+            runtime.highest_acked_sequence = 45
+            second = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="later",
+            )
+
+        self.assertFalse(first.full_scan_performed)
+        self.assertEqual(first.scan_reason, "LOCAL_TURN_ACK_GAP_BOUNDED")
+        self.assertEqual(first.scan_region_count, 3)
+        self.assertEqual(first.scan_bytes_read, 0x3000)
+        self.assertFalse(second.full_scan_performed)
+        self.assertEqual(second.scan_reason, "LOCAL_TURN_ACK_GAP_BOUNDED")
+        self.assertEqual(scanner.call_count, 2)
+        self.assertEqual(tuple(scanner.call_args_list[0].args[1]), regions[1:4])
+
+    def test_unresolved_gap_escalates_full_once_while_timer_is_safe(self) -> None:
+        learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        outside = MemoryRegion(0x9000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_current",
+            turn=21,
+            current_player="happi",
+            local_username="HAPPI",
+            remaining=13,
+            local_move_sequence=3,
+            last_move_sequence=3,
+            highest_acked_sequence=44,
+        )
+        scan = QwordScanResult({"chat_message": ()}, 0, 0x2000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(learned, outside),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ) as scanner,
+        ):
+            first = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="first",
+                allow_gap_full_escalation=True,
+            )
+            second = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="second",
+                allow_gap_full_escalation=True,
+            )
+            runtime.highest_acked_sequence = 45
+            third = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="third",
+                allow_gap_full_escalation=True,
+            )
+
+        self.assertTrue(first.full_scan_performed)
+        self.assertEqual(
+            first.scan_reason,
+            "LOCAL_TURN_ACK_GAP_FULL_ESCALATION",
+        )
+        self.assertFalse(second.full_scan_performed)
+        self.assertTrue(third.full_scan_performed)
+        self.assertEqual(
+            third.scan_reason,
+            "LOCAL_TURN_ACK_GAP_FULL_ESCALATION",
+        )
+        self.assertEqual(scanner.call_count, 5)
+        self.assertEqual(tuple(scanner.call_args_list[1].args[1]), (learned, outside))
+
+    def test_resolved_gap_never_full_escalates(self) -> None:
+        learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_current",
+            turn=21,
+            current_player="happi",
+            local_username="HAPPI",
+            remaining=13,
+            local_move_sequence=3,
+            last_move_sequence=3,
+            highest_acked_sequence=44,
+        )
+        scan = QwordScanResult({"chat_message": ()}, 0, 0x1000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(learned,),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ),
+        ):
+            monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="first",
+                allow_gap_full_escalation=True,
+                resolved_board_sequences=(44,),
+            )
+            second = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="second",
+                allow_gap_full_escalation=True,
+                resolved_board_sequences=(44,),
+            )
+
+        self.assertFalse(second.full_scan_performed)
+        self.assertEqual(second.scan_reason, "LEARNED_REGIONS_WITH_NEIGHBORS")
+
+    def test_unoffered_bounded_board_prevents_full_escalation(self) -> None:
+        learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock(observe=Mock(return_value=False))
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_current",
+            turn=21,
+            current_player="happi",
+            local_username="HAPPI",
+            remaining=13,
+            local_move_sequence=3,
+            last_move_sequence=3,
+            highest_acked_sequence=44,
+        )
+        message = ServerMessage(
+            address=0x1080,
+            event_type="MATCH_MOVE_RES",
+            match_id="M_current",
+            timestamp="server-now",
+            username="happi",
+            payload_address=0x5000,
+            server_sequence=44,
+            from_col=None,
+            from_row=None,
+            to_col=None,
+            to_row=None,
+            card_id=None,
+            skill_card_id=None,
+            reject_reason=None,
+            idle_count=None,
+            threshold=None,
+            payload_ints=(),
+            payload_bools=(),
+            payload_strings=(),
+        )
+        scan = QwordScanResult({"chat_message": (0x1080,)}, 1, 0x1000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(learned,),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ) as scanner,
+            patch(
+                "tools.sequence_desync_runtime.read_server_message",
+                return_value=message,
+            ),
+        ):
+            observation = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=21,
+                srv_seq=42,
+                timestamp="first",
+                allow_gap_full_escalation=True,
+            )
+
+        self.assertFalse(observation.full_scan_performed)
+        self.assertEqual(observation.scan_reason, "LOCAL_TURN_ACK_GAP_BOUNDED")
+        self.assertEqual(observation.board_messages, (message,))
+        self.assertEqual(scanner.call_count, 1)
+
+    def test_stale_unoffered_board_does_not_hide_latest_ack_gap(self) -> None:
+        learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        outside = MemoryRegion(0x9000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock(observe=Mock(return_value=False))
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_current",
+            turn=22,
+            current_player="Starburst",
+            local_username="happi",
+            remaining=14,
+            local_move_sequence=4,
+            last_move_sequence=4,
+            highest_acked_sequence=46,
+        )
+        stale = ServerMessage(
+            address=0x1080,
+            event_type="MATCH_MOVE_RES",
+            match_id="M_current",
+            timestamp="server-old",
+            username="happi",
+            payload_address=0x5000,
+            server_sequence=44,
+            from_col=None,
+            from_row=None,
+            to_col=None,
+            to_row=None,
+            card_id=None,
+            skill_card_id=None,
+            reject_reason=None,
+            idle_count=None,
+            threshold=None,
+            payload_ints=(),
+            payload_bools=(),
+            payload_strings=(),
+        )
+        fast = QwordScanResult({"chat_message": (0x1080,)}, 1, 0x1000, 0)
+        broad = QwordScanResult({"chat_message": (0x1080,)}, 1, 0x2000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(learned, outside),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                side_effect=(fast, broad),
+            ) as scanner,
+            patch(
+                "tools.sequence_desync_runtime.read_server_message",
+                return_value=stale,
+            ),
+        ):
+            observation = monitor.poll(
+                session_key=(1,),
+                match_id="M_current",
+                turn=22,
+                srv_seq=42,
+                timestamp="first",
+                allow_gap_full_escalation=True,
+            )
+
+        self.assertTrue(observation.full_scan_performed)
+        self.assertEqual(
+            observation.scan_reason,
+            "LOCAL_TURN_ACK_GAP_FULL_ESCALATION",
+        )
+        self.assertEqual(scanner.call_count, 2)
 
     def test_begin_session_retains_process_lifetime_region_evidence(self) -> None:
         region = MemoryRegion(0x1000, 0x2000, 0x04, 0x20000)
@@ -144,9 +739,10 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         self.assertEqual(monitor._learned_regions, {region})
         self.assertEqual(monitor._seen, set())
 
-    def test_lobby_prime_learns_only_regions_containing_class_hits(self) -> None:
+    def test_lobby_prime_learns_dto_and_batch_only_regions(self) -> None:
         hit_region = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
-        empty_region = MemoryRegion(0x4000, 0x1000, 0x04, 0x20000)
+        batch_region = MemoryRegion(0x4000, 0x1000, 0x04, 0x20000)
+        empty_region = MemoryRegion(0x7000, 0x1000, 0x04, 0x20000)
         monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
         monitor.target = SimpleNamespace(
             memory=object(),
@@ -155,14 +751,15 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         monitor.max_region_mib = 16
         monitor.chunk_mib = 2
         monitor._dto_class = 0xABC
+        monitor._batch_class = 0xDEF
         monitor._learned_regions = set()
         scan = QwordScanResult(
-            {"chat_message": (0x1080,)}, 2, 0x2000, 0
+            {"chat_message": (0x1080,), "batch": (0x4080,)}, 3, 0x3000, 0
         )
         with (
             patch(
                 "tools.sequence_desync_runtime._regions",
-                return_value=(hit_region, empty_region),
+                return_value=(hit_region, batch_region, empty_region),
             ),
             patch(
                 "tools.sequence_desync_runtime.scan_aligned_qwords",
@@ -171,8 +768,8 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         ):
             result = monitor.prime_regions()
 
-        self.assertEqual(monitor._learned_regions, {hit_region})
-        self.assertEqual(result.learned_regions, 1)
+        self.assertEqual(monitor._learned_regions, {hit_region, batch_region})
+        self.assertEqual(result.learned_regions, 2)
         self.assertEqual(result.message_hits, 1)
 
     def test_entry_region_prime_reuses_live_process_evidence_without_scan(self) -> None:

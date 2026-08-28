@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
+from pokiguard_v2.combat_lifecycle import CombatLifecycleState
 from pokiguard_v2.farm_cycle import (
     FarmCycle,
     FarmCycleState,
@@ -23,8 +25,11 @@ from pokiguard_v2.farm_cycle_runtime import (
 )
 from pokiguard_v2.state import CombatSessionKey
 from tools.farm_cycle import (
+    _combat_args,
     _final_invariants,
+    _is_detached_chinh_phuc_room_candidate,
     _is_transient_chinh_phuc_room_rehydration,
+    _resolve_pass_stage,
     _validate_combat_summary,
 )
 
@@ -58,14 +63,132 @@ def opening(key: CombatSessionKey, **changes: object) -> OpeningEvidence:
 
 
 class FarmCycleTests(unittest.TestCase):
+    def test_detached_room_shell_candidate_requires_exact_pet_and_no_owner(self) -> None:
+        lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                room_data=0x20000001000,
+                enemy_pet_id=1289,
+                button_start=0x20000002000,
+                button_native=0x10000002000,
+                button_interactable=True,
+                is_host=False,
+            ),
+        )
+        self.assertTrue(
+            _is_detached_chinh_phuc_room_candidate(
+                lobby, target_pet_id=1289, no_combat_owner=True
+            )
+        )
+        self.assertFalse(
+            _is_detached_chinh_phuc_room_candidate(
+                lobby, target_pet_id=2243, no_combat_owner=True
+            )
+        )
+        self.assertFalse(
+            _is_detached_chinh_phuc_room_candidate(
+                lobby, target_pet_id=1289, no_combat_owner=False
+            )
+        )
+
+    def test_production_combat_uses_restored_four_second_floor(self) -> None:
+        args = SimpleNamespace(
+            play_style="simple",
+            mana_priority="evolution",
+            interval=0.12,
+            max_total_input_actions=100,
+            combat_timeout=1800.0,
+            return_lobby_timeout=30.0,
+            no_beep=False,
+            max_region_mib=8,
+            ack_heap_region_mib=16,
+            chunk_mib=2,
+            reset_evidence=Path("reset.json"),
+            pass_acceptance_stage=None,
+        )
+        combat = _combat_args(args, Path("combat.jsonl"))
+        self.assertEqual(combat.minimum_action_time, 1)
+
+    def test_pass_profile_matches_every_supported_basic_policy_draft(self) -> None:
+        reset = object()
+        self.assertEqual(
+            "B5",
+            _resolve_pass_stage(
+                SimpleNamespace(
+                    pass_acceptance_stage=None,
+                    reset_evidence=reset,
+                    play_style="simple",
+                    mana_priority="evolution",
+                )
+            ),
+        )
+        self.assertEqual(
+            "B3",
+            _resolve_pass_stage(
+                SimpleNamespace(
+                    pass_acceptance_stage=None,
+                    reset_evidence=reset,
+                    play_style="careful",
+                    mana_priority="evolution",
+                )
+            ),
+        )
+        for play_style in ("simple", "careful"):
+            self.assertEqual(
+                "B4",
+                _resolve_pass_stage(
+                    SimpleNamespace(
+                        pass_acceptance_stage=None,
+                        reset_evidence=reset,
+                        play_style=play_style,
+                        mana_priority="attack",
+                    )
+                ),
+            )
+        self.assertEqual(
+            "DISABLED",
+            _resolve_pass_stage(
+                SimpleNamespace(
+                    pass_acceptance_stage=None,
+                    reset_evidence=None,
+                    play_style="careful",
+                    mana_priority="attack",
+                )
+            ),
+        )
+        self.assertEqual(
+            "P2",
+            _resolve_pass_stage(
+                SimpleNamespace(
+                    pass_acceptance_stage="P2",
+                    reset_evidence=reset,
+                    play_style="careful",
+                    mana_priority="attack",
+                )
+            ),
+        )
+
     def test_post_result_room_rehydration_is_distinct_from_real_map(self) -> None:
-        def lobby(*, room_id: str | None, room_data: int | None, room_type: str | None = "ChinhPhuc"):
+        def lobby(
+            *,
+            room_id: str | None,
+            room_data: int | None,
+            room_type: str | None = "ChinhPhuc",
+            button_start: int | None = None,
+            button_interactable: bool | None = None,
+        ):
             return SimpleNamespace(
                 branch="WORLD_BOSS_LIST",
                 chinh_phuc=SimpleNamespace(
                     current_room_type=room_type,
                     current_room_id=room_id,
                     room_data=room_data,
+                    button_start=button_start,
+                    button_interactable=button_interactable,
                 ),
             )
 
@@ -82,6 +205,26 @@ class FarmCycleTests(unittest.TestCase):
         self.assertFalse(
             _is_transient_chinh_phuc_room_rehydration(
                 lobby(room_id="Coop_578601", room_data=0x20000001000)
+            )
+        )
+        self.assertTrue(
+            _is_transient_chinh_phuc_room_rehydration(
+                lobby(
+                    room_id="Coop_578601",
+                    room_data=0x20000001000,
+                    button_start=0x20000002000,
+                    button_interactable=False,
+                )
+            )
+        )
+        self.assertFalse(
+            _is_transient_chinh_phuc_room_rehydration(
+                lobby(
+                    room_id="Coop_578601",
+                    room_data=0x20000001000,
+                    button_start=0x20000002000,
+                    button_interactable=True,
+                )
             )
         )
 
@@ -371,6 +514,42 @@ class CombatSummaryTests(unittest.TestCase):
         accepted, reason, _summary = _validate_combat_summary(records)
         self.assertTrue(accepted, reason)
         self.assertEqual(reason, "POSTMATCH_RESULT_UI_REQUIRED")
+
+    def test_unproven_unknown_lifecycle_loss_is_not_a_completed_match(self) -> None:
+        records = self.valid_records()
+        summary = records[-1]
+        summary["fullCombatResult"] = "UNKNOWN"
+        summary["terminalCombatSnapshot"] = {
+            "result": "UNKNOWN",
+            "confidence": "UNKNOWN",
+            "evidence_sources": [],
+            "captured_before_cleanup": False,
+        }
+
+        accepted, reason, _summary = _validate_combat_summary(records)
+
+        self.assertFalse(accepted)
+        self.assertEqual(reason, "COMBAT_TERMINAL_UNPROVEN")
+
+    def test_evidence_backed_unknown_result_remains_a_completed_match(self) -> None:
+        records = self.valid_records()
+        summary = records[-1]
+        summary["fullCombatResult"] = "UNKNOWN"
+        summary["terminalCombatSnapshot"] = {
+            "result": "UNKNOWN",
+            "confidence": "PARTIAL",
+            "evidence_sources": [
+                "Active.PlayerStats.local",
+                "Active.PlayerStats.boss",
+                "ACTIVE_TO_POSTMATCH_PRE_CLEANUP",
+            ],
+            "captured_before_cleanup": True,
+        }
+
+        accepted, reason, _summary = _validate_combat_summary(records)
+
+        self.assertTrue(accepted, reason)
+        self.assertEqual(reason, "COMBAT_LIFECYCLE_ENDED")
 
     def test_safety_finding_is_not_promoted_to_success(self) -> None:
         records = self.valid_records()

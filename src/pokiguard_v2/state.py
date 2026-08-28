@@ -207,6 +207,7 @@ class BattleState:
     local_username: str | None = None
     is_local_turn: bool | None = None
     local_actor_number: int | None = None
+    local_has_left_match: bool | None = None
     client_move_allowed: bool | None = None
     local_move_sequence: int | None = None
     last_move_from_col: int | None = None

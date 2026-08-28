@@ -14,6 +14,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.win32_input import (
+    AdaptiveSwapPacer,
     BoardCalibration,
     ClickStatus,
     ClientGeometry,
@@ -22,6 +23,7 @@ from pokiguard_v2.win32_input import (
     FarmControlHotkeyEdges,
     WindowBinding,
     map_swap_to_pixels,
+    prepare_bound_window,
     provider_to_solver,
     runtime_to_provider,
     solver_to_screen,
@@ -35,6 +37,9 @@ class FakeBackend:
         self.foreground_values = [True] * 10
         self.clicks = 0
         self.positions: list[tuple[int, int]] = []
+        self.resize_calls: list[tuple[int, int]] = []
+        self.restore_calls = 0
+        self.pid = 123
 
     def client_geometry(self, _hwnd: int) -> ClientGeometry | None:
         return self.geometry
@@ -43,7 +48,7 @@ class FakeBackend:
         return self.foreground_values.pop(0) if self.foreground_values else True
 
     def window_pid(self, _hwnd: int) -> int | None:
-        return 123
+        return self.pid
 
     def set_cursor_pos(self, x: int, y: int) -> bool:
         self.positions.append((x, y))
@@ -54,6 +59,21 @@ class FakeBackend:
 
     def virtual_screen(self) -> tuple[int, int, int, int]:
         return 0, 0, 4000, 2000
+
+    def restore_and_foreground(self, _hwnd: int) -> bool:
+        self.restore_calls += 1
+        self.foreground_values = [True] * 10
+        return True
+
+    def resize_client(self, _hwnd: int, width: int, height: int) -> bool:
+        self.resize_calls.append((width, height))
+        self.geometry = ClientGeometry(
+            self.geometry.left,
+            self.geometry.top,
+            width,
+            height,
+        )
+        return True
 
 
 class CoordinatePipelineTests(unittest.TestCase):
@@ -101,6 +121,36 @@ class ForegroundExecutorTests(unittest.TestCase):
             [(100 + int(0.40 * 1279), 200 + int(0.65 * 719))],
         )
 
+
+class WindowPreparationTests(unittest.TestCase):
+    def test_start_preflight_normalizes_exact_pid_to_canonical_client(self) -> None:
+        backend = FakeBackend()
+        backend.geometry = ClientGeometry(717, 206, 1181, 617)
+        binding = WindowBinding(5, 123, "Pokiguard", 1181, 617)
+
+        prepared = prepare_bound_window(
+            binding,
+            backend,
+            sleeper=lambda _seconds: None,
+        )
+
+        self.assertTrue(prepared)
+        self.assertEqual(backend.resize_calls, [(1280, 720)])
+        self.assertEqual((backend.geometry.width, backend.geometry.height), (1280, 720))
+        self.assertGreaterEqual(backend.restore_calls, 2)
+
+    def test_start_preflight_wrong_pid_fails_without_resize(self) -> None:
+        backend = FakeBackend()
+        backend.pid = 999
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+
+        self.assertFalse(
+            prepare_bound_window(binding, backend, sleeper=lambda _seconds: None)
+        )
+        self.assertEqual(backend.resize_calls, [])
+
+
+class ForegroundExecutorContinuationTests(unittest.TestCase):
     def test_ui_hover_probe_moves_without_clicking(self) -> None:
         backend = FakeBackend()
         executor = ForegroundClickExecutor(backend, sleeper=lambda _value: None)
@@ -124,6 +174,49 @@ class ForegroundExecutorTests(unittest.TestCase):
             (plan.first.screen_x, plan.first.screen_y),
             (plan.second.screen_x, plan.second.screen_y),
         ])
+
+    def test_swap_pacing_is_normal_until_recovery_or_delivery_failure(self) -> None:
+        backend = FakeBackend()
+        delays: list[float] = []
+        executor = ForegroundClickExecutor(backend, sleeper=delays.append)
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        normal = executor.send_swap(binding, plan, remaining_seconds=12)
+        executor.arm_recovery_swap_pacing()
+        recovered = executor.send_swap(binding, plan, remaining_seconds=12)
+        executor.note_swap_unconfirmed()
+        severe = executor.send_swap(binding, plan, remaining_seconds=12)
+
+        self.assertEqual(delays, [0.25, 1.0, 1.5])
+        self.assertEqual(normal.pacing_mode, "NORMAL")
+        self.assertEqual(recovered.pacing_mode, "RECOVERY_DEGRADED")
+        self.assertEqual(severe.pacing_mode, "SEVERE_LAG")
+        self.assertEqual(severe.lag_score, 3)
+
+    def test_sustained_fast_acknowledgements_decay_one_level_only(self) -> None:
+        pacer = AdaptiveSwapPacer()
+        pacer.observe_unconfirmed()
+
+        for _ in range(8):
+            pacer.observe_acknowledged(2.5)
+
+        decision = pacer.decision(remaining_seconds=12)
+        self.assertEqual(decision.lag_score, 2)
+        self.assertEqual(decision.delay_seconds, 1.0)
+        self.assertEqual(decision.reason, "SUSTAINED_FAST_ACK_DECAY")
+
+    def test_adaptive_delay_is_clamped_to_keep_second_click_before_deadline(self) -> None:
+        pacer = AdaptiveSwapPacer()
+        pacer.observe_unconfirmed()
+
+        decision = pacer.decision(remaining_seconds=2.0)
+
+        self.assertTrue(decision.timer_clamped)
+        self.assertEqual(decision.delay_seconds, 0.75)
+        self.assertEqual(decision.mode, "SEVERE_LAG")
 
     def test_focus_loss_before_second_click_never_clicks_desktop(self) -> None:
         backend = FakeBackend()

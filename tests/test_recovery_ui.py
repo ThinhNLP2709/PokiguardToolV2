@@ -41,8 +41,14 @@ class RecoveryUiLocatorTests(unittest.TestCase):
         current = _live_exit_calibration(pid=2184, width=1280, height=710)
         self.assertIsNotNone(current)
         self.assertTrue(current.found)
+        canonical = _live_exit_calibration(pid=2184, width=1280, height=720)
+        self.assertIsNotNone(canonical)
+        assert canonical is not None
+        self.assertTrue(canonical.found)
+        self.assertAlmostEqual(canonical.normalized_point[0], 41.5 / 1280.0)
+        self.assertAlmostEqual(canonical.normalized_point[1], 40.5 / 720.0)
         self.assertIsNone(
-            _live_exit_calibration(pid=2184, width=1280, height=720)
+            _live_exit_calibration(pid=2184, width=1280, height=719)
         )
 
     def test_exit_requires_multiple_white_chevron_components(self) -> None:

@@ -1,6 +1,6 @@
 """Single-owner asynchronous FarmRunner controller for the desktop UI.
 
-The manager is the only Phase 2E.2 component allowed to create a FarmRunner.
+The manager is the only desktop component allowed to create a FarmRunner.
 UI commands merely latch the already accepted F6/F9 control semantics; they
 never touch FarmRun state or send Windows input directly.
 """
@@ -19,7 +19,11 @@ from .boss_entry import FarmTarget
 from .controller_lease import AutomationControllerLease
 from .farm_checkpoint import CheckpointError, load_checkpoint, validate_for_resume
 from .farm_run import FarmRunLimits
-from .win32_input import FarmControlHotkeyEdges, foreground_process_window
+from .win32_input import (
+    FarmControlHotkeyEdges,
+    foreground_process_window,
+    prepare_process_window,
+)
 
 
 def _timestamp() -> str:
@@ -117,6 +121,7 @@ class DesktopFarmControllerManager:
         *,
         runner: Runner | None = None,
         foreground_handoff: Callable[[int], bool] | None = None,
+        window_prepare: Callable[[int], bool] | None = None,
         reset_evidence: Path | None = None,
         artifacts_root: Path | None = None,
     ) -> None:
@@ -131,8 +136,18 @@ class DesktopFarmControllerManager:
         self._runner = runner or self._run_production
         # Production owns the focus handoff. Tests with an injected runner stay
         # hermetic unless they explicitly inject a foreground implementation.
-        self._foreground_handoff = foreground_handoff or (
-            foreground_process_window if runner is None else (lambda _pid: True)
+        injected_focus = foreground_handoff or (lambda _pid: True)
+        self._foreground_handoff = (
+            foreground_process_window if runner is None and foreground_handoff is None
+            else injected_focus
+        )
+        # Desktop Start owns one stronger, zero-input preflight: restore the
+        # exact game PID and normalize its client to the canonical 1280x720
+        # calibration before FarmRunner binds the HWND.  Tests with an injected
+        # runner retain their historical foreground callback unless they opt in
+        # to a distinct preparation implementation.
+        self._window_prepare = window_prepare or (
+            prepare_process_window if runner is None else injected_focus
         )
         self._lock = threading.RLock()
         self._thread: threading.Thread | None = None
@@ -206,16 +221,36 @@ class DesktopFarmControllerManager:
             ControllerLaunch(config, checkpoint_path.resolve(), game_pid)
         )
 
-    def _start(self, launch: ControllerLaunch) -> ControllerCommandResult:
+    def launch_rejection_reason(
+        self,
+        config: Any,
+        checkpoint_path: Path | None = None,
+    ) -> str | None:
+        """Run the same canonical launch validation used by the command path."""
+
         try:
-            self._validate_launch(launch)
+            self._validate_launch(
+                ControllerLaunch(
+                    config,
+                    checkpoint_path.resolve() if checkpoint_path is not None else None,
+                )
+            )
             if not self.reset_evidence.is_file():
                 raise FileNotFoundError(
                     f"reset evidence not found: {self.reset_evidence}"
                 )
         except (CheckpointError, FileNotFoundError, TypeError, ValueError) as exc:
+            return f"INVALID_LAUNCH: {exc}"
+        return None
+
+    def _start(self, launch: ControllerLaunch) -> ControllerCommandResult:
+        reason = self.launch_rejection_reason(
+            launch.config,
+            launch.checkpoint_path,
+        )
+        if reason is not None:
             with self._lock:
-                return self._result(False, f"INVALID_LAUNCH: {exc}")
+                return self._result(False, reason)
 
         with self._lock:
             if self._snapshot.active:
@@ -280,9 +315,10 @@ class DesktopFarmControllerManager:
         error: str | None = None
         try:
             if launch.game_pid is not None:
-                if not self._foreground_handoff(launch.game_pid):
+                if not self._window_prepare(launch.game_pid):
                     raise RuntimeError(
-                        f"GAME_FOREGROUND_HANDOFF_FAILED: PID {launch.game_pid}"
+                        f"GAME_WINDOW_PREPARATION_FAILED: PID {launch.game_pid}; "
+                        "expected foreground canonical client 1280x720"
                     )
                 with self._lock:
                     if self._snapshot.generation != generation:
@@ -433,6 +469,54 @@ class DesktopFarmControllerManager:
                 ),
             )
 
+    def restore_game_foreground(self, generation: int) -> ControllerCommandResult:
+        """Return focus after opening an active-run operator dialog.
+
+        This is deliberately not an input capability and does not alter the
+        FarmRun or its stop edges. It only prevents a desktop modal from
+        consuming the remainder of the current local turn while the operator
+        chooses Cancel, graceful close, or emergency close.
+        """
+
+        with self._lock:
+            if generation != self._snapshot.generation:
+                safety = replace(
+                    self._snapshot.safety,
+                    stale_command_rejections=(
+                        self._snapshot.safety.stale_command_rejections + 1
+                    ),
+                )
+                self._snapshot = replace(self._snapshot, safety=safety)
+                return self._result(False, "STALE_CONTROLLER_GENERATION")
+            if not self._snapshot.active:
+                return self._result(False, "NO_ACTIVE_CONTROLLER")
+            game_pid = self._game_pid
+            if game_pid is None:
+                return self._result(False, "GAME_PID_UNAVAILABLE")
+
+        focused = bool(self._foreground_handoff(game_pid))
+        with self._lock:
+            if generation != self._snapshot.generation:
+                return self._result(False, "STALE_CONTROLLER_GENERATION")
+            self._snapshot = replace(
+                self._snapshot,
+                foreground_handoff=("SUCCEEDED" if focused else "FAILED"),
+                last_error=(
+                    self._snapshot.last_error
+                    if focused
+                    else "GAME_FOREGROUND_HANDOFF_FAILED_FOR_CLOSE_DIALOG"
+                ),
+                updated_at=_timestamp(),
+            )
+            return self._result(
+                focused,
+                (
+                    "GAME_FOREGROUND_RESTORED_FOR_CLOSE_DIALOG"
+                    if focused
+                    else "GAME_FOREGROUND_HANDOFF_FAILED_FOR_CLOSE_DIALOG"
+                ),
+            )
+
     def emergency_stop(self, generation: int) -> ControllerCommandResult:
         with self._lock:
             if generation != self._snapshot.generation:
@@ -497,8 +581,6 @@ class DesktopFarmControllerManager:
             config.normalized_boss_id or "",
             "--target-matches",
             str(config.target_completed_matches),
-            "--max-technical-recoveries",
-            str(config.max_technical_recoveries),
             "--max-match-attempts",
             str(config.max_match_attempts),
             "--play-style",

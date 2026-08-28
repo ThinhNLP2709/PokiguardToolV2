@@ -38,6 +38,7 @@ from .il2cpp_external import (
     BOARD_SINGLETON,
     BOARD_RESULT_TITLE_OFFSET,
     CHAT_SERVICE_CONNECTING_OFFSET,
+    CHAT_MESSAGE_DTO_TYPE_INFO_RVA,
     CHAT_SERVICE_EXPLICIT_DISCONNECT_OFFSET,
     CHAT_SERVICE_IS_CONNECTED_OFFSET,
     CHAT_SERVICE_RECONNECT_COROUTINE_OFFSET,
@@ -92,6 +93,7 @@ from .live_state import (
     gem_for_tag,
     to_board_state,
 )
+from .match_presence import read_left_actor_numbers
 from .gameplay_ui import RuntimeCardStripLayout, resolve_runtime_card_strip
 from .memory_scan import (
     MEM_PRIVATE,
@@ -103,7 +105,7 @@ from .memory_scan import (
     validate_combat_batch_hits,
     validate_dot_pointer_hits,
 )
-from .player_stats import read_active_participants
+from .player_stats import read_active_participants, read_match_local_actor_number
 from .opening_snapshot import OpeningBoardSnapshot
 from .state import (
     BattleState,
@@ -222,6 +224,114 @@ def _region_size_band(
     return tuple(region for region in regions if minimum < region.size <= maximum)
 
 
+_EXTENDED_FUSION_SCAN_MIN_REMAINING_SECONDS = 13
+_EXTENDED_UI_SCAN_MAX_REGIONS_PER_POLL = 4
+_OPTIONAL_UI_SCAN_MAX_BYTES_PER_POLL = 16 * 1024 * 1024
+# A fallback executes inside the local 14-second action window.  Live B6 run
+# 28 measured a 64 MiB retry at almost eight seconds, leaving only two seconds
+# after the two-sample stability gate.  Two configured 16 MiB allocation
+# regions are the largest safe per-poll envelope; rotation preserves eventual
+# coverage without letting one provider poll consume the whole turn.
+_ACK_HEAP_FALLBACK_MAX_BYTES_PER_POLL = 32 * 1024 * 1024
+_ACK_HEAP_FALLBACK_MAX_REGIONS_PER_POLL = 512
+
+
+def _rotating_region_window(
+    regions: tuple[Any, ...],
+    *,
+    cursor: int,
+    preferred_base: int | None,
+    max_regions: int = _EXTENDED_UI_SCAN_MAX_REGIONS_PER_POLL,
+) -> tuple[tuple[Any, ...], int]:
+    """Return a bounded deterministic window over a large allocation band."""
+
+    if max_regions <= 0:
+        raise ValueError("max_regions must be positive")
+    ordered = tuple(sorted(regions, key=lambda region: region.base))
+    if not ordered:
+        return (), 0
+    if preferred_base is not None:
+        for index, region in enumerate(ordered):
+            if region.base == preferred_base:
+                return (region,), (index + 1) % len(ordered)
+    start = cursor % len(ordered)
+    count = min(max_regions, len(ordered))
+    selected = tuple(ordered[(start + offset) % len(ordered)] for offset in range(count))
+    return selected, (start + count) % len(ordered)
+
+
+def _regions_with_address_neighbors(
+    regions: tuple[Any, ...],
+    seeds: tuple[Any, ...],
+    *,
+    span: int = 1,
+) -> tuple[Any, ...]:
+    """Expand validated allocation hints to immediately adjacent regions."""
+
+    if span < 0:
+        raise ValueError("span cannot be negative")
+    ordered = tuple(sorted(regions, key=lambda region: region.base))
+    if not ordered or not seeds:
+        return ()
+    indexes: set[int] = set()
+    for index, region in enumerate(ordered):
+        if any(region.base < seed.end and seed.base < region.end for seed in seeds):
+            indexes.update(
+                range(max(0, index - span), min(len(ordered), index + span + 1))
+            )
+    return tuple(ordered[index] for index in sorted(indexes))
+
+
+def _rotating_region_byte_window(
+    regions: tuple[Any, ...],
+    *,
+    cursor: int,
+    max_bytes: int = _ACK_HEAP_FALLBACK_MAX_BYTES_PER_POLL,
+    max_regions: int = _ACK_HEAP_FALLBACK_MAX_REGIONS_PER_POLL,
+) -> tuple[tuple[Any, ...], int]:
+    """Bound one fallback heap scan by bytes while rotating full coverage."""
+
+    if max_bytes <= 0 or max_regions <= 0:
+        raise ValueError("fallback scan bounds must be positive")
+    ordered = tuple(sorted(regions, key=lambda region: region.base))
+    if not ordered:
+        return (), 0
+    start = cursor % len(ordered)
+    selected: list[Any] = []
+    total = 0
+    for offset in range(len(ordered)):
+        if len(selected) >= max_regions:
+            break
+        region = ordered[(start + offset) % len(ordered)]
+        if selected and total + region.size > max_bytes:
+            break
+        selected.append(region)
+        total += region.size
+    next_cursor = (start + len(selected)) % len(ordered)
+    return tuple(selected), next_cursor
+
+
+def _fusion_ui_discovery_expected(
+    memory_fusion: MemoryFusionState | None,
+) -> bool:
+    """Whether this combat is expected to render a Fusion card UI.
+
+    Discovery is deliberately based only on the selected-pet identity. Game
+    action fields such as ``FusionEnabled``, ``SkillCard``, affordability,
+    prior-use and per-turn lock are allowed to change while the same UI object
+    remains alive. They gate EVOLVE input later; they must never suppress
+    learning the current-session UI address.
+    """
+
+    return bool(
+        memory_fusion is not None
+        and (
+            memory_fusion.selected_user_pet_id > 0
+            or memory_fusion.selected_pet_id > 0
+        )
+    )
+
+
 def _extended_fusion_scan_relevant(
     memory_fusion: MemoryFusionState | None,
     participants: tuple[ParticipantState, ...],
@@ -229,20 +339,39 @@ def _extended_fusion_scan_relevant(
     is_local_turn: bool | None,
     turn: int,
     last_scanned_turn: int | None,
+    turn_time_remaining_seconds: int | None,
 ) -> bool:
-    """Require game-owned availability, turn ownership and sufficient mana."""
+    """Discover Fusion UI independently from current Mana affordability.
+
+    Live Phase 2E.3 evidence measured an extended FusionCardUI scan taking
+    several seconds. Running it on every eligible local turn can consume the
+    configured gameplay floor before a board decision is published. The UI
+    persists across turns, so use an opponent turn for rotating discovery and
+    suppress the immediately following local-turn duplicate. A local-turn
+    scan remains a bounded fallback only when no preceding opponent-turn scan
+    ran, the latest server tick still shows the full safety budget, and Mana
+    already permits an action. Opponent-turn discovery deliberately does not
+    require Mana: affordability gates EVOLVE input, not locating its live UI.
+    """
 
     if (
-        memory_fusion is None
-        or not memory_fusion.candidate_available
-        or (
-            memory_fusion.selected_user_pet_id <= 0
-            and memory_fusion.selected_pet_id <= 0
-        )
-        or memory_fusion.mana_cost <= 0
-        or is_local_turn is not True
+        not _fusion_ui_discovery_expected(memory_fusion)
+        or is_local_turn is None
         or turn == last_scanned_turn
+        or (
+            is_local_turn is True
+            and (
+                last_scanned_turn == turn - 1
+                or turn_time_remaining_seconds is None
+                or turn_time_remaining_seconds
+                < _EXTENDED_FUSION_SCAN_MIN_REMAINING_SECONDS
+            )
+        )
     ):
+        return False
+    if is_local_turn is False:
+        return True
+    if memory_fusion is None or memory_fusion.mana_cost <= 0:
         return False
     local = next(
         (participant for participant in participants if participant.is_local is True),
@@ -262,15 +391,25 @@ def _extended_card_scan_relevant(
     turn: int,
     last_scanned_turn: int | None,
     attempts: int,
+    turn_time_remaining_seconds: int | None = None,
     max_attempts: int = 4,
 ) -> bool:
-    """Bound extended CardUI discovery to safe, distinct local turns."""
+    """Bound CardUI discovery and keep it off the normal local deadline."""
 
     if (
-        is_local_turn is not True
+        is_local_turn is None
         or turn == last_scanned_turn
         or attempts < 0
         or attempts >= max_attempts
+        or (
+            is_local_turn is True
+            and (
+                last_scanned_turn == turn - 1
+                or turn_time_remaining_seconds is None
+                or turn_time_remaining_seconds
+                < _EXTENDED_FUSION_SCAN_MIN_REMAINING_SECONDS
+            )
+        )
     ):
         return False
     if attempts == 0:
@@ -291,6 +430,32 @@ def _first_session_ui_scan_required(
     """Force current-session UI discovery beyond stale learned regions."""
 
     return scan_number == 1 and (needs_card_scan or needs_fusion_ui_scan)
+
+
+def _opponent_ui_warmup_required(
+    *,
+    completed: bool,
+    opening_board_action_priority: bool,
+    is_local_turn: bool | None,
+    turn: int,
+    optional_card_action_expected: bool,
+) -> bool:
+    """Run one current-session UI discovery pass on the first boss turn.
+
+    The mandatory opening turn belongs to board publication and its SWAP.
+    Once that window has passed, the first observed opponent turn is the safe
+    place to discover/cache every equipped optional-card UI. This decision is
+    intentionally independent from Mana so the address is ready before a
+    later local turn becomes affordable.
+    """
+
+    return bool(
+        not completed
+        and not opening_board_action_priority
+        and is_local_turn is False
+        and turn >= 2
+        and optional_card_action_expected
+    )
 
 
 def _match_start_opening_has_priority(
@@ -397,6 +562,8 @@ class ProviderMetrics:
     extended_card_ui_bytes: int = 0
     card_owner_anchor_scans: int = 0
     card_owner_anchor_bytes: int = 0
+    fusion_owner_anchor_scans: int = 0
+    fusion_owner_anchor_bytes: int = 0
 
 
 @dataclass(frozen=True)
@@ -579,6 +746,38 @@ def _owner_batches_confirmed_by_ack(
         for identity in owner_attested
         if identity in tracked and identity[1] in ack_sequences
     }
+
+
+def _recovered_ack_epoch_view(
+    *,
+    raw_highest: int | None,
+    stale_baseline_highest: int | None,
+    current_session_sequences: set[int],
+) -> tuple[int | None, bool, str | None]:
+    """Derive a session-scoped ACK watermark after a forced-room recovery.
+
+    Live recovery evidence proved that ``MatchService._ackedSeqs`` can retain
+    the failed match's frozen maximum after a distinct MATCH_START has already
+    bound a new MatchId/Board/lifecycle. Small sequence numbers in the new
+    match then collide with values left in that set. In that one explicitly
+    armed case, the raw process-wide maximum cannot identify the current
+    session. Only batches independently tied to the current BoardWs owner or
+    current-match ChatMessageDTO are eligible.
+
+    Isolation ends when the client exposes a reset epoch, or when a
+    current-session attestation advances beyond the frozen baseline. An
+    unexplained advance remains fail-closed.
+    """
+
+    if stale_baseline_highest is None:
+        return raw_highest, False, None
+    if raw_highest is None or raw_highest < stale_baseline_highest:
+        return raw_highest, False, None
+    if raw_highest == stale_baseline_highest:
+        return max(current_session_sequences, default=None), True, None
+    if raw_highest in current_session_sequences:
+        return raw_highest, False, None
+    return None, True, "recovery_ack_epoch_advanced_without_current_session_evidence"
 
 
 def _select_latest_identity(
@@ -937,6 +1136,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._fusion_ui_class = target.resolver.resolve_type_info_class(
             FUSION_CARD_UI_TYPE_INFO_RVA
         )
+        self._chat_message_class = target.resolver.resolve_type_info_class(
+            CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+        )
         self._player_stats_class = target.resolver.resolve_type_info_class(
             ACTIVE_PLAYER_STATS_TYPE_INFO_RVA
         )
@@ -948,6 +1150,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._learned_regions: dict[str, set[Any]] = {}
         self._last_scan_was_full = False
         self._force_full_scan = False
+        self._optional_ui_region_cursor = 0
         self._scan_number = 0
         self._lifecycle_epoch = 0
         self._lifecycle_tracker = CombatSessionTracker()
@@ -959,12 +1162,15 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._sources: dict[tuple[int, int, str], set[str]] = {}
         self._owner_attested: set[tuple[int, int, str]] = set()
         self._transport_attested: set[tuple[int, int, str]] = set()
+        self._runtime_heap_attested: set[tuple[int, int, str]] = set()
         self._ack_attested: set[tuple[int, int, str]] = set()
         self._lobby_batch_baseline: set[tuple[int, int, str]] = set()
         self._session_batch_baseline: set[tuple[int, int, str]] = set()
         self._lobby_baseline_ready = False
         self._needs_lobby_baseline = True
         self._batch_scan_miss_seq: int | None = None
+        self._ack_heap_region_cursor = 0
+        self._last_ack_heap_fallback_bounded = False
         self._latest_identity: tuple[int, int, str] | None = None
         self._last_accepted_seq: int | None = None
         self._last_accepted_hash: str | None = None
@@ -973,6 +1179,18 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_accepted_all_dots: tuple[int, ...] | None = None
         self._non_board_fusion_sequence: int | None = None
         self._opening_snapshot: OpeningBoardSnapshot | None = None
+        # A forced recovery can leave MatchService._ackedSeqs frozen at the
+        # failed match's watermark even after a distinct MATCH_START binds.
+        # This mode is armed only by the exact-lobby recovery coordinator and
+        # consumed by the next lifecycle; normal entries never enable it.
+        self._pending_recovery_ack_baseline: int | None = None
+        self._pending_recovery_ack_local_sequence: int | None = None
+        self._recovery_ack_epoch_session: CombatSessionKey | None = None
+        self._recovery_ack_baseline_highest: int | None = None
+        self._recovery_ack_baseline_local_sequence: int | None = None
+        self._recovery_ack_effective_highest: int | None = None
+        self._recovery_ack_isolated = False
+        self._recovery_ack_unsafe_reason: str | None = None
         self._gate = StableSnapshotGate(self.config.required_confirmations)
         self._published: set[tuple[CombatSessionKey, int, str]] = set()
         self._last_phase = GamePhase.UNKNOWN
@@ -984,18 +1202,30 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._preentry_attack_card_count = 0
         self._preentry_card_sources_agree: bool | None = None
         self._last_fusion: FusionState | None = None
+        self._last_memory_fusion_state: MemoryFusionState | None = None
+        self._local_actor_number: int | None = None
         self._last_published_state: GameState | None = None
         self._frozen_terminal_snapshot: TerminalCombatSnapshot | None = None
         self._dot_pointer_hits: set[int] = set()
         self._card_addresses: set[int] = set()
         self._fusion_ui_addresses: set[int] = set()
+        self._session_ui_warmup_completed = False
+        self._fusion_owner_anchor_scan_turn: int | None = None
         self._extended_fusion_scan_turn: int | None = None
+        self._extended_fusion_region_cursor = 0
+        self._extended_fusion_region_hint_base: int | None = None
+        self._last_extended_fusion_regions: tuple[Any, ...] = ()
         self._extended_card_scan_turn: int | None = None
         self._extended_card_scan_attempts = 0
+        self._extended_card_region_cursor = 0
+        self._extended_card_region_hint_base: int | None = None
+        self._last_extended_card_regions: tuple[Any, ...] = ()
         self._card_owner_anchor_scan_turn: int | None = None
         self._card_owner_anchor_scan_attempts = 0
         self._last_card_owner_anchor_regions: tuple[Any, ...] = ()
         self._last_card_owner_anchor_reason: str | None = None
+        self._last_fusion_owner_anchor_regions: tuple[Any, ...] = ()
+        self._last_fusion_owner_anchor_reason: str | None = None
         self._batch_addresses: set[int] = set()
         self._board_ws_addresses: set[int] = set()
         self._board_ws_address_misses: dict[int, int] = {}
@@ -1029,6 +1259,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
         if self._fusion_ui_class is None:
             self._fusion_ui_class = self.target.resolver.resolve_type_info_class(
                 FUSION_CARD_UI_TYPE_INFO_RVA
+            )
+        if self._chat_message_class is None:
+            self._chat_message_class = self.target.resolver.resolve_type_info_class(
+                CHAT_MESSAGE_DTO_TYPE_INFO_RVA
             )
         return self._batch_class is not None and self._board_ws_class is not None
 
@@ -1076,7 +1310,13 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self.metrics.lobby_baseline_scans += 1
         return True
 
-    def _scan(self, needles: dict[str, int], *, force_full: bool = False) -> Any:
+    def _scan(
+        self,
+        needles: dict[str, int],
+        *,
+        force_full: bool = False,
+        bounded_fallback: bool = False,
+    ) -> Any:
         self.metrics.memory_scans += 1
         all_regions = self._regions()
         learned_complete = all(
@@ -1085,11 +1325,28 @@ class MemoryBoardStateProvider(BoardStateProvider):
         periodic_full = (
             self.metrics.memory_scans % self.config.full_rescan_interval == 0
         )
-        self._last_scan_was_full = bool(
+        wants_fallback = bool(
             force_full or not learned_complete or periodic_full
         )
-        if self._last_scan_was_full:
+        if wants_fallback and bounded_fallback:
+            fallback, self._optional_ui_region_cursor = (
+                _rotating_region_byte_window(
+                    all_regions,
+                    cursor=self._optional_ui_region_cursor,
+                    max_bytes=_OPTIONAL_UI_SCAN_MAX_BYTES_PER_POLL,
+                )
+            )
+            selected = {
+                region
+                for name in needles
+                for region in self._learned_regions.get(name, ())
+            }
+            selected.update(fallback)
+            regions = tuple(sorted(selected, key=lambda region: region.base))
+            self._last_scan_was_full = regions == all_regions
+        elif wants_fallback:
             regions = all_regions
+            self._last_scan_was_full = True
         else:
             selected = {
                 region
@@ -1097,6 +1354,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 for region in self._learned_regions.get(name, ())
             }
             regions = tuple(sorted(selected, key=lambda region: region.base))
+            self._last_scan_was_full = False
         result = scan_aligned_qwords(
             self.target.memory,
             regions,
@@ -1124,11 +1382,26 @@ class MemoryBoardStateProvider(BoardStateProvider):
             self.target.memory.iter_readable_regions(),
             max_region_size=maximum_mib * 1024 * 1024,
         )
-        regions = _region_size_band(
+        band = _region_size_band(
             all_regions,
             minimum_exclusive_mib=self.config.max_region_mib,
             maximum_inclusive_mib=maximum_mib,
         )
+        preferred = self._extended_fusion_region_hint_base
+        self._extended_fusion_region_hint_base = None
+        regions, self._extended_fusion_region_cursor = _rotating_region_byte_window(
+            band,
+            cursor=self._extended_fusion_region_cursor,
+            max_bytes=_OPTIONAL_UI_SCAN_MAX_BYTES_PER_POLL,
+            max_regions=_EXTENDED_UI_SCAN_MAX_REGIONS_PER_POLL,
+        )
+        if preferred is not None:
+            preferred_regions = tuple(
+                region for region in band if region.base == preferred
+            )
+            if preferred_regions:
+                regions = preferred_regions
+        self._last_extended_fusion_regions = regions
         result = scan_aligned_qwords(
             self.target.memory,
             regions,
@@ -1155,11 +1428,26 @@ class MemoryBoardStateProvider(BoardStateProvider):
             self.target.memory.iter_readable_regions(),
             max_region_size=maximum_mib * 1024 * 1024,
         )
-        regions = _region_size_band(
+        band = _region_size_band(
             all_regions,
             minimum_exclusive_mib=self.config.max_region_mib,
             maximum_inclusive_mib=maximum_mib,
         )
+        preferred = self._extended_card_region_hint_base
+        self._extended_card_region_hint_base = None
+        regions, self._extended_card_region_cursor = _rotating_region_byte_window(
+            band,
+            cursor=self._extended_card_region_cursor,
+            max_bytes=_OPTIONAL_UI_SCAN_MAX_BYTES_PER_POLL,
+            max_regions=_EXTENDED_UI_SCAN_MAX_REGIONS_PER_POLL,
+        )
+        if preferred is not None:
+            preferred_regions = tuple(
+                region for region in band if region.base == preferred
+            )
+            if preferred_regions:
+                regions = preferred_regions
+        self._last_extended_card_regions = regions
         result = scan_aligned_qwords(
             self.target.memory,
             regions,
@@ -1198,9 +1486,51 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 for old in learned
             )
         )
-        regions = all_regions if force_full or not current_learned else current_learned
+        # Current-session UI/owner/Dot objects are useful allocation anchors even
+        # before the first WsCombatBatch has been learned.  Live Phase 2E.3
+        # evidence placed the newest ACK batch in the same 11.25 MiB managed
+        # region as the ownership-validated FusionCardUI.  Ignoring that known
+        # region forced the bounded fallback to rotate for several polls and
+        # consumed most of a 14-second local turn.  These anchors only select
+        # regions to scan; exact WsCombatBatch class, cell and ACK validation
+        # below remains mandatory before any state can be published.
+        anchor_addresses = (
+            set(getattr(self, "_fusion_ui_addresses", ()))
+            | set(getattr(self, "_card_addresses", ()))
+            | set(getattr(self, "_board_ws_addresses", ()))
+            | set(getattr(self, "_dot_pointer_hits", ()))
+        )
+        anchor_regions = tuple(
+            sorted(
+                regions_containing_addresses(all_regions, anchor_addresses),
+                key=lambda region: region.base,
+            )
+        )
+        evidenced_seeds = tuple(set(current_learned) | set(anchor_regions))
+        evidenced_envelope = (
+            _regions_with_address_neighbors(all_regions, evidenced_seeds)
+            or evidenced_seeds
+        )
+        self._last_ack_heap_fallback_bounded = False
+        if force_full or not current_learned:
+            fallback, self._ack_heap_region_cursor = _rotating_region_byte_window(
+                all_regions,
+                cursor=self._ack_heap_region_cursor,
+            )
+            regions = tuple(
+                sorted(
+                    set(evidenced_envelope) | set(fallback),
+                    key=lambda region: region.base,
+                )
+            )
+            self._last_ack_heap_fallback_bounded = regions != all_regions
+        else:
+            # WsCombatBatch allocations move between contiguous Unity heap
+            # regions during a long fight. Live run 21 placed the next batch
+            # in the region immediately preceding the last validated hit.
+            regions = evidenced_envelope
         self.metrics.memory_scans += 1
-        self._last_scan_was_full = regions is all_regions
+        self._last_scan_was_full = regions == all_regions
         result = scan_aligned_qwords(
             self.target.memory,
             regions,
@@ -1272,6 +1602,36 @@ class MemoryBoardStateProvider(BoardStateProvider):
         """Resolve only allocation regions evidenced by live allDots objects."""
 
         return self._owned_anchor_regions(addresses)
+
+    def _scan_cards_in_hand_regions(
+        self,
+        board_instance: int,
+        needles: dict[str, int],
+    ) -> tuple[tuple[int, ...], tuple[Any, ...], Any | None]:
+        """Scan only regions selected by current ``Board.cardsInHand`` owners.
+
+        Cpp2IL proves the list ownership and that the spawned Fusion GameObject
+        is appended to it. Region membership is discovery evidence only; every
+        returned class-pointer hit still needs its exact object validator.
+        """
+
+        if not needles:
+            raise ValueError("cards-in-hand anchor scan requires a needle")
+        card_game_objects = read_cards_in_hand_anchors(
+            self.target.memory,
+            board_instance,
+        )
+        regions = self._owned_anchor_regions(set(card_game_objects))
+        if not regions:
+            return card_game_objects, regions, None
+        self.metrics.memory_scans += 1
+        result = scan_aligned_qwords(
+            self.target.memory,
+            regions,
+            needles,
+            chunk_size=self.config.chunk_mib * 1024 * 1024,
+        )
+        return card_game_objects, regions, result
 
     def _current_dots(
         self,
@@ -1481,6 +1841,64 @@ class MemoryBoardStateProvider(BoardStateProvider):
             raise LayoutValidationError("MatchService remaining turn time is invalid")
         return TurnTimerObservation(duration, remaining)
 
+    def arm_recovery_ack_epoch_isolation(
+        self,
+        *,
+        stale_highest: int,
+        stale_local_move_sequence: int,
+    ) -> bool:
+        """Arm one frozen lobby ACK baseline for the next distinct combat.
+
+        The recovery coordinator has already proved an owner-free exact boss
+        room and a stable, non-advancing MatchService watermark. This method
+        does not clear or write game state; it only scopes later read evidence
+        to the next provider lifecycle.
+        """
+
+        if (
+            self._session_key is not None
+            or not isinstance(stale_highest, int)
+            or stale_highest <= 0
+            or not isinstance(stale_local_move_sequence, int)
+            or stale_local_move_sequence < 0
+        ):
+            return False
+        self._pending_recovery_ack_baseline = int(stale_highest)
+        self._pending_recovery_ack_local_sequence = int(
+            stale_local_move_sequence
+        )
+        self._recovery_ack_epoch_session = None
+        self._recovery_ack_baseline_highest = None
+        self._recovery_ack_baseline_local_sequence = None
+        self._recovery_ack_effective_highest = None
+        self._recovery_ack_isolated = False
+        self._recovery_ack_unsafe_reason = None
+        return True
+
+    def cancel_recovery_ack_epoch_isolation(self) -> None:
+        """Discard an unconsumed or failed recovery-only ACK scope."""
+
+        self._pending_recovery_ack_baseline = None
+        self._pending_recovery_ack_local_sequence = None
+        self._recovery_ack_epoch_session = None
+        self._recovery_ack_baseline_highest = None
+        self._recovery_ack_baseline_local_sequence = None
+        self._recovery_ack_effective_highest = None
+        self._recovery_ack_isolated = False
+        self._recovery_ack_unsafe_reason = None
+
+    def recovery_ack_epoch_isolated_for(
+        self, session: CombatSessionKey
+    ) -> bool:
+        """Report an active, fail-closed isolation for exactly one session."""
+
+        return bool(
+            self._recovery_ack_epoch_session == session
+            and self._session_key == session
+            and self._recovery_ack_isolated
+            and self._recovery_ack_unsafe_reason is None
+        )
+
     def _reset_lifecycle(
         self,
         board_instance: int,
@@ -1493,11 +1911,29 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._current_board = board_instance
         self._current_match_id = match_id
         self._session_key = session_key
+        if self._pending_recovery_ack_baseline is not None:
+            self._recovery_ack_epoch_session = session_key
+            self._recovery_ack_baseline_highest = (
+                self._pending_recovery_ack_baseline
+            )
+            self._recovery_ack_baseline_local_sequence = (
+                self._pending_recovery_ack_local_sequence
+            )
+            self._pending_recovery_ack_baseline = None
+            self._pending_recovery_ack_local_sequence = None
+        else:
+            self._recovery_ack_epoch_session = None
+            self._recovery_ack_baseline_highest = None
+            self._recovery_ack_baseline_local_sequence = None
+        self._recovery_ack_effective_highest = None
+        self._recovery_ack_isolated = False
+        self._recovery_ack_unsafe_reason = None
         # UI objects are recreated into potentially different small managed
         # regions for every combat.  Discovery cadence is therefore
         # session-scoped; retaining the prior poll number can skip the only
         # early full CardUI/FusionCardUI scan and leave stale learned regions.
         self._scan_number = 0
+        self._optional_ui_region_cursor = 0
         # Batch/Card/Fusion objects are session-owned.  Their raw learned
         # regions must never accumulate across combats; BoardWsApplier remains
         # the only useful stable discovery hint and is revalidated below.
@@ -1507,8 +1943,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._sources.clear()
         self._owner_attested.clear()
         self._transport_attested.clear()
+        self._runtime_heap_attested.clear()
         self._ack_attested.clear()
         self._batch_scan_miss_seq = None
+        self._ack_heap_region_cursor = 0
+        self._last_ack_heap_fallback_bounded = False
         self._latest_identity = None
         self._last_accepted_seq = None
         self._last_accepted_hash = None
@@ -1516,6 +1955,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_accepted_local_move_sequence = None
         self._last_accepted_all_dots = None
         self._non_board_fusion_sequence = None
+        # This is a current-session gauge, not a cumulative counter.  A shared
+        # provider is deliberately reused by technical recovery; retaining the
+        # failed match's watermark would make a pristine recovered opening look
+        # ACK-contaminated before the new session performs its first ACK read.
+        self.metrics.highest_acked_sequence = None
         self._opening_snapshot = None
         self._gate = StableSnapshotGate(self.config.required_confirmations)
         self._published.clear()
@@ -1524,6 +1968,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
             False, 0, (), None, "new_combat_not_observed"
         )
         self._last_fusion = None
+        self._last_memory_fusion_state = None
+        self._local_actor_number = None
         self._last_published_state = None
         # A new current session is the only point where the prior immutable
         # POSTMATCH audit record is no longer relevant to provider consumers.
@@ -1531,13 +1977,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._dot_pointer_hits.clear()
         self._card_addresses.clear()
         self._fusion_ui_addresses.clear()
+        self._session_ui_warmup_completed = False
+        self._fusion_owner_anchor_scan_turn = None
         self._extended_fusion_scan_turn = None
+        self._extended_fusion_region_cursor = 0
+        self._extended_fusion_region_hint_base = None
+        self._last_extended_fusion_regions = ()
         self._extended_card_scan_turn = None
         self._extended_card_scan_attempts = 0
+        self._extended_card_region_cursor = 0
+        self._extended_card_region_hint_base = None
+        self._last_extended_card_regions = ()
         self._card_owner_anchor_scan_turn = None
         self._card_owner_anchor_scan_attempts = 0
         self._last_card_owner_anchor_regions = ()
         self._last_card_owner_anchor_reason = None
+        self._last_fusion_owner_anchor_regions = ()
+        self._last_fusion_owner_anchor_reason = None
         self._batch_addresses.clear()
         self._board_ws_addresses.clear()
         self._board_ws_address_misses.clear()
@@ -1552,13 +2008,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._current_board = None
         self._current_match_id = None
         self._session_key = None
+        self._recovery_ack_epoch_session = None
+        self._recovery_ack_baseline_highest = None
+        self._recovery_ack_baseline_local_sequence = None
+        self._recovery_ack_effective_highest = None
+        self._recovery_ack_isolated = False
+        self._recovery_ack_unsafe_reason = None
         self._session_batch_baseline.clear()
         self._tracked.clear()
         self._sources.clear()
         self._owner_attested.clear()
         self._transport_attested.clear()
+        self._runtime_heap_attested.clear()
         self._ack_attested.clear()
         self._batch_scan_miss_seq = None
+        self._optional_ui_region_cursor = 0
+        self._ack_heap_region_cursor = 0
+        self._last_ack_heap_fallback_bounded = False
         self._latest_identity = None
         self._last_accepted_seq = None
         self._last_accepted_hash = None
@@ -1566,6 +2032,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_accepted_local_move_sequence = None
         self._last_accepted_all_dots = None
         self._non_board_fusion_sequence = None
+        self.metrics.highest_acked_sequence = None
         self._opening_snapshot = None
         self._published.clear()
         self._batch_addresses.clear()
@@ -1576,13 +2043,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._dot_pointer_hits.clear()
         self._card_addresses.clear()
         self._fusion_ui_addresses.clear()
+        self._session_ui_warmup_completed = False
+        self._fusion_owner_anchor_scan_turn = None
         self._extended_fusion_scan_turn = None
+        self._extended_fusion_region_cursor = 0
+        self._extended_fusion_region_hint_base = None
+        self._last_extended_fusion_regions = ()
         self._extended_card_scan_turn = None
         self._extended_card_scan_attempts = 0
+        self._extended_card_region_cursor = 0
+        self._extended_card_region_hint_base = None
+        self._last_extended_card_regions = ()
         self._card_owner_anchor_scan_turn = None
         self._card_owner_anchor_scan_attempts = 0
         self._last_card_owner_anchor_regions = ()
         self._last_card_owner_anchor_reason = None
+        self._last_fusion_owner_anchor_regions = ()
+        self._last_fusion_owner_anchor_reason = None
         _drop_session_volatile_learned_regions(self._learned_regions)
         self._gate = StableSnapshotGate(self.config.required_confirmations)
         self._last_cards = ()
@@ -1590,6 +2067,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
             False, 0, (), None, "combat_cleared"
         )
         self._last_fusion = None
+        self._last_memory_fusion_state = None
+        self._local_actor_number = None
         self._last_published_state = None
         self._force_full_scan = not bool(self._learned_regions.get("board_ws"))
         self._needs_lobby_baseline = True
@@ -1680,6 +2159,26 @@ class MemoryBoardStateProvider(BoardStateProvider):
             candidate, "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
         )
         self._transport_attested.add(identity)
+        return True
+
+    def offer_runtime_heap_batch(self, batch: CombatBatchSnapshot) -> bool:
+        """Retain a structurally validated batch found by the shared DTO scan.
+
+        The runtime monitor searches for the batch class in bytes it already
+        reads for sequence DTOs.  This method only binds that candidate to the
+        current session; publication still requires its exact sequence in
+        ``MatchService._ackedSeqs`` and all normal stability/actionability gates.
+        """
+
+        if (
+            self._session_key is None
+            or batch.sequence < 0
+            or dto_rejection_reasons(batch.cells)
+            or batch_identity(batch) in self._session_batch_baseline
+        ):
+            return False
+        identity = self._register(batch, "RuntimeSequenceMonitor.WsCombatBatch")
+        self._runtime_heap_attested.add(identity)
         return True
 
     def capture_transient_batches(self) -> tuple[tuple[int, int, str], ...]:
@@ -1963,6 +2462,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
             for participant in participants
             if player is None or participant.actor_number != player.actor_number
         )
+        try:
+            left_actors = read_left_actor_numbers(
+                self.target.memory, board_after.board_instance
+            ).actor_numbers
+        except (ExternalReadError, OSError, LayoutValidationError):
+            return ProviderPoll(
+                None,
+                False,
+                "non_board_fusion_left_actor_set_unstable",
+                lifecycle,
+                fusion_changed=True,
+                session_key=session_key,
+                combat_lifecycle=lifecycle_observation,
+            )
+        local_has_left = (
+            player.actor_number in left_actors if player is not None else None
+        )
         local_turn = action_after.is_local_turn(current_turn_player)
         modal_open = bool(
             board_after.is_mega2_panel_open
@@ -1974,6 +2490,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             not board_after.is_game_over
             and board_after.active is not None
             and bool(match_id)
+            and local_has_left is not True
             and not action_after.start_gate_paused
             and local_turn is True
             and not board_after.is_processing_ui
@@ -2027,6 +2544,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 local_actor_number=(
                     player.actor_number if player is not None else None
                 ),
+                local_has_left_match=local_has_left,
                 client_move_allowed=client_move_allowed,
                 local_move_sequence=action_after.local_move_sequence,
                 last_move_from_col=action_after.last_move_from_col,
@@ -2072,9 +2590,34 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 self.target.memory,
                 active,
                 expected_class=self._player_stats_class,
+                local_actor_number=self._local_actor_number,
             )
         except (ExternalReadError, OSError, LayoutValidationError, ValueError):
             return ()
+
+    def _refresh_local_actor_number(
+        self,
+        match_service: int,
+        local_username: str | None,
+    ) -> None:
+        """Refresh the exact local actor from MatchService.Players.
+
+        Fusion can add an additional non-boss PlayerStats entry for the pet.
+        Counting non-boss entries is therefore insufficient to identify the
+        user.  Keep a value only for this lifecycle and only after the same
+        game-owned username lookup used by Active has validated it.
+        """
+
+        try:
+            actor = read_match_local_actor_number(
+                self.target.memory,
+                match_service,
+                local_username,
+            )
+        except (ExternalReadError, OSError, LayoutValidationError, ValueError):
+            return
+        if actor is not None:
+            self._local_actor_number = actor
 
     def _postmatch_ui_text(self, board_instance: int) -> str | None:
         """Read Board.txtResultTitle.Text.m_Text as secondary UI audit only."""
@@ -2323,6 +2866,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
         session_key = self._session_key
         if session_key is None:
             raise AssertionError("combat session must be initialized")
+        self._refresh_local_actor_number(
+            match_service,
+            action_before.local_username,
+        )
+        self._last_memory_fusion_state = memory_fusion
         self._last_phase = GamePhase.COMBAT
         self._last_combat_lifecycle = CombatLifecycleState.ACTIVE
 
@@ -2407,8 +2955,20 @@ class MemoryBoardStateProvider(BoardStateProvider):
             and (self._scan_number in (1, 4, 12) or self._scan_number % 24 == 0)
         )
         participants_hint = self._participants(board.active)
+        try:
+            optional_scan_timer = self._read_turn_timer(match_service)
+        except (ExternalReadError, OSError, LayoutValidationError) as exc:
+            self.metrics.read_errors += 1
+            return ProviderPoll(
+                None,
+                False,
+                f"turn_timer_read_error:{exc}",
+                lifecycle,
+                session_key=session_key,
+            )
+        is_local_turn_hint = action_before.is_local_turn(current_turn_player)
         opening_board_action_priority = _opening_board_action_has_priority(
-            is_local_turn=action_before.is_local_turn(current_turn_player),
+            is_local_turn=is_local_turn_hint,
             turn=turn,
             local_move_sequence=action_before.local_move_sequence,
             last_move_sequence=action_before.last_move_sequence,
@@ -2419,29 +2979,65 @@ class MemoryBoardStateProvider(BoardStateProvider):
             # uncached discovery resumes at the normal later-poll cadence.
             needs_card_scan = False
             needs_fusion_ui_scan = False
-        optional_card_action_expected = bool(
-            self._preentry_attack_card_count > 0
-            or (
-                memory_fusion is not None
-                and memory_fusion.skill_card is not None
-                and (
-                    memory_fusion.selected_user_pet_id > 0
-                    or memory_fusion.selected_pet_id > 0
-                )
-            )
+        fusion_ui_discovery_expected = _fusion_ui_discovery_expected(
+            memory_fusion
         )
-        needs_extended_fusion_ui_scan = bool(
+        optional_card_action_expected = bool(
+            self._card_ui_class is not None
+            or fusion_ui_discovery_expected
+        )
+        opponent_ui_warmup = _opponent_ui_warmup_required(
+            completed=self._session_ui_warmup_completed,
+            opening_board_action_priority=opening_board_action_priority,
+            is_local_turn=is_local_turn_hint,
+            turn=int(turn),
+            optional_card_action_expected=optional_card_action_expected,
+        )
+        if opponent_ui_warmup:
+            # Latch before scanning so an unreadable allocation cannot cause
+            # an unbounded full-scan loop on every poll of the same boss turn.
+            self._session_ui_warmup_completed = True
+            needs_card_scan = bool(
+                self._card_ui_class is not None
+                and not self._card_addresses
+            )
+            needs_fusion_ui_scan = bool(
+                self._fusion_ui_class is not None
+                and fusion_ui_discovery_expected
+                and not self._fusion_ui_addresses
+            )
+        fusion_scan_turns = tuple(
+            value
+            for value in (
+                self._fusion_owner_anchor_scan_turn,
+                self._extended_fusion_scan_turn,
+            )
+            if value is not None
+        )
+        fusion_discovery_relevant = bool(
             not opening_board_action_priority
-            and self.config.extended_fusion_ui_region_mib is not None
             and self._fusion_ui_class is not None
             and not self._fusion_ui_addresses
             and _extended_fusion_scan_relevant(
                 memory_fusion,
                 participants_hint,
-                is_local_turn=action_before.is_local_turn(current_turn_player),
+                is_local_turn=is_local_turn_hint,
                 turn=turn,
-                last_scanned_turn=self._extended_fusion_scan_turn,
+                last_scanned_turn=(max(fusion_scan_turns) if fusion_scan_turns else None),
+                turn_time_remaining_seconds=(
+                    optional_scan_timer.remaining_seconds
+                ),
             )
+        )
+        # Cpp2IL proves that FusionCardUI.Spawn returns a GameObject which
+        # Board.LoadSelectedCards adds to Board.cardsInHand. Search the small
+        # allocation regions selected by those current GameObject references
+        # before falling back to the rotating 8--16 MiB heap band. A candidate
+        # is still unusable until exact FusionCardUI/native/Button validation.
+        needs_fusion_owner_anchor_scan = fusion_discovery_relevant
+        needs_extended_fusion_ui_scan = bool(
+            fusion_discovery_relevant
+            and self.config.extended_fusion_ui_region_mib is not None
         )
         needs_extended_card_ui_scan = bool(
             not opening_board_action_priority
@@ -2451,10 +3047,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
             and not any(card.is_attack for card in self._last_cards)
             and _extended_card_scan_relevant(
                 participants_hint,
-                is_local_turn=action_before.is_local_turn(current_turn_player),
+                is_local_turn=is_local_turn_hint,
                 turn=turn,
                 last_scanned_turn=self._extended_card_scan_turn,
                 attempts=self._extended_card_scan_attempts,
+                turn_time_remaining_seconds=optional_scan_timer.remaining_seconds,
             )
         )
         needs_card_owner_anchor_scan = bool(
@@ -2465,10 +3062,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
             and not any(card.is_attack for card in self._last_cards)
             and _extended_card_scan_relevant(
                 participants_hint,
-                is_local_turn=action_before.is_local_turn(current_turn_player),
+                is_local_turn=is_local_turn_hint,
                 turn=turn,
                 last_scanned_turn=self._card_owner_anchor_scan_turn,
                 attempts=self._card_owner_anchor_scan_attempts,
+                turn_time_remaining_seconds=optional_scan_timer.remaining_seconds,
                 max_attempts=3,
             )
         )
@@ -2481,14 +3079,26 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     needles["card_ui"] = int(self._card_ui_class)
                 if needs_fusion_ui_scan:
                     needles["fusion_ui"] = int(self._fusion_ui_class)
+                if opponent_ui_warmup and self._chat_message_class is not None:
+                    # Reuse the already-required boss-turn UI full scan to
+                    # learn ChatMessageDTO allocation regions at effectively
+                    # no extra ReadProcessMemory cost. The transport monitor
+                    # still validates exact current-match DTOs itself.
+                    needles["chat_message"] = int(self._chat_message_class)
                 force_current_ui_scan = _first_session_ui_scan_required(
                     self._scan_number,
                     needs_card_scan=needs_card_scan,
                     needs_fusion_ui_scan=needs_fusion_ui_scan,
-                )
+                ) or opponent_ui_warmup
                 scan = self._scan(
                     needles,
                     force_full=self._force_full_scan or force_current_ui_scan,
+                    # The one-time warm-up runs only on an opponent turn and
+                    # restores the pre-UI full normal-region discovery. Later
+                    # retries stay bounded inside gameplay polling.
+                    bounded_fallback=(
+                        not needs_owner_scan and not opponent_ui_warmup
+                    ),
                 )
                 self._force_full_scan = False
                 for name in needles:
@@ -2499,27 +3109,6 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     None,
                     False,
                     f"candidate_scan_error:{exc}",
-                    lifecycle,
-                    session_key=session_key,
-                )
-        if needs_extended_fusion_ui_scan:
-            # Record before scanning so a partially unreadable region cannot
-            # produce an unbounded retry loop during the same 14-second turn.
-            self._extended_fusion_scan_turn = turn
-            try:
-                extended_scan = self._scan_extended_fusion_ui()
-                scan_matches["fusion_ui"] = tuple(
-                    sorted(
-                        set(scan_matches.get("fusion_ui", ()))
-                        | set(extended_scan.matches.get("fusion_ui", ()))
-                    )
-                )
-            except (ExternalReadError, OSError) as exc:
-                self.metrics.read_errors += 1
-                return ProviderPoll(
-                    None,
-                    False,
-                    f"extended_fusion_ui_scan_error:{exc}",
                     lifecycle,
                     session_key=session_key,
                 )
@@ -2548,81 +3137,172 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 needs_card_owner_anchor_scan,
                 normal_cards,
             )
-        if needs_card_owner_anchor_scan:
-            # Cpp2IL proves Board.cardsInHand at +0x300.  Its current
-            # GameObject references are used only to select the managed
-            # allocation regions worth scanning for Board back-references.
-            # A hit becomes playable only after exact CardUI class, current
-            # Board/Active, native-object and Button validation below.
-            self._card_owner_anchor_scan_turn = turn
-            self._card_owner_anchor_scan_attempts += 1
-            self._last_card_owner_anchor_regions = ()
-            self._last_card_owner_anchor_reason = None
-            try:
-                card_game_objects = read_cards_in_hand_anchors(
-                    self.target.memory,
-                    board.board_instance,
+        if (
+            needs_fusion_owner_anchor_scan or needs_extended_fusion_ui_scan
+        ) and self._fusion_ui_class is not None:
+            normal_fusion_candidates = validate_fusion_card_ui_hits(
+                self.target.memory,
+                set(scan_matches.get("fusion_ui", ()))
+                | self._fusion_ui_addresses,
+                expected_class=int(self._fusion_ui_class),
+            )
+            if len(normal_fusion_candidates) == 1:
+                self._fusion_ui_addresses = {
+                    normal_fusion_candidates[0].address
+                }
+                needs_fusion_owner_anchor_scan = False
+                needs_extended_fusion_ui_scan = False
+                self._last_fusion_owner_anchor_reason = (
+                    "current_fusion_ui_resolved_by_session_warmup"
                 )
-                anchor_regions = self._owned_anchor_regions(set(card_game_objects))
-                self._last_card_owner_anchor_regions = anchor_regions
+        if needs_card_owner_anchor_scan or needs_fusion_owner_anchor_scan:
+            # Cpp2IL proves Board.cardsInHand at +0x300. Its current GameObject
+            # references select a small, current-combat allocation envelope.
+            # CardUI still requires exact Board/Active ownership; FusionCardUI
+            # still requires its exact class, native object and live Button.
+            if needs_card_owner_anchor_scan:
+                self._card_owner_anchor_scan_turn = turn
+                self._card_owner_anchor_scan_attempts += 1
+                self._last_card_owner_anchor_regions = ()
+                self._last_card_owner_anchor_reason = None
+            if needs_fusion_owner_anchor_scan:
+                self._fusion_owner_anchor_scan_turn = turn
+                self._last_fusion_owner_anchor_regions = ()
+                self._last_fusion_owner_anchor_reason = None
+            try:
+                anchor_needles: dict[str, int] = {}
+                if needs_card_owner_anchor_scan:
+                    anchor_needles["card_board_owner"] = board.board_instance
+                if needs_fusion_owner_anchor_scan:
+                    anchor_needles["fusion_ui"] = int(self._fusion_ui_class)
+                (
+                    card_game_objects,
+                    anchor_regions,
+                    anchored,
+                ) = self._scan_cards_in_hand_regions(
+                    board.board_instance,
+                    anchor_needles,
+                )
+                if needs_card_owner_anchor_scan:
+                    self._last_card_owner_anchor_regions = anchor_regions
+                if needs_fusion_owner_anchor_scan:
+                    self._last_fusion_owner_anchor_regions = anchor_regions
                 if not card_game_objects:
-                    self._last_card_owner_anchor_reason = "cards_in_hand_empty"
+                    if needs_card_owner_anchor_scan:
+                        self._last_card_owner_anchor_reason = "cards_in_hand_empty"
+                    if needs_fusion_owner_anchor_scan:
+                        self._last_fusion_owner_anchor_reason = "cards_in_hand_empty"
                 elif not anchor_regions:
-                    self._last_card_owner_anchor_reason = (
-                        "cards_in_hand_regions_outside_bounded_anchor_envelope"
-                    )
+                    reason = "cards_in_hand_regions_outside_bounded_anchor_envelope"
+                    if needs_card_owner_anchor_scan:
+                        self._last_card_owner_anchor_reason = reason
+                    if needs_fusion_owner_anchor_scan:
+                        self._last_fusion_owner_anchor_reason = reason
                 else:
-                    self.metrics.memory_scans += 1
-                    self.metrics.card_owner_anchor_scans += 1
                     anchor_bytes = sum(region.size for region in anchor_regions)
-                    self.metrics.card_owner_anchor_bytes += anchor_bytes
-                    anchored = scan_aligned_qwords(
-                        self.target.memory,
-                        anchor_regions,
-                        {"card_board_owner": board.board_instance},
-                        chunk_size=self.config.chunk_mib * 1024 * 1024,
-                    )
-                    owner_candidates = {
-                        hit - CARD_UI_BOARD_OFFSET
-                        for hit in anchored.matches["card_board_owner"]
-                        if hit >= CARD_UI_BOARD_OFFSET
-                    }
-                    scan_matches["card_ui"] = tuple(
-                        sorted(
-                            set(scan_matches.get("card_ui", ()))
-                            | owner_candidates
-                        )
-                    )
-                    anchored_cards = validate_combat_card_hits(
-                        self.target.memory,
-                        owner_candidates,
-                        expected_class=self._card_ui_class,
-                        expected_board=board.board_instance,
-                        expected_active=board.active,
-                    )
-                    if anchored_cards:
-                        self._card_addresses = {
-                            card.address for card in anchored_cards
+                    if needs_card_owner_anchor_scan:
+                        self.metrics.card_owner_anchor_scans += 1
+                        self.metrics.card_owner_anchor_bytes += anchor_bytes
+                    if needs_fusion_owner_anchor_scan:
+                        self.metrics.fusion_owner_anchor_scans += 1
+                        self.metrics.fusion_owner_anchor_bytes += anchor_bytes
+                    if anchored is None:
+                        raise AssertionError("anchor regions require a scan result")
+                    if needs_card_owner_anchor_scan:
+                        owner_candidates = {
+                            hit - CARD_UI_BOARD_OFFSET
+                            for hit in anchored.matches["card_board_owner"]
+                            if hit >= CARD_UI_BOARD_OFFSET
                         }
-                    if any(card.is_attack_card for card in anchored_cards):
-                        needs_extended_card_ui_scan = False
-                        self._last_card_owner_anchor_reason = (
-                            "current_attack_card_resolved"
+                        scan_matches["card_ui"] = tuple(
+                            sorted(
+                                set(scan_matches.get("card_ui", ()))
+                                | owner_candidates
+                            )
                         )
-                    else:
-                        self._last_card_owner_anchor_reason = (
-                            "no_current_attack_card_in_anchored_regions"
+                        anchored_cards = validate_combat_card_hits(
+                            self.target.memory,
+                            owner_candidates,
+                            expected_class=self._card_ui_class,
+                            expected_board=board.board_instance,
+                            expected_active=board.active,
                         )
+                        if anchored_cards:
+                            self._card_addresses = {
+                                card.address for card in anchored_cards
+                            }
+                        if any(card.is_attack_card for card in anchored_cards):
+                            needs_extended_card_ui_scan = False
+                            self._last_card_owner_anchor_reason = (
+                                "current_attack_card_resolved"
+                            )
+                        else:
+                            self._last_card_owner_anchor_reason = (
+                                "no_current_attack_card_in_anchored_regions"
+                            )
+                    if needs_fusion_owner_anchor_scan:
+                        anchored_fusion = validate_fusion_card_ui_hits(
+                            self.target.memory,
+                            anchored.matches["fusion_ui"],
+                            expected_class=int(self._fusion_ui_class),
+                        )
+                        fusion_addresses = {
+                            candidate.address for candidate in anchored_fusion
+                        }
+                        scan_matches["fusion_ui"] = tuple(
+                            sorted(
+                                set(scan_matches.get("fusion_ui", ()))
+                                | fusion_addresses
+                            )
+                        )
+                        if len(anchored_fusion) == 1:
+                            self._fusion_ui_addresses = fusion_addresses
+                            needs_extended_fusion_ui_scan = False
+                            self._last_fusion_owner_anchor_reason = (
+                                "current_fusion_ui_resolved"
+                            )
+                        elif anchored_fusion:
+                            self._last_fusion_owner_anchor_reason = (
+                                f"ambiguous_fusion_ui_candidates:{len(anchored_fusion)}"
+                            )
+                        else:
+                            self._last_fusion_owner_anchor_reason = (
+                                "no_fusion_ui_in_anchored_regions"
+                            )
             except (
                 ExternalReadError,
                 OSError,
                 LayoutValidationError,
                 ValueError,
             ) as exc:
-                # Card discovery is optional to board publication.  Preserve
-                # normal gameplay and keep CAST fail-closed rather than losing
-                # the whole turn to a diagnostic anchor failure.
-                self._last_card_owner_anchor_reason = f"anchor_read_error:{exc}"
+                # UI discovery is optional to board publication. Preserve
+                # normal gameplay and keep card input fail-closed.
+                reason = f"anchor_read_error:{exc}"
+                if needs_card_owner_anchor_scan:
+                    self._last_card_owner_anchor_reason = reason
+                if needs_fusion_owner_anchor_scan:
+                    self._last_fusion_owner_anchor_reason = reason
+        if needs_extended_fusion_ui_scan:
+            # Record before scanning so a partially unreadable region cannot
+            # produce an unbounded retry loop during the same 14-second turn.
+            self._extended_fusion_scan_turn = turn
+            try:
+                extended_scan = self._scan_extended_fusion_ui()
+                scan_matches["fusion_ui"] = tuple(
+                    sorted(
+                        set(scan_matches.get("fusion_ui", ()))
+                        | set(extended_scan.matches.get("fusion_ui", ()))
+                    )
+                )
+            except (ExternalReadError, OSError) as exc:
+                self.metrics.read_errors += 1
+                return ProviderPoll(
+                    None,
+                    False,
+                    f"extended_fusion_ui_scan_error:{exc}",
+                    lifecycle,
+                    session_key=session_key,
+                )
         if needs_extended_card_ui_scan:
             # Record before scanning so an unreadable region cannot create an
             # unbounded retry loop in the same 14-second turn.
@@ -2751,8 +3431,54 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 session_key=session_key,
             )
 
+        ack_values = set(acked.sequences)
+        current_session_strong = {
+            identity
+            for identity in self._owner_attested | self._transport_attested
+            if identity in self._tracked and identity[1] in ack_values
+        }
+        recovery_baseline = (
+            self._recovery_ack_baseline_highest
+            if self._recovery_ack_epoch_session == session_key
+            else None
+        )
+        (
+            effective_acked_highest,
+            recovery_ack_isolated,
+            recovery_ack_unsafe_reason,
+        ) = _recovered_ack_epoch_view(
+            raw_highest=acked.highest,
+            stale_baseline_highest=recovery_baseline,
+            current_session_sequences={
+                identity[1] for identity in current_session_strong
+            },
+        )
+        self._recovery_ack_effective_highest = effective_acked_highest
+        self._recovery_ack_isolated = recovery_ack_isolated
+        self._recovery_ack_unsafe_reason = recovery_ack_unsafe_reason
+        if (
+            recovery_baseline is not None
+            and not recovery_ack_isolated
+            and recovery_ack_unsafe_reason is None
+        ):
+            # The game finally exposed a clean/new ACK epoch. Normal provider
+            # semantics take over permanently for the remainder of this match.
+            self._recovery_ack_epoch_session = None
+            self._recovery_ack_baseline_highest = None
+            self._recovery_ack_baseline_local_sequence = None
+        if recovery_ack_unsafe_reason is not None:
+            self.metrics.unstable_skips += 1
+            self._gate.observe((recovery_ack_unsafe_reason,), False)
+            return ProviderPoll(
+                None,
+                False,
+                recovery_ack_unsafe_reason,
+                lifecycle,
+                session_key=session_key,
+            )
+
         non_board_fusion_poll = self._publish_non_board_fusion_transition(
-            acked_highest=acked.highest,
+            acked_highest=effective_acked_highest,
             board=board,
             match_service=int(match_service),
             match_id=match_id,
@@ -2768,15 +3494,20 @@ class MemoryBoardStateProvider(BoardStateProvider):
         )
         if non_board_fusion_poll is not None:
             return non_board_fusion_poll
-
-        ack_values = set(acked.sequences)
-        for identity in self._transport_attested:
+        for identity in self._transport_attested | self._runtime_heap_attested:
             if identity in self._tracked and identity[1] in ack_values:
                 self._ack_attested.add(identity)
-                self._sources.setdefault(identity, set()).add(
-                    "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board+"
-                    "MatchService._ackedSeqs"
-                )
+                if identity in self._transport_attested:
+                    source = (
+                        "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board+"
+                        "MatchService._ackedSeqs"
+                    )
+                else:
+                    source = (
+                        "RuntimeSequenceMonitor.WsCombatBatch+"
+                        "MatchService._ackedSeqs"
+                    )
+                self._sources.setdefault(identity, set()).add(source)
         self._ack_attested.update(
             _owner_batches_confirmed_by_ack(
                 self._tracked,
@@ -2784,7 +3515,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 ack_values,
             )
         )
-        if acked.highest is not None:
+        if effective_acked_highest is not None:
             if self._batch_class is None:
                 self._gate.observe(("batch_type_info_unavailable",), False)
                 return ProviderPoll(
@@ -2795,7 +3526,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     session_key=session_key,
                 )
             have_highest = any(
-                identity[1] == acked.highest
+                identity[1] == effective_acked_highest
+                and (not recovery_ack_isolated or identity in current_session_strong)
                 for identity in self._ack_attested
             )
             (
@@ -2803,7 +3535,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 self._direct_owner_grace_polls,
                 defer_heap_scan,
             ) = _next_direct_owner_grace(
-                acked_highest=acked.highest,
+                acked_highest=effective_acked_highest,
                 have_highest=have_highest,
                 valid_owner_count=len(valid_owners),
                 previous_sequence=self._direct_owner_grace_seq,
@@ -2811,7 +3543,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
             if defer_heap_scan:
                 self.metrics.unstable_skips += 1
-                self._gate.observe(("await_direct_owner_batch", acked.highest), False)
+                self._gate.observe(
+                    ("await_direct_owner_batch", effective_acked_highest), False
+                )
                 return ProviderPoll(
                     None,
                     False,
@@ -2823,7 +3557,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 if not self.config.allow_ack_heap_scan:
                     self.metrics.unstable_skips += 1
                     self._gate.observe(
-                        ("await_transport_board", acked.highest), False
+                        ("await_transport_board", effective_acked_highest), False
                     )
                     return ProviderPoll(
                         None,
@@ -2832,13 +3566,18 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         lifecycle,
                         session_key=session_key,
                     )
-                force_batch_full = self._batch_scan_miss_seq == acked.highest
+                force_batch_full = (
+                    self._batch_scan_miss_seq == effective_acked_highest
+                )
                 try:
                     batch_scan = self._scan_ack_heap(
                         force_full=force_batch_full,
                     )
                     self.metrics.ack_batch_scans += 1
                     prior_scan_was_full = self._last_scan_was_full
+                    prior_scan_used_fallback = (
+                        self._last_ack_heap_fallback_bounded
+                    )
                     batch_hits = set(batch_scan.matches["batch"])
                     heap_batches = validate_combat_batch_hits(
                         self.target.memory,
@@ -2877,9 +3616,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         )
                         self._ack_attested.add(registered)
                 if _needs_immediate_full_ack_rescan(
-                    acked_highest=acked.highest,
+                    acked_highest=effective_acked_highest,
                     ack_attested=self._ack_attested,
-                    prior_scan_was_full=prior_scan_was_full,
+                    prior_scan_was_full=(
+                        prior_scan_was_full or prior_scan_used_fallback
+                    ),
                 ):
                     try:
                         full_batch_scan = self._scan_ack_heap(force_full=True)
@@ -2923,12 +3664,12 @@ class MemoryBoardStateProvider(BoardStateProvider):
                             )
                             self._ack_attested.add(registered)
                 if any(
-                    identity[1] == acked.highest
+                    identity[1] == effective_acked_highest
                     for identity in self._ack_attested
                 ):
                     self._batch_scan_miss_seq = None
                 else:
-                    self._batch_scan_miss_seq = acked.highest
+                    self._batch_scan_miss_seq = effective_acked_highest
                 self._retain_validated_learned_regions(
                     "batch", self._batch_addresses
                 )
@@ -2943,6 +3684,13 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 expected_active=board.active,
             )
             self._card_addresses = {card.address for card in card_candidates}
+            for region in self._last_extended_card_regions:
+                if any(
+                    region.base <= address < region.base + region.size
+                    for address in self._card_addresses
+                ):
+                    self._extended_card_region_hint_base = region.base
+                    break
             self._retain_validated_learned_regions(
                 "card_ui", self._card_addresses
             )
@@ -2956,26 +3704,21 @@ class MemoryBoardStateProvider(BoardStateProvider):
             self._fusion_ui_addresses = {
                 candidate.address for candidate in fusion_ui_candidates
             }
+            for region in self._last_extended_fusion_regions:
+                if any(
+                    region.base <= address < region.base + region.size
+                    for address in self._fusion_ui_addresses
+                ):
+                    self._extended_fusion_region_hint_base = region.base
+                    break
             self._retain_validated_learned_regions(
                 "fusion_ui", self._fusion_ui_addresses
             )
-            fusion_expected = bool(
-                memory_fusion is not None
-                and (
-                    memory_fusion.selected_user_pet_id > 0
-                    or memory_fusion.selected_pet_id > 0
-                )
-            )
+            fusion_expected = _fusion_ui_discovery_expected(memory_fusion)
             if fusion_expected and len(fusion_ui_candidates) == 1:
                 fusion_ui = fusion_ui_candidates[0]
 
-        fusion_expected = bool(
-            memory_fusion is not None
-            and (
-                memory_fusion.selected_user_pet_id > 0
-                or memory_fusion.selected_pet_id > 0
-            )
-        )
+        fusion_expected = _fusion_ui_discovery_expected(memory_fusion)
         try:
             selected_card_data = read_selected_card_data_addresses(
                 self.target.memory,
@@ -3054,7 +3797,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
         latest_ack_hashes = {
             identity[2]
             for identity in self._ack_attested
-            if acked.highest is not None and identity[1] == acked.highest
+            if effective_acked_highest is not None
+            and identity[1] == effective_acked_highest
+            and (not recovery_ack_isolated or identity in current_session_strong)
         }
         opening_current_at_latest_ack = bool(
             opening_hash is not None
@@ -3067,7 +3812,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
             and action_before.local_move_sequence == 0
             and action_before.last_move_sequence in (None, -1, 0)
             and turn in (0, 1)
-            and (acked.highest is None or opening_current_at_latest_ack)
+            and (
+                effective_acked_highest is None
+                or opening_current_at_latest_ack
+            )
         )
         if opening_authoritative:
             opening = self._opening_snapshot
@@ -3085,9 +3833,14 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
             eligible = [opening_identity]
         else:
+            eligible_identities = (
+                self._ack_attested & current_session_strong
+                if recovery_ack_isolated
+                else self._ack_attested
+            )
             eligible = [
                 identity
-                for identity in self._ack_attested
+                for identity in eligible_identities
                 if identity[1] in ack_values
                 and identity not in self._session_batch_baseline
                 and not dto_rejection_reasons(self._tracked[identity].cells)
@@ -3109,7 +3862,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
 
         highest = max(identity[1] for identity in eligible)
-        if not opening_authoritative and highest != acked.highest:
+        if not opening_authoritative and highest != effective_acked_highest:
             self.metrics.unstable_skips += 1
             self._gate.observe(("acked_batch_lag",), False)
             return ProviderPoll(
@@ -3122,9 +3875,25 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 session_key=session_key,
                 dto_rejections=tuple(rejection_details),
             )
+        if (
+            recovery_ack_isolated
+            and not opening_authoritative
+            and any(identity in current_session_strong for identity in eligible)
+        ):
+            for identity in eligible:
+                if identity in current_session_strong:
+                    self._sources.setdefault(identity, set()).add(
+                        "RecoveredSessionTransport+StablePresentationUnderFrozenAckEpoch"
+                    )
         latest = [identity for identity in eligible if identity[1] == highest]
         selected = _select_latest_identity(
-            latest, self._owner_attested | self._transport_attested
+            latest,
+            # A raw WsCombatBatch found by the runtime monitor has no match-id
+            # field. Its sequence can therefore collide with a retained DTO
+            # from an earlier combat. It remains eligible when it is the sole
+            # hash, but must not overrule current-owner or current-session
+            # ChatMessageDTO evidence when hashes conflict.
+            self._owner_attested | self._transport_attested,
         )
         if selected is None:
             self.metrics.ambiguous_latest_skips += 1
@@ -3175,16 +3944,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
             self.metrics.server_transitions += 1
         self._latest_identity = selected
         batch = self._tracked[selected]
-
-        # Dot discovery is audit-only in Phase 2B.5.  Bounded hits explain how
-        # much of the component population is discoverable without making it a
-        # hidden production dependency.
+        # Dot discovery remains audit-only. Board.allDots contains GameObject
+        # references, not Dot component pointers, so no production board may
+        # be reconstructed from those references without a proven component
+        # traversal.
         dots = (
-            validate_dot_pointer_hits(
-                self.target.memory,
-                self._dot_pointer_hits | set(scan_matches.get("board", ())),
-                board_pointer=board.board_instance,
-                dot_class=int(self._dot_class),
+            self._current_dots(
+                board.board_instance,
+                array_before,
+                batch,
+                set(scan_matches.get("board", ())),
             )
             if self._dot_class is not None
             else DotCandidateResult(
@@ -3307,7 +4076,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
             model = None
             rejection_details.append(f"model:{exc}")
         signals_valid = bool(
-            presentation_idle and flags_stable and array_stable and model is not None
+            presentation_idle
+            and flags_stable
+            and array_stable
+            and model is not None
         )
         stable, confirmations = self._gate.observe(
             (
@@ -3353,6 +4125,28 @@ class MemoryBoardStateProvider(BoardStateProvider):
             for participant in participants
             if player is None or participant.actor_number != player.actor_number
         )
+        try:
+            left_actors = read_left_actor_numbers(
+                self.target.memory, board.board_instance
+            ).actor_numbers
+        except (ExternalReadError, OSError, LayoutValidationError) as exc:
+            self.metrics.read_errors += 1
+            return ProviderPoll(
+                None,
+                False,
+                f"left_actor_set_read_error:{exc}",
+                lifecycle,
+                cards_changed,
+                fusion_changed,
+                check,
+                confirmations,
+                session_key,
+                tuple(rejection_details),
+                combat_lifecycle=lifecycle_observation,
+            )
+        local_has_left = (
+            player.actor_number in left_actors if player is not None else None
+        )
         local_turn = action_before.is_local_turn(current_turn_player)
         modal_open = bool(
             board.is_mega2_panel_open
@@ -3364,6 +4158,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             not board.is_game_over
             and board.active is not None
             and bool(match_id)
+            and local_has_left is not True
             and not action_before.start_gate_paused
             and local_turn is True
             and not board.is_processing_ui
@@ -3435,6 +4230,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 local_actor_number=(
                     player.actor_number if player is not None else None
                 ),
+                local_has_left_match=local_has_left,
                 client_move_allowed=client_move_allowed,
                 local_move_sequence=action_before.local_move_sequence,
                 last_move_from_col=(
@@ -3539,6 +4335,30 @@ class MemoryBoardStateProvider(BoardStateProvider):
     def observed_cards(self) -> tuple[CardState, ...]:
         return self._last_cards
 
+    @property
+    def last_published_state(self) -> GameState | None:
+        """Return the immutable last publication for a bounded handoff check.
+
+        Callers must independently revalidate direct MatchService ownership,
+        turn and move-sequence roots. This cache alone never authorizes input.
+        """
+
+        return self._last_published_state
+
+    @property
+    def transport_region_hints(self) -> tuple[Any, ...]:
+        """Raw class-hit regions learned during the boss-turn UI warm-up.
+
+        These are scan hints only. They never authorize a board or action;
+        RuntimeSequenceMonitor rebinds them to current VirtualQueryEx regions
+        and still validates every current-match ChatMessageDTO/payload and
+        every structurally valid WsCombatBatch against the exact ACK.
+        """
+
+        hinted = set(self._learned_regions.get("chat_message", ()))
+        hinted.update(self._learned_regions.get("batch", ()))
+        return tuple(sorted(hinted, key=lambda region: region.base))
+
     def set_preentry_card_loadout(
         self,
         cards: tuple[CardDataState, ...],
@@ -3629,6 +4449,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
 
     @property
     def scan_diagnostics(self) -> dict[str, Any]:
+        memory_fusion = self._last_memory_fusion_state
         tracked_batches = []
         for identity, batch in sorted(
             self._tracked.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])
@@ -3653,11 +4474,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "cachedBatchAddresses": len(self._batch_addresses),
             "ownerAttestedBatches": len(self._owner_attested),
             "transportAttestedBatches": len(self._transport_attested),
+            "runtimeHeapAttestedBatches": len(self._runtime_heap_attested),
             "ackAttestedBatches": len(self._ack_attested),
             "lobbyBaselineBatches": len(self._lobby_batch_baseline),
             "sessionBaselineBatches": len(self._session_batch_baseline),
             "lobbyBaselineReady": self._lobby_baseline_ready,
             "batchScanMissSeq": self._batch_scan_miss_seq,
+            "ackHeapFallbackCursor": self._ack_heap_region_cursor,
+            "lastAckHeapFallbackBounded": (
+                self._last_ack_heap_fallback_bounded
+            ),
             "directOwnerGraceSeq": self._direct_owner_grace_seq,
             "directOwnerGracePolls": self._direct_owner_grace_polls,
             "directOwnerGraceLimit": DIRECT_OWNER_BATCH_GRACE_POLLS,
@@ -3670,6 +4496,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             ),
             "cachedBoardWsOwners": len(self._board_ws_addresses),
             "cachedDotHits": len(self._dot_pointer_hits),
+            "localActorNumber": self._local_actor_number,
             "cachedCardAddresses": len(self._card_addresses),
             "preentryCardCount": len(self._preentry_card_identity),
             "preentryAttackCardCount": self._preentry_attack_card_count,
@@ -3686,6 +4513,25 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "runtimeCardLayoutFusionSlot": self._last_card_layout.fusion_slot,
             "runtimeCardLayoutReason": self._last_card_layout.reason,
             "cachedFusionUiAddresses": len(self._fusion_ui_addresses),
+            "memoryFusionDiscoveryExpected": (
+                _fusion_ui_discovery_expected(memory_fusion)
+            ),
+            "memoryFusionRuntime": (
+                {
+                    "enabled": memory_fusion.enabled,
+                    "usedSuccessfully": memory_fusion.used_successfully,
+                    "lockedThisTurn": memory_fusion.locked_this_turn,
+                    "lastAttemptTurn": memory_fusion.last_attempt_turn,
+                    "manaCost": memory_fusion.mana_cost,
+                    "selectedUserPetId": memory_fusion.selected_user_pet_id,
+                    "selectedPetId": memory_fusion.selected_pet_id,
+                    "skillCardPresent": memory_fusion.skill_card is not None,
+                }
+                if memory_fusion is not None
+                else None
+            ),
+            "sessionUiWarmupCompleted": self._session_ui_warmup_completed,
+            "fusionOwnerAnchorScanTurn": self._fusion_owner_anchor_scan_turn,
             "extendedFusionUiScanTurn": self._extended_fusion_scan_turn,
             "extendedFusionUiScans": self.metrics.extended_fusion_ui_scans,
             "extendedFusionUiBytes": self.metrics.extended_fusion_ui_bytes,
@@ -3699,11 +4545,25 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "cardOwnerAnchorBytes": self.metrics.card_owner_anchor_bytes,
             "cardOwnerAnchorRegions": len(self._last_card_owner_anchor_regions),
             "cardOwnerAnchorReason": self._last_card_owner_anchor_reason,
+            "fusionOwnerAnchorScans": self.metrics.fusion_owner_anchor_scans,
+            "fusionOwnerAnchorBytes": self.metrics.fusion_owner_anchor_bytes,
+            "fusionOwnerAnchorRegions": len(
+                self._last_fusion_owner_anchor_regions
+            ),
+            "fusionOwnerAnchorReason": self._last_fusion_owner_anchor_reason,
             # Raw acceptance instrumentation only.  These observations expose
             # the milestones already used internally; they do not relax any
             # currentness, ACK or stable-publication gate.
             "trackedBatches": tuple(tracked_batches),
             "highestAckedSequence": self.metrics.highest_acked_sequence,
+            "effectiveAckedSequence": self._recovery_ack_effective_highest,
+            "recoveryAckEpochSession": self._recovery_ack_epoch_session,
+            "recoveryAckBaselineHighest": self._recovery_ack_baseline_highest,
+            "recoveryAckBaselineLocalMoveSequence": (
+                self._recovery_ack_baseline_local_sequence
+            ),
+            "recoveryAckEpochIsolated": self._recovery_ack_isolated,
+            "recoveryAckEpochUnsafeReason": self._recovery_ack_unsafe_reason,
             "lastAcceptedSeq": self._last_accepted_seq,
             "lastAcceptedHash": self._last_accepted_hash,
             "openingSnapshotAccepted": self._opening_snapshot is not None,

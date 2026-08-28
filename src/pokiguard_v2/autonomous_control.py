@@ -34,6 +34,14 @@ class ActionResultKind(str, Enum):
     ACTION_ABORTED_STATE_CHANGED = "ACTION_ABORTED_STATE_CHANGED"
 
 
+class SwapAcceptanceStatus(str, Enum):
+    """Strength of evidence observed after one physical SWAP input."""
+
+    WAITING = "WAITING"
+    EXACT_RUNTIME_ACCEPTED = "EXACT_RUNTIME_ACCEPTED"
+    SEQUENCE_ADVANCED_UNATTRIBUTED = "SEQUENCE_ADVANCED_UNATTRIBUTED"
+
+
 def _critical_state_fingerprint(state: GameState) -> str:
     """Hash gameplay-relevant state while deliberately excluding timer ticks."""
 
@@ -215,6 +223,49 @@ def plan_action_response_wait(
     )
 
 
+def direct_runtime_swap_preflight_failure(
+    pending: PendingAutonomousAction,
+    *,
+    match_id: str | None,
+    turn: int | None,
+    current_player: str | None,
+    local_username: str | None,
+    remaining_seconds: int | None,
+    local_move_sequence: int | None,
+    minimum_action_time: float,
+) -> str | None:
+    """Validate the cheap MatchService witness immediately before SWAP input.
+
+    A full provider/policy re-read happens earlier, but screenshot/modal and
+    coordinate work can consume most of a late turn.  This final direct read
+    prevents a stale proposal from reaching the server after turn ownership
+    changed.  The timer is required to be *above* the configured floor because
+    two physical clicks still have to be delivered.
+    """
+
+    identity = pending.identity
+    if identity.action is not PolicyAction.SWAP:
+        return "NOT_SWAP"
+    if match_id != identity.source.session.match_id:
+        return "MATCH_CHANGED"
+    if turn != identity.source.turn:
+        return "TURN_CHANGED"
+    if not current_player or not local_username:
+        return "TURN_OWNER_UNKNOWN"
+    if current_player.casefold() != local_username.casefold():
+        return "TURN_NOT_LOCAL"
+    if remaining_seconds is None:
+        return "TIMER_UNKNOWN"
+    if float(remaining_seconds) <= float(minimum_action_time):
+        return "TIMER_AT_OR_BELOW_ACTION_FLOOR"
+    if (
+        pending.local_move_sequence_before is not None
+        and local_move_sequence != pending.local_move_sequence_before
+    ):
+        return "LOCAL_MOVE_SEQUENCE_CHANGED"
+    return None
+
+
 def direct_runtime_proves_swap_accepted(
     pending: PendingAutonomousAction,
     *,
@@ -278,6 +329,34 @@ def direct_runtime_proves_swap_accepted(
         second_col,
         7 - second_row,
     )
+
+
+def classify_swap_acceptance(
+    pending: PendingAutonomousAction,
+    *,
+    exact_runtime_accepted: bool,
+    highest_acked_sequence: int | None,
+) -> SwapAcceptanceStatus:
+    """Never promote an unattributed server-sequence advance to SWAP success.
+
+    A turn timeout, boss move, AFK warning, or other server event can advance
+    ``_ackedSeqs`` after two physical clicks that the board never accepted.
+    Only the exact MatchService move-sequence/coordinate proof accepted by
+    :func:`direct_runtime_proves_swap_accepted` is terminal success.  A bare
+    sequence advance is retained as diagnostics while the action remains
+    unconfirmed and therefore cannot reset authoritative idle state locally.
+    """
+
+    if pending.identity.action is not PolicyAction.SWAP:
+        return SwapAcceptanceStatus.WAITING
+    if exact_runtime_accepted:
+        return SwapAcceptanceStatus.EXACT_RUNTIME_ACCEPTED
+    if (
+        highest_acked_sequence is not None
+        and highest_acked_sequence > pending.identity.source.srv_seq
+    ):
+        return SwapAcceptanceStatus.SEQUENCE_ADVANCED_UNATTRIBUTED
+    return SwapAcceptanceStatus.WAITING
 
 
 def direct_runtime_proves_cast_accepted(
@@ -621,10 +700,13 @@ __all__ = [
     "AutonomousGuard",
     "AutonomousSource",
     "AutonomousStatus",
+    "SwapAcceptanceStatus",
     "ConsumingTurnRegistry",
     "PendingAutonomousAction",
+    "classify_swap_acceptance",
     "direct_runtime_proves_cast_accepted",
     "direct_runtime_proves_swap_accepted",
+    "direct_runtime_swap_preflight_failure",
     "TurnTransitionKind",
     "TurnTransitionObservation",
     "TurnTransitionTracker",

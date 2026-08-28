@@ -41,6 +41,7 @@ class GateReason(str, Enum):
     MODAL_OPEN = "MODAL_OPEN"
     CONNECTION_UNKNOWN = "CONNECTION_UNKNOWN"
     DISCONNECTED = "DISCONNECTED"
+    LOCAL_PLAYER_LEFT = "LOCAL_PLAYER_LEFT"
     RECONNECTING = "RECONNECTING"
     CLOCK_PAUSED = "CLOCK_PAUSED"
     CLIENT_MOVE_PERMISSION_UNKNOWN = "CLIENT_MOVE_PERMISSION_UNKNOWN"
@@ -60,6 +61,7 @@ class GateContext:
     auto_paused: bool = False
     sequence_desync: SequenceDesyncState | None = None
     allow_opening_board_only: bool = False
+    allow_authoritative_board_only_stats: bool = False
 
 
 @dataclass(frozen=True)
@@ -196,12 +198,16 @@ class ActionabilityGate:
             and battle.is_local_turn is True
             and battle.local_move_sequence == 0
         )
-        opening_board_only = False
+        board_only_stats_allowed = bool(
+            opening_board_only_allowed
+            or context.allow_authoritative_board_only_stats
+        )
+        board_only_stats = False
         player = state.player
         if player is None or player.hp is None or player.max_hp is None:
-            if not opening_board_only_allowed:
+            if not board_only_stats_allowed:
                 return cls._reject(GateReason.PLAYER_STATS_UNKNOWN)
-            opening_board_only = True
+            board_only_stats = True
         elif player.max_hp <= 0:
             return cls._reject(
                 GateReason.PLAYER_STATS_UNKNOWN,
@@ -215,9 +221,9 @@ class ActionabilityGate:
             None,
         )
         if boss is None or boss.hp is None or boss.max_hp is None:
-            if not opening_board_only_allowed:
+            if not board_only_stats_allowed:
                 return cls._reject(GateReason.BOSS_STATS_UNKNOWN)
-            opening_board_only = True
+            board_only_stats = True
         elif boss.max_hp <= 0:
             return cls._reject(
                 GateReason.BOSS_STATS_UNKNOWN,
@@ -242,6 +248,12 @@ class ActionabilityGate:
         if battle.board_modal_open:
             return cls._reject(GateReason.MODAL_OPEN)
 
+        if battle.local_has_left_match is True:
+            return cls._reject(
+                GateReason.LOCAL_PLAYER_LEFT,
+                actorNumber=battle.local_actor_number,
+                evidence="Board._leftActorNumbers",
+            )
         if battle.connection_ready is None or battle.reconnecting is None:
             return cls._reject(GateReason.CONNECTION_UNKNOWN)
         if battle.reconnecting or battle.match_resyncing or battle.board_is_resuming:
@@ -279,6 +291,9 @@ class ActionabilityGate:
                 "localActor": battle.local_actor_number,
                 "playerHp": player.hp if player is not None else None,
                 "bossHp": boss.hp if boss is not None else None,
-                "openingBoardOnly": opening_board_only,
+                "openingBoardOnly": bool(
+                    board_only_stats and opening_board_only_allowed
+                ),
+                "boardOnlyStatsFallback": board_only_stats,
             },
         )

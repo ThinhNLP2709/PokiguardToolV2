@@ -401,6 +401,42 @@ _DIGIT_BITS = {
     for digit, rows in _DIGIT_ROWS.items()
 }
 
+# Unity rasterizes the same number_A_8 sprite differently at the canonical
+# 1280x720 client used by the desktop UI than in the earlier 1280x710 live
+# calibration.  Keep both evidence-backed variants; target identity still
+# comes from the read-only Button closure and cached PetEnemyDTO, never pixels.
+_DIGIT_8_1280X720_ROWS = (
+    "...#####",
+    "..#....#",
+    "..####.#",
+    "..##.#.#",
+    ".#.#.###",
+    ".##.#.#.",
+    ".######.",
+    ".######.",
+    "###.###.",
+    "###.###.",
+    "#######.",
+    "######..",
+)
+_DIGIT_VARIANTS = {
+    digit: (
+        bits,
+        *(
+            (
+                tuple(
+                    character == "#"
+                    for row in _DIGIT_8_1280X720_ROWS
+                    for character in row
+                ),
+            )
+            if digit == 8
+            else ()
+        ),
+    )
+    for digit, bits in _DIGIT_BITS.items()
+}
+
 
 def _pixel(rgb: bytes, width: int, x: int, y: int) -> tuple[int, int, int]:
     offset = (y * width + x) * 3
@@ -519,15 +555,20 @@ def locate_hunt_order_badge(
         centers.append((radial, x, y))
 
     accepted: list[HuntBadgeCandidate] = []
-    target_template = _DIGIT_BITS[hunt_order]
     for radial, x, y in centers:
         feature = _digit_feature(rgb, width, height, x, y, scale)
         if feature is None:
             continue
         bits, bounds, _bright_count = feature
         scores = sorted(
-            (sum(left != right for left, right in zip(bits, template)), digit)
-            for digit, template in _DIGIT_BITS.items()
+            (
+                min(
+                    sum(left != right for left, right in zip(bits, template))
+                    for template in templates
+                ),
+                digit,
+            )
+            for digit, templates in _DIGIT_VARIANTS.items()
         )
         best_score, best_digit = scores[0]
         target_score = next(score for score, digit in scores if digit == hunt_order)

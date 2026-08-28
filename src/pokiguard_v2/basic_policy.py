@@ -364,9 +364,9 @@ class BasicPolicyEngine:
                 no_candidates,
                 blocker="TURN_TIMER_UNKNOWN",
             )
-        # The configured floor is inclusive.  The server timer is an integer
-        # tick, so treating exactly four seconds as expired effectively turns
-        # the user-approved 4 s floor into a 5 s floor.
+        # The configured floor is inclusive. The server timer is an integer
+        # tick, so treating the exact floor as expired silently adds a second
+        # to the operator-approved limit.
         if state.battle.turn_time_remaining_seconds < self.config.minimum_turn_time_seconds:
             return self._decision(
                 state,

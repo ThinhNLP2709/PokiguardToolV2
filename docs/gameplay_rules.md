@@ -193,7 +193,7 @@ tham số còn ghi `—` mới chỉ cấu hình được qua code, chưa có UI
 | Lối chơi | `play_style` | `--play-style` | `simple` |
 | Ưu tiên mana | `mana_priority` | `--mana-priority` | `evolution` |
 | Độ thông minh | `intelligence` | `--intelligence` | `basic` |
-| Biên an toàn đồng hồ lượt (giây) | `minimum_turn_time_seconds` | `--minimum-action-time` | `4` |
+| Biên đồng hồ lượt tối thiểu, inclusive (giây) | `minimum_turn_time_seconds` | `--minimum-action-time` | `1` |
 
 Chi phí 160 mana của tiến hóa và của chưởng **không bao giờ được hard-code**:
 policy đọc chi phí thật từ runtime (`FusionState.mana_cost`,

@@ -106,6 +106,7 @@ class FarmRunStopReason(str, Enum):
     POSTMATCH_UI_AMBIGUOUS = "POSTMATCH_UI_AMBIGUOUS"
     RESULT_CONFLICT = "RESULT_CONFLICT"
     RETURN_LOBBY_TIMEOUT = "RETURN_LOBBY_TIMEOUT"
+    ROOM_EJECTED = "ROOM_EJECTED_TO_BOSS_MAP"
     FOREGROUND_LOST = "FOREGROUND_LOST"
     SAFETY_LIMIT_REACHED = "SAFETY_LIMIT_REACHED"
     COMBAT_SAFE_STOP = "COMBAT_SAFE_STOP"
@@ -132,8 +133,12 @@ class MatchResult(str, Enum):
 
 
 class FarmInputDomain(str, Enum):
+    BOSS_ROOM_SHELL_EXIT = "BOSS_ROOM_SHELL_EXIT"
+    BOSS_ROOM_SHELL_CONFIRM = "BOSS_ROOM_SHELL_CONFIRM"
     BOSS_TARGET_SELECT = "BOSS_TARGET_SELECT"
+    BOSS_CARD_SELECT = "BOSS_CARD_SELECT"
     BOSS_ENTRY = "BOSS_ENTRY"
+    BOSS_ENTRY_RETRY = "BOSS_ENTRY_RETRY"
     GAMEPLAY_SWAP = "GAMEPLAY_SWAP"
     GAMEPLAY_CAST = "GAMEPLAY_CAST"
     GAMEPLAY_EVOLVE = "GAMEPLAY_EVOLVE"
@@ -156,6 +161,9 @@ class FarmInputDomain(str, Enum):
 @dataclass(frozen=True)
 class FarmRunLimits:
     target_completed_matches: int = 3
+    # Compatibility-only checkpoint/CLI value. Successful technical recovery
+    # is an operational requirement and is no longer capped over a farm run.
+    # Each incident is still guarded by its own one-shot recovery coordinator.
     max_technical_recoveries: int = 1
     max_match_attempts: int = 5
 
@@ -335,6 +343,12 @@ class FarmRun:
         "SEQUENCE_DESYNC",
         "DEAD_BOARD_NO_REFRESH",
         "ACTIONABILITY_STATE_LOST",
+        "CONTROLLER_STALLED_ACTIVE_COMBAT",
+        "ACTIVE_COMBAT_PROGRESS_STALLED",
+        "LOCAL_PLAYER_LEFT_ACTIVE_COMBAT",
+        "LATE_MANDATORY_RESET",
+        "ROOM_EJECTED_TO_BOSS_MAP",
+        "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT",
     }
 
     def __init__(
@@ -374,6 +388,7 @@ class FarmRun:
         self._pending: FarmInputPermit | None = None
         self._recovered_opening: OpeningEvidence | None = None
         self._test_only_recovery_required = False
+        self._ejected_map_reentry_pending = False
         self._control = control
         self.continuation_of = continuation_of
         self.checkpoint_seq = 0
@@ -635,7 +650,15 @@ class FarmRun:
         lobby = sum(
             r.sent
             for r in self.input_records
-            if r.domain in {FarmInputDomain.BOSS_TARGET_SELECT, FarmInputDomain.BOSS_ENTRY}
+            if r.domain
+            in {
+                FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
+                FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
+                FarmInputDomain.BOSS_TARGET_SELECT,
+                FarmInputDomain.BOSS_CARD_SELECT,
+                FarmInputDomain.BOSS_ENTRY,
+                FarmInputDomain.BOSS_ENTRY_RETRY,
+            }
         )
         postmatch = sum(
             r.sent for r in self.input_records if r.domain is FarmInputDomain.POSTMATCH_CONFIRM
@@ -835,6 +858,84 @@ class FarmRun:
         self._transition(FarmRunState.ENTRY_PENDING, "entry_input_reserved")
         return permit
 
+    def reserve_lobby_card_select(
+        self,
+        *,
+        foreground: bool,
+        exact_attack_identity: bool,
+        no_combat_owner: bool,
+        selected_attack_missing: bool,
+        unique_room_attack: bool,
+    ) -> FarmInputPermit | None:
+        """Reserve one exact Attack-card Toggle before the next entry.
+
+        Card selection is ordinary lobby UI input.  It never creates a match
+        and leaves the run in ``ENTRY_READY`` so the independent Start permit
+        is still required afterwards.
+        """
+
+        attempt_index = self.match_attempts + 1
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if (
+            self.state is not FarmRunState.ENTRY_READY
+            or self._pending is not None
+            or not foreground
+            or not exact_attack_identity
+            or not no_combat_owner
+            or not selected_attack_missing
+            or not unique_room_attack
+        ):
+            if not foreground:
+                self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            else:
+                self.safe_stop(
+                    FarmRunStopReason.ENTRY_CAPABILITY_DENIED,
+                    detail="pre-entry Attack-card selection proof rejected",
+                )
+            return None
+        if any(
+            record.domain is FarmInputDomain.BOSS_CARD_SELECT
+            and record.attempt_index == attempt_index
+            and record.sent
+            for record in self.input_records
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.ENTRY_CAPABILITY_DENIED,
+                detail="duplicate pre-entry Attack-card selection",
+            )
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_CARD_SELECT,
+            None,
+            attempt_index,
+        )
+        self._pending = permit
+        self._event("boss_card_select_reserved", attemptIndex=attempt_index)
+        return permit
+
+    def complete_lobby_card_select(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_CARD_SELECT
+        ):
+            self.safe_stop(
+                FarmRunStopReason.ENTRY_CAPABILITY_DENIED,
+                detail="pre-entry Attack-card capability mismatch",
+            )
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.ENTRY_INPUT_FAILED, detail=detail)
+            return False
+        return True
+
     def complete_entry(self, permit: FarmInputPermit, *, sent: bool, detail: str = "") -> bool:
         if permit != self._pending or permit.domain is not FarmInputDomain.BOSS_ENTRY:
             self.safe_stop(FarmRunStopReason.ENTRY_CAPABILITY_DENIED)
@@ -847,6 +948,96 @@ class FarmRun:
         if self._control is not None:
             # Input already sent: this match becomes the draining current match.
             self._control.mark_entry_irrevocable()
+        return True
+
+    def reserve_entry_retry(
+        self,
+        *,
+        foreground: bool,
+        exact_same_target: bool,
+        no_combat_owner: bool,
+        stable_same_button: bool,
+    ) -> FarmInputPermit | None:
+        """Reserve one lag-response retry for the already pending entry.
+
+        This never starts a second farm attempt.  The caller must independently
+        re-prove that the first Start click created no session and that the
+        exact same room target and Start control remain stable.
+        """
+
+        attempt_index = self.match_attempts + 1
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if (
+            self.state is not FarmRunState.ENTRY_PENDING
+            or self._pending is not None
+            or self.current_session is not None
+            or not foreground
+            or not exact_same_target
+            or not no_combat_owner
+            or not stable_same_button
+        ):
+            if not foreground:
+                self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            else:
+                self.safe_stop(
+                    FarmRunStopReason.ENTRY_CAPABILITY_DENIED,
+                    detail="entry retry proof rejected",
+                )
+            return None
+        if self._control is not None and not self._control.entry_allowed():
+            self.safe_stop(
+                FarmRunStopReason.ENTRY_CAPABILITY_DENIED,
+                detail="entry retry denied by graceful-stop gate",
+            )
+            return None
+        first_entries = [
+            record
+            for record in self.input_records
+            if record.domain is FarmInputDomain.BOSS_ENTRY
+            and record.attempt_index == attempt_index
+            and record.sent
+        ]
+        prior_retries = [
+            record
+            for record in self.input_records
+            if record.domain is FarmInputDomain.BOSS_ENTRY_RETRY
+            and record.attempt_index == attempt_index
+            and record.sent
+        ]
+        if len(first_entries) != 1 or prior_retries:
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.ENTRY_CAPABILITY_DENIED,
+                detail="entry retry missing first click or duplicated",
+            )
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_ENTRY_RETRY,
+            None,
+            attempt_index,
+        )
+        self._pending = permit
+        self._event("entry_retry_reserved", attemptIndex=attempt_index)
+        return permit
+
+    def complete_entry_retry(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_ENTRY_RETRY
+        ):
+            self.safe_stop(FarmRunStopReason.ENTRY_CAPABILITY_DENIED)
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.ENTRY_INPUT_FAILED, detail=detail)
+            return False
+        self._event("entry_retry_sent", attemptIndex=permit.attempt_index)
         return True
 
     def cancel_entry(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
@@ -1032,6 +1223,35 @@ class FarmRun:
         self.safe_stop(FarmRunStopReason.GAMEPLAY_CAPABILITY_DENIED, detail=detail)
         return False
 
+    def abandon_pass_preflight(
+        self, permit: FarmInputPermit, *, detail: str = ""
+    ) -> bool:
+        """Release an unsent PASS permit after a transient final preflight.
+
+        PASS is the only gameplay domain with deliberately zero Windows
+        input.  A board-only state can lose its optional local participant
+        snapshot between policy selection and the final authoritative PASS
+        validation.  Releasing that one zero-input permit is safe; it neither
+        counts a PASS nor grants a second physical-input capability.  Every
+        other domain or capability mismatch still fails closed.
+        """
+
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.GAMEPLAY_PASS
+        ):
+            self.safe_stop(FarmRunStopReason.GAMEPLAY_CAPABILITY_DENIED)
+            return False
+        self._pending = None
+        self._record_input(permit, sent=False, detail=detail)
+        self._event(
+            "gameplay_pass_preflight_abandoned",
+            session=permit.session,
+            detail=detail,
+            windowsInputSent=False,
+        )
+        return True
+
     def apply_combat_summary(self, summary: dict[str, Any]) -> None:
         attempt = self.current_attempt
         if attempt is None:
@@ -1124,6 +1344,20 @@ class FarmRun:
                 self.safe_stop(
                     FarmRunStopReason.INTERNAL_INVARIANT,
                     detail="terminal snapshot session mismatch",
+                )
+                return False
+            if (
+                terminal.result is TerminalResult.UNKNOWN
+                and terminal.confidence is TerminalResultConfidence.UNKNOWN
+                and not terminal.evidence_sources
+            ):
+                # Lifecycle loss alone is not a normal terminal result. In
+                # particular, an abrupt room ejection can clear Board/Active
+                # before any HP/event/UI evidence is captured. Never turn
+                # that technical disappearance into a completed UNKNOWN.
+                self.safe_stop(
+                    FarmRunStopReason.COMBAT_SAFE_STOP,
+                    detail="COMBAT_TERMINAL_UNPROVEN",
                 )
                 return False
             result = {
@@ -1250,7 +1484,12 @@ class FarmRun:
             return False
         return True
 
-    def reserve_target_select(self, *, foreground: bool) -> FarmInputPermit | None:
+    def reserve_target_select(
+        self,
+        *,
+        foreground: bool,
+        direct_map_after_shell_exit: bool = False,
+    ) -> FarmInputPermit | None:
         """Reserve one exact-target map selection while returning to the lobby.
 
         This is ordinary lobby UI input, never gameplay and never a new combat
@@ -1278,6 +1517,25 @@ class FarmRun:
             self.safe_stop(
                 FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
                 detail="duplicate target selection in one return transition",
+            )
+            return None
+        shell_exit_sent = any(
+            record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        )
+        shell_confirm_sent = any(
+            record.domain is FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        )
+        if shell_exit_sent and not shell_confirm_sent and not direct_map_after_shell_exit:
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="target selection attempted before room-shell leave confirmation",
             )
             return None
         if not foreground:
@@ -1312,11 +1570,148 @@ class FarmRun:
             return False
         return True
 
+    def reserve_room_shell_exit(self, *, foreground: bool) -> FarmInputPermit | None:
+        """Reserve one normal close click for a detached postmatch room shell.
+
+        This capability exists only while returning from a completed match.
+        It does not enter combat and it cannot be reused in the same return
+        transition.  The caller owns the independent visual/runtime proof.
+        """
+
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if self.state is not FarmRunState.WAIT_BOSS_LOBBY or self._pending is not None:
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="room-shell exit reserved outside return-to-lobby state",
+            )
+            return None
+        if any(
+            record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="duplicate room-shell exit in one return transition",
+            )
+            return None
+        if not foreground:
+            self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
+            None,
+            self.match_attempts,
+        )
+        self._pending = permit
+        self._event("boss_room_shell_exit_reserved", attemptIndex=self.match_attempts)
+        return permit
+
+    def complete_room_shell_exit(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="room-shell exit capability mismatch",
+            )
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail=detail)
+            return False
+        return True
+
+    def reserve_room_shell_confirm(self, *, foreground: bool) -> FarmInputPermit | None:
+        """Reserve the single modal confirmation after a detached-shell close.
+
+        The confirmation is ordinary postmatch lobby navigation.  It is kept
+        separate from technical-recovery confirmation so acceptance telemetry
+        cannot misclassify a normal detached-shell repair as a recovery.
+        """
+
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if self.state is not FarmRunState.WAIT_BOSS_LOBBY or self._pending is not None:
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="room-shell confirmation reserved outside return-to-lobby state",
+            )
+            return None
+        shell_exits = [
+            record
+            for record in self.input_records
+            if record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+            and record.attempt_index == self.match_attempts
+            and record.sent
+        ]
+        if len(shell_exits) != 1 or any(
+            record.domain is FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="room-shell confirmation missing exit or duplicated",
+            )
+            return None
+        if not foreground:
+            self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
+            None,
+            self.match_attempts,
+        )
+        self._pending = permit
+        self._event("boss_room_shell_confirm_reserved", attemptIndex=self.match_attempts)
+        return permit
+
+    def complete_room_shell_confirm(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="room-shell confirmation capability mismatch",
+            )
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail=detail)
+            return False
+        return True
+
     def observe_return_lobby(self, lobby: BossLobbyState) -> bool:
         if self.state is not FarmRunState.WAIT_BOSS_LOBBY:
             return self._reject("return_lobby_out_of_order")
         if lobby is not BossLobbyState.BOSS_LOBBY:
             self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, lobby=lobby)
+            return False
+        if self._ejected_map_reentry_pending:
+            self.safe_stop(
+                FarmRunStopReason.INTERNAL_INVARIANT,
+                detail="ejected map re-entry was not completed before lobby observation",
+            )
             return False
         if (
             self.attempts
@@ -1370,7 +1765,14 @@ class FarmRun:
         return self._record_technical_abort(reason="TEST_ONLY", test_only=True)
 
     def _record_technical_abort(self, *, reason: str, test_only: bool) -> bool:
-        if self.state is not FarmRunState.COMBAT_ACTIVE or self.current_attempt is None:
+        entry_opening_timeout = bool(
+            reason == "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
+            and self.state is FarmRunState.WAIT_OPENING
+        )
+        if (
+            self.state is not FarmRunState.COMBAT_ACTIVE
+            and not entry_opening_timeout
+        ) or self.current_attempt is None:
             return self._reject("technical_failure_out_of_order", reason=reason)
         self._pending = None
         attempt = self.current_attempt
@@ -1393,9 +1795,6 @@ class FarmRun:
             testOnly=test_only,
             naturallyOccurringTechnicalFailure=(not test_only),
         )
-        if self.technical_recoveries >= self.limits.max_technical_recoveries:
-            self.safe_stop(FarmRunStopReason.RECOVERY_LIMIT_REACHED)
-            return False
         if self.match_attempts >= self.limits.max_match_attempts:
             self.safe_stop(FarmRunStopReason.MATCH_ATTEMPT_LIMIT_REACHED)
             return False
@@ -1420,12 +1819,191 @@ class FarmRun:
         self._transition(FarmRunState.RECOVERY_ACTIVE, "technical_recovery_started")
         return True
 
+    def begin_ejected_map_reentry(
+        self,
+        *,
+        target_boss_id: str,
+        exact_world_map: bool,
+        detached_room_shell: bool = False,
+        no_combat_owner: bool,
+    ) -> bool:
+        """Move a proven owner-free ejection to exact-pet map recovery.
+
+        Unity may stop first on a detached room shell before displaying the
+        island map. That shell is accepted only as a mutually exclusive origin
+        with exact runtime/visual proof in the caller; it does not weaken the
+        later exact map target selection.
+        """
+
+        expected_id = str(self.target.boss_id or "").strip()
+        if (
+            self.state
+            not in {FarmRunState.RECOVERY_PENDING, FarmRunState.RECOVERY_ACTIVE}
+            or self._pending is not None
+            or self._ejected_map_reentry_pending
+            or int(bool(exact_world_map)) + int(bool(detached_room_shell)) != 1
+            or not no_combat_owner
+            or not expected_id
+            or str(target_boss_id).strip() != expected_id
+        ):
+            return self._reject(
+                "ejected_map_reentry_preflight_rejected",
+                expectedBossId=expected_id,
+                observedBossId=str(target_boss_id).strip(),
+                exactWorldMap=exact_world_map,
+                detachedRoomShell=detached_room_shell,
+                noCombatOwner=no_combat_owner,
+            )
+        self._ejected_map_reentry_pending = True
+        self._transition(
+            FarmRunState.WAIT_BOSS_LOBBY,
+            "ejected_map_reentry_started",
+            targetBossId=expected_id,
+            priorAttempt=self.match_attempts,
+            origin=(
+                "DETACHED_ROOM_SHELL"
+                if detached_room_shell
+                else "WORLD_BOSS_LIST"
+            ),
+        )
+        return True
+
+    def prepare_failed_recovery_map_fallback(
+        self, records: tuple[Any, ...]
+    ) -> bool:
+        """Audit a failed in-room recovery before falling back to exact map ID."""
+
+        if self.state is not FarmRunState.RECOVERY_ACTIVE or self._pending is not None:
+            return self._reject("recovery_map_fallback_out_of_order")
+        domain_map = {
+            "RECOVERY_EXIT": FarmInputDomain.RECOVERY_EXIT,
+            "RECOVERY_CONFIRM": FarmInputDomain.RECOVERY_CONFIRM,
+            "RECOVERY_TARGET_SELECT": FarmInputDomain.RECOVERY_TARGET_SELECT,
+            "RECOVERY_REENTRY": FarmInputDomain.RECOVERY_REENTRY,
+        }
+        sent_domains: list[FarmInputDomain] = []
+        converted: list[tuple[FarmInputPermit, bool, str]] = []
+        for record in records:
+            raw = getattr(record, "domain", None)
+            name = str(getattr(raw, "value", raw))
+            domain = domain_map.get(name)
+            if domain is None:
+                return self._reject(
+                    "recovery_map_fallback_unknown_domain", domain=name
+                )
+            sent = bool(getattr(record, "sent", False))
+            if sent:
+                sent_domains.append(domain)
+            converted.append(
+                (
+                    FarmInputPermit(
+                        uuid4().hex, domain, None, self.match_attempts
+                    ),
+                    sent,
+                    str(getattr(record, "detail", "")),
+                )
+            )
+        if (
+            sent_domains.count(FarmInputDomain.RECOVERY_EXIT) > 1
+            or sent_domains.count(FarmInputDomain.RECOVERY_CONFIRM) > 1
+            or sent_domains.count(FarmInputDomain.RECOVERY_REENTRY) > 1
+            or FarmInputDomain.RECOVERY_TARGET_SELECT in sent_domains
+        ):
+            return self._reject(
+                "recovery_map_fallback_ambiguous_inputs",
+                sentDomains=sent_domains,
+            )
+        for permit, sent, detail in converted:
+            self._record_input(permit, sent=sent, detail=detail)
+        self._event(
+            "failed_recovery_inputs_audited_for_map_fallback",
+            sentDomains=sent_domains,
+            reentryInputSent=(
+                FarmInputDomain.RECOVERY_REENTRY in sent_domains
+            ),
+            noCombatOwnerRequiredBeforeFallback=True,
+        )
+        return True
+
+    def complete_failed_recovery_room_fallback(
+        self,
+        *,
+        target_boss_id: str,
+        exact_target_room: bool,
+        no_combat_owner: bool,
+    ) -> bool:
+        """Resume the farm loop when a failed recovery already reached our room.
+
+        The Phase 2D.3 recovery owns its Exit/Confirm/Re-entry inputs, but it can
+        still fail before handing recovered gameplay back to FarmRunner. If the
+        outer runner independently proves that the game is again in the exact
+        pinned boss room with no live combat owner, the safest continuation is
+        a fresh normal entry. No recovery session, opening, proposal, or ACK
+        state is reused.
+        """
+
+        expected_id = str(self.target.boss_id or "").strip()
+        if (
+            self.state is not FarmRunState.RECOVERY_ACTIVE
+            or self._pending is not None
+            or self._ejected_map_reentry_pending
+            or not exact_target_room
+            or not no_combat_owner
+            or not expected_id
+            or str(target_boss_id).strip() != expected_id
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RECOVERY_FAILED,
+                detail="exact target room was not proven after failed recovery",
+            )
+            return False
+        self.technical_recoveries += 1
+        self.current_session = None
+        self._transition(
+            FarmRunState.WAIT_BOSS_LOBBY,
+            "failed_recovery_exact_room_restored",
+            targetBossId=expected_id,
+            count=self.technical_recoveries,
+            oldCombatStateReused=False,
+        )
+        return True
+
+    def complete_ejected_map_reentry(
+        self,
+        *,
+        target_boss_id: str,
+        exact_target_room: bool,
+        no_combat_owner: bool,
+    ) -> bool:
+        """Count one bounded recovery only after the exact room is restored."""
+
+        expected_id = str(self.target.boss_id or "").strip()
+        if (
+            self.state is not FarmRunState.WAIT_BOSS_LOBBY
+            or not self._ejected_map_reentry_pending
+            or self._pending is not None
+            or not exact_target_room
+            or not no_combat_owner
+            or not expected_id
+            or str(target_boss_id).strip() != expected_id
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RECOVERY_FAILED,
+                detail="exact target room was not proven after map re-entry",
+            )
+            return False
+        self._ejected_map_reentry_pending = False
+        self.technical_recoveries += 1
+        self._event(
+            "ejected_map_reentry_completed",
+            targetBossId=expected_id,
+            count=self.technical_recoveries,
+        )
+        return True
+
     def record_successful_recovery(self, records: tuple[Any, ...]) -> bool:
         if self.state is not FarmRunState.RECOVERY_ACTIVE:
             return self._reject("recovery_completion_out_of_order")
-        if self.technical_recoveries >= self.limits.max_technical_recoveries:
-            self.safe_stop(FarmRunStopReason.RECOVERY_LIMIT_REACHED)
-            return False
         domain_map = {
             "RECOVERY_EXIT": FarmInputDomain.RECOVERY_EXIT,
             "RECOVERY_CONFIRM": FarmInputDomain.RECOVERY_CONFIRM,
@@ -1481,6 +2059,7 @@ class FarmRun:
                 attempt.result = MatchResult.SAFE_STOP
         self.current_session = None
         self._pending = None
+        self._ejected_map_reentry_pending = False
         self.safe_stops += 1
         self.stop_reason = reason
         self.end_timestamp = self.end_timestamp or utc_timestamp()
@@ -1555,6 +2134,32 @@ class FarmRunEntryCapability:
     def cancel(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
         return self.run.cancel_entry(permit, detail=detail)
 
+    def reserve_retry(
+        self,
+        *,
+        foreground: bool,
+        exact_same_target: bool,
+        no_combat_owner: bool,
+        stable_same_button: bool,
+    ) -> FarmInputPermit | None:
+        if self._authority is not None and self._authority.emergency_requested:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before boss entry retry",
+            )
+            return None
+        return self.run.reserve_entry_retry(
+            foreground=foreground,
+            exact_same_target=exact_same_target,
+            no_combat_owner=no_combat_owner,
+            stable_same_button=stable_same_button,
+        )
+
+    def complete_retry(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        return self.run.complete_entry_retry(permit, sent=sent, detail=detail)
+
     def execute(self, operation: Callable[[], Any]) -> tuple[bool, Any | None]:
         if self._authority is None:
             return True, operation()
@@ -1563,6 +2168,55 @@ class FarmRunEntryCapability:
             self.run.safe_stop(
                 FarmRunStopReason.EMERGENCY_STOP,
                 detail="emergency authority revoked before boss entry input",
+            )
+        return authorized, result
+
+
+class FarmRunLobbyCardCapability:
+    """One bounded normal lobby click for the unique required Attack card."""
+
+    def __init__(self, run: FarmRun, authority: Any | None = None) -> None:
+        self.run = run
+        self._authority = authority
+
+    def reserve(
+        self,
+        *,
+        foreground: bool,
+        exact_attack_identity: bool,
+        no_combat_owner: bool,
+        selected_attack_missing: bool,
+        unique_room_attack: bool,
+    ) -> FarmInputPermit | None:
+        if self._authority is not None and self._authority.emergency_requested:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before lobby card selection",
+            )
+            return None
+        return self.run.reserve_lobby_card_select(
+            foreground=foreground,
+            exact_attack_identity=exact_attack_identity,
+            no_combat_owner=no_combat_owner,
+            selected_attack_missing=selected_attack_missing,
+            unique_room_attack=unique_room_attack,
+        )
+
+    def complete(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        return self.run.complete_lobby_card_select(
+            permit, sent=sent, detail=detail
+        )
+
+    def execute(self, operation: Callable[[], Any]) -> tuple[bool, Any | None]:
+        if self._authority is None:
+            return True, operation()
+        authorized, result = self._authority.execute_if_authorized(operation)
+        if not authorized and not self.run.stopped:
+            self.run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before lobby card input",
             )
         return authorized, result
 
@@ -1606,6 +2260,11 @@ class FarmRunGameplayCapability:
 
     def cancel(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
         return self.run.cancel_gameplay(permit, detail=detail)
+
+    def abandon_pass_preflight(
+        self, permit: FarmInputPermit, *, detail: str = ""
+    ) -> bool:
+        return self.run.abandon_pass_preflight(permit, detail=detail)
 
     def graceful_stop_requested(self) -> bool:
         """Combat can poll this each turn to honor F6 mid-match."""
@@ -1682,6 +2341,7 @@ __all__ = [
     "FarmRun",
     "FarmRunArtifactWriter",
     "FarmRunEntryCapability",
+    "FarmRunLobbyCardCapability",
     "FarmRunEvent",
     "FarmRunGameplayCapability",
     "FarmRunLimits",

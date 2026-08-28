@@ -15,26 +15,63 @@ from pokiguard_v2.memory_board_provider import (
     _durable_non_board_fusion_transition,
     _extended_card_scan_relevant,
     _extended_fusion_scan_relevant,
+    _fusion_ui_discovery_expected,
     _first_session_ui_scan_required,
     _extended_card_scan_still_needed,
     _match_start_opening_has_priority,
     _opening_board_action_has_priority,
+    _opponent_ui_warmup_required,
     _normalize_last_move_telemetry,
     _needs_immediate_full_ack_rescan,
     _next_direct_owner_grace,
     _owner_batches_confirmed_by_ack,
     _presentation_idle_for_publication,
     _region_size_band,
+    _regions_with_address_neighbors,
+    _recovered_ack_epoch_view,
+    _rotating_region_byte_window,
+    _rotating_region_window,
     _select_latest_identity,
 )
 from pokiguard_v2.actionability import ActionabilityGate, GateContext
-from pokiguard_v2.state import FusionState
+from pokiguard_v2.state import CombatSessionKey, FusionState
 from pokiguard_v2.il2cpp_external import MemoryRegion
+from pokiguard_v2.il2cpp_layout import BoardCellSnapshot, CombatBatchSnapshot
 from pokiguard_v2.state import ParticipantState
 from tests.test_basic_policy import combat_state
 
 
 class ExtendedFusionUiScanTests(unittest.TestCase):
+    @staticmethod
+    def _complete_batch(sequence: int = 7) -> CombatBatchSnapshot:
+        cells = tuple(
+            BoardCellSnapshot(
+                0x500000 + row * 8 + col,
+                col,
+                row,
+                0x600000,
+                "vang Dot",
+                1,
+            )
+            for row in range(8)
+            for col in range(8)
+        )
+        return CombatBatchSnapshot(0x400000, sequence, 0x700000, cells)
+
+    def test_runtime_monitor_batch_still_requires_exact_provider_ack(self) -> None:
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider._session_key = CombatSessionKey(1, 0x100000, "M_fixture")
+        provider._session_batch_baseline = set()
+        provider._tracked = {}
+        provider._sources = {}
+        provider._runtime_heap_attested = set()
+
+        batch = self._complete_batch()
+        self.assertTrue(provider.offer_runtime_heap_batch(batch))
+        identity = next(iter(provider._runtime_heap_attested))
+        self.assertEqual(identity[1], 7)
+        self.assertIn("RuntimeSequenceMonitor.WsCombatBatch", provider._sources[identity])
+
     def test_config_rejects_ack_heap_envelope_below_normal_scan(self) -> None:
         with self.assertRaises(ValueError):
             MemoryProviderConfig(
@@ -70,9 +107,235 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             (evidenced,),
         )
 
-    def test_extended_scan_requires_local_turn_and_sufficient_local_mana(self) -> None:
+    def test_extended_scan_rotates_bounded_regions_and_prefers_last_hit(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x1000000, 12 * 1024 * 1024, 0x04, 0x20000)
+            for index in range(6)
+        )
+
+        selected, cursor = _rotating_region_window(
+            regions,
+            cursor=1,
+            preferred_base=None,
+        )
+        self.assertEqual(tuple(region.base for region in selected), tuple(region.base for region in regions[1:5]))
+        self.assertEqual(cursor, 5)
+
+        preferred, cursor = _rotating_region_window(
+            regions,
+            cursor=2,
+            preferred_base=regions[5].base,
+        )
+        self.assertEqual(preferred, (regions[5],))
+        self.assertEqual(cursor, 0)
+
+    def test_ack_heap_scan_expands_neighbors_and_rotates_by_byte_budget(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x1000000, 8 * 1024 * 1024, 0x04, 0x20000)
+            for index in range(6)
+        )
+        neighbors = _regions_with_address_neighbors(
+            regions,
+            (regions[3],),
+        )
+        self.assertEqual(neighbors, regions[2:5])
+
+        first, cursor = _rotating_region_byte_window(
+            regions,
+            cursor=0,
+            max_bytes=16 * 1024 * 1024,
+            max_regions=6,
+        )
+        self.assertEqual(first, regions[:2])
+        self.assertEqual(cursor, 2)
+        second, cursor = _rotating_region_byte_window(
+            regions,
+            cursor=cursor,
+            max_bytes=16 * 1024 * 1024,
+            max_regions=6,
+        )
+        self.assertEqual(second, regions[2:4])
+        self.assertEqual(cursor, 4)
+
+    def test_ack_heap_full_fallback_is_bounded_to_two_large_regions(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x2000000, 16 * 1024 * 1024, 0x04, 0x20000)
+            for index in range(6)
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig(
+            max_region_mib=8,
+            ack_heap_region_mib=16,
+        )
+        provider.target = SimpleNamespace(
+            memory=SimpleNamespace(iter_readable_regions=lambda: iter(regions))
+        )
+        provider._batch_class = 0x1234
+        provider._learned_regions = {}
+        provider._ack_heap_region_cursor = 0
+        provider._last_ack_heap_fallback_bounded = False
+        provider.metrics = ProviderMetrics()
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
+            return_value=SimpleNamespace(matches={"batch": ()}, bytes_read=0),
+        ) as scan:
+            provider._scan_ack_heap(force_full=True)
+
+        selected = scan.call_args.args[1]
+        self.assertEqual(selected, regions[:2])
+        self.assertLessEqual(sum(region.size for region in selected), 32 * 1024 * 1024)
+        self.assertEqual(provider._ack_heap_region_cursor, 2)
+        self.assertTrue(provider._last_ack_heap_fallback_bounded)
+
+    def test_ack_heap_fallback_includes_current_session_owner_anchor(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x1000000, 8 * 1024 * 1024, 0x04, 0x20000)
+            for index in range(6)
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig(
+            max_region_mib=8,
+            ack_heap_region_mib=16,
+        )
+        provider.target = SimpleNamespace(
+            memory=SimpleNamespace(iter_readable_regions=lambda: iter(regions))
+        )
+        provider._batch_class = 0x1234
+        provider._learned_regions = {}
+        provider._ack_heap_region_cursor = 0
+        provider._last_ack_heap_fallback_bounded = False
+        provider._fusion_ui_addresses = {regions[5].base + 0x100}
+        provider._card_addresses = set()
+        provider._board_ws_addresses = set()
+        provider.metrics = ProviderMetrics()
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
+            return_value=SimpleNamespace(matches={"batch": ()}, bytes_read=0),
+        ) as scan:
+            provider._scan_ack_heap(force_full=True)
+
+        selected = scan.call_args.args[1]
+        self.assertIn(regions[5], selected)
+        self.assertIn(regions[4], selected)
+        self.assertEqual(provider._ack_heap_region_cursor, 4)
+
+    def test_ack_heap_fallback_uses_validated_dot_anchor_when_ui_is_absent(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x1000000, 8 * 1024 * 1024, 0x04, 0x20000)
+            for index in range(6)
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig(
+            max_region_mib=8,
+            ack_heap_region_mib=16,
+        )
+        provider.target = SimpleNamespace(
+            memory=SimpleNamespace(iter_readable_regions=lambda: iter(regions))
+        )
+        provider._batch_class = 0x1234
+        provider._learned_regions = {}
+        provider._ack_heap_region_cursor = 0
+        provider._last_ack_heap_fallback_bounded = False
+        provider._fusion_ui_addresses = set()
+        provider._card_addresses = set()
+        provider._board_ws_addresses = set()
+        provider._dot_pointer_hits = {regions[5].base + 0x100}
+        provider.metrics = ProviderMetrics()
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
+            return_value=SimpleNamespace(matches={"batch": ()}, bytes_read=0),
+        ) as scan:
+            provider._scan_ack_heap(force_full=True)
+
+        selected = scan.call_args.args[1]
+        self.assertIn(regions[5], selected)
+        self.assertIn(regions[4], selected)
+
+    def test_extended_fusion_scan_enforces_total_byte_budget(self) -> None:
+        regions = tuple(
+            MemoryRegion(index * 0x2000000, 12 * 1024 * 1024, 0x04, 0x20000)
+            for index in range(4)
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig(
+            max_region_mib=8,
+            extended_fusion_ui_region_mib=16,
+        )
+        provider.target = SimpleNamespace(
+            memory=SimpleNamespace(iter_readable_regions=lambda: iter(regions))
+        )
+        provider._fusion_ui_class = 0x1234
+        provider._extended_fusion_region_cursor = 0
+        provider._extended_fusion_region_hint_base = None
+        provider._last_extended_fusion_regions = ()
+        provider.metrics = ProviderMetrics()
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
+            return_value=SimpleNamespace(matches={"fusion_ui": ()}, bytes_read=0),
+        ) as scan:
+            provider._scan_extended_fusion_ui()
+
+        selected = scan.call_args.args[1]
+        self.assertEqual(selected, (regions[0],))
+        self.assertLessEqual(
+            sum(region.size for region in selected),
+            16 * 1024 * 1024,
+        )
+
+    def test_cards_in_hand_anchor_scans_fusion_class_in_owned_regions(self) -> None:
+        regions = (
+            MemoryRegion(0x200000, 0x70000, 0x04, 0x20000),
+            MemoryRegion(0x300000, 0x40000, 0x04, 0x20000),
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig()
+        provider.target = SimpleNamespace(memory=object())
+        provider.metrics = ProviderMetrics()
+        provider._owned_anchor_regions = Mock(return_value=regions)
+        result = SimpleNamespace(matches={"fusion_ui": (0x234000,)}, bytes_read=1)
+
+        with (
+            patch(
+                "pokiguard_v2.memory_board_provider.read_cards_in_hand_anchors",
+                return_value=(0x210000, 0x310000),
+            ) as read_anchors,
+            patch(
+                "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
+                return_value=result,
+            ) as scan,
+        ):
+            objects, selected, actual = provider._scan_cards_in_hand_regions(
+                0x123000,
+                {"fusion_ui": 0x456000},
+            )
+
+        self.assertEqual(objects, (0x210000, 0x310000))
+        self.assertEqual(selected, regions)
+        self.assertIs(actual, result)
+        read_anchors.assert_called_once_with(provider.target.memory, 0x123000)
+        provider._owned_anchor_regions.assert_called_once_with(
+            {0x210000, 0x310000}
+        )
+        scan.assert_called_once_with(
+            provider.target.memory,
+            regions,
+            {"fusion_ui": 0x456000},
+            chunk_size=2 * 1024 * 1024,
+        )
+        self.assertEqual(provider.metrics.memory_scans, 1)
+
+    def test_extended_fusion_scan_discovers_on_boss_turn_before_mana(self) -> None:
         fusion = SimpleNamespace(
             candidate_available=True,
+            # Game-owned FusionEnabled may remain false before affordability;
+            # it must not postpone current-session UI discovery.
+            enabled=False,
+            used_successfully=False,
+            skill_card=0x123456,
             mana_cost=160,
             selected_user_pet_id=218166,
             selected_pet_id=1289,
@@ -87,8 +350,31 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 is_local_turn=True,
                 turn=5,
                 last_scanned_turn=3,
+                turn_time_remaining_seconds=13,
             )
         )
+        self.assertTrue(
+            _extended_fusion_scan_relevant(
+                fusion,
+                short,
+                is_local_turn=False,
+                turn=4,
+                last_scanned_turn=None,
+                turn_time_remaining_seconds=1,
+            )
+        )
+        self.assertFalse(
+            _extended_fusion_scan_relevant(
+                fusion,
+                enough,
+                is_local_turn=True,
+                turn=5,
+                last_scanned_turn=4,
+                turn_time_remaining_seconds=13,
+            )
+        )
+
+
         self.assertFalse(
             _extended_fusion_scan_relevant(
                 fusion,
@@ -96,15 +382,17 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 is_local_turn=True,
                 turn=5,
                 last_scanned_turn=3,
+                turn_time_remaining_seconds=13,
             )
         )
-        self.assertFalse(
+        self.assertTrue(
             _extended_fusion_scan_relevant(
                 fusion,
                 enough,
                 is_local_turn=False,
                 turn=5,
                 last_scanned_turn=3,
+                turn_time_remaining_seconds=13,
             )
         )
         self.assertFalse(
@@ -114,12 +402,16 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 is_local_turn=True,
                 turn=5,
                 last_scanned_turn=5,
+                turn_time_remaining_seconds=13,
             )
         )
         self.assertFalse(
             _extended_fusion_scan_relevant(
                 SimpleNamespace(
                     candidate_available=True,
+                    enabled=True,
+                    used_successfully=False,
+                    skill_card=0x123456,
                     mana_cost=160,
                     selected_user_pet_id=0,
                     selected_pet_id=0,
@@ -128,6 +420,77 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 is_local_turn=True,
                 turn=5,
                 last_scanned_turn=3,
+                turn_time_remaining_seconds=13,
+            )
+        )
+
+        self.assertFalse(
+            _extended_fusion_scan_relevant(
+                fusion,
+                enough,
+                is_local_turn=True,
+                turn=5,
+                last_scanned_turn=3,
+                turn_time_remaining_seconds=12,
+            )
+        )
+
+        # These fields gate EVOLVE input, not discovery of the persistent UI.
+        action_blocked = SimpleNamespace(
+            candidate_available=False,
+            enabled=False,
+            used_successfully=True,
+            skill_card=None,
+            mana_cost=0,
+            selected_user_pet_id=218166,
+            selected_pet_id=1289,
+        )
+        self.assertTrue(_fusion_ui_discovery_expected(action_blocked))
+        self.assertTrue(
+            _extended_fusion_scan_relevant(
+                action_blocked,
+                short,
+                is_local_turn=False,
+                turn=4,
+                last_scanned_turn=None,
+                turn_time_remaining_seconds=1,
+            )
+        )
+        self.assertFalse(
+            _fusion_ui_discovery_expected(
+                SimpleNamespace(
+                    selected_user_pet_id=0,
+                    selected_pet_id=0,
+                )
+            )
+        )
+
+    def test_ui_warmup_is_first_boss_turn_and_not_mana_gated(self) -> None:
+        self.assertTrue(
+            _opponent_ui_warmup_required(
+                completed=False,
+                opening_board_action_priority=False,
+                is_local_turn=False,
+                turn=2,
+                optional_card_action_expected=True,
+            )
+        )
+        self.assertFalse(
+            _opponent_ui_warmup_required(
+                completed=False,
+                opening_board_action_priority=True,
+                is_local_turn=True,
+                turn=1,
+                optional_card_action_expected=True,
+            )
+        )
+        self.assertFalse(
+            _opponent_ui_warmup_required(
+                completed=True,
+                opening_board_action_priority=False,
+                is_local_turn=False,
+                turn=4,
+                optional_card_action_expected=True,
             )
         )
 
@@ -142,6 +505,7 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 turn=1,
                 last_scanned_turn=None,
                 attempts=0,
+                turn_time_remaining_seconds=13,
             )
         )
         self.assertFalse(
@@ -151,6 +515,7 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 turn=3,
                 last_scanned_turn=1,
                 attempts=1,
+                turn_time_remaining_seconds=13,
             )
         )
         self.assertTrue(
@@ -160,15 +525,27 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 turn=3,
                 last_scanned_turn=1,
                 attempts=1,
+                turn_time_remaining_seconds=13,
+            )
+        )
+        self.assertFalse(
+            _extended_card_scan_relevant(
+                has_mana,
+                is_local_turn=True,
+                turn=3,
+                last_scanned_turn=2,
+                attempts=1,
+                turn_time_remaining_seconds=13,
             )
         )
         self.assertTrue(
             _extended_card_scan_relevant(
                 has_mana,
-                is_local_turn=True,
-                turn=5,
+                is_local_turn=False,
+                turn=4,
                 last_scanned_turn=3,
                 attempts=2,
+                turn_time_remaining_seconds=1,
             )
         )
         self.assertFalse(
@@ -178,6 +555,7 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 turn=9,
                 last_scanned_turn=7,
                 attempts=4,
+                turn_time_remaining_seconds=13,
             )
         )
 
@@ -282,6 +660,19 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
         _drop_session_volatile_learned_regions(learned)
 
         self.assertEqual(learned, {"board_ws": {"stable_owner_hint"}})
+
+    def test_transport_hints_include_dto_and_batch_regions(self) -> None:
+        dto = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        batch = MemoryRegion(0x4000, 0x2000, 0x04, 0x20000)
+        unrelated = MemoryRegion(0x9000, 0x1000, 0x04, 0x20000)
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider._learned_regions = {
+            "chat_message": {dto},
+            "batch": {batch},
+            "card_ui": {unrelated},
+        }
+
+        self.assertEqual(provider.transport_region_hints, (dto, batch))
 
 
 class LobbyBaselineTests(unittest.TestCase):
@@ -495,6 +886,18 @@ class OwnerAckPromotionTests(unittest.TestCase):
 
         self.assertIsNone(
             _select_latest_identity([first, second], {first, second})
+        )
+
+    def test_transport_identity_outranks_conflicting_unbound_runtime_heap(self) -> None:
+        transport = (0x2000, 71, "current-match")
+        stale_runtime_heap = (0x3000, 71, "retained-old-match")
+
+        self.assertEqual(
+            _select_latest_identity(
+                [transport, stale_runtime_heap],
+                {transport},
+            ),
+            transport,
         )
 
     def test_direct_owner_gets_bounded_capture_window_before_heap_scan(self) -> None:
@@ -776,6 +1179,103 @@ class LastMoveTransitionTests(unittest.TestCase):
 
         self.assertIsNone(sequence)
         self.assertEqual(coordinates, (None, None, None, None))
+
+
+class LifecycleAckGaugeTests(unittest.TestCase):
+    @staticmethod
+    def provider() -> MemoryBoardStateProvider:
+        target = SimpleNamespace(
+            resolver=SimpleNamespace(resolve_type_info_class=lambda _rva: None)
+        )
+        with (
+            patch.object(MemoryBoardStateProvider, "_resolve_board", return_value=None),
+            patch.object(
+                MemoryBoardStateProvider,
+                "_refresh_lobby_baseline",
+                return_value=True,
+            ),
+        ):
+            return MemoryBoardStateProvider(target)
+
+    def test_new_lifecycle_clears_prior_session_ack_gauge(self) -> None:
+        provider = self.provider()
+        provider.metrics.highest_acked_sequence = 43
+        session = CombatSessionKey(5, 0x20000000000, "M_new")
+
+        provider._reset_lifecycle(
+            session.board_instance,
+            session.match_id,
+            session,
+        )
+
+        self.assertIsNone(provider.metrics.highest_acked_sequence)
+
+    def test_cleared_lifecycle_clears_prior_session_ack_gauge(self) -> None:
+        provider = self.provider()
+        provider.metrics.highest_acked_sequence = 43
+
+        provider._clear_lifecycle()
+
+        self.assertIsNone(provider.metrics.highest_acked_sequence)
+
+    def test_frozen_recovery_ack_uses_only_current_session_attestation(self) -> None:
+        effective, isolated, reason = _recovered_ack_epoch_view(
+            raw_highest=53,
+            stale_baseline_highest=53,
+            current_session_sequences={3, 7},
+        )
+
+        self.assertEqual(effective, 7)
+        self.assertTrue(isolated)
+        self.assertIsNone(reason)
+
+    def test_unexplained_recovery_ack_advance_fails_closed(self) -> None:
+        effective, isolated, reason = _recovered_ack_epoch_view(
+            raw_highest=54,
+            stale_baseline_highest=53,
+            current_session_sequences={7},
+        )
+
+        self.assertIsNone(effective)
+        self.assertTrue(isolated)
+        self.assertEqual(
+            reason,
+            "recovery_ack_epoch_advanced_without_current_session_evidence",
+        )
+
+    def test_current_session_ack_beyond_baseline_returns_to_normal_mode(self) -> None:
+        effective, isolated, reason = _recovered_ack_epoch_view(
+            raw_highest=54,
+            stale_baseline_highest=53,
+            current_session_sequences={54},
+        )
+
+        self.assertEqual(effective, 54)
+        self.assertFalse(isolated)
+        self.assertIsNone(reason)
+
+    def test_recovery_ack_scope_is_consumed_by_exactly_next_lifecycle(self) -> None:
+        provider = self.provider()
+        self.assertTrue(
+            provider.arm_recovery_ack_epoch_isolation(
+                stale_highest=53,
+                stale_local_move_sequence=7,
+            )
+        )
+        session = CombatSessionKey(6, 0x20000001000, "M_recovered")
+
+        provider._reset_lifecycle(
+            session.board_instance,
+            session.match_id,
+            session,
+        )
+        provider._recovery_ack_isolated = True
+
+        self.assertTrue(provider.recovery_ack_epoch_isolated_for(session))
+        self.assertEqual(provider._recovery_ack_baseline_highest, 53)
+        self.assertIsNone(provider._pending_recovery_ack_baseline)
+        provider._clear_lifecycle()
+        self.assertFalse(provider.recovery_ack_epoch_isolated_for(session))
 
 
 if __name__ == "__main__":

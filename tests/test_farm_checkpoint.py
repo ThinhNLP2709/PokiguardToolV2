@@ -422,7 +422,7 @@ class CheckpointRoundTripTests(unittest.TestCase):
                 load_checkpoint(path)
             self.assertEqual(ctx.exception.reason, "CHECKPOINT_SCHEMA_UNSUPPORTED")
 
-    def test_config_mismatch_blocks_resume(self) -> None:
+    def test_legacy_recovery_limit_mismatch_does_not_block_resume(self) -> None:
         payload = _payload(
             finalized="STOPPED_GRACEFULLY",
             target_completed=5,
@@ -437,8 +437,62 @@ class CheckpointRoundTripTests(unittest.TestCase):
             max_technical_recoveries=2,  # mismatch
             max_match_attempts=8,
         )
+        self.assertTrue(decision.allowed)
+        self.assertIsNone(decision.reason)
+
+    def test_max_attempt_mismatch_still_blocks_resume(self) -> None:
+        payload = _payload(
+            finalized="STOPPED_GRACEFULLY",
+            target_completed=5,
+            max_recoveries=1,
+            max_attempts=8,
+        )
+        decision = validate_for_resume(
+            payload,
+            target_boss_id="1289",
+            target_boss_name="Starburst",
+            target_completed_matches=5,
+            max_technical_recoveries=999,
+            max_match_attempts=9,
+        )
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, "CHECKPOINT_CONFIG_MISMATCH")
+
+    def test_legacy_recovery_cap_safe_stop_can_resume_history_from_lobby(self) -> None:
+        seen = tuple(f"M_{index}" for index in range(23))
+        payload = _payload(
+            completed=19,
+            wins=19,
+            attempts=23,
+            aborts=3,
+            recoveries=3,
+            seen=seen,
+            finalized="SAFE_STOP",
+            target_completed=25,
+            max_recoveries=3,
+            max_attempts=32,
+        )
+        payload = CheckpointPayload(
+            **{
+                **payload.__dict__,
+                "last_safe_lifecycle": "BOSS_LOBBY",
+                "stop_request_state": "RUNNING",
+                "stop_reason": "COMBAT_SAFE_STOP",
+            }
+        )
+        decision = validate_for_resume(
+            payload,
+            target_boss_id="1289",
+            target_boss_name="Starburst",
+            target_completed_matches=25,
+            max_technical_recoveries=1,
+            max_match_attempts=32,
+        )
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.historical_counters["match_attempts"], 23)
+        self.assertEqual(decision.historical_counters["completed_matches"], 19)
+        self.assertEqual(decision.historical_counters["technical_aborts"], 4)
+        self.assertEqual(decision.remaining_completed, 6)
 
     def test_already_completed_blocks_resume(self) -> None:
         payload = _payload(completed=5, finalized="COMPLETED")

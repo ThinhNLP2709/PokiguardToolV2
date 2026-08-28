@@ -11,6 +11,7 @@ from pokiguard_v2.farm_run import (
     FarmRunEntryCapability,
     FarmRunLimits,
     FarmRunState,
+    FarmRunStopReason,
 )
 from pokiguard_v2.state import (
     BattleState,
@@ -328,6 +329,27 @@ class TerminalFarmAccountingTests(unittest.TestCase):
         self.assertEqual(result.completed_matches, 1)
         self.assertEqual(result.unknown_results, 1)
         self.assertTrue(result.result_accounting_consistent)
+
+    def test_unproven_unknown_lifecycle_loss_does_not_count_completed(self) -> None:
+        key = session()
+        run = new_run(FarmRunLimits(1, 0, 1))
+        enter_run(run, key)
+        snapshot = capture_terminal_snapshot(
+            session_key=key,
+            timestamp="2026-08-16T00:00:01.000Z",
+            active_state=active_state(key, 50, 50),
+            terminal_participants=(),
+            local_username="happi",
+            captured_before_cleanup=False,
+        )
+
+        self.assertFalse(run.normal_combat_ended(snapshot))
+
+        result = run.snapshot()
+        self.assertEqual(result.completed_matches, 0)
+        self.assertEqual(result.unknown_results, 0)
+        self.assertEqual(result.stop_reason, FarmRunStopReason.COMBAT_SAFE_STOP)
+        self.assertEqual(result.attempts[-1].result.value, "SAFE_STOP")
 
     def test_technical_abort_does_not_count_normal_result(self) -> None:
         key = session()

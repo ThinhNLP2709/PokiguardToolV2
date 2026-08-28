@@ -127,8 +127,9 @@ class DesktopConfigTests(unittest.TestCase):
             DesktopConfig(intelligence=Intelligence.REASONING)
 
     def test_target_and_finite_limits_reuse_canonical_validation(self) -> None:
-        with self.assertRaisesRegex(ValueError, "exact boss"):
-            DesktopConfig(boss_id=" ", boss_name="")
+        unbound = DesktopConfig(boss_id=" ", boss_name="")
+        self.assertIsNone(unbound.normalized_boss_id)
+        self.assertIsNone(unbound.normalized_boss_name)
         with self.assertRaisesRegex(ValueError, "cannot exceed"):
             DesktopConfig(target_completed_matches=6, max_match_attempts=5)
         with self.assertRaisesRegex(ValueError, "positive"):
@@ -220,6 +221,7 @@ class ControlPlaneSnapshotTests(unittest.TestCase):
         self.assertEqual(runtime.reads, 0)
         self.assertTrue(hasattr(plane, "start_farm"))
         self.assertTrue(hasattr(plane, "request_graceful_stop"))
+        self.assertTrue(hasattr(plane, "restore_game_foreground"))
         self.assertTrue(hasattr(plane, "emergency_stop"))
         self.assertTrue(hasattr(plane, "resume_from_checkpoint"))
         self.assertEqual(updated.safety.nonzero(), {})
@@ -300,6 +302,22 @@ class CheckpointSummaryTests(unittest.TestCase):
                 stop_request_state="STOPPED_AT_LOBBY",
                 stop_reason="STOPPED_GRACEFULLY",
                 finalized_status="STOPPED_GRACEFULLY",
+            )
+            write_checkpoint(path, payload)
+            summary = LatestCheckpointSummaryProvider(root).read_latest()
+            self.assertTrue(summary.resumable_candidate)
+
+    def test_legacy_recovery_cap_safe_stop_is_a_resume_candidate_hint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "run" / "checkpoint.json"
+            payload = replace(
+                _checkpoint_payload(),
+                match_attempts=1,
+                seen_match_ids=("match-stuck",),
+                stop_request_state="RUNNING",
+                stop_reason="COMBAT_SAFE_STOP",
+                finalized_status="SAFE_STOP",
             )
             write_checkpoint(path, payload)
             summary = LatestCheckpointSummaryProvider(root).read_latest()

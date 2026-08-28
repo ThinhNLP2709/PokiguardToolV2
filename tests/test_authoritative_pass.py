@@ -180,6 +180,48 @@ class AuthoritativePassTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "budget"):
             self.start(controller)
 
+    def test_first_local_pass_uses_authoritative_idle_before_one(self) -> None:
+        controller = AuthoritativePassCoordinator(max_auto_passes=2)
+        idle_before = PassReadinessResult(
+            PassReadiness.PASS_ALLOWED,
+            can_pass_now=True,
+            must_act_now=False,
+            reason="exact game-owned idle 1/3",
+            state=idle(1, turn=3),
+        )
+        attempt = controller.start(
+            session_id=SESSION,
+            match_id="M_test",
+            local_username="happi",
+            source_turn=5,
+            source_srv_seq=10,
+            board_hash="abc",
+            policy_reason="STEP_6_PASS",
+            started_timestamp="2026-08-14T10:04:48Z",
+            turn_remaining=12,
+            idle_before=idle_before,
+            gameplay_inputs_total=4,
+            source_local_move_sequence=2,
+            lifecycle_active=True,
+            is_local_turn=True,
+            is_first_local_turn=False,
+            sequence_desync=False,
+            participants_alive=True,
+            board_current_valid=True,
+            policy_selected_pass=True,
+        )
+        self.assertEqual(attempt.pass_index, 1)
+        controller.observe_turn_end()
+        result = controller.observe_authoritative_idle(
+            idle(2, turn=7),
+            timestamp="done",
+            gameplay_inputs_total=4,
+            newly_observed_after_start=True,
+        )
+        self.assertEqual(result.result, PassResultKind.PASS_CONFIRMED_IDLE_2)
+        self.assertIn("authoritative idle-before", result.detail)
+        self.assertEqual(result.gameplay_inputs_during_wait, 0)
+
     def test_consuming_reset_starts_a_new_idle_sequence_at_one(self) -> None:
         controller = AuthoritativePassCoordinator(max_auto_passes=2)
         self.start(controller)

@@ -94,6 +94,21 @@ from tools.sequence_recovery import _live_exit_calibration, _locate_temporally  
 
 
 RECOVERED_HANDOFF_GUARD_SECONDS = 2.5
+RECOVERY_ACK_EPOCH_WAIT_SECONDS = 15.0
+RECOVERY_FROZEN_ACK_MIN_SECONDS = 2.0
+RECOVERY_FROZEN_ACK_MIN_SAMPLES = 8
+
+
+def _usable_calibrated_exit(candidate: Any | None) -> Any | None:
+    """Return only a complete, live-proven exit calibration candidate."""
+
+    if (
+        candidate is None
+        or not candidate.found
+        or candidate.normalized_point is None
+    ):
+        return None
+    return candidate
 
 
 def _recovery_lobby_ack_epoch_rejection(
@@ -122,25 +137,123 @@ def _recovery_lobby_ack_epoch_rejection(
     return None
 
 
+def _wait_for_clean_recovery_lobby_ack_epoch(
+    process: Any,
+    *,
+    timeout: float,
+    interval: float,
+    reader: Any | None = None,
+    monotonic: Any | None = None,
+    sleeper: Any | None = None,
+) -> tuple[str | None, int | None, Any | None, int]:
+    """Read-only bounded wait for a safe recovery-lobby ACK boundary.
+
+    A forced exit can leave ``MatchService._ackedSeqs`` populated for several
+    lobby frames.  Prefer a fully cleared epoch.  Live exact-25 evidence also
+    proved that a normal, owner-free boss lobby can retain the prior ACK and
+    local-move watermarks indefinitely; normal entry clears them only while
+    binding the next MATCH_START session.
+
+    A dirty epoch is therefore eligible for *deferred reset* only after the
+    MatchService address, highest ACK, and local move sequence remain identical
+    for a bounded duration/sample count while ``CurrentMatchId`` stays null.
+    The caller has already proved an exact boss lobby and no provider session,
+    re-proves that lobby after this wait, and the recovered handoff still
+    requires a distinct pristine MATCH_START plus a cleared ACK epoch before
+    gameplay unlocks.  Advancing, unreadable, or still-owned state fails
+    closed.
+    """
+
+    read = read_match_runtime if reader is None else reader
+    now = time.monotonic if monotonic is None else monotonic
+    sleep = time.sleep if sleeper is None else sleeper
+    started_at = now()
+    deadline = started_at + max(0.0, float(timeout))
+    samples = 0
+    last_rejection = "RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE"
+    last_match_service: int | None = None
+    last_runtime: Any | None = None
+    frozen_signature: tuple[int, int, int] | None = None
+    frozen_since: float | None = None
+    frozen_samples = 0
+    while True:
+        sampled_at = now()
+        samples += 1
+        try:
+            last_match_service, last_runtime = read(process)
+            last_rejection = _recovery_lobby_ack_epoch_rejection(
+                match_id=last_runtime.match_id,
+                highest_acked_sequence=last_runtime.highest_acked_sequence,
+            )
+        except (ExternalReadError, OSError, LayoutValidationError, TypeError):
+            last_rejection = "RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE"
+            last_match_service = None
+            last_runtime = None
+        if last_rejection is None:
+            return None, last_match_service, last_runtime, samples
+
+        local_move_sequence = (
+            getattr(last_runtime, "local_move_sequence", None)
+            if last_runtime is not None
+            else None
+        )
+        if (
+            last_rejection == "RECOVERY_ACK_EPOCH_NOT_RESET"
+            and last_match_service is not None
+            and last_runtime is not None
+            and last_runtime.match_id is None
+            and isinstance(last_runtime.highest_acked_sequence, int)
+            and isinstance(local_move_sequence, int)
+            and local_move_sequence >= 0
+        ):
+            signature = (
+                int(last_match_service),
+                int(last_runtime.highest_acked_sequence),
+                int(local_move_sequence),
+            )
+            if signature != frozen_signature:
+                frozen_signature = signature
+                frozen_since = sampled_at
+                frozen_samples = 1
+            else:
+                frozen_samples += 1
+            if (
+                frozen_since is not None
+                and frozen_samples >= RECOVERY_FROZEN_ACK_MIN_SAMPLES
+                and sampled_at - frozen_since >= RECOVERY_FROZEN_ACK_MIN_SECONDS
+            ):
+                return None, last_match_service, last_runtime, samples
+        else:
+            frozen_signature = None
+            frozen_since = None
+            frozen_samples = 0
+
+        if sampled_at >= deadline:
+            return last_rejection, last_match_service, last_runtime, samples
+        sleep(max(0.02, float(interval)))
+
+
 def _recovered_handoff_rejection(
     *,
     expected_session: CombatSessionKey,
     current_session: CombatSessionKey | None,
     highest_acked_sequence: int | None,
     state: GameState | None,
+    recovery_ack_epoch_isolated: bool = False,
 ) -> str | None:
     """Reject runtime evidence that leaked across a recovery re-entry.
 
     A normal new match clears ``MatchService._ackedSeqs`` before the pristine
-    first local turn. Live B3 evidence showed a delayed old ACK watermark
-    reappearing shortly *after* entry accepted a valid MATCH_START opening.
-    Such a client cannot safely attest the first fresh reread or any later
-    response whose small server sequence may collide with the prior match.
+    first local turn. Live evidence also proved a frozen old watermark can
+    survive the distinct recovered MATCH_START. It remains acceptable only
+    when the provider explicitly isolates it and publishes exact new-session
+    opening/transport/BoardWs evidence; a raw non-null ACK without that scope
+    is still rejected.
     """
 
     if current_session != expected_session:
         return "RECOVERY_HANDOFF_SESSION_CHANGED"
-    if highest_acked_sequence is not None:
+    if highest_acked_sequence is not None and not recovery_ack_epoch_isolated:
         return "RECOVERY_ACK_EPOCH_NOT_RESET"
     if state is None:
         return None
@@ -175,10 +288,18 @@ def _guard_recovered_handoff(
     polls = 0
     last_reason: str | None = None
     last_timer: int | None = None
+    ack_epoch_dirty = False
+    ack_epoch_isolated = False
     while True:
         poll = provider.poll()
         polls += 1
         state = poll.state
+        isolation_probe = getattr(
+            provider, "recovery_ack_epoch_isolated_for", None
+        )
+        current_ack_isolated = bool(
+            callable(isolation_probe) and isolation_probe(expected_session)
+        )
         if state is not None:
             last_timer = state.battle.turn_time_remaining_seconds
         rejection = _recovered_handoff_rejection(
@@ -186,8 +307,18 @@ def _guard_recovered_handoff(
             current_session=provider.current_session_key,
             highest_acked_sequence=provider.metrics.highest_acked_sequence,
             state=state,
+            recovery_ack_epoch_isolated=current_ack_isolated,
         )
-        if rejection is not None:
+        if rejection == "RECOVERY_ACK_EPOCH_NOT_RESET":
+            # A shared provider may enter this guard with the failed session's
+            # last diagnostic gauge before its first new-session ACK read.
+            # Keep gameplay locked for the complete bounded guard window.  A
+            # genuinely delayed/retained ACK remains non-null at the deadline
+            # and is still rejected; a lifecycle-reset gauge can settle to the
+            # exact empty new-match epoch without abandoning a valid opening.
+            ack_epoch_dirty = True
+            last_reason = rejection
+        elif rejection is not None:
             return False, {
                 "reason": rejection,
                 "polls": polls,
@@ -196,21 +327,46 @@ def _guard_recovered_handoff(
                 "highestAckedSequence": provider.metrics.highest_acked_sequence,
                 "turnTimeRemainingSeconds": last_timer,
             }
-        if state is not None:
+        elif state is not None:
             clean_state_samples += 1
-        last_reason = poll.reason
+            ack_epoch_dirty = False
+            ack_epoch_isolated = current_ack_isolated
+            last_reason = poll.reason
+        elif rejection is None:
+            last_reason = poll.reason
         if time.monotonic() >= deadline:
             break
         time.sleep(max(0.02, interval))
 
+    final_ack = provider.metrics.highest_acked_sequence
     timer_safe = bool(last_timer is not None and last_timer > 4)
-    accepted = clean_state_samples >= 2 and timer_safe
+    isolation_probe = getattr(provider, "recovery_ack_epoch_isolated_for", None)
+    final_isolated = bool(
+        callable(isolation_probe) and isolation_probe(expected_session)
+    )
+    scan_diagnostics = getattr(provider, "scan_diagnostics", {})
+    ack_epoch_clean = bool(
+        (final_ack is None and not ack_epoch_dirty)
+        or (final_isolated and ack_epoch_isolated)
+    )
+    accepted = clean_state_samples >= 2 and timer_safe and ack_epoch_clean
+    terminal_reason = None
+    if not ack_epoch_clean:
+        terminal_reason = "RECOVERY_ACK_EPOCH_NOT_RESET"
+    elif not accepted:
+        terminal_reason = "RECOVERY_HANDOFF_NOT_STABLY_ACTIONABLE"
     return accepted, {
-        "reason": None if accepted else "RECOVERY_HANDOFF_NOT_STABLY_ACTIONABLE",
+        "reason": terminal_reason,
         "polls": polls,
         "cleanStateSamples": clean_state_samples,
         "providerReason": last_reason,
-        "highestAckedSequence": provider.metrics.highest_acked_sequence,
+        "highestAckedSequence": final_ack,
+        "recoveryAckEpochIsolated": final_isolated,
+        "effectiveAckedSequence": (
+            scan_diagnostics.get("effectiveAckedSequence")
+            if isinstance(scan_diagnostics, dict)
+            else None
+        ),
         "turnTimeRemainingSeconds": last_timer,
         "guardSeconds": max(0.0, duration),
     }
@@ -934,11 +1090,26 @@ def _run_live(
                 "foreground lost before recovery Exit hover probe",
                 event="recovery_exit_hover_blocked",
             )
+        try:
+            hover_capture = capture_client_rgb(process.pid)
+            hover_calibration = _live_exit_calibration(
+                pid=process.pid,
+                width=hover_capture.width,
+                height=hover_capture.height,
+            )
+        except (OSError, RuntimeError, ValueError):
+            hover_calibration = None
+        hover_point = (
+            hover_calibration.normalized_point
+            if hover_calibration is not None
+            and hover_calibration.normalized_point is not None
+            else (0.04134466769706337, 0.06824712643678162)
+        )
         hover_authorized, hover = _execute_farm_controlled_input(
             shared_runtime,
             lambda: executor.move_normalized_point(
                 binding,
-                (0.04134466769706337, 0.06824712643678162),
+                hover_point,
             ),
         )
         if not hover_authorized or hover is None:
@@ -950,7 +1121,8 @@ def _run_live(
             return 130
         artifacts.event(
             "recovery_exit_hover_probe",
-            normalizedPoint=(0.04134466769706337, 0.06824712643678162),
+            normalizedPoint=hover_point,
+            calibration=hover_calibration,
             status=hover,
             clickSent=False,
         )
@@ -963,8 +1135,16 @@ def _run_live(
                 event="recovery_exit_hover_blocked",
             )
         exit_deadline = time.monotonic() + args.exit_locator_timeout
-        exit_location = None
+        # Exact-dimension calibration with live SENT + modal evidence is
+        # already stronger than a fresh sample of this blinking control. Use
+        # it immediately. Waiting through the temporal locator first consumed
+        # six seconds in B6 attempt 4 and let the server eject the failed
+        # session before recovery could click. Unknown dimensions still take
+        # the bounded visual-locator path below.
+        exit_location = _usable_calibrated_exit(hover_calibration)
         while process.is_running() and time.monotonic() < exit_deadline:
+            if exit_location is not None:
+                break
             _poll_farm_graceful_stop(shared_runtime)
             if _any_emergency_stop_requested(hotkeys, shared_runtime):
                 coordinator.emergency_stop()
@@ -1228,6 +1408,9 @@ def _run_live(
             args.interval,
             hotkeys,
             getattr(shared_runtime, "farm_control_hotkeys", None),
+            transient_room_grace_seconds=min(
+                20.0, float(args.lobby_timeout) * 0.5
+            ),
         )
         artifacts.event("recovery_boss_lobby_wait", result=lobby)
         if lobby.reason == "F9_EMERGENCY_STOP":
@@ -1241,6 +1424,23 @@ def _run_live(
                 TechnicalRecoveryResult.RECOVERY_LOBBY_TIMEOUT,
                 lobby.reason,
                 event="recovery_boss_lobby_failed",
+            )
+        if (
+            getattr(args, "require_current_boss_room", False)
+            and (lobby.lobby is None or lobby.lobby.branch != "CHINH_PHUC_ROOM")
+        ):
+            artifacts.event(
+                "recovery_room_ejected_stop",
+                branch=(lobby.lobby.branch if lobby.lobby is not None else None),
+                recoveryReentrySent=False,
+                mapTargetSelectionAttempted=False,
+            )
+            return _block_and_finalize(
+                coordinator,
+                artifacts,
+                TechnicalRecoveryResult.RECOVERY_LOBBY_TIMEOUT,
+                "ROOM_EJECTED_TO_BOSS_MAP",
+                event="recovery_current_room_required",
             )
         _save_current_capture(process.pid, artifacts.directory / "boss_lobby.png")
         if not coordinator.observe_boss_lobby(exact_boss_lobby=True):
@@ -1288,42 +1488,66 @@ def _run_live(
             return 3
 
         # Live B3 proved that the game can retain the failed match's ACK set
-        # after a normal foreground << / confirm exit. Checking only after a
-        # fresh opening is too late: the retained watermark may surface after
-        # the re-entry click, consuming the new match's first-turn deadline.
-        # Read the authoritative MatchService singleton while still at the
-        # exact boss-lobby boundary and refuse re-entry when its epoch is not
-        # clean. No pointer or runtime state is persisted or reused.
-        try:
-            lobby_match_service, lobby_runtime = read_match_runtime(process)
-        except (ExternalReadError, OSError, LayoutValidationError) as exc:
-            artifacts.event(
-                "recovery_lobby_ack_epoch",
-                accepted=False,
-                reason="RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE",
-                error=str(exc),
-                recoveryReentrySent=False,
-            )
-            return _block_and_finalize(
-                coordinator,
-                artifacts,
-                TechnicalRecoveryResult.RECOVERY_OPENING_FAILED,
-                "RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE",
-                event="recovery_lobby_ack_epoch_blocked",
-            )
-        lobby_ack_rejection = _recovery_lobby_ack_epoch_rejection(
-            match_id=lobby_runtime.match_id,
-            highest_acked_sequence=lobby_runtime.highest_acked_sequence,
+        # after a normal foreground << / confirm exit. Exact-25 later proved
+        # that this can be a frozen owner-free lobby residue which normal entry
+        # clears only while binding the next MATCH_START. Read the authoritative
+        # MatchService singleton at the exact lobby boundary. Accept either a
+        # clean epoch or a bounded, frozen residue; advancing/unreadable/owned
+        # state still blocks. The post-entry handoff remains locked until the
+        # distinct pristine opening has either a cleared ACK epoch or the
+        # explicitly armed current-session isolation proof.
+        ack_wait_seconds = min(
+            RECOVERY_ACK_EPOCH_WAIT_SECONDS,
+            max(5.0, float(args.lobby_timeout) * 0.25),
+        )
+        (
+            lobby_ack_rejection,
+            lobby_match_service,
+            lobby_runtime,
+            ack_epoch_samples,
+        ) = _wait_for_clean_recovery_lobby_ack_epoch(
+            process,
+            timeout=ack_wait_seconds,
+            interval=max(0.12, float(args.interval)),
         )
         artifacts.event(
             "recovery_lobby_ack_epoch",
             accepted=lobby_ack_rejection is None,
             reason=lobby_ack_rejection,
             matchService=lobby_match_service,
-            matchId=lobby_runtime.match_id,
-            highestAckedSequence=lobby_runtime.highest_acked_sequence,
-            localMoveSequence=lobby_runtime.local_move_sequence,
+            matchId=(lobby_runtime.match_id if lobby_runtime is not None else None),
+            highestAckedSequence=(
+                lobby_runtime.highest_acked_sequence
+                if lobby_runtime is not None
+                else None
+            ),
+            localMoveSequence=(
+                lobby_runtime.local_move_sequence
+                if lobby_runtime is not None
+                else None
+            ),
+            waitSeconds=ack_wait_seconds,
+            samples=ack_epoch_samples,
+            acceptanceMode=(
+                "FROZEN_STALE_EPOCH_DEFERRED_RESET"
+                if lobby_ack_rejection is None
+                and lobby_runtime is not None
+                and lobby_runtime.highest_acked_sequence is not None
+                else "CLEAN_EPOCH"
+                if lobby_ack_rejection is None
+                else "REJECTED"
+            ),
+            resetRequiredAtRecoveredOpening=bool(
+                lobby_ack_rejection is None
+                and lobby_runtime is not None
+                and lobby_runtime.highest_acked_sequence is not None
+            ),
             recoveryReentrySent=False,
+        )
+        deferred_ack_reset = bool(
+            lobby_ack_rejection is None
+            and lobby_runtime is not None
+            and lobby_runtime.highest_acked_sequence is not None
         )
         if lobby_ack_rejection is not None:
             return _block_and_finalize(
@@ -1332,6 +1556,36 @@ def _run_live(
                 TechnicalRecoveryResult.RECOVERY_OPENING_FAILED,
                 lobby_ack_rejection,
                 event="recovery_lobby_ack_epoch_blocked",
+            )
+
+        # The zero-input ACK wait may span a room ejection or another lobby
+        # transition. Re-prove the exact current room before resolving the
+        # target or reserving RECOVERY_REENTRY; never reuse the earlier view.
+        lobby = _wait_boss_lobby(
+            process,
+            provider,
+            target_identity,
+            min(10.0, float(args.lobby_timeout)),
+            args.interval,
+            hotkeys,
+            getattr(shared_runtime, "farm_control_hotkeys", None),
+            transient_room_grace_seconds=min(
+                10.0, float(args.lobby_timeout) * 0.25
+            ),
+        )
+        artifacts.event("recovery_boss_lobby_revalidated", result=lobby)
+        if (
+            not lobby.ready
+            or lobby.state is not BossLobbyState.BOSS_LOBBY
+            or lobby.lobby is None
+            or lobby.lobby.branch != "CHINH_PHUC_ROOM"
+        ):
+            return _block_and_finalize(
+                coordinator,
+                artifacts,
+                TechnicalRecoveryResult.RECOVERY_LOBBY_TIMEOUT,
+                "RECOVERY_ROOM_CHANGED_DURING_ACK_WAIT",
+                event="recovery_boss_lobby_revalidation_failed",
             )
 
         resolution = resolve_target(target_identity, lobby.lobby.candidates)
@@ -1355,6 +1609,34 @@ def _run_live(
         ):
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
             return 2
+        provider.cancel_recovery_ack_epoch_isolation()
+        if deferred_ack_reset:
+            if (
+                lobby_runtime is None
+                or lobby_runtime.highest_acked_sequence is None
+                or lobby_runtime.local_move_sequence is None
+                or not provider.arm_recovery_ack_epoch_isolation(
+                    stale_highest=int(lobby_runtime.highest_acked_sequence),
+                    stale_local_move_sequence=int(
+                        lobby_runtime.local_move_sequence
+                    ),
+                )
+            ):
+                return _block_and_finalize(
+                    coordinator,
+                    artifacts,
+                    TechnicalRecoveryResult.RECOVERY_OPENING_FAILED,
+                    "RECOVERY_ACK_ISOLATION_ARM_FAILED",
+                    event="recovery_ack_isolation_arm_failed",
+                )
+            artifacts.event(
+                "recovery_ack_isolation_armed",
+                staleHighestAckedSequence=(
+                    lobby_runtime.highest_acked_sequence
+                ),
+                staleLocalMoveSequence=lobby_runtime.local_move_sequence,
+                nextDistinctSessionOnly=True,
+            )
         _save_current_capture(process.pid, artifacts.directory / "reentry_before.png")
 
         reentry_dir = artifacts.directory / "reentry"
@@ -1379,6 +1661,7 @@ def _run_live(
             entry_result = {"status": "MISSING", "stopReason": "ENTRY_SUMMARY_MISSING"}
         artifacts.event("recovery_reentry_result", result=entry_result)
         if entry_result.get("stopReason") == "F9_EMERGENCY_STOP":
+            provider.cancel_recovery_ack_epoch_isolation()
             coordinator.emergency_stop()
             artifacts.finalize(
                 coordinator,
@@ -1388,6 +1671,7 @@ def _run_live(
             )
             return 130
         if entry_result.get("status") != "PASS":
+            provider.cancel_recovery_ack_epoch_isolation()
             result = (
                 TechnicalRecoveryResult.RECOVERY_OPENING_FAILED
                 if "OPENING" in str(entry_result.get("stopReason"))
@@ -1405,6 +1689,7 @@ def _run_live(
         new_session = provider.current_session_key
         opening = _recovered_opening_from_entry(entry_result, new_session)
         if new_session is None or not coordinator.accept_new_session(new_session):
+            provider.cancel_recovery_ack_epoch_isolation()
             artifacts.finalize(
                 coordinator,
                 stage="B_LIVE",
@@ -1424,6 +1709,7 @@ def _run_live(
             **handoff_evidence,
         )
         if not handoff_clean:
+            provider.cancel_recovery_ack_epoch_isolation()
             coordinator.block(
                 TechnicalRecoveryResult.RECOVERY_OPENING_FAILED,
                 str(
@@ -1440,6 +1726,7 @@ def _run_live(
             )
             return 2
         if opening is None or not coordinator.accept_opening(opening):
+            provider.cancel_recovery_ack_epoch_isolation()
             if opening is None:
                 coordinator.block(
                     TechnicalRecoveryResult.RECOVERY_OPENING_FAILED,
@@ -1490,6 +1777,8 @@ def _run_live(
         )
         _save_current_capture(process.pid, artifacts.directory / "new_combat_opening.png")
         accepted, reason = _final_live_invariants(coordinator)
+        if not accepted:
+            provider.cancel_recovery_ack_epoch_isolation()
         artifacts.event(
             "phase2d3_final_invariants",
             accepted=accepted,

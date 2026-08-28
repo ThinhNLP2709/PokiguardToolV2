@@ -28,6 +28,21 @@ except ImportError:  # pragma: no cover - production is Windows-only
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
+
+# A postmatch room can publish RoomDTO.cards and the cyan strip header well
+# before Unity instantiates/renders the card bodies.  Live attempt
+# 5fb7ac.../004 retained the empty body for the former three-second window and
+# then rendered the exact four-card strip normally.  This wait is lobby-only,
+# sends zero input, and does not affect the combat action deadline.
+ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS = 15.0
+ATTACK_CARD_SELECTION_VERIFY_WINDOW_SECONDS = 10.0
+# Normal postmatch return can repopulate ManagerRoom.selectedCards before
+# Unity has finished rebuilding the card strip used by the next Start. Live
+# run 5048e... reproduced this twice when Start followed the lobby proof by
+# roughly one second; a recovery path that naturally remained in the room for
+# about five seconds created both CardUI objects correctly. Keep the selected
+# Attack plus its rendered body stable for this lobby-only interval.
+ATTACK_CARD_ALREADY_SELECTED_SETTLE_SECONDS = 3.0
 for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
@@ -42,7 +57,10 @@ from pokiguard_v2.boss_entry import (  # noqa: E402
     entry_button_signature,
     resolve_target,
 )
-from pokiguard_v2.boss_entry_ui import locate_chinh_phuc_start  # noqa: E402
+from pokiguard_v2.boss_entry_ui import (  # noqa: E402
+    locate_chinh_phuc_attack_card_toggle,
+    locate_chinh_phuc_start,
+)
 from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.boss_lobby_runtime import (  # noqa: E402
     BossLobbyRuntimeSnapshot,
@@ -60,6 +78,11 @@ from pokiguard_v2.il2cpp_layout import (  # noqa: E402
     read_il2cpp_string,
 )
 from pokiguard_v2.live_state import board_state_hash  # noqa: E402
+from pokiguard_v2.lobby_card_selection import (  # noqa: E402
+    AttackSelectionStatus,
+    attack_selection_satisfied_by_rehydration,
+    plan_required_attack_selection,
+)
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
     MemoryProviderConfig,
@@ -105,6 +128,7 @@ class SharedEntryRuntime:
     executor: ForegroundClickExecutor
     backend: NativeWin32Backend
     entry_capability: Any | None = None
+    lobby_card_capability: Any | None = None
 
 
 def _retryable_board_messages(
@@ -126,6 +150,37 @@ def _retryable_board_messages(
         if message.event_type in {"MATCH_START", "MATCH_MOVE_RES"}
         and message.payload_address is not None
         and message.address not in decoded_addresses
+    )
+
+
+def _entry_opening_timeout_recovery_required(
+    *,
+    active_session: Any,
+    current: dict[str, Any] | None,
+    entry_clicks: int,
+    gameplay_inputs: int,
+) -> bool:
+    """Prove that entry missed opening while the exact combat advanced.
+
+    A later board is never accepted as an opening.  This predicate only routes
+    the already-entered, untouched combat to the bounded technical-recovery
+    path; recovery performs its own live session preflight before UI input.
+    """
+
+    return bool(
+        active_session is not None
+        and current is not None
+        and current.get("session") == active_session
+        and current.get("matchId") == active_session.match_id
+        and int(current.get("turn") or 0) > 1
+        and current.get("firstLocalTurn") is False
+        and current.get("localMoveSequence") == 0
+        and int(current.get("srvSeq") or 0) > 0
+        and bool(current.get("boardHash"))
+        and current.get("boardSource")
+        == "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+        and entry_clicks in {1, 2}
+        and gameplay_inputs == 0
     )
 
 
@@ -151,6 +206,149 @@ def _entry_preflight_runtime_valid(
         and current_resolution.candidate.entry_control_address
         == ready.resolution.candidate.entry_control_address
     )
+
+
+def _entry_retry_runtime_valid(
+    current_lobby: Any,
+    current_resolution: Any,
+    ready: Any,
+    *,
+    provider_session: Any,
+) -> bool:
+    """Require an unchanged exact room and no combat owner for one retry."""
+
+    chinh_phuc = current_lobby.chinh_phuc
+    return bool(
+        provider_session is None
+        and _entry_preflight_runtime_valid(
+            current_lobby, current_resolution, ready
+        )
+        and chinh_phuc.clean
+        and chinh_phuc.current_room_id
+        == ready.lobby.chinh_phuc.current_room_id
+        and chinh_phuc.enemy_pet_id == ready.lobby.chinh_phuc.enemy_pet_id
+        and chinh_phuc.button_start
+        == ready.lobby.chinh_phuc.button_start
+        and chinh_phuc.button_interactable is True
+        and chinh_phuc.button_groups_allow is True
+        and not chinh_phuc.is_opening_flow
+    )
+
+
+def _send_one_entry_retry(
+    *,
+    runtime: SharedEntryRuntime,
+    farm_target: FarmTarget,
+    ready: ReadyContext,
+    result: dict[str, Any],
+    log: Any,
+    artifact_dir: Path,
+    interval: float,
+) -> tuple[bool, str]:
+    """Send one farm-authorized retry after the first Start got no response."""
+
+    capability = runtime.entry_capability
+    if capability is None or not hasattr(capability, "reserve_retry"):
+        return False, "ENTRY_RETRY_CAPABILITY_UNAVAILABLE"
+    poll = runtime.provider.poll()
+    if poll.combat_lifecycle is None:
+        return False, "ENTRY_RETRY_LIFECYCLE_UNAVAILABLE"
+    lobby = read_boss_lobby_runtime(runtime.target.resolver, poll.combat_lifecycle)
+    resolution = resolve_target(farm_target, lobby.candidates)
+    if not _entry_retry_runtime_valid(
+        lobby,
+        resolution,
+        ready,
+        provider_session=runtime.provider.current_session_key,
+    ):
+        _write(
+            log,
+            "entry_retry_rejected",
+            reason="exact room/target/button/no-owner runtime proof changed",
+            lobby=lobby,
+            resolution=resolution,
+            providerSession=runtime.provider.current_session_key,
+        )
+        return False, "ENTRY_RETRY_RUNTIME_CHANGED"
+    try:
+        first_capture, first_location, first_signature = _capture_proof(
+            target=runtime.target,
+            executor=runtime.executor,
+            binding=runtime.binding,
+        )
+        time.sleep(max(interval, 0.14))
+        second_capture, second_location, second_signature = _capture_proof(
+            target=runtime.target,
+            executor=runtime.executor,
+            binding=runtime.binding,
+        )
+    except RuntimeError as exc:
+        _write(log, "entry_retry_rejected", reason=str(exc))
+        return False, "ENTRY_RETRY_VISUAL_UNPROVEN"
+    stable_same_button = bool(
+        first_signature == second_signature == ready.signature
+        and first_location.normalized_point == second_location.normalized_point
+    )
+    if not stable_same_button:
+        _write(
+            log,
+            "entry_retry_rejected",
+            reason="Start control changed after first click",
+            readySignature=ready.signature,
+            firstSignature=first_signature,
+            secondSignature=second_signature,
+        )
+        return False, "ENTRY_RETRY_BUTTON_CHANGED"
+    status = runtime.executor.window_status(runtime.binding)
+    permit = capability.reserve_retry(
+        foreground=status.valid and status.foreground is True,
+        exact_same_target=True,
+        no_combat_owner=runtime.provider.current_session_key is None,
+        stable_same_button=True,
+    )
+    if permit is None:
+        return False, "ENTRY_RETRY_CAPABILITY_DENIED"
+    try:
+        if hasattr(capability, "execute"):
+            authorized, click = capability.execute(
+                lambda: runtime.executor.send_normalized_point(
+                    runtime.binding, second_location.normalized_point
+                )
+            )
+            if not authorized or click is None:
+                return False, "F9_EMERGENCY_STOP"
+        else:
+            click = runtime.executor.send_normalized_point(
+                runtime.binding, second_location.normalized_point
+            )
+    except Exception:
+        capability.complete_retry(
+            permit,
+            sent=False,
+            detail="entry retry executor raised before result",
+        )
+        raise
+    capability.complete_retry(
+        permit,
+        sent=click.sent,
+        detail=f"entry#{capability.entry_number}:retry:{click.status.value}",
+    )
+    _save_capture(artifact_dir / "entry_retry_button.png", second_capture)
+    _write(
+        log,
+        "entry_retry_input_sent",
+        originalAttemptDigest=ready.attempt.digest(),
+        normalizedPoint=second_location.normalized_point,
+        locatorConfidence=second_location.confidence,
+        clickStatus=click.status.value,
+        clickCount=1 if click.sent else 0,
+        totalEntryClicks=(2 if click.sent else 1),
+    )
+    if not click.sent:
+        return False, f"ENTRY_RETRY_INPUT_{click.status.value}"
+    result["entryClicks"] = 2
+    result["entryRetryClicks"] = 1
+    return True, "ENTRY_RETRY_SENT"
 
 
 def _preentry_optional_card_mode(loadout: Any) -> str:
@@ -325,6 +523,363 @@ def _save_capture(path: Path, capture: ClientRgbCapture) -> None:
     write_png_rgb(path, capture.width, capture.height, capture.rgb)
 
 
+def _attack_toggle_visuals_stable(
+    first: ClientRgbCapture,
+    first_location: Any,
+    second: ClientRgbCapture,
+    second_location: Any,
+) -> bool:
+    """Accept only two consecutive, geometry-stable proofs of one Toggle."""
+
+    return bool(
+        first_location.found
+        and second_location.found
+        and first_location.normalized_point is not None
+        and first_location.normalized_point == second_location.normalized_point
+        and (first.width, first.height) == (second.width, second.height)
+    )
+
+
+def _ensure_required_attack_card(
+    *,
+    runtime: SharedEntryRuntime,
+    lobby: BossLobbyRuntimeSnapshot,
+    result: dict[str, Any],
+    log: Any,
+    artifact_dir: Path,
+    interval: float,
+) -> Any | None:
+    """Select one unique owned Attack card and prove ManagerRoom accepted it."""
+
+    loadout = lobby.chinh_phuc.card_loadout
+    plan = plan_required_attack_selection(loadout)
+    _write(
+        log,
+        "preentry_attack_selection_plan",
+        plan=plan,
+        managerIdentity=loadout.identity,
+        roomIdentity=tuple(
+            (card.data_id, card.card_id, card.element_type.upper())
+            for card in loadout.room_cards
+        ),
+    )
+    if plan.status is AttackSelectionStatus.NOT_AVAILABLE:
+        return loadout
+    if (
+        plan.status is AttackSelectionStatus.ALREADY_SELECTED
+        and plan.room_card_index is None
+    ):
+        # ManagerRoom remains authoritative even when RoomDTO telemetry is
+        # absent/ambiguous, so do not invent a Toggle coordinate. There is no
+        # exact visual slot to settle in this shape; preserve board fallback.
+        _write(
+            log,
+            "preentry_attack_selection_settle_unavailable",
+            plan=plan,
+            reason="selected Attack has no unique RoomDTO card index",
+            inputSent=False,
+        )
+        return loadout
+    if runtime.lobby_card_capability is None:
+        # Standalone inspect/one-shot tools remain zero-extra-input. Desktop
+        # FarmRunner always supplies the bounded lobby-card capability.
+        _write(
+            log,
+            "preentry_attack_selection_skipped",
+            plan=plan,
+            reason="farm-owned lobby-card capability unavailable",
+            boardOnlyFallback=True,
+        )
+        return loadout
+    if (
+        plan.status is AttackSelectionStatus.AMBIGUOUS
+        or plan.identity is None
+        or plan.room_card_index is None
+    ):
+        result.update(
+            status="STOPPED",
+            stopReason="ATTACK_CARD_SELECTION_AMBIGUOUS",
+        )
+        _write(log, "entry_stopped", reason=result["stopReason"], plan=plan)
+        return None
+
+    target = runtime.target
+    provider = runtime.provider
+    binding = runtime.binding
+    executor = runtime.executor
+    status = executor.window_status(binding)
+    if not status.valid or status.foreground is not True:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_FOREGROUND_LOST")
+        _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+        return None
+
+    # The room card row is rebuilt after every result transition.  Its cyan
+    # cost header can render one frame before the body/silhouette.  Waiting for
+    # exactly the first two frames therefore turns a normal Unity animation
+    # into a false STOP.  Stay zero-input and bounded while looking for two
+    # consecutive complete proofs; never lower the locator thresholds.
+    proof_started = time.monotonic()
+    proof_deadline = proof_started + ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS
+    proof_frames = 0
+    previous: ClientRgbCapture | None = None
+    previous_location: Any | None = None
+    first: ClientRgbCapture | None = None
+    first_location: Any | None = None
+    second: ClientRgbCapture | None = None
+    second_location: Any | None = None
+    visual_stable = False
+    expected_geometry = (
+        status.geometry.width,
+        status.geometry.height,
+    ) if status.geometry is not None else None
+    while target.is_running() and time.monotonic() < proof_deadline:
+        current_status = executor.window_status(binding)
+        if (
+            not current_status.valid
+            or current_status.foreground is not True
+            or current_status.geometry is None
+            or expected_geometry is None
+            or (
+                current_status.geometry.width,
+                current_status.geometry.height,
+            )
+            != expected_geometry
+        ):
+            result.update(status="STOPPED", stopReason="ATTACK_CARD_FOREGROUND_LOST")
+            _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+            return None
+        current = capture_client_rgb(target.pid)
+        if (current.width, current.height) != expected_geometry:
+            result.update(status="STOPPED", stopReason="ATTACK_CARD_GEOMETRY_CHANGED")
+            _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+            return None
+        current_location = locate_chinh_phuc_attack_card_toggle(
+            current.rgb,
+            current.width,
+            current.height,
+            room_card_count=len(loadout.room_cards),
+            attack_card_index=plan.room_card_index,
+        )
+        proof_frames += 1
+        if previous is not None and previous_location is not None:
+            first = previous
+            first_location = previous_location
+            second = current
+            second_location = current_location
+            visual_stable = _attack_toggle_visuals_stable(
+                first,
+                first_location,
+                second,
+                second_location,
+            )
+            selected_settle_complete = bool(
+                plan.status is not AttackSelectionStatus.ALREADY_SELECTED
+                or time.monotonic() - proof_started
+                >= ATTACK_CARD_ALREADY_SELECTED_SETTLE_SECONDS
+            )
+            if visual_stable and selected_settle_complete:
+                break
+        previous = current
+        previous_location = current_location
+        time.sleep(max(interval, 0.18))
+
+    # evidence path defensive if capture cadence changes in the future.
+    # A normal proof window always produces at least a pair. Keep the evidence
+    # path defensive if capture cadence changes in the future.
+    # evidence path defensive if capture cadence changes in the future.
+    if first is None or first_location is None:
+        first = previous
+        first_location = previous_location
+    if second is None or second_location is None:
+        second = previous
+        second_location = previous_location
+    if first is None or second is None or first_location is None or second_location is None:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_TOGGLE_UNPROVEN")
+        _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+        return None
+    _save_capture(artifact_dir / "attack_card_toggle_first.png", first)
+    _save_capture(artifact_dir / "attack_card_toggle_second.png", second)
+    _write(
+        log,
+        "preentry_attack_toggle_visual_proof",
+        plan=plan,
+        first=first_location,
+        second=second_location,
+        stable=visual_stable,
+        proofFrames=proof_frames,
+        proofWindowSeconds=ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS,
+    )
+    if not visual_stable or second_location.normalized_point is None:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_TOGGLE_UNPROVEN")
+        _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+        return None
+
+    # Atomic read-only preflight after the final frame and before reserving the
+    # only card-selection click.
+    poll = provider.poll()
+    if poll.combat_lifecycle is None:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_RUNTIME_CHANGED")
+        return None
+    current_lobby = read_boss_lobby_runtime(
+        target.resolver, poll.combat_lifecycle
+    )
+    current_plan = plan_required_attack_selection(
+        current_lobby.chinh_phuc.card_loadout
+    )
+    room_runtime_stable = bool(
+        current_lobby.state is BossLobbyState.BOSS_LOBBY
+        and current_lobby.branch == "CHINH_PHUC_ROOM"
+        and current_lobby.chinh_phuc.current_room_id
+        == lobby.chinh_phuc.current_room_id
+        and current_lobby.chinh_phuc.enemy_pet_id
+        == lobby.chinh_phuc.enemy_pet_id
+        and provider.current_session_key is None
+    )
+    if (
+        room_runtime_stable
+        and plan.status is AttackSelectionStatus.ALREADY_SELECTED
+        and current_plan.status is AttackSelectionStatus.ALREADY_SELECTED
+        and current_plan.identity == plan.identity
+    ):
+        current_loadout = current_lobby.chinh_phuc.card_loadout
+        _write(
+            log,
+            "preentry_attack_selection_settled",
+            plan=plan,
+            currentPlan=current_plan,
+            selectedIdentity=current_loadout.identity,
+            stableVisualFrames=2,
+            settleSeconds=ATTACK_CARD_ALREADY_SELECTED_SETTLE_SECONDS,
+            inputSent=False,
+            semantic=(
+                "selected Attack and its rendered room card remained stable "
+                "before Start"
+            ),
+        )
+        return current_loadout
+    if room_runtime_stable and attack_selection_satisfied_by_rehydration(
+        plan, current_plan
+    ):
+        current_loadout = current_lobby.chinh_phuc.card_loadout
+        _write(
+            log,
+            "preentry_attack_selection_rehydrated",
+            originalPlan=plan,
+            currentPlan=current_plan,
+            selectedIdentity=current_loadout.identity,
+            inputSent=False,
+            semantic=(
+                "ManagerRoom.selectedCards became authoritative while the "
+                "zero-input visual proof window was active"
+            ),
+        )
+        return current_loadout
+    runtime_stable = bool(
+        room_runtime_stable
+        and current_plan.status is AttackSelectionStatus.REQUIRED
+        and current_plan.identity == plan.identity
+        and current_plan.room_card_index == plan.room_card_index
+    )
+    if not runtime_stable:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_RUNTIME_CHANGED")
+        _write(
+            log,
+            "entry_stopped",
+            reason=result["stopReason"],
+            currentPlan=current_plan,
+            inputSent=False,
+        )
+        return None
+
+    permit = runtime.lobby_card_capability.reserve(
+        foreground=True,
+        exact_attack_identity=True,
+        no_combat_owner=True,
+        selected_attack_missing=True,
+        unique_room_attack=True,
+    )
+    if permit is None:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_CAPABILITY_DENIED")
+        _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
+        return None
+    authorized, click = runtime.lobby_card_capability.execute(
+        lambda: executor.send_normalized_point(
+            binding, second_location.normalized_point
+        )
+    )
+    if not authorized or click is None:
+        runtime.lobby_card_capability.complete(
+            permit, sent=False, detail="authority revoked before Attack-card click"
+        )
+        result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
+        return None
+    if not runtime.lobby_card_capability.complete(
+        permit,
+        sent=click.sent,
+        detail=(
+            f"ATTACK data={plan.data_id} card={plan.card_id} "
+            f"roomIndex={plan.room_card_index}:{click.status.value}"
+        ),
+    ):
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_INPUT_FAILED")
+        return None
+    result["preentryCardSelectionClicks"] = (
+        int(result.get("preentryCardSelectionClicks") or 0) + int(click.sent)
+    )
+    if not click.sent:
+        result.update(status="STOPPED", stopReason="ATTACK_CARD_INPUT_FAILED")
+        return None
+
+    verification_deadline = (
+        time.monotonic() + ATTACK_CARD_SELECTION_VERIFY_WINDOW_SECONDS
+    )
+    verified_loadout = None
+    while target.is_running() and time.monotonic() < verification_deadline:
+        time.sleep(max(interval, 0.12))
+        verify_poll = provider.poll()
+        if verify_poll.combat_lifecycle is None:
+            continue
+        verified_lobby = read_boss_lobby_runtime(
+            target.resolver, verify_poll.combat_lifecycle
+        )
+        verified_plan = plan_required_attack_selection(
+            verified_lobby.chinh_phuc.card_loadout
+        )
+        if (
+            verified_lobby.state is BossLobbyState.BOSS_LOBBY
+            and verified_lobby.branch == "CHINH_PHUC_ROOM"
+            and verified_lobby.chinh_phuc.current_room_id
+            == lobby.chinh_phuc.current_room_id
+            and provider.current_session_key is None
+            and verified_plan.status is AttackSelectionStatus.ALREADY_SELECTED
+            and verified_plan.identity == plan.identity
+        ):
+            verified_loadout = verified_lobby.chinh_phuc.card_loadout
+            break
+    if verified_loadout is None:
+        result.update(
+            status="STOPPED",
+            stopReason="ATTACK_CARD_SELECTION_UNCONFIRMED",
+        )
+        _write(
+            log,
+            "entry_stopped",
+            reason=result["stopReason"],
+            plan=plan,
+            clickStatus=click.status.value,
+        )
+        return None
+    _write(
+        log,
+        "preentry_attack_selection_confirmed",
+        plan=plan,
+        selectedIdentity=verified_loadout.identity,
+        managerAttackCardCount=verified_loadout.manager_attack_card_count,
+        clickStatus=click.status.value,
+    )
+    return verified_loadout
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -394,9 +949,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         "status": "RUNNING",
         "stopReason": None,
         "entryClicks": 0,
+        "entryRetryClicks": 0,
         "gameplayInputs": 0,
         "wrongBossClicks": 0,
         "duplicateEntryClicks": 0,
+        "preentryCardSelectionClicks": 0,
         "staleSessionConfusions": 0,
         "artifacts": str(artifact_dir),
     }
@@ -563,6 +1120,59 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     "blocks entry or board-only gameplay"
                 ),
             )
+            state = _transition(
+                log, state, BossEntryState.ENSURE_REQUIRED_CARDS
+            )
+            ensured_loadout = _ensure_required_attack_card(
+                runtime=runtime,
+                lobby=lobby,
+                result=result,
+                log=log,
+                artifact_dir=artifact_dir,
+                interval=args.interval,
+            )
+            if ensured_loadout is None:
+                break
+            if ensured_loadout.identity != loadout.identity:
+                loadout = ensured_loadout
+                refreshed_poll = provider.poll()
+                if refreshed_poll.combat_lifecycle is None:
+                    result.update(
+                        status="STOPPED",
+                        stopReason="ATTACK_CARD_RUNTIME_CHANGED",
+                    )
+                    break
+                refreshed_lobby = read_boss_lobby_runtime(
+                    target.resolver, refreshed_poll.combat_lifecycle
+                )
+                if (
+                    refreshed_lobby.state is not BossLobbyState.BOSS_LOBBY
+                    or refreshed_lobby.branch != "CHINH_PHUC_ROOM"
+                    or refreshed_lobby.chinh_phuc.current_room_id
+                    != lobby.chinh_phuc.current_room_id
+                    or refreshed_lobby.chinh_phuc.enemy_pet_id
+                    != lobby.chinh_phuc.enemy_pet_id
+                    or refreshed_lobby.chinh_phuc.card_loadout.identity
+                    != loadout.identity
+                    or provider.current_session_key is not None
+                ):
+                    result.update(
+                        status="STOPPED",
+                        stopReason="ATTACK_CARD_RUNTIME_CHANGED",
+                    )
+                    break
+                lobby = refreshed_lobby
+                provider.set_preentry_card_loadout(
+                    loadout.cards,
+                    sources_agree=loadout.sources_agree,
+                )
+                result.update(
+                    preentryCardCount=loadout.card_count,
+                    preentryAttackCardCount=loadout.attack_card_count,
+                    preentryCardSourcesAgree=loadout.sources_agree,
+                    preentryCardIdentity=loadout.identity,
+                    preentryOptionalCardMode=_preentry_optional_card_mode(loadout),
+                )
             state = _transition(log, state, BossEntryState.LOCATE_ENTER_BUTTON)
 
             try:
@@ -888,6 +1498,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         opening_offer_pending_confirmation = False
         opening_confirmation_skip_logged = False
         last_provider_status = None
+        latest_current_board_evidence: dict[str, Any] | None = None
 
         while target.is_running():
             _f8_edge, f9_edge = hotkeys.poll()
@@ -897,11 +1508,50 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 break
             now = time.monotonic()
             if active_session is None and now >= entry_deadline:
+                if (
+                    result["entryClicks"] == 1
+                    and result["entryRetryClicks"] == 0
+                ):
+                    retry_sent, retry_reason = _send_one_entry_retry(
+                        runtime=runtime,
+                        farm_target=farm_target,
+                        ready=ready,
+                        result=result,
+                        log=log,
+                        artifact_dir=artifact_dir,
+                        interval=args.interval,
+                    )
+                    if retry_sent:
+                        entry_deadline = time.monotonic() + args.entry_timeout
+                        continue
+                    _write(log, "entry_retry_not_sent", reason=retry_reason)
+                    if retry_reason == "F9_EMERGENCY_STOP":
+                        result.update(
+                            status="STOPPED",
+                            stopReason="F9_EMERGENCY_STOP",
+                        )
+                        break
                 result.update(status="STOPPED", stopReason="ENTRY_TIMEOUT_NEW_SESSION")
                 _write(log, "entry_stopped", reason=result["stopReason"])
                 break
             if active_session is not None and opening_deadline is not None and now >= opening_deadline:
-                result.update(status="STOPPED", stopReason="ENTRY_TIMEOUT_OPENING_BOARD")
+                current = latest_current_board_evidence
+                recovery_required = _entry_opening_timeout_recovery_required(
+                    active_session=active_session,
+                    current=current,
+                    entry_clicks=int(result.get("entryClicks") or 0),
+                    gameplay_inputs=int(result.get("gameplayInputs") or 0),
+                )
+                result.update(
+                    status=("RECOVERY_REQUIRED" if recovery_required else "STOPPED"),
+                    stopReason=(
+                        "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
+                        if recovery_required
+                        else "ENTRY_TIMEOUT_OPENING_BOARD"
+                    ),
+                )
+                if recovery_required:
+                    result["activeCombatTimeoutEvidence"] = current
                 _write(log, "entry_stopped", reason=result["stopReason"])
                 break
 
@@ -1238,6 +1888,25 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 )
 
             if poll.publish and poll.state is not None:
+                board_source = next(
+                    (
+                        source
+                        for source in poll.state.battle.sources
+                        if source
+                        == "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+                    ),
+                    None,
+                )
+                latest_current_board_evidence = {
+                    "session": poll.state.battle.session_key,
+                    "matchId": poll.state.battle.match_id,
+                    "turn": poll.state.battle.turn_number,
+                    "firstLocalTurn": poll.state.battle.is_first_local_turn,
+                    "localMoveSequence": poll.state.battle.local_move_sequence,
+                    "srvSeq": poll.state.battle.srv_seq,
+                    "boardHash": poll.state.battle.board_hash,
+                    "boardSource": board_source,
+                }
                 _write(
                     log,
                     "entry_current_board_published",
@@ -1254,6 +1923,32 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     sources=poll.state.battle.sources,
                     confirmations=poll.confirmations,
                 )
+                if _entry_opening_timeout_recovery_required(
+                    active_session=active_session,
+                    current=latest_current_board_evidence,
+                    entry_clicks=int(result.get("entryClicks") or 0),
+                    gameplay_inputs=int(result.get("gameplayInputs") or 0),
+                ):
+                    # Turn > 1 means the immutable opening can no longer be
+                    # accepted even if its short-lived DTO reappears later.
+                    # Route immediately so normal Exit recovery has the whole
+                    # remaining idle window; waiting for the opening deadline
+                    # previously left the untouched combat to be ejected.
+                    result.update(
+                        status="RECOVERY_REQUIRED",
+                        stopReason="ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT",
+                        activeCombatTimeoutEvidence=(
+                            latest_current_board_evidence
+                        ),
+                    )
+                    _write(
+                        log,
+                        "entry_recovery_required",
+                        reason=result["stopReason"],
+                        trigger="CURRENT_BOARD_ADVANCED_BEYOND_OPENING",
+                        evidence=latest_current_board_evidence,
+                    )
+                    break
 
             if (
                 poll.publish

@@ -34,6 +34,7 @@ from pokiguard_v2.il2cpp_external import (  # noqa: E402
     BOARD_SINGLETON,
     CHAT_SERVICE_SINGLETON,
     CHAT_SERVICE_USERNAME_OFFSET,
+    CHAT_MESSAGE_DTO_TYPE_INFO_RVA,
     MATCH_SERVICE_CURRENT_MATCH_ID_OFFSET,
     MATCH_SERVICE_CURRENT_TURN_PLAYER_OFFSET,
     MATCH_SERVICE_LAST_MOVE_FROM_COL_OFFSET,
@@ -67,9 +68,6 @@ from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, default_log_path, hex_pointer  # noqa: E402
 
 
-# Repeated ChatService native bodies initialize this slot immediately before
-# ``typeof(ChatMessageDTO)`` / ``il2cpp_codegen_object_new``.
-CHAT_MESSAGE_DTO_TYPE_INFO_RVA = 0x350F660
 CHAT_MESSAGE_TYPE_OFFSET = 0x30
 CHAT_MESSAGE_USERNAME_OFFSET = 0x18
 CHAT_MESSAGE_TIMESTAMP_OFFSET = 0x28

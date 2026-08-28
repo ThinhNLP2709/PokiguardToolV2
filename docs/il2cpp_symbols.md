@@ -90,6 +90,7 @@ Evidence chính: `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/Board.cs:919-1111
 | Assembly-CSharp | global | Board | `allDots` | field | no | `UnityEngine.GameObject[,]` | `0x140` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `active` | field | no | `Active` | `0x158` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `isCascadeRunning` | field | no | `System.Boolean` | `0x170` | N/A | CONFIRMED |
+| Assembly-CSharp | global | Board | `_leftActorNumbers` | field | no | `System.Collections.Generic.HashSet<System.Int32>` | `0x2B0` | N/A | CONFIRMED; runtime actor `1` observed after client player-left state |
 | Assembly-CSharp | global | Board | `selectedCards` | field | no | `System.Collections.Generic.List<CardData>` | `0x2F8` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `cardsInHand` | field | no | `System.Collections.Generic.List<UnityEngine.GameObject>` | `0x300` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Board | `isBoardReady` | field | no | `System.Boolean` | `0x348` | N/A | CONFIRMED |
@@ -202,6 +203,7 @@ Evidence:
 | Assembly-CSharp | global | MatchService | `CurrentTurnPlayer` | property | no | `System.String` (public getter, private setter) | N/A | UNKNOWN | CONFIRMED |
 | Assembly-CSharp | global | MatchService | `<TurnNumber>k__BackingField` | field | no | `System.Int32` | `0x40` | N/A | CONFIRMED |
 | Assembly-CSharp | global | MatchService | `TurnNumber` | property | no | `System.Int32` (public getter, private setter) | N/A | UNKNOWN | CONFIRMED |
+| Assembly-CSharp | global | MatchService | `<Players>k__BackingField` | field | no | `Dictionary<System.String, MatchPlayerSnapshotDTO>` | `0xA8` | N/A | CONFIRMED |
 | Assembly-CSharp | global | MatchService | `SendMove(int,int,int,int)` | method | no | `System.Void (System.Int32 fromCol, System.Int32 fromRow, System.Int32 toCol, System.Int32 toRow)` | N/A | UNKNOWN | CONFIRMED signature |
 | Assembly-CSharp | global | MatchService | `<ServerStats>k__BackingField` | field | no | `Dictionary<System.String, MatchService.ServerPlayerStats>` | `0x1A0` | N/A | CONFIRMED |
 
@@ -224,7 +226,10 @@ Evidence: `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/Active.cs:482-516` và
 | Assembly-CSharp | global | Active | `Instance` | property | yes | `Active` (public getter, internal setter) | N/A | UNKNOWN | CONFIRMED |
 | Assembly-CSharp | global | Active | `playerStatsMap` | field | no | `Dictionary<System.Int32, Active.PlayerStats>` | `0x20` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Active | `playerStatsList` | field | no | `List<Active.PlayerStats>` | `0x28` | N/A | CONFIRMED |
+| Assembly-CSharp | global | Active | `LocalActorNumberOrZero` | property | no | `System.Int32` (internal getter) | N/A | `0x56B3D0` getter | CONFIRMED |
 | Assembly-CSharp | global | Active | `board` | field | no | `Board` | `0x38` | N/A | CONFIRMED |
+| Assembly-CSharp | global | MatchPlayerSnapshotDTO | `username` | field | no | `System.String` | `0x10` | N/A | CONFIRMED |
+| Assembly-CSharp | global | MatchPlayerSnapshotDTO | `actorNumber` | field | no | `System.Int32` | `0x18` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Active.PlayerStats | `actorNumber` | field | no | `System.Int32` | `0x10` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Active.PlayerStats | `currentHP` | field | no | `ObfuscatedInt` | `0x14` | N/A | CONFIRMED |
 | Assembly-CSharp | global | Active.PlayerStats | `maxHP` | field | no | `ObfuscatedInt` | `0x24` | N/A | CONFIRMED |
@@ -241,6 +246,13 @@ Evidence: `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/Active.cs:482-516` và
 `MatchService.ServerPlayerStats` là nested class khác với plain `Int32` fields:
 `HP 0x10`, `MaxHP 0x14`, `Mana 0x18`, `MaxMana 0x1C`, `Power 0x20`,
 `MaxPower 0x24`, `Shield 0x28`. Nó được giữ trong `MatchService.ServerStats`.
+
+`Active.get_LocalActorNumberOrZero` được xác minh thêm từ
+`reverse/cpp2il_isil/IsilDump/Assembly-CSharp/Active.txt`: nhánh ưu tiên đọc
+`ChatService.Username`, lookup `MatchService.Players`, rồi trả về
+`MatchPlayerSnapshotDTO.actorNumber +0x18`. Đây là ownership evidence dùng để
+phân biệt người chơi với một PlayerStats không-boss bổ sung của pet tiến hóa;
+không hard-code actor `1`.
 
 ## ManagerMatch
 

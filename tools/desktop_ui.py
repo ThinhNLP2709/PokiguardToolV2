@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch the Phase 2E.2 bounded FarmRunner desktop control UI."""
+"""Launch the Phase 2E.3 hardened bounded FarmRunner desktop UI."""
 
 from __future__ import annotations
 
@@ -30,6 +30,9 @@ from pokiguard_v2.desktop_runtime import ReadOnlyGameStatusProvider  # noqa: E40
 from pokiguard_v2.desktop_farm_controller import (  # noqa: E402
     DesktopFarmControllerManager,
 )
+from pokiguard_v2.desktop_preferences import (  # noqa: E402
+    DesktopPreferenceStore,
+)
 from pokiguard_v2.desktop_ui import (  # noqa: E402
     DesktopApplication,
     DesktopEventLog,
@@ -38,6 +41,17 @@ from pokiguard_v2.desktop_ui import (  # noqa: E402
 )
 from pokiguard_v2.memory_board_provider import MemoryProviderConfig  # noqa: E402
 from tools.runtime_common import attach_target, utc_timestamp  # noqa: E402
+
+
+def smoke_result_is_healthy(result: Any) -> bool:
+    """A smoke run passes only after at least one error-free Tk render."""
+
+    return bool(
+        result is not None
+        and result.render_ticks > 0
+        and result.handled_ui_errors == 0
+        and not result.poller_alive_after_close
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -71,6 +85,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=PROJECT_ROOT / "logs" / "phase2c2c_reset_capabilities.json",
         help="accepted reset capability evidence used by FarmRunner",
+    )
+    parser.add_argument(
+        "--preferences",
+        type=Path,
+        default=PROJECT_ROOT / "logs" / "desktop_ui" / "operator_preferences.json",
+        help="versioned operator-preference JSON (never a farm checkpoint)",
     )
     return parser
 
@@ -139,7 +159,9 @@ def run(args: argparse.Namespace) -> int:
     artifact_dir.mkdir(parents=True, exist_ok=False)
     events_path = artifact_dir / "events.jsonl"
     summary_path = artifact_dir / "summary.json"
-    event_log = DesktopEventLog(events_path)
+    event_log = DesktopEventLog(events_path, max_display_entries=500)
+    preference_store = DesktopPreferenceStore(args.preferences)
+    preference_load = preference_store.load()
     runtime = (
         StaticUnavailableRuntimeProvider()
         if args.offline
@@ -164,7 +186,7 @@ def run(args: argparse.Namespace) -> int:
     control_plane = DesktopControlPlane(
         runtime,
         checkpoint=checkpoint,
-        config=DesktopConfig(),
+        config=preference_load.config,
         controller=controller,
     )
     evidence = _EvidenceSink(event_log)
@@ -192,6 +214,11 @@ def run(args: argparse.Namespace) -> int:
         autonomousInputAuthority=not args.offline,
         farmRunnerCommandPathAvailable=True,
         checkpointMutationAuthority=False,
+        preferencePath=str(preference_store.path),
+        preferenceLoaded=preference_load.loaded,
+        preferenceWarnings=[asdict(value) for value in preference_load.warnings],
+        automaticStart=False,
+        automaticResume=False,
     )
     try:
         root = create_root()
@@ -199,6 +226,8 @@ def run(args: argparse.Namespace) -> int:
             root,
             view_model,
             event_log=event_log,
+            preference_store=preference_store,
+            preference_warnings=preference_load.warnings,
             auto_close_seconds=args.smoke_seconds,
         )
         result = app.run()
@@ -206,12 +235,27 @@ def run(args: argparse.Namespace) -> int:
         unexpected = f"{type(exc).__name__}: {exc}"
         exit_code = 1
         event_log.write("desktop_ui_process_error", error=unexpected)
+        controller_snapshot = controller.snapshot()
+        if controller_snapshot.active:
+            control_plane.emergency_stop(controller_snapshot.generation)
+            controller.wait(30.0)
         poller.stop(timeout_seconds=30.0)
         control_plane.close()
 
+    if args.smoke_seconds > 0 and exit_code == 0 and not smoke_result_is_healthy(result):
+        exit_code = 1
+        event_log.write(
+            "desktop_ui_smoke_failed",
+            renderTicks=result.render_ticks if result is not None else 0,
+            handledUiErrors=result.handled_ui_errors if result is not None else 0,
+            pollerAliveAfterClose=(
+                result.poller_alive_after_close if result is not None else poller.alive
+            ),
+        )
+
     final_snapshot = control_plane.snapshot()
     summary = {
-        "schema": "pokiguard.desktop_ui.phase2e2.v1",
+        "schema": "pokiguard.desktop_ui.phase2e3.v1",
         "timestamp": utc_timestamp(),
         "mode": "OFFLINE_FAKE" if args.offline else "LIVE_CONTROLLED",
         "artifactDirectory": str(artifact_dir),
@@ -235,9 +279,39 @@ def run(args: argparse.Namespace) -> int:
         "finalConfig": asdict(final_snapshot.config),
         "finalController": asdict(final_snapshot.controller),
         "safety": asdict(final_snapshot.safety),
-        "phase2e2CommandsAvailable": True,
+        "phase2e3CommandsAvailable": True,
         "farmRunnerStarted": final_snapshot.controller.safety.starts > 0,
         "controllerStopped": not final_snapshot.controller.active,
+        "preferences": {
+            "schema": "pokiguard.desktop_preferences.v1",
+            "path": str(preference_store.path),
+            "loaded": preference_load.loaded,
+            "warnings": [asdict(value) for value in preference_load.warnings],
+            "separateFromCheckpoint": True,
+            "automaticStartOnLoad": False,
+            "automaticResumeOnLoad": False,
+        },
+        "operatorLog": (
+            {
+                "configuredBound": result.operator_log_bound,
+                "maxObservedEntries": result.operator_log_max_observed,
+                "totalEntries": result.operator_log_total_entries,
+                "workerThreadTkWrites": 0,
+            }
+            if result is not None
+            else {**event_log.stats(), "workerThreadTkWrites": 0}
+        ),
+        "uiCommands": (
+            {
+                "start": app.start_commands_submitted,
+                "resume": app.resume_commands_submitted,
+                "gracefulStop": app.graceful_commands_submitted,
+                "emergencyStop": app.emergency_commands_submitted,
+                "finalCloseIntent": result.close_intent,
+            }
+            if result is not None
+            else {}
+        ),
         "unexpectedError": unexpected,
     }
     summary_path.write_text(
@@ -246,7 +320,7 @@ def run(args: argparse.Namespace) -> int:
     )
     event_log.write("desktop_ui_process_finished", summary=str(summary_path))
     event_log.close()
-    print(f"Phase 2E.2 desktop UI artifacts: {artifact_dir}", flush=True)
+    print(f"Phase 2E.3 desktop UI artifacts: {artifact_dir}", flush=True)
     print(
         "Controller safety: "
         f"FarmRunner starts={final_snapshot.controller.safety.starts}; "

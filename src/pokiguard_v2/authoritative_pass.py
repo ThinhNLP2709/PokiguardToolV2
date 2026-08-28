@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 
-from .game_owned_idle import GameOwnedIdleState, PassReadinessResult
+from .game_owned_idle import GameOwnedIdleState, IdleFreshness, PassReadinessResult
 
 
 def server_timestamp_not_before(source: str | None, started: str) -> bool:
@@ -319,7 +319,27 @@ class AuthoritativePassCoordinator:
         direct_correlated = direct_candidate and self._turn_end_observed
         if not (turn_ordered or direct_correlated):
             return None
-        expected_count = attempt.pass_index
+        # The server-owned counter is the source of truth.  A PASS may begin
+        # after a warning already reported 1/3 even when this controller has
+        # not confirmed an earlier PASS in its own process lifetime.  In that
+        # case the correct transition is 1 -> 2, not "local pass index 1 ->
+        # server count 1".  Fall back to the bounded local pass index only for
+        # the accepted non-numeric reset-baseline case.
+        idle_before = attempt.idle_before.state
+        numeric_before_is_exact = bool(
+            idle_before is not None
+            and idle_before.session_id == attempt.session_id
+            and idle_before.username.casefold()
+            == attempt.local_username.casefold()
+            and idle_before.freshness is IdleFreshness.EXACT_SERVER_EVENT
+            and idle_before.threshold == idle.threshold
+            and idle_before.idle_count < idle_before.threshold - 1
+        )
+        expected_count = (
+            idle_before.idle_count + 1
+            if numeric_before_is_exact and idle_before is not None
+            else attempt.pass_index
+        )
         result = (
             {
                 1: PassResultKind.PASS_CONFIRMED_IDLE_1,
@@ -335,7 +355,8 @@ class AuthoritativePassCoordinator:
             authoritative_idle=idle,
             detail=(
                 f"{idle.source_message_type} reported "
-                f"{idle.idle_count}/{idle.threshold}; expected {expected_count}"
+                f"{idle.idle_count}/{idle.threshold}; expected {expected_count} "
+                f"from {'authoritative idle-before' if numeric_before_is_exact else 'reset-cycle pass index'}"
             ),
         )
 

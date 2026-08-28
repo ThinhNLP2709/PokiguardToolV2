@@ -33,6 +33,9 @@ from pokiguard_v2.chinh_phuc_map import (  # noqa: E402
     discover_chinh_phuc_map_target,
     locate_hunt_order_badge,
 )
+from pokiguard_v2.boss_entry_ui import (  # noqa: E402
+    locate_detached_chinh_phuc_room_shell_exit,
+)
 from pokiguard_v2.boss_lobby_runtime import read_boss_lobby_runtime  # noqa: E402
 from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.farm_cycle import OpeningEvidence  # noqa: E402
@@ -52,6 +55,7 @@ from pokiguard_v2.farm_run import (  # noqa: E402
     FarmRunArtifactWriter,
     FarmRunEntryCapability,
     FarmRunGameplayCapability,
+    FarmRunLobbyCardCapability,
     FarmRunLimits,
     FarmRunState,
     FarmRunStopReason,
@@ -72,6 +76,7 @@ from pokiguard_v2.postmatch_ui import (  # noqa: E402
     locate_result_confirm,
     prove_stable_result_confirm,
 )
+from pokiguard_v2.recovery_ui import locate_confirm_leave  # noqa: E402
 from pokiguard_v2.technical_recovery import (  # noqa: E402
     RecoveredOpeningEvidence,
     TechnicalRecoveryCoordinator,
@@ -94,6 +99,7 @@ from tools.farm_cycle import (  # noqa: E402
     LobbyWaitResult,
     _combat_args,
     _entry_args,
+    _is_detached_chinh_phuc_room_candidate,
     _last_event,
     _read_jsonl,
     _validate_combat_summary,
@@ -167,8 +173,21 @@ def build_parser() -> argparse.ArgumentParser:
     target.add_argument("--boss-id", help="exact runtime boss/enemy pet ID")
     target.add_argument("--boss-name", help="exact NFC/casefold boss name")
     parser.add_argument("--target-matches", type=int, default=3)
-    parser.add_argument("--max-technical-recoveries", type=int, default=1)
+    parser.add_argument(
+        "--max-technical-recoveries",
+        type=int,
+        default=1,
+        help=argparse.SUPPRESS,  # accepted only for old scripts/checkpoints; ignored
+    )
     parser.add_argument("--max-match-attempts", type=int, default=5)
+    parser.add_argument(
+        "--stop-if-room-ejected",
+        action="store_true",
+        help=(
+            "fail closed when the selected Chinh Phuc room is lost; never "
+            "select a pet from the world boss map"
+        ),
+    )
     parser.add_argument(
         "--play-style",
         choices=("simple", "careful"),
@@ -342,6 +361,7 @@ def _recovery_args(args: Namespace, artifacts: Path, *, test_only: bool) -> Name
         ack_heap_region_mib=args.ack_heap_region_mib,
         chunk_mib=args.chunk_mib,
         no_beep=args.no_beep,
+        require_current_boss_room=bool(args.stop_if_room_ejected),
     )
 
 
@@ -474,7 +494,7 @@ def _print_farm_status(run: FarmRun, *, lifecycle: str) -> None:
         f"attempts={snapshot.match_attempts}/"
         f"{snapshot.limits.max_match_attempts} | recoveries="
         f"{snapshot.technical_recoveries}/"
-        f"{snapshot.limits.max_technical_recoveries} | lifecycle={lifecycle} | "
+        f"unbounded | lifecycle={lifecycle} | "
         f"match={snapshot.current_match_id or '-'} | stopMode={control_state}",
         flush=True,
     )
@@ -558,6 +578,7 @@ def _run_entry(
         executor,
         backend,
         FarmRunEntryCapability(run, control_hotkeys),
+        FarmRunLobbyCardCapability(run, control_hotkeys),
     )
     boss_entry.run(_entry_args(args, entry_directory), shared_runtime=runtime)
     try:
@@ -568,6 +589,28 @@ def _run_entry(
         run.safe_stop(FarmRunStopReason.OPENING_INVARIANT_FAILED, detail="entry summary missing")
         return None, None
     if result.get("status") != "PASS":
+        if result.get("status") == "RECOVERY_REQUIRED" and result.get(
+            "stopReason"
+        ) == "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT":
+            raw = result.get("activeCombatTimeoutEvidence") or {}
+            raw_session = raw.get("session") or {}
+            try:
+                session = CombatSessionKey(
+                    int(raw_session["lifecycle_epoch"]),
+                    int(raw_session["board_instance"]),
+                    str(raw_session["match_id"]),
+                )
+            except (KeyError, TypeError, ValueError):
+                session = None
+            if (
+                session is not None
+                and provider.current_session_key == session
+                and run.accept_session(session)
+                and run.technical_failure(
+                    "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
+                )
+            ):
+                return None, result
         if not run.stopped:
             raw_reason = str(result.get("stopReason") or "ENTRY_FAILED")
             if raw_reason == "F9_EMERGENCY_STOP":
@@ -865,6 +908,284 @@ def _confirm_postmatch(
     )
 
 
+def _restore_bound_game_foreground(
+    binding: Any,
+    executor: ForegroundClickExecutor,
+    *,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> bool:
+    """Restore only the already bound exact-PID HWND, then verify it afresh.
+
+    Re-entry is an automated input boundary, so a user/UI foreground handoff
+    may not be treated as a permanent failure.  Geometry changes remain fatal:
+    Start already normalized the client before this binding was created.
+    """
+
+    before = executor.window_status(binding)
+    if not before.valid:
+        return False
+    if before.foreground is not True:
+        backend = executor.backend
+        if (
+            backend.window_pid(binding.hwnd) != binding.pid
+            or not backend.restore_and_foreground(binding.hwnd)
+        ):
+            return False
+        sleeper(0.20)
+    after = executor.window_status(binding)
+    return bool(
+        after.valid
+        and after.foreground is True
+        and after.geometry is not None
+        and after.geometry.width == binding.initial_width
+        and after.geometry.height == binding.initial_height
+    )
+
+
+def _stable_visual_proof(
+    first_capture: Any,
+    first_location: Any,
+    second_capture: Any,
+    second_location: Any,
+) -> bool:
+    """Require the same found normalized point in two consecutive frames."""
+
+    return bool(
+        first_location.found
+        and second_location.found
+        and first_location.normalized_point is not None
+        and second_location.normalized_point is not None
+        and (first_capture.width, first_capture.height)
+        == (second_capture.width, second_capture.height)
+        and abs(
+            first_location.normalized_point[0]
+            - second_location.normalized_point[0]
+        )
+        <= 0.012
+        and abs(
+            first_location.normalized_point[1]
+            - second_location.normalized_point[1]
+        )
+        <= 0.012
+    )
+
+
+def _postmatch_reentry_source(
+    initial: LobbyWaitResult,
+    *,
+    target_pet_id: int,
+    current_session: Any | None,
+) -> str | None:
+    """Classify only the two exact, read-only postmatch re-entry sources."""
+
+    lobby = initial.lobby
+    if lobby is None or current_session is not None:
+        return None
+    if (
+        initial.reason == "TARGET_MISSING"
+        and lobby.state is BossLobbyState.BOSS_LOBBY
+        and lobby.branch == "WORLD_BOSS_LIST"
+        and lobby.chinh_phuc.current_room_id is None
+    ):
+        return "WORLD_BOSS_LIST"
+    if (
+        initial.reason == "DETACHED_ROOM_SHELL_CANDIDATE"
+        and _is_detached_chinh_phuc_room_candidate(
+            lobby,
+            target_pet_id=target_pet_id,
+            no_combat_owner=True,
+        )
+    ):
+        return "DETACHED_ROOM_SHELL"
+    return None
+
+
+def _owner_free_chinh_phuc_map_snapshot(lobby: Any) -> bool:
+    """Accept the two exact read-only shapes of the Chinh Phuc island map.
+
+    A normal map return is classified as ``BOSS_LOBBY/WORLD_BOSS_LIST``.
+    After closing a detached postmatch room shell, however, Unity can keep the
+    stale ``ManagerRoom.roomData`` while ``WsRoomService`` has already cleared
+    ownership; the generic lobby classifier then correctly reports
+    ``LOBBY_OTHER`` with no branch.  That owner-free transitional shape is not
+    an ambiguous room: the caller also requires a stable runtime-derived badge
+    and the exact Button/Pet/PlayerPrefs association before any click.
+    """
+
+    chinh_phuc = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(lobby, "combat_lifecycle", None)
+    if chinh_phuc is None or lifecycle is None:
+        return False
+    branch = getattr(lobby, "branch", None)
+    state = getattr(lobby, "state", None)
+    shape = (state, branch)
+    if shape not in (
+        (BossLobbyState.BOSS_LOBBY, "WORLD_BOSS_LIST"),
+        (BossLobbyState.LOBBY_OTHER, None),
+    ):
+        return False
+    return bool(
+        getattr(lifecycle, "state", None) is CombatLifecycleState.LOBBY
+        and getattr(chinh_phuc, "current_room_id", None) is None
+        and getattr(chinh_phuc, "current_room_type", None) is None
+        and getattr(chinh_phuc, "owner_username", None) is None
+        and getattr(chinh_phuc, "is_host", None) is False
+    )
+
+
+def _settle_detached_room_shell_exit(
+    *,
+    run: FarmRun,
+    process: Any,
+    provider: MemoryBoardStateProvider,
+    pet_id: int,
+    hunt_order: int,
+    initial_lobby: Any,
+    binding: Any,
+    executor: ForegroundClickExecutor,
+    interval: float,
+    timeout: float,
+    control_hotkeys: Any,
+    directory: Path,
+    event_fields: dict[str, Any],
+) -> str | None:
+    """Prove either direct map navigation or one stable leave confirmation."""
+
+    deadline = time.monotonic() + max(1.0, timeout)
+    modal_hits = 0
+    prior_modal_point: tuple[float, float] | None = None
+    prior_map_capture = None
+    prior_map_location = None
+    while process.is_running() and time.monotonic() < deadline:
+        if _control_emergency_requested(control_hotkeys):
+            run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="F9 while settling detached-room shell exit",
+            )
+            return None
+        status = executor.window_status(binding)
+        if not status.valid or status.foreground is not True:
+            run.safe_stop(
+                FarmRunStopReason.FOREGROUND_LOST,
+                detail="foreground lost while settling detached-room shell exit",
+            )
+            return None
+        capture = capture_client_rgb(process.pid)
+        map_location = locate_hunt_order_badge(
+            capture.rgb, capture.width, capture.height, hunt_order
+        )
+        if (
+            prior_map_capture is not None
+            and prior_map_location is not None
+            and _stable_visual_proof(
+                prior_map_capture,
+                prior_map_location,
+                capture,
+                map_location,
+            )
+        ):
+            run._event(  # noqa: SLF001
+                "chinh_phuc_room_shell_direct_map_proven",
+                **event_fields,
+                firstLocation=prior_map_location,
+                secondLocation=map_location,
+            )
+            return "DIRECT_MAP"
+        if map_location.found:
+            prior_map_capture = capture
+            prior_map_location = map_location
+        else:
+            prior_map_capture = None
+            prior_map_location = None
+
+        modal = locate_confirm_leave(capture.rgb, capture.width, capture.height)
+        if modal.found and modal.normalized_point is not None:
+            same_modal = bool(
+                prior_modal_point is not None
+                and abs(modal.normalized_point[0] - prior_modal_point[0]) <= 0.012
+                and abs(modal.normalized_point[1] - prior_modal_point[1]) <= 0.012
+            )
+            modal_hits = modal_hits + 1 if same_modal else 1
+            prior_modal_point = modal.normalized_point
+        else:
+            modal_hits = 0
+            prior_modal_point = None
+        if modal_hits < 3:
+            time.sleep(max(interval, 0.12))
+            continue
+
+        write_png_rgb(
+            directory / "chinh_phuc_room_shell_confirm.png",
+            capture.width,
+            capture.height,
+            capture.rgb,
+        )
+        confirm_poll = provider.poll()
+        if confirm_poll.combat_lifecycle is None:
+            return None
+        confirm_lobby = read_boss_lobby_runtime(
+            process.resolver, confirm_poll.combat_lifecycle
+        )
+        if (
+            not _is_detached_chinh_phuc_room_candidate(
+                confirm_lobby,
+                target_pet_id=pet_id,
+                no_combat_owner=provider.current_session_key is None,
+            )
+            or provider.current_session_key is not None
+        ):
+            run._event(  # noqa: SLF001
+                "chinh_phuc_room_shell_confirm_rejected",
+                **event_fields,
+                confirmLobby=confirm_lobby,
+                reason="detached-room runtime proof changed before modal confirm",
+            )
+            return None
+        status = executor.window_status(binding)
+        if _control_emergency_requested(control_hotkeys):
+            run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before room-shell confirm",
+            )
+            return None
+        permit = run.reserve_room_shell_confirm(
+            foreground=status.valid and status.foreground is True
+        )
+        if permit is None:
+            return None
+        authorized, click = _execute_controlled_input(
+            control_hotkeys,
+            lambda: executor.send_normalized_point(binding, modal.normalized_point),
+        )
+        if not authorized or click is None:
+            run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before room-shell confirm input",
+            )
+            return None
+        if not run.complete_room_shell_confirm(
+            permit,
+            sent=click.sent,
+            detail=f"CHINH_PHUC_ROOM_SHELL_CONFIRM pet={pet_id}:{click.status.value}",
+        ):
+            return None
+        run._event(  # noqa: SLF001
+            "chinh_phuc_room_shell_confirm_sent",
+            **event_fields,
+            locator=modal,
+            confirmLobby=confirm_lobby,
+            clickStatus=click.status.value,
+        )
+        return "CONFIRMED" if click.sent else None
+
+    run._event(  # noqa: SLF001
+        "chinh_phuc_room_shell_transition_rejected",
+        **event_fields,
+        reason="neither stable leave modal nor runtime-derived map badge appeared",
+    )
+    return None
+
+
 def _return_from_chinh_phuc_map(
     *,
     run: FarmRun,
@@ -895,13 +1216,12 @@ def _return_from_chinh_phuc_map(
         pet_id = int(target.boss_id or "")
     except ValueError:
         return None
-    if (
-        initial.reason != "TARGET_MISSING"
-        or lobby is None
-        or lobby.branch != "WORLD_BOSS_LIST"
-        or lobby.chinh_phuc.current_room_id is not None
-        or provider.current_session_key is not None
-    ):
+    reentry_source = _postmatch_reentry_source(
+        initial,
+        target_pet_id=pet_id,
+        current_session=provider.current_session_key,
+    )
+    if reentry_source is None:
         return None
 
     external_f9 = _control_emergency_requested(control_hotkeys)
@@ -909,6 +1229,17 @@ def _return_from_chinh_phuc_map(
     if f9 or external_f9:
         run.safe_stop(FarmRunStopReason.EMERGENCY_STOP, detail="F9 during map return")
         return LobbyWaitResult(False, lobby.state, None, "F9_EMERGENCY_STOP", lobby)
+
+    # Re-entry may happen long after the desktop Start handoff.  Restore only
+    # the farm-bound exact game window now, before discovering or capturing the
+    # target.  Every runtime and visual proof below is therefore a post-focus
+    # reread; no pre-focus screenshot can authorize the one target click.
+    if not _restore_bound_game_foreground(binding, executor):
+        run.safe_stop(
+            FarmRunStopReason.FOREGROUND_LOST,
+            detail="exact game foreground/geometry restore failed before map proof",
+        )
+        return LobbyWaitResult(False, lobby.state, None, "GAME_NOT_FOREGROUND", lobby)
 
     first_runtime = discover_chinh_phuc_map_target(
         process,
@@ -920,6 +1251,7 @@ def _return_from_chinh_phuc_map(
         "attemptIndex": run.match_attempts,
         "targetPetId": pet_id,
         "initialBranch": lobby.branch,
+        "reentrySource": reentry_source,
         "staleRoomPetId": lobby.chinh_phuc.enemy_pet_id,
         "runtime": first_runtime,
     }
@@ -957,6 +1289,12 @@ def _return_from_chinh_phuc_map(
             reason=f"cursor park failed: {cursor_park.value}",
         )
         return None
+    # The read-only room owner can disappear before Unity finishes rendering
+    # the island map.  Do not interpret the first loading frames as a missing
+    # target.  Wait within the existing return-lobby timeout until either the
+    # exact runtime-derived badge or the narrowly proven detached-room shell
+    # is stable in two consecutive frames.  This loop sends no clicks.
+    proof_deadline = time.monotonic() + max(1.0, timeout)
     time.sleep(max(interval, 0.18))
     first_capture = capture_client_rgb(process.pid)
     first_location = locate_hunt_order_badge(
@@ -965,47 +1303,278 @@ def _return_from_chinh_phuc_map(
         first_capture.height,
         first_runtime.hunt_order,
     )
-    time.sleep(max(interval, 0.18))
-    second_capture = capture_client_rgb(process.pid)
-    second_location = locate_hunt_order_badge(
-        second_capture.rgb,
-        second_capture.width,
-        second_capture.height,
-        first_runtime.hunt_order,
+    first_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
+        first_capture.rgb,
+        first_capture.width,
+        first_capture.height,
     )
-    stable_visual = bool(
-        first_location.found
-        and second_location.found
-        and first_location.normalized_point is not None
-        and second_location.normalized_point is not None
-        and (first_capture.width, first_capture.height)
-        == (second_capture.width, second_capture.height)
-        and abs(
-            first_location.normalized_point[0]
-            - second_location.normalized_point[0]
+    second_capture = first_capture
+    second_location = first_location
+    second_shell_exit = first_shell_exit
+    stable_visual = False
+    stable_room_shell = False
+    proof_frames = 1
+    while process.is_running() and time.monotonic() < proof_deadline:
+        if _control_emergency_requested(control_hotkeys):
+            run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="F9 while waiting for stable Chinh Phuc map proof",
+            )
+            return LobbyWaitResult(
+                False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+            )
+        status = executor.window_status(binding)
+        if not status.valid or status.foreground is not True:
+            run.safe_stop(
+                FarmRunStopReason.FOREGROUND_LOST,
+                detail="foreground lost while waiting for map proof",
+            )
+            return LobbyWaitResult(
+                False, lobby.state, None, "GAME_NOT_FOREGROUND", lobby
+            )
+        time.sleep(max(interval, 0.18))
+        second_capture = capture_client_rgb(process.pid)
+        second_location = locate_hunt_order_badge(
+            second_capture.rgb,
+            second_capture.width,
+            second_capture.height,
+            first_runtime.hunt_order,
         )
-        <= 0.012
-        and abs(
-            first_location.normalized_point[1]
-            - second_location.normalized_point[1]
+        second_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
+            second_capture.rgb,
+            second_capture.width,
+            second_capture.height,
         )
-        <= 0.012
-    )
+        proof_frames += 1
+        stable_visual = _stable_visual_proof(
+            first_capture,
+            first_location,
+            second_capture,
+            second_location,
+        )
+        stable_room_shell = bool(
+            not stable_visual
+            and _stable_visual_proof(
+                first_capture,
+                first_shell_exit,
+                second_capture,
+                second_shell_exit,
+            )
+        )
+        if stable_visual or stable_room_shell:
+            break
+        first_capture = second_capture
+        first_location = second_location
+        first_shell_exit = second_shell_exit
     write_png_rgb(
         directory / "chinh_phuc_map_before.png",
         second_capture.width,
         second_capture.height,
         second_capture.rgb,
     )
-    if not stable_visual:
+    if not stable_visual and not stable_room_shell:
         run._event(  # noqa: SLF001
             "chinh_phuc_map_return_rejected",
             **writer_fields,
             firstLocation=first_location,
             secondLocation=second_location,
-            reason="runtime-derived badge did not pass two-frame proof",
+            firstShellExit=first_shell_exit,
+            secondShellExit=second_shell_exit,
+            proofFrames=proof_frames,
+            reason=(
+                "neither runtime-derived badge nor detached-room shell "
+                "passed bounded two-frame proof"
+            ),
         )
         return None
+
+    if stable_room_shell:
+        # A completed match can leave Unity rendering a stale room shell after
+        # the server-side ManagerWsRoom ownership has already disappeared.
+        # The circular X also exists on the real island map, therefore the
+        # click is allowed only with the room-only Start/Ready visual proof and
+        # an immediate exact-target/no-owner runtime reread.
+        poll = provider.poll()
+        if poll.combat_lifecycle is None:
+            return None
+        shell_lobby = read_boss_lobby_runtime(process.resolver, poll.combat_lifecycle)
+        shell_runtime = discover_chinh_phuc_map_target(
+            process,
+            pet_id,
+            max_region_mib=max_region_mib,
+            chunk_mib=chunk_mib,
+        )
+        detached_runtime_stable = (
+            _is_detached_chinh_phuc_room_candidate(
+                shell_lobby,
+                target_pet_id=pet_id,
+                no_combat_owner=provider.current_session_key is None,
+            )
+        )
+        shell_runtime_stable = bool(
+            shell_runtime is not None
+            and shell_runtime.clean
+            and shell_runtime.pet_id == first_runtime.pet_id
+            and shell_runtime.group_index == first_runtime.group_index
+            and shell_runtime.pet_index == first_runtime.pet_index
+            and shell_runtime.hunt_order == first_runtime.hunt_order
+            and shell_runtime.button_address == first_runtime.button_address
+            and shell_runtime.prefs.selected_pet_id == pet_id
+            and detached_runtime_stable
+            and provider.current_session_key is None
+        )
+        if not shell_runtime_stable:
+            run._event(  # noqa: SLF001
+                "chinh_phuc_room_shell_exit_rejected",
+                **writer_fields,
+                firstShellExit=first_shell_exit,
+                secondShellExit=second_shell_exit,
+                shellRuntime=shell_runtime,
+                shellLobby=shell_lobby,
+                reason="atomic detached-room runtime proof changed",
+            )
+            return None
+        status = executor.window_status(binding)
+        if _control_emergency_requested(control_hotkeys):
+            run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before room-shell exit",
+            )
+            return LobbyWaitResult(
+                False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+            )
+        shell_permit = run.reserve_room_shell_exit(
+            foreground=status.valid and status.foreground is True
+        )
+        if shell_permit is None or second_shell_exit.normalized_point is None:
+            return None
+        authorized, shell_click = _execute_controlled_input(
+            control_hotkeys,
+            lambda: executor.send_normalized_point(
+                binding, second_shell_exit.normalized_point
+            ),
+        )
+        if not authorized or shell_click is None:
+            run.safe_stop(
+                FarmRunStopReason.EMERGENCY_STOP,
+                detail="emergency authority revoked before room-shell input",
+            )
+            return LobbyWaitResult(
+                False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+            )
+        if not run.complete_room_shell_exit(
+            shell_permit,
+            sent=shell_click.sent,
+            detail=f"CHINH_PHUC_ROOM_SHELL_EXIT pet={pet_id}:{shell_click.status.value}",
+        ):
+            return None
+        run._event(  # noqa: SLF001
+            "chinh_phuc_room_shell_exit_sent",
+            **writer_fields,
+            firstShellExit=first_shell_exit,
+            secondShellExit=second_shell_exit,
+            shellRuntime=shell_runtime,
+            shellLobby=shell_lobby,
+            clickStatus=shell_click.status.value,
+        )
+        if not shell_click.sent:
+            return None
+
+        # Depending on server/UI timing the normal shell close either navigates
+        # directly to the map or shows one leave-confirm modal.  Both paths are
+        # bounded and require stable visual plus unchanged exact-pet runtime
+        # evidence; no other postmatch click is permitted.
+        shell_transition = _settle_detached_room_shell_exit(
+            run=run,
+            process=process,
+            provider=provider,
+            pet_id=pet_id,
+            hunt_order=first_runtime.hunt_order,
+            initial_lobby=lobby,
+            binding=binding,
+            executor=executor,
+            interval=interval,
+            timeout=timeout,
+            control_hotkeys=control_hotkeys,
+            directory=directory,
+            event_fields=writer_fields,
+        )
+        if shell_transition is None:
+            return None
+
+        # Wait for two stable frames of the runtime-derived map badge.  A
+        # loading frame, lingering room shell, or ambiguous map consumes no
+        # target-select capability and fails closed at the caller timeout.
+        map_deadline = time.monotonic() + max(1.0, timeout)
+        previous_map_capture = None
+        previous_map_location = None
+        stable_visual = False
+        while process.is_running() and time.monotonic() < map_deadline:
+            if _control_emergency_requested(control_hotkeys):
+                run.safe_stop(
+                    FarmRunStopReason.EMERGENCY_STOP,
+                    detail="F9 while waiting for map after room-shell exit",
+                )
+                return LobbyWaitResult(
+                    False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
+                )
+            status = executor.window_status(binding)
+            if not status.valid or status.foreground is not True:
+                run.safe_stop(
+                    FarmRunStopReason.FOREGROUND_LOST,
+                    detail="foreground lost after room-shell exit",
+                )
+                return LobbyWaitResult(
+                    False, lobby.state, None, "GAME_NOT_FOREGROUND", lobby
+                )
+            capture = capture_client_rgb(process.pid)
+            location = locate_hunt_order_badge(
+                capture.rgb,
+                capture.width,
+                capture.height,
+                first_runtime.hunt_order,
+            )
+            if (
+                location.found
+                and location.normalized_point is not None
+                and previous_map_capture is not None
+                and previous_map_location is not None
+                and previous_map_location.normalized_point is not None
+                and (capture.width, capture.height)
+                == (previous_map_capture.width, previous_map_capture.height)
+                and abs(
+                    location.normalized_point[0]
+                    - previous_map_location.normalized_point[0]
+                )
+                <= 0.012
+                and abs(
+                    location.normalized_point[1]
+                    - previous_map_location.normalized_point[1]
+                )
+                <= 0.012
+            ):
+                first_capture = previous_map_capture
+                first_location = previous_map_location
+                second_capture = capture
+                second_location = location
+                stable_visual = True
+                break
+            previous_map_capture = capture if location.found else None
+            previous_map_location = location if location.found else None
+            time.sleep(max(interval, 0.18))
+        if not stable_visual:
+            run._event(  # noqa: SLF001
+                "chinh_phuc_room_shell_exit_rejected",
+                **writer_fields,
+                reason="runtime-derived map badge absent after one shell exit",
+            )
+            return None
+        write_png_rgb(
+            directory / "chinh_phuc_map_after_shell_exit.png",
+            second_capture.width,
+            second_capture.height,
+            second_capture.rgb,
+        )
 
     # Atomic preflight: reread both gameplay lifecycle and the complete target
     # association immediately before reserving the one normal lobby click.
@@ -1027,8 +1596,7 @@ def _return_from_chinh_phuc_map(
         and second_runtime.pet_index == first_runtime.pet_index
         and second_runtime.hunt_order == first_runtime.hunt_order
         and second_runtime.button_address == first_runtime.button_address
-        and current_lobby.state is BossLobbyState.BOSS_LOBBY
-        and current_lobby.chinh_phuc.current_room_id is None
+        and _owner_free_chinh_phuc_map_snapshot(current_lobby)
         # The room snapshot is stale selection evidence on this map. It must
         # agree with read-only PlayerPrefs, but it need not already equal the
         # configured target; selecting a different exact target is the point
@@ -1056,7 +1624,10 @@ def _return_from_chinh_phuc_map(
             False, lobby.state, None, "F9_EMERGENCY_STOP", lobby
         )
     permit = run.reserve_target_select(
-        foreground=status.valid and status.foreground is True
+        foreground=status.valid and status.foreground is True,
+        direct_map_after_shell_exit=(
+            stable_room_shell and shell_transition == "DIRECT_MAP"
+        ),
     )
     if permit is None or second_location.normalized_point is None:
         return None
@@ -1108,6 +1679,164 @@ def _return_from_chinh_phuc_map(
         control_hotkeys,
         wait_through_target_missing=True,
     )
+
+
+def _outside_current_boss_room(result: LobbyWaitResult) -> bool:
+    """Return true only when read-only evidence proves the room was lost."""
+
+    return bool(
+        result.lobby is not None
+        and result.lobby.branch != "CHINH_PHUC_ROOM"
+    )
+
+
+def _world_map_ejection_proven(
+    result: LobbyWaitResult,
+    *,
+    current_session: Any | None,
+) -> bool:
+    """Accept only the settled map branch after the combat owner is gone."""
+
+    return bool(
+        result.reason == "TARGET_MISSING"
+        and result.lobby is not None
+        and result.lobby.branch == "WORLD_BOSS_LIST"
+        and result.lobby.chinh_phuc.current_room_id is None
+        and current_session is None
+    )
+
+
+def _farm_room_ejection_sources(
+    result: LobbyWaitResult,
+    *,
+    target_boss_id: str,
+    current_session: Any | None,
+) -> tuple[bool, bool]:
+    """Classify the only two owner-free origins allowed to restore a room."""
+
+    exact_world_map = _world_map_ejection_proven(
+        result, current_session=current_session
+    )
+    if exact_world_map:
+        return True, False
+    try:
+        target_pet_id = int(str(target_boss_id or "").strip())
+    except ValueError:
+        target_pet_id = -1
+    detached_room_shell = bool(
+        target_pet_id > 0
+        and _postmatch_reentry_source(
+            result,
+            target_pet_id=target_pet_id,
+            current_session=current_session,
+        )
+        == "DETACHED_ROOM_SHELL"
+    )
+    return exact_world_map, detached_room_shell
+
+
+def _exact_target_room_restored(
+    result: LobbyWaitResult | None,
+    *,
+    current_session: Any | None,
+) -> bool:
+    return bool(
+        result is not None
+        and result.ready
+        and result.lobby is not None
+        and result.lobby.branch == "CHINH_PHUC_ROOM"
+        and current_session is None
+    )
+
+
+def _restore_ejected_farm_room(
+    *,
+    run: FarmRun,
+    args: Namespace,
+    process: Any,
+    provider: MemoryBoardStateProvider,
+    target: FarmTarget,
+    initial: LobbyWaitResult,
+    binding: Any,
+    executor: ForegroundClickExecutor,
+    directory: Path,
+    hotkeys: HotkeyEdges,
+    control_hotkeys: Any,
+    writer: FarmRunArtifactWriter,
+    recovery_records: tuple[Any, ...] | None = None,
+) -> bool:
+    """Restore the immutable farm-session pet after a proven room ejection."""
+
+    target_id = str(target.boss_id or "").strip()
+    try:
+        int(target_id)
+    except ValueError:
+        return False
+    exact_world_map, detached_room_shell = _farm_room_ejection_sources(
+        initial,
+        target_boss_id=target_id,
+        current_session=provider.current_session_key,
+    )
+    if not exact_world_map and not detached_room_shell:
+        return False
+    if run.state is FarmRunState.COMBAT_ACTIVE:
+        if not run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"):
+            return False
+    elif run.state is FarmRunState.RECOVERY_ACTIVE:
+        if not run.prepare_failed_recovery_map_fallback(
+            tuple(recovery_records or ())
+        ):
+            return False
+    elif run.state is not FarmRunState.RECOVERY_PENDING:
+        return False
+    if not run.begin_ejected_map_reentry(
+        target_boss_id=target_id,
+        exact_world_map=exact_world_map,
+        detached_room_shell=detached_room_shell,
+        no_combat_owner=True,
+    ):
+        return False
+    executor.arm_recovery_swap_pacing("ROOM_EJECTION_REENTRY")
+    map_return = _return_from_chinh_phuc_map(
+        run=run,
+        process=process,
+        provider=provider,
+        target=target,
+        initial=initial,
+        binding=binding,
+        executor=executor,
+        directory=directory,
+        interval=args.interval,
+        timeout=args.return_lobby_timeout,
+        hotkeys=hotkeys,
+        control_hotkeys=control_hotkeys,
+        max_region_mib=args.max_region_mib,
+        chunk_mib=args.chunk_mib,
+    )
+    writer.event(
+        "combat_room_ejection_reentry",
+        attemptIndex=run.match_attempts,
+        targetBossId=target_id,
+        initial=initial,
+        result=map_return,
+        recoveryFallback=(recovery_records is not None),
+    )
+    if not _exact_target_room_restored(
+        map_return, current_session=provider.current_session_key
+    ):
+        if not run.stopped:
+            run.safe_stop(
+                FarmRunStopReason.RECOVERY_FAILED,
+                detail="exact pet room not restored after ejection",
+            )
+        return False
+    if not run.complete_ejected_map_reentry(
+        target_boss_id=target_id,
+        exact_target_room=True,
+        no_combat_owner=True,
+    ):
+        return False
+    return run.observe_return_lobby(BossLobbyState.BOSS_LOBBY)
 
 
 def _terminal_snapshot_from_summary(
@@ -1232,6 +1961,23 @@ def _recovery_clean(snapshot: Any) -> bool:
     )
 
 
+_ACK_UNSAFE_RECOVERY_DETAILS = frozenset(
+    {
+        "RECOVERY_ACK_EPOCH_NOT_RESET",
+        "RECOVERY_LOBBY_MATCH_NOT_CLEARED",
+        "RECOVERY_LOBBY_ACK_EPOCH_UNREADABLE",
+    }
+)
+
+
+def _failed_recovery_fallback_allowed(snapshot: Any) -> bool:
+    """Never bypass recovery evidence proving a dirty transport epoch."""
+
+    return str(getattr(snapshot, "result_detail", "") or "") not in (
+        _ACK_UNSAFE_RECOVERY_DETAILS
+    )
+
+
 def _run_recovery(
     *,
     run: FarmRun,
@@ -1241,6 +1987,7 @@ def _run_recovery(
     failure_state: Any,
     writer: FarmRunArtifactWriter,
     test_only: bool,
+    failed_recovery_map_fallback: Callable[[Any], bool] | None = None,
 ) -> bool:
     if not run.begin_recovery():
         return False
@@ -1281,6 +2028,19 @@ def _run_recovery(
             )
         return stopped
     if code != 0 or not _recovery_clean(snapshot):
+        if (
+            failed_recovery_map_fallback is not None
+            and failed_recovery_map_fallback(snapshot)
+        ):
+            runtime.executor.arm_recovery_swap_pacing(
+                "FAILED_RECOVERY_MAP_FALLBACK"
+            )
+            writer.event(
+                "technical_recovery_fell_back_to_exact_map_reentry",
+                recovery=snapshot,
+                targetRestored=True,
+            )
+            return True
         run.safe_stop(FarmRunStopReason.RECOVERY_FAILED, exitCode=code)
         return False
     if not run.record_successful_recovery(snapshot.input_records):
@@ -1296,6 +2056,7 @@ def _run_recovery(
         return False
     if not run.resume_recovered_gameplay(old_state_leak_free=True):
         return False
+    runtime.executor.arm_recovery_swap_pacing("TECHNICAL_RECOVERY_HANDOFF")
     writer.event(
         "RECOVERY_HANDOFF_TO_GAMEPLAY",
         oldMatchId=snapshot.trigger.failed_session.match_id,
@@ -1701,7 +2462,21 @@ def _run_live(
                 control_hotkeys,
             )
             writer.event("initial_boss_lobby", result=initial)
-            if not initial.ready:
+            if args.stop_if_room_ejected and _outside_current_boss_room(initial):
+                run.safe_stop(
+                    FarmRunStopReason.ROOM_EJECTED,
+                    detail=(
+                        f"initial lobby branch={initial.lobby.branch}; "
+                        "map target selection disabled"
+                    ),
+                )
+                writer.event(
+                    "current_room_only_stop",
+                    stage="INITIAL_LOBBY",
+                    branch=initial.lobby.branch,
+                    mapTargetSelectionAttempted=False,
+                )
+            elif not initial.ready:
                 initial_reason = (
                     FarmRunStopReason.EMERGENCY_STOP
                     if initial.reason == "F9_EMERGENCY_STOP"
@@ -1817,6 +2592,91 @@ def _run_live(
                     )
                     _notify_run_observer(observer, run, "ENTRY_RETURNED")
                     if opening is None:
+                        if (
+                            run.state is FarmRunState.RECOVERY_PENDING
+                            and entry_result is not None
+                            and entry_result.get("stopReason")
+                            == "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
+                        ):
+                            raw = entry_result.get(
+                                "activeCombatTimeoutEvidence"
+                            ) or {}
+                            raw_session = raw.get("session") or {}
+                            try:
+                                failed_session = CombatSessionKey(
+                                    int(raw_session["lifecycle_epoch"]),
+                                    int(raw_session["board_instance"]),
+                                    str(raw_session["match_id"]),
+                                )
+                            except (KeyError, TypeError, ValueError):
+                                failed_session = None
+                            coordinator = TechnicalRecoveryCoordinator(
+                                max_technical_recoveries=1
+                            )
+                            dispatcher = TechnicalRecoveryDispatcher(coordinator)
+                            dispatched = bool(
+                                failed_session is not None
+                                and dispatcher.dispatch_entry_opening_timeout_active_combat(
+                                    session_key=failed_session,
+                                    match_id=str(raw.get("matchId") or ""),
+                                    provider_session=provider.current_session_key,
+                                    entry_clicks=int(
+                                        entry_result.get("entryClicks") or 0
+                                    ),
+                                    gameplay_inputs=int(
+                                        entry_result.get("gameplayInputs") or 0
+                                    ),
+                                    published_turn=int(raw.get("turn") or 0),
+                                    first_local_turn=(
+                                        raw.get("firstLocalTurn") is True
+                                    ),
+                                    local_move_sequence=raw.get(
+                                        "localMoveSequence"
+                                    ),
+                                    srv_seq=int(raw.get("srvSeq") or 0),
+                                    board_hash=str(raw.get("boardHash") or ""),
+                                    board_source=str(raw.get("boardSource") or ""),
+                                )
+                            )
+                            writer.event(
+                                "entry_opening_timeout_recovery_dispatch",
+                                dispatched=dispatched,
+                                entry=entry_result,
+                                providerSession=provider.current_session_key,
+                            )
+                            if not dispatched or failed_session is None:
+                                run.safe_stop(
+                                    FarmRunStopReason.RECOVERY_FAILED,
+                                    detail=(
+                                        "entry opening-timeout recovery evidence "
+                                        "did not revalidate"
+                                    ),
+                                )
+                                continue
+                            failure_poll = provider.poll()
+                            runtime = basic_auto_bot.SharedCombatRuntime(
+                                process,
+                                provider,
+                                monitor,
+                                binding,
+                                executor,
+                                backend,
+                                failed_session,
+                                FarmRunGameplayCapability(
+                                    run, failed_session, control_hotkeys
+                                ),
+                                dispatcher,
+                                control_hotkeys,
+                            )
+                            _run_recovery(
+                                run=run,
+                                args=args,
+                                runtime=runtime,
+                                coordinator=coordinator,
+                                failure_state=failure_poll.state,
+                                writer=writer,
+                                test_only=False,
+                            )
                         continue
 
                 if run.state is not FarmRunState.COMBAT_ACTIVE or run.current_session is None:
@@ -1842,7 +2702,11 @@ def _run_live(
                     backend,
                     session,
                     FarmRunGameplayCapability(run, session, control_hotkeys),
-                    dispatcher if run.technical_recoveries < limits.max_technical_recoveries else None,
+                    # Recovery is mandatory for every independently proven
+                    # technical incident. The coordinator remains one-shot for
+                    # this combat, so always exposing it cannot duplicate an
+                    # Exit/Confirm/re-entry sequence.
+                    dispatcher,
                     control_hotkeys,
                 )
 
@@ -1952,6 +2816,115 @@ def _run_live(
                         continue
                     if controlled_run:
                         _persist_checkpoint(run, writer, finalized_status=None)
+
+                    def failed_recovery_map_fallback(
+                        recovery_snapshot: Any,
+                    ) -> bool:
+                        if not _failed_recovery_fallback_allowed(
+                            recovery_snapshot
+                        ):
+                            writer.event(
+                                "technical_recovery_fallback_blocked",
+                                attemptIndex=attempt_index,
+                                reason=recovery_snapshot.result_detail,
+                                recoveryReentrySent=False,
+                                failClosed=True,
+                            )
+                            return False
+                        ejected = _wait_boss_lobby(
+                            process,
+                            provider,
+                            target,
+                            args.return_lobby_timeout,
+                            args.interval,
+                            hotkeys,
+                            control_hotkeys,
+                            transient_room_grace_seconds=min(
+                                20.0, args.return_lobby_timeout * 0.5
+                            ),
+                        )
+                        exact_target_room = _exact_target_room_restored(
+                            ejected,
+                            current_session=provider.current_session_key,
+                        )
+                        exact_world_map, detached_room_shell = (
+                            _farm_room_ejection_sources(
+                                ejected,
+                                target_boss_id=str(
+                                    target.boss_id or ""
+                                ).strip(),
+                                current_session=provider.current_session_key,
+                            )
+                        )
+                        writer.event(
+                            "technical_recovery_room_ejection_probe",
+                            attemptIndex=attempt_index,
+                            result=ejected,
+                            exactTargetRoom=exact_target_room,
+                            exactWorldMap=exact_world_map,
+                            detachedRoomShell=detached_room_shell,
+                        )
+                        if exact_target_room:
+                            if not run.prepare_failed_recovery_map_fallback(
+                                tuple(recovery_snapshot.input_records)
+                            ):
+                                return False
+                            if not run.complete_failed_recovery_room_fallback(
+                                target_boss_id=str(target.boss_id or "").strip(),
+                                exact_target_room=True,
+                                no_combat_owner=True,
+                            ):
+                                return False
+                            restored = run.observe_return_lobby(
+                                BossLobbyState.BOSS_LOBBY
+                            )
+                            writer.event(
+                                "technical_recovery_fell_back_to_exact_room",
+                                attemptIndex=attempt_index,
+                                targetBossId=str(target.boss_id or "").strip(),
+                                restored=restored,
+                                oldCombatStateReused=False,
+                            )
+                            return restored
+                        if not exact_world_map and not detached_room_shell:
+                            return False
+                        restored = _restore_ejected_farm_room(
+                            run=run,
+                            args=args,
+                            process=process,
+                            provider=provider,
+                            target=target,
+                            initial=ejected,
+                            binding=binding,
+                            executor=executor,
+                            directory=match_directory,
+                            hotkeys=hotkeys,
+                            control_hotkeys=control_hotkeys,
+                            writer=writer,
+                            recovery_records=tuple(
+                                recovery_snapshot.input_records
+                            ),
+                        )
+                        if restored:
+                            memory.sample()
+                            _notify_run_observer(
+                                observer,
+                                run,
+                                "EJECTED_MAP_REENTRY_COMPLETE",
+                            )
+                            if controlled_run:
+                                _persist_checkpoint(
+                                    run,
+                                    writer,
+                                    finalized_status=(
+                                        "STOPPED_GRACEFULLY"
+                                        if run.stop_reason
+                                        is FarmRunStopReason.STOPPED_GRACEFULLY
+                                        else None
+                                    ),
+                                )
+                        return restored
+
                     _run_recovery(
                         run=run,
                         args=args,
@@ -1960,6 +2933,9 @@ def _run_live(
                         failure_state=failure_state,
                         writer=writer,
                         test_only=False,
+                        failed_recovery_map_fallback=(
+                            failed_recovery_map_fallback
+                        ),
                     )
                     continue
 
@@ -1972,6 +2948,86 @@ def _run_live(
                             FarmRunStopReason.EMERGENCY_STOP,
                             detail="F9 during combat controller",
                         )
+                    elif (
+                        controlled_run
+                        and combat_reason == "COMBAT_TERMINAL_UNPROVEN"
+                    ):
+                        # An evidence-free terminal is never counted as a
+                        # completed match.  It may, however, be an exact room
+                        # ejection. Prove the world-boss map with no combat
+                        # owner before using the immutable farm-session pet ID.
+                        ejected = _wait_boss_lobby(
+                            process,
+                            provider,
+                            target,
+                            args.return_lobby_timeout,
+                            args.interval,
+                            hotkeys,
+                            control_hotkeys,
+                            transient_room_grace_seconds=min(
+                                20.0, args.return_lobby_timeout * 0.5
+                            ),
+                        )
+                        exact_world_map, detached_room_shell = (
+                            _farm_room_ejection_sources(
+                                ejected,
+                                target_boss_id=str(
+                                    target.boss_id or ""
+                                ).strip(),
+                                current_session=provider.current_session_key,
+                            )
+                        )
+                        writer.event(
+                            "combat_room_ejection_probe",
+                            attemptIndex=attempt_index,
+                            combatReason=combat_reason,
+                            result=ejected,
+                            exactWorldMap=exact_world_map,
+                            detachedRoomShell=detached_room_shell,
+                            completedMatchCounted=False,
+                        )
+                        if not exact_world_map and not detached_room_shell:
+                            run.safe_stop(
+                                FarmRunStopReason.COMBAT_SAFE_STOP,
+                                detail=combat_reason,
+                            )
+                            continue
+                        restored = _restore_ejected_farm_room(
+                            run=run,
+                            args=args,
+                            process=process,
+                            provider=provider,
+                            target=target,
+                            initial=ejected,
+                            binding=binding,
+                            executor=executor,
+                            directory=match_directory,
+                            hotkeys=hotkeys,
+                            control_hotkeys=control_hotkeys,
+                            writer=writer,
+                        )
+                        if not restored:
+                            if not run.stopped:
+                                run.safe_stop(
+                                    FarmRunStopReason.RECOVERY_FAILED,
+                                    detail="exact pet room recovery rejected",
+                                )
+                            continue
+                        memory.sample()
+                        _notify_run_observer(
+                            observer, run, "EJECTED_MAP_REENTRY_COMPLETE"
+                        )
+                        if controlled_run:
+                            _persist_checkpoint(
+                                run,
+                                writer,
+                                finalized_status=(
+                                    "STOPPED_GRACEFULLY"
+                                    if run.stop_reason
+                                    is FarmRunStopReason.STOPPED_GRACEFULLY
+                                    else None
+                                ),
+                            )
                     elif combat_reason in {"REJECTED_SEQUENCE_DESYNC", "DEAD_BOARD_NO_REFRESH"}:
                         reason = (
                             "SEQUENCE_DESYNC"
@@ -2045,9 +3101,30 @@ def _run_live(
                 )
                 writer.event("normal_return_boss_lobby", attemptIndex=attempt_index, result=returned)
                 if (
+                    args.stop_if_room_ejected
+                    and _outside_current_boss_room(returned)
+                ):
+                    run.safe_stop(
+                        FarmRunStopReason.ROOM_EJECTED,
+                        detail=(
+                            f"return lobby branch={returned.lobby.branch}; "
+                            "map target selection disabled"
+                        ),
+                    )
+                    writer.event(
+                        "current_room_only_stop",
+                        stage="RETURN_LOBBY",
+                        attemptIndex=attempt_index,
+                        branch=returned.lobby.branch,
+                        mapTargetSelectionAttempted=False,
+                    )
+                    continue
+                if (
                     controlled_run
+                    and not args.stop_if_room_ejected
                     and not returned.ready
-                    and returned.reason == "TARGET_MISSING"
+                    and returned.reason
+                    in {"TARGET_MISSING", "DETACHED_ROOM_SHELL_CANDIDATE"}
                 ):
                     map_return = _return_from_chinh_phuc_map(
                         run=run,
@@ -2285,7 +3362,6 @@ def _run_live(
             and snapshot.stop_reason is FarmRunStopReason.FARM_TARGET_COMPLETED
             and snapshot.completed_matches == limits.target_completed_matches
             and snapshot.match_attempts <= limits.max_match_attempts
-            and snapshot.technical_recoveries <= limits.max_technical_recoveries
             and snapshot.unknown_results == 0
             and snapshot.result_conflict_count == 0
             and snapshot.result_accounting_consistent
@@ -2329,7 +3405,6 @@ def _run_live(
             and snapshot.stop_reason is FarmRunStopReason.FARM_TARGET_COMPLETED
             and snapshot.completed_matches == limits.target_completed_matches
             and snapshot.match_attempts <= limits.max_match_attempts
-            and snapshot.technical_recoveries <= limits.max_technical_recoveries
             and snapshot.unknown_results == 0
             and snapshot.result_conflict_count == 0
             and snapshot.result_accounting_consistent

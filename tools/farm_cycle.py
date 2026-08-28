@@ -183,14 +183,28 @@ def _resolve_pass_stage(args: Namespace) -> str:
     with FARM_RUN_INTERNAL_INVARIANT.
 
     An explicit ``pass_acceptance_stage`` on the caller always wins.  Otherwise
-    a run carrying reset evidence gets B5 -- one full BASIC combat with
-    production PASS/reset-cycle telemetry -- which matches the play-style
-    ``simple`` / mana-priority ``evolution`` pair _combat_args already pins.
+    a run carrying reset evidence selects the production acceptance profile
+    that is compatible with its immutable gameplay policy:
+
+    * ATTACK mana priority uses B4;
+    * SIMPLE + EVOLUTION uses B5;
+    * CAREFUL + EVOLUTION uses the unrestricted B3 profile.
+
+    The stage labels select accepted PASS/reset-cycle telemetry; they do not
+    replace the configured BASIC policy.  Keeping this mapping here prevents a
+    UI-valid CAREFUL/ATTACK draft from entering combat and then failing inside
+    ``basic_auto_bot._validate_args`` before its first gameplay action.
     """
     explicit = getattr(args, "pass_acceptance_stage", None)
     if explicit:
         return explicit
-    return "B5" if getattr(args, "reset_evidence", None) is not None else "DISABLED"
+    if getattr(args, "reset_evidence", None) is None:
+        return "DISABLED"
+    if getattr(args, "mana_priority", "evolution") == "attack":
+        return "B4"
+    if getattr(args, "play_style", "simple") == "simple":
+        return "B5"
+    return "B3"
 
 
 def _combat_args(args: Namespace, log_path: Path) -> Namespace:
@@ -199,7 +213,8 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         play_style=getattr(args, "play_style", "simple"),
         mana_priority=getattr(args, "mana_priority", "evolution"),
         intelligence="basic",
-        minimum_action_time=4,
+        # Live-confirmed product rule: a displayed 1 second is still sendable.
+        minimum_action_time=1,
         cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
         cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
         rage_target=getattr(args, "rage_target", 100),
@@ -231,7 +246,61 @@ def _is_transient_chinh_phuc_room_rehydration(lobby: Any) -> bool:
         lobby.branch == "WORLD_BOSS_LIST"
         and lobby.chinh_phuc.current_room_type == "ChinhPhuc"
         and lobby.chinh_phuc.current_room_id is not None
-        and lobby.chinh_phuc.room_data is None
+        and (
+            lobby.chinh_phuc.room_data is None
+            # Live run 21 proved a second rehydration phase: RoomDTO and the
+            # room id already exist, but ButtonStart remains non-interactable
+            # for several frames while the exact room shell is loading.
+            or (
+                getattr(lobby.chinh_phuc, "button_start", None) is not None
+                and getattr(
+                    lobby.chinh_phuc, "button_interactable", None
+                )
+                is False
+            )
+        )
+    )
+
+
+def _is_detached_chinh_phuc_room_candidate(
+    lobby: Any,
+    *,
+    target_pet_id: int | None,
+    no_combat_owner: bool,
+) -> bool:
+    """Recognize the read-only half of a detached Chinh Phuc room shell.
+
+    This is deliberately not sufficient to authorize a click.  The farming
+    controller still requires an independently resolved exact pet Button and
+    two stable visual frames before it may close the shell.  Surfacing this
+    state here prevents ``_wait_boss_lobby`` from discarding the runtime
+    snapshot as a generic ``LOBBY_OTHER`` timeout.
+    """
+
+    chinh = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(
+        getattr(lobby, "combat_lifecycle", None), "state", None
+    )
+    return bool(
+        target_pet_id is not None
+        and target_pet_id > 0
+        and no_combat_owner
+        and getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
+        and getattr(lobby, "branch", None) is None
+        and lifecycle
+        in {
+            CombatLifecycleState.LOBBY,
+            CombatLifecycleState.STALE_SERVER_MATCH,
+        }
+        and chinh is not None
+        and getattr(chinh, "current_room_id", None) is None
+        and getattr(chinh, "current_room_type", None) is None
+        and getattr(chinh, "room_data", None) is not None
+        and getattr(chinh, "enemy_pet_id", None) == target_pet_id
+        and getattr(chinh, "button_start", None) is not None
+        and getattr(chinh, "button_native", None) is not None
+        and getattr(chinh, "button_interactable", None) is True
+        and getattr(chinh, "is_host", None) is False
     )
 
 
@@ -252,6 +321,13 @@ def _wait_boss_lobby(
     stable_count = 0
     last_state: BossLobbyState | None = None
     transient_room_missing_since: float | None = None
+    detached_shell_since: float | None = None
+    detached_shell_key: tuple[Any, ...] | None = None
+    detached_shell_count = 0
+    try:
+        target_pet_id = int(target.boss_id or "")
+    except (TypeError, ValueError):
+        target_pet_id = None
     while process.is_running() and time.monotonic() < deadline:
         external_f9 = False
         if control_hotkeys is not None:
@@ -270,8 +346,50 @@ def _wait_boss_lobby(
         last_state = lobby.state
         if lobby.state is not BossLobbyState.BOSS_LOBBY:
             stable_key, stable_count = None, 0
+            no_combat_owner = provider.current_session_key is None
+            if _is_detached_chinh_phuc_room_candidate(
+                lobby,
+                target_pet_id=target_pet_id,
+                no_combat_owner=no_combat_owner,
+            ):
+                candidate_key = (
+                    lobby.chinh_phuc.room_data,
+                    lobby.chinh_phuc.enemy_pet_id,
+                    lobby.chinh_phuc.button_start,
+                    lobby.chinh_phuc.button_native,
+                )
+                detached_shell_count = (
+                    detached_shell_count + 1
+                    if candidate_key == detached_shell_key
+                    else 1
+                )
+                detached_shell_key = candidate_key
+                now = time.monotonic()
+                if detached_shell_since is None:
+                    detached_shell_since = now
+                grace_elapsed = (
+                    transient_room_grace_seconds <= 0
+                    or now - detached_shell_since
+                    >= transient_room_grace_seconds
+                )
+                if detached_shell_count >= 2 and grace_elapsed:
+                    return LobbyWaitResult(
+                        False,
+                        lobby.state,
+                        None,
+                        "DETACHED_ROOM_SHELL_CANDIDATE",
+                        lobby,
+                        detached_shell_count,
+                    )
+            else:
+                detached_shell_since = None
+                detached_shell_key = None
+                detached_shell_count = 0
             time.sleep(interval)
             continue
+        detached_shell_since = None
+        detached_shell_key = None
+        detached_shell_count = 0
         resolution = resolve_target(target, lobby.candidates)
         no_combat_owner = provider.current_session_key is None
         key = (
@@ -286,6 +404,28 @@ def _wait_boss_lobby(
             if not no_combat_owner:
                 time.sleep(interval)
                 continue
+            if lobby.branch != "CHINH_PHUC_ROOM":
+                transient_room_rehydrating = (
+                    _is_transient_chinh_phuc_room_rehydration(lobby)
+                )
+                if transient_room_rehydrating and transient_room_grace_seconds > 0:
+                    now = time.monotonic()
+                    if transient_room_missing_since is None:
+                        transient_room_missing_since = now
+                    if now - transient_room_missing_since < transient_room_grace_seconds:
+                        time.sleep(interval)
+                        continue
+                if wait_through_target_missing:
+                    time.sleep(interval)
+                    continue
+                return LobbyWaitResult(
+                    False,
+                    lobby.state,
+                    resolution.status,
+                    "TARGET_MISSING",
+                    lobby,
+                    stable_count,
+                )
             if resolution.status is not TargetResolutionStatus.RESOLVED:
                 transient_room_rehydrating = (
                     _is_transient_chinh_phuc_room_rehydration(lobby)
@@ -366,6 +506,19 @@ def _validate_combat_summary(records: Sequence[dict[str, Any]]) -> tuple[bool, s
         return False, f"COMBAT_CLASSIFICATION_{summary.get('attemptClassification')}", summary
     if summary.get("fullCombatResult") == "NOT_COMPLETED":
         return False, "COMBAT_RESULT_NOT_COMPLETED", summary
+    terminal = summary.get("terminalCombatSnapshot")
+    if summary.get("fullCombatResult") == "UNKNOWN":
+        terminal = terminal if isinstance(terminal, dict) else {}
+        evidence = terminal.get("evidence_sources")
+        if not (
+            terminal.get("captured_before_cleanup") is True
+            and isinstance(evidence, (list, tuple))
+            and bool(evidence)
+        ):
+            # A combat owner disappearing directly into a lobby/map is not a
+            # completed UNKNOWN match. It has no terminal HP/event/UI proof
+            # and must fail closed without advancing the completed counter.
+            return False, "COMBAT_TERMINAL_UNPROVEN", summary
     if summary.get("sessionCleared") is not True or summary.get("activeSession") is not None:
         return False, "COMBAT_SESSION_NOT_CLEARED", summary
     if summary.get("pending") is not None:

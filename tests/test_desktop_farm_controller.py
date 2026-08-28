@@ -25,6 +25,7 @@ from pokiguard_v2.win32_input import FarmControlHotkeyEdges
 from pokiguard_v2.farm_checkpoint import (
     CHECKPOINT_SCHEMA,
     CheckpointPayload,
+    load_checkpoint,
     write_checkpoint,
 )
 from pokiguard_v2.farm_run import FarmRunLimits, FarmRunState, FarmRunStopReason
@@ -109,11 +110,40 @@ class _BlockingRunner:
 
 
 class _Runtime:
-    def __init__(self, lifecycle: str = "BOSS_LOBBY") -> None:
+    def __init__(
+        self,
+        lifecycle: str = "BOSS_LOBBY",
+        *,
+        target_id: str = "1289",
+        target_name: str = "Starburst",
+        lobby_branch: str | None = None,
+    ) -> None:
         self.lifecycle = lifecycle
+        self.target_id = target_id
+        self.target_name = target_name
+        self.lobby_branch = (
+            lobby_branch
+            if lobby_branch is not None
+            else ("CHINH_PHUC_ROOM" if lifecycle == "BOSS_LOBBY" else None)
+        )
 
     def read(self) -> RuntimeObservation:
-        return RuntimeObservation(True, True, 123, "x64", self.lifecycle)
+        return RuntimeObservation(
+            True,
+            True,
+            123,
+            "x64",
+            self.lifecycle,
+            target_id=self.target_id,
+            target_name=self.target_name,
+            target_candidates=((self.target_id, self.target_name),),
+            lobby_branch=self.lobby_branch,
+            current_room_id=(
+                f"room-{self.target_id}"
+                if self.lobby_branch == "CHINH_PHUC_ROOM"
+                else None
+            ),
+        )
 
     def close(self) -> None:
         return None
@@ -188,7 +218,12 @@ class DesktopFarmControllerTests(unittest.TestCase):
             reset_evidence=reset,
             artifacts_root=self.root / "runs",
         )
-        self.config = DesktopConfig(target_completed_matches=3, max_match_attempts=5)
+        self.config = DesktopConfig(
+            boss_id="1289",
+            boss_name="Starburst",
+            target_completed_matches=3,
+            max_match_attempts=5,
+        )
 
     def tearDown(self) -> None:
         self.runner.release.set()
@@ -240,7 +275,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         snapshot = manager.snapshot()
         self.assertEqual(self.runner.starts, 0)
         self.assertEqual(snapshot.state, DesktopControllerState.ERROR)
-        self.assertIn("GAME_FOREGROUND_HANDOFF_FAILED", snapshot.last_error or "")
+        self.assertIn("GAME_WINDOW_PREPARATION_FAILED", snapshot.last_error or "")
 
     def test_graceful_stop_is_idempotent_and_drains_one_match(self) -> None:
         result = self.manager.start(self.config)
@@ -274,6 +309,39 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertEqual(foregrounded, [7654, 7654])
         self.runner.release.set()
         self.assertTrue(manager.wait(2.0))
+
+    def test_close_dialog_focus_restore_has_no_stop_or_input_side_effect(self) -> None:
+        foregrounded: list[int] = []
+        manager = DesktopFarmControllerManager(
+            self.root,
+            runner=self.runner,
+            foreground_handoff=lambda pid: foregrounded.append(pid) or True,
+            reset_evidence=self.root / "reset.json",
+            artifacts_root=self.root / "runs-close-dialog-focus",
+        )
+        started = manager.start(self.config, game_pid=2468)
+        self.assertTrue(self.runner.entered.wait(1.0))
+        restored = manager.restore_game_foreground(started.generation)
+        self.assertTrue(restored.accepted)
+        self.assertEqual(
+            restored.reason, "GAME_FOREGROUND_RESTORED_FOR_CLOSE_DIALOG"
+        )
+        snapshot = manager.snapshot()
+        self.assertFalse(snapshot.graceful_stop_requested)
+        self.assertIsNone(snapshot.emergency_stop_acknowledged_at)
+        self.assertEqual(snapshot.total_gameplay_inputs, 0)
+        self.assertEqual(foregrounded, [2468, 2468])
+        self.runner.release.set()
+        self.assertTrue(manager.wait(2.0))
+
+    def test_stale_close_dialog_focus_restore_is_rejected(self) -> None:
+        started = self.manager.start(self.config)
+        self.assertTrue(self.runner.entered.wait(1.0))
+        restored = self.manager.restore_game_foreground(started.generation - 1)
+        self.assertFalse(restored.accepted)
+        self.assertEqual(restored.reason, "STALE_CONTROLLER_GENERATION")
+        self.runner.release.set()
+        self.assertTrue(self.manager.wait(2.0))
 
     def test_emergency_ack_revokes_future_input_authority(self) -> None:
         result = self.manager.start(self.config)
@@ -320,6 +388,8 @@ class DesktopFarmControllerTests(unittest.TestCase):
         config = DesktopConfig(
             play_style=PlayStyle.CAREFUL,
             mana_priority=ManaPriority.ATTACK,
+            boss_id="1289",
+            boss_name="Starburst",
             target_completed_matches=4,
             max_technical_recoveries=2,
             max_match_attempts=7,
@@ -336,11 +406,213 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertEqual(args.play_style, "careful")
         self.assertEqual(args.mana_priority, "attack")
         self.assertEqual(args.target_matches, 4)
-        self.assertEqual(args.max_technical_recoveries, 2)
+        # The legacy CLI field remains parse-compatible but the desktop no
+        # longer exposes or forwards a lifetime recovery cap.
+        self.assertEqual(args.max_technical_recoveries, 1)
         self.assertEqual(args.max_match_attempts, 7)
+        self.assertFalse(args.stop_if_room_ejected)
 
 
 class DesktopControlCommandTests(unittest.TestCase):
+    def test_start_pins_current_room_target_without_user_known_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reset = root / "reset.json"
+            reset.write_text("{}", encoding="utf-8")
+            runner = _BlockingRunner()
+            manager = DesktopFarmControllerManager(
+                root, runner=runner, reset_evidence=reset
+            )
+            plane = DesktopControlPlane(
+                _Runtime(target_id="777", target_name="Runtime Pet"),
+                controller=manager,
+                # Deliberately stale preference evidence. Start authority must
+                # come from the exact room, not this prior-session value.
+                config=DesktopConfig(boss_id="1289", boss_name="Starburst"),
+            )
+            ready = plane.refresh()
+            self.assertTrue(ready.controls.start.actionable)
+            started = plane.start_farm()
+            self.assertTrue(started.accepted)
+            self.assertTrue(runner.entered.wait(1.0))
+            launch = runner.launches[0]
+            self.assertEqual("777", launch.config.normalized_boss_id)
+            self.assertEqual("Runtime Pet", launch.config.normalized_boss_name)
+            self.assertEqual("777", plane.snapshot().config.normalized_boss_id)
+            runner.release.set()
+            manager.wait(2.0)
+            stopped = plane.refresh()
+            self.assertFalse(stopped.controller.active)
+            self.assertIsNone(stopped.config.normalized_boss_id)
+            self.assertIsNone(stopped.config.normalized_boss_name)
+            plane.close()
+
+    def test_world_boss_map_never_becomes_startable_or_selects_a_pet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reset = root / "reset.json"
+            reset.write_text("{}", encoding="utf-8")
+            runner = _BlockingRunner()
+            manager = DesktopFarmControllerManager(
+                root, runner=runner, reset_evidence=reset
+            )
+            plane = DesktopControlPlane(
+                _Runtime(lobby_branch="WORLD_BOSS_LIST"), controller=manager
+            )
+            snapshot = plane.refresh()
+            self.assertFalse(snapshot.controls.start.actionable)
+            self.assertEqual(
+                "CURRENT_BOSS_ROOM_NOT_PROVEN", snapshot.controls.start.reason
+            )
+            rejected = plane.start_farm()
+            self.assertFalse(rejected.accepted)
+            self.assertEqual(0, runner.starts)
+            self.assertEqual(0, plane.snapshot().safety.boss_entry_commands)
+            plane.close()
+
+    def test_start_requires_numeric_runtime_pet_id_not_name_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reset = root / "reset.json"
+            reset.write_text("{}", encoding="utf-8")
+            runner = _BlockingRunner()
+            manager = DesktopFarmControllerManager(
+                root, runner=runner, reset_evidence=reset
+            )
+            plane = DesktopControlPlane(
+                _Runtime(target_id=None, target_name="Name Only"),
+                controller=manager,
+            )
+            snapshot = plane.refresh()
+            self.assertFalse(snapshot.controls.start.actionable)
+            self.assertEqual(
+                "CURRENT_ROOM_PET_ID_NOT_PROVEN",
+                snapshot.controls.start.reason,
+            )
+            self.assertFalse(plane.start_farm().accepted)
+            self.assertEqual(0, runner.starts)
+            plane.close()
+
+    def test_start_rejects_non_numeric_runtime_pet_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reset = root / "reset.json"
+            reset.write_text("{}", encoding="utf-8")
+            runner = _BlockingRunner()
+            manager = DesktopFarmControllerManager(
+                root, runner=runner, reset_evidence=reset
+            )
+            plane = DesktopControlPlane(
+                _Runtime(target_id="not-an-id", target_name="Bad"),
+                controller=manager,
+            )
+            snapshot = plane.refresh()
+            self.assertFalse(snapshot.controls.start.actionable)
+            self.assertEqual(
+                "CURRENT_ROOM_PET_ID_INVALID", snapshot.controls.start.reason
+            )
+            self.assertEqual(0, runner.starts)
+            plane.close()
+
+    def test_lifecycle_aware_controls_and_active_config_lock_use_backend_truth(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reset = root / "reset.json"
+            reset.write_text("{}", encoding="utf-8")
+            runner = _BlockingRunner()
+            manager = DesktopFarmControllerManager(
+                root, runner=runner, reset_evidence=reset
+            )
+            plane = DesktopControlPlane(_Runtime(), controller=manager)
+            ready = plane.refresh()
+            self.assertTrue(ready.controls.start.actionable)
+            self.assertFalse(ready.controls.resume.actionable)
+            self.assertFalse(ready.controls.graceful_stop.actionable)
+            self.assertFalse(ready.controls.emergency_stop.actionable)
+            self.assertTrue(ready.controls.config_editable)
+
+            self.assertTrue(plane.start_farm().accepted)
+            self.assertTrue(runner.entered.wait(1.0))
+            active = plane.refresh()
+            self.assertFalse(active.controls.start.actionable)
+            self.assertEqual(
+                "CONTROLLER_ALREADY_ACTIVE", active.controls.start.reason
+            )
+            self.assertTrue(active.controls.graceful_stop.actionable)
+            self.assertTrue(active.controls.emergency_stop.actionable)
+            self.assertFalse(active.controls.config_editable)
+            with self.assertRaisesRegex(
+                RuntimeError, "CONFIG_LOCKED_CONTROLLER_ACTIVE"
+            ):
+                plane.update_config(DesktopConfig(target_completed_matches=4))
+
+            self.assertTrue(
+                plane.request_graceful_stop(active.controller.generation).accepted
+            )
+            pending = plane.snapshot()
+            self.assertFalse(pending.controls.graceful_stop.actionable)
+            self.assertTrue(pending.controls.emergency_stop.actionable)
+            runner.release.set()
+            manager.wait(2.0)
+            plane.close()
+
+    def test_resume_guidance_uses_canonical_checkpoint_validator(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            reset = root / "reset.json"
+            reset.write_text("{}", encoding="utf-8")
+            config = DesktopConfig(
+                boss_id="1289",
+                boss_name="Starburst",
+                target_completed_matches=3,
+                max_match_attempts=5,
+            )
+            checkpoint_path = root / "runs" / "old" / "checkpoint.json"
+            _checkpoint(checkpoint_path, config)
+            manager = DesktopFarmControllerManager(
+                root,
+                runner=_BlockingRunner(),
+                reset_evidence=reset,
+                artifacts_root=root / "runs",
+            )
+            plane = DesktopControlPlane(
+                _Runtime(),
+                controller=manager,
+                checkpoint=LatestCheckpointSummaryProvider(root / "runs"),
+                config=config,
+            )
+            resumable = plane.refresh()
+            self.assertTrue(resumable.controls.resume.actionable)
+
+            payload = load_checkpoint(checkpoint_path)
+            write_checkpoint(
+                checkpoint_path,
+                replace(
+                    payload,
+                    finalized_status="COMPLETED",
+                    stop_reason="FARM_TARGET_COMPLETED",
+                    stop_request_state="RUNNING",
+                ),
+            )
+            completed = plane.refresh()
+            self.assertFalse(completed.controls.resume.actionable)
+            self.assertIn("INVALID_LAUNCH", completed.controls.resume.reason)
+            self.assertFalse(plane.resume_from_checkpoint().accepted)
+
+            write_checkpoint(
+                checkpoint_path,
+                replace(
+                    payload,
+                    finalized_status="EMERGENCY_STOPPED",
+                    stop_reason="EMERGENCY_STOP",
+                    stop_request_state="EMERGENCY_STOPPED",
+                ),
+            )
+            emergency = plane.refresh()
+            self.assertFalse(emergency.controls.resume.actionable)
+            self.assertIn("INVALID_LAUNCH", emergency.controls.resume.reason)
+            plane.close()
+
     def test_start_requires_fresh_exact_boss_lobby(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -364,7 +636,12 @@ class DesktopControlCommandTests(unittest.TestCase):
             root = Path(temporary)
             reset = root / "reset.json"
             reset.write_text("{}", encoding="utf-8")
-            config = DesktopConfig(target_completed_matches=3, max_match_attempts=5)
+            config = DesktopConfig(
+                boss_id="1289",
+                boss_name="Starburst",
+                target_completed_matches=3,
+                max_match_attempts=5,
+            )
             checkpoint = root / "runs" / "old" / "checkpoint.json"
             _checkpoint(checkpoint, config)
             runner = _BlockingRunner()

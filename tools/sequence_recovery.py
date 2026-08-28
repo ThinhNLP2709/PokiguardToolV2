@@ -209,6 +209,34 @@ def _live_exit_calibration(
             )
         except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
             continue
+
+    # Desktop Start now normalizes the game client to 1280x720.  The accepted
+    # 1280x710 live calibration is a top-left anchored control at the exact
+    # physical client pixel (41.5, 40.5).  The ten added pixels are below the
+    # control, so preserve that proven physical pixel rather than reusing its
+    # stale normalized Y value.  This fallback is exact-dimension only and is
+    # still protected by technical recovery's ACTIVE/same-session/foreground
+    # preflight before any click is reserved.
+    if width == 1280 and height == 720:
+        return RecoveryUiLocation(
+            RecoveryControl.EXIT_BACK,
+            True,
+            (41.5 / 1280.0, 40.5 / 720.0),
+            0.98,
+            "canonical_1280x720_exit_hitbox_from_live_1280x710_pixel_anchor",
+            {
+                "pid": pid,
+                "clientWidth": width,
+                "clientHeight": height,
+                "sourceCalibration": str(
+                    PROJECT_ROOT
+                    / "reference"
+                    / "exit_ui_live_calibration_1280x710.json"
+                ),
+                "physicalPixelX": 41.5,
+                "physicalPixelY": 40.5,
+            },
+        )
     return None
 
 

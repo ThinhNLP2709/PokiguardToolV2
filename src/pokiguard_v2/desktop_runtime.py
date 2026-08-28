@@ -116,6 +116,9 @@ class ReadOnlyGameStatusProvider:
         lifecycle = "UNKNOWN"
         match_id = None
         target_id = target_name = None
+        target_candidates: tuple[tuple[str | None, str | None], ...] = ()
+        lobby_branch = None
+        current_room_id = None
         reason = poll.reason
         error = None
         if lifecycle_observation is not None:
@@ -131,7 +134,16 @@ class ReadOnlyGameStatusProvider:
                         self._target.resolver, lifecycle_observation
                     )
                     lifecycle = lobby.state.value
+                    lobby_branch = lobby.branch
+                    current_room_id = lobby.chinh_phuc.current_room_id
                     reason = "; ".join(lobby.reasons) or poll.reason
+                    target_candidates = tuple(
+                        (
+                            candidate.identity.boss_id,
+                            candidate.identity.boss_name,
+                        )
+                        for candidate in lobby.candidates
+                    )
                     selected = next(
                         (
                             candidate
@@ -190,6 +202,9 @@ class ReadOnlyGameStatusProvider:
             target_name=target_name,
             provider_reason=reason,
             error=error,
+            target_candidates=target_candidates,
+            lobby_branch=lobby_branch,
+            current_room_id=current_room_id,
         )
 
     def close(self) -> None:

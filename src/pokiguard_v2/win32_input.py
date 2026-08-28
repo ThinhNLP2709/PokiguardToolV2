@@ -21,6 +21,10 @@ VK_F6 = 0x75
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
 SW_RESTORE = 9
+SWP_NOZORDER = 0x0004
+SWP_NOACTIVATE = 0x0010
+CANONICAL_CLIENT_WIDTH = 1280
+CANONICAL_CLIENT_HEIGHT = 720
 
 
 @dataclass(frozen=True)
@@ -196,6 +200,7 @@ class Win32Backend(Protocol):
     def click_mouse(self) -> None: ...
     def virtual_screen(self) -> tuple[int, int, int, int]: ...
     def restore_and_foreground(self, hwnd: int) -> bool: ...
+    def resize_client(self, hwnd: int, width: int, height: int) -> bool: ...
 
 
 class ClickStatus(str, Enum):
@@ -211,6 +216,10 @@ class ClickStatus(str, Enum):
 class ClickPairResult:
     status: ClickStatus
     sent_clicks: int
+    inter_click_delay_seconds: float | None = None
+    pacing_mode: str | None = None
+    pacing_reason: str | None = None
+    lag_score: int | None = None
 
     @property
     def sent(self) -> bool:
@@ -243,6 +252,136 @@ class WindowStatus:
     reason: str
 
 
+@dataclass(frozen=True)
+class SwapPacingDecision:
+    """Auditable delay selected for one ordinary two-click SWAP."""
+
+    delay_seconds: float
+    mode: str
+    reason: str
+    lag_score: int
+    consecutive_fast_acknowledgements: int
+    timer_clamped: bool = False
+
+
+class AdaptiveSwapPacer:
+    """Increase click separation only after evidence of a degraded client.
+
+    Pokiguard does not expose a verified ping/FPS field in the read-only
+    runtime.  Recovery/re-entry, exact SWAP outcome timeouts and slow accepted
+    transitions are therefore used as conservative delivery-health signals.
+    The normal 0.25-second path remains unchanged, while the severe path spans
+    several rendered frames even when the client temporarily falls to 3-4 FPS.
+    """
+
+    _LEVEL_DELAYS = (0.0, 0.60, 1.00, 1.50)
+    _LEVEL_MODES = (
+        "NORMAL",
+        "CAUTIOUS",
+        "RECOVERY_DEGRADED",
+        "SEVERE_LAG",
+    )
+
+    def __init__(
+        self,
+        *,
+        base_delay_seconds: float = 0.25,
+        maximum_delay_seconds: float = 1.50,
+        slow_ack_seconds: float = 8.0,
+        fast_ack_seconds: float = 4.0,
+        clean_acknowledgements_to_decay: int = 8,
+    ) -> None:
+        if not 0.05 <= base_delay_seconds <= 1.0:
+            raise ValueError("base click delay must be between 0.05 and 1.0 seconds")
+        if not base_delay_seconds <= maximum_delay_seconds <= 2.0:
+            raise ValueError("maximum click delay must be between base and 2.0 seconds")
+        if not 0.0 < fast_ack_seconds < slow_ack_seconds:
+            raise ValueError("fast ACK threshold must be below slow ACK threshold")
+        if clean_acknowledgements_to_decay < 1:
+            raise ValueError("clean ACK decay threshold must be positive")
+        self.base_delay_seconds = float(base_delay_seconds)
+        self.maximum_delay_seconds = float(maximum_delay_seconds)
+        self.slow_ack_seconds = float(slow_ack_seconds)
+        self.fast_ack_seconds = float(fast_ack_seconds)
+        self.clean_acknowledgements_to_decay = int(
+            clean_acknowledgements_to_decay
+        )
+        self._lag_score = 0
+        self._consecutive_fast_acknowledgements = 0
+        self._reason = "NO_DEGRADED_SIGNAL"
+        self._lock = threading.Lock()
+
+    def arm_recovery(self, reason: str = "RECOVERY_OR_REENTRY") -> None:
+        """Keep the next recovered session slow until delivery proves stable."""
+
+        with self._lock:
+            self._lag_score = max(self._lag_score, 2)
+            self._consecutive_fast_acknowledgements = 0
+            self._reason = str(reason or "RECOVERY_OR_REENTRY")
+
+    def observe_unconfirmed(self, reason: str = "SWAP_OUTCOME_UNCONFIRMED") -> None:
+        with self._lock:
+            self._lag_score = 3
+            self._consecutive_fast_acknowledgements = 0
+            self._reason = str(reason or "SWAP_OUTCOME_UNCONFIRMED")
+
+    def observe_acknowledged(self, latency_seconds: float) -> None:
+        latency = max(0.0, float(latency_seconds))
+        with self._lock:
+            if latency >= self.slow_ack_seconds:
+                self._lag_score = max(self._lag_score, 2)
+                self._consecutive_fast_acknowledgements = 0
+                self._reason = "SLOW_ACCEPTED_SWAP"
+                return
+            if latency > self.fast_ack_seconds:
+                self._consecutive_fast_acknowledgements = 0
+                self._reason = "ACK_NOT_FAST_ENOUGH_TO_DECAY"
+                return
+            self._consecutive_fast_acknowledgements += 1
+            if (
+                self._lag_score > 0
+                and self._consecutive_fast_acknowledgements
+                >= self.clean_acknowledgements_to_decay
+            ):
+                self._lag_score -= 1
+                self._consecutive_fast_acknowledgements = 0
+                self._reason = "SUSTAINED_FAST_ACK_DECAY"
+
+    def decision(
+        self, *, remaining_seconds: float | None = None
+    ) -> SwapPacingDecision:
+        with self._lock:
+            score = self._lag_score
+            clean = self._consecutive_fast_acknowledgements
+            reason = self._reason
+        requested = max(
+            self.base_delay_seconds,
+            self._LEVEL_DELAYS[score],
+        )
+        requested = min(requested, self.maximum_delay_seconds)
+        delay = requested
+        timer_clamped = False
+        if remaining_seconds is not None:
+            # Preserve at least 1.25 seconds for the second click to be pumped
+            # by the game. The integer server timer is conservative and may
+            # already be part-way through its displayed second.
+            timer_budget = max(
+                self.base_delay_seconds,
+                float(remaining_seconds) - 1.25,
+            )
+            if timer_budget < delay:
+                delay = timer_budget
+                timer_clamped = True
+        return SwapPacingDecision(
+            delay_seconds=round(delay, 3),
+            mode=self._LEVEL_MODES[score],
+            reason=reason,
+            lag_score=score,
+            consecutive_fast_acknowledgements=clean,
+            timer_clamped=timer_clamped,
+        )
+
+
 class ForegroundClickExecutor:
     """Send two V1-style clicks without ever focusing or restoring a window."""
 
@@ -252,12 +391,29 @@ class ForegroundClickExecutor:
         *,
         click_delay_seconds: float = 0.25,
         sleeper: Callable[[float], None] = time.sleep,
+        swap_pacer: AdaptiveSwapPacer | None = None,
     ) -> None:
         if not 0.05 <= click_delay_seconds <= 1.0:
             raise ValueError("click delay must be between 0.05 and 1.0 seconds")
         self.backend = backend
         self.click_delay_seconds = click_delay_seconds
         self.sleeper = sleeper
+        self.swap_pacer = swap_pacer or AdaptiveSwapPacer(
+            base_delay_seconds=click_delay_seconds
+        )
+
+    def arm_recovery_swap_pacing(
+        self, reason: str = "RECOVERY_OR_REENTRY"
+    ) -> None:
+        self.swap_pacer.arm_recovery(reason)
+
+    def note_swap_acknowledged(self, latency_seconds: float) -> None:
+        self.swap_pacer.observe_acknowledged(latency_seconds)
+
+    def note_swap_unconfirmed(
+        self, reason: str = "SWAP_OUTCOME_UNCONFIRMED"
+    ) -> None:
+        self.swap_pacer.observe_unconfirmed(reason)
 
     def window_status(self, binding: WindowBinding) -> WindowStatus:
         if self.backend.window_pid(binding.hwnd) != binding.pid:
@@ -295,16 +451,42 @@ class ForegroundClickExecutor:
         return ClickStatus.SENT
 
     def send_swap(
-        self, binding: WindowBinding, plan: CoordinatePlan
+        self,
+        binding: WindowBinding,
+        plan: CoordinatePlan,
+        *,
+        remaining_seconds: float | None = None,
     ) -> ClickPairResult:
+        pacing = self.swap_pacer.decision(remaining_seconds=remaining_seconds)
         first = self._send_one(binding, plan.client_geometry, plan.first)
         if first is not ClickStatus.SENT:
-            return ClickPairResult(first, 0)
-        self.sleeper(self.click_delay_seconds)
+            return ClickPairResult(
+                first,
+                0,
+                pacing.delay_seconds,
+                pacing.mode,
+                pacing.reason,
+                pacing.lag_score,
+            )
+        self.sleeper(pacing.delay_seconds)
         second = self._send_one(binding, plan.client_geometry, plan.second)
         if second is not ClickStatus.SENT:
-            return ClickPairResult(ClickStatus.PARTIAL_INPUT, 1)
-        return ClickPairResult(ClickStatus.SENT, 2)
+            return ClickPairResult(
+                ClickStatus.PARTIAL_INPUT,
+                1,
+                pacing.delay_seconds,
+                pacing.mode,
+                pacing.reason,
+                pacing.lag_score,
+            )
+        return ClickPairResult(
+            ClickStatus.SENT,
+            2,
+            pacing.delay_seconds,
+            pacing.mode,
+            pacing.reason,
+            pacing.lag_score,
+        )
 
     def send_normalized_point(
         self,
@@ -409,6 +591,21 @@ if os.name == "nt":
         ctypes.POINTER(_RECT),
     ]
     _user32.GetClientRect.restype = wintypes.BOOL
+    _user32.GetWindowRect.argtypes = [
+        wintypes.HWND,
+        ctypes.POINTER(_RECT),
+    ]
+    _user32.GetWindowRect.restype = wintypes.BOOL
+    _user32.SetWindowPos.argtypes = [
+        wintypes.HWND,
+        wintypes.HWND,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.UINT,
+    ]
+    _user32.SetWindowPos.restype = wintypes.BOOL
     _user32.ClientToScreen.argtypes = [
         wintypes.HWND,
         ctypes.POINTER(_POINT),
@@ -474,6 +671,61 @@ class NativeWin32Backend:
         requested = bool(_user32.SetForegroundWindow(hwnd))
         return requested or self.is_foreground(hwnd)
 
+    def resize_client(self, hwnd: int, width: int, height: int) -> bool:
+        """Resize one validated normal window to an exact client size.
+
+        The outer-frame delta is measured from the live window instead of
+        guessed from a hard-coded border style.  The resulting outer rectangle
+        is clamped to the virtual desktop, and the caller must independently
+        reread ``client_geometry`` before trusting the result.
+        """
+
+        if (
+            not hwnd
+            or width <= 0
+            or height <= 0
+            or not _user32.IsWindow(hwnd)
+            or not _user32.IsWindowVisible(hwnd)
+        ):
+            return False
+        current = self.client_geometry(hwnd)
+        if current is None:
+            return False
+        outer = _RECT()
+        if not _user32.GetWindowRect(hwnd, ctypes.byref(outer)):
+            return False
+        outer_width = int(outer.right - outer.left)
+        outer_height = int(outer.bottom - outer.top)
+        target_outer_width = outer_width + int(width) - current.width
+        target_outer_height = outer_height + int(height) - current.height
+        screen_left, screen_top, screen_right, screen_bottom = self.virtual_screen()
+        if (
+            target_outer_width <= 0
+            or target_outer_height <= 0
+            or target_outer_width > screen_right - screen_left
+            or target_outer_height > screen_bottom - screen_top
+        ):
+            return False
+        left = min(
+            max(int(outer.left), screen_left),
+            screen_right - target_outer_width,
+        )
+        top = min(
+            max(int(outer.top), screen_top),
+            screen_bottom - target_outer_height,
+        )
+        return bool(
+            _user32.SetWindowPos(
+                hwnd,
+                None,
+                left,
+                top,
+                target_outer_width,
+                target_outer_height,
+                SWP_NOZORDER | SWP_NOACTIVATE,
+            )
+        )
+
     def window_pid(self, hwnd: int) -> int | None:
         if not _user32.IsWindow(hwnd):
             return None
@@ -535,6 +787,68 @@ def foreground_process_window(
     active_backend = backend or NativeWin32Backend()
     binding = find_window_for_pid(pid, active_backend)
     return active_backend.restore_and_foreground(binding.hwnd)
+
+
+def prepare_bound_window(
+    binding: WindowBinding,
+    backend: Win32Backend,
+    *,
+    client_width: int = CANONICAL_CLIENT_WIDTH,
+    client_height: int = CANONICAL_CLIENT_HEIGHT,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> bool:
+    """Foreground and normalize one already PID-bound game window.
+
+    This is the desktop Start preflight.  It sends no keyboard or mouse input.
+    Success means the exact HWND still belongs to the exact PID, is foreground,
+    and has the canonical client size after a fresh read.  Two bounded resize
+    corrections tolerate a one-pixel non-client/DPI rounding adjustment.
+    """
+
+    if (
+        client_width < 640
+        or client_height < 360
+        or backend.window_pid(binding.hwnd) != binding.pid
+        or not backend.restore_and_foreground(binding.hwnd)
+    ):
+        return False
+    for _attempt in range(2):
+        geometry = backend.client_geometry(binding.hwnd)
+        if geometry is None or backend.window_pid(binding.hwnd) != binding.pid:
+            return False
+        if (geometry.width, geometry.height) == (client_width, client_height):
+            break
+        if not backend.resize_client(binding.hwnd, client_width, client_height):
+            return False
+        sleeper(0.12)
+    geometry = backend.client_geometry(binding.hwnd)
+    if (
+        geometry is None
+        or backend.window_pid(binding.hwnd) != binding.pid
+        or (geometry.width, geometry.height) != (client_width, client_height)
+    ):
+        return False
+    if not backend.restore_and_foreground(binding.hwnd):
+        return False
+    sleeper(0.08)
+    final = backend.client_geometry(binding.hwnd)
+    return bool(
+        final is not None
+        and backend.window_pid(binding.hwnd) == binding.pid
+        and (final.width, final.height) == (client_width, client_height)
+        and backend.is_foreground(binding.hwnd)
+    )
+
+
+def prepare_process_window(
+    pid: int,
+    backend: NativeWin32Backend | None = None,
+) -> bool:
+    """Prepare the largest visible exact-PID game window for desktop Start."""
+
+    active_backend = backend or NativeWin32Backend()
+    binding = find_window_for_pid(pid, active_backend)
+    return prepare_bound_window(binding, active_backend)
 
 
 class HotkeyEdges:

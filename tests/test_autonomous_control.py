@@ -13,10 +13,13 @@ from pokiguard_v2.autonomous_control import (
     AutonomousStatus,
     ConsumingTurnRegistry,
     PendingAutonomousAction,
+    SwapAcceptanceStatus,
     TurnTransitionKind,
     TurnTransitionTracker,
     direct_runtime_proves_cast_accepted,
     direct_runtime_proves_swap_accepted,
+    direct_runtime_swap_preflight_failure,
+    classify_swap_acceptance,
     plan_action_response_wait,
 )
 from pokiguard_v2.authoritative_pass import (
@@ -38,12 +41,14 @@ from pokiguard_v2.gameplay_ui import (
 from pokiguard_v2.game_owned_idle import (
     AcceptedActivityKind,
     GameOwnedIdleCache,
+    PassReadiness,
     ResetCapability,
     ResetConfidence,
 )
 from pokiguard_v2.state import (
     CombatSessionKey,
     GamePhase,
+    GameOwnedIdleStatus,
     GameState,
     ParticipantState,
 )
@@ -51,6 +56,7 @@ from tests.test_basic_policy import attack_card, combat_state
 from tools.idle_state_watch import ServerMessage
 from tools.basic_auto_bot import (
     _attack_cost_evidence,
+    _authoritative_idle_owner_rejection,
     _b4_cast_acceptance_evidence,
     _b4_evolve_forbidden,
     _can_wait_after_unconfirmed_evolve,
@@ -67,9 +73,16 @@ from tools.basic_auto_bot import (
     _classify_combat_result,
     _idle_session_id,
     _latest_fusion_for_terminal,
+    _late_mandatory_reset_recovery_required,
+    _verified_dead_board_preempts_mandatory_action,
     _local_turn_action_deadline_reached,
     _local_turn_deadline_warning_seconds,
+    _mandatory_cached_board_fastpath_allowed,
+    _mandatory_reset_recovery_warning_seconds,
+    _farm_owned_board_only_pass_tracking_allowed,
+    _farm_owned_pass_unknown_can_wait_for_recovery,
     _force_full_pass_scan_once,
+    _fresh_opening_handoff_state,
     _must_pause_for_no_safe_move,
     _observe_b4_cast_idle_reset,
     _observe_cast_idle_reset,
@@ -87,9 +100,12 @@ from tools.basic_auto_bot import (
     _record_sent_input_safety,
     _record_turn_observation,
     _reported_cast_reset_confidence,
+    _retain_mandatory_consuming_action_requirement,
     _runtime_observation_for_controller,
     _sent_action_count,
     _turn_consuming_action_count,
+    _transient_board_only_pass_participant_gap,
+    _unoffered_transport_board_messages,
     _without_optional_card_actions,
     _validate_args,
     build_parser,
@@ -98,6 +114,138 @@ from tools.basic_auto_bot import (
 
 
 class AutonomousGuardTests(unittest.TestCase):
+    def test_idle_owner_rejection_does_not_require_cache_invalidation(self) -> None:
+        self.assertIsNone(_authoritative_idle_owner_rejection("happi", "HAPPI"))
+        self.assertEqual(
+            _authoritative_idle_owner_rejection("\x00", "happi"),
+            "authoritative_username_unreadable",
+        )
+        self.assertEqual(
+            _authoritative_idle_owner_rejection("other", "happi"),
+            "authoritative_username_mismatch",
+        )
+        self.assertEqual(
+            _authoritative_idle_owner_rejection("happi", None),
+            "authoritative_local_username_unknown",
+        )
+
+    def test_pending_exact_idle_two_still_forces_consuming_action_when_turn_idle_view_is_unknown(
+        self,
+    ) -> None:
+        state = combat_state(mana=241, fusion_used=False, turn=33)
+        stale_unknown = replace(
+            state,
+            battle=replace(
+                state.battle,
+                consecutive_passes=None,
+                consecutive_pass_threshold=3,
+                consecutive_pass_source=None,
+                consecutive_pass_status=GameOwnedIdleStatus.UNKNOWN,
+                consecutive_pass_confidence="source_turn_mismatch",
+            ),
+        )
+
+        ordinary = BasicPolicyEngine(PolicyConfig()).decide(stale_unknown)
+        self.assertEqual(ordinary.action, PolicyAction.EVOLVE)
+
+        retained = _retain_mandatory_consuming_action_requirement(
+            stale_unknown,
+            mandatory_reset_pending=True,
+        )
+        mandatory = BasicPolicyEngine(PolicyConfig()).decide(retained)
+
+        self.assertEqual(
+            retained.battle.consecutive_pass_status,
+            GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION,
+        )
+        self.assertEqual(
+            retained.battle.consecutive_pass_confidence,
+            "retained_exact_idle_2_pending_reset",
+        )
+        self.assertIsNone(retained.battle.consecutive_passes)
+        self.assertIn(mandatory.action, {PolicyAction.SWAP, PolicyAction.CAST})
+        self.assertNotEqual(mandatory.action, PolicyAction.EVOLVE)
+
+    def test_no_pending_mandatory_reset_does_not_rewrite_idle_truth(self) -> None:
+        state = combat_state(mana=241, fusion_used=False, turn=33)
+        retained = _retain_mandatory_consuming_action_requirement(
+            state,
+            mandatory_reset_pending=False,
+        )
+
+        self.assertIs(retained, state)
+        self.assertEqual(
+            retained.battle.consecutive_pass_status,
+            GameOwnedIdleStatus.UNKNOWN,
+        )
+
+    def test_board_only_participant_gap_allows_only_zero_input_pass_tracking(self) -> None:
+        state = combat_state(turn=25)
+        key = CombatSessionKey(2, state.battle.board_instance, "M_gap")
+        boss = state.opponents[0]
+        board_only = replace(
+            state,
+            player=None,
+            participants=(boss,),
+            battle=replace(
+                state.battle,
+                session_key=key,
+                match_id=key.match_id,
+                acknowledged=True,
+                latest=True,
+            ),
+        )
+
+        self.assertTrue(
+            _farm_owned_board_only_pass_tracking_allowed(board_only)
+        )
+        self.assertFalse(
+            _farm_owned_board_only_pass_tracking_allowed(
+                replace(board_only, player=state.player)
+            )
+        )
+        self.assertTrue(
+            _transient_board_only_pass_participant_gap(
+                board_only,
+                ValueError("PASS start rejected: participant_not_alive"),
+            )
+        )
+        self.assertFalse(
+            _transient_board_only_pass_participant_gap(
+                board_only,
+                ValueError("PASS start rejected: first_turn_forbidden"),
+            )
+        )
+        self.assertFalse(
+            _transient_board_only_pass_participant_gap(
+                replace(board_only, player=state.player),
+                ValueError("PASS start rejected: participant_not_alive"),
+            )
+        )
+
+    def test_farm_owned_pass_unknown_waits_only_with_bounded_recovery(self) -> None:
+        self.assertTrue(
+            _farm_owned_pass_unknown_can_wait_for_recovery(
+                reason="PASS_STATE_UNKNOWN",
+                farm_owned=True,
+                recovery_available=True,
+            )
+        )
+        self.assertFalse(
+            _farm_owned_pass_unknown_can_wait_for_recovery(
+                reason="PASS_STATE_UNKNOWN",
+                farm_owned=True,
+                recovery_available=False,
+            )
+        )
+        self.assertFalse(
+            _farm_owned_pass_unknown_can_wait_for_recovery(
+                reason="POLICY_NO_SAFE_MOVE",
+                farm_owned=True,
+                recovery_available=True,
+            )
+        )
+
     def test_action_timeout_extends_only_read_observation_on_fresh_source_turn(self) -> None:
         state = combat_state(turn=9)
         session = CombatSessionKey(1, state.battle.board_instance, "M_timeout")
@@ -448,6 +596,42 @@ class AutonomousGuardTests(unittest.TestCase):
         )
         self.assertFalse(_force_full_pass_scan_once(None, identity))
 
+    def test_pass_wait_keeps_read_only_move_board_dto_for_provider(self) -> None:
+        current = SimpleNamespace(
+            address=0x1200,
+            event_type="MATCH_MOVE_RES",
+            payload_address=0x2200,
+        )
+        no_payload = SimpleNamespace(
+            address=0x1300,
+            event_type="MATCH_MOVE_RES",
+            payload_address=None,
+        )
+        unrelated = SimpleNamespace(
+            address=0x1400,
+            event_type="MATCH_AFK_WARN",
+            payload_address=0x2400,
+        )
+
+        self.assertEqual(
+            _unoffered_transport_board_messages(
+                (current, no_payload, unrelated),
+                set(),
+            ),
+            (current,),
+        )
+        self.assertEqual(
+            _unoffered_transport_board_messages((current,), {current.address}),
+            (),
+        )
+
+    def test_mandatory_cached_board_fastpath_is_exactly_two_polls(self) -> None:
+        self.assertTrue(_mandatory_cached_board_fastpath_allowed(True, 0))
+        self.assertTrue(_mandatory_cached_board_fastpath_allowed(True, 1))
+        self.assertFalse(_mandatory_cached_board_fastpath_allowed(True, 2))
+        self.assertFalse(_mandatory_cached_board_fastpath_allowed(False, 0))
+        self.assertFalse(_mandatory_cached_board_fastpath_allowed(True, -1))
+
     @staticmethod
     def _state(**kwargs):
         state = combat_state(**kwargs)
@@ -459,6 +643,61 @@ class AutonomousGuardTests(unittest.TestCase):
                 session_key=session,
                 match_id=session.match_id,
             ),
+        )
+
+    def test_final_swap_preflight_accepts_only_same_live_local_turn(self) -> None:
+        state = self._state(fusion_used=True, turn=3)
+        state = replace(
+            state,
+            battle=replace(state.battle, local_move_sequence=1),
+        )
+        decision = BasicPolicyEngine().decide(state)
+        self.assertIs(decision.action, PolicyAction.SWAP)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision),
+            1.0,
+            state.player.mana,
+            None,
+            local_move_sequence_before=1,
+        )
+
+        self.assertIsNone(
+            direct_runtime_swap_preflight_failure(
+                pending,
+                match_id="M_fixture",
+                turn=3,
+                current_player="happi",
+                local_username="HAPPI",
+                remaining_seconds=2,
+                local_move_sequence=1,
+                minimum_action_time=1,
+            )
+        )
+        self.assertEqual(
+            direct_runtime_swap_preflight_failure(
+                pending,
+                match_id="M_fixture",
+                turn=4,
+                current_player="boss",
+                local_username="happi",
+                remaining_seconds=14,
+                local_move_sequence=1,
+                minimum_action_time=1,
+            ),
+            "TURN_CHANGED",
+        )
+        self.assertEqual(
+            direct_runtime_swap_preflight_failure(
+                pending,
+                match_id="M_fixture",
+                turn=3,
+                current_player="happi",
+                local_username="happi",
+                remaining_seconds=1,
+                local_move_sequence=1,
+                minimum_action_time=1,
+            ),
+            "TIMER_AT_OR_BELOW_ACTION_FLOOR",
         )
 
     def test_identity_is_single_use_and_pause_is_immediate(self) -> None:
@@ -728,6 +967,7 @@ class AutonomousGuardTests(unittest.TestCase):
 
     def test_stage_b3_defaults_disable_gameplay_cap_and_keep_high_safety_ceiling(self) -> None:
         args = build_parser().parse_args(["--watch"])
+        self.assertEqual(args.minimum_action_time, 1)
         self.assertEqual(args.max_turn_actions, 0)
         self.assertEqual(args.max_total_input_actions, 100)
         self.assertEqual(args.ack_heap_region_mib, 16)
@@ -1243,6 +1483,66 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertEqual(observation.messages, ())
         self.assertFalse(observation.scan_performed)
 
+    def test_production_handoff_reuses_only_pristine_exact_opening(self) -> None:
+        state = self._state()
+        session = state.battle.session_key
+        opening = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_number=1,
+                current_turn_player="happi",
+                local_username="happi",
+                is_local_turn=True,
+                local_move_sequence=0,
+                last_move_sequence=-1,
+                turn_time_remaining_seconds=10,
+                sources=("ChatMessageDTO.MATCH_START.matchPayload.board",),
+            ),
+        )
+        runtime = SimpleNamespace(
+            match_id=session.match_id,
+            turn=1,
+            current_player="happi",
+            local_username="happi",
+            remaining=7,
+            local_move_sequence=0,
+            last_move_sequence=-1,
+        )
+
+        refreshed = _fresh_opening_handoff_state(
+            opening, runtime, expected_session=session
+        )
+
+        self.assertIsNotNone(refreshed)
+        self.assertEqual(refreshed.board, opening.board)
+        self.assertEqual(refreshed.battle.turn_time_remaining_seconds, 7)
+        self.assertIsNone(
+            _fresh_opening_handoff_state(
+                opening,
+                SimpleNamespace(**{**vars(runtime), "turn": 3, "local_move_sequence": 1}),
+                expected_session=session,
+            )
+        )
+
+        provider = SimpleNamespace(
+            last_published_state=opening,
+            poll=lambda: self.fail("proven opening handoff must not rescan the heap"),
+        )
+        handoff = _provider_poll_for_controller(
+            provider,
+            pass_wait_locked=False,
+            active_session=session,
+            fast_opening_runtime=runtime,
+        )
+        self.assertTrue(handoff.publish)
+        self.assertEqual(
+            handoff.reason, "proven_opening_direct_runtime_handoff"
+        )
+        self.assertEqual(
+            handoff.state.battle.turn_time_remaining_seconds, 7
+        )
+
     def test_stage_b3_emergency_ceiling_waits_for_terminal_then_pauses(self) -> None:
         counters = Counters(input_actions_total=100, turn_consuming_actions_total=90)
         state = self._state()
@@ -1373,7 +1673,27 @@ class AutonomousGuardTests(unittest.TestCase):
             )
         )
 
-    def test_local_turn_deadline_uses_exact_four_second_action_floor(self) -> None:
+    def test_timer_margin_is_not_misclassified_as_no_safe_move(self) -> None:
+        decision = SimpleNamespace(
+            action=PolicyAction.NONE,
+            move=None,
+            trace=SimpleNamespace(
+                blocker="TURN_TIMER_SAFETY_MARGIN",
+                policy_step="ACTIONABILITY_GATE",
+            ),
+        )
+        self.assertFalse(
+            _must_pause_for_no_safe_move(
+                decision,
+                legal_move_count=7,
+                safe_move_count=0,
+                first_local_turn=False,
+            )
+        )
+
+    def test_local_turn_deadline_allows_one_second_and_blocks_zero(self) -> None:
+        self.assertEqual(_local_turn_deadline_warning_seconds(1), 1)
+        self.assertEqual(_local_turn_deadline_warning_seconds(2), 2)
         self.assertEqual(_local_turn_deadline_warning_seconds(4), 4)
         self.assertEqual(_local_turn_deadline_warning_seconds(10), 10)
         with self.assertRaises(ValueError):
@@ -1387,19 +1707,137 @@ class AutonomousGuardTests(unittest.TestCase):
             match_id=session.match_id,
             current_player="happi",
             local_username="happi",
-            warning_seconds=_local_turn_deadline_warning_seconds(4),
+            warning_seconds=_local_turn_deadline_warning_seconds(1),
             status=AutonomousStatus.RUNNING,
             pending=None,
             consuming_action_turns=set(),
         )
-        self.assertFalse(
-            _local_turn_action_deadline_reached(**common, remaining_seconds=5)
+        self.assertTrue(
+            _local_turn_action_deadline_reached(**common, remaining_seconds=0)
         )
         self.assertFalse(
-            _local_turn_action_deadline_reached(**common, remaining_seconds=4)
+            _local_turn_action_deadline_reached(**common, remaining_seconds=-1)
+        )
+        self.assertFalse(
+            _local_turn_action_deadline_reached(**common, remaining_seconds=1)
+        )
+
+    def test_late_mandatory_reset_allows_one_second_and_recovers_at_zero(
+        self,
+    ) -> None:
+        readiness = SimpleNamespace(
+            readiness=PassReadiness.PASS_FORBIDDEN_MANDATORY_ACTION,
+            must_act_now=True,
+            state=SimpleNamespace(idle_count=2, threshold=3),
+        )
+        warning = _mandatory_reset_recovery_warning_seconds(1)
+
+        self.assertEqual(warning, 1)
+        self.assertTrue(
+            _late_mandatory_reset_recovery_required(
+                pass_stage="B5",
+                mandatory_reset_pending=True,
+                readiness=readiness,
+                action=PolicyAction.SWAP,
+                remaining_seconds=0,
+                warning_seconds=warning,
+            )
+        )
+        self.assertFalse(
+            _late_mandatory_reset_recovery_required(
+                pass_stage="B5",
+                mandatory_reset_pending=True,
+                readiness=readiness,
+                action=PolicyAction.SWAP,
+                remaining_seconds=1,
+                warning_seconds=warning,
+            )
         )
         self.assertTrue(
-            _local_turn_action_deadline_reached(**common, remaining_seconds=3)
+            _late_mandatory_reset_recovery_required(
+                pass_stage="B5",
+                mandatory_reset_pending=True,
+                readiness=readiness,
+                action=PolicyAction.NONE,
+                remaining_seconds=0,
+                warning_seconds=warning,
+            )
+        )
+        for changes in (
+            {"mandatory_reset_pending": False},
+            {"pass_stage": "B4"},
+            {"action": PolicyAction.PASS},
+            {
+                "readiness": SimpleNamespace(
+                    readiness=PassReadiness.PASS_ALLOWED,
+                    must_act_now=False,
+                    state=SimpleNamespace(idle_count=1, threshold=3),
+                )
+            },
+        ):
+            values = {
+                "pass_stage": "B5",
+                "mandatory_reset_pending": True,
+                "readiness": readiness,
+                "action": PolicyAction.SWAP,
+                "remaining_seconds": 0,
+                "warning_seconds": warning,
+            }
+            values.update(changes)
+            with self.subTest(changes=changes):
+                self.assertFalse(
+                    _late_mandatory_reset_recovery_required(**values)
+                )
+
+        self.assertEqual(_mandatory_reset_recovery_warning_seconds(8), 8)
+
+    def test_verified_dead_board_preempts_idle_two_mandatory_assertion(self) -> None:
+        self.assertTrue(
+            _verified_dead_board_preempts_mandatory_action(
+                mandatory_reset_pending=True,
+                action=PolicyAction.EXIT_MATCH,
+                dead_board=True,
+            )
+        )
+        # Either exact signal is sufficient because the policy EXIT_MATCH and
+        # board analysis are independently derived from the exhaustive scan.
+        self.assertTrue(
+            _verified_dead_board_preempts_mandatory_action(
+                mandatory_reset_pending=True,
+                action=PolicyAction.EXIT_MATCH,
+                dead_board=None,
+            )
+        )
+        self.assertTrue(
+            _verified_dead_board_preempts_mandatory_action(
+                mandatory_reset_pending=True,
+                action=PolicyAction.PASS,
+                dead_board=True,
+            )
+        )
+
+    def test_non_dead_board_actions_remain_subject_to_idle_two_assertion(self) -> None:
+        for action in (
+            PolicyAction.PASS,
+            PolicyAction.NONE,
+            PolicyAction.EVOLVE,
+            PolicyAction.SWAP,
+            PolicyAction.CAST,
+        ):
+            with self.subTest(action=action):
+                self.assertFalse(
+                    _verified_dead_board_preempts_mandatory_action(
+                        mandatory_reset_pending=True,
+                        action=action,
+                        dead_board=False,
+                    )
+                )
+        self.assertFalse(
+            _verified_dead_board_preempts_mandatory_action(
+                mandatory_reset_pending=False,
+                action=PolicyAction.EXIT_MATCH,
+                dead_board=True,
+            )
         )
 
     def test_evolve_failure_response_is_terminal_without_optional_turn_lock(self) -> None:
@@ -1754,6 +2192,45 @@ class AutonomousGuardTests(unittest.TestCase):
                 last_move_to_col=second[1],
                 last_move_to_row=7 - second[0],
             )
+        )
+
+        self.assertEqual(
+            classify_swap_acceptance(
+                pending,
+                exact_runtime_accepted=True,
+                highest_acked_sequence=identity.source.srv_seq + 10,
+            ),
+            SwapAcceptanceStatus.EXACT_RUNTIME_ACCEPTED,
+        )
+
+    def test_server_sequence_advance_alone_never_acknowledges_swap(self) -> None:
+        state = self._state()
+        decision = BasicPolicyEngine().decide(state)
+        identity = AutonomousActionIdentity.from_decision(state, decision)
+        pending = PendingAutonomousAction(
+            identity,
+            1.0,
+            0,
+            None,
+            local_move_sequence_before=0,
+            last_move_sequence_before=None,
+        )
+
+        self.assertEqual(
+            classify_swap_acceptance(
+                pending,
+                exact_runtime_accepted=False,
+                highest_acked_sequence=identity.source.srv_seq + 2,
+            ),
+            SwapAcceptanceStatus.SEQUENCE_ADVANCED_UNATTRIBUTED,
+        )
+        self.assertNotEqual(
+            classify_swap_acceptance(
+                pending,
+                exact_runtime_accepted=False,
+                highest_acked_sequence=identity.source.srv_seq + 2,
+            ),
+            SwapAcceptanceStatus.EXACT_RUNTIME_ACCEPTED,
         )
 
     def test_exact_direct_runtime_cast_transition_proves_acceptance(self) -> None:
