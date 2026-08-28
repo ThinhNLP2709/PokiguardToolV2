@@ -36,6 +36,7 @@ from pokiguard_v2.desktop_ui import (
     PREFERENCE_TABLE_ROWS,
     VISIBLE_RUNTIME_ROWS,
     background_click_clears_entry_focus,
+    graceful_button_text,
     run_limit_text,
     visible_runtime_values,
 )
@@ -229,9 +230,23 @@ class BoundedOperatorLogTests(unittest.TestCase):
 
 class CompactPresentationContractTests(unittest.TestCase):
     def test_pre_mvp_title_uses_incrementing_build_suffix(self) -> None:
-        self.assertEqual(13, APP_BUILD)
-        self.assertEqual("v1.0.0+13", APP_VERSION)
-        self.assertEqual("Pokiguard Tool V2 - v1.0.0+13", APP_TITLE)
+        self.assertEqual(15, APP_BUILD)
+        self.assertEqual("v1.0.0+15", APP_VERSION)
+        self.assertEqual("Pokiguard Tool V2 - v1.0.0+15", APP_TITLE)
+
+    def test_graceful_button_clears_pending_text_after_controller_stops(self) -> None:
+        stopping = DesktopControllerSnapshot(
+            state=DesktopControllerState.GRACEFUL_STOP_REQUESTED,
+            active=True,
+            graceful_stop_requested=True,
+        )
+        stopped = replace(
+            stopping,
+            state=DesktopControllerState.STOPPED,
+            active=False,
+        )
+        self.assertEqual("Stopping after current match...", graceful_button_text(stopping))
+        self.assertEqual("Stop After Current Match", graceful_button_text(stopped))
 
     def test_control_preferences_and_diagnostics_tab_order(self) -> None:
         self.assertEqual(

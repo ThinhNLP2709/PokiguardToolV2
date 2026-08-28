@@ -124,14 +124,16 @@ class DesktopFarmControllerManager:
         window_prepare: Callable[[int], bool] | None = None,
         reset_evidence: Path | None = None,
         artifacts_root: Path | None = None,
+        data_root: Path | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
+        self.data_root = (data_root or self.project_root).resolve()
         self.reset_evidence = (
             reset_evidence
-            or self.project_root / "logs" / "phase2c2c_reset_capabilities.json"
+            or self.data_root / "logs" / "phase2c2c_reset_capabilities.json"
         ).resolve()
         self.artifacts_root = (
-            artifacts_root or self.project_root / "logs" / "farm_runs"
+            artifacts_root or self.data_root / "logs" / "farm_runs"
         ).resolve()
         self._runner = runner or self._run_production
         # Production owns the focus handoff. Tests with an injected runner stay
@@ -329,7 +331,7 @@ class DesktopFarmControllerManager:
                         updated_at=_timestamp(),
                     )
             with AutomationControllerLease(
-                self.project_root / "logs" / ".automation_controller.lock"
+                self.data_root / "logs" / ".automation_controller.lock"
             ):
                 exit_code = self._runner(
                     launch,

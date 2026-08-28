@@ -47,6 +47,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.boss_entry import (  # noqa: E402
     BossEntryState,
     BossLobbyState,
@@ -936,8 +937,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
     farm_target = FarmTarget(args.boss_id, args.boss_name)
     artifact_dir = (
         args.artifacts
-        or PROJECT_ROOT
-        / "logs"
+        or current_app_paths().logs_root
         / "boss_entry"
         / f"{datetime.now():%Y%m%d_%H%M%S}"
     ).resolve()
@@ -2054,7 +2054,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
 
 def main(argv: Sequence[str] | None = None) -> int:
     try:
-        with AutomationControllerLease(PROJECT_ROOT / "logs" / ".automation_controller.lock"):
+        with AutomationControllerLease(current_app_paths().controller_lock):
             return run(build_parser().parse_args(argv))
     except KeyboardInterrupt:
         print("Boss entry stopped by user.", file=sys.stderr)

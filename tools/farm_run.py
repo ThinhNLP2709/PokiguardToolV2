@@ -26,6 +26,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.board_diagnostics import analyze_game_state  # noqa: E402
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget  # noqa: E402
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
@@ -2113,7 +2114,7 @@ def _offline_opening(key: Any, digit: str) -> OpeningEvidence:
 
 def _stage_a(args: Namespace, limits: FarmRunLimits) -> int:
     from pokiguard_v2.state import CombatSessionKey
-    root = (args.artifacts or PROJECT_ROOT / "logs" / "farm_runs").resolve()
+    root = (args.artifacts or current_app_paths().farm_runs).resolve()
     fixture = (
         args.sequence_fixture
         or PROJECT_ROOT / "reference" / "sequence_desync_m714b231e.jsonl"
@@ -2349,7 +2350,7 @@ def _run_live(
             resume_payload.farm_run_id if resume_payload is not None else None
         ),
     )
-    root = (args.artifacts or PROJECT_ROOT / "logs" / "farm_runs").resolve()
+    root = (args.artifacts or current_app_paths().farm_runs).resolve()
     writer = FarmRunArtifactWriter.create(root, run.farm_run_id)
     memory = _ControllerMemorySampler()
     memory.sample()
@@ -3686,7 +3687,7 @@ def run(
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        with AutomationControllerLease(PROJECT_ROOT / "logs" / ".automation_controller.lock"):
+        with AutomationControllerLease(current_app_paths().controller_lock):
             return run(args)
     except KeyboardInterrupt:
         print("Ctrl+C emergency stop received.")

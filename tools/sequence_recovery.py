@@ -35,6 +35,7 @@ from pokiguard_v2.combat_lifecycle import (  # noqa: E402
     CombatSessionTracker,
     read_combat_lifecycle,
 )
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
     MemoryProviderConfig,
@@ -169,9 +170,8 @@ def _live_exit_calibration(
 ) -> RecoveryUiLocation | None:
     """Load an exact-dimension, live-proven blinking-control calibration."""
 
-    paths = sorted(
-        (PROJECT_ROOT / "reference").glob("exit_ui_live_calibration*.json")
-    )
+    reference_root = current_app_paths().reference_root
+    paths = sorted(reference_root.glob("exit_ui_live_calibration*.json"))
     for path in paths:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -229,8 +229,7 @@ def _live_exit_calibration(
                 "clientWidth": width,
                 "clientHeight": height,
                 "sourceCalibration": str(
-                    PROJECT_ROOT
-                    / "reference"
+                    reference_root
                     / "exit_ui_live_calibration_1280x710.json"
                 ),
                 "physicalPixelX": 41.5,
@@ -269,8 +268,7 @@ def run(args: argparse.Namespace) -> int:
         raise ValueError("--timeout cannot be negative")
     log_path = (
         args.log
-        or PROJECT_ROOT
-        / "logs"
+        or current_app_paths().logs_root
         / f"phase2c2a4_recovery_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
     ).resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -463,7 +461,7 @@ def run(args: argparse.Namespace) -> int:
                     if last_stable_state is not None:
                         try:
                             artifact = write_sequence_desync_artifact(
-                                PROJECT_ROOT / "logs" / "sequence_desync",
+                                log_path.parent / "sequence_desync",
                                 desync=monitor.tracker.state,
                                 state=last_stable_state,
                                 recent_events=monitor.events.snapshot(),

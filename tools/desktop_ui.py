@@ -33,6 +33,10 @@ from pokiguard_v2.desktop_farm_controller import (  # noqa: E402
 from pokiguard_v2.desktop_preferences import (  # noqa: E402
     DesktopPreferenceStore,
 )
+from pokiguard_v2.app_paths import (  # noqa: E402
+    create_unique_directory,
+    current_app_paths,
+)
 from pokiguard_v2.desktop_ui import (  # noqa: E402
     DesktopApplication,
     DesktopEventLog,
@@ -83,13 +87,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reset-evidence",
         type=Path,
-        default=PROJECT_ROOT / "logs" / "phase2c2c_reset_capabilities.json",
         help="accepted reset capability evidence used by FarmRunner",
     )
     parser.add_argument(
         "--preferences",
         type=Path,
-        default=PROJECT_ROOT / "logs" / "desktop_ui" / "operator_preferences.json",
         help="versioned operator-preference JSON (never a farm checkpoint)",
     )
     return parser
@@ -149,18 +151,24 @@ class _EvidenceSink:
 
 def run(args: argparse.Namespace) -> int:
     _validate_args(args)
+    paths = current_app_paths()
+    paths.ensure_writable_directories()
     artifact_dir = (
-        args.artifacts
-        or PROJECT_ROOT
-        / "logs"
-        / "desktop_ui"
-        / f"{datetime.now():%Y%m%d_%H%M%S}"
-    ).resolve()
-    artifact_dir.mkdir(parents=True, exist_ok=False)
+        args.artifacts.resolve()
+        if args.artifacts is not None
+        else create_unique_directory(
+            paths.desktop_ui_logs,
+            f"{datetime.now():%Y%m%d_%H%M%S}",
+        )
+    )
+    if args.artifacts is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=False)
     events_path = artifact_dir / "events.jsonl"
     summary_path = artifact_dir / "summary.json"
     event_log = DesktopEventLog(events_path, max_display_entries=500)
-    preference_store = DesktopPreferenceStore(args.preferences)
+    preference_store = DesktopPreferenceStore(
+        args.preferences or paths.preferences_file
+    )
     preference_load = preference_store.load()
     runtime = (
         StaticUnavailableRuntimeProvider()
@@ -177,11 +185,13 @@ def run(args: argparse.Namespace) -> int:
         )
     )
     checkpoint = LatestCheckpointSummaryProvider(
-        PROJECT_ROOT / "logs" / "farm_runs"
+        paths.farm_runs
     )
     controller = DesktopFarmControllerManager(
-        PROJECT_ROOT,
-        reset_evidence=args.reset_evidence,
+        paths.source_root,
+        reset_evidence=args.reset_evidence or paths.reset_evidence,
+        artifacts_root=paths.farm_runs,
+        data_root=paths.data_root,
     )
     control_plane = DesktopControlPlane(
         runtime,
@@ -219,6 +229,10 @@ def run(args: argparse.Namespace) -> int:
         preferenceWarnings=[asdict(value) for value in preference_load.warnings],
         automaticStart=False,
         automaticResume=False,
+        frozen=paths.frozen,
+        dataRoot=str(paths.data_root),
+        installRoot=str(paths.install_root),
+        currentWorkingDirectoryIgnored=True,
     )
     try:
         root = create_root()
@@ -259,6 +273,9 @@ def run(args: argparse.Namespace) -> int:
         "timestamp": utc_timestamp(),
         "mode": "OFFLINE_FAKE" if args.offline else "LIVE_CONTROLLED",
         "artifactDirectory": str(artifact_dir),
+        "frozen": paths.frozen,
+        "dataRoot": str(paths.data_root),
+        "installRoot": str(paths.install_root),
         "uiFramework": "tkinter/ttk",
         "readOnly": True,
         "processAccess": (

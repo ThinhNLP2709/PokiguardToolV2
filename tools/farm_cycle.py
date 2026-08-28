@@ -22,6 +22,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.boss_entry import (  # noqa: E402
     BossLobbyState,
     FarmTarget,
@@ -225,7 +226,7 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         max_turn_actions=0,
         max_total_input_actions=args.max_total_input_actions,
         max_fusion_attempts_per_turn=2,
-        v1_root=Path(r"D:\PokiguardAuto"),
+        v1_root=None,
         timeout=args.combat_timeout,
         postmatch_observation_timeout=min(args.return_lobby_timeout, 5.0),
         log=log_path,
@@ -822,7 +823,9 @@ def _run_cycle(args: Namespace, target: FarmTarget) -> int:
         raise FileNotFoundError(args.reset_evidence)
     artifacts = (
         args.artifacts
-        or PROJECT_ROOT / "logs" / "boss_farm_cycle" / f"{datetime.now():%Y%m%d_%H%M%S}"
+        or current_app_paths().logs_root
+        / "boss_farm_cycle"
+        / f"{datetime.now():%Y%m%d_%H%M%S}"
     ).resolve()
     artifacts.mkdir(parents=True, exist_ok=False)
     log_path = artifacts / "cycle.jsonl"
@@ -1070,7 +1073,7 @@ def run(args: argparse.Namespace) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        with AutomationControllerLease(PROJECT_ROOT / "logs" / ".automation_controller.lock"):
+        with AutomationControllerLease(current_app_paths().controller_lock):
             return run(args)
     except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

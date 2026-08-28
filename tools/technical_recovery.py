@@ -29,6 +29,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.board_diagnostics import (  # noqa: E402
     analyze_game_state,
     diagnostic_board_hash,
@@ -492,7 +493,7 @@ def _offline_dead_board_state() -> GameState:
 
 
 def _run_stage_a(args: Namespace) -> int:
-    root = (args.artifacts or PROJECT_ROOT / "logs" / "technical_recovery").resolve()
+    root = (args.artifacts or current_app_paths().logs_root / "technical_recovery").resolve()
     fixture = (
         args.sequence_fixture
         or PROJECT_ROOT / "reference" / "sequence_desync_m714b231e.jsonl"
@@ -862,7 +863,7 @@ def _run_live(
     In both cases all recovery UI below is the same implementation.
     """
     target_identity = FarmTarget(args.boss_id, args.boss_name)
-    root = (args.artifacts or PROJECT_ROOT / "logs" / "technical_recovery").resolve()
+    root = (args.artifacts or current_app_paths().logs_root / "technical_recovery").resolve()
     coordinator = armed_coordinator or TechnicalRecoveryCoordinator(
         max_technical_recoveries=args.max_technical_recoveries
     )
@@ -1837,9 +1838,7 @@ def run_armed_live_recovery(
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        with AutomationControllerLease(
-            PROJECT_ROOT / "logs" / ".automation_controller.lock"
-        ):
+        with AutomationControllerLease(current_app_paths().controller_lock):
             return run(args)
     except KeyboardInterrupt:
         print("Phase 2D.3 stopped by user.", file=sys.stderr)

@@ -33,6 +33,7 @@ from tools.process_probe import (  # noqa: E402
     kernel32,
     target_architecture,
 )
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 
 
 STILL_ACTIVE = 259
@@ -120,4 +121,4 @@ def attach_target() -> RuntimeTarget:
 
 def default_log_path(prefix: str) -> Path:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return PROJECT_ROOT / "logs" / f"{prefix}_{stamp}.jsonl"
+    return current_app_paths().logs_root / f"{prefix}_{stamp}.jsonl"

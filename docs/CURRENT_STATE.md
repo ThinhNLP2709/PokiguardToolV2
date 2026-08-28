@@ -24,10 +24,36 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2E.3 — PASS STRONG** |
-| Active phase | **NONE — awaiting the user's next explicit phase** |
+| Current completed phase | **Phase 2F.1 — PASS STRONG** |
+| Active phase | **NONE — Phase 2F.2 NOT IMPLEMENTED** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
+
+Phase 2F.1 adds the canonical Windows x64 portable one-folder package. Final
+build `v1.0.0+15` uses PyInstaller 6.22.0, starts through the windowed frozen
+entry point, requires neither Python nor the source repository at runtime, and
+writes preferences/logs/checkpoints/locks only below one local app-data root.
+The deterministic ZIP SHA-256 is
+`b8aed614f43d3550ef1d8dd6d88d3d3dbdb76547f63d5b9b4144bca89f5e1d05`.
+
+Clean staging outside the repository, different CWD, missing `PYTHONPATH`,
+fresh app data, production-graph self-check and actual game-absent startup all
+pass. Packaged read-only attach sends zero input. B4 FarmRun
+`add073d8cbdb4fcb9a660964fb35ec11` completed exactly one
+STRONG/CONSISTENT WIN after one correctly excluded dead-board technical abort
+and exact-pet recovery; it created no attempt after target. B5 FarmRun
+`6b89455c91ef434594f42f1febdeb905` accepted the UI graceful-stop command
+during `ACTIVE_COMBAT`, completed one STRONG/CONSISTENT WIN, created no next
+attempt, and stopped at exact `BOSS_LOBBY`. Build `+15` fixes the presentation
+label so durable graceful-stop history does not leave the inactive button
+showing `Stopping...` after controller STOPPED.
+
+Write audit proves zero writes to `D:\pc`, zero writes to the source repository
+during packaged execution and zero writes beside the packaged EXE. Packaged
+checkpoint discovery uses the unchanged canonical validator. Final offline
+baseline is **740/740 PASS** with compileall and diff check clean. Evidence:
+[Phase 2F.1 report](phase2f1_report.md) and
+[runbook](phase2f1_runbook.md).
 
 Phase 2E.3 completes the compact Desktop UI and its finite UI-controlled
 FarmRunner. Start, Stop After Current Match, Emergency Stop and durable lobby
@@ -609,11 +635,11 @@ Verified on **2026-08-29**:
 
 ```text
 python -m unittest discover -s tests -p 'test_*.py'
-Ran 725 tests
+Ran 740 tests
 OK
 ```
 
-Current baseline: **725/725 PASS**. Phase 2E desktop/controller and terminal
+Current baseline: **740/740 PASS**. Phase 2E desktop/controller and terminal
 hardening focused suites: **PASS**. `python -m compileall -q src tools tests`:
 **PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
 WIN/LOSS/UNKNOWN classification, frozen result survival after ownership
@@ -627,6 +653,8 @@ optional/dynamic card layout, recovery ACK-epoch contamination, and the x64
 working-set sampler ABI. Phase 2E.2 adds controller ownership/generation,
 command gating, verified-PID foreground transfer, graceful and emergency stop
 handoffs, exact resumable-checkpoint boundaries, and clean worker shutdown.
+Phase 2F.1 adds source/frozen path abstraction, packaged checkpoint discovery,
+frozen startup/single-instance behavior and production bundle/resource checks.
 
 ## Current Known Limitations
 
@@ -1168,15 +1196,16 @@ accepted FarmRun documented in [Phase 2E.3 report](phase2e3_report.md).
 
 ## Next Phase
 
-**Phase 2E.3 is PASS STRONG. No next phase is active.**
+**Phase 2F.1 is PASS STRONG. Phase 2F.2 is NOT IMPLEMENTED.**
 
 ```text
 accepted Phase 2E.2 live UI/FarmRunner integration
 -> accepted Phase 2E.3 operator UX + exact-pet recovery + 25-match UI soak
--> wait for the user's explicit next-phase scope
+-> accepted Phase 2F.1 portable Windows packaging + packaged live validation
+-> Phase 2F.2 Release Candidate + Final Acceptance (not implemented)
 ```
 
-No Phase 2F.1 or other future scope is inferred. Infinite farming, process
+Do not infer or begin Phase 2F.2 without explicit user scope. Infinite farming, process
 relaunch/login, internet recovery, target rotation, pet-specific skill-card use,
 mid-combat checkpoint resume, and navigation from the general game lobby through
 Chinh Phuc islands remain outside current scope unless explicitly approved.
@@ -1212,7 +1241,7 @@ pinned pet name. These values remain internal read-only controller/recovery
 state and diagnostics evidence; only their redundant widgets were removed.
 PlayStyle/Intelligence share one equal-width row, Target matches/Max attempts
 share another, and the explanatory pet/preferences subtitles were removed.
-The pre-MVP Desktop title is now `Pokiguard Tool V2 - v1.0.0+13`. PlayStyle and
+The accepted Phase 2F.1 title is `Pokiguard Tool V2 - v1.0.0+15`. PlayStyle and
 Intelligence are two equal-width **clusters** on the first row. Target matches
 and Max attempts use the same two-cluster 50/50 outer layout. Inside every
 cluster, the label keeps its natural width immediately beside the control; the
@@ -1320,3 +1349,13 @@ action if match, turn, owner, timer or local move sequence changed. Response
 deadlines now start at the actual input boundary rather than before modal and
 coordinate preparation. Offline verification is **725/725 PASS** with
 compileall and diff checks clean.
+
+Build `+14` introduces the Phase 2F.1 frozen Windows entry point, local
+app-data path boundary, internal production calibration, bundled recovery
+resources, one-folder PyInstaller spec and deterministic ZIP build. Packaged
+B4/B5 live validation proves bounded completion and UI graceful stop.
+
+Build `+15` fixes the post-graceful-stop button label: the terminal controller
+snapshot intentionally retains `graceful_stop_requested=true` as evidence, but
+pending text is now rendered only while that controller is active. Final
+Phase 2F.1 verification is **740/740 PASS**.

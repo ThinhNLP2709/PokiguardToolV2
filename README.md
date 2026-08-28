@@ -2,6 +2,32 @@
 
 ## Mở tool trên Windows
 
+### Bản portable Phase 2F.1
+
+Build chuẩn tạo một bundle Windows x64 không cần cài Python:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
+```
+
+Artifact mặc định:
+
+```text
+%LOCALAPPDATA%\PokiguardToolV2\package-builds\v1.0.0+15\
+PokiguardToolV2-v1.0.0+15-win-x64.zip
+```
+
+Giải nén toàn bộ ZIP rồi chạy `PokiguardToolV2.exe`. Không tách riêng EXE ra
+khỏi thư mục `_internal`. Runtime data được ghi dưới
+`%LOCALAPPDATA%\PokiguardToolV2`, không ghi cạnh EXE, vào source repository hay
+thư mục game. SHA-256 của artifact Phase 2F.1:
+
+```text
+b8aed614f43d3550ef1d8dd6d88d3d3dbdb76547f63d5b9b4144bca89f5e1d05
+```
+
+### Chạy source/developer
+
 Chạy [run_tool.bat](run_tool.bat) từ thư mục gốc project. Launcher sẽ:
 
 - chạy đúng từ thư mục `PokiguardToolV2`;
@@ -29,27 +55,29 @@ computer-vision path remains available as a fallback.
 - no HP, damage, reward, or server-authoritative state modification.
 
 See [AGENTS.md](AGENTS.md) for workspace rules and
-[docs/phase2e3_report.md](docs/phase2e3_report.md) for the latest accepted
+[docs/phase2f1_report.md](docs/phase2f1_report.md) for the latest accepted
 milestone.
 
 ## Current status
 
-Phase 2E.3 has reached **PASS STRONG**:
+Phase 2F.1 has reached **PASS STRONG**:
 
 ```text
-compact Desktop UI
--> exact current-room target pin
+portable one-folder Windows package
+-> no Python/source-tree runtime dependency
+-> read-only game attach
 -> finite autonomous FarmRunner
--> read-only game state + existing solver
 -> normal foreground input
--> session-pinned technical recovery/re-entry
--> exact 25 completed matches
--> clean boss-lobby stop and UI shutdown
+-> packaged bounded completion and graceful stop
+-> writable state isolated under local app data
 ```
 
-The accepted live soak completed 25/25 STRONG/CONSISTENT WIN results in 27
-attempts, including two naturally recovered dead boards, with zero wrong-turn,
-duplicate, stale or rejected gameplay inputs.
+Packaged live B4 completed one STRONG/CONSISTENT WIN after one naturally
+recovered dead board and created no attempt after target. Packaged live B5
+accepted the UI Stop After Current Match command during combat, completed the
+current WIN, created no next attempt and stopped at exact boss lobby. Final
+build `v1.0.0+15` also passes clean staging, game-absent startup, checkpoint
+path integration and write-location audit.
 
 Runtime logs and screenshots under `logs/` are intentionally excluded from Git
 because they are large, machine/session-specific diagnostic artifacts.
@@ -62,4 +90,5 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The Phase 2E.3 baseline passes 725 tests.
+The Phase 2F.1 baseline passes 740 tests. Build and packaged validation details
+are in [the Phase 2F.1 runbook](docs/phase2f1_runbook.md).

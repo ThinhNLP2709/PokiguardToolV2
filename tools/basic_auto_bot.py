@@ -96,6 +96,10 @@ from pokiguard_v2.opening_snapshot import (  # noqa: E402
 from pokiguard_v2.reset_evidence_store import (  # noqa: E402
     load_reset_capabilities,
 )
+from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
+from pokiguard_v2.runtime_calibration import (  # noqa: E402
+    production_input_calibration,
+)
 from pokiguard_v2.recovery_ui import (  # noqa: E402
     locate_confirm_leave,
     locate_exit_back,
@@ -125,7 +129,6 @@ from pokiguard_v2.technical_recovery import (  # noqa: E402
     ActiveCombatProgressWatchdog,
     MANDATORY_RESET_RECOVERY_FLOOR_SECONDS,
 )
-from pokiguard_v2.v1_solver_adapter import V1SolverAdapter  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     AutoHotkeyEdges,
     BoardCalibration,
@@ -919,8 +922,7 @@ def _persist_fatal_controller_error(
         Path(configured).resolve()
         if configured is not None
         else (
-            PROJECT_ROOT
-            / "logs"
+            current_app_paths().logs_root
             / f"phase2c2b_stage_{fatal_stage}_fatal_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
         ).resolve()
     )
@@ -2317,7 +2319,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=2,
         help="conservative EVOLVE retry ceiling for one concrete combat turn",
     )
-    parser.add_argument("--v1-root", type=Path, default=Path(r"D:\PokiguardAuto"))
+    parser.add_argument(
+        "--v1-root",
+        type=Path,
+        default=None,
+        help=argparse.SUPPRESS,  # legacy CLI compatibility; production no longer reads V1
+    )
     parser.add_argument("--timeout", type=float, default=0.0, help="diagnostic/runtime limit; zero is unlimited")
     parser.add_argument(
         "--postmatch-observation-timeout",
@@ -2483,7 +2490,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             rage_target=getattr(args, "rage_target", 100),
         )
     )
-    v1_config = V1SolverAdapter(args.v1_root).config
+    # Production V2 uses only these accepted normal-input calibration values;
+    # it no longer depends on a separate PokiguardAuto checkout at runtime.
+    v1_config = production_input_calibration()
     pass_stage = args.pass_acceptance_stage
     stage_name = (
         "b5"
@@ -2496,8 +2505,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     )
     log_path = (
         args.log
-        or PROJECT_ROOT
-        / "logs"
+        or current_app_paths().logs_root
         / f"phase2c2b_stage_{stage_name}_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
     ).resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -4521,7 +4529,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 if last_state is not None:
                     try:
                         artifact = write_sequence_desync_artifact(
-                            PROJECT_ROOT / "logs" / "sequence_desync",
+                            log_path.parent / "sequence_desync",
                             desync=desync,
                             state=last_state,
                             recent_events=monitor.events.snapshot(),
@@ -6190,7 +6198,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 guard.require_recovery()
                 recovery.manual_test_required()
                 artifact = _terminal_artifact(
-                    root=PROJECT_ROOT / "logs" / "dead_board",
+                    root=log_path.parent / "dead_board",
                     event="DEAD_BOARD_NO_REFRESH",
                     target=target,
                     state=state,
@@ -6414,7 +6422,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 guard.pause(automatic=True)
                 stop_reason = "POLICY_NO_SAFE_MOVE"
                 artifact = _terminal_artifact(
-                    root=PROJECT_ROOT / "logs" / "policy_pause",
+                    root=log_path.parent / "policy_pause",
                     event=stop_reason,
                     target=target,
                     state=state,
@@ -6768,7 +6776,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 stop_reason = "DEAD_BOARD_NO_REFRESH"
                 guard.require_recovery()
                 recovery.manual_test_required()
-                artifact = _terminal_artifact(root=PROJECT_ROOT / "logs" / "dead_board", event="DEAD_BOARD_NO_REFRESH", target=target, state=state, policy=policy)
+                artifact = _terminal_artifact(root=log_path.parent / "dead_board", event="DEAD_BOARD_NO_REFRESH", target=target, state=state, policy=policy)
                 recovery_dispatched = _dispatch_technical_recovery(
                     runtime,
                     reason="DEAD_BOARD_NO_REFRESH",
@@ -6819,7 +6827,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     continue
                 guard.pause(automatic=True)
                 stop_reason = reason
-                artifact = _terminal_artifact(root=PROJECT_ROOT / "logs" / "policy_pause", event=reason, target=target, state=state, policy=policy)
+                artifact = _terminal_artifact(root=log_path.parent / "policy_pause", event=reason, target=target, state=state, policy=policy)
                 _write(log, "auto_pause", reason=reason, artifact=artifact, **fields)
                 _beep("pause", not args.no_beep)
                 continue
@@ -7766,7 +7774,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        with AutomationControllerLease(PROJECT_ROOT / "logs" / ".automation_controller.lock"):
+        with AutomationControllerLease(current_app_paths().controller_lock):
             return run(args)
     except KeyboardInterrupt:
         print("Ctrl+C emergency stop received.")

@@ -54,6 +54,19 @@ def run_limit_text(config: DesktopConfig) -> tuple[str, str]:
     return str(config.target_completed_matches), str(config.max_match_attempts)
 
 
+def graceful_button_text(controller: DesktopControllerSnapshot) -> str:
+    """Show pending text only while a controller still owns active work.
+
+    ``graceful_stop_requested`` remains true in the terminal snapshot as
+    durable run evidence.  That history must not leave the operator control
+    looking pending after the controller reaches its safe stopped boundary.
+    """
+
+    if controller.active and controller.graceful_stop_requested:
+        return "Stopping after current match..."
+    return "Stop After Current Match"
+
+
 @dataclass(frozen=True)
 class DesktopPresentation:
     connection: str
@@ -1391,11 +1404,7 @@ class DesktopApplication:
                     if controls.graceful_stop.actionable and not close_pending
                     else "disabled"
                 ),
-                text=(
-                    "Stopping after current match..."
-                    if snapshot.controller.graceful_stop_requested
-                    else "Stop After Current Match"
-                ),
+                text=graceful_button_text(snapshot.controller),
             )
             self.emergency_button.configure(
                 state="normal" if controls.emergency_stop.actionable else "disabled"
