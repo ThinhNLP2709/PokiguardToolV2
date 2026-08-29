@@ -2,7 +2,7 @@
 
 ## Mở tool trên Windows
 
-### Bản portable Phase 2F.1
+### Bản portable Release Candidate Phase 2F.2
 
 Build chuẩn tạo một bundle Windows x64 không cần cài Python:
 
@@ -10,7 +10,7 @@ Build chuẩn tạo một bundle Windows x64 không cần cài Python:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
 ```
 
-Artifact mặc định:
+Artifact build mặc định:
 
 ```text
 %LOCALAPPDATA%\PokiguardToolV2\package-builds\v1.0.0+15\
@@ -20,10 +20,11 @@ PokiguardToolV2-v1.0.0+15-win-x64.zip
 Giải nén toàn bộ ZIP rồi chạy `PokiguardToolV2.exe`. Không tách riêng EXE ra
 khỏi thư mục `_internal`. Runtime data được ghi dưới
 `%LOCALAPPDATA%\PokiguardToolV2`, không ghi cạnh EXE, vào source repository hay
-thư mục game. SHA-256 của artifact Phase 2F.1:
+thư mục game. Release Candidate đã được clean-build và live-validate từ commit
+`1dd53340e20ca405c0bf446682b3fcbf823afe62`. SHA-256 của RC được chấp nhận:
 
 ```text
-b8aed614f43d3550ef1d8dd6d88d3d3dbdb76547f63d5b9b4144bca89f5e1d05
+e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
 ### Chạy source/developer
@@ -54,30 +55,37 @@ computer-vision path remains available as a fallback.
 - no packet or network manipulation;
 - no HP, damage, reward, or server-authoritative state modification.
 
-See [AGENTS.md](AGENTS.md) for workspace rules and
-[docs/phase2f1_report.md](docs/phase2f1_report.md) for the latest accepted
-milestone.
+See [AGENTS.md](AGENTS.md) for workspace rules, the
+[Phase 2F.2 report](docs/phase2f2_report.md),
+[Phase 2F.2 runbook](docs/phase2f2_runbook.md), and
+[release manifest](release/phase2f2_manifest.json) for final RC evidence.
 
 ## Current status
 
-Phase 2F.1 has reached **PASS STRONG**:
+Phase 2F.1 remains the latest formally accepted phase (**PASS STRONG**).
+Phase 2F.2's same-binary RC passed clean staging and all packaged-live stages
+B1-B6, including:
 
 ```text
-portable one-folder Windows package
--> no Python/source-tree runtime dependency
--> read-only game attach
--> finite autonomous FarmRunner
--> normal foreground input
--> packaged bounded completion and graceful stop
--> writable state isolated under local app data
+read-only attach smoke
+-> bounded 10-WIN farm with evidence-backed technical recovery
+-> graceful stop
+-> checkpoint resume
+-> immediate Emergency stop with zero post-ACK input
+-> clean shutdown and unchanged game/package hashes
 ```
 
-Packaged live B4 completed one STRONG/CONSISTENT WIN after one naturally
-recovered dead board and created no attempt after target. Packaged live B5
-accepted the UI Stop After Current Match command during combat, completed the
-current WIN, created no next attempt and stopped at exact boss lobby. Final
-build `v1.0.0+15` also passes clean staging, game-absent startup, checkpoint
-path integration and write-location audit.
+Phase 2F.2 has reached **PASS STRONG** and the finite BASIC scope is complete.
+The previously untracked QTE reverse report was preserved byte-for-byte in a
+separate documentation commit with explicit user authorization before the
+release boundary; it was not mixed into the RC artifact or runtime graph.
+Canonical release tag: `v1.0.0+15`.
+
+Supported scope remains finite BASIC farming, exact-room session pinning,
+read-only state acquisition, normal foreground input, bounded technical
+recovery, graceful checkpoint resume, and Emergency stop. REASONING,
+unbounded farming, automatic game launch/restart or login, target rotation,
+memory writes, and network manipulation remain unsupported.
 
 Runtime logs and screenshots under `logs/` are intentionally excluded from Git
 because they are large, machine/session-specific diagnostic artifacts.
@@ -90,5 +98,6 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The Phase 2F.1 baseline passes 740 tests. Build and packaged validation details
-are in [the Phase 2F.1 runbook](docs/phase2f1_runbook.md).
+The Phase 2F.2 RC baseline passes 740 tests; the focused release suite passes
+14/14. Exact build and acceptance steps are in the
+[Phase 2F.2 runbook](docs/phase2f2_runbook.md).

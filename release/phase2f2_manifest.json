@@ -1,0 +1,96 @@
+{
+  "schema": "pokiguard.release_manifest.v1",
+  "product": "PokiguardToolV2",
+  "releaseVersion": "v1.0.0+15",
+  "releaseStatus": "PASS_STRONG",
+  "scope": {
+    "name": "BASIC",
+    "complete": true,
+    "completionBlocker": null
+  },
+  "artifact": {
+    "filename": "PokiguardToolV2-v1.0.0+15-win-x64.zip",
+    "type": "portable-one-folder-zip",
+    "targetOperatingSystem": "Windows",
+    "targetArchitecture": "x64",
+    "sha256": "e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69",
+    "sizeBytes": 13609921,
+    "bundleFileCount": 994,
+    "bundleSizeBytes": 29894977,
+    "executableSizeBytes": 3651784
+  },
+  "packaging": {
+    "tool": "PyInstaller",
+    "toolVersion": "6.22.0",
+    "pythonBuildRuntime": "CPython 3.11.9 x64",
+    "buildCommand": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build_windows.ps1",
+    "specification": "packaging/PokiguardToolV2.spec"
+  },
+  "source": {
+    "artifactSourceCommit": "1dd53340e20ca405c0bf446682b3fcbf823afe62",
+    "releaseAcceptanceCommit": null,
+    "releaseTag": "v1.0.0+15"
+  },
+  "releaseDate": "2026-08-29",
+  "validation": {
+    "focusedReleaseTests": {
+      "passed": 14,
+      "total": 14
+    },
+    "fullRegression": {
+      "passed": 740,
+      "total": 740
+    },
+    "compileall": "PASS",
+    "gitDiffCheck": "PASS",
+    "packagedAcceptance": {
+      "releaseSmoke": "PASS",
+      "boundedFarm": {
+        "status": "PASS_STRONG",
+        "farmRunId": "e113cf4a037949f68bcebc1d086a311d",
+        "targetCompletedMatches": 10,
+        "completedMatches": 10,
+        "wins": 10,
+        "losses": 0,
+        "unknownResults": 0,
+        "matchAttempts": 12,
+        "technicalAborts": 2,
+        "technicalRecoveries": 2,
+        "finalLifecycle": "BOSS_LOBBY"
+      },
+      "gracefulStop": "PASS",
+      "checkpointResume": "PASS",
+      "emergencyStop": "PASS",
+      "finalShutdown": "PASS",
+      "criticalSafetyViolations": 0
+    }
+  },
+  "safetyBoundary": {
+    "gameStateAccess": "external-read-only",
+    "processRights": [
+      "PROCESS_QUERY_INFORMATION",
+      "PROCESS_VM_READ"
+    ],
+    "gameplayInput": "normal-foreground-Windows-input",
+    "gameInstallationWrites": 0,
+    "sourceRepositoryRuntimeWrites": 0,
+    "packagedDirectoryRuntimeWrites": 0
+  },
+  "unsupported": [
+    "REASONING",
+    "infinite-or-unbounded-farming",
+    "automatic-game-launch-or-restart",
+    "login-automation",
+    "multi-target-rotation",
+    "memory-writes",
+    "network-manipulation"
+  ],
+  "gitHygieneResolution": {
+    "code": "RESOLVED_BY_SEPARATE_PRESERVATION_COMMIT",
+    "path": "docs/pokiguard_pet_skill_qte_reverse_report.md",
+    "phaseOwned": false,
+    "contentModified": false,
+    "sha256": "28333381379084d886b7e783bc36174e0f11036c2977bf0f5bfa6a645f35beb8",
+    "preservationCommit": "c2f4242e"
+  }
+}

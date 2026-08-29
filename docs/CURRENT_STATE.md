@@ -24,10 +24,42 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2F.1 — PASS STRONG** |
-| Active phase | **NONE — Phase 2F.2 NOT IMPLEMENTED** |
+| Current completed phase | **Phase 2F.2 — PASS STRONG / BASIC COMPLETE** |
+| Active phase | **NONE** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
+
+Phase 2F.2 Release Candidate `v1.0.0+15` passed clean staging and packaged-live
+acceptance B1-B6 against one unchanged binary. The accepted RC archive is
+`PokiguardToolV2-v1.0.0+15-win-x64.zip`, size `13,609,921` bytes, SHA-256
+`e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69`,
+built from commit `1dd53340e20ca405c0bf446682b3fcbf823afe62` with PyInstaller
+6.22.0 and CPython 3.11.9 x64.
+
+B2 FarmRun `e113cf4a037949f68bcebc1d086a311d` completed exactly 10/10
+STRONG/CONSISTENT WINs in 12 attempts; two technical aborts recovered and did
+not count as combat results. B3 graceful-stop run
+`f7936c6c94f24c30b693065062202cfb` completed the in-flight WIN and created no
+next attempt. B4 resumed checkpoint `6f604d50505d4148abb32e3d457bf614`
+through continuation `8876e53d4a6948388de421e5a9bd9382` to exactly 5/5 WINs
+with five unique MatchIds. B5 emergency run
+`e2c6919c29d4482a8d2f4cc3c9d37585` acknowledged the command during
+`ACTIVE_COMBAT` and emitted zero gameplay, entry, recovery or postmatch input
+after acknowledgement. B6 closed cleanly with one stopped controller/poller,
+zero UI errors, and the game process still alive.
+
+Focused release tests are **14/14 PASS** and full regression is **740/740
+PASS**. Game-installation, source-runtime and packaged-directory write audits
+are all zero; game binaries and the RC archive remained byte-identical.
+
+The pre-existing untracked
+`docs/pokiguard_pet_skill_qte_reverse_report.md` was verified as a valid
+project reverse report and, after explicit user authorization to finalize, was
+preserved byte-for-byte in the separate documentation commit `c2f4242e`. It
+was not mixed into the RC artifact or production runtime graph. Git hygiene is
+therefore resolved and the annotated release tag is `v1.0.0+15`. Canonical evidence:
+[Phase 2F.2 report](phase2f2_report.md), [runbook](phase2f2_runbook.md), and
+[release manifest](../release/phase2f2_manifest.json).
 
 Phase 2F.1 adds the canonical Windows x64 portable one-folder package. Final
 build `v1.0.0+15` uses PyInstaller 6.22.0, starts through the windowed frozen
@@ -1196,19 +1228,21 @@ accepted FarmRun documented in [Phase 2E.3 report](phase2e3_report.md).
 
 ## Next Phase
 
-**Phase 2F.1 is PASS STRONG. Phase 2F.2 is NOT IMPLEMENTED.**
+**Phase 2F.2 is PASS STRONG. Finite BASIC scope is COMPLETE.**
 
 ```text
 accepted Phase 2E.2 live UI/FarmRunner integration
 -> accepted Phase 2E.3 operator UX + exact-pet recovery + 25-match UI soak
 -> accepted Phase 2F.1 portable Windows packaging + packaged live validation
--> Phase 2F.2 Release Candidate + Final Acceptance (not implemented)
+-> accepted Phase 2F.2 Release Candidate + Final Acceptance
 ```
 
-Do not infer or begin Phase 2F.2 without explicit user scope. Infinite farming, process
-relaunch/login, internet recovery, target rotation, pet-specific skill-card use,
-mid-combat checkpoint resume, and navigation from the general game lobby through
-Chinh Phuc islands remain outside current scope unless explicitly approved.
+There is no next phase in the current roadmap. Infinite farming, process
+relaunch/login, internet recovery, target
+rotation, pet-specific skill-card use, mid-combat checkpoint resume, and
+navigation from the general game lobby through Chinh Phuc islands remain
+outside current scope unless explicitly approved. REASONING remains undefined
+and unsupported.
 
 ## Update Policy for Future Phases
 
