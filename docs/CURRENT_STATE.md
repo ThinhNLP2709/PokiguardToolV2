@@ -1877,16 +1877,20 @@ the computed `3.150` midpoint remained diagnostic only. Generic 1.7.4
 MatchId and bounded server timestamp; it did not echo a server timing result, so
 that field correctly remains UNKNOWN.
 
-The production live sample corrects the resource/turn interpretation recorded in
-Phase 3A.1. For this exact `ATTACK_LEGEND_` fixture, `conditionUse=200` is the
-consumed Mana amount, while `power=200` is the minimum Rage eligibility
-requirement, not a consumed Rage cost. Raw `manaCost/powerCost` remain `0/0`.
-Observed Mana changed `262 -> 62`; Rage was `250 -> 250`, satisfying the
-requirement. The user confirmed that after Space the skill itself automatically
-eats the board and no manual SWAP is needed. The resulting turn changed from local
-41 to boss 42, so this Pet Skill consumes the turn. The Phase 3A.1 sample that
-read `274/215 -> 74/15` while turn 33 was still local captured an earlier point in
-the resolution and no longer defines the production semantics.
+The production live sample corrects the turn interpretation recorded in Phase
+3A.1 while preserving its immediate cost evidence. For this exact
+`ATTACK_LEGEND_` fixture, `conditionUse=200` is consumed Mana and `power=200` is
+consumed Rage; raw `manaCost/powerCost` remain `0/0`. The immediate Phase 3A.1
+sample `274/215 -> 74/15` proves gross delta `-200/-200`. A later Phase 3B.1
+sample read `262/250 -> 62/250` only after the skill had automatically eaten the
+board, so its net Rage delta is confounded by absorbed Rage gems/cascade and is
+classified `AMBIGUOUS`, not as evidence that Rage is unconsumed.
+
+The user confirmed that after Space the skill itself automatically eats the board
+and no manual SWAP is needed. That later sample changed from local turn 41 to boss
+turn 42, so Huyền Thoại 7 consumes the turn. The earlier turn-33 sample was read
+before the automatic board effect/turn edge completed and no longer defines turn
+semantics.
 
 The response scanner now checks provider-learned ChatMessageDTO regions before a
 bounded full fallback, preventing short-lived skill responses from being lost.
@@ -1894,7 +1898,13 @@ Retained `CardUI.timingText` from a preceding generation is ignored until the
 current QTE itself is finished. Exact destroyed-gem/Sword count remains UNKNOWN;
 family/target mode are `AUTOMATIC_DOT_DESTRUCTION / AUTOMATIC`.
 
-Focused verification is **72/72 PASS**, full regression **869/869 PASS**,
+An optional second live fixture observed `Spectre / petId 2227 / METAL` evolving
+to `Huyền Thoại 2 / cardId 2 / ATTACK_LEGEND`. Its runtime fields and immediate
+delta prove `200 Mana + 150 Rage` cost (`387/246 -> 187/96`); a 7/7 QTE at 3.091
+seconds resolved PERFECT. Exact damage/final turn semantics remain UNKNOWN and
+HT2 is not integrated into policy.
+
+Focused verification is **74/74 PASS**, full regression **871/871 PASS**,
 compileall and diff check pass. Automated Pet Skill clicks, directions,
 Space/Enter, process writes, direct gameplay calls and network manipulation are
 all zero. ManaPriority and the accepted BASIC gameplay path are unchanged. See

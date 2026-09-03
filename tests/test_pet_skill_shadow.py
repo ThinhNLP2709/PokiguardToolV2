@@ -277,12 +277,27 @@ class PetSkillCapabilityTests(unittest.TestCase):
         self.assertTrue(value.live_card_present)
         self.assertTrue(value.ownership_current)
 
-    def test_huyen_thoai_7_mana_cost_and_power_requirement(self) -> None:
+    def test_huyen_thoai_7_effective_costs(self) -> None:
         value = capability()
         self.assertEqual(value.effective_mana_cost, 200)
-        self.assertEqual(value.required_power, 200)
+        self.assertEqual(value.effective_power_cost, 200)
         self.assertEqual(value.effective_mana_cost_source, PetSkillCostSource.CONDITION_USE)
-        self.assertEqual(value.required_power_source, PetSkillCostSource.POWER)
+        self.assertEqual(value.effective_power_cost_source, PetSkillCostSource.POWER)
+
+    def test_huyen_thoai_2_effective_costs_from_second_live_shape(self) -> None:
+        value = capability(
+            value=card(
+                card_id=2,
+                name="Huyền Thoại 2",
+                element_type="ATTACK_LEGEND",
+                condition_use=200,
+                power=150,
+                value=5000,
+                damage_multiplier=1.4,
+            )
+        )
+        self.assertEqual(value.skill_family, PetSkillFamily.DOT_QTE_OTHER)
+        self.assertEqual((value.effective_mana_cost, value.effective_power_cost), (200, 150))
 
     def test_raw_zero_costs_are_preserved(self) -> None:
         value = capability()
@@ -290,12 +305,12 @@ class PetSkillCapabilityTests(unittest.TestCase):
 
     def test_cost_is_not_hardcoded_to_200(self) -> None:
         value = capability(value=card(condition_use=175, power=125, name="synthetic"))
-        self.assertEqual((value.effective_mana_cost, value.required_power), (175, 125))
+        self.assertEqual((value.effective_mana_cost, value.effective_power_cost), (175, 125))
 
     def test_unknown_cost_source_for_unproven_family_shape(self) -> None:
-        value = resolve_pet_skill_cost(card(element_type="ATTACK_LEGEND"))
+        value = resolve_pet_skill_cost(card(element_type="OTHER"))
         self.assertEqual(value.effective_mana_cost_source, PetSkillCostSource.UNKNOWN)
-        self.assertEqual(value.required_power_source, PetSkillCostSource.UNKNOWN)
+        self.assertEqual(value.effective_power_cost_source, PetSkillCostSource.UNKNOWN)
 
     def test_metadata_without_live_card_ui(self) -> None:
         value = PetSkillCapabilityProvider().observe(
@@ -618,15 +633,14 @@ class QteShadowTests(unittest.TestCase):
         resource, _ = observer.observe_resolution(
             generation=1,
             mana_after=74,
-            power_after=215,
+            power_after=15,
             post_resolution_turn=33,
             post_resolution_local_actor=1,
         )
         self.assertEqual(resource.verification, DeltaVerification.AGREES)
-        self.assertEqual((resource.observed_mana_delta, resource.observed_power_delta), (-200, 0))
-        self.assertTrue(resource.power_requirement_met_before_use)
+        self.assertEqual((resource.observed_mana_delta, resource.observed_power_delta), (-200, -200))
 
-    def test_phase3b1_live_mana_cost_rage_requirement_and_turn_fixture(self) -> None:
+    def test_phase3b1_late_automatic_effect_delta_is_ambiguous(self) -> None:
         observer = QteObserver()
         observe(
             observer,
@@ -644,12 +658,42 @@ class QteShadowTests(unittest.TestCase):
             power_after=250,
             post_resolution_turn=42,
             post_resolution_local_actor=99,
+            concurrent_resource_change=True,
         )
-        self.assertEqual(resource.verification, DeltaVerification.AGREES)
+        self.assertEqual(resource.verification, DeltaVerification.AMBIGUOUS)
         self.assertEqual(resource.observed_mana_delta, -200)
         self.assertEqual(resource.observed_power_delta, 0)
-        self.assertTrue(resource.power_requirement_met_before_use)
         self.assertTrue(turn.turn_consumed_observed)
+
+    def test_huyen_thoai_2_live_cost_delta_agrees(self) -> None:
+        observer = QteObserver()
+        huyen_thoai_2 = card(
+            card_id=2,
+            name="Huyền Thoại 2",
+            element_type="ATTACK_LEGEND",
+            condition_use=200,
+            power=150,
+        )
+        observe(
+            observer,
+            bound(
+                status=QteBindingStatus.COMPLETED_CURRENT,
+                value=qte(index=4, correct=7, finished=True, elapsed=3.091),
+                skill_card_id=2,
+            ),
+            cap=capability(value=huyen_thoai_2),
+            mana=387,
+            power=246,
+        )
+        resource, _ = observer.observe_resolution(
+            generation=1,
+            mana_after=187,
+            power_after=96,
+            post_resolution_turn=25,
+            post_resolution_local_actor=1,
+        )
+        self.assertEqual(resource.verification, DeltaVerification.AGREES)
+        self.assertEqual((resource.observed_mana_delta, resource.observed_power_delta), (-200, -150))
 
     def test_concurrent_resource_change_is_ambiguous(self) -> None:
         observer = QteObserver()
@@ -669,8 +713,8 @@ class QteShadowTests(unittest.TestCase):
             concurrent_resource_change=True,
         )
         self.assertEqual(resource.verification, DeltaVerification.AMBIGUOUS)
-        self.assertIsNone(turn.turn_consumed_observed)
-        self.assertEqual(turn.evidence_status, QteEvidenceStatus.AMBIGUOUS)
+        self.assertTrue(turn.turn_consumed_observed)
+        self.assertEqual(turn.evidence_status, QteEvidenceStatus.CURRENT)
 
     def test_non_turn_consuming_observation(self) -> None:
         observer = QteObserver()

@@ -518,12 +518,29 @@ def run(args: argparse.Namespace) -> int:
                                 if runtime.current_player
                                 else None
                             )
+                            automatic_effect_overlap = bool(
+                                shadow_result is not None
+                                and shadow_result.qte_family.value
+                                == "AUTOMATIC_DOT_DESTRUCTION"
+                                and pending_before is not None
+                                and (
+                                    current_resource["localHp"]
+                                    != pending_before["localHp"]
+                                    or current_resource["bossHp"]
+                                    != pending_before["bossHp"]
+                                    or current_resource["boardHash"]
+                                    != pending_before["boardHash"]
+                                    or runtime.turn != identity.turn_number
+                                    or post_actor != identity.local_actor_number
+                                )
+                            )
                             resource_turn = shadow_observer.observe_resolution(
                                 generation=identity.observer_generation,
                                 mana_after=current_resource["mana"],
                                 power_after=current_resource["power"],
                                 post_resolution_turn=runtime.turn,
                                 post_resolution_local_actor=post_actor,
+                                concurrent_resource_change=automatic_effect_overlap,
                             )
                             _write(
                                 log,
@@ -837,7 +854,7 @@ def run(args: argparse.Namespace) -> int:
                 capability.live_card_address,
                 capability.live_card_actionable,
                 capability.effective_mana_cost,
-                capability.required_power,
+                capability.effective_power_cost,
                 capability.stale_reason,
             )
             if capability_signature != previous_capability_signature:

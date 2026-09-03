@@ -27,32 +27,32 @@ live capability. Button presence/interactable chỉ là evidence, không phải 
 click.
 
 Capability giữ riêng source `PetUserDTO`, exact runtime CardData/card identity,
-raw resource fields, resolved Mana cost, Rage requirement, cooldown,
+raw resource fields, resolved Mana/Rage costs, cooldown,
 needPerfection, quality values, family/target mode và current CardUI/Button proof.
 Source pet vẫn là `Silas / petId 2306`; `Huyền Thoại 7 / cardId 7` là runtime
 skill-card identity riêng sau tiến hóa.
 
 ## Resource semantics correction
 
-User rule và live Phase 3B.1 xác nhận ý nghĩa đúng của fixture:
+Hai immediate-response fixture xác nhận ý nghĩa đúng của các field:
 
 ```text
 conditionUse = 200  -> Mana bị tiêu hao
-power        = 200  -> ngưỡng Nộ tối thiểu để kích hoạt
+power        = 200  -> Nộ bị tiêu hao cho Huyền Thoại 7
 manaCost     = 0    -> raw field, không dùng làm effective Mana cost ở shape này
 powerCost    = 0    -> raw field
 ```
 
-Resolver không dùng pet ID, card ID, tên card hay literal 200. Rule chỉ áp dụng
-cho structural shape đã chứng minh `ATTACK_LEGEND_` với raw cost `0/0`; shape
-khác để `UNKNOWN`. Synthetic `175 Mana / 125 Rage requirement` chứng minh không
-global hard-code `200/200`.
+Resolver không dùng pet ID, card ID, tên card hay literal cost. Rule áp dụng cho
+hai structural shape đã live chứng minh: `ATTACK_LEGEND_` và `ATTACK_LEGEND` với
+raw cost `0/0`; shape khác để `UNKNOWN`. Huyền Thoại 7 đọc `200/200`, Huyền
+Thoại 2 đọc `200/150`, và synthetic `175/125` chứng minh không global hard-code.
 
-Đây là correction đối với kết luận Phase 3A.1. Sample 3A.1 thấy Nộ `215 -> 15`
-đã nhầm net delta với cost. Production model không còn gọi `power` là cost và
-không yêu cầu Nộ giảm 200. Mẫu live sạch 3B.1 có Mana `262 -> 62`, Nộ
-`250 -> 250`; điều kiện Nộ đạt và Mana giảm đúng 200. Pet Skill tự phá board và
-cascade sau Space, nên tài nguyên sau skill có thể được các gem tự động bổ sung.
+Huyền Thoại 7 có immediate sample Mana/Nộ `274/215 -> 74/15`, đúng gross cost
+`-200/-200`. Mẫu muộn `262/250 -> 62/250` được đọc sau khi skill tự ăn board;
+net Nộ bằng 0 phù hợp trường hợp đã trừ 200 rồi hấp thụ lại 200 từ các viên Nộ.
+Vì gravity/cascade có thể tiếp tục cộng tài nguyên, snapshot muộn được đánh dấu
+`AMBIGUOUS` cho cost attribution thay vì phủ nhận gross cost đã quan sát trực tiếp.
 
 ## QteSnapshot và generation ownership
 
@@ -94,7 +94,7 @@ Match `M_631e9914` và `M_c2a5fef6` đều resolve runtime card:
 - family/target: `AUTOMATIC_DOT_DESTRUCTION / AUTOMATIC`;
 - raw `conditionUse/power/manaCost/powerCost = 200/200/0/0`;
 - effective Mana cost `200`, source `CONDITION_USE`;
-- required Rage `200`, source `POWER`;
+- effective Rage cost `200`, source `POWER`;
 - current `CardUI.ActiveDotSkillCard`, exact session/Board and validated Unity
   Button.
 
@@ -127,12 +127,14 @@ Raw before/after:
 ```text
 turn:  41 local -> 42 boss
 Mana:  262 -> 62   (delta -200)
-Rage:  250 -> 250  (requirement 200 was met; Rage is not a cost)
+Rage:  250 -> 250  (net delta 0 after automatic board effect)
 HP:    48970 -> 64058
 ```
 
 User xác nhận sau Space Pet Skill tự ăn board và không cần board input. Do đó HP/
 resource effect và turn edge là chính skill resolution, không phải manual swap.
+Gross Huyền Thoại 7 cost vẫn là 200 Mana + 200 Nộ; net Nộ của snapshot này bị
+automatic absorption/cascade làm nhiễu và được phân loại `AMBIGUOUS`.
 Evidence mới cho thấy `Huyền Thoại 7` **tiêu hao lượt**. Sample Phase 3A.1 đọc
 response trước khi automatic board effect/turn edge hoàn tất nên kết luận
 non-turn-consuming cũ bị supersede.
@@ -140,6 +142,22 @@ non-turn-consuming cũ bị supersede.
 Exact số gem/Sword bị phá vẫn `UNKNOWN`: generic response không echo
 `dotsToDestroy`, và gravity/refill/cascade không cho phép quy toàn bộ board diff
 thành exact skill count.
+
+## Optional second Legendary trace — Huyền Thoại 2
+
+Post-acceptance read-only trace `phase3b1_second_legendary_ht2_20260904_020332`
+đã quan sát pet chính `Spectre / petId 2227 / METAL` và exact runtime skill:
+
+- `Huyền Thoại 2`, cardId `2`, element `ATTACK_LEGEND`;
+- raw `conditionUse/power/manaCost/powerCost = 200/150/0/0`;
+- effective cost `200 Mana + 150 Nộ`;
+- `value=5000`, `damageMultiplier=1.4`, cooldown `0`;
+- QTE `UP,UP,LEFT,UP,LEFT,UP,DOWN`, 7/7, elapsed `3.091`, PERFECT;
+- immediate resource `387/246 -> 187/96`, exact delta `-200/-150`.
+
+Response được correlate current, nhưng snapshot dừng trước khi boss HP/damage và
+turn edge cuối hoàn tất. Exact damage formula và final turn semantics của HT2 vẫn
+UNKNOWN. HT2 không được thêm vào gameplay policy theo yêu cầu người dùng.
 
 ## Safety counters
 
@@ -155,8 +173,8 @@ network manipulation = 0
 ## Verification
 
 ```text
-focused tests: 72/72 PASS
-full regression: 869/869 PASS
+focused tests: 74/74 PASS
+full regression: 871/871 PASS
 compileall: PASS
 git diff --check: PASS
 ```
@@ -172,8 +190,8 @@ source audit.
 - Exact `dotsToDestroy`/exact Sword count không được chứng minh.
 - Source `PetUserDTO` không đổi thành evolved skill identity; CardUI/CardData là
   current runtime skill identity.
-- Legendary pet thứ hai chưa quan sát, không phải điều kiện PASS.
-- Semantics của family/card khác chưa được suy rộng từ fixture này.
+- Exact damage và final turn semantics của Huyền Thoại 2 chưa đóng.
+- Semantics của family/card ngoài hai live fixture chưa được suy rộng.
 
 Nominal next safe phase: **Phase 3B.2 — Automated Direction Sequence**, chỉ sau
 khi được review/ra lệnh riêng. Phase 3B.1 không triển khai bất kỳ input tự động

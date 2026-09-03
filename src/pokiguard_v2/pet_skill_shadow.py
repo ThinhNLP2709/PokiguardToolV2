@@ -95,8 +95,8 @@ class DeltaVerification(str, Enum):
 class PetSkillCostResolution:
     effective_mana_cost: int | None
     effective_mana_cost_source: PetSkillCostSource
-    required_power: int | None
-    required_power_source: PetSkillCostSource
+    effective_power_cost: int | None
+    effective_power_cost_source: PetSkillCostSource
     evidence: tuple[str, ...] = ()
 
 
@@ -147,8 +147,8 @@ class PetSkillCapability:
     element_type: str | None
     effective_mana_cost: int | None
     effective_mana_cost_source: PetSkillCostSource
-    required_power: int | None
-    required_power_source: PetSkillCostSource
+    effective_power_cost: int | None
+    effective_power_cost_source: PetSkillCostSource
     raw_condition_use: int | None
     raw_power: int | None
     raw_mana_cost: int | None
@@ -189,17 +189,20 @@ def pet_skill_family(element_type: str | None) -> tuple[PetSkillFamily, PetSkill
 def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
     """Resolve only the family semantics proven in Phase 3A.1.
 
-    For the observed ``ATTACK_LEGEND_`` shape, ``conditionUse`` is the consumed
-    Mana amount while ``power`` is the minimum Rage/Power eligibility
-    threshold, not a second consumed cost.  The raw ``manaCost``/``powerCost``
-    fields remain zero.  Values are read from the exact card; neither card/pet
-    identity nor 200 is encoded here.  Other shapes remain UNKNOWN until
-    independently proven rather than applying a speculative global rule.
+    Live fixtures prove the same raw-field contract for both Dot-QTE families:
+    ``conditionUse`` is consumed Mana and ``power`` is consumed Rage/Power,
+    while raw ``manaCost``/``powerCost`` remain zero.  Huyền Thoại 7 observed
+    200/200 and Huyền Thoại 2 observed 200/150.  Values are always read from
+    the exact card; no card/pet identity or numeric cost is encoded here.
+    Other shapes remain UNKNOWN.
     """
 
     family, _ = pet_skill_family(card.element_type)
     proven_shape = (
-        family is PetSkillFamily.AUTOMATIC_DOT_DESTRUCTION
+        family in {
+            PetSkillFamily.AUTOMATIC_DOT_DESTRUCTION,
+            PetSkillFamily.DOT_QTE_OTHER,
+        }
         and card.mana_cost == 0
         and card.power_cost == 0
     )
@@ -207,9 +210,9 @@ def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
     power = card.power if proven_shape and card.power > 0 else None
     evidence: list[str] = []
     if mana is not None:
-        evidence.append("ATTACK_LEGEND_:conditionUse_is_effective_mana")
+        evidence.append(f"{card.element_type}:conditionUse_is_mana_cost")
     if power is not None:
-        evidence.append("ATTACK_LEGEND_:power_is_rage_requirement")
+        evidence.append(f"{card.element_type}:power_is_rage_cost")
     if not evidence:
         evidence.append("no_proven_cost_rule_for_current_card_shape")
     return PetSkillCostResolution(
@@ -219,8 +222,8 @@ def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
             if mana is not None
             else PetSkillCostSource.UNKNOWN
         ),
-        required_power=power,
-        required_power_source=(
+        effective_power_cost=power,
+        effective_power_cost_source=(
             PetSkillCostSource.POWER
             if power is not None
             else PetSkillCostSource.UNKNOWN
@@ -318,8 +321,8 @@ class PetSkillCapabilityProvider:
             element_type=None,
             effective_mana_cost=None,
             effective_mana_cost_source=PetSkillCostSource.UNKNOWN,
-            required_power=None,
-            required_power_source=PetSkillCostSource.UNKNOWN,
+            effective_power_cost=None,
+            effective_power_cost_source=PetSkillCostSource.UNKNOWN,
             raw_condition_use=None,
             raw_power=None,
             raw_mana_cost=None,
@@ -515,8 +518,8 @@ class PetSkillCapabilityProvider:
             element_type=card.element_type,
             effective_mana_cost=cost.effective_mana_cost,
             effective_mana_cost_source=cost.effective_mana_cost_source,
-            required_power=cost.required_power,
-            required_power_source=cost.required_power_source,
+            effective_power_cost=cost.effective_power_cost,
+            effective_power_cost_source=cost.effective_power_cost_source,
             raw_condition_use=card.condition_use,
             raw_power=card.power,
             raw_mana_cost=card.mana_cost,
@@ -574,8 +577,7 @@ class PetSkillResourceDelta:
     power_before: int | None
     power_after: int | None
     observed_power_delta: int | None
-    required_power_before_use: int | None
-    power_requirement_met_before_use: bool | None
+    expected_power_cost: int | None
     verification: DeltaVerification
 
 
@@ -925,9 +927,9 @@ class QteObserver:
         )
         expected_known = (
             capability.effective_mana_cost is not None
-            and capability.required_power is not None
+            and capability.effective_power_cost is not None
             and mana_delta is not None
-            and power_before is not None
+            and power_delta is not None
         )
         if concurrent_resource_change:
             verification = DeltaVerification.AMBIGUOUS
@@ -935,7 +937,7 @@ class QteObserver:
             verification = DeltaVerification.UNKNOWN
         elif (
             mana_delta == -capability.effective_mana_cost
-            and power_before >= capability.required_power
+            and power_delta == -capability.effective_power_cost
         ):
             verification = DeltaVerification.AGREES
         else:
@@ -948,24 +950,12 @@ class QteObserver:
             power_before=power_before,
             power_after=power_after,
             observed_power_delta=power_delta,
-            required_power_before_use=capability.required_power,
-            power_requirement_met_before_use=(
-                power_before >= capability.required_power
-                if power_before is not None and capability.required_power is not None
-                else None
-            ),
+            expected_power_cost=capability.effective_power_cost,
             verification=verification,
         )
         consumed: bool | None
         evidence = QteEvidenceStatus.UNKNOWN
-        if concurrent_resource_change:
-            # A later board action/turn edge can both replenish resources and
-            # move turn ownership before the generic skill envelope is found.
-            # Preserve the observed values but do not attribute either change
-            # to this Pet Skill generation.
-            consumed = None
-            evidence = QteEvidenceStatus.AMBIGUOUS
-        elif snapshot.turn_number is None or post_resolution_turn is None:
+        if snapshot.turn_number is None or post_resolution_turn is None:
             consumed = None
         elif post_resolution_local_actor is None:
             consumed = None

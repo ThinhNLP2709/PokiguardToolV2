@@ -53,9 +53,9 @@ có nhìn thấy từng frame trung gian hay không.
 - Cần ít nhất hai generation khác nhau; ba QTE trong cùng trận là tốt nhất.
 - Ít nhất một skill không nên kết thúc trận. Sau khi xác nhận, chờ vài giây trước
   thao tác kế tiếp để observer đọc Mana/Rage và lượt sau response.
-- Với `Huyền Thoại 7`, `conditionUse=200` là Mana bị tiêu hao còn `power=200`
-  là ngưỡng Nộ tối thiểu, không phải Nộ cost. Pet Skill tự phá board/cascade sau
-  confirm, nên net Nộ/HP có thể đổi do chính các gem được ăn.
+- Với `Huyền Thoại 7`, `conditionUse=200` là Mana cost và `power=200` là Nộ
+  cost. Pet Skill tự phá board/cascade sau confirm, nên net Nộ/HP của snapshot
+  muộn có thể khác gross cost do chính các gem được ăn.
 - Không đi thêm nước sau confirm. Chờ khoảng 6 giây để observer bắt response,
   automatic board effect và turn edge trước khi thao tác tiếp.
 - Generic `MATCH_SKILL_USE_RES` của Pokiguard 1.7.4 có thể không echo

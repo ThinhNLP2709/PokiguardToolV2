@@ -625,7 +625,7 @@ dots target. Exact `dotsToDestroy` không được envelope echo nên vẫn UNKN
 tuyên bố Perfect luôn tối đa Sword. Phase đạt **PASS STRONG**, focused 22/22 và
 full 819/819 PASS, không có automated QTE input hay process write.
 
-## 21. Phase 3B.1 production correction — resource condition và turn edge
+## 21. Phase 3B.1 production correction — gross/net resource và turn edge
 
 Production live `phase3b1_qte_shadow_20260904_012107.jsonl` quan sát ba manual
 QTE generation trong MatchId `M_631e9914`. Ba server sequence đều khớp toàn bộ
@@ -635,19 +635,22 @@ generation thứ tư 7/7, elapsed 3.008 giây trong Perfect window
 `[3.000,3.300]`, runtime result PERFECT và current generic
 `MATCH_SKILL_USE_RES`. Envelope vẫn không echo `timingResult`.
 
-User làm rõ và raw production sample xác nhận semantics resource đúng:
+Hai immediate-response fixture xác nhận semantics resource đúng:
 
 ```text
 conditionUse = 200  -> Mana tiêu hao
-power        = 200  -> điều kiện Nộ tối thiểu để dùng thẻ
+power        = 200  -> Nộ tiêu hao của Huyền Thoại 7
 manaCost     = 0    -> raw field
 powerCost    = 0    -> raw field
 ```
 
-Sample production đọc Mana `262 -> 62` và Nộ `250 -> 250`. Vì vậy kết luận cũ
-`power=200` là Nộ cost bị supersede; production không kỳ vọng Nộ giảm 200.
-Resolver lấy cả hai giá trị từ exact runtime CardData/structural family, không
-hard-code pet ID, card ID, tên hoặc literal 200.
+Immediate sample Phase 3A.1 đọc Mana/Nộ `274/215 -> 74/15`, đúng gross delta
+`-200/-200`. Sample Phase 3B.1 muộn đọc `262/250 -> 62/250` sau automatic board
+effect. User xác nhận skill hấp thụ Kiếm/Máu/Nộ trên board; net Nộ 0 có thể là
+gross `-200` rồi được cộng lại từ các viên Nộ/cascade. Vì vậy snapshot muộn là
+`AMBIGUOUS` cho cost attribution, không phủ nhận immediate cost. Resolver lấy
+giá trị từ exact runtime CardData/structural family, không hard-code pet ID,
+card ID, tên hoặc literal cost.
 
 Sau Space, Pet Skill tự phá board/cascade; operator không cần và không thực hiện
 manual SWAP cho effect đó. Sample production thấy HP `48970 -> 64058` và turn
@@ -662,3 +665,18 @@ Tổng live Phase 3B.1 là 28/28 manual directions, zero mismatch, zero stale
 generation được dùng current. Exact `dotsToDestroy` vẫn UNKNOWN vì generic
 response không echo và cascade/refill làm board diff không đủ chứng minh exact
 skill count.
+
+### Optional Huyền Thoại 2 live fixture
+
+`phase3b1_second_legendary_ht2_20260904_020332.jsonl` quan sát pet chính
+`Spectre`, petId `2227`, hệ `METAL`, tiến hóa thành exact runtime
+`Huyền Thoại 2`, cardId `2`, element `ATTACK_LEGEND`. CardData đọc
+`conditionUse=200`, `power=150`, raw `manaCost/powerCost=0/0`, `value=5000`,
+multiplier `1.4`, cooldown 0. Immediate resource đổi `387/246 -> 187/96`, chứng
+minh cost `200 Mana + 150 Nộ` cho fixture này.
+
+QTE sequence `Up,Up,Left,Up,Left,Up,Down` khớp 7/7, elapsed 3.091 giây trong
+Perfect window và runtime result PERFECT. Generic response current đã correlate,
+nhưng observer dừng trước boss damage/final turn edge; exact damage formula và
+turn semantics của HT2 vẫn UNKNOWN. Fixture này không được tích hợp gameplay
+policy.
