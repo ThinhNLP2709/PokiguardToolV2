@@ -1,0 +1,10 @@
+// Image 42: UnityEngine.MathematicsModule.dll - Assembly: UnityEngine.MathematicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15208-15250
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Mathematics.PerformanceTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Mathematics.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("UnityEngine.CoreModule")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("UnityEngine")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETStandard,Version=v2.1")]
+[assembly: UnityEngine.UnityEngineModuleAssembly]

@@ -1,0 +1,28 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+// Image 4: Unity.InputSystem.dll - Assembly: Unity.InputSystem, Version=1.19.0.0, Culture=neutral, PublicKeyToken=null - Types 6023-6671
+
+namespace UnityEngine.InputSystem.Processors
+{
+	public class ScaleProcessor : InputProcessor<float> // TypeDefIndex: 6522
+	{
+		// Fields
+		[Tooltip("Scale factor to multiply incoming float values by.")]
+		public float factor; // 0x10
+	
+		// Constructors
+		public ScaleProcessor(); // 0x0000000181DE9240-0x0000000181DE9250
+	
+		// Methods
+		public override float Process(float value, InputControl control); // 0x0000000181DE91D0-0x0000000181DE91E0
+		public override string ToString(); // 0x0000000181DE91E0-0x0000000181DE9240
+	}
+}

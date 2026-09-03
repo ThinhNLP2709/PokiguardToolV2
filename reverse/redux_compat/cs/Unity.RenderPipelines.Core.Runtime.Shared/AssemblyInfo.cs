@@ -1,0 +1,12 @@
+// Image 77: Unity.RenderPipelines.Core.Runtime.Shared.dll - Assembly: Unity.RenderPipelines.Core.Runtime.Shared, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15888-15894
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.HighDefinition.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.HighDefinition.Editor.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.HighDefinition.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.Universal.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.Universal.Editor.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.Universal.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.Core.Editor.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.GraphicTests.Performance.RPCore.Runtime")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

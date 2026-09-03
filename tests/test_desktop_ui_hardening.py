@@ -34,9 +34,11 @@ from pokiguard_v2.desktop_ui import (
     DESKTOP_TAB_TITLES,
     INITIAL_FOCUS_TARGET,
     PREFERENCE_TABLE_ROWS,
+    SETTINGS_TABLE_ROWS,
     VISIBLE_RUNTIME_ROWS,
     background_click_clears_entry_focus,
     graceful_button_text,
+    match_energy_text,
     run_limit_text,
     visible_runtime_values,
 )
@@ -229,10 +231,23 @@ class BoundedOperatorLogTests(unittest.TestCase):
 
 
 class CompactPresentationContractTests(unittest.TestCase):
-    def test_pre_mvp_title_uses_incrementing_build_suffix(self) -> None:
-        self.assertEqual(15, APP_BUILD)
-        self.assertEqual("v1.0.0+15", APP_VERSION)
-        self.assertEqual("Pokiguard Tool V2 - v1.0.0+15", APP_TITLE)
+    def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
+        self.assertEqual(0, APP_BUILD)
+        self.assertEqual("v1.0.23", APP_VERSION)
+        self.assertEqual("Pokiguard Tool V2 - v1.0.23", APP_TITLE)
+
+    def test_match_energy_text_counts_each_local_turn_once(self) -> None:
+        controller = DesktopControllerSnapshot(
+            completed_match_turns=((1, 11), (2, 14), (3, 9)),
+            current_match_turns=4,
+            total_energy_used=38,
+        )
+        self.assertEqual(
+            "Completed turns / energy: #1: 11, #2: 14, #3: 9\n"
+            "Current match turn / energy: 4\n"
+            "Total energy: 38",
+            match_energy_text(controller),
+        )
 
     def test_graceful_button_clears_pending_text_after_controller_stops(self) -> None:
         stopping = DesktopControllerSnapshot(
@@ -250,13 +265,14 @@ class CompactPresentationContractTests(unittest.TestCase):
 
     def test_control_preferences_and_diagnostics_tab_order(self) -> None:
         self.assertEqual(
-            ("Control", "Preferences", "Diagnostics / Log"),
+            ("Control", "Preferences", "Settings", "Diagnostics / Log"),
             DESKTOP_TAB_TITLES,
         )
         self.assertEqual(
-            ("PlayStyle", "Intelligence", "ManaPriority"),
+            ("PlayStyle", "Intelligence", "ManaPriority", "Board input"),
             PREFERENCE_TABLE_ROWS,
         )
+        self.assertEqual(("Game executable",), SETTINGS_TABLE_ROWS)
         self.assertEqual("notebook", INITIAL_FOCUS_TARGET)
 
     def test_blank_surface_clears_focus_but_controls_keep_their_click(self) -> None:

@@ -1,0 +1,11 @@
+// Image 86: Unity.InternalAPIEngineBridge.001.dll - Assembly: Unity.InternalAPIEngineBridge.001, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15973-15975
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Animation.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Animation.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Animation.Tests.RuntimeTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.IK.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.IK.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.SpriteShape.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.PSDImporter.Editor")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

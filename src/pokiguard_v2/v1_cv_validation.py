@@ -47,10 +47,10 @@ class V1CvValidator:
             if isinstance(loaded, dict):
                 config = loaded
         geometry = vision.BoardGeometry(
-            first_center_x=float(config.get("board_first_center_x", 0.360)),
-            first_center_y=float(config.get("board_first_center_y", 0.150)),
-            step_x=float(config.get("board_step_x", 0.0410)),
-            step_y=float(config.get("board_step_y", 0.0760)),
+            first_center_x=float(config.get("board_first_center_x", 0.3620)),
+            first_center_y=float(config.get("board_first_center_y", 0.1625)),
+            step_x=float(config.get("board_step_x", 0.0393)),
+            step_y=float(config.get("board_step_y", 0.0787)),
         )
         self.window_title = str(config.get("window_title", "PokiguardOnlines"))
         self._find_window = win32.find_window

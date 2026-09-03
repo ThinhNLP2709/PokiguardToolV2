@@ -63,12 +63,25 @@ Each `MoveEvaluation` reports direct, cascade, and total raw/effective
 resources; clear rounds; longest match; horizontal/vertical swap; whether the
 direct clear is at screen row 3 or lower; known Sword potentials left; Sword
 danger regions; collapse/support hazard; UNKNOWN count and concentration; and
-hypothetical Sword completions through exposed UNKNOWN cells.
+hypothetical Sword completions through exposed UNKNOWN cells. It also tests
+every legal opponent reply on the settled result and reports direct Sword
+replies plus non-Sword direct matches whose known collapse chain collects
+Sword indirectly. UNKNOWN exposure is checked in both directions: a spawned
+Sword may create a reply, and an adjacent Sword already present in the 64 known
+cells may move into a non-Sword refill slot to complete match-3.
 
-`safe` is conservative: there must be no known Sword swap left, no
-hypothetical UNKNOWN Sword completion, and no concentrated collapse through a
-known Sword danger/support region. The integer `danger_score` keeps the reasons
-visible; it is not a hidden boolean-only rule.
+`safe` is conservative: the direct clear must be calculable (screen row 3 or
+lower), there must be no known direct or indirect deterministic opponent Sword
+reply, no disallowed hypothetical UNKNOWN Sword completion, and no concentrated
+collapse through a known Sword danger/support region. A top-area clear that
+introduces UNKNOWN refill is never promoted to safe merely because one
+hypothetical refill test found no Sword. The integer `danger_score` keeps the
+reasons visible; it is not a hidden boolean-only rule.
+
+The unique-adverse-Sword exception has a separate `SwordHoldEvaluation`. A
+candidate must collect no Sword itself, and replaying every known boss Sword
+reply must leave a strictly larger deterministic Sword follow-up for us. Such a
+candidate remains `safe == false`; UNKNOWN never supplies favorable evidence.
 
 Sword danger regions are generated from aligned Sword pairs at spans 1-3 in
 rows and columns. Thus `(r,c)` / `(r,c+2)` is handled as one instance of the
@@ -76,22 +89,32 @@ general detector rather than a hard-coded coordinate case.
 
 ## Exact BASIC order
 
-1. `EVOLVE` when priority is EVOLUTION, an evolution pet is actually selected,
-   Fusion has not succeeded, the runtime Fusion state and exact runtime card
-   slot are available, and mana covers the current runtime cost. It
+1. From the second local turn onward, `EVOLVE` when priority is EVOLUTION, an
+   evolution pet is actually selected,
+   Fusion has not succeeded, the direct `MatchService` Fusion state and exact
+   `Board.selectedCards/cardsInHand` runtime slot are available, and mana
+   covers the current runtime cost. A live `FusionCardUI` is preferred but is
+   not required when those direct owners agree; a current visual tile proof is
+   still required immediately before input. It
    consumes no turn and requires a fresh state read. ATTACK priority disables
    evolution for the match. Low-boss-HP mode (boss current HP at or below the
    enabled `cast_when_boss_hp_below` threshold) also disables EVOLVE, regardless
    of mana priority, so the bot spends the endgame on Sword/Mana/CAST. EVOLVE
-   also has a separate inclusive `minimum_evolve_time_seconds` floor (default
-   10): below it, Step 1 is deferred for that turn and normal Sword/resource
-   selection continues. This preserves enough time for the server response,
-   animation settlement, a fresh read, and the same-turn consuming action.
+   uses the same inclusive production action floor (currently one displayed
+   second) as normal gameplay; it is not silently postponed by the former
+   ten-second follow-up floor. At authoritative idle 2/3, EVOLVE is still
+   deferred because only a consuming SWAP/CAST can prevent ejection.
    If no evolution pet was selected, EVOLVE is skipped and board policy
    continues; this is not an automation stop.
-2. If any deterministic result collects Sword, restrict selection to that
-   group. Rank no Sword potential left, effective Sword, known combo, danger,
-   then UNKNOWN exposure.
+2. If any deterministic result collects Sword, normally restrict selection to
+   that group. Rank no direct/indirect opponent Sword reply, effective Sword,
+   known combo, danger, then UNKNOWN exposure. If there is exactly one Sword
+   move and it leaves a deterministic opponent Sword reply worth more effective
+   Sword than it collects, defer that move. Continue normal safe-resource
+   branches first; otherwise use an authoritatively permitted PASS. If PASS is
+   unavailable, a proven off-region Sword-hold may be used. On a mandatory turn,
+   PASS is prohibited; prefer a proven Sword-hold, else choose minimum Sword
+   risk. No ordinary unsafe move is promoted by this exception.
 3. Finisher: with no Sword result on the board, boss **current** HP at or below
    `cast_when_boss_hp_below` (default 30000), and one affordable proven Attack
    card, `CAST` immediately. This branch deliberately ignores the 480 stockpile
@@ -102,16 +125,35 @@ general detector rather than a hard-coded coordinate case.
    select safe Rage; else safe Mana.
 4. With boss HP above 50%, select safe Health below `low_hp_ratio_simple` own
    HP for SIMPLE or `low_hp_ratio_careful` for CAREFUL.
-5. Above `cast_mana_stockpile_threshold` mana, select a proven interactable
-   Attack card with a proven runtime slot (`CAST`), preserving the 320-mana
+5. Above `cast_mana_stockpile_threshold` mana, select a proven Attack card
+   with a proven runtime slot (`CAST`), preserving the 320-mana
    reserve after its 160 cost. If no Attack card is equipped, all CAST branches
    are skipped and the same board policy continues.
+   The standard zero-cooldown Attack card may be authorized by exact current
+   `Board.selectedCards` metadata plus the matching `cardsInHand` cardinality;
+   a live `CardUI/Button` remains stronger evidence when available. Non-zero
+   cooldown cards without a live wrapper fail closed. Every CAST still needs
+   current mana, current-turn capability, exact strip position, and a visual
+   proof of that tile just before the normal foreground click.
    Otherwise select safe Drain only when boss Mana >`boss_high_mana` and Rage
    >`boss_high_rage`, or safe Shield only when both are <`boss_low_resource`.
+
 6. `PASS` is possible only when no safe move exists and a durable game-owned
    skip count proves another pass is legal.
 7. First runtime local turn or a game-owned count of two passes prohibits
    PASS. Select minimum Sword danger, with Shield as a tie-break.
+
+## Turn / energy accounting
+
+One distinct local `MatchService.TurnNumber` is counted as one turn and one
+energy for the match. Polling the same server turn repeatedly never increments
+the count. EVOLVE is non-consuming, so EVOLVE followed by SWAP on the same
+local turn costs one; CAST, SWAP, or an authoritative PASS ends that local
+turn. Each completed attempt records `localTurns`/`energyUsed`. The desktop
+Control tab shows completed per-match counts, the current match's live local
+turn/energy count, and `Total energy` on separate lines. Live projection uses
+the already deduplicated TurnNumber observation; it adds no memory scan,
+screen capture, solver pass, or input delay.
 
 If exhaustive simulation finds zero legal swaps, the result is `EXIT_MATCH`.
 Phase 2C.2A only logs that proposal.

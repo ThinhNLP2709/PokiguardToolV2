@@ -1,15 +1,17 @@
 """Fail-closed visual sanity checks for the two BASIC card controls.
 
 The normalized anchors are the long-running V1 foreground-input calibration.
-They are never sufficient by themselves: production callers must also prove
-the corresponding current CardUI/FusionCardUI object and its interactable
-state from read-only runtime data.
+They are never sufficient by themselves: production callers must additionally
+prove either the live CardUI/FusionCardUI state or the exact current
+Board.selectedCards/Board.cardsInHand/MatchService-owned standard strip.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+
+from .unity_ui_layout import transform_for_capture
 
 
 class GameplayControl(str, Enum):
@@ -48,8 +50,8 @@ class RuntimeCardStripLayout:
 # selected cards), so these points are kept only for callers that do not yet
 # have authoritative live CardUI cardinality.
 _LEGACY_ANCHORS = {
-    GameplayControl.EVOLVE: (0.417, 0.836),
-    GameplayControl.CAST_ATTACK: (0.474, 0.836),
+    GameplayControl.EVOLVE: (0.417, 0.824),
+    GameplayControl.CAST_ATTACK: (0.474, 0.824),
 }
 
 # Unity centres the complete card strip and spaces neighbouring tiles by about
@@ -57,7 +59,13 @@ _LEGACY_ANCHORS = {
 # it is never inferred from card type or a fixed loadout.
 _CARD_STRIP_CENTER_X = 0.500
 _CARD_SLOT_SPACING_X = 0.058
-_CARD_POINT_Y = 0.836
+# Keep visual validation centred on the whole tile, but send the actual click
+# slightly above its old centre.  Live operator feedback showed that the old
+# point sat unnecessarily close to the lower card edge.  A 0.012 normalized
+# shift is about 8.5 px at the canonical 710 px client height and remains well
+# inside the same validated card control.
+_CARD_VISUAL_CENTER_Y = 0.836
+_CARD_CLICK_POINT_Y = 0.824
 
 
 def resolve_runtime_card_strip(
@@ -147,20 +155,20 @@ def _layout_anchor(
     first_x = _CARD_STRIP_CENTER_X - (
         _CARD_SLOT_SPACING_X * (slot_count - 1) / 2.0
     )
-    return (first_x + slot_index * _CARD_SLOT_SPACING_X, _CARD_POINT_Y)
+    return (first_x + slot_index * _CARD_SLOT_SPACING_X, _CARD_CLICK_POINT_Y)
 
 
 def _region_metrics(
     rgb: bytes,
     width: int,
     height: int,
-    center: tuple[float, float],
+    box: tuple[float, float, float, float],
 ) -> dict[str, float | int]:
-    cx, cy = center
-    x0 = max(0, round((cx - 0.030) * width))
-    x1 = min(width, round((cx + 0.030) * width))
-    y0 = max(0, round((cy - 0.082) * height))
-    y1 = min(height, round((cy + 0.072) * height))
+    left, top, right, bottom = box
+    x0 = max(0, round(left * width))
+    x1 = min(width, round(right * width))
+    y0 = max(0, round(top * height))
+    y1 = min(height, round(bottom * height))
     samples = colorful = bright = dark = warm = 0
     minimum = 255
     maximum = 0
@@ -203,8 +211,8 @@ def locate_gameplay_control(
         return GameplayUiLocation(
             control, False, None, 0.0, "invalid_client_capture"
         )
-    point = _layout_anchor(control, slot_index, slot_count)
-    if point is None:
+    reference_point = _layout_anchor(control, slot_index, slot_count)
+    if reference_point is None:
         return GameplayUiLocation(
             control,
             False,
@@ -216,9 +224,35 @@ def locate_gameplay_control(
                 "slotCount": slot_count if slot_count is not None else -1,
             },
         )
-    metrics = _region_metrics(rgb, width, height, point)
+    # Detection intentionally remains on the accepted visual centre.  Only
+    # the authorized click point moves upward; this avoids weakening the
+    # colorful/warm tile proof when the button artwork has a dark top edge.
+    transform = transform_for_capture(rgb, width, height)
+    reference_visual_box = (
+        reference_point[0] - 0.030,
+        _CARD_VISUAL_CENTER_Y - 0.082,
+        reference_point[0] + 0.030,
+        _CARD_VISUAL_CENTER_Y + 0.072,
+    )
+    # Live 1.7.4 1280x640 evidence proves that the combat-card strip is
+    # centered over the complete gameplay viewport.  Applying the separate
+    # left-anchored 16:9 lobby canvas maps slot 1 onto slot 0 (Attack onto
+    # Fusion) and can pass a false warm-color proof on Fusion artwork.
+    if transform.mode.startswith("POKIGUARD_2_1"):
+        visual_box = transform.viewport_rect(reference_visual_box)
+        point = transform.viewport_point(reference_point)
+        layout_space = "FULL_VIEWPORT"
+    else:
+        visual_box = transform.rect(reference_visual_box)
+        point = transform.point(reference_point)
+        layout_space = "REFERENCE_16_9"
+    metrics = _region_metrics(rgb, width, height, visual_box)
+    metrics["visualCenterY"] = _CARD_VISUAL_CENTER_Y
+    metrics["clickCenterY"] = point[1]
     metrics["slotIndex"] = slot_index if slot_index is not None else "legacy"
     metrics["slotCount"] = slot_count if slot_count is not None else "legacy"
+    metrics["layoutMode"] = transform.mode
+    metrics["layoutSpace"] = layout_space
     colorful = float(metrics["colorfulRatio"])
     bright = float(metrics["brightRatio"])
     dark = float(metrics["darkRatio"])

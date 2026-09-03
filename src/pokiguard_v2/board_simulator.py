@@ -96,6 +96,41 @@ class SwordPotential:
 
 
 @dataclass(frozen=True)
+class SwordReply:
+    """One deterministic opponent move that collects Sword now or by cascade."""
+
+    move: SwapMove
+    sword_cells: int
+    sword_effective: int
+    direct_sword_effective: int
+    cascade_sword_effective: int
+    cascade_rounds: int
+
+    @property
+    def indirect(self) -> bool:
+        return self.direct_sword_effective == 0 and self.cascade_sword_effective > 0
+
+
+@dataclass(frozen=True)
+class SwordHoldLine:
+    """Known line: our off-region move -> boss Sword -> our larger Sword."""
+
+    opponent_move: SwapMove
+    opponent_sword_effective: int
+    followup_sword_effective: int
+
+
+@dataclass(frozen=True)
+class SwordHoldEvaluation:
+    move: SwapMove
+    opponent_reply_count: int
+    favorable_lines: tuple[SwordHoldLine, ...]
+    guaranteed_favorable: bool
+    opponent_sword_effective_max: int
+    followup_sword_effective_min: int
+
+
+@dataclass(frozen=True)
 class UnknownExposure:
     cells: int
     columns: tuple[tuple[int, int], ...]
@@ -108,6 +143,11 @@ class UnknownExposure:
 class SwordRisk:
     potentials_left: int
     potential_effective_max: int
+    opponent_sword_replies: int
+    opponent_sword_reply_cells_max: int
+    opponent_sword_reply_effective_max: int
+    indirect_sword_replies: int
+    indirect_sword_effective_max: int
     danger_regions_left: int
     collapse_support_hazard: int
     unknown_sword_completions: int
@@ -129,6 +169,7 @@ class MoveEvaluation:
     known_result: bool
     unknown_exposure: UnknownExposure
     sword_potentials: tuple[SwordPotential, ...]
+    sword_replies: tuple[SwordReply, ...]
     sword_danger_regions: tuple[SwordDangerRegion, ...]
     sword_risk: SwordRisk
     calculable: bool
@@ -317,44 +358,143 @@ def _danger_regions(grid: Grid) -> tuple[SwordDangerRegion, ...]:
     return tuple(regions[key] for key in sorted(regions))
 
 
-def _known_sword_potentials(grid: Grid) -> tuple[SwordPotential, ...]:
-    values: list[SwordPotential] = []
+def _resolve_known_reply(
+    source: Grid,
+    move: SwapMove,
+) -> tuple[ResourceResult, ResourceResult, int, Grid] | None:
+    """Resolve one opponent move without inventing any off-board refill."""
+
+    grid = [list(row) for row in source]
+    first = grid[move.first[0]][move.first[1]]
+    second = grid[move.second[0]][move.second[1]]
+    if (
+        first.gem is GemType.UNKNOWN
+        or second.gem is GemType.UNKNOWN
+        or first.gem is second.gem
+    ):
+        return None
+    grid[move.first[0]][move.first[1]], grid[move.second[0]][move.second[1]] = (
+        second,
+        first,
+    )
+    current = _match_through(grid, move.first) | _match_through(grid, move.second)
+    if not current:
+        return None
+
+    direct = _tallies(grid, current)
+    cascade_results: list[ResourceResult] = []
+    clear_rounds = 0
+    while current:
+        if clear_rounds:
+            cascade_results.append(_tallies(grid, current))
+        displaced = _collapse(grid, current)
+        current, _longest = _matches_touching(grid, displaced)
+        clear_rounds += 1
+    return (
+        direct,
+        _merge_results(*cascade_results),
+        max(0, clear_rounds - 1),
+        grid,
+    )
+
+
+def _known_sword_opportunities(
+    grid: Grid,
+) -> tuple[tuple[SwordPotential, ...], tuple[SwordReply, ...]]:
+    """Find direct and indirect deterministic Sword replies for the opponent."""
+
+    potentials: list[SwordPotential] = []
+    replies: list[SwordReply] = []
     for move in _candidate_swaps():
-        first = grid[move.first[0]][move.first[1]]
-        second = grid[move.second[0]][move.second[1]]
-        if (
-            first.gem is GemType.UNKNOWN
-            or second.gem is GemType.UNKNOWN
-            or first.gem is second.gem
-        ):
+        resolved = _resolve_known_reply(grid, move)
+        if resolved is None:
             continue
-        grid[move.first[0]][move.first[1]], grid[move.second[0]][move.second[1]] = (
-            second,
-            first,
+        direct, cascade, cascade_rounds, _result_grid = resolved
+        direct_cells = direct.cells(GemType.SWORD)
+        direct_effective = direct.effective(GemType.SWORD)
+        cascade_cells = cascade.cells(GemType.SWORD)
+        cascade_effective = cascade.effective(GemType.SWORD)
+        if direct_cells:
+            potentials.append(SwordPotential(move, direct_cells, direct_effective))
+        if direct_cells or cascade_cells:
+            replies.append(
+                SwordReply(
+                    move=move,
+                    sword_cells=direct_cells + cascade_cells,
+                    sword_effective=direct_effective + cascade_effective,
+                    direct_sword_effective=direct_effective,
+                    cascade_sword_effective=cascade_effective,
+                    cascade_rounds=cascade_rounds,
+                )
+            )
+    return tuple(potentials), tuple(replies)
+
+
+def _known_sword_potentials(grid: Grid) -> tuple[SwordPotential, ...]:
+    """Backward-compatible direct-potential view used by older diagnostics."""
+
+    return _known_sword_opportunities(grid)[0]
+
+
+def evaluate_sword_hold(move: MoveEvaluation) -> SwordHoldEvaluation:
+    """Prove the user-approved intentional Sword-hold exception.
+
+    The candidate itself must collect no Sword.  For every deterministic Sword
+    reply available to the boss, replay that exact reply and require the known
+    settled board to offer us strictly more effective Sword on the following
+    move.  UNKNOWN never matches, so this function does not invent refill.
+    """
+
+    if move.sword_effective > 0 or not move.sword_replies:
+        return SwordHoldEvaluation(move.move, 0, (), False, 0, 0)
+    source = [
+        [_CellValue(cell.gem, cell.multiplier) for cell in row]
+        for row in move.result
+    ]
+    lines: list[SwordHoldLine] = []
+    for reply in move.sword_replies:
+        resolved = _resolve_known_reply(source, reply.move)
+        if resolved is None:
+            continue
+        _direct, _cascade, _rounds, reply_result = resolved
+        _potentials, followups = _known_sword_opportunities(reply_result)
+        followup_max = max(
+            (value.sword_effective for value in followups), default=0
         )
-        matched = _match_through(grid, move.first) | _match_through(grid, move.second)
-        sword_cells = sum(grid[row][col].gem is GemType.SWORD for row, col in matched)
-        sword_effective = sum(
-            grid[row][col].multiplier or 1
-            for row, col in matched
-            if grid[row][col].gem is GemType.SWORD
-        )
-        grid[move.first[0]][move.first[1]], grid[move.second[0]][move.second[1]] = (
-            first,
-            second,
-        )
-        if sword_cells:
-            values.append(SwordPotential(move, sword_cells, sword_effective))
-    return tuple(values)
+        if followup_max > reply.sword_effective:
+            lines.append(
+                SwordHoldLine(
+                    opponent_move=reply.move,
+                    opponent_sword_effective=reply.sword_effective,
+                    followup_sword_effective=followup_max,
+                )
+            )
+    guaranteed = len(lines) == len(move.sword_replies)
+    return SwordHoldEvaluation(
+        move=move.move,
+        opponent_reply_count=len(move.sword_replies),
+        favorable_lines=tuple(lines),
+        guaranteed_favorable=guaranteed,
+        opponent_sword_effective_max=max(
+            (value.sword_effective for value in move.sword_replies), default=0
+        ),
+        followup_sword_effective_min=(
+            min((value.followup_sword_effective for value in lines), default=0)
+            if guaranteed
+            else 0
+        ),
+    )
 
 
 def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int]:
-    """Count Sword swap potential after an UNKNOWN refill has settled.
+    """Count Sword swap potential involving an UNKNOWN refill slot.
 
     A hypothetical refill Sword that immediately completes a match is part of
     the current move's automatic cascade.  It cannot remain on the settled
-    board for the opponent, so it is not a leftover Sword hazard.  Only test
-    one-swap potentials when the hypothetical refill itself does not match.
+    board for the opponent, so it is not a leftover Sword hazard.  There is a
+    second, distinct risk: the refill may be a non-Sword and an adjacent known
+    Sword may then be swapped *into* that slot to complete a known match.  Test
+    both shapes without inventing the refill's actual gem.
     """
 
     completions = 0
@@ -392,8 +532,34 @@ def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int]:
                     if exposure:
                         break
             # If ``matched`` is non-empty, the refill would auto-clear before
-            # the opponent receives a settled board.  Keep exposure at zero.
+            # the opponent receives a settled board.  It can still be a legal
+            # destination for an adjacent known Sword when the actual refill
+            # is any non-Sword.  This is the exact shape produced when one
+            # row-2 clear drops a known top-row Sword beside two known Swords.
             grid[row][col] = previous
+            for neighbour in (
+                (row - 1, col),
+                (row + 1, col),
+                (row, col - 1),
+                (row, col + 1),
+            ):
+                n_row, n_col = neighbour
+                if not 0 <= n_row < 8 or not 0 <= n_col < 8:
+                    continue
+                known_sword = grid[n_row][n_col]
+                if known_sword.gem is not GemType.SWORD:
+                    continue
+                grid[row][col] = known_sword
+                grid[n_row][n_col] = previous
+                candidate = _match_through(grid, (row, col))
+                known_into_unknown = sum(
+                    grid[r][c].multiplier or 1
+                    for r, c in candidate
+                    if grid[r][c].gem is GemType.SWORD
+                )
+                grid[row][col] = previous
+                grid[n_row][n_col] = known_sword
+                exposure = max(exposure, known_into_unknown)
             if exposure:
                 completions += 1
                 effective_max = max(effective_max, exposure)
@@ -494,14 +660,20 @@ def simulate_move(
         hypothetical_sword_completions=unknown_completions,
         hypothetical_sword_effective_max=unknown_effective,
     )
-    potentials = _known_sword_potentials(grid)
+    potentials, replies = _known_sword_opportunities(grid)
     regions = _danger_regions(grid)
     before_regions = initial_regions if initial_regions is not None else _danger_regions(_copy_grid(board))
     support_hazard = _collapse_support_hazard(before_regions, tuple(clear_rounds))
     potential_max = max((value.sword_effective for value in potentials), default=0)
+    reply_cells_max = max((value.sword_cells for value in replies), default=0)
+    reply_effective_max = max((value.sword_effective for value in replies), default=0)
+    indirect_replies = tuple(value for value in replies if value.indirect)
+    indirect_effective_max = max(
+        (value.sword_effective for value in indirect_replies), default=0
+    )
     danger_score = (
-        potential_max * 100
-        + len(potentials) * 20
+        reply_effective_max * 100
+        + len(replies) * 20
         + unknown_effective * 30
         + unknown_completions * 10
         + support_hazard * 25
@@ -519,13 +691,25 @@ def simulate_move(
         and exposure.max_column_depth <= 1
     )
     safe = bool(
-        potential_max == 0
+        # User rule: a resource move is safe only when its direct clear starts
+        # at screen row 3 or lower. A top-area clear necessarily depends on
+        # off-board refill before its post-collapse Sword shape is knowable;
+        # absence of one hypothetical UNKNOWN-Sword completion is not proof of
+        # safety. Sword collection itself remains a separate higher-priority
+        # branch and mandatory turns retain their least-risk fallback.
+        calculable
+        and reply_effective_max == 0
         and support_hazard == 0
         and (unknown_effective == 0 or bounded_horizontal_refill)
     )
     risk = SwordRisk(
         potentials_left=len(potentials),
         potential_effective_max=potential_max,
+        opponent_sword_replies=len(replies),
+        opponent_sword_reply_cells_max=reply_cells_max,
+        opponent_sword_reply_effective_max=reply_effective_max,
+        indirect_sword_replies=len(indirect_replies),
+        indirect_sword_effective_max=indirect_effective_max,
         danger_regions_left=len(regions),
         collapse_support_hazard=support_hazard,
         unknown_sword_completions=unknown_completions,
@@ -545,6 +729,7 @@ def simulate_move(
         known_result=exposure.cells == 0,
         unknown_exposure=exposure,
         sword_potentials=potentials,
+        sword_replies=replies,
         sword_danger_regions=regions,
         sword_risk=risk,
         # User terminology is one-based: row 3 downward => screen row >= 2.

@@ -16,6 +16,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
 from pokiguard_v2.win32_input import (
     AdaptiveSwapPacer,
     BoardCalibration,
+    BoardInputMode,
     ClickStatus,
     ClientGeometry,
     CoordinateSafetyError,
@@ -32,10 +33,13 @@ from pokiguard_v2.win32_input import (
 
 
 class FakeBackend:
+    mouse_button_hold_seconds = 0.075
+
     def __init__(self) -> None:
         self.geometry = ClientGeometry(100, 200, 1280, 720)
         self.foreground_values = [True] * 10
         self.clicks = 0
+        self.button_events: list[str] = []
         self.positions: list[tuple[int, int]] = []
         self.resize_calls: list[tuple[int, int]] = []
         self.restore_calls = 0
@@ -56,6 +60,12 @@ class FakeBackend:
 
     def click_mouse(self) -> None:
         self.clicks += 1
+
+    def mouse_left_down(self) -> None:
+        self.button_events.append("down")
+
+    def mouse_left_up(self) -> None:
+        self.button_events.append("up")
 
     def virtual_screen(self) -> tuple[int, int, int, int]:
         return 0, 0, 4000, 2000
@@ -88,15 +98,22 @@ class CoordinatePipelineTests(unittest.TestCase):
 
     def test_mapping_matches_v1_executor_formula_and_bounds(self) -> None:
         geometry = ClientGeometry(100, 200, 1280, 720)
+        calibration = BoardCalibration()
         plan = map_swap_to_pixels(
             (4, 2),
             (4, 3),
-            BoardCalibration(),
+            calibration,
             geometry,
             virtual_screen=(0, 0, 4000, 2000),
         )
-        self.assertEqual(plan.first.client_x, int((0.360 + 2 * 0.041) * 1279))
-        self.assertEqual(plan.first.client_y, int((0.150 + 4 * 0.076) * 719))
+        self.assertEqual(
+            plan.first.client_x,
+            int((calibration.first_center_x + 2 * calibration.step_x) * 1279),
+        )
+        self.assertEqual(
+            plan.first.client_y,
+            int((calibration.first_center_y + 4 * calibration.step_y) * 719),
+        )
         left, top, right, bottom = plan.board_rect_client
         self.assertTrue(left <= plan.first.client_x <= right)
         self.assertTrue(top <= plan.first.client_y <= bottom)
@@ -135,8 +152,8 @@ class WindowPreparationTests(unittest.TestCase):
         )
 
         self.assertTrue(prepared)
-        self.assertEqual(backend.resize_calls, [(1280, 720)])
-        self.assertEqual((backend.geometry.width, backend.geometry.height), (1280, 720))
+        self.assertEqual(backend.resize_calls, [(1280, 640)])
+        self.assertEqual((backend.geometry.width, backend.geometry.height), (1280, 640))
         self.assertGreaterEqual(backend.restore_calls, 2)
 
     def test_start_preflight_wrong_pid_fails_without_resize(self) -> None:
@@ -175,6 +192,117 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
             (plan.second.screen_x, plan.second.screen_y),
         ])
 
+    def test_drag_flicks_quickly_and_releases_past_second_gem_centre(self) -> None:
+        backend = FakeBackend()
+        delays: list[float] = []
+        executor = ForegroundClickExecutor(
+            backend,
+            input_mode=BoardInputMode.DRAG,
+            drag_duration_seconds=0.09,
+            drag_steps=3,
+            drag_overshoot_fraction=0.35,
+            sleeper=delays.append,
+        )
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(binding, plan, remaining_seconds=12)
+
+        self.assertTrue(result.sent)
+        self.assertEqual(result.input_mode, "drag")
+        self.assertEqual(result.drag_duration_seconds, 0.09)
+        self.assertEqual(result.drag_steps, 3)
+        self.assertEqual(result.inter_click_delay_seconds, None)
+        self.assertEqual(backend.clicks, 0)
+        self.assertEqual(backend.button_events, ["down", "up"])
+        self.assertEqual(backend.positions[0], (plan.first.screen_x, plan.first.screen_y))
+        expected_overshoot = round(
+            (plan.second.screen_x - plan.first.screen_x) * 0.35
+        )
+        self.assertEqual(result.drag_overshoot_pixels, abs(expected_overshoot))
+        self.assertEqual(
+            backend.positions[-1],
+            (plan.second.screen_x + expected_overshoot, plan.second.screen_y),
+        )
+        self.assertEqual(delays[0], 0.06)
+        self.assertEqual(len(delays), 4)
+        for delay in delays[1:]:
+            self.assertAlmostEqual(delay, 0.03)
+
+    def test_drag_flick_duration_is_not_stretched_by_lag_pacing(self) -> None:
+        backend = FakeBackend()
+        delays: list[float] = []
+        executor = ForegroundClickExecutor(
+            backend,
+            input_mode="drag",
+            drag_duration_seconds=0.10,
+            drag_steps=2,
+            sleeper=delays.append,
+        )
+        executor.note_swap_unconfirmed()
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(binding, plan)
+
+        self.assertEqual(result.pacing_mode, "SEVERE_LAG")
+        self.assertEqual(result.drag_duration_seconds, 0.10)
+        self.assertEqual(delays, [0.06, 0.05, 0.05])
+
+    def test_drag_overshoot_stays_inside_board_in_all_edge_directions(self) -> None:
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        for first, second in (
+            ((0, 1), (0, 0)),
+            ((0, 6), (0, 7)),
+            ((1, 0), (0, 0)),
+            ((6, 0), (7, 0)),
+        ):
+            with self.subTest(first=first, second=second):
+                backend = FakeBackend()
+                executor = ForegroundClickExecutor(
+                    backend,
+                    input_mode="drag",
+                    sleeper=lambda _value: None,
+                )
+                plan = map_swap_to_pixels(
+                    first, second, BoardCalibration(), backend.geometry
+                )
+
+                result = executor.send_swap(binding, plan)
+
+                self.assertTrue(result.sent)
+                end_x, end_y = backend.positions[-1]
+                left, top, right, bottom = plan.board_rect_client
+                self.assertLessEqual(backend.geometry.left + left, end_x)
+                self.assertLessEqual(end_x, backend.geometry.left + right)
+                self.assertLessEqual(backend.geometry.top + top, end_y)
+                self.assertLessEqual(end_y, backend.geometry.top + bottom)
+
+    def test_drag_focus_loss_after_down_always_releases_and_is_partial(self) -> None:
+        backend = FakeBackend()
+        # Initial status, pre-down check, then the first drag-step status.
+        backend.foreground_values = [True, True, False]
+        executor = ForegroundClickExecutor(
+            backend,
+            input_mode="drag",
+            drag_steps=3,
+            sleeper=lambda _value: None,
+        )
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(binding, plan)
+
+        self.assertEqual(result.status, ClickStatus.PARTIAL_INPUT)
+        self.assertEqual(result.sent_clicks, 1)
+        self.assertEqual(backend.button_events, ["down", "up"])
+
     def test_swap_pacing_is_normal_until_recovery_or_delivery_failure(self) -> None:
         backend = FakeBackend()
         delays: list[float] = []
@@ -190,7 +318,22 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         executor.note_swap_unconfirmed()
         severe = executor.send_swap(binding, plan, remaining_seconds=12)
 
-        self.assertEqual(delays, [0.25, 1.0, 1.5])
+        self.assertEqual(
+            delays,
+            [
+                0.06,
+                0.35,
+                0.06,
+                0.06,
+                1.0,
+                0.06,
+                0.06,
+                1.5,
+                0.06,
+            ],
+        )
+        self.assertEqual(normal.cursor_settle_seconds, 0.06)
+        self.assertEqual(normal.mouse_button_hold_seconds, 0.075)
         self.assertEqual(normal.pacing_mode, "NORMAL")
         self.assertEqual(recovered.pacing_mode, "RECOVERY_DEGRADED")
         self.assertEqual(severe.pacing_mode, "SEVERE_LAG")

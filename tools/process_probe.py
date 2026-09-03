@@ -34,6 +34,12 @@ class ProcessProbeError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class ProcessInfo:
+    pid: int
+    executable_name: str
+
+
+@dataclass(frozen=True)
 class ModuleInfo:
     name: str
     path: str
@@ -156,21 +162,24 @@ def _snapshot(flags: int, pid: int = 0) -> int:
     raise ctypes.WinError(ctypes.get_last_error())
 
 
-def find_process_id(executable_name: str = "Pokiguard.exe") -> int | None:
+def enumerate_processes() -> tuple[ProcessInfo, ...]:
+    """Return the current Toolhelp process list without opening any process."""
+
     _require_windows()
     snapshot = _snapshot(TH32CS_SNAPPROCESS)
-    matches: list[int] = []
+    processes: list[ProcessInfo] = []
     try:
         entry = PROCESSENTRY32W()
         entry.dwSize = ctypes.sizeof(entry)
         if not kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
             error = ctypes.get_last_error()
             if error == ERROR_NO_MORE_FILES:
-                return None
+                return ()
             raise ctypes.WinError(error)
         while True:
-            if entry.szExeFile.casefold() == executable_name.casefold():
-                matches.append(int(entry.th32ProcessID))
+            processes.append(
+                ProcessInfo(int(entry.th32ProcessID), str(entry.szExeFile))
+            )
             if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
                 error = ctypes.get_last_error()
                 if error != ERROR_NO_MORE_FILES:
@@ -178,7 +187,23 @@ def find_process_id(executable_name: str = "Pokiguard.exe") -> int | None:
                 break
     finally:
         _close_handle(snapshot)
-    return min(matches) if matches else None
+    return tuple(sorted(processes, key=lambda value: value.pid))
+
+
+def find_process_ids(executable_name: str) -> tuple[int, ...]:
+    """Return every PID whose image name exactly matches, ordered by PID."""
+
+    expected = executable_name.casefold()
+    return tuple(
+        process.pid
+        for process in enumerate_processes()
+        if process.executable_name.casefold() == expected
+    )
+
+
+def find_process_id(executable_name: str = "Pokiguard.exe") -> int | None:
+    matches = find_process_ids(executable_name)
+    return matches[0] if matches else None
 
 
 def enumerate_modules(pid: int) -> list[ModuleInfo]:

@@ -27,6 +27,17 @@ thư mục game. Release Candidate đã được clean-build và live-validate t
 e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
+The current source compatibility version is `v1.0.23`. The accepted packaged
+Phase 2F.2 artifact above remains `v1.0.0+15`; rebuild packaging before
+distributing the maintenance version.
+
+Pokiguard 1.7.4 uses Unity IL2CPP metadata 110 and a new runtime layout. The
+verified symbols, exact binary hashes, and remaining live-validation boundary
+are recorded in
+[docs/pokiguard_1.7.4_compatibility.md](docs/pokiguard_1.7.4_compatibility.md).
+Unknown future `GameAssembly.dll` hashes fail closed even when their versioned
+launcher path is valid.
+
 ### Chạy source/developer
 
 Chạy [run_tool.bat](run_tool.bat) từ thư mục gốc project. Launcher sẽ:
@@ -39,6 +50,9 @@ Chạy [run_tool.bat](run_tool.bat) từ thư mục gốc project. Launcher sẽ
 
 Game phải được mở sẵn. Để Start một farm session mới, user vẫn phải ở đúng
 boss lobby; UI sẽ tự xác minh lại lifecycle và target trước khi cho phép Start.
+Trong tab **Settings**, ô **Game executable** lưu full path chính xác, ví dụ
+`D:\pc\Pokiguard-1.7.4.exe`. Khi game đổi phiên bản và tên EXE thay đổi, dùng
+nút **File...** để chọn launcher mới. `GameAssembly.dll` phải nằm cùng folder.
 
 PokiguardToolV2 is the second-generation automation research project for the
 Windows x64 Unity IL2CPP game Pokiguard.
@@ -56,15 +70,19 @@ computer-vision path remains available as a fallback.
 - no HP, damage, reward, or server-authoritative state modification.
 
 See [AGENTS.md](AGENTS.md) for workspace rules, the
+[Phase 3A.0 report](docs/phase3a0_report.md),
+[Phase 3A.0 runbook](docs/phase3a0_runbook.md),
 [Phase 2F.2 report](docs/phase2f2_report.md),
 [Phase 2F.2 runbook](docs/phase2f2_runbook.md), and
 [release manifest](release/phase2f2_manifest.json) for final RC evidence.
 
 ## Current status
 
-Phase 2F.1 remains the latest formally accepted phase (**PASS STRONG**).
-Phase 2F.2's same-binary RC passed clean staging and all packaged-live stages
-B1-B6, including:
+Phase 3A.0 is the latest formally accepted source phase (**PASS STRONG**),
+freezing source compatibility version `v1.0.23` after a clean five-match live
+run on Pokiguard 1.7.4. Phase 2F.2 remains the latest accepted packaged RC
+(**PASS STRONG / BASIC COMPLETE**) and passed all packaged-live stages B1-B6,
+including:
 
 ```text
 read-only attach smoke
@@ -98,6 +116,33 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The Phase 2F.2 RC baseline passes 740 tests; the focused release suite passes
-14/14. Exact build and acceptance steps are in the
+The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.23`
+source compatibility baseline passes **797 tests** and includes regression coverage
+for the raised card click point, faster fail-closed result confirmation,
+direct/indirect opponent Sword replies, the unique-adverse-Sword policy, and
+versioned game-location resolution, build-fingerprint gating, the corrected
+independent board/lobby/combat-card mappings for the 1.7.4 2:1 viewport, and
+both legacy and current 1.7.4 postmatch layouts. It also retains
+`VirtualQueryEx.AllocationBase` so live combat-card discovery can cover split
+regions of the exact `Board.cardsInHand` allocation under a strict 16 MiB cap.
+The standard card strip now uses direct `Board.selectedCards/cardsInHand` plus
+`MatchService` ownership after the opening turn; live `CardUI` remains preferred
+when available, while a current visual tile proof is still mandatory before a
+normal click. This removes late heap-wrapper discovery from the common card
+path. The Control tab reports distinct local turns per completed match, the
+live current-match count, and total energy on separate lines; EVOLVE plus SWAP
+on one local turn counts once. This projection reuses already-deduplicated
+TurnNumber observations and performs no extra memory scan or capture.
+The Preferences tab now selects `two_click` or the short overshooting `drag`
+flick for board SWAPs; cards and UI controls remain ordinary clicks. Exact
+Redux 1.7.4 Board ownership now keeps the opening turn board-only, discovers
+cards from `selectedCards/cardsInHand` during the first boss turn, and caches
+immutable CardData plus validated CardUI addresses for later turns. Periodic
+transport maintenance is allocator-neighbour bounded instead of a timer-only
+full heap scan; exact unresolved ACK evidence still retains the fail-closed
+broad fallback.
+
+Source maintenance reproduction steps are in the
+[Phase 3A.0 runbook](docs/phase3a0_runbook.md). Build and acceptance steps for
+the accepted RC are in the
 [Phase 2F.2 runbook](docs/phase2f2_runbook.md).

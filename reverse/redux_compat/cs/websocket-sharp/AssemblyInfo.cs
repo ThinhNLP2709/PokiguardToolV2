@@ -1,0 +1,11 @@
+// Image 18: websocket-sharp.dll - Assembly: websocket-sharp, Version=1.0.2.0, Culture=neutral, PublicKeyToken=5660b08a1845a91e - Types 13215-13337
+[assembly: System.Reflection.AssemblyCompany("")]
+[assembly: System.Reflection.AssemblyConfiguration("Commit 77f74bd")]
+[assembly: System.Reflection.AssemblyCopyright("sta.blockhead")]
+[assembly: System.Reflection.AssemblyDescription("A C# implementation of the WebSocket protocol client and server")]
+[assembly: System.Reflection.AssemblyProduct("websocket-sharp.dll")]
+[assembly: System.Reflection.AssemblyTitle("websocket-sharp")]
+[assembly: System.Reflection.AssemblyTrademark("")]
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.Default | System.Diagnostics.DebuggableAttribute.DebuggingModes.DisableOptimizations | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints | System.Diagnostics.DebuggableAttribute.DebuggingModes.EnableEditAndContinue)]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

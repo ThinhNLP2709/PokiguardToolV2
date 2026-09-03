@@ -112,6 +112,8 @@ class FarmCycleTests(unittest.TestCase):
         )
         combat = _combat_args(args, Path("combat.jsonl"))
         self.assertEqual(combat.minimum_action_time, 1)
+        self.assertEqual(combat.postmatch_observation_timeout, 1.0)
+        self.assertEqual(combat.board_input_mode, "two_click")
 
     def test_pass_profile_matches_every_supported_basic_policy_draft(self) -> None:
         reset = object()

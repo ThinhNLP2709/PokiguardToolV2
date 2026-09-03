@@ -24,6 +24,7 @@ from .desktop_farm_controller import (
     DesktopControllerState,
     DesktopFarmControllerManager,
 )
+from .win32_input import BoardInputMode
 
 
 def utc_timestamp() -> str:
@@ -48,6 +49,9 @@ class DesktopConfig:
     target_completed_matches: int = 3
     max_technical_recoveries: int = 1
     max_match_attempts: int = 5
+    # Keep this appended so older positional DesktopConfig construction stays
+    # source-compatible. The legacy two-click path remains selectable.
+    board_input_mode: BoardInputMode = BoardInputMode.DRAG
 
     def __post_init__(self) -> None:
         if self.intelligence is not Intelligence.BASIC:
@@ -59,6 +63,7 @@ class DesktopConfig:
             mana_priority=self.mana_priority,
             intelligence=self.intelligence,
         )
+        BoardInputMode(self.board_input_mode)
         if self.normalized_boss_id is not None or self.normalized_boss_name is not None:
             FarmTarget(self.normalized_boss_id, self.normalized_boss_name)
         FarmRunLimits(
@@ -101,11 +106,13 @@ class DesktopConfig:
         target_completed_matches: str,
         max_technical_recoveries: str,
         max_match_attempts: str,
+        board_input_mode: str = BoardInputMode.DRAG.value,
     ) -> "DesktopConfig":
         return cls(
             play_style=PlayStyle(play_style),
             mana_priority=ManaPriority(mana_priority),
             intelligence=Intelligence(intelligence),
+            board_input_mode=BoardInputMode(board_input_mode),
             boss_id=boss_id,
             boss_name=boss_name,
             target_completed_matches=int(target_completed_matches),

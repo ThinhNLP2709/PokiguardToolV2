@@ -21,6 +21,7 @@ from pokiguard_v2.combat_cards import (  # noqa: E402
     read_combat_card,
     read_fusion_card_ui,
     read_fusion_state,
+    validate_fusion_card_ui_hits,
 )
 from pokiguard_v2.il2cpp_layout import LayoutValidationError  # noqa: E402
 
@@ -152,6 +153,27 @@ class CombatCardTests(unittest.TestCase):
         state = read_fusion_card_ui(memory, ui, expected_class=ui_class)
         self.assertTrue(state.interactable)
         self.assertEqual(state.bound_pet_id, 218166)
+        self.assertEqual(
+            tuple(
+                item.address
+                for item in validate_fusion_card_ui_hits(
+                    memory,
+                    (ui,),
+                    expected_class=ui_class,
+                    expected_bound_pet_ids=(218166,),
+                )
+            ),
+            (ui,),
+        )
+        self.assertEqual(
+            validate_fusion_card_ui_hits(
+                memory,
+                (ui,),
+                expected_class=ui_class,
+                expected_bound_pet_ids=(1845,),
+            ),
+            (),
+        )
 
         button_raw[SELECTABLE_INTERACTABLE_OFFSET] = 0
         memory.map(button, button_raw)
@@ -205,18 +227,37 @@ class CombatCardTests(unittest.TestCase):
         struct.pack_into("<i", ui_raw, 0x44, 12)
         memory.map(card_ui, ui_raw)
 
+        card_data_cache = {}
         state = read_combat_card(
             memory,
             card_ui,
             expected_class=card_class,
             expected_board=board,
             expected_active=active,
+            card_data_cache=card_data_cache,
         )
         self.assertTrue(state.is_attack_card)
         self.assertTrue(state.ui_interactable)
         self.assertTrue(state.has_used_this_turn)
         self.assertEqual((state.card_id, state.last_turn_used), (73, 12))
         self.assertEqual(state.description, "Exact test metadata")
+
+        # Immutable CardData strings/costs are decoded once per combat while
+        # live CardUI flags/Button state continue to be read every time.
+        struct.pack_into("<Q", data_raw, 0x30, 0)
+        memory.map(card_data, data_raw)
+        button_raw[SELECTABLE_INTERACTABLE_OFFSET] = 0
+        memory.map(button, button_raw)
+        cached = read_combat_card(
+            memory,
+            card_ui,
+            expected_class=card_class,
+            expected_board=board,
+            expected_active=active,
+            card_data_cache=card_data_cache,
+        )
+        self.assertEqual(cached.element_type, "ATTACK")
+        self.assertFalse(cached.ui_interactable)
 
         with self.assertRaises(LayoutValidationError):
             read_combat_card(

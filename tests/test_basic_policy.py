@@ -16,6 +16,7 @@ from pokiguard_v2.combat_lifecycle import CombatLifecycleState
 from pokiguard_v2.board_simulator import (
     ResourceResult,
     ResourceTally,
+    SwordHoldEvaluation,
     SwapMove,
     evaluate_all_moves,
 )
@@ -265,6 +266,33 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertTrue(decision.requires_state_reread)
         self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
 
+    def test_evolution_starts_on_second_local_turn_not_opening_turn(self) -> None:
+        opening = combat_state(
+            fusion_used=False,
+            fusion_available=True,
+            mana=320,
+            turn=1,
+        )
+        opening_decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(opening)
+        self.assertIsNot(opening_decision.action, PolicyAction.EVOLVE)
+        self.assertTrue(
+            any(
+                "deferred until the second local turn" in reason
+                for reason in opening_decision.trace.failed_higher_priority_branches
+            )
+        )
+
+        second_turn = replace(
+            opening,
+            battle=replace(opening.battle, turn_number=3),
+        )
+        second_decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(second_turn)
+        self.assertEqual(second_decision.action, PolicyAction.EVOLVE)
+
     def test_evolution_is_deferred_when_same_turn_follow_up_window_is_too_short(self) -> None:
         original = combat_state(fusion_used=False)
         state = replace(
@@ -306,6 +334,21 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertEqual(decision.action, PolicyAction.EVOLVE)
         self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
 
+    def test_operator_evolution_priority_can_use_inclusive_one_second_floor(self) -> None:
+        original = combat_state(fusion_used=False, mana=160, turn=3)
+        state = replace(
+            original,
+            battle=replace(original.battle, turn_time_remaining_seconds=1),
+        )
+        decision = BasicPolicyEngine(
+            PolicyConfig(
+                mana_priority=ManaPriority.EVOLUTION,
+                minimum_turn_time_seconds=1,
+                minimum_evolve_time_seconds=1,
+            )
+        ).decide(state)
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+
     def test_low_boss_hp_mode_skips_evolution_at_inclusive_threshold(self) -> None:
         decision = BasicPolicyEngine().decide(
             combat_state(
@@ -325,7 +368,7 @@ class BasicPolicyTests(unittest.TestCase):
             )
         )
 
-    def test_evolution_requires_live_interactable_ui(self) -> None:
+    def test_evolution_requires_ui_or_direct_owner_authority(self) -> None:
         state = combat_state(fusion_used=False)
         state = replace(
             state,
@@ -335,10 +378,27 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertNotEqual(decision.action, PolicyAction.EVOLVE)
         self.assertTrue(
             any(
-                "FusionCardUI is not proven interactable" in reason
+                "MatchService/Board card strip" in reason
                 for reason in decision.trace.failed_higher_priority_branches
             )
         )
+
+    def test_direct_owned_fusion_strip_preserves_step_one_priority(self) -> None:
+        state = combat_state(fusion_used=False, mana=210, turn=5)
+        state = replace(
+            state,
+            fusion=replace(
+                state.fusion,
+                ui_address=None,
+                ui_interactable=None,
+                interaction_authority="MATCH_SERVICE_BOARD_CARD_STRIP",
+            ),
+        )
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(PolicyAction.EVOLVE, decision.action)
+        self.assertEqual("STEP_1_EVOLVE", decision.trace.policy_step)
 
     def test_evolution_requires_actual_positive_runtime_cost(self) -> None:
         state = combat_state(fusion_used=False)
@@ -463,6 +523,163 @@ class BasicPolicyTests(unittest.TestCase):
 
         self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD")
         self.assertEqual(decision.move, sword_with_rage.move)
+
+    def test_only_sword_move_with_larger_reply_defers_to_safe_other_region(self) -> None:
+        state = combat_state(fusion_used=True)
+        evaluations = evaluate_all_moves(state.board)  # type: ignore[arg-type]
+        sword = next(value for value in evaluations if value.sword_effective > 0)
+        other = next(value for value in evaluations if value.sword_effective == 0)
+        adverse_sword = replace(
+            sword,
+            sword_risk=replace(
+                sword.sword_risk,
+                opponent_sword_replies=1,
+                opponent_sword_reply_cells_max=4,
+                opponent_sword_reply_effective_max=sword.sword_effective + 3,
+                indirect_sword_replies=1,
+                indirect_sword_effective_max=sword.sword_effective + 3,
+                danger_score=900,
+                safe=False,
+            ),
+        )
+        shield = ResourceResult(((GemType.SHIELD, ResourceTally(3, 3)),))
+        safe_other = replace(
+            other,
+            direct=shield,
+            cascade=ResourceResult(),
+            total=shield,
+            sword_risk=replace(
+                other.sword_risk,
+                potentials_left=0,
+                potential_effective_max=0,
+                opponent_sword_replies=0,
+                opponent_sword_reply_cells_max=0,
+                opponent_sword_reply_effective_max=0,
+                indirect_sword_replies=0,
+                indirect_sword_effective_max=0,
+                collapse_support_hazard=0,
+                unknown_sword_completions=0,
+                unknown_sword_effective_max=0,
+                danger_score=0,
+                safe=True,
+            ),
+        )
+
+        with (
+            patch(
+                "pokiguard_v2.basic_policy.evaluate_all_moves",
+                return_value=(adverse_sword, safe_other),
+            ),
+            patch("pokiguard_v2.basic_policy.evaluate_sword_hold") as hold_evaluator,
+        ):
+            decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.move, safe_other.move)
+        self.assertEqual(decision.trace.policy_step, "STEP_5_SHIELD_INTERMEDIATE")
+        hold_evaluator.assert_not_called()
+        self.assertTrue(
+            any(
+                "deferred the only Sword move" in reason
+                for reason in decision.trace.failed_higher_priority_branches
+            )
+        )
+
+    def test_only_sword_move_with_larger_reply_can_authoritatively_pass(self) -> None:
+        state = combat_state(fusion_used=True)
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                consecutive_passes=1,
+                consecutive_pass_threshold=3,
+                consecutive_pass_source="server.payload",
+            ),
+        )
+        sword = next(
+            value
+            for value in evaluate_all_moves(state.board)  # type: ignore[arg-type]
+            if value.sword_effective > 0
+        )
+        adverse_sword = replace(
+            sword,
+            sword_risk=replace(
+                sword.sword_risk,
+                opponent_sword_replies=1,
+                opponent_sword_reply_cells_max=5,
+                opponent_sword_reply_effective_max=sword.sword_effective + 4,
+                indirect_sword_replies=1,
+                indirect_sword_effective_max=sword.sword_effective + 4,
+                danger_score=1000,
+                safe=False,
+            ),
+        )
+
+        with patch(
+            "pokiguard_v2.basic_policy.evaluate_all_moves",
+            return_value=(adverse_sword,),
+        ):
+            decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.PASS)
+        self.assertEqual(decision.trace.policy_step, "STEP_6_PASS")
+
+    def test_unique_adverse_sword_can_use_proven_hold_when_pass_is_unknown(self) -> None:
+        state = combat_state(fusion_used=True)
+        evaluations = evaluate_all_moves(state.board)  # type: ignore[arg-type]
+        sword = next(value for value in evaluations if value.sword_effective > 0)
+        other = next(value for value in evaluations if value.sword_effective == 0)
+        adverse_sword = replace(
+            sword,
+            sword_risk=replace(
+                sword.sword_risk,
+                opponent_sword_replies=1,
+                opponent_sword_reply_cells_max=5,
+                opponent_sword_reply_effective_max=sword.sword_effective + 4,
+                indirect_sword_replies=1,
+                indirect_sword_effective_max=sword.sword_effective + 4,
+                safe=False,
+            ),
+        )
+        unsafe_other = replace(
+            other,
+            sword_risk=replace(
+                other.sword_risk,
+                opponent_sword_replies=1,
+                opponent_sword_reply_cells_max=3,
+                opponent_sword_reply_effective_max=3,
+                safe=False,
+            ),
+        )
+        hold = SwordHoldEvaluation(
+            move=unsafe_other.move,
+            opponent_reply_count=1,
+            favorable_lines=(),
+            guaranteed_favorable=True,
+            opponent_sword_effective_max=3,
+            followup_sword_effective_min=7,
+        )
+
+        with (
+            patch(
+                "pokiguard_v2.basic_policy.evaluate_all_moves",
+                return_value=(adverse_sword, unsafe_other),
+            ),
+            patch(
+                "pokiguard_v2.basic_policy.evaluate_sword_hold",
+                side_effect=lambda value: (
+                    hold
+                    if value.move == unsafe_other.move
+                    else SwordHoldEvaluation(value.move, 0, (), False, 0, 0)
+                ),
+            ),
+        ):
+            decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.move, unsafe_other.move)
+        self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD_HOLD")
+        self.assertIn("leaves at least 7", decision.trace.why_selected)
 
     def test_cast_above_480_leaves_320_reserve(self) -> None:
         decision = BasicPolicyEngine().decide(

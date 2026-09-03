@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import threading
 import time
-from typing import Any
+from typing import Any, Callable
 
 from .basic_policy import Intelligence, ManaPriority, PlayStyle
 from .desktop_control_plane import (
@@ -19,13 +19,17 @@ from .desktop_control_plane import (
     SnapshotPoller,
     utc_timestamp,
 )
-from .desktop_farm_controller import DesktopControllerState
+from .desktop_farm_controller import (
+    DesktopControllerSnapshot,
+    DesktopControllerState,
+)
 from .desktop_preferences import (
     DesktopPreferenceStore,
     PreferenceError,
     PreferenceWarning,
 )
 from .version import APP_BUILD, APP_TITLE, APP_VERSION
+from .win32_input import BoardInputMode
 
 
 VISIBLE_RUNTIME_ROWS = (
@@ -34,8 +38,14 @@ VISIBLE_RUNTIME_ROWS = (
     ("Runtime target", "runtime_target"),
 )
 
-DESKTOP_TAB_TITLES = ("Control", "Preferences", "Diagnostics / Log")
-PREFERENCE_TABLE_ROWS = ("PlayStyle", "Intelligence", "ManaPriority")
+DESKTOP_TAB_TITLES = ("Control", "Preferences", "Settings", "Diagnostics / Log")
+PREFERENCE_TABLE_ROWS = (
+    "PlayStyle",
+    "Intelligence",
+    "ManaPriority",
+    "Board input",
+)
+SETTINGS_TABLE_ROWS = ("Game executable",)
 INITIAL_FOCUS_TARGET = "notebook"
 BACKGROUND_UNFOCUS_WIDGET_CLASSES = frozenset(
     {"Tk", "TFrame", "TLabelframe", "TLabel", "Frame", "Label"}
@@ -52,6 +62,30 @@ def run_limit_text(config: DesktopConfig) -> tuple[str, str]:
     """Normalize the two immutable per-run limits for their Entry variables."""
 
     return str(config.target_completed_matches), str(config.max_match_attempts)
+
+
+def match_energy_text(controller: DesktopControllerSnapshot) -> str:
+    """Compact per-match local-turn/energy accounting for the Control tab."""
+
+    values = controller.completed_match_turns
+    if values:
+        visible = values[-8:]
+        prefix = "… " if len(values) > len(visible) else ""
+        per_match = ", ".join(
+            f"#{attempt_index}: {turns}" for attempt_index, turns in visible
+        )
+        completed = f"Completed turns / energy: {prefix}{per_match}"
+    else:
+        completed = "Completed turns / energy: no completed match yet"
+    current = (
+        f"Current match turn / energy: {controller.current_match_turns}"
+        if controller.current_match_turns > 0
+        else "Current match turn / energy: —"
+    )
+    return (
+        f"{completed}\n{current}\n"
+        f"Total energy: {controller.total_energy_used}"
+    )
 
 
 def graceful_button_text(controller: DesktopControllerSnapshot) -> str:
@@ -551,7 +585,8 @@ class DesktopViewModel:
             f"{controller.completed_matches}/{controller.target_completed_matches} — "
             f"Attempts {controller.match_attempts}\n"
             f"W/L/U {controller.wins}/{controller.losses}/{controller.unknown_results} — "
-            f"Run {controller.farm_run_id or 'PENDING'}"
+            f"Run {controller.farm_run_id or 'PENDING'}\n"
+            f"{match_energy_text(controller)}"
         )
         controls = snapshot.controls
         if controller.active:
@@ -610,6 +645,9 @@ class DesktopApplication:
         event_log: DesktopEventLog,
         preference_store: DesktopPreferenceStore | None = None,
         preference_warnings: tuple[PreferenceWarning, ...] = (),
+        game_location: str = "",
+        game_executable: str = "",
+        game_location_changed: Callable[[str], Any] | None = None,
         auto_close_seconds: float = 0.0,
     ) -> None:
         import tkinter as tk
@@ -620,6 +658,7 @@ class DesktopApplication:
         self.event_log = event_log
         self.preference_store = preference_store
         self.preference_warnings = preference_warnings
+        self.game_location_changed = game_location_changed
         self.auto_close_seconds = max(0.0, float(auto_close_seconds))
         self.render_ticks = 0
         self.handled_ui_errors = 0
@@ -649,9 +688,10 @@ class DesktopApplication:
         notebook.pack(fill=tk.BOTH, expand=True)
         outer = ttk.Frame(notebook, padding=14)
         preferences_outer = ttk.Frame(notebook, padding=14)
+        settings_outer = ttk.Frame(notebook, padding=14)
         diagnostics_outer = ttk.Frame(notebook, padding=14)
         for page, tab_title in zip(
-            (outer, preferences_outer, diagnostics_outer),
+            (outer, preferences_outer, settings_outer, diagnostics_outer),
             DESKTOP_TAB_TITLES,
         ):
             notebook.add(page, text=tab_title)
@@ -707,10 +747,15 @@ class DesktopApplication:
         self.play_style = tk.StringVar(value=config.play_style.value)
         self.mana_priority = tk.StringVar(value=config.mana_priority.value)
         self.intelligence = tk.StringVar(value=Intelligence.BASIC.value)
+        self.board_input_mode = tk.StringVar(value=config.board_input_mode.value)
         self.boss_id = tk.StringVar(value=config.normalized_boss_id or "")
         self.boss_name = tk.StringVar(value=config.normalized_boss_name or "")
         self.target_matches = tk.StringVar(value=str(config.target_completed_matches))
         self.max_attempts = tk.StringVar(value=str(config.max_match_attempts))
+        self.game_location = tk.StringVar(value=game_location)
+        self.game_executable_var = tk.StringVar(
+            value=game_executable or "NOT RESOLVED"
+        )
         self._config_widgets: list[tuple[Any, str]] = []
 
         preferences_frame = ttk.LabelFrame(
@@ -770,6 +815,17 @@ class DesktopApplication:
             ),
             editable_state="readonly",
         )
+        preference_field(
+            row=3,
+            label="Board input",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.board_input_mode,
+                values=tuple(value.value for value in BoardInputMode),
+                state="readonly",
+            ),
+            editable_state="readonly",
+        )
 
         def horizontal_field(
             parent: Any,
@@ -807,7 +863,51 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=3, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=4, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+        )
+
+        settings_frame = ttk.LabelFrame(
+            settings_outer, text="Game Installation", padding=12
+        )
+        settings_frame.pack(fill=tk.X)
+        settings_frame.columnconfigure(1, weight=1)
+        ttk.Label(settings_frame, text="Game executable:").grid(
+            row=0, column=0, sticky=tk.W, padx=(0, 12), pady=5
+        )
+        self.game_location_entry = ttk.Entry(
+            settings_frame, textvariable=self.game_location
+        )
+        self.game_location_entry.grid(row=0, column=1, sticky=tk.EW, pady=5)
+        self.game_location_folder_button = ttk.Button(
+            settings_frame,
+            text="File...",
+            command=self._choose_game_executable,
+        )
+        self.game_location_folder_button.grid(
+            row=0, column=2, sticky=tk.E, padx=(8, 0), pady=5
+        )
+        self.game_location_apply_button = ttk.Button(
+            settings_frame,
+            text="Apply & Save",
+            command=self._save_game_location,
+        )
+        self.game_location_apply_button.grid(
+            row=1, column=1, sticky=tk.W, pady=(8, 4)
+        )
+        ttk.Label(settings_frame, text="Selected:").grid(
+            row=2, column=0, sticky=tk.NW, padx=(0, 12), pady=5
+        )
+        ttk.Label(
+            settings_frame,
+            textvariable=self.game_executable_var,
+            wraplength=330,
+        ).grid(row=2, column=1, columnspan=2, sticky=tk.W, pady=5)
+        self._config_widgets.extend(
+            (
+                (self.game_location_entry, "normal"),
+                (self.game_location_folder_button, "normal"),
+                (self.game_location_apply_button, "normal"),
+            )
         )
 
         control_frame = ttk.LabelFrame(
@@ -993,7 +1093,10 @@ class DesktopApplication:
         if self.preference_store is None:
             return None
         try:
-            self.preference_store.save(config)
+            self.preference_store.save(
+                config,
+                game_location=self.game_location.get(),
+            )
             self.event_log.write(
                 "preferences_saved",
                 path=str(self.preference_store.path),
@@ -1009,6 +1112,76 @@ class DesktopApplication:
                 operatorMessage=f"Preferences were not saved: {reason}",
             )
             return str(reason)
+
+    def _apply_game_location(self, *, persist: bool) -> Any:
+        raw = self.game_location.get().strip()
+        if self.game_location_changed is None:
+            if not raw:
+                raise ValueError("game location is required")
+            resolved: Any = raw
+        else:
+            resolved = self.game_location_changed(raw)
+        executable = getattr(resolved, "executable", resolved)
+        location = getattr(resolved, "location", raw)
+        self.game_location.set(str(executable))
+        self.game_executable_var.set(str(executable))
+        warning = None
+        if persist:
+            warning = self._persist_preferences(
+                self.view_model.control_plane.snapshot().config
+            )
+        self.event_log.write(
+            "game_location_applied",
+            location=str(location),
+            executable=str(executable),
+            operatorMessage=f"Game executable selected: {executable}",
+        )
+        if warning:
+            raise PreferenceError(warning, "game location could not be saved")
+        return resolved
+
+    def _save_game_location(self) -> None:
+        try:
+            resolved = self._apply_game_location(persist=True)
+            self.command_feedback.set(
+                f"Game location saved — {getattr(resolved, 'executable', resolved)}"
+            )
+        except Exception as exc:
+            reason = getattr(exc, "reason", "GAME_LOCATION_INVALID")
+            self.command_feedback.set(f"Game location invalid — {exc}")
+            self.event_log.write(
+                "game_location_rejected",
+                reason=reason,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
+    def _choose_game_executable(self) -> None:
+        from tkinter import filedialog
+
+        current = self.game_location.get().strip()
+        current_path = Path(current) if current else None
+        initial_directory = None
+        initial_file = None
+        if current_path is not None:
+            if current_path.is_file():
+                initial_directory = str(current_path.parent)
+                initial_file = current_path.name
+            elif current_path.is_dir():
+                initial_directory = str(current_path)
+        selected = filedialog.askopenfilename(
+            parent=self.root,
+            title="Select Pokiguard game executable",
+            initialdir=initial_directory,
+            initialfile=initial_file,
+            filetypes=(
+                ("Pokiguard executable", "Pokiguard-*.exe"),
+                ("Executable files", "*.exe"),
+            ),
+        )
+        if not selected:
+            return
+        self.game_location.set(selected)
+        self._save_game_location()
 
     def _validate_draft(self) -> None:
         try:
@@ -1034,6 +1207,7 @@ class DesktopApplication:
             "play_style": self.play_style.get(),
             "mana_priority": self.mana_priority.get(),
             "intelligence": self.intelligence.get(),
+            "board_input_mode": self.board_input_mode.get(),
             "boss_id": self.boss_id.get(),
             "boss_name": self.boss_name.get(),
             "target_completed_matches": self.target_matches.get(),
@@ -1062,6 +1236,7 @@ class DesktopApplication:
 
     def _start_farm(self) -> None:
         try:
+            self._apply_game_location(persist=False)
             config = self.view_model.apply_draft(**self._draft_fields())
             self._persist_preferences(config)
             self.start_commands_submitted += 1
@@ -1079,6 +1254,7 @@ class DesktopApplication:
 
     def _resume_checkpoint(self) -> None:
         try:
+            self._apply_game_location(persist=False)
             config = self.view_model.apply_draft(**self._draft_fields())
             self._persist_preferences(config)
             self.resume_commands_submitted += 1

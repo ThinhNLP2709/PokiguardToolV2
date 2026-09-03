@@ -15,7 +15,9 @@ from typing import Iterable
 
 
 EXPECTED_MAGIC = 0xFAB11BAF
+# Compatibility export retained for the original Phase 1 fixture.
 EXPECTED_VERSION = 31
+SUPPORTED_VERSIONS = frozenset({31, 110})
 HEADER_SIZE = 8
 DEFAULT_RELATIVE_METADATA = Path(
     "Pokiguard_Data/il2cpp_data/Metadata/global-metadata.dat"
@@ -35,7 +37,7 @@ class MetadataHeader:
 
     @property
     def valid(self) -> bool:
-        return self.magic == EXPECTED_MAGIC and self.version == EXPECTED_VERSION
+        return self.magic == EXPECTED_MAGIC and self.version in SUPPORTED_VERSIONS
 
 
 def _candidate_paths(value: Path) -> Iterable[Path]:
@@ -44,6 +46,15 @@ def _candidate_paths(value: Path) -> Iterable[Path]:
         return
     yield value / "global-metadata.dat"
     yield value / DEFAULT_RELATIVE_METADATA
+    if value.is_dir():
+        # Current launchers are versioned and Unity mirrors that name in the
+        # data directory, for example Pokiguard-1.7.4_Data.
+        yield from sorted(
+            value.glob(
+                "Pokiguard-*_Data/il2cpp_data/Metadata/global-metadata.dat"
+            ),
+            reverse=True,
+        )
 
 
 def resolve_metadata_path(value: str | Path | None = None) -> Path:
@@ -119,7 +130,8 @@ def main(argv: list[str] | None = None) -> int:
     if not result.valid:
         print(
             "ERROR: unexpected metadata header "
-            f"(expected magic=0x{EXPECTED_MAGIC:08X}, version={EXPECTED_VERSION})",
+            f"(expected magic=0x{EXPECTED_MAGIC:08X}, "
+            f"supported versions={sorted(SUPPORTED_VERSIONS)})",
             file=sys.stderr,
         )
         return 1

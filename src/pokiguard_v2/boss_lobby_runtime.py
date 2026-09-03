@@ -16,7 +16,11 @@ from .boss_entry import (
     BossTargetIdentity,
     TargetSelectionState,
 )
-from .combat_lifecycle import CombatLifecycleObservation, CombatLifecycleState
+from .combat_lifecycle import (
+    CombatLifecycleObservation,
+    CombatLifecycleState,
+    MatchHostState,
+)
 from .combat_cards import ATTACK_ELEMENT_TYPES, CardDataState, read_card_data
 from .il2cpp_external import (
     CHAT_SERVICE_SINGLETON,
@@ -29,14 +33,14 @@ from .il2cpp_layout import LayoutValidationError, read_il2cpp_string, read_refer
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
-MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x3560D90
-MANAGER_ROOM_TYPE_INFO_RVA = 0x3560F10
-WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x3535860
+MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x2C53AC8
+MANAGER_ROOM_TYPE_INFO_RVA = 0x2C53C20
+WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x2C300F0
 
 # ManagerQuangTruong (Assembly-CSharp).
-MQT_PANEL_BOSS_OFFSET = 0xF0
-MQT_PANEL_CHINH_PHUC_OFFSET = 0x278
-MQT_MANAGER_BOSS_OFFSET = 0x350
+MQT_PANEL_BOSS_OFFSET = 0x108
+MQT_PANEL_CHINH_PHUC_OFFSET = 0x2B0
+MQT_MANAGER_BOSS_OFFSET = 0x3A0
 
 # ManagerRoom (Assembly-CSharp).
 MANAGER_ROOM_ROOM_PANEL_OFFSET = 0x20
@@ -44,7 +48,7 @@ MANAGER_ROOM_BUTTON_START_OFFSET = 0x28
 MANAGER_ROOM_LOADING_OFFSET = 0x30
 MANAGER_ROOM_ROOM_DATA_OFFSET = 0x100
 MANAGER_ROOM_SELECTED_CARDS_OFFSET = 0x108
-MANAGER_ROOM_IS_OPENING_FLOW_OFFSET = 0x125
+MANAGER_ROOM_IS_OPENING_FLOW_OFFSET = 0x130
 
 # RoomDTO.
 ROOM_ID_OFFSET = 0x10
@@ -53,7 +57,7 @@ ROOM_LOCAL_PET_ID_OFFSET = 0x34
 ROOM_ENEMY_PET_ID_OFFSET = 0x38
 ROOM_ENEMY_PET_LEVEL_OFFSET = 0x3C
 ROOM_ENEMY_PET_NAME_OFFSET = 0x40
-ROOM_CARDS_OFFSET = 0x50
+ROOM_CARDS_OFFSET = 0x58
 
 # WsRoomService.
 WS_CURRENT_ROOM_ID_OFFSET = 0x10
@@ -613,9 +617,27 @@ def read_boss_lobby_runtime(
             state = BossLobbyState.LOBBY_OTHER
             reasons.extend(chinh.reasons)
             reasons.extend(world.reasons)
+    elif (
+        lifecycle is CombatLifecycleState.UNKNOWN
+        and chinh.clean
+        and _unknown_lifecycle_has_no_positive_combat(combat_lifecycle)
+    ):
+        # MatchHost/MatchSceneLoader/HubSuspendManager are static classes. Their
+        # ``Il2CppClass.static_fields`` pointers may legitimately be null until
+        # the game initializes those classes, so their absence cannot prove the
+        # normal LOBBY lifecycle.  The exact ChinhPhuc room graph is a separate,
+        # stronger positive proof.  Accept it only when every room invariant is
+        # clean and no combat/transition signal or read error contradicts it.
+        state = BossLobbyState.BOSS_LOBBY
+        branch = "CHINH_PHUC_ROOM"
+        reasons.append(
+            "exact ChinhPhuc room proven while combat static classes are uninitialized"
+        )
     else:
         state = BossLobbyState.UNKNOWN
         reasons.append(f"base lifecycle is {lifecycle.value}")
+        if lifecycle is CombatLifecycleState.UNKNOWN:
+            reasons.extend(chinh.reasons)
     candidates = chinh_candidates if branch == "CHINH_PHUC_ROOM" else world_candidates
     return BossLobbyRuntimeSnapshot(
         state,
@@ -625,6 +647,28 @@ def read_boss_lobby_runtime(
         world,
         candidates,
         tuple(reasons),
+    )
+
+
+def _unknown_lifecycle_has_no_positive_combat(
+    lifecycle: CombatLifecycleObservation,
+) -> bool:
+    """Permit exact-room recovery only when UNKNOWN has no combat evidence."""
+
+    signals = lifecycle.signals
+    return bool(
+        not signals.read_errors
+        and signals.match_host_state in {None, MatchHostState.IDLE}
+        and signals.current_rig is None
+        and signals.current_rig_native is None
+        and signals.current_rig_alive is not True
+        and signals.scene_loading is not True
+        and signals.scene_unloading is not True
+        and signals.hub_suspended is not True
+        and signals.board_instance is None
+        # Active/ManagerMatch singleton references can survive scene teardown.
+        # Without a Board, rig, transition or suspended hub they are stale
+        # ownership telemetry rather than positive live-combat evidence.
     )
 
 

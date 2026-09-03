@@ -63,6 +63,12 @@ Quyết định đi nước được đưa ra bằng cách xét **lần lượt*
 Sử dụng thẻ tiến hóa nếu đủ 3 yếu tố: **chưa tiến hóa** + **160 mana** + **cài
 đặt ưu tiên mana là tiến hóa**. Thì cứ thử tiến hóa cho tới khi nào thành công.
 
+Lượt đầu tiên vẫn phải đi một nước trên bàn. **Từ lượt của chúng ta lần thứ 2
+trở đi**, nếu thẻ/pet tiến hóa hiện tại được game xác nhận, chưa tiến hóa thành
+công và mana đủ chi phí runtime, thì Bước 1 phải được xét trước mọi nước trên
+bàn. Production dùng cùng ngưỡng hành động inclusive 1 giây; không tự trì hoãn
+tiến hóa chỉ vì còn dưới 10 giây.
+
 Nếu cài đặt ưu tiên là chưởng thì bỏ qua — toàn trận không tiến hóa.
 
 Ngoại lệ kết liễu: khi máu hiện tại của boss nhỏ hơn hoặc bằng ngưỡng cấu hình
@@ -72,6 +78,10 @@ liễu bằng kiếm hoặc chưởng.
 
 Xét thẻ tiến hóa đầu vì đây là lá chức năng: sau tiến hóa vẫn có thể đi tiếp
 được; nếu có tiến hóa nhưng không đi nước vẫn không tính là bỏ lượt.
+
+Ngoại lệ an toàn 2/3: EVOLVE không được xem là hành động reset lượt bỏ. Khi
+server đã báo 2/3, phải ưu tiên một SWAP hoặc CAST có tiêu thụ lượt để tránh bị
+đá; nếu không còn đủ thời gian thì chuyển sang recovery.
 
 > Xác định bỏ lượt **theo data game**, không tự count bằng code.
 
@@ -98,6 +108,33 @@ Chúng ta có data 64 viên: khi ra nước phải suy diễn xem sau khi ăn v�
 biết thì có chừa lại kiếm hay không để mà né. Trừ trường hợp bất khả kháng (ăn
 đường nào cũng chừa kiếm) thì bắt buộc chừa; còn không, phải cố gắng dựa trên
 thông tin trên bàn mà không chừa lại match-3 tiềm năng cho boss.
+
+Khái niệm "chừa kiếm" bao gồm cả hai đường đã tính được:
+
+- trực tiếp: boss đổi một nước và match đó ăn kiếm ngay;
+- gián tiếp: boss đổi một match tài nguyên khác, phần sập/combo deterministic
+  từ 64 ô đã biết tiếp tục ăn kiếm.
+
+Một nước chỉ được gọi là an toàn khi không để lại cả hai loại Sword reply trên.
+Không suy đoán gem mới từ ngoài 64 ô; phần refill UNKNOWN vẫn theo nguyên tắc
+fail-closed/risk hiện có. Kiểm tra UNKNOWN phải bao gồm cả chiều ngược lại:
+nếu sau khi sập có một ô refill chưa biết nằm cạnh kiếm đã biết, phải thử đưa
+kiếm đã biết đó vào ô refill. Nếu cách đổi ấy hoàn tất match-3 kiếm từ các viên
+đã biết còn lại thì nước hiện tại là nguy hiểm, kể cả khi giả sử chính viên
+refill là kiếm sẽ khiến nó tự ăn ngay trong cascade.
+
+Ngoại lệ cho **duy nhất một nước kiếm**: nếu ăn nước đó chỉ lấy được lượng kiếm
+hiệu dụng nhỏ hơn lượng kiếm mà một Sword reply deterministic sau đó trao cho
+boss, không bắt buộc ăn ngay. Policy trước hết tiếp tục các nhánh tài nguyên với
+một nước an toàn thật sự, hoặc PASS khi game-owned idle state xác nhận còn quyền
+bỏ lượt. Nếu PASS không dùng được, policy chỉ được cố ý giữ thế kiếm bằng một
+**Sword-hold** ở khu vực khác khi mô phỏng chứng minh rằng mọi Sword reply đã
+biết của boss đều để lại cho lượt kế tiếp của ta lượng kiếm hiệu dụng lớn hơn
+lượng boss vừa lấy. Sword-hold là ngoại lệ chiến thuật có kiểm chứng, **không**
+được gắn nhãn nước an toàn; UNKNOWN không được dùng làm bằng chứng có lợi.
+
+Nếu đang ở lượt bắt buộc, ưu tiên Sword-hold đã chứng minh; nếu không có thì
+chọn nước có rủi ro kiếm thấp nhất theo Bước 7.
 
 ### Bước 3 — Chưởng kết liễu, rồi tài nguyên
 
@@ -208,3 +245,12 @@ policy đọc chi phí thật từ runtime (`FusionState.mana_cost`,
 - **2026-08-18** — Hoàn thiện chế độ boss máu thấp: tại `HP <=` ngưỡng cấu
   hình, Bước 1 không tiến hóa; sau ưu tiên kiếm, bot chưởng ngay khi thẻ/cost
   runtime hợp lệ và đủ mana, nếu chưa đủ thì ưu tiên mana an toàn trước nộ.
+- **2026-08-29** — Mở rộng Sword-safe sang reply gián tiếp: mô phỏng mọi nước
+  hợp lệ của boss trên board đã settle, tính cả non-Sword direct match dẫn tới
+  Sword cascade. Bổ sung ngoại lệ defer nước kiếm duy nhất khi nó mở cho boss
+  lượng kiếm deterministic lớn hơn; Sword-hold chỉ hợp lệ khi mọi reply đã biết
+  đều chứng minh lượt kế tiếp của ta lấy được nhiều kiếm hiệu dụng hơn.
+- **2026-09-02** — Bịt lỗ hổng sập một hàng qua ô refill: ngoài việc thử gem
+  mới là kiếm, simulator còn thử đưa kiếm đã biết cạnh ô UNKNOWN vào ô đó.
+  Fixture hồi quy tái hiện hai kiếm hàng 1, hai kiếm hàng 3 và nước nộ hàng 2;
+  nước nộ phải bị loại khỏi tập an toàn vì tạo match-3 kiếm tiềm năng cho boss.

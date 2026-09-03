@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
@@ -22,8 +23,10 @@ from pokiguard_v2.farm_run import (
     MatchResult,
 )
 from pokiguard_v2.state import CombatSessionKey
+from pokiguard_v2.postmatch_ui import PostmatchControl, PostmatchUiLocation
 from pokiguard_v2.win32_input import (
     ClientGeometry,
+    ClickPointResult,
     ForegroundClickExecutor,
     WindowBinding,
 )
@@ -38,6 +41,7 @@ from pokiguard_v2.technical_recovery import (
 from tools.farm_run import (
     ClickStatus,
     _ControllerMemorySampler,
+    _confirm_postmatch,
     _exact_target_room_restored,
     _failed_recovery_fallback_allowed,
     _farm_room_ejection_sources,
@@ -311,6 +315,129 @@ def complete_recovery_coordinator(
     )
     assert coordinator.accept_opening(recovered)
     return coordinator
+
+
+class MatchEnergyAccountingTests(unittest.TestCase):
+    def test_live_turn_progress_is_monotonic_and_session_bound(self) -> None:
+        run = start_run()
+        active = session(1)
+        enter(run, active)
+
+        self.assertTrue(
+            run.observe_combat_turn_counts(
+                session=active,
+                local_turns=3,
+                boss_turns=2,
+            )
+        )
+        self.assertEqual(3, run.current_attempt.local_turns)
+        self.assertFalse(
+            run.observe_combat_turn_counts(
+                session=active,
+                local_turns=2,
+                boss_turns=2,
+            )
+        )
+        self.assertFalse(
+            run.observe_combat_turn_counts(
+                session=session(2),
+                local_turns=4,
+                boss_turns=3,
+            )
+        )
+        self.assertEqual(3, run.current_attempt.local_turns)
+
+    def test_distinct_local_turn_count_is_recorded_as_match_energy(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+
+        run.apply_combat_summary(
+            {
+                "localTurnsObserved": 12,
+                "bossTurnsObserved": 11,
+                "counters": {},
+            }
+        )
+
+        self.assertEqual(12, run.current_attempt.local_turns)
+        event = next(
+            item for item in run.events
+            if item.event == "match_turn_energy_counted"
+        )
+        self.assertEqual(12, event.detail["energyUsed"])
+        self.assertEqual(1, event.detail["attemptIndex"])
+
+
+class PostmatchConfirmationTimingTests(unittest.TestCase):
+    def test_three_visual_frames_use_only_initial_and_final_memory_polls(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+
+        class Provider:
+            def __init__(self) -> None:
+                self.polls = 0
+
+            def poll(self) -> SimpleNamespace:
+                self.polls += 1
+                return SimpleNamespace(
+                    combat_lifecycle=SimpleNamespace(
+                        state=CombatLifecycleState.POSTMATCH
+                    ),
+                    state=None,
+                )
+
+        class Executor:
+            def __init__(self) -> None:
+                self.points: list[tuple[float, float]] = []
+
+            def window_status(self, _binding: object) -> SimpleNamespace:
+                return SimpleNamespace(valid=True, foreground=True)
+
+            def send_normalized_point(
+                self, _binding: object, point: tuple[float, float]
+            ) -> ClickPointResult:
+                self.points.append(point)
+                return ClickPointResult(ClickStatus.SENT)
+
+        provider = Provider()
+        executor = Executor()
+        capture = SimpleNamespace(width=800, height=450, rgb=bytes(800 * 450 * 3))
+        location = PostmatchUiLocation(
+            PostmatchControl.RESULT_CONFIRM,
+            True,
+            (0.5, 0.88),
+            0.98,
+            "stable test result control",
+        )
+        sleeps: list[float] = []
+        hotkeys = SimpleNamespace(poll=lambda: (False, False))
+        process = SimpleNamespace(pid=123, is_running=lambda: True)
+
+        with (
+            patch("tools.farm_run.capture_client_rgb", return_value=capture),
+            patch("tools.farm_run.locate_result_confirm", return_value=location),
+            patch("tools.farm_run.write_png_rgb"),
+        ):
+            confirmed, _ui_result, _ui_text = _confirm_postmatch(
+                run=run,
+                process=process,
+                provider=provider,  # type: ignore[arg-type]
+                binding=object(),
+                executor=executor,  # type: ignore[arg-type]
+                directory=Path("unused"),
+                interval=0.12,
+                ui_timeout=3.0,
+                hotkeys=hotkeys,  # type: ignore[arg-type]
+                sleeper=sleeps.append,
+            )
+
+        self.assertTrue(confirmed)
+        self.assertEqual(provider.polls, 2)
+        self.assertEqual(sleeps, [0.12, 0.12])
+        self.assertEqual(executor.points, [(0.5, 0.88)])
+        self.assertEqual(run.snapshot().total_postmatch_inputs, 1)
 
 
 class FarmRunBoundaryTests(unittest.TestCase):
@@ -955,6 +1082,29 @@ class FarmRunBoundaryTests(unittest.TestCase):
                 detail="fresh recomputed swap",
             )
         )
+
+    def test_transient_physical_preflight_can_release_unsent_permit(self) -> None:
+        run = start_run()
+        key = session(1)
+        enter(run, key)
+        capability = FarmRunGameplayCapability(run, key)
+        permit = capability.reserve(action="SWAP", session=key, foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            capability.abandon_gameplay_preflight(  # type: ignore[arg-type]
+                permit,
+                detail="turn changed before Windows input",
+            )
+        )
+        self.assertEqual(run.state, FarmRunState.COMBAT_ACTIVE)
+        self.assertIsNone(run.stop_reason)
+        self.assertEqual(run.snapshot().total_gameplay_inputs, 0)
+        self.assertEqual(run.snapshot().safety.nonzero(), {})
+
+        replacement = capability.reserve(
+            action="SWAP", session=key, foreground=True
+        )
+        self.assertIsNotNone(replacement)
 
     def test_input_after_terminal_stop_is_denied_and_counted(self) -> None:
         run = start_run(FarmRunLimits(1, 0, 1))

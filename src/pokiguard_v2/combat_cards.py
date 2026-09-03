@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 import struct
-from typing import Iterable
+from typing import Iterable, MutableMapping
 
 from .il2cpp_external import (
     MATCH_SERVICE_FUSION_ENABLED_OFFSET,
@@ -46,10 +46,10 @@ CARD_UI_READ_SIZE = 0x79
 
 # Board owns both the configured CardData order and the instantiated card
 # GameObjects for the current combat.  Cpp2IL
-# DiffableCs/Assembly-CSharp/Board.cs declares selectedCards at +0x2F8 and
-# cardsInHand at +0x300.
-BOARD_SELECTED_CARDS_OFFSET = 0x2F8
-BOARD_CARDS_IN_HAND_OFFSET = 0x300
+# Il2CppInspector metadata-110 output declares selectedCards at +0x318 and
+# cardsInHand at +0x320 for Pokiguard 1.7.4.
+BOARD_SELECTED_CARDS_OFFSET = 0x318
+BOARD_CARDS_IN_HAND_OFFSET = 0x320
 MANAGED_LIST_ITEMS_OFFSET = 0x10
 MANAGED_LIST_SIZE_OFFSET = 0x18
 MANAGED_LIST_VERSION_OFFSET = 0x1C
@@ -544,7 +544,13 @@ def validate_fusion_card_ui_hits(
     class_pointer_hits: Iterable[int],
     *,
     expected_class: int,
+    expected_bound_pet_ids: Iterable[int] | None = None,
 ) -> tuple[FusionUiState, ...]:
+    expected_ids = (
+        {int(value) for value in expected_bound_pet_ids if int(value) > 0}
+        if expected_bound_pet_ids is not None
+        else None
+    )
     values: dict[int, FusionUiState] = {}
     for address in class_pointer_hits:
         try:
@@ -552,6 +558,11 @@ def validate_fusion_card_ui_hits(
                 memory, address, expected_class=expected_class
             )
         except (ExternalReadError, OSError, LayoutValidationError):
+            continue
+        # Destroyed wrappers from earlier combats can remain in the managed
+        # heap.  The current MatchService-selected pet identity is an exact
+        # ownership witness in addition to the native-object/Button checks.
+        if expected_ids is not None and value.bound_pet_id not in expected_ids:
             continue
         values[address] = value
     return tuple(sorted(values.values(), key=lambda item: item.address))
@@ -564,6 +575,7 @@ def read_combat_card(
     expected_class: int,
     expected_board: int,
     expected_active: int,
+    card_data_cache: MutableMapping[int, CardDataState] | None = None,
 ) -> CombatCardState:
     if not is_canonical_user_pointer(address) or not memory.is_readable(
         address, CARD_UI_READ_SIZE
@@ -587,7 +599,20 @@ def read_combat_card(
         if not is_canonical_user_pointer(pointer) or not memory.is_readable(pointer, size):
             raise LayoutValidationError(f"{label} pointer is invalid")
 
-    card = read_card_data(memory, card_data)
+    # CardData is immutable for the lifetime of one combat loadout.  The UI
+    # wrapper flags and Button.interactable below are live and must still be
+    # read on every poll, but repeatedly decoding the same strings/costs for
+    # every candidate wastes cross-process reads.  Callers own the cache and
+    # must clear it at the combat-session boundary.
+    card = (
+        card_data_cache.get(card_data)
+        if card_data_cache is not None
+        else None
+    )
+    if card is None:
+        card = read_card_data(memory, card_data)
+        if card_data_cache is not None:
+            card_data_cache[card_data] = card
 
     interactable_raw = memory.read(button + SELECTABLE_INTERACTABLE_OFFSET, 1)
     if interactable_raw[0] not in (0, 1):
@@ -645,6 +670,7 @@ def validate_combat_card_hits(
     expected_class: int,
     expected_board: int,
     expected_active: int,
+    card_data_cache: MutableMapping[int, CardDataState] | None = None,
 ) -> tuple[CombatCardState, ...]:
     cards: dict[int, CombatCardState] = {}
     for address in class_pointer_hits:
@@ -655,6 +681,7 @@ def validate_combat_card_hits(
                 expected_class=expected_class,
                 expected_board=expected_board,
                 expected_active=expected_active,
+                card_data_cache=card_data_cache,
             )
         except (ExternalReadError, OSError, LayoutValidationError):
             continue

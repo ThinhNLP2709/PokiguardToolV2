@@ -9,12 +9,12 @@ from .live_state import runtime_row_to_screen_row, screen_row_to_runtime_row
 
 @dataclass(frozen=True)
 class BoardGeometry:
-    """Normalized game-client geometry inherited from the verified V1 setup."""
+    """Normalized game-client geometry verified from live 1.7.4 DotsArea."""
 
-    first_center_x: float = 0.360
-    first_center_y: float = 0.150
-    step_x: float = 0.0410
-    step_y: float = 0.0760
+    first_center_x: float = 0.3620
+    first_center_y: float = 0.1625
+    step_x: float = 0.0393
+    step_y: float = 0.0787
 
     def __post_init__(self) -> None:
         values = (

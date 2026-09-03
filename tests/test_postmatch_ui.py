@@ -32,7 +32,67 @@ def result_modal_rgb(*, second_button: bool = False, panel: bool = True) -> byte
     return bytes(rgb)
 
 
+def current_wide_result_rgb(
+    *,
+    banner: bool = True,
+    button: bool = True,
+    second_button: bool = False,
+) -> tuple[bytes, int, int]:
+    width = 1000
+    height = 500
+    rgb = bytearray(bytes((28, 55, 80)) * width * height)
+
+    def fill(
+        left: int,
+        top: int,
+        right: int,
+        bottom: int,
+        color: tuple[int, int, int],
+    ) -> None:
+        for y in range(top, bottom):
+            for x in range(left, right):
+                offset = (y * width + x) * 3
+                rgb[offset : offset + 3] = bytes(color)
+
+    if banner:
+        fill(110, 5, 890, 110, (235, 120, 25))
+    if button:
+        if second_button:
+            fill(360, 435, 440, 472, (25, 145, 230))
+            fill(560, 435, 640, 472, (25, 145, 230))
+        else:
+            fill(455, 435, 545, 472, (25, 145, 230))
+    return bytes(rgb), width, height
+
+
 class PostmatchUiTests(unittest.TestCase):
+    def test_locates_current_wide_orange_banner_and_blue_confirm(self) -> None:
+        rgb, width, height = current_wide_result_rgb()
+        location = locate_result_confirm(rgb, width, height)
+        self.assertTrue(location.found, location)
+        self.assertEqual(
+            location.reason,
+            "single_blue_button_below_orange_result_banner",
+        )
+        self.assertEqual(
+            location.metrics["layoutVariant"],
+            "POKIGUARD_1_7_4_WIDE_RESULT",
+        )
+        self.assertAlmostEqual(location.normalized_point[0], 0.5, places=2)  # type: ignore[index]
+        self.assertTrue(0.86 <= location.normalized_point[1] <= 0.94)  # type: ignore[index]
+
+    def test_current_wide_result_requires_both_unique_layout_anchors(self) -> None:
+        for kwargs in (
+            {"banner": False},
+            {"button": False},
+            {"second_button": True},
+        ):
+            with self.subTest(kwargs=kwargs):
+                rgb, width, height = current_wide_result_rgb(**kwargs)
+                self.assertFalse(
+                    locate_result_confirm(rgb, width, height).found
+                )
+
     def test_locates_single_result_confirmation_below_large_blue_panel(self) -> None:
         location = locate_result_confirm(result_modal_rgb(), WIDTH, HEIGHT)
         self.assertTrue(location.found, location)

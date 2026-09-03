@@ -16,7 +16,7 @@ from .il2cpp_external import is_canonical_user_pointer
 from .il2cpp_layout import LayoutValidationError
 
 
-MATCH_SERVICE_ACKED_SEQS_OFFSET = 0x180
+MATCH_SERVICE_ACKED_SEQS_OFFSET = 0x198
 HASHSET_BUCKETS_OFFSET = 0x10
 HASHSET_SLOTS_OFFSET = 0x18
 HASHSET_COUNT_OFFSET = 0x20

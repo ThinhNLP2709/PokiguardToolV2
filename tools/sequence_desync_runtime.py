@@ -309,7 +309,7 @@ class RuntimeSequenceMonitor:
         force_full_scan: bool = False,
         enable_gap_full_scan: bool = True,
         allow_gap_full_escalation: bool = False,
-        resolved_board_sequences: Iterable[int] = (),
+        available_board_sequences: Iterable[int] = (),
         offered_board_message_addresses: Iterable[int] = (),
     ) -> RuntimeSequenceObservation:
         _service, runtime = read_match_runtime(self.target)
@@ -348,7 +348,14 @@ class RuntimeSequenceMonitor:
             and gap_scan_identity
             != getattr(self, "_last_gap_scan_identity", None)
         )
-        resolved_sequences = frozenset(int(value) for value in resolved_board_sequences)
+        # A structurally validated current-session board may reach the provider
+        # before MatchService publishes the matching ACK.  Its sequence is
+        # enough to suppress a duplicate broad heap search; publication to the
+        # solver still remains blocked until the provider independently sees
+        # that exact ACK and all normal stability/actionability gates pass.
+        available_sequences = frozenset(
+            int(value) for value in available_board_sequences
+        )
         gap_full_escalation = bool(
             enable_gap_full_scan
             and allow_gap_full_escalation
@@ -356,7 +363,7 @@ class RuntimeSequenceMonitor:
             and gap_scan_identity
             == getattr(self, "_last_gap_scan_identity", None)
             and getattr(self, "_last_gap_scan_stage", 0) == 1
-            and runtime.highest_acked_sequence not in resolved_sequences
+            and runtime.highest_acked_sequence not in available_sequences
             and runtime.remaining is not None
             and runtime.remaining >= 10
         )
@@ -370,15 +377,14 @@ class RuntimeSequenceMonitor:
             self._scans % self.full_rescan_interval == 0
             or getattr(self, "_periodic_full_pending", False)
         )
-        periodic_full = bool(
+        periodic_refresh = bool(
             periodic_due
             and (not runtime_local_turn or force_full_scan)
         )
-        self._periodic_full_pending = bool(periodic_due and not periodic_full)
+        self._periodic_full_pending = bool(periodic_due and not periodic_refresh)
         full = bool(
             force_full_scan
             or not self._learned_regions
-            or periodic_full
             or gap_full_escalation
         )
         if full:
@@ -393,7 +399,7 @@ class RuntimeSequenceMonitor:
             else "NO_LIVE_LEARNED_REGIONS"
             if not self._learned_regions
             else "PERIODIC_REFRESH"
-            if periodic_full
+            if periodic_refresh
             else "LEARNED_REGIONS_WITH_NEIGHBORS"
         )
         if gap_refresh:
@@ -410,10 +416,15 @@ class RuntimeSequenceMonitor:
             self._last_gap_scan_stage = 2
         if full:
             selected: tuple[Any, ...] = all_regions
-        elif gap_refresh:
+        elif gap_refresh or periodic_refresh:
             # Neighbours are useful only when a new ACK proves that the
-            # short-lived response may have moved. Ordinary polling stays on
-            # exact learned regions so it cannot tax every gameplay loop.
+            # short-lived response may have moved, or during the infrequent
+            # opponent-turn maintenance refresh. Redux 1.7.4 exposes the
+            # authoritative board through MatchService.PendingCombat and the
+            # BoardWsApplier queue, so a timer alone no longer justifies a
+            # process-wide ~1 GiB traversal. Ordinary polling stays on exact
+            # learned regions; exact unresolved ACK evidence still retains
+            # the one bounded->full escalation below.
             selected = (
                 _learned_regions_with_allocator_neighbors(
                     all_regions, current_learned
@@ -471,7 +482,7 @@ class RuntimeSequenceMonitor:
             gap_refresh
             and allow_gap_full_escalation
             and not full
-            and runtime.highest_acked_sequence not in resolved_sequences
+            and runtime.highest_acked_sequence not in available_sequences
             and runtime.remaining is not None
             and runtime.remaining >= 10
             and not bounded_found_unoffered_board

@@ -13,7 +13,7 @@ import sys
 import time
 import traceback
 from contextlib import nullcontext
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 try:
     import winsound
@@ -132,6 +132,7 @@ from pokiguard_v2.technical_recovery import (  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     AutoHotkeyEdges,
     BoardCalibration,
+    BoardInputMode,
     CoordinateSafetyError,
     ForegroundClickExecutor,
     NativeWin32Backend,
@@ -172,6 +173,12 @@ class SharedCombatRuntime:
     # playing the current match. The outer farm loop consumes the audit latch at
     # the next boundary. This preserves F6 graceful drain != F9 emergency stop.
     farm_control_hotkeys: Any | None = None
+    # Optional same-process status projection. It is called only when a new
+    # authoritative LOCAL/BOSS TurnNumber is deduplicated; it performs no
+    # extra memory read and owns no input capability.
+    turn_progress_observer: (
+        Callable[[str, Any, int, int, int], None] | None
+    ) = None
 
 
 def _reserve_farm_gameplay(
@@ -248,6 +255,24 @@ def _abandon_farm_pass_preflight(
     if runtime.gameplay_capability is None or permit is None:
         return False
     abandon = getattr(runtime.gameplay_capability, "abandon_pass_preflight", None)
+    return bool(abandon is not None and abandon(permit, detail=detail))
+
+
+def _abandon_farm_gameplay_preflight(
+    runtime: SharedCombatRuntime,
+    permit: Any | None,
+    *,
+    detail: str,
+) -> bool:
+    """Release an unsent physical-action permit after a fresh-state change."""
+
+    if runtime.gameplay_capability is None or permit is None:
+        return False
+    abandon = getattr(
+        runtime.gameplay_capability,
+        "abandon_gameplay_preflight",
+        None,
+    )
     return bool(abandon is not None and abandon(permit, detail=detail))
 
 
@@ -418,6 +443,35 @@ def _force_full_pass_scan_once(
         current_attempt_identity is not None
         and current_attempt_identity != last_forced_identity
     )
+
+
+def _provider_available_board_sequences(
+    scan_diagnostics: dict[str, Any],
+) -> tuple[int, ...]:
+    """Return exact validated boards already retained by the provider.
+
+    Transport/runtime-heap snapshots can be captured while a slow scan crosses
+    the opponent -> local boundary, before the direct MatchService ACK sample
+    is refreshed. They are not publishable yet, but re-scanning the complete
+    heap for the same sequence only burns the new 14-second turn. Unattested
+    heap candidates remain excluded.
+    """
+
+    sequences: set[int] = set()
+    for batch in scan_diagnostics.get("trackedBatches", ()):
+        if not (
+            batch.get("ackAttested")
+            or batch.get("transportAttested")
+            or batch.get("runtimeHeapAttested")
+        ):
+            continue
+        try:
+            sequence = int(batch["srvSeq"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if sequence >= 0:
+            sequences.add(sequence)
+    return tuple(sorted(sequences))
 
 
 def _unoffered_transport_board_messages(
@@ -624,6 +678,7 @@ class B4CastAcceptanceEvidence:
     card_id: int | None
     card_name: str | None
     card_element_type: str | None
+    card_interaction_authority: str | None
     actual_cost: int | None
     cost_source: str | None
     mana_before: int | None
@@ -634,6 +689,7 @@ class B4CastAcceptanceEvidence:
     observed_current_player: str | None
     response_accepted: bool
     card_state_accepted: bool
+    direct_owner_mana_accepted: bool
     card_interactable_before: bool | None
     card_interactable_after: bool | None
     has_used_this_turn_before: bool | None
@@ -816,13 +872,29 @@ def _b4_cast_acceptance_evidence(
         and observed_current_player.casefold()
         != pending.identity.source.current_turn_player.casefold()
     )
+    # The fast standard-card path deliberately avoids discovering a managed
+    # CardUI wrapper.  It therefore cannot expose CardUI.lastTurnUsed or
+    # hasUsedThisTurn after the click.  For this exact authority only, the
+    # combination of the full runtime cost delta and the immediately following
+    # opponent turn is the server-owned acceptance proof.  Either signal alone
+    # remains insufficient.
+    direct_owner_mana_accepted = bool(
+        pending.card_interaction_authority
+        == "BOARD_SELECTED_CARDDATA_CARD_STRIP"
+        and exact_mana
+        and exact_turn
+    )
     accepted = bool(
         pending.identity.action is PolicyAction.CAST
         and pending.card_interactable_before is True
         and pending.card_has_used_this_turn_before is False
         and exact_mana
         and exact_turn
-        and (response_accepted or card_state_accepted)
+        and (
+            response_accepted
+            or card_state_accepted
+            or direct_owner_mana_accepted
+        )
     )
     failures: list[str] = []
     if pending.identity.action is not PolicyAction.CAST:
@@ -835,8 +907,12 @@ def _b4_cast_acceptance_evidence(
         failures.append("mana_delta_unproven")
     if not exact_turn:
         failures.append("consuming_turn_unproven")
-    if not (response_accepted or card_state_accepted):
-        failures.append("response_or_card_state_unproven")
+    if not (
+        response_accepted
+        or card_state_accepted
+        or direct_owner_mana_accepted
+    ):
+        failures.append("response_card_or_direct_mana_unproven")
     return B4CastAcceptanceEvidence(
         accepted=accepted,
         reason="accepted" if accepted else ",".join(failures),
@@ -845,6 +921,7 @@ def _b4_cast_acceptance_evidence(
         card_id=pending.card_id,
         card_name=pending.card_name,
         card_element_type=pending.card_element_type,
+        card_interaction_authority=pending.card_interaction_authority,
         actual_cost=pending.mana_cost,
         cost_source=pending.card_cost_source,
         mana_before=pending.mana_before,
@@ -855,6 +932,7 @@ def _b4_cast_acceptance_evidence(
         observed_current_player=observed_current_player,
         response_accepted=response_accepted,
         card_state_accepted=card_state_accepted,
+        direct_owner_mana_accepted=direct_owner_mana_accepted,
         card_interactable_before=pending.card_interactable_before,
         card_interactable_after=(
             card_after.interactable if card_after is not None else None
@@ -1275,6 +1353,9 @@ def _record_turn_observation(
     turn: int | None,
     current_player: str | None,
     local_username: str | None,
+    progress_observer: (
+        Callable[[str, Any, int, int, int], None] | None
+    ) = None,
 ) -> str | None:
     """Count authoritative local/opponent turns once, never once per poll."""
 
@@ -1293,7 +1374,58 @@ def _record_turn_observation(
         counters.local_turns_observed += 1
     else:
         counters.boss_turns_observed += 1
+    if progress_observer is not None:
+        try:
+            progress_observer(
+                role,
+                session,
+                int(turn),
+                counters.local_turns_observed,
+                counters.boss_turns_observed,
+            )
+        except Exception:
+            # Desktop status is diagnostic only. A rendering/projection fault
+            # must never affect gameplay, memory polling, or input ownership.
+            pass
     return role
+
+
+def _observe_fast_runtime_turn(
+    tracker: TurnTransitionTracker,
+    counters: Counters,
+    observed: set[tuple[Any, int, str]],
+    *,
+    session: Any,
+    turn: int | None,
+    current_player: str | None,
+    local_username: str | None,
+    progress_observer: (
+        Callable[[str, Any, int, int, int], None] | None
+    ) = None,
+) -> tuple[TurnTransitionObservation | None, str | None]:
+    """Observe fast transition and status progress through their own APIs.
+
+    The transition tracker deliberately owns only action/turn proof. Desktop
+    status projection belongs to the deduplicated counter helper and must not
+    be passed into ``TurnTransitionTracker.observe_runtime``.
+    """
+
+    transition = tracker.observe_runtime(
+        session=session,
+        turn=turn,
+        current_player=current_player,
+        local_username=local_username,
+    )
+    role = _record_turn_observation(
+        counters,
+        observed,
+        session=session,
+        turn=turn,
+        current_player=current_player,
+        local_username=local_username,
+        progress_observer=progress_observer,
+    )
+    return transition, role
 
 
 def _local_turn_action_deadline_reached(
@@ -2135,6 +2267,7 @@ def _card_diagnostics(state: GameState) -> dict[str, Any]:
                 "cooldownTurns": card.cooldown_turns,
                 "uiSlot": card.ui_slot,
                 "uiSlotCount": card.ui_slot_count,
+                "interactionAuthority": card.interaction_authority,
                 "affordable": affordable,
                 "usableNow": bool(not blocked_by and affordable),
             }
@@ -2163,6 +2296,15 @@ def _decision_fields(state: GameState, decision: Any, analysis: Any) -> dict[str
         "turn": state.battle.turn_number,
         "srvSeq": state.battle.srv_seq,
         "boardHash": state.battle.board_hash,
+        # Preserve the exact screen-oriented 8x8 evidence used by policy. Heap
+        # DTOs are managed objects and may be reclaimed before a post-run audit;
+        # a hash alone cannot reproduce a disputed collapse/Sword evaluation.
+        "boardSnapshot": tuple(
+            tuple((cell.gem.value, cell.multiplier) for cell in row)
+            for row in state.board.cells
+        ),
+        "boardSnapshotOrder": "screen_rows_top_to_bottom_columns_left_to_right",
+        "allLegalCandidates": _mandatory_candidate_fields(analysis),
         "player": state.player,
         "boss": boss,
         "policyStep": decision.trace.policy_step,
@@ -2182,6 +2324,17 @@ def _decision_fields(state: GameState, decision: Any, analysis: Any) -> dict[str
         "unknownExposure": selected.unknown_cells if selected is not None else None,
         "safe": selected.safe if selected is not None else None,
         "dangerScore": selected.danger_score if selected is not None else None,
+        "opponentSwordReplies": (
+            selected.opponent_sword_replies if selected is not None else None
+        ),
+        "opponentSwordReplyEffectiveMax": (
+            selected.opponent_sword_reply_effective_max
+            if selected is not None
+            else None
+        ),
+        "indirectSwordReplies": (
+            selected.indirect_sword_replies if selected is not None else None
+        ),
     }
 
 
@@ -2269,6 +2422,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--play-style", choices=[value.value for value in PlayStyle], default="simple")
     parser.add_argument("--mana-priority", choices=[value.value for value in ManaPriority], default="evolution")
     parser.add_argument("--intelligence", choices=[value.value for value in Intelligence], default="basic")
+    parser.add_argument(
+        "--board-input-mode",
+        choices=[value.value for value in BoardInputMode],
+        default=BoardInputMode.TWO_CLICK.value,
+        help="normal adjacent-swap gesture; cards and modal controls remain clicks",
+    )
     parser.add_argument("--minimum-action-time", type=int, default=1)
     parser.add_argument(
         "--cast-when-boss-hp-below",
@@ -2445,7 +2604,11 @@ def _create_shared_combat_runtime(
     binding = find_window_for_pid(target.pid, backend)
     executor = ForegroundClickExecutor(
         backend,
-        click_delay_seconds=float(v1_config.get("click_delay_seconds", 0.25)),
+        click_delay_seconds=float(v1_config.get("click_delay_seconds", 0.35)),
+        cursor_settle_seconds=float(
+            v1_config.get("cursor_settle_seconds", 0.06)
+        ),
+        input_mode=BoardInputMode(args.board_input_mode),
     )
     provider = MemoryBoardStateProvider(
         target,
@@ -2485,6 +2648,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             mana_priority=configured_mana_priority,
             intelligence=Intelligence.BASIC,
             minimum_turn_time_seconds=args.minimum_action_time,
+            # Step 1 is the operator-owned rule: after the opening action, an
+            # affordable selected evolution is tried before board policy.
+            # Retain only the inclusive hard action floor. Authoritative
+            # idle-2 still defers non-consuming EVOLVE to mandatory SWAP/CAST.
+            minimum_evolve_time_seconds=args.minimum_action_time,
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile_threshold=getattr(args, "cast_mana_stockpile", 480),
             rage_target=getattr(args, "rage_target", 100),
@@ -2567,10 +2735,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         except (OSError, RuntimeError, ValueError):
             lobby_runtime_match_id = None
         calibration = BoardCalibration(
-            float(v1_config.get("board_first_center_x", 0.360)),
-            float(v1_config.get("board_first_center_y", 0.150)),
-            float(v1_config.get("board_step_x", 0.0410)),
-            float(v1_config.get("board_step_y", 0.0760)),
+            float(v1_config.get("board_first_center_x", 0.3620)),
+            float(v1_config.get("board_first_center_y", 0.1625)),
+            float(v1_config.get("board_step_x", 0.0393)),
+            float(v1_config.get("board_step_y", 0.0787)),
         )
         calibration.validate()
         _write(
@@ -3437,12 +3605,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     # cannot trigger repeated broad scans.
                     allow_gap_full_scan = True
                     provider_scan_diagnostics = provider.scan_diagnostics
-                    resolved_board_sequences = tuple(
-                        int(batch["srvSeq"])
-                        for batch in provider_scan_diagnostics.get(
-                            "trackedBatches", ()
+                    available_board_sequences = (
+                        _provider_available_board_sequences(
+                            provider_scan_diagnostics
                         )
-                        if batch.get("ackAttested")
                     )
                     mandatory_cached_fastpath = (
                         _mandatory_cached_board_fastpath_allowed(
@@ -3505,7 +3671,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             force_full_scan=force_full_pass_scan,
                             enable_gap_full_scan=allow_gap_full_scan,
                             allow_gap_full_escalation=True,
-                            resolved_board_sequences=resolved_board_sequences,
+                            available_board_sequences=available_board_sequences,
                             offered_board_message_addresses=(
                                 transport_offered_messages
                             ),
@@ -3525,9 +3691,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             log,
                             "pass_message_scan",
                             fullScan=early_observation.full_scan_performed,
+                            scanReason=early_observation.scan_reason,
                             elapsedSeconds=(
                                 early_observation.scan_elapsed_seconds
                             ),
+                            regionCount=early_observation.scan_region_count,
+                            bytesRead=early_observation.scan_bytes_read,
                             messageCount=len(early_observation.messages),
                             runtime=early_observation.runtime,
                         )
@@ -3646,11 +3815,19 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             ):
                 try:
                     _service, fast_runtime = read_match_runtime(target)
-                    fast_transition = turn_transitions.observe_runtime(
+                    fast_transition, role = _observe_fast_runtime_turn(
+                        turn_transitions,
+                        counters,
+                        observed_turns,
                         session=active_session,
                         turn=fast_runtime.turn,
                         current_player=fast_runtime.current_player,
                         local_username=fast_runtime.local_username,
+                        progress_observer=(
+                            shared_runtime.turn_progress_observer
+                            if shared_runtime is not None
+                            else None
+                        ),
                     )
                     if fast_transition is not None:
                         _write(
@@ -3683,14 +3860,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         ):
                             pass
                         fast_transition_deadline = None
-                    role = _record_turn_observation(
-                        counters,
-                        observed_turns,
-                        session=active_session,
-                        turn=fast_runtime.turn,
-                        current_player=fast_runtime.current_player,
-                        local_username=fast_runtime.local_username,
-                    )
                     if role is not None:
                         _write(
                             log,
@@ -3823,6 +3992,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     turn=state.battle.turn_number,
                     current_player=state.battle.current_turn_player,
                     local_username=state.battle.local_username,
+                    progress_observer=(
+                        shared_runtime.turn_progress_observer
+                        if shared_runtime is not None
+                        else None
+                    ),
                 )
                 if role is not None:
                     _write(
@@ -4062,6 +4236,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         turn=raw_runtime.turn,
                         current_player=raw_runtime.current_player,
                         local_username=raw_runtime.local_username,
+                        progress_observer=(
+                            shared_runtime.turn_progress_observer
+                            if shared_runtime is not None
+                            else None
+                        ),
                     )
                     if role is not None:
                         _write(
@@ -4283,6 +4462,35 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         authoritative_idle = False
                 if observed_idle is not None:
                     observe_b5_server_reset(observed_idle)
+                    # An authoritative 2/3 warning can follow any unaccepted
+                    # or timed-out consuming action, not only an intentional
+                    # PASS coordinated by this process. Preserve that exact
+                    # game-owned requirement across the next local turn so a
+                    # source-turn-less MATCH_AFK_WARN cannot degrade to
+                    # ``idle_state_source_turn_mismatch`` and permit a third
+                    # zero-input turn. The normal PASS terminal path owns the
+                    # same transition while its coordinator is locked.
+                    if (
+                        pass_stage == "B5"
+                        and observed_idle.idle_count
+                        == observed_idle.threshold - 1
+                        and not p3_mandatory_reset_pending
+                        and not (
+                            pass_coordinator is not None
+                            and pass_coordinator.gameplay_locked
+                        )
+                    ):
+                        p3_mandatory_reset_pending = True
+                        counters.mandatory_actions_required += 1
+                        _write(
+                            log,
+                            "mandatory_action_state_entered",
+                            authoritativeIdle=observed_idle,
+                            allowedActions=["SWAP", "CAST"],
+                            evolveSatisfiesMandatory=False,
+                            thirdPassForbidden=True,
+                            source="AUTHORITATIVE_IDLE_2_OUTSIDE_PASS_WAIT",
+                        )
                     if (
                         evolve_only_turn_wait is not None
                         and observed_idle.session_id == idle_session
@@ -7215,7 +7423,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         "TIMER_AT_OR_BELOW_ACTION_FLOOR",
                     }:
                         counters.too_late += 1
-                    _cancel_farm_gameplay(
+                    abandoned = _abandon_farm_gameplay_preflight(
                         runtime,
                         farm_swap_permit,
                         detail=(
@@ -7237,7 +7445,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         preflightFailure=pre_input_failure,
                         directRuntime=pre_input_runtime,
                         inputSent=False,
+                        farmPermitReleased=abandoned,
                     )
+                    if runtime.gameplay_capability is not None and not abandoned:
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
+                        break
                     time.sleep(args.interval)
                     continue
                 actual_send_start = time.monotonic()
@@ -7281,6 +7494,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     detail=(
                         f"SWAP:{click.status.value};sentClicks={click.sent_clicks};"
                         f"interClickDelay={click.inter_click_delay_seconds};"
+                        f"cursorSettle={click.cursor_settle_seconds};"
+                        f"buttonHold={click.mouse_button_hold_seconds};"
+                        f"inputMode={click.input_mode};"
+                        f"dragDuration={click.drag_duration_seconds};"
+                        f"dragSteps={click.drag_steps};"
+                        f"dragOvershootPixels={click.drag_overshoot_pixels};"
                         f"pacing={click.pacing_mode}"
                     ),
                 ):
@@ -7328,9 +7547,17 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         interClickDelaySeconds=(
                             click.inter_click_delay_seconds
                         ),
+                        cursorSettleSeconds=click.cursor_settle_seconds,
+                        mouseButtonHoldSeconds=(
+                            click.mouse_button_hold_seconds
+                        ),
                         inputPacingMode=click.pacing_mode,
                         inputPacingReason=click.pacing_reason,
                         inputLagScore=click.lag_score,
+                        inputMode=click.input_mode,
+                        dragDurationSeconds=click.drag_duration_seconds,
+                        dragSteps=click.drag_steps,
+                        dragOvershootPixels=click.drag_overshoot_pixels,
                         autoPaused=True,
                     )
                     continue
@@ -7351,12 +7578,18 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     "action_sent",
                     action="SWAP",
                     identity=identity,
-                    sentClicks=2,
+                    sentClicks=click.sent_clicks,
                     plan=plan,
                     interClickDelaySeconds=click.inter_click_delay_seconds,
+                    cursorSettleSeconds=click.cursor_settle_seconds,
+                    mouseButtonHoldSeconds=click.mouse_button_hold_seconds,
                     inputPacingMode=click.pacing_mode,
                     inputPacingReason=click.pacing_reason,
                     inputLagScore=click.lag_score,
+                    inputMode=click.input_mode,
+                    dragDurationSeconds=click.drag_duration_seconds,
+                    dragSteps=click.drag_steps,
+                    dragOvershootPixels=click.drag_overshoot_pixels,
                     **fields,
                 )
             else:
@@ -7366,8 +7599,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     fusion = fresh.fusion
                     if (
                         fusion is None
-                        or fusion.ui_interactable is not True
-                        or fusion.ui_address is None
+                        or not fusion.interaction_authorized
                         or fusion.ui_slot is None
                         or fusion.ui_slot_count is None
                     ):
@@ -7380,7 +7612,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             log,
                             "optional_card_action_skipped",
                             action="EVOLVE",
-                            reason="FUSION_UI_OR_RUNTIME_SLOT_NOT_PROVEN",
+                            reason="FUSION_RUNTIME_AUTHORITY_OR_SLOT_NOT_PROVEN",
                             boardOnlyFallback=True,
                         )
                         continue
@@ -7513,6 +7745,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     pending_action.card_name = card.name
                     pending_action.card_element_type = card.element_type
                     pending_action.card_cost_source = attack_cost_source
+                    pending_action.card_interaction_authority = (
+                        card.interaction_authority
+                    )
                     pending_action.card_interactable_before = card.interactable
                     pending_action.card_has_used_this_turn_before = (
                         card.has_used_this_turn

@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-08-29 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-03 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,7 +24,7 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 2F.2 — PASS STRONG / BASIC COMPLETE** |
+| Current completed phase | **Phase 3A.0 — PASS STRONG / SOURCE MAINTENANCE BASELINE** |
 | Active phase | **NONE** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
@@ -60,6 +60,212 @@ was not mixed into the RC artifact or production runtime graph. Git hygiene is
 therefore resolved and the annotated release tag is `v1.0.0+15`. Canonical evidence:
 [Phase 2F.2 report](phase2f2_report.md), [runbook](phase2f2_runbook.md), and
 [release manifest](../release/phase2f2_manifest.json).
+
+Phase 3A.0 freezes the newer repository-truth source baseline as `v1.0.23`.
+The original `v1.0.1` maintenance boundary was carried forward through the
+Pokiguard 1.7.4 compatibility repairs; the accepted packaged RC remains
+`v1.0.0+15` and was not rebuilt or retagged. FarmRun
+`8f7be1b715644b008431060baab72eef` completed exactly 5/5
+STRONG/CONSISTENT WINs in five attempts and returned to `BOSS_LOBBY` with the
+controller stopped. It observed five EVOLVE clicks (three success, two
+failure) and eight CAST clicks on the shared normalized Y `0.824` boundary;
+seven CASTs have direct mana-plus-turn acceptance proof and the final CAST
+ended combat before a nonterminal acknowledgement could be recorded. All
+card/input safety counters are zero.
+
+Every one of the five result confirmations followed authoritative POSTMATCH,
+stable modal evidence and final preflight, was clicked exactly once, and
+returned to the exact boss lobby. Terminal-result-to-confirm latency was
+2.384--2.456 seconds (average 2.403 seconds), demonstrating removal of the old
+fixed five-second delay without weakening the modal boundary. Across 74 live
+SWAP decisions there were zero ordinary safe labels with a known direct or
+indirect opponent Sword reply and zero UNKNOWN-as-favorable decisions. The
+rare unique-adverse-Sword and Sword-hold live branches were `NOT_OBSERVED` and
+remain covered by deterministic tests. Per-match local turns/energy were
+19, 23, 17, 17 and 23 (total 99, average 19.8). Canonical evidence is in the
+[Phase 3A.0 report](phase3a0_report.md) and
+[runbook](phase3a0_runbook.md).
+
+Post-release source maintenance `v1.0.1` originally added three operator-requested
+refinements. Combat card visual validation remains centred at normalized Y
+`0.836`, but the actual EVOLVE/CAST click is raised to Y `0.824` (about 8.5
+pixels at the canonical 710-pixel client height). The combat worker's redundant
+postmatch lobby wait is reduced from 5 seconds to 1 second. Result confirmation
+still requires authoritative POSTMATCH, three stable high-confidence modal
+frames, and a fresh POSTMATCH/foreground preflight immediately before its
+single click; the visual frames no longer repeat the heavy memory-provider
+poll. Finally, BASIC Sword safety now audits every legal boss reply on the
+settled known board, including a non-Sword direct match whose deterministic
+cascade collects Sword. The unique-adverse-Sword exception can defer the only
+Sword move and use authoritative PASS or a separately proven Sword-hold; the
+hold is never labelled safe and UNKNOWN earns no favorable credit. Offline
+verification at that historical checkpoint was **745/745 PASS**. Its live
+validation boundary is superseded by the accepted Phase 3A.0 `v1.0.23` run
+above.
+
+Source compatibility update `v1.0.3` removes the runtime dependency on the
+retired fixed launcher name `Pokiguard.exe`. The new **Settings** tab persists
+the exact full path of one operator-selected `Pokiguard-<version>.exe` beside
+`GameAssembly.dll`, and applies that path to both the read-only desktop observer
+and FarmRunner attach path. When an update changes the launcher filename, the
+operator selects the new EXE with **File...**. Process
+matching requires both executable name and full module path, so another game
+copy with the same filename is not accepted. The setting is locked while a
+controller owns an active run and changing it drops only the cached read-only
+handle; no game file is written or modified.
+The full source regression suite is **759/759 PASS** and the source UI smoke
+resolves `D:\pc\Pokiguard-1.7.4.exe` with zero render errors.
+
+Source compatibility update `v1.0.4` adds verified metadata-110 symbols and
+field layouts for the current Pokiguard 1.7.4 `GameAssembly.dll`. The desktop
+observer distinguishes an exact detected process from an incompatible memory
+layout instead of reporting both as a missing game. Unknown future binary
+hashes fail closed before a memory provider is constructed. A read-only live
+probe resolves the new type-info slots and constructs the provider; boss-room,
+combat and autonomous behavior still require live validation on 1.7.4. See
+[pokiguard_1.7.4_compatibility.md](pokiguard_1.7.4_compatibility.md).
+
+Source compatibility update `v1.0.5` cross-checks the split
+`reverse/redux_compat` output against the existing 1.7.4 layout. The executable,
+GameAssembly and metadata hashes are unchanged, and the boss-room field offsets
+match. The desktop observer now evaluates the exact ChinhPhuc room graph even
+when uninitialized combat static classes leave the base lifecycle `UNKNOWN`.
+Promotion to `BOSS_LOBBY` remains fail-closed: the room graph must be completely
+clean and there must be no positive combat/transition signal or read error.
+
+Source compatibility update `v1.0.6` corrects the Unity 6000.7.0a4
+`Il2CppClass.static_fields` offset from the previous runtime's `+0xB8` to the
+live-verified `+0x98`. A bounded read of the exact `ManagerQuangTruong`,
+`ManagerRoom`, and `WsRoomService` class headers showed valid static blocks and
+matching class-owned singleton instances at `+0x98`, while `+0xB8` was null for
+all three. A live read-only probe then resolved `BOSS_LOBBY`, target `1289 /
+Starburst`, and room `Coop_788342`. Full regression remains **759/759 PASS**.
+
+Source compatibility update `v1.0.7` fixes the first 1.7.4 Start failure. Run
+`3c530ea44f2a442888181f588b83af8a` stopped with
+`ATTACK_CARD_TOGGLE_UNPROVEN` before sending any input: memory proved the
+Attack card selected, but the 1280x720 artifact contained a centered
+1280x640 game viewport and the old fixed ROI was 64 pixels to the right of the
+live card. Desktop Start now prepares the native 1280x640 client. The first
+compatibility implementation reused that height-scaled, left-anchored UI
+canvas for every control; later combat evidence showed that Board `DotsArea`
+uses a separate full-width layout (see `v1.0.9` below). The saved pre-fix frame proves Attack at 0.970
+confidence and Start at 0.907 without input. Compileall and the full source
+suite pass **765/765**.
+
+Source compatibility update `v1.0.8` fixes the next live boundary. Entry run
+`e1b6c5bd0ef04f3ca5e6cf23c397601e` successfully clicked Start and observed
+match `M_b727b2f1`, MatchHost `RUNNING`, a live rig, complete 64-cell snapshots,
+a ready Board and consistent Board/Active/ManagerMatch ownership. The updated
+game nevertheless kept the verified `HubSuspendManager.IsSuspended@static+0x08`
+and `ManagerMatch.isBossBattle@+0x138` fields false. The former old polarity
+gate held lifecycle at UNKNOWN and caused `ENTRY_TIMEOUT_NEW_SESSION` with zero
+gameplay inputs. Hub state is now required to be readable but either polarity
+is valid; all stronger local-rig, scene, ownership, match, Board-ready and
+non-terminal gates remain mandatory. Full regression passes **766/766**.
+
+Source compatibility update `v1.0.9` fixes the first live combat-input failure
+on 1.7.4. Run `d103ea509fb740b188df524283e61224` read a complete authoritative
+opening board and correctly selected `(screen row 0, col 7) <-> (row 1, col 7)`,
+which produces a three-Shield match across top-row columns 5..7. The emitted
+plan nevertheless used client `x=732`; the saved 1280x640 opening frame places
+column 7 near `x=815`, so the click landed around column 5 and appeared as a
+non-match. This disproves applying the left-anchored card/UI canvas transform
+to the Board: the combat `DotsArea` separately preserves the complete client
+width. Board input now leaves normalized x coordinates unchanged and maps the
+same move to client `x=823`; card, lobby, recovery and postmatch controls keep
+their evidenced height-scaled, left-anchored UI transform.
+Regression coverage locks this evidence and the full suite passes **767/767**.
+One live retry remains required before declaring 1.7.4 gameplay accepted.
+
+Source compatibility update `v1.0.10` completes the Board calibration after
+FarmRun `2c55da2623874fda9f95b3eea0e6b742`. That retry was launched by the
+already-running pre-fix Python process, so it still emitted selected move
+`(row 6,col 5)<->(row 7,col 5)` at client `(638,371)<->(638,417)`. The saved
+opening frame proves the actual centres near `(714,406)<->(714,456)` and exact
+grid boundaries `x=438..840`, `y=79..481`. The input therefore missed both
+intended cells; no server response or durable local move sequence followed,
+and the eventual boss turn does not prove acceptance. There is no clean
+evidence that the normal 0.25-second click gap was too short, so pacing is not
+changed speculatively. Production Board calibration is now
+`first=(.3620,.1625)`, `step=(.0393,.0787)`: the same lower-board move maps to
+`(714,405)<->(714,455)`, and the earlier rightmost-column move maps to `x=814`.
+Card/lobby/modal calibration remains unchanged. Full regression passes
+**768/768**; a genuinely restarted `v1.0.10` live retry is pending.
+
+Source compatibility update `v1.0.11` analyzes that clean retry, FarmRun
+`8a57d4f5b6ec4a37bd45504e841574a0`. The opening memory board and saved frame
+agree exactly: `(row 2,col 0)<->(row 2,col 1)` moves the visible Sword left to
+make the three-Sword column, and emitted client points
+`(462,204)<->(513,204)` are the centres of those two tiles. Nevertheless no
+durable local move sequence or attributable server acknowledgement followed;
+`MATCH_AFK_WARN idle_count=1` proves the game counted the turn as idle. This
+rules out solver legality and board calibration for this failure. The normal
+input path now lets Unity sample each cursor position for 60 ms, holds each
+mouse-down for 75 ms, and separates the two taps by 350 ms. The complete pair
+still finishes in well under one second, retains all foreground/window/PID
+revalidation, and logs every timing used. A new-process live retry is required.
+
+Source compatibility update `v1.0.12` analyzes the clean restarted retry,
+FarmRun `4966336390a74090807f5d28c942a6b1`. The first move and ten further
+SWAPs produced durable attributable acknowledgements; the match ended as a
+STRONG/CONSISTENT WIN with boss HP zero. The controller then safe-stopped with
+`POSTMATCH_UI_AMBIGUOUS` and sent no postmatch input. Its final frame proves
+that current 1.7.4 uses a wide orange result banner and one centered blue
+`Dong y` control rather than the legacy large-blue-panel/orange-button layout.
+
+The new locator grants a point only when both current-layout anchors are unique
+and present together; the legacy locator remains available. FarmRunner still
+independently requires authoritative `POSTMATCH`, three stable samples, a final
+provider poll, and foreground/focus proof before ordinary input. Exact replay
+finds normalized point `(0.5, 0.90078125)` with zero three-frame drift. Offline
+verification is **770/770 PASS** with compileall and diff checks clean. A newly
+started `v1.0.12` process is required for live confirmation.
+
+Source compatibility update `v1.0.13` analyzes the five-win completion run
+`76fc70afe4fe42d4880d0421099942b6`. That run closes the current postmatch
+boundary: all five result overlays were confirmed and the farm reached its
+exact target. It also exposes one independent combat-card coordinate defect.
+Memory correctly proved Attack card ID `4`, cost `160`, slot `1/2`, interactable
+and affordable; policy emitted nine CAST actions, including low-boss-HP
+`STEP_3_FINISH_CAST` at boss HP `14163` and `22350`. None was accepted.
+
+The logged Attack point was normalized `x=0.470222`, which is the visible
+Fusion card centre in the saved 1280x640 opening frame. The Attack card is at
+the full-viewport slot-1 centre `x=0.529`. Mana repeatedly fell by exactly 160,
+and the final wrong-card activation increased max HP `83371 -> 105214` and max
+Mana `1579 -> 1757`, proving that CAST input had activated Fusion instead.
+The slot calculation was correct; applying the separate left-anchored 16:9
+lobby transform a second time moved slot 1 onto slot 0.
+
+Combat-card visual validation and click points now use the complete active
+viewport in both native and letterboxed 2:1 modes. Lobby, recovery and legacy
+modal mappings are unchanged, as are Board coordinates. The native 1280x640
+two-slot regression now locks Fusion at `x=0.471` and Attack at `x=0.529`.
+Offline verification remains **770/770 PASS** with compileall and diff checks
+clean. Live acceptance remains required for one attributable EVOLVE attempt
+and one attributable CAST acceptance from a newly started `v1.0.13` process.
+
+Source compatibility update `v1.0.14` analyzes run
+`30d14369ec9e4bd3aab1f6c7df9e685e`. The selected Attack card was proven in
+the exact boss lobby and visible in combat, but every local policy state had
+`cardCount=0`; therefore the low-HP finisher correctly skipped EVOLVE yet could
+not authorize CAST. The run's single PASS at turn 33 was unrelated: policy saw
+one Sword-5 move that would leave a known Sword-6 reply for the boss, deferred
+it under the accepted unique-adverse-Sword rule, then took Sword-6 after the
+board changed on turn 35.
+
+Redux metadata reconfirms `Board.cardsInHand +0x320` and the CardUI ownership
+fields. A read-only post-run audit proved the discovery gap: the two anchored
+GameObjects occupied 0.273 MiB of direct `VirtualQueryEx` regions, while two
+exact-class CardUI objects were in other regions of the same 6.117 MiB
+`AllocationBase`. The provider now retains AllocationBase and scans only the
+complete current cards-in-hand allocation, capped at 16 MiB. Full CardUI class,
+current Board/Active ownership, Unity native/Button, CardData and interactable
+validation remain mandatory; stale postmatch objects still reject. Offline
+verification is **774/774 PASS**. Live acceptance still requires one
+attributable EVOLVE and one accepted CAST from a newly started `v1.0.14`
+process.
 
 Phase 2F.1 adds the canonical Windows x64 portable one-folder package. Final
 build `v1.0.0+15` uses PyInstaller 6.22.0, starts through the windowed frozen
@@ -663,15 +869,16 @@ Intermediate retries are historical evidence, not current phase status.
 
 ## Current Test Baseline
 
-Verified on **2026-08-29**:
+Verified on **2026-09-03**:
 
 ```text
 python -m unittest discover -s tests -p 'test_*.py'
-Ran 740 tests
+Ran 797 tests
 OK
 ```
 
-Current baseline: **740/740 PASS**. Phase 2E desktop/controller and terminal
+Current source baseline: **797/797 PASS**. The accepted packaged Phase 2F.2 RC
+remains at its original **740/740 PASS** baseline. Phase 2E desktop/controller and terminal
 hardening focused suites: **PASS**. `python -m compileall -q src tools tests`:
 **PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
 WIN/LOSS/UNKNOWN classification, frozen result survival after ownership
@@ -1393,3 +1600,214 @@ Build `+15` fixes the post-graceful-stop button label: the terminal controller
 snapshot intentionally retains `graceful_stop_requested=true` as evidence, but
 pending text is now rendered only while that controller is active. Final
 Phase 2F.1 verification is **740/740 PASS**.
+
+## Source compatibility v1.0.15 — EVOLVE priority and third-idle prevention
+
+Run `9230a17fad904c3a9b38bb69c6113d97` stopped after zero EVOLVE/CAST inputs
+and was later ejected. This was not caused by solver choice. Fusion discovery
+cached 42 ambiguous heap candidates while the exact Fusion owner allocation
+was omitted by a combined two-allocation 16 MiB cap. The provider now scans
+the appended Fusion GameObject's exact allocation, validates `_boundPetId`
+against current `selectedPetId` (with the documented fallback), and caches
+only one uniquely owned live wrapper.
+
+Production Evolution priority now starts after the mandatory opening board
+turn and uses the same inclusive one-second action floor. Low-boss-HP finisher
+mode and authoritative idle 2/3 still suppress EVOLVE. A SWAP reservation
+aborted before any Windows input is now released for fresh recomputation
+instead of permanently stopping FarmRun; one displayed second is accepted by
+the final direct preflight. Any exact server 2/3 payload independently latches
+mandatory SWAP/CAST so a missed/unconfirmed earlier action cannot lead to a
+third zero-input turn. Source verification: **778/778 PASS**, compileall PASS,
+`git diff --check` clean. Live EVOLVE plus continued combat/recovery remains
+the acceptance boundary.
+
+## Source compatibility v1.0.16 — selectable two-click/drag SWAP input
+
+Redux 1.7.4 directly declares `Dot.OnMouseDown`, `Dot.OnMouseUp`,
+`firstTouchPosition`, `finalTouchPosition`, `IsValidSwipe`, `MovePieces`, and
+the drag-specific turn-timer pause/resume path. The product now exposes
+`Board input` in the Preferences tab with `two_click` and `drag`. Existing
+preference files without the field migrate to the requested `drag` experiment;
+the selected value is validated, persisted, snapshotted at Start/Resume and
+forwarded through Desktop controller -> FarmRun -> combat executor.
+
+Drag uses only foreground normal Windows mouse input. It presses at the exact
+first tile centre, traverses six bounded points for 0.35 seconds normally
+(adaptive up to 1.5 seconds after lag evidence), and releases at the exact
+second centre. Window/PID/geometry/focus changes fail closed and LEFTUP is
+guaranteed after any emitted LEFTDOWN. Card and UI actions are unchanged.
+Action telemetry distinguishes `inputMode`, `dragDurationSeconds` and
+`dragSteps`. Source verification: **780/780 PASS**; live drag acceptance is
+pending.
+
+## Source compatibility v1.0.17 — quick-flick drag correction
+
+FarmRun `1e9097b2276948a7bdf7c78cc77281fa` live-rejected the initial drag:
+the exact legal adjacent centres were emitted over 0.35 seconds/six steps, but
+there was no server response, local move sequence stayed zero, and the first
+gem remained selected. The Cpp2IL `Dot.OnMouseDown`/`OnMouseUp` body confirms
+that swipe validity is based on press/release displacement against
+`swipeResit`, not elapsed drag time.
+
+Drag now performs the operator-confirmed gesture shape: a fixed 0.10-second
+three-move flick ending 0.35 cell beyond the second centre, still inside the
+target cell and Board rectangle. Adaptive lag evidence continues to pace
+`two_click`, but never stretches a drag. `dragOvershootPixels` is included in
+SWAP telemetry; all foreground/window/geometry guards and unconditional
+LEFTUP cleanup remain active. Offline verification is **782/782 PASS**;
+fresh live drag acceptance remains required.
+
+## Source compatibility v1.0.18 — calculable safe-resource boundary
+
+Run `67bb91cf613345a6ba1b806cd834bb57` proved the `two_click` path itself was
+healthy (five acknowledged SWAPs), but exposed a policy defect. Turn 11's Rage
+candidate was `calculable=false`, introduced three UNKNOWN refill cells, and
+still carried `safe=true`; live play showed its collapse forming a Sword
+opportunity for the boss. A top-board outcome with unknown refill cannot be
+made safe by the absence of a Sword in one bounded hypothetical check.
+
+Normal safe-resource candidates now require a calculable direct clear at
+screen row 3 or lower in addition to the existing direct/indirect Sword reply,
+UNKNOWN and collapse-support gates. Sword priority and mandatory minimum-risk
+fallback behavior are unchanged. Every policy event now stores the exact 8x8
+screen-oriented board plus all compact legal-candidate evaluations, preventing
+managed-object reclamation from erasing the evidence needed for replay.
+The UNKNOWN gate now also covers the operator-reconstructed one-row collapse:
+when a refill slot appears beside a known Sword, the simulator tests moving
+that existing Sword into the slot, because a non-Sword refill can expose a
+match-3 even when treating the refill itself as Sword would auto-clear. The
+exact topology is locked by regression coverage. Offline verification is
+**785/785 PASS**; fresh live acceptance remains required.
+
+## Source compatibility v1.0.19 — duplicate local-turn full scan removed
+
+The same run's PASS handoff explains why a nominal 14-second turn reached
+policy with one second left. A 6.35-second PASS scan had already decoded and
+offered the exact current-match board for `srvSeq=19`. When direct runtime
+subsequently sampled local turn 9 at 13 seconds with ACK 19, the monitor failed
+to recognize that prevalidated but not-yet-ACK-attested provider snapshot and
+performed a redundant 7.56-second broad heap scan. Provider stability work
+then consumed the remaining margin.
+
+Provider diagnostics now expose per-batch transport/runtime-heap attestation.
+Those exact sequences suppress only duplicate heap discovery; they do not
+bypass the provider's independent exact-ACK, latest-board, stability,
+actionability or lifecycle gates. Unattested candidates remain excluded.
+Future `pass_message_scan` events include scan reason, region count and bytes.
+Offline verification is **786/786 PASS**; fresh live timing acceptance remains
+required.
+
+## Source compatibility v1.0.20 — owner-first card cache and bounded transport refresh
+
+The current `reverse/redux_compat` declarations confirm the direct read-only
+ownership roots used by the provider: `Board.selectedCards +0x318`,
+`Board.cardsInHand +0x320`, `CardUI.cardData/board/active` at
+`+0x20/+0x30/+0x38`, `MatchService.PendingCombat +0x188`, and
+`BoardWsApplier._pendingBatches +0x50`. They do not provide a direct singleton
+for CardUI or BoardWsApplier, so no pointer or owner was guessed.
+
+The mandatory opening local turn now performs no optional card-list or card-UI
+discovery. It remains reserved for the authoritative opening board and SWAP.
+On the immediately following boss turn, the provider first reads the two
+current Board-owned lists, decodes each immutable `CardData` once per combat,
+and scans the exact ordinary-card and Fusion GameObject allocation envelopes
+separately. Only a failed owner lookup can enter the rotating <=8 MiB and then
+8--16 MiB compatibility fallbacks. The former first-boss-turn process-wide
+CardUI/FusionUI scan has been removed.
+
+Once a CardUI is resolved, each poll revalidates only its current Board/Active
+ownership, Unity native/Button pointers, interactable bit, used/pending fields
+and current participant resources. Card strings, costs and conditions come
+from the per-combat immutable CardData cache. A proven current selected-card
+list with no Attack card suppresses pointless Attack UI retries; unknown or
+conflicting lobby evidence keeps discovery enabled. Fusion success clears the
+obsolete Fusion wrapper, re-reads exact strip cardinality/order and reopens
+bounded ordinary-card discovery only if the cached wrapper no longer validates.
+
+Periodic transport maintenance no longer performs a broad heap traversal based
+only on a timer. It scans learned allocator neighbours on an opponent turn;
+full scans remain limited to explicit force, loss of every live learned region,
+or one exact unresolved ACK-gap escalation. Board publication still requires
+the existing exact ACK, latest-board, ownership, stability, lifecycle and
+actionability gates. Offline verification is **788/788 PASS**; a fresh live run
+must confirm the expected boss-turn cache discovery and local-turn latency.
+
+## Source compatibility v1.0.21 — direct card authority and match energy accounting
+
+The five-match live run
+`logs/farm_runs/3b5672d3e1be4a7193c15c6d84ad3710` confirmed that board acquisition
+and SWAP timing are now fast and stable. It also isolated the remaining card
+delay: turns with 210--371 mana repeatedly logged
+`STEP_1_EVOLVE: live FusionCardUI is not proven interactable`, even though the
+same snapshots already proved one selected Attack `CardData`, two
+`cardsInHand` entries, Fusion slot 0, Attack slot 1, `FusionEnabled=true`, an
+unused selected pet, and the exact 160 Fusion cost. One match did not resolve
+an Attack `CardUI` wrapper at all. This was a wrapper-discovery bottleneck, not
+a policy-order defect.
+
+After the opening board-only local turn, the common standard-pet path now uses
+the current Board-owned `selectedCards +0x318` and `cardsInHand +0x320` lists,
+immutable `CardData`, and direct MatchService Fusion fields as the action
+authority. If a live CardUI/FusionCardUI exists it remains preferred and its
+dynamic Button state wins. If it is absent, exact list order/cardinality and a
+standard strip without a pet-specific skill can authorize the known slot; the
+foreground controller must still capture the client and prove the current
+card tile immediately before a normal click. Direct ordinary-card fallback is
+limited to `cooldownTurns == 0`; other cooldowns remain fail-closed. The former
+owner/bounded/extended wrapper scans are skipped when this direct strip is
+already exact, while opening-turn board priority is unchanged.
+
+Farm telemetry already deduplicated observations by exact
+`(session, TurnNumber, LOCAL/BOSS)`. That local count is now explicitly stored
+as `energyUsed` for every attempt, emitted as `match_turn_energy_counted`, and
+shown in the Control tab per completed match (latest eight) with the run total.
+EVOLVE plus SWAP in one local turn counts once. Offline verification is
+**793/793 PASS**; live acceptance should confirm that turn 2+ evolves before
+Sword/SWAP whenever mana and Fusion conditions allow, and that the displayed
+per-match energy matches the game flow.
+
+## Source compatibility v1.0.22 — live current turn and CAST telemetry repair
+
+FarmRun `logs/farm_runs/2f363b504c6742acacc882e3707e2acf`
+completed 5/5 STRONG, CONSISTENT wins in five attempts. It had zero technical
+abort, recovery, safe-stop, provider read error, DTO rejection, stale/latest
+ambiguity, opening rejection, or terminal-result conflict. Local turn/energy
+counts were 19, 14, 9, 11 and 22, total 75 (average 15). EVOLVE ran nine times:
+four successes and five server-confirmed/timeout failures. All extended card,
+Fusion and owner wrapper scans remained zero on the direct standard strip.
+
+Seven CAST inputs were sent. The prior summary recorded zero accepted because
+the direct CardData authority intentionally has no dynamic CardUI wrapper.
+Five nonterminal CASTs nevertheless have exact evidence in the log: player
+mana fell by the runtime 160 cost and the next authoritative turn belonged to
+the boss. Acceptance now recognizes this dual proof only for
+`BOARD_SELECTED_CARDDATA_CARD_STRIP`; mana or turn alone, an unexpected cost,
+or a different authority still remains unconfirmed. This changes telemetry and
+idle-reset correlation, not the physical click or policy order.
+
+The Control tab now separates completed-match energy, current-match local
+turn/energy, and total energy onto three lines. Current progress is projected
+once per already-deduplicated game-owned TurnNumber and performs no additional
+RAM scan, capture, solver evaluation or input. Full offline verification is
+**796/796 PASS**. A subsequent live run is needed only to confirm the new UI
+projection and repaired `castAccepted` counter; the underlying five-match farm
+run itself already completed cleanly.
+
+## Source compatibility v1.0.23 — fast-turn observer hotfix
+
+The first live start on v1.0.22, FarmRun
+`logs/farm_runs/1e5ec6948f734889b29654122f0ecb17`, proved the opening
+64/64 board and sent one opening SWAP, then stopped with
+`FARM_RUN_INTERNAL_INVARIANT`. The exact exception was
+`TurnTransitionTracker.observe_runtime() got an unexpected keyword argument
+'progress_observer'`. This was a local callback-routing regression introduced
+by live turn projection, not a game, board, solver, lifecycle, or input-layout
+failure.
+
+The fast MatchService path now routes status projection through the same
+deduplicated turn-counter helper as normal polling and leaves
+`TurnTransitionTracker.observe_runtime` unchanged. A dedicated regression test
+executes this exact helper boundary. Source version is `v1.0.23`; full offline
+verification is **797/797 PASS**. A fresh live start is required to confirm the
+hotfix past the opening action.

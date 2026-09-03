@@ -1,0 +1,12 @@
+// Image 36: Unity.2D.Common.Runtime.dll - Assembly: Unity.2D.Common.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 14954-14996
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("ScriptablePacker")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.SpriteShape.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Common.Tests.EditorTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Animation.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Animation.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Animation.Tests.EditorTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.Triangulation.Runtime")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.Universal.2D.Runtime")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

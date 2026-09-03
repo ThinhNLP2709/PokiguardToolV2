@@ -1,0 +1,25 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using UnityEngine;
+using UnityEngine.Bindings;
+
+// Image 15: UnityEngine.TextCoreTextEngineModule.dll - Assembly: UnityEngine.TextCoreTextEngineModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 12610-12729
+
+namespace UnityEngine.TextCore.Text
+{
+	[VisibleToOtherModules(new string[1] {"UnityEngine.UIElementsModule" })]
+	internal struct WordInfo // TypeDefIndex: 12714
+	{
+		// Fields
+		public int firstCharacterIndex; // 0x00
+		public int lastCharacterIndex; // 0x04
+		public int characterCount; // 0x08
+		public int wordId; // 0x0C
+	}
+}

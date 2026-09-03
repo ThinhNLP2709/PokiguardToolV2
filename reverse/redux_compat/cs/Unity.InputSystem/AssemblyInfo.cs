@@ -1,0 +1,11 @@
+// Image 4: Unity.InputSystem.dll - Assembly: Unity.InputSystem, Version=1.19.0.0, Culture=neutral, PublicKeyToken=null - Types 6023-6671
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.InputSystem.TestFramework")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.InputSystem.Tests.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.InputSystem.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.InputSystem.IntegrationTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.InputSystem.ForUI")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.AI.Assistant.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.InputSystem.EditorDevelopmentTools")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

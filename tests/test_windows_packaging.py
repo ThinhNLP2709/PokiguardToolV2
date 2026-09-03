@@ -92,11 +92,12 @@ class WindowsPackagingTests(unittest.TestCase):
 
     def test_production_calibration_is_internal_and_matches_accepted_values(self) -> None:
         values = production_input_calibration()
-        self.assertEqual(values["click_delay_seconds"], 0.25)
-        self.assertEqual(values["board_first_center_x"], 0.357)
-        self.assertEqual(values["board_first_center_y"], 0.146)
-        self.assertEqual(values["board_step_x"], 0.0410)
-        self.assertEqual(values["board_step_y"], 0.0725)
+        self.assertEqual(values["click_delay_seconds"], 0.35)
+        self.assertEqual(values["cursor_settle_seconds"], 0.06)
+        self.assertEqual(values["board_first_center_x"], 0.3620)
+        self.assertEqual(values["board_first_center_y"], 0.1625)
+        self.assertEqual(values["board_step_x"], 0.0393)
+        self.assertEqual(values["board_step_y"], 0.0787)
         source = (ROOT / "tools" / "basic_auto_bot.py").read_text(encoding="utf-8")
         self.assertNotIn("V1SolverAdapter(args.v1_root)", source)
 
@@ -114,8 +115,8 @@ class WindowsPackagingTests(unittest.TestCase):
         script = (ROOT / "scripts" / "build_windows.ps1").read_text(encoding="utf-8")
         self.assertIn("from pokiguard_v2.version import APP_VERSION", script)
         self.assertNotIn(f"APP_BUILD = {APP_BUILD}", script)
-        self.assertEqual(APP_VERSION, "v1.0.0+15")
-        self.assertEqual(APP_TITLE, "Pokiguard Tool V2 - v1.0.0+15")
+        self.assertEqual(APP_VERSION, "v1.0.23")
+        self.assertEqual(APP_TITLE, "Pokiguard Tool V2 - v1.0.23")
 
 
 if __name__ == "__main__":

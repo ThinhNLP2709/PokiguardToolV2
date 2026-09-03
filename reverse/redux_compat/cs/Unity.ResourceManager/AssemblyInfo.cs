@@ -1,0 +1,10 @@
+// Image 21: Unity.ResourceManager.dll - Assembly: Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 13663-13805
+[assembly: System.Reflection.AssemblyCompany("Unity Technologies")]
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.ResourceManager.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Addressables.Editor.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Addressables.Runtime.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Addressables")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Addressables.Android")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

@@ -7,6 +7,7 @@ accepted QUERY_INFORMATION + VM_READ access mask.
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable
 
 from .boss_entry import BossLobbyState
@@ -42,6 +43,7 @@ class ReadOnlyGameStatusProvider:
         )
         self._target: Any | None = None
         self._provider: MemoryBoardStateProvider | None = None
+        self._lock = threading.RLock()
 
     def _detach(self) -> None:
         target, self._target = self._target, None
@@ -57,27 +59,66 @@ class ReadOnlyGameStatusProvider:
             return None
         try:
             target = self._attach_factory()
-            provider = MemoryBoardStateProvider(target, self._provider_config)
         except Exception as exc:  # noqa: BLE001 - detached is a UI state
-            if "target" in locals():
-                try:
-                    target.close()
-                except Exception:
-                    pass
             message = str(exc)
             not_running = "not running" in message.casefold()
+            detected = getattr(exc, "game_detected", None)
+            incompatible = detected is True
             return RuntimeObservation(
-                game_detected=False if not_running else None,
+                game_detected=(
+                    True if incompatible else False if not_running else None
+                ),
+                attached=False,
+                pid=getattr(exc, "pid", None),
+                architecture=getattr(exc, "architecture", None),
+                lifecycle="INCOMPATIBLE_BUILD" if incompatible else "UNAVAILABLE",
+                provider_reason=(
+                    "game_build_incompatible" if incompatible else "attach_failed"
+                ),
+                error=f"{type(exc).__name__}: {message}",
+            )
+
+        # Process discovery/attachment and IL2CPP-layout compatibility are two
+        # different facts.  A game update can leave the exact configured
+        # process readable while invalidating every previously verified RVA.
+        # Keep reporting the process as detected in that case, but fail closed
+        # and never expose the stale provider as an actionable attachment.
+        if not target.is_running():
+            try:
+                target.close()
+            except Exception:
+                pass
+            return RuntimeObservation(
+                game_detected=False,
                 attached=False,
                 lifecycle="UNAVAILABLE",
-                provider_reason="attach_failed",
-                error=f"{type(exc).__name__}: {message}",
+                provider_reason="process_exited",
+            )
+        try:
+            provider = MemoryBoardStateProvider(target, self._provider_config)
+        except Exception as exc:  # noqa: BLE001 - incompatible build is UI state
+            try:
+                target.close()
+            except Exception:
+                pass
+            return RuntimeObservation(
+                game_detected=True,
+                attached=False,
+                pid=int(target.pid),
+                architecture=str(target.architecture),
+                lifecycle="INCOMPATIBLE_BUILD",
+                provider_reason="memory_provider_incompatible",
+                error=f"{type(exc).__name__}: {exc}",
             )
         self._target = target
         self._provider = provider
         return None
 
     def read(self) -> RuntimeObservation:
+        with self._lock:
+            return self._read_unlocked()
+
+    def _read_unlocked(self) -> RuntimeObservation:
         unavailable = self._ensure_attached()
         if unavailable is not None:
             return unavailable
@@ -128,6 +169,7 @@ class ReadOnlyGameStatusProvider:
             if lifecycle_state in {
                 CombatLifecycleState.LOBBY,
                 CombatLifecycleState.STALE_SERVER_MATCH,
+                CombatLifecycleState.UNKNOWN,
             }:
                 try:
                     lobby = read_boss_lobby_runtime(
@@ -158,7 +200,11 @@ class ReadOnlyGameStatusProvider:
                 except Exception as exc:  # noqa: BLE001 - lifecycle stays safe
                     lifecycle = (
                         BossLobbyState.UNKNOWN.value
-                        if lifecycle_state is CombatLifecycleState.STALE_SERVER_MATCH
+                        if lifecycle_state
+                        in {
+                            CombatLifecycleState.STALE_SERVER_MATCH,
+                            CombatLifecycleState.UNKNOWN,
+                        }
                         else "LOBBY_OTHER"
                     )
                     error = f"{type(exc).__name__}: {exc}"
@@ -208,7 +254,14 @@ class ReadOnlyGameStatusProvider:
         )
 
     def close(self) -> None:
-        self._detach()
+        with self._lock:
+            self._detach()
+
+    def reset_attachment(self) -> None:
+        """Drop a read-only handle after the configured install changes."""
+
+        with self._lock:
+            self._detach()
 
 
 __all__ = ["ReadOnlyGameStatusProvider"]

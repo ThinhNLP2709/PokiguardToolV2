@@ -1,0 +1,34 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// Image 10: Microsoft.Web.WebView2.Core.dll - Assembly: Microsoft.Web.WebView2.Core, Version=1.0.4191.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e - Types 10441-11179
+
+namespace Microsoft.Web.WebView2.Core.Raw
+{
+	[CompilerGenerated]
+	[TypeIdentifier("26D34152-879F-4065-BEA2-3DAA2CFADFB8", "Microsoft.Web.WebView2.Core.Raw.COREWEBVIEW2_PDF_TOOLBAR_ITEMS")]
+	public enum COREWEBVIEW2_PDF_TOOLBAR_ITEMS // TypeDefIndex: 10847
+	{
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_NONE = 0,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_SAVE = 1,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_PRINT = 2,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_SAVE_AS = 4,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_ZOOM_IN = 8,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_ZOOM_OUT = 16,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_ROTATE = 32,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_FIT_PAGE = 64,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_PAGE_LAYOUT = 128,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_BOOKMARKS = 256,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_PAGE_SELECTOR = 512,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_SEARCH = 1024,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_FULL_SCREEN = 2048,
+		COREWEBVIEW2_PDF_TOOLBAR_ITEMS_MORE_SETTINGS = 4096
+	}
+}

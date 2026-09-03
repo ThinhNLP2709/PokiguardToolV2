@@ -1,0 +1,10 @@
+// Image 24: Unity.2D.SpriteShape.Runtime.dll - Assembly: Unity.2D.SpriteShape.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 13957-14022
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.IgnoresAccessChecksTo("UnityEngine.BurstModule")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("PlayModeTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.SpriteShape.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.SpriteShape.Tests.EditorTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.2D.SpriteShape.RuntimeTests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.RenderPipelines.Universal.2D.Runtime")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

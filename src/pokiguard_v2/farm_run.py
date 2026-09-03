@@ -1223,6 +1223,36 @@ class FarmRun:
         self.safe_stop(FarmRunStopReason.GAMEPLAY_CAPABILITY_DENIED, detail=detail)
         return False
 
+    def abandon_gameplay_preflight(
+        self, permit: FarmInputPermit, *, detail: str = ""
+    ) -> bool:
+        """Release one reserved physical action before any Windows input.
+
+        A final direct-runtime witness can legitimately change between policy
+        selection and input (turn boundary, timer tick, move sequence). The
+        reservation is safe to release only while it is still the exact
+        pending gameplay permit and no input was sent. This is not an action
+        failure and must not permanently stop the farm coordinator.
+        """
+
+        if (
+            permit != self._pending
+            or not permit.domain.gameplay
+            or permit.domain is FarmInputDomain.GAMEPLAY_PASS
+        ):
+            self.safe_stop(FarmRunStopReason.GAMEPLAY_CAPABILITY_DENIED)
+            return False
+        self._pending = None
+        self._record_input(permit, sent=False, detail=detail)
+        self._event(
+            "gameplay_preflight_abandoned",
+            domain=permit.domain,
+            session=permit.session,
+            detail=detail,
+            windowsInputSent=False,
+        )
+        return True
+
     def abandon_pass_preflight(
         self, permit: FarmInputPermit, *, detail: str = ""
     ) -> bool:
@@ -1252,13 +1282,59 @@ class FarmRun:
         )
         return True
 
+    def observe_combat_turn_counts(
+        self,
+        *,
+        session: CombatSessionKey,
+        local_turns: int,
+        boss_turns: int,
+    ) -> bool:
+        """Project already-read combat turn counters into live run status.
+
+        The combat controller invokes this only after deduplicating an exact
+        game-owned ``TurnNumber``. No memory scan, log read, or input is added.
+        Invalid, stale, or regressing progress is ignored so UI projection can
+        never alter the accepted FarmRun state machine.
+        """
+
+        attempt = self.current_attempt
+        if (
+            self.state is not FarmRunState.COMBAT_ACTIVE
+            or attempt is None
+            or self.current_session != session
+            or local_turns < attempt.local_turns
+            or boss_turns < attempt.boss_turns
+            or local_turns < 0
+            or boss_turns < 0
+        ):
+            return False
+        if (
+            local_turns == attempt.local_turns
+            and boss_turns == attempt.boss_turns
+        ):
+            return False
+        attempt.local_turns = int(local_turns)
+        attempt.boss_turns = int(boss_turns)
+        return True
+
     def apply_combat_summary(self, summary: dict[str, Any]) -> None:
         attempt = self.current_attempt
         if attempt is None:
             return
         counters = summary.get("counters") or {}
+        prior_local_turns = attempt.local_turns
         attempt.local_turns = int(summary.get("localTurnsObserved") or 0)
         attempt.boss_turns = int(summary.get("bossTurnsObserved") or 0)
+        self._event(
+            "match_turn_energy_counted",
+            attemptIndex=attempt.attempt_index,
+            matchId=attempt.match_id,
+            localTurns=attempt.local_turns,
+            energyUsed=attempt.local_turns,
+            bossTurns=attempt.boss_turns,
+            liveProjectionBeforeSummary=prior_local_turns,
+            source="distinct MatchService.TurnNumber values owned by local player",
+        )
         attempt.swap_sent = int(counters.get("swap_sent") or 0)
         attempt.swap_acknowledged = int(counters.get("swap_acknowledged") or 0)
         attempt.swap_rejected = int(counters.get("swap_rejected") or 0)
@@ -2260,6 +2336,11 @@ class FarmRunGameplayCapability:
 
     def cancel(self, permit: FarmInputPermit, *, detail: str = "") -> bool:
         return self.run.cancel_gameplay(permit, detail=detail)
+
+    def abandon_gameplay_preflight(
+        self, permit: FarmInputPermit, *, detail: str = ""
+    ) -> bool:
+        return self.run.abandon_gameplay_preflight(permit, detail=detail)
 
     def abandon_pass_preflight(
         self, permit: FarmInputPermit, *, detail: str = ""

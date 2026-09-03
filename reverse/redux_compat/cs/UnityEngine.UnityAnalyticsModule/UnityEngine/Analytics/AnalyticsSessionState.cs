@@ -1,0 +1,24 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using UnityEngine;
+using UnityEngine.Scripting;
+
+// Image 64: UnityEngine.UnityAnalyticsModule.dll - Assembly: UnityEngine.UnityAnalyticsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15794-15806
+
+namespace UnityEngine.Analytics
+{
+	[RequiredByNativeCode]
+	public enum AnalyticsSessionState // TypeDefIndex: 15803
+	{
+		kSessionStopped = 0,
+		kSessionStarted = 1,
+		kSessionPaused = 2,
+		kSessionResumed = 3
+	}
+}

@@ -122,7 +122,11 @@ def classify_combat_lifecycle(
         s.current_rig_alive is True,
         s.scene_loading is False,
         s.scene_unloading is False,
-        s.hub_suspended is True,
+        # Pokiguard 1.7.4 live evidence proves that HubSuspendManager may stay
+        # readable-but-false for the whole boss combat. It is therefore
+        # telemetry, not an ACTIVE polarity gate. Still require a successful
+        # read so an unresolved class/static block cannot weaken the proof.
+        s.hub_suspended is not None,
         s.board_instance is not None,
         s.active_instance is not None,
         s.manager_match_instance is not None,

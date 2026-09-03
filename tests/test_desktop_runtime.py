@@ -54,6 +54,40 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         self.assertFalse(observation.attached)
         self.assertEqual(observation.lifecycle, "UNAVAILABLE")
 
+    def test_detected_unknown_build_from_attach_is_reported_incompatible(self) -> None:
+        error = RuntimeError("incompatible game build")
+        error.game_detected = True
+        error.pid = 5678
+        error.architecture = "x64"
+        observation = ReadOnlyGameStatusProvider(Mock(side_effect=error)).read()
+        self.assertTrue(observation.game_detected)
+        self.assertFalse(observation.attached)
+        self.assertEqual(observation.pid, 5678)
+        self.assertEqual(observation.lifecycle, "INCOMPATIBLE_BUILD")
+        self.assertEqual(observation.provider_reason, "game_build_incompatible")
+
+    @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
+    def test_detected_process_with_stale_layout_is_reported_incompatible(
+        self, provider_class: Mock
+    ) -> None:
+        target = _Target()
+        provider_class.side_effect = RuntimeError(
+            "type-info anchor is outside GameAssembly"
+        )
+
+        observation = ReadOnlyGameStatusProvider(lambda: target).read()
+
+        self.assertTrue(observation.game_detected)
+        self.assertFalse(observation.attached)
+        self.assertEqual(observation.pid, 1234)
+        self.assertEqual(observation.architecture, "x64")
+        self.assertEqual(observation.lifecycle, "INCOMPATIBLE_BUILD")
+        self.assertEqual(
+            observation.provider_reason, "memory_provider_incompatible"
+        )
+        self.assertIn("type-info anchor", observation.error or "")
+        self.assertEqual(target.closed, 1)
+
     @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
     def test_active_combat_maps_canonical_lifecycle_and_match(self, provider_class: Mock) -> None:
         target = _Target()
@@ -122,6 +156,37 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         self.assertEqual(observation.lobby_branch, "CHINH_PHUC_ROOM")
         self.assertEqual(observation.current_room_id, "room-1289")
 
+    @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
+    @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
+    def test_unknown_lifecycle_still_checks_exact_room_graph(
+        self, provider_class: Mock, read_lobby: Mock
+    ) -> None:
+        target = _Target()
+        provider_class.return_value.poll.return_value = ProviderPoll(
+            None,
+            False,
+            "lifecycle_signals_missing_or_disagree",
+            combat_lifecycle=_lifecycle(CombatLifecycleState.UNKNOWN),
+        )
+        candidate = SimpleNamespace(
+            selection=SimpleNamespace(value="SELECTED"),
+            identity=SimpleNamespace(boss_id="1289", boss_name="Starburst"),
+        )
+        read_lobby.return_value = SimpleNamespace(
+            state=SimpleNamespace(value="BOSS_LOBBY"),
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(current_room_id="room-1289"),
+            reasons=("exact room proven",),
+            candidates=(candidate,),
+        )
+
+        observation = ReadOnlyGameStatusProvider(lambda: target).read()
+
+        read_lobby.assert_called_once()
+        self.assertEqual(observation.lifecycle, "BOSS_LOBBY")
+        self.assertEqual(observation.current_room_id, "room-1289")
+        self.assertEqual(observation.provider_reason, "exact room proven")
+
     @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
     def test_process_exit_closes_attachment(self, provider_class: Mock) -> None:
         target = _Target(running=False)
@@ -129,6 +194,22 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         observation = runtime.read()
         self.assertFalse(observation.attached)
         self.assertEqual(observation.provider_reason, "process_exited")
+        self.assertEqual(target.closed, 1)
+
+    @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
+    def test_game_location_change_resets_cached_read_only_attachment(
+        self, provider_class: Mock
+    ) -> None:
+        target = _Target()
+        runtime = ReadOnlyGameStatusProvider(lambda: target)
+        provider_class.return_value.poll.return_value = ProviderPoll(
+            None,
+            False,
+            "awaiting_stability_confirmation",
+            combat_lifecycle=_lifecycle(CombatLifecycleState.ACTIVE),
+        )
+        runtime.read()
+        runtime.reset_attachment()
         self.assertEqual(target.closed, 1)
 
     def test_runtime_and_cli_import_no_input_or_farm_command_module(self) -> None:

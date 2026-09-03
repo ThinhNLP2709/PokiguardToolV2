@@ -43,8 +43,8 @@ class AckedSequenceTests(unittest.TestCase):
 
     def make_memory(self, values: tuple[int, ...]) -> FakeMemory:
         memory = FakeMemory()
-        match = bytearray(0x188)
-        struct.pack_into("<Q", match, 0x180, self.SET)
+        match = bytearray(0x1A0)
+        struct.pack_into("<Q", match, 0x198, self.SET)
         memory.map(self.MATCH, match)
         capacity = max(3, len(values) + 2)
         hashset = bytearray(0x40)

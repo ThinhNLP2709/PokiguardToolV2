@@ -13,6 +13,7 @@ from pokiguard_v2.desktop_preferences import (
     PREFERENCE_SCHEMA,
     PreferenceError,
 )
+from pokiguard_v2.win32_input import BoardInputMode
 
 
 class DesktopPreferenceStoreTests(unittest.TestCase):
@@ -35,29 +36,40 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         config = DesktopConfig(
             play_style=PlayStyle.CAREFUL,
             mana_priority=ManaPriority.ATTACK,
+            board_input_mode=BoardInputMode.TWO_CLICK,
             boss_id="1289",
             boss_name="Starburst",
             target_completed_matches=25,
             max_technical_recoveries=3,
             max_match_attempts=32,
         )
-        self.store.save(config)
+        self.store.save(config, game_location=r"D:\pc\Pokiguard-1.7.4.exe")
         result = self.store.load()
         self.assertTrue(result.loaded)
         self.assertEqual(result.config.play_style, config.play_style)
         self.assertEqual(result.config.mana_priority, config.mana_priority)
         self.assertEqual(result.config.intelligence, config.intelligence)
+        self.assertEqual(result.config.board_input_mode, config.board_input_mode)
         self.assertEqual(
             result.config.target_completed_matches,
             config.target_completed_matches,
         )
         self.assertEqual(result.config.max_match_attempts, config.max_match_attempts)
         self.assertEqual(result.config.max_technical_recoveries, 1)
+        self.assertEqual(
+            result.game_location,
+            r"D:\pc\Pokiguard-1.7.4.exe",
+        )
         raw = json.loads(self.path.read_text(encoding="utf-8"))
         self.assertEqual(PREFERENCE_SCHEMA, raw["schema"])
         self.assertIsNone(raw["config"]["boss_id"])
         self.assertIsNone(raw["config"]["boss_name"])
         self.assertNotIn("max_technical_recoveries", raw["config"])
+        self.assertEqual(
+            raw["config"]["game_location"],
+            r"D:\pc\Pokiguard-1.7.4.exe",
+        )
+        self.assertEqual(raw["config"]["board_input_mode"], "two_click")
         encoded = json.dumps(raw)
         for forbidden in (
             "farm_run_id",
@@ -137,11 +149,13 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
                 "play_style": "simple",
                 "mana_priority": "evolution",
                 "intelligence": "basic",
+                "board_input_mode": "drag",
                 "boss_id": "1289",
                 "boss_name": "Starburst",
                 "target_completed_matches": 3,
                 "max_technical_recoveries": 1,
                 "max_match_attempts": 5,
+                "game_location": r"D:\pc\Pokiguard-1.7.4.exe",
             },
         }
 

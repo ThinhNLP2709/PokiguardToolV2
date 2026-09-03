@@ -403,7 +403,14 @@ class TerminalCombatSnapshot:
 
 @dataclass(frozen=True)
 class CardState:
-    """Current equipped/rendered card and exact recovered CardData metadata."""
+    """Current equipped card and exact recovered CardData metadata.
+
+    ``interaction_authority`` distinguishes an exact live ``CardUI/Button``
+    witness from the cheaper direct-owner path.  The latter is authorized only
+    when ``Board.selectedCards`` and ``Board.cardsInHand`` prove the current
+    strip order; the foreground controller still validates the current visual
+    tile before sending a normal click.
+    """
 
     object_address: int
     data_address: int
@@ -438,6 +445,7 @@ class CardState:
     # gameplay.
     ui_slot: int | None = None
     ui_slot_count: int | None = None
+    interaction_authority: str = "CARD_UI_BUTTON"
 
     @property
     def is_attack(self) -> bool:
@@ -466,6 +474,20 @@ class FusionState:
     ui_interactable: bool | None = None
     ui_slot: int | None = None
     ui_slot_count: int | None = None
+    interaction_authority: str = "UNKNOWN"
+
+    @property
+    def interaction_authorized(self) -> bool:
+        """Whether runtime ownership permits a later visual-gated click."""
+
+        return bool(
+            self.ui_interactable is True
+            or (
+                self.ui_interactable is None
+                and self.interaction_authority
+                == "MATCH_SERVICE_BOARD_CARD_STRIP"
+            )
+        )
 
 
 @dataclass(frozen=True)

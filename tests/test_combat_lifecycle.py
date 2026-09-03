@@ -52,7 +52,7 @@ class CombatLifecycleTests(unittest.TestCase):
         )
         for field, value in (
             ("current_rig_alive", False),
-            ("hub_suspended", False),
+            ("hub_suspended", None),
             ("objects_consistent", False),
             ("board_ready", False),
         ):
@@ -61,6 +61,19 @@ class CombatLifecycleTests(unittest.TestCase):
                     classify_combat_lifecycle(active_signals(**{field: value})).state,
                     CombatLifecycleState.ACTIVE,
                 )
+
+    def test_current_boss_combat_accepts_readable_false_legacy_flags(self) -> None:
+        """1.7.4 leaves both legacy booleans false despite a proven live rig."""
+
+        observation = classify_combat_lifecycle(
+            active_signals(
+                hub_suspended=False,
+                manager_is_boss_battle=False,
+                match_id="M_b727b2f1",
+            )
+        )
+        self.assertEqual(observation.state, CombatLifecycleState.ACTIVE)
+        self.assertEqual(observation.reason, "local_rig_and_combat_ownership_agree")
 
     def test_entering_leaving_and_postmatch_win_over_active(self) -> None:
         self.assertEqual(

@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .unity_ui_layout import transform_for_capture
+
 
 class BossEntryControl(str, Enum):
     CHINH_PHUC_START = "CHINH_PHUC_START"
@@ -66,9 +68,11 @@ def find_chinh_phuc_start_candidates(
 
     if width < 640 or height < 360 or len(rgb) != width * height * 3:
         return ()
-    x0, x1 = round(width * 0.40), round(width * 0.86)
-    y0, y1 = round(height * 0.745), round(height * 0.91)
-    cell = max(3, round(min(width, height) / 180))
+    transform = transform_for_capture(rgb, width, height)
+    search = transform.rect((0.40, 0.745, 0.86, 0.91))
+    x0, x1 = round(width * search[0]), round(width * search[2])
+    y0, y1 = round(height * search[1]), round(height * search[3])
+    cell = max(3, round(min(transform.canvas_width, transform.canvas_height) / 180))
     counts: dict[tuple[int, int], int] = {}
     for y in range(y0, y1):
         for x in range(x0, x1):
@@ -116,17 +120,24 @@ def find_chinh_phuc_start_candidates(
         right = min(x1, (max(gx_values) + 1) * cell)
         bottom = min(y1, (max(gy_values) + 1) * cell)
         normalized = (left / width, top / height, right / width, bottom / height)
-        span_x = normalized[2] - normalized[0]
-        span_y = normalized[3] - normalized[1]
         center = (
             (normalized[0] + normalized[2]) / 2,
             (normalized[1] + normalized[3]) / 2,
         )
+        reference_left, reference_top = transform.reference_point(
+            (normalized[0], normalized[1])
+        )
+        reference_right, reference_bottom = transform.reference_point(
+            (normalized[2], normalized[3])
+        )
+        reference_center = transform.reference_point(center)
+        span_x = reference_right - reference_left
+        span_y = reference_bottom - reference_top
         if not (
             0.10 <= span_x <= 0.33
             and 0.055 <= span_y <= 0.17
-            and 0.52 <= center[0] <= 0.76
-            and 0.785 <= center[1] <= 0.855
+            and 0.52 <= reference_center[0] <= 0.76
+            and 0.785 <= reference_center[1] <= 0.855
         ):
             continue
         cyan_pixels = sum(counts[key] for key in source_cells)
@@ -135,16 +146,16 @@ def find_chinh_phuc_start_candidates(
             for x in range(left, right):
                 if _warm_or_white(*_pixel(rgb, width, x, y)):
                     warm_or_white += 1
-        minimum_cyan = max(160, round(width * height * 0.00045))
-        minimum_text = max(50, round(width * height * 0.00010))
+        minimum_cyan = max(160, round(transform.canvas_area * 0.00045))
+        minimum_text = max(50, round(transform.canvas_area * 0.00010))
         if cyan_pixels < minimum_cyan or warm_or_white < minimum_text:
             continue
-        anchor_error = abs(center[0] - 0.645) + abs(center[1] - 0.82)
+        anchor_error = abs(reference_center[0] - 0.645) + abs(reference_center[1] - 0.82)
         confidence = min(
             0.99,
             0.82
-            + min(0.09, cyan_pixels / max(1, width * height) * 25)
-            + min(0.06, warm_or_white / max(1, width * height) * 35)
+            + min(0.09, cyan_pixels / max(1, transform.canvas_area) * 25)
+            + min(0.06, warm_or_white / max(1, transform.canvas_area) * 35)
             - min(0.10, anchor_error * 0.40),
         )
         candidates.append(
@@ -273,18 +284,27 @@ def locate_detached_chinh_phuc_room_shell_exit(
             "room_shell_start_control_missing",
             metrics={"startReason": start.reason},
         )
-    components = _cyan_components(rgb, width, height, (0.045, 0.005, 0.175, 0.16))
+    transform = transform_for_capture(rgb, width, height)
+    components = _cyan_components(
+        rgb,
+        width,
+        height,
+        transform.rect((0.045, 0.005, 0.175, 0.16)),
+    )
     candidates: list[EntryButtonCandidate] = []
     for left, top, right, bottom, cyan_pixels in components:
         rect = (left / width, top / height, right / width, bottom / height)
-        span_x = rect[2] - rect[0]
-        span_y = rect[3] - rect[1]
         center = ((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2)
+        reference_left, reference_top = transform.reference_point((rect[0], rect[1]))
+        reference_right, reference_bottom = transform.reference_point((rect[2], rect[3]))
+        reference_center = transform.reference_point(center)
+        span_x = reference_right - reference_left
+        span_y = reference_bottom - reference_top
         if not (
             0.040 <= span_x <= 0.085
             and 0.070 <= span_y <= 0.135
-            and 0.070 <= center[0] <= 0.135
-            and 0.035 <= center[1] <= 0.105
+            and 0.070 <= reference_center[0] <= 0.135
+            and 0.035 <= reference_center[1] <= 0.105
         ):
             continue
         white_pixels = 0
@@ -298,15 +318,15 @@ def locate_detached_chinh_phuc_room_shell_exit(
                     and max(red, green, blue) - min(red, green, blue) <= 50
                 ):
                     white_pixels += 1
-        minimum_cyan = max(240, round(width * height * 0.0008))
-        minimum_white = max(90, round(width * height * 0.0002))
+        minimum_cyan = max(240, round(transform.canvas_area * 0.0008))
+        minimum_white = max(90, round(transform.canvas_area * 0.0002))
         if cyan_pixels < minimum_cyan or white_pixels < minimum_white:
             continue
         confidence = min(
             0.99,
             0.88
-            + min(0.06, cyan_pixels / max(1, width * height) * 30)
-            + min(0.04, white_pixels / max(1, width * height) * 45),
+            + min(0.06, cyan_pixels / max(1, transform.canvas_area) * 30)
+            + min(0.04, white_pixels / max(1, transform.canvas_area) * 45),
         )
         candidates.append(
             EntryButtonCandidate(rect, center, cyan_pixels, white_pixels, confidence)
@@ -380,12 +400,15 @@ def locate_chinh_phuc_attack_card_toggle(
             },
         )
 
-    # Canonical room layout is normalized by Desktop Start before FarmRunner
-    # binds the HWND. Ordinary CardData toggles begin after the fusion/pet slot
-    # and retain this fixed LayoutGroup spacing for one through four cards.
+    # Keep the proven card/UI calibration. Live 1.7.4 evidence shows this
+    # canvas remains height-scaled and left-anchored in the 2:1 viewport. The
+    # full-width combat DotsArea uses its own mapping in win32_input instead.
+    transform = transform_for_capture(rgb, width, height)
     center_x = 0.284 + 0.072 * attack_card_index
-    left_n, right_n = center_x - 0.030, center_x + 0.030
-    top_n, header_bottom_n, bottom_n = 0.715, 0.760, 0.860
+    reference_rect = (center_x - 0.030, 0.715, center_x + 0.030, 0.860)
+    left_n, top_n, right_n, bottom_n = transform.rect(reference_rect)
+    _, header_bottom_n = transform.point((center_x, 0.760))
+    click_point = transform.point((center_x, 0.790))
     left, right = round(width * left_n), round(width * right_n)
     top = round(height * top_n)
     header_bottom = round(height * header_bottom_n)
@@ -423,6 +446,7 @@ def locate_chinh_phuc_attack_card_toggle(
         "topCyanRatio": cyan_ratio,
         "bodyWarmRatio": warm_ratio,
         "bodyDarkRatio": dark_ratio,
+        "layoutMode": transform.mode,
     }
     if cyan_ratio < 0.10 or warm_ratio < 0.10 or dark_ratio < 0.025:
         return EntryUiLocation(
@@ -444,7 +468,7 @@ def locate_chinh_phuc_attack_card_toggle(
     return EntryUiLocation(
         control,
         True,
-        (center_x, 0.79),
+        click_point,
         (left_n, top_n, right_n, bottom_n),
         confidence,
         "unique_runtime_indexed_attack_toggle_visual_proof",

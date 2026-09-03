@@ -210,7 +210,28 @@ def _live_exit_calibration(
         except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
             continue
 
-    # Desktop Start now normalizes the game client to 1280x720.  The accepted
+    # Desktop Start now normalizes Pokiguard 1.7.4 to its native 1280x640
+    # viewport. The historic hitbox is a 1280x720 reference-canvas point, so
+    # uniform height scaling maps it to (36.89, 36.0) in the new client.
+    if width == 1280 and height == 640:
+        return RecoveryUiLocation(
+            RecoveryControl.EXIT_BACK,
+            True,
+            (36.8888888889 / 1280.0, 36.0 / 640.0),
+            0.98,
+            "canonical_1280x640_exit_hitbox_from_reference_canvas",
+            {
+                "pid": pid,
+                "clientWidth": width,
+                "clientHeight": height,
+                "referencePixelX": 41.5,
+                "referencePixelY": 40.5,
+                "physicalPixelX": 36.8888888889,
+                "physicalPixelY": 36.0,
+            },
+        )
+
+    # Compatibility with a pre-1.7.4 prepared window. The accepted
     # 1280x710 live calibration is a top-left anchored control at the exact
     # physical client pixel (41.5, 40.5).  The ten added pixels are below the
     # control, so preserve that proven physical pixel rather than reusing its

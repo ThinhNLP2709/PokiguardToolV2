@@ -9,7 +9,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from .board_simulator import MoveEvaluation, SwapMove, evaluate_all_moves
+from .board_simulator import (
+    MoveEvaluation,
+    SwapMove,
+    SwordHoldEvaluation,
+    evaluate_all_moves,
+    evaluate_sword_hold,
+)
 from .state import CardState, GameOwnedIdleStatus, GamePhase, GameState, GemType
 
 
@@ -43,11 +49,11 @@ class PolicyConfig:
     mana_priority: ManaPriority = ManaPriority.EVOLUTION
     intelligence: Intelligence = Intelligence.BASIC
     minimum_turn_time_seconds: int = 3
-    # EVOLVE does not consume the turn, so it is useful only while enough of
-    # the same local turn remains for its server response/animation and the
-    # mandatory fresh-state follow-up action. Live Phase 2D.6 lag evidence
-    # showed that proposing it at 8 seconds can consume the whole turn.
-    minimum_evolve_time_seconds: int = 10
+    # User policy gives affordable EVOLVE Step-1 priority from the second
+    # local turn. This is the same inclusive hard input floor as normal
+    # gameplay; authoritative idle 2/3 is handled separately because EVOLVE
+    # cannot satisfy its mandatory consuming action.
+    minimum_evolve_time_seconds: int = 1
     # Step 3 finisher: once the boss is at or below this absolute current HP,
     # a Sword-free board casts as soon as one Attack card is affordable.
     # 0 disables the finisher entirely.
@@ -68,10 +74,9 @@ class PolicyConfig:
     def __post_init__(self) -> None:
         if not 0 <= self.minimum_turn_time_seconds <= 14:
             raise ValueError("minimum_turn_time_seconds must be between 0 and 14")
-        if not self.minimum_turn_time_seconds <= self.minimum_evolve_time_seconds <= 14:
+        if not 0 <= self.minimum_evolve_time_seconds <= 14:
             raise ValueError(
-                "minimum_evolve_time_seconds must be between "
-                "minimum_turn_time_seconds and 14"
+                "minimum_evolve_time_seconds must be between 0 and 14"
             )
         if self.cast_when_boss_hp_below < 0:
             raise ValueError("cast_when_boss_hp_below must be >= 0")
@@ -109,6 +114,11 @@ class CandidateTrace:
     sword_effective: int
     sword_potentials_left: int
     sword_potential_effective_max: int
+    opponent_sword_replies: int
+    opponent_sword_reply_cells_max: int
+    opponent_sword_reply_effective_max: int
+    indirect_sword_replies: int
+    indirect_sword_effective_max: int
     sword_danger_regions: int
     collapse_support_hazard: int
     unknown_cells: int
@@ -172,6 +182,13 @@ def _candidate_trace(value: MoveEvaluation) -> CandidateTrace:
         sword_effective=value.sword_effective,
         sword_potentials_left=risk.potentials_left,
         sword_potential_effective_max=risk.potential_effective_max,
+        opponent_sword_replies=risk.opponent_sword_replies,
+        opponent_sword_reply_cells_max=risk.opponent_sword_reply_cells_max,
+        opponent_sword_reply_effective_max=(
+            risk.opponent_sword_reply_effective_max
+        ),
+        indirect_sword_replies=risk.indirect_sword_replies,
+        indirect_sword_effective_max=risk.indirect_sword_effective_max,
         sword_danger_regions=risk.danger_regions_left,
         collapse_support_hazard=risk.collapse_support_hazard,
         unknown_cells=exposure.cells,
@@ -265,7 +282,7 @@ class BasicPolicyEngine:
     def _sword_rank(value: MoveEvaluation) -> tuple[object, ...]:
         risk = value.sword_risk
         return (
-            risk.potential_effective_max > 0,
+            risk.opponent_sword_reply_effective_max > 0,
             -value.sword_effective,
             -value.total.effective(GemType.RAGE),
             -value.cascade_rounds,
@@ -293,8 +310,8 @@ class BasicPolicyEngine:
     def _mandatory_rank(value: MoveEvaluation) -> tuple[object, ...]:
         return (
             value.sword_risk.danger_score,
-            value.sword_risk.potential_effective_max,
-            value.sword_risk.potentials_left,
+            value.sword_risk.opponent_sword_reply_effective_max,
+            value.sword_risk.opponent_sword_replies,
             -value.total.effective(GemType.SHIELD),
             value.unknown_exposure.cells,
             -value.total.total_effective,
@@ -314,6 +331,22 @@ class BasicPolicyEngine:
             value.sword_risk.danger_score,
             -value.cascade_rounds,
             value.unknown_exposure.cells,
+            value.move,
+        )
+
+    @staticmethod
+    def _sword_hold_rank(
+        value: MoveEvaluation,
+        hold: SwordHoldEvaluation,
+    ) -> tuple[object, ...]:
+        """Prefer the smallest gift and strongest guaranteed known follow-up."""
+
+        return (
+            hold.opponent_sword_effective_max,
+            -hold.followup_sword_effective_min,
+            value.unknown_exposure.cells,
+            not value.horizontal,
+            not value.calculable,
             value.move,
         )
 
@@ -415,7 +448,12 @@ class BasicPolicyEngine:
         # At the authoritative pass limit EVOLVE is deliberately deferred: it
         # does not consume the turn and therefore cannot establish the reset
         # the server requires.  A SWAP/CAST must be selected first.
-        if idle_status is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION:
+        if state.battle.is_first_local_turn is True:
+            failures.append(
+                "STEP_1_EVOLVE: deferred until the second local turn; "
+                "the opening turn requires a board action"
+            )
+        elif idle_status is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION:
             failures.append(
                 "STEP_1_EVOLVE: deferred because the authoritative idle state "
                 "requires a turn-consuming SWAP or CAST"
@@ -449,8 +487,11 @@ class BasicPolicyEngine:
             )
         elif state.fusion.used:
             failures.append("STEP_1_EVOLVE: fusion already succeeded")
-        elif state.fusion.ui_interactable is not True:
-            failures.append("STEP_1_EVOLVE: live FusionCardUI is not proven interactable")
+        elif not state.fusion.interaction_authorized:
+            failures.append(
+                "STEP_1_EVOLVE: neither live FusionCardUI nor the exact "
+                "MatchService/Board card strip authorizes a visual-gated click"
+            )
         elif (
             state.fusion.ui_slot is None
             or state.fusion.ui_slot_count is None
@@ -498,18 +539,39 @@ class BasicPolicyEngine:
 
         # STEP 2: deterministic Sword collection includes known cascades.
         sword_moves = tuple(value for value in evaluations if value.sword_effective > 0)
+        deferred_unique_sword: MoveEvaluation | None = None
+        sword_hold_moves: tuple[tuple[MoveEvaluation, SwordHoldEvaluation], ...] = ()
         if sword_moves:
-            selected = min(sword_moves, key=self._sword_rank)
-            return self._decision(
-                state,
-                PolicyAction.SWAP,
-                "STEP_2_SWORD",
-                "A deterministic Sword result exists; selected by no-leftover, effective Sword, combo, danger, then UNKNOWN exposure",
-                failures,
-                sword_moves,
-                selected=selected,
+            only_sword = sword_moves[0] if len(sword_moves) == 1 else None
+            if (
+                only_sword is not None
+                and only_sword.sword_risk.opponent_sword_reply_effective_max
+                > only_sword.sword_effective
+            ):
+                deferred_unique_sword = only_sword
+                failures.append(
+                    "STEP_2_SWORD: deferred the only Sword move because its "
+                    "known opponent reply collects more effective Sword "
+                    f"({only_sword.sword_risk.opponent_sword_reply_effective_max} "
+                    f"> {only_sword.sword_effective}); continue through the "
+                    "normal safe policy, authoritative PASS, or the narrowly "
+                    "proven off-region Sword-hold exception"
+                )
+            else:
+                selected = min(sword_moves, key=self._sword_rank)
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "STEP_2_SWORD",
+                    "A deterministic Sword result exists; selected by no direct/indirect opponent Sword reply, effective Sword, combo, danger, then UNKNOWN exposure",
+                    failures,
+                    sword_moves,
+                    selected=selected,
+                )
+        if deferred_unique_sword is None:
+            failures.append(
+                "STEP_2_SWORD: no legal move collects Sword directly or by known cascade"
             )
-        failures.append("STEP_2_SWORD: no legal move collects Sword directly or by known cascade")
 
         safe_moves = tuple(value for value in evaluations if value.sword_risk.safe)
 
@@ -805,6 +867,37 @@ class BasicPolicyEngine:
 
         # STEP 6/7: PASS requires durable game-owned evidence. Mandatory always wins.
         if mandatory:
+            # Sword-hold analysis is intentionally lazy: ordinary safe policy
+            # must win first, and replaying two additional plies is unnecessary
+            # on the common path.  The exception is relevant here only when no
+            # genuinely safe move exists and PASS is prohibited.
+            if deferred_unique_sword is not None and not safe_moves:
+                sword_hold_moves = tuple(
+                    (value, hold)
+                    for value in evaluations
+                    if value.sword_effective == 0
+                    and (hold := evaluate_sword_hold(value)).guaranteed_favorable
+                )
+            if sword_hold_moves:
+                selected, hold = min(
+                    sword_hold_moves,
+                    key=lambda item: self._sword_hold_rank(item[0], item[1]),
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "STEP_7_MANDATORY_SWORD_HOLD",
+                    (
+                        "PASS is prohibited; selected a proven off-region move "
+                        f"that gives at most {hold.opponent_sword_effective_max} "
+                        "effective Sword and guarantees at least "
+                        f"{hold.followup_sword_effective_min} effective Sword "
+                        "on our known follow-up"
+                    ),
+                    failures,
+                    tuple(value for value, _hold in sword_hold_moves),
+                    selected=selected,
+                )
             selected = min(evaluations, key=self._mandatory_rank)
             return self._decision(
                 state,
@@ -861,6 +954,34 @@ class BasicPolicyEngine:
                     why,
                     failures,
                     evaluations,
+                )
+            if deferred_unique_sword is not None:
+                sword_hold_moves = tuple(
+                    (value, hold)
+                    for value in evaluations
+                    if value.sword_effective == 0
+                    and (hold := evaluate_sword_hold(value)).guaranteed_favorable
+                )
+            if sword_hold_moves:
+                selected, hold = min(
+                    sword_hold_moves,
+                    key=lambda item: self._sword_hold_rank(item[0], item[1]),
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "STEP_2_SWORD_HOLD",
+                    (
+                        "Authoritative PASS is unavailable; selected a proven "
+                        "off-region Sword-hold line where every known boss "
+                        f"Sword reply gives at most {hold.opponent_sword_effective_max} "
+                        "and leaves at least "
+                        f"{hold.followup_sword_effective_min} effective Sword "
+                        "for our following move"
+                    ),
+                    failures,
+                    tuple(value for value, _hold in sword_hold_moves),
+                    selected=selected,
                 )
             if idle_status is GameOwnedIdleStatus.UNKNOWN:
                 return self._decision(

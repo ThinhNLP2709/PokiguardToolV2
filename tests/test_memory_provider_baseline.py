@@ -11,12 +11,14 @@ from pokiguard_v2.memory_board_provider import (
     MemoryProviderConfig,
     ProviderMetrics,
     _combat_type_info_blocker,
+    _canonical_direct_card,
     _drop_session_volatile_learned_regions,
     _durable_non_board_fusion_transition,
+    _attack_card_ui_discovery_expected,
     _extended_card_scan_relevant,
     _extended_fusion_scan_relevant,
+    _expected_fusion_ui_pet_ids,
     _fusion_ui_discovery_expected,
-    _first_session_ui_scan_required,
     _extended_card_scan_still_needed,
     _match_start_opening_has_priority,
     _opening_board_action_has_priority,
@@ -33,6 +35,7 @@ from pokiguard_v2.memory_board_provider import (
     _rotating_region_window,
     _select_latest_identity,
 )
+from pokiguard_v2.combat_cards import CardDataState
 from pokiguard_v2.actionability import ActionabilityGate, GateContext
 from pokiguard_v2.state import CombatSessionKey, FusionState
 from pokiguard_v2.il2cpp_external import MemoryRegion
@@ -42,6 +45,83 @@ from tests.test_basic_policy import combat_state
 
 
 class ExtendedFusionUiScanTests(unittest.TestCase):
+    def test_direct_owned_attack_card_uses_exact_data_and_runtime_slot(self) -> None:
+        data = CardDataState(
+            address=0x20000002000,
+            data_id=64647,
+            card_id=4,
+            name="Tấn công",
+            description="Tấn công boss",
+            element_type="ATTACK",
+            skill_type="",
+            value=0,
+            max_level=1,
+            count=1,
+            level=1,
+            condition_use=160,
+            power=0,
+            green=0,
+            blue=0,
+            red=0,
+            yellow=0,
+            white=0,
+            purple=0,
+            damage_multiplier=1.0,
+            mana_cost=0,
+            power_cost=0,
+            cooldown_turns=0,
+            need_perfection=False,
+            eat_perfect=0,
+            eat_good=0,
+            eat_bad=0,
+        )
+
+        card = _canonical_direct_card(data, ui_slot=1, ui_slot_count=2)
+
+        self.assertTrue(card.is_attack)
+        self.assertTrue(card.interactable)
+        self.assertEqual(160, card.condition_use)
+        self.assertEqual((1, 2), (card.ui_slot, card.ui_slot_count))
+        self.assertEqual(
+            "BOARD_SELECTED_CARDDATA_CARD_STRIP",
+            card.interaction_authority,
+        )
+
+    def test_direct_owned_card_with_cooldown_remains_fail_closed(self) -> None:
+        data = CardDataState(
+            address=0x20000002000,
+            data_id=1,
+            card_id=4,
+            name=None,
+            description=None,
+            element_type="ATTACK",
+            skill_type=None,
+            value=0,
+            max_level=0,
+            count=0,
+            level=0,
+            condition_use=160,
+            power=0,
+            green=0,
+            blue=0,
+            red=0,
+            yellow=0,
+            white=0,
+            purple=0,
+            damage_multiplier=1.0,
+            mana_cost=0,
+            power_cost=0,
+            cooldown_turns=2,
+            need_perfection=False,
+            eat_perfect=0,
+            eat_good=0,
+            eat_bad=0,
+        )
+
+        card = _canonical_direct_card(data, ui_slot=1, ui_slot_count=2)
+
+        self.assertFalse(card.interactable)
+
     @staticmethod
     def _complete_batch(sequence: int = 7) -> CombatBatchSnapshot:
         cells = tuple(
@@ -57,6 +137,22 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             for col in range(8)
         )
         return CombatBatchSnapshot(0x400000, sequence, 0x700000, cells)
+
+    def test_fusion_ui_ownership_prefers_selected_pet_identity(self) -> None:
+        fusion = SimpleNamespace(
+            selected_pet_id=1845,
+            selected_user_pet_id=218166,
+        )
+        self.assertEqual(_expected_fusion_ui_pet_ids(fusion), (1845,))
+        self.assertEqual(
+            _expected_fusion_ui_pet_ids(
+                SimpleNamespace(
+                    selected_pet_id=0,
+                    selected_user_pet_id=218166,
+                )
+            ),
+            (218166,),
+        )
 
     def test_runtime_monitor_batch_still_requires_exact_provider_ack(self) -> None:
         provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
@@ -295,7 +391,10 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
         provider.config = MemoryProviderConfig()
         provider.target = SimpleNamespace(memory=object())
         provider.metrics = ProviderMetrics()
-        provider._owned_anchor_regions = Mock(return_value=regions)
+        provider._card_owner_allocation_regions = Mock(
+            return_value=(regions, True)
+        )
+        provider._last_cards_in_hand_allocation_expanded = False
         result = SimpleNamespace(matches={"fusion_ui": (0x234000,)}, bytes_read=1)
 
         with (
@@ -303,6 +402,10 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 "pokiguard_v2.memory_board_provider.read_cards_in_hand_anchors",
                 return_value=(0x210000, 0x310000),
             ) as read_anchors,
+            patch(
+                "pokiguard_v2.memory_board_provider.read_selected_card_data_addresses",
+                return_value=(0x510000,),
+            ),
             patch(
                 "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
                 return_value=result,
@@ -317,9 +420,8 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
         self.assertEqual(selected, regions)
         self.assertIs(actual, result)
         read_anchors.assert_called_once_with(provider.target.memory, 0x123000)
-        provider._owned_anchor_regions.assert_called_once_with(
-            {0x210000, 0x310000}
-        )
+        provider._card_owner_allocation_regions.assert_called_once_with({0x310000})
+        self.assertTrue(provider._last_cards_in_hand_allocation_expanded)
         scan.assert_called_once_with(
             provider.target.memory,
             regions,
@@ -327,6 +429,49 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             chunk_size=2 * 1024 * 1024,
         )
         self.assertEqual(provider.metrics.memory_scans, 1)
+
+    def test_card_owner_allocation_expands_only_within_16_mib_budget(self) -> None:
+        regions = (
+            MemoryRegion(0x100000, 0x100000, 0x04, 0x20000, 0x100000),
+            MemoryRegion(0x300000, 0x200000, 0x04, 0x20000, 0x100000),
+            MemoryRegion(0x900000, 0x100000, 0x04, 0x20000, 0x900000),
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig()
+        provider.target = SimpleNamespace(
+            memory=SimpleNamespace(iter_readable_regions=lambda: iter(regions))
+        )
+
+        selected, expanded = provider._card_owner_allocation_regions(
+            {0x110000}
+        )
+
+        self.assertEqual(selected, regions[:2])
+        self.assertTrue(expanded)
+
+    def test_card_owner_allocation_over_budget_keeps_direct_region(self) -> None:
+        regions = (
+            MemoryRegion(0x100000, 0x100000, 0x04, 0x20000, 0x100000),
+            MemoryRegion(
+                0x300000,
+                16 * 1024 * 1024,
+                0x04,
+                0x20000,
+                0x100000,
+            ),
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig()
+        provider.target = SimpleNamespace(
+            memory=SimpleNamespace(iter_readable_regions=lambda: iter(regions))
+        )
+
+        selected, expanded = provider._card_owner_allocation_regions(
+            {0x110000}
+        )
+
+        self.assertEqual(selected, (regions[0],))
+        self.assertFalse(expanded)
 
     def test_extended_fusion_scan_discovers_on_boss_turn_before_mana(self) -> None:
         fusion = SimpleNamespace(
@@ -559,26 +704,45 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             )
         )
 
-    def test_first_session_ui_scan_forces_full_current_region_discovery(self) -> None:
-        self.assertTrue(
-            _first_session_ui_scan_required(
-                1,
-                needs_card_scan=True,
-                needs_fusion_ui_scan=False,
-            )
-        )
-        self.assertTrue(
-            _first_session_ui_scan_required(
-                1,
-                needs_card_scan=False,
-                needs_fusion_ui_scan=True,
-            )
-        )
+    def test_current_board_selected_cards_suppress_absent_attack_discovery(self) -> None:
+        mana = SimpleNamespace(element_type="MANA")
+        attack = SimpleNamespace(element_type="ATTACK")
+
         self.assertFalse(
-            _first_session_ui_scan_required(
-                2,
-                needs_card_scan=True,
-                needs_fusion_ui_scan=True,
+            _attack_card_ui_discovery_expected(
+                (mana,),
+                preentry_attack_card_count=1,
+                preentry_sources_agree=True,
+            )
+        )
+        self.assertTrue(
+            _attack_card_ui_discovery_expected(
+                (mana, attack),
+                preentry_attack_card_count=0,
+                preentry_sources_agree=True,
+            )
+        )
+
+    def test_preentry_zero_attack_suppresses_only_when_sources_agree(self) -> None:
+        self.assertFalse(
+            _attack_card_ui_discovery_expected(
+                None,
+                preentry_attack_card_count=0,
+                preentry_sources_agree=True,
+            )
+        )
+        self.assertTrue(
+            _attack_card_ui_discovery_expected(
+                None,
+                preentry_attack_card_count=0,
+                preentry_sources_agree=False,
+            )
+        )
+        self.assertTrue(
+            _attack_card_ui_discovery_expected(
+                None,
+                preentry_attack_card_count=0,
+                preentry_sources_agree=None,
             )
         )
 

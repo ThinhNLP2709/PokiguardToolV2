@@ -1,0 +1,13 @@
+// Image 10: Microsoft.Web.WebView2.Core.dll - Assembly: Microsoft.Web.WebView2.Core, Version=1.0.4191.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e - Types 10441-11179
+[assembly: System.Reflection.AssemblyCompany("Microsoft")]
+[assembly: System.Reflection.AssemblyConfiguration("Release")]
+[assembly: System.Reflection.AssemblyCopyright("Copyright \u00A92020")]
+[assembly: System.Reflection.AssemblyFileVersion("1.0.4191.47")]
+[assembly: System.Reflection.AssemblyProduct("WebView2 .NET Interop Wrapper")]
+[assembly: System.Reflection.AssemblyTitle("Microsoft.Web.WebView2.Core")]
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(false, false)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Microsoft.Web.WebView2.WinForms, PublicKey=00240000048000009400000006020000002400005253413100040000010001005dba207a79aa19b084a6b574c6f8945bd211921eaefa27a8031dd74b31af8094b3945f00288bc93f0751ecc62d3f5ca42681f09ed4ff1716aefc600bee20b042828dd897db022a07459a20a1042d0fcdd4a19610e838f5cfd992bcad1499861e24a28e5884452ce638803b5fac55a9967d92794723d2f4a0b49cc1148ae03dc7")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Microsoft.Web.WebView2.Wpf, PublicKey=00240000048000009400000006020000002400005253413100040000010001005dba207a79aa19b084a6b574c6f8945bd211921eaefa27a8031dd74b31af8094b3945f00288bc93f0751ecc62d3f5ca42681f09ed4ff1716aefc600bee20b042828dd897db022a07459a20a1042d0fcdd4a19610e838f5cfd992bcad1499861e24a28e5884452ce638803b5fac55a9967d92794723d2f4a0b49cc1148ae03dc7")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("dotNetAPIWrapperGeneratorTester, PublicKey=00240000048000009400000006020000002400005253413100040000010001005dba207a79aa19b084a6b574c6f8945bd211921eaefa27a8031dd74b31af8094b3945f00288bc93f0751ecc62d3f5ca42681f09ed4ff1716aefc600bee20b042828dd897db022a07459a20a1042d0fcdd4a19610e838f5cfd992bcad1499861e24a28e5884452ce638803b5fac55a9967d92794723d2f4a0b49cc1148ae03dc7")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]

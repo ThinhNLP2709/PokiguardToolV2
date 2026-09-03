@@ -39,8 +39,8 @@ class MatchPresenceTests(unittest.TestCase):
 
     def make_memory(self, values: tuple[int, ...]) -> FakeMemory:
         memory = FakeMemory()
-        board = bytearray(0x2B8)
-        struct.pack_into("<Q", board, 0x2B0, self.SET)
+        board = bytearray(0x2C8)
+        struct.pack_into("<Q", board, 0x2C0, self.SET)
         memory.map(self.BOARD, board)
         capacity = max(3, len(values) + 2)
         hashset = bytearray(0x40)

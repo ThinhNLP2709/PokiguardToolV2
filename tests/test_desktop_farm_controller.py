@@ -244,6 +244,31 @@ class DesktopFarmControllerTests(unittest.TestCase):
             self.manager.snapshot().safety.max_simultaneous_controllers, 1
         )
 
+    def test_live_turn_projection_separates_current_and_completed_energy(self) -> None:
+        source = _source()
+        source.attempts = (
+            SimpleNamespace(
+                attempt_index=1,
+                local_turns=11,
+                end_timestamp="complete",
+                result=SimpleNamespace(value="WIN"),
+            ),
+            SimpleNamespace(
+                attempt_index=2,
+                local_turns=4,
+                end_timestamp=None,
+                result=SimpleNamespace(value="UNKNOWN"),
+            ),
+        )
+
+        generation = self.manager.snapshot().generation
+        self.manager._observe(generation, source, "COMBAT_LOCAL_TURN_7")
+        projected = self.manager.snapshot()
+
+        self.assertEqual(((1, 11),), projected.completed_match_turns)
+        self.assertEqual(4, projected.current_match_turns)
+        self.assertEqual(15, projected.total_energy_used)
+
     def test_start_foregrounds_verified_pid_before_runner(self) -> None:
         foregrounded: list[int] = []
         manager = DesktopFarmControllerManager(
@@ -405,6 +430,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertTrue(args.stage_e2_ui)
         self.assertEqual(args.play_style, "careful")
         self.assertEqual(args.mana_priority, "attack")
+        self.assertEqual(args.board_input_mode, "drag")
         self.assertEqual(args.target_matches, 4)
         # The legacy CLI field remains parse-compatible but the desktop no
         # longer exposes or forwards a lifetime recovery cap.

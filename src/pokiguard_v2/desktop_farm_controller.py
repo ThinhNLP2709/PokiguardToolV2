@@ -20,6 +20,7 @@ from .controller_lease import AutomationControllerLease
 from .farm_checkpoint import CheckpointError, load_checkpoint, validate_for_resume
 from .farm_run import FarmRunLimits
 from .win32_input import (
+    BoardInputMode,
     FarmControlHotkeyEdges,
     foreground_process_window,
     prepare_process_window,
@@ -96,6 +97,11 @@ class DesktopControllerSnapshot:
     last_error: str | None = None
     exit_code: int | None = None
     foreground_handoff: str = "NOT_REQUESTED"
+    # One local server turn consumes one farm energy. EVOLVE followed by SWAP
+    # on the same turn is intentionally counted once.
+    completed_match_turns: tuple[tuple[int, int], ...] = ()
+    current_match_turns: int = 0
+    total_energy_used: int = 0
     updated_at: str = ""
     safety: ControllerSafetyEvidence = ControllerSafetyEvidence()
 
@@ -144,7 +150,7 @@ class DesktopFarmControllerManager:
             else injected_focus
         )
         # Desktop Start owns one stronger, zero-input preflight: restore the
-        # exact game PID and normalize its client to the canonical 1280x720
+        # exact game PID and normalize its client to the current 1280x640
         # calibration before FarmRunner binds the HWND.  Tests with an injected
         # runner retain their historical foreground callback unless they opt in
         # to a distinct preparation implementation.
@@ -183,6 +189,7 @@ class DesktopFarmControllerManager:
             mana_priority=config.mana_priority,
             intelligence=config.intelligence,
         )
+        BoardInputMode(config.board_input_mode)
         target = FarmTarget(
             config.normalized_boss_id,
             config.normalized_boss_name,
@@ -320,7 +327,7 @@ class DesktopFarmControllerManager:
                 if not self._window_prepare(launch.game_pid):
                     raise RuntimeError(
                         f"GAME_WINDOW_PREPARATION_FAILED: PID {launch.game_pid}; "
-                        "expected foreground canonical client 1280x720"
+                        "expected foreground canonical client 1280x640"
                     )
                 with self._lock:
                     if self._snapshot.generation != generation:
@@ -384,6 +391,27 @@ class DesktopFarmControllerManager:
             state = self._snapshot.state
             if state is DesktopControllerState.STARTING:
                 state = DesktopControllerState.RUNNING
+            source_attempts = tuple(getattr(source, "attempts", ()))
+            completed_match_turns = tuple(
+                (int(attempt.attempt_index), int(attempt.local_turns))
+                for attempt in source_attempts
+                if attempt.end_timestamp is not None
+                and attempt.result.value in {"WIN", "LOSS", "UNKNOWN"}
+            )
+            current_attempt = next(
+                (
+                    attempt
+                    for attempt in reversed(source_attempts)
+                    if attempt.end_timestamp is None
+                    and source.current_match_id is not None
+                ),
+                None,
+            )
+            current_match_turns = (
+                int(current_attempt.local_turns)
+                if current_attempt is not None
+                else 0
+            )
             self._snapshot = replace(
                 self._snapshot,
                 state=state,
@@ -413,6 +441,11 @@ class DesktopFarmControllerManager:
                 last_stop_reason=(
                     source.stop_reason.value if source.stop_reason is not None else None
                 ),
+                completed_match_turns=completed_match_turns,
+                current_match_turns=current_match_turns,
+                total_energy_used=sum(
+                    turns for _attempt_index, turns in completed_match_turns
+                ) + current_match_turns,
                 updated_at=_timestamp(),
             )
 
@@ -589,6 +622,8 @@ class DesktopFarmControllerManager:
             config.play_style.value,
             "--mana-priority",
             config.mana_priority.value,
+            "--board-input-mode",
+            config.board_input_mode.value,
             "--reset-evidence",
             str(self.reset_evidence),
             "--artifacts",

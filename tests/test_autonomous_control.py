@@ -86,6 +86,7 @@ from tools.basic_auto_bot import (
     _must_pause_for_no_safe_move,
     _observe_b4_cast_idle_reset,
     _observe_cast_idle_reset,
+    _observe_fast_runtime_turn,
     _pass_cycle_coverage,
     _pass_lifecycle_evidence,
     _pass_wait_activity_is_fresh,
@@ -95,6 +96,7 @@ from tools.basic_auto_bot import (
     _evolve_terminal_touches_turn,
     _policy_none_stop_reason,
     _policy_branch,
+    _provider_available_board_sequences,
     _provider_poll_for_controller,
     _record_policy_observation,
     _record_sent_input_safety,
@@ -596,6 +598,44 @@ class AutonomousGuardTests(unittest.TestCase):
         )
         self.assertFalse(_force_full_pass_scan_once(None, identity))
 
+    def test_prevalidated_transport_board_suppresses_duplicate_full_scan(self) -> None:
+        diagnostics = {
+            "trackedBatches": (
+                {
+                    "srvSeq": 17,
+                    "transportAttested": True,
+                    "runtimeHeapAttested": False,
+                    "ackAttested": False,
+                },
+                {
+                    "srvSeq": 19,
+                    "transportAttested": True,
+                    "runtimeHeapAttested": False,
+                    "ackAttested": False,
+                },
+                {
+                    "srvSeq": 19,
+                    "transportAttested": False,
+                    "runtimeHeapAttested": False,
+                    "ackAttested": True,
+                },
+                {
+                    "srvSeq": 21,
+                    "transportAttested": False,
+                    "runtimeHeapAttested": False,
+                    "ackAttested": False,
+                },
+            )
+        }
+
+        # Sequence 19 mirrors the live PASS handoff: its current-match board
+        # was decoded and retained before MatchService ACK attestation caught
+        # up. The unowned/unattested sequence remains ineligible.
+        self.assertEqual(
+            _provider_available_board_sequences(diagnostics),
+            (17, 19),
+        )
+
     def test_pass_wait_keeps_read_only_move_board_dto_for_provider(self) -> None:
         current = SimpleNamespace(
             address=0x1200,
@@ -686,7 +726,7 @@ class AutonomousGuardTests(unittest.TestCase):
             ),
             "TURN_CHANGED",
         )
-        self.assertEqual(
+        self.assertIsNone(
             direct_runtime_swap_preflight_failure(
                 pending,
                 match_id="M_fixture",
@@ -694,6 +734,18 @@ class AutonomousGuardTests(unittest.TestCase):
                 current_player="happi",
                 local_username="happi",
                 remaining_seconds=1,
+                local_move_sequence=1,
+                minimum_action_time=1,
+            )
+        )
+        self.assertEqual(
+            direct_runtime_swap_preflight_failure(
+                pending,
+                match_id="M_fixture",
+                turn=3,
+                current_player="happi",
+                local_username="happi",
+                remaining_seconds=0,
                 local_move_sequence=1,
                 minimum_action_time=1,
             ),
@@ -1185,6 +1237,55 @@ class AutonomousGuardTests(unittest.TestCase):
             ).accepted
         )
 
+    def test_direct_owned_cast_uses_exact_mana_and_consuming_turn_proof(self) -> None:
+        state = self._state()
+        card = attack_card()
+        decision = replace(
+            BasicPolicyEngine().decide(state),
+            action=PolicyAction.CAST,
+            move=None,
+            card_object_address=card.object_address,
+            consumes_turn=True,
+        )
+        identity = AutonomousActionIdentity.from_decision(state, decision)
+        pending = PendingAutonomousAction(
+            identity,
+            1.0,
+            590,
+            160,
+            card_id=card.card_id,
+            card_object_address=card.object_address,
+            card_element_type=card.element_type,
+            card_interaction_authority="BOARD_SELECTED_CARDDATA_CARD_STRIP",
+            card_interactable_before=True,
+            card_has_used_this_turn_before=False,
+            consuming_transition_seen=True,
+        )
+
+        proof = _b4_cast_acceptance_evidence(
+            pending,
+            mana_after=430,
+            card_after=None,
+            observed_turn=identity.source.turn + 1,
+            observed_current_player="boss",
+        )
+
+        self.assertTrue(proof.accepted)
+        self.assertTrue(proof.direct_owner_mana_accepted)
+        self.assertEqual(
+            "BOARD_SELECTED_CARDDATA_CARD_STRIP",
+            proof.card_interaction_authority,
+        )
+        self.assertFalse(
+            _b4_cast_acceptance_evidence(
+                pending,
+                mana_after=431,
+                card_after=None,
+                observed_turn=identity.source.turn + 1,
+                observed_current_player="boss",
+            ).accepted
+        )
+
     def test_b4_direct_cast_proof_does_not_fabricate_idle_response(self) -> None:
         state = self._state()
         base = BasicPolicyEngine().decide(state)
@@ -1573,6 +1674,8 @@ class AutonomousGuardTests(unittest.TestCase):
         state = self._state()
         counters = Counters()
         seen_turns = set()
+        progress = []
+        observer = lambda *values: progress.append(values)
 
         self.assertEqual(
             _record_turn_observation(
@@ -1582,6 +1685,7 @@ class AutonomousGuardTests(unittest.TestCase):
                 turn=1,
                 current_player="happi",
                 local_username="happi",
+                progress_observer=observer,
             ),
             "LOCAL",
         )
@@ -1593,6 +1697,7 @@ class AutonomousGuardTests(unittest.TestCase):
                 turn=1,
                 current_player="happi",
                 local_username="happi",
+                progress_observer=observer,
             )
         )
         self.assertEqual(
@@ -1603,11 +1708,19 @@ class AutonomousGuardTests(unittest.TestCase):
                 turn=2,
                 current_player="boss",
                 local_username="happi",
+                progress_observer=observer,
             ),
             "BOSS",
         )
         self.assertEqual(counters.local_turns_observed, 1)
         self.assertEqual(counters.boss_turns_observed, 1)
+        self.assertEqual(
+            progress,
+            [
+                ("LOCAL", state.battle.session_key, 1, 1, 0),
+                ("BOSS", state.battle.session_key, 2, 1, 1),
+            ],
+        )
 
         decision = BasicPolicyEngine().decide(state)
         seen_policy = set()
@@ -1636,6 +1749,29 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertEqual(counters.boss_turn_inputs, 1)
         self.assertEqual(counters.postmatch_inputs, 1)
         self.assertEqual(counters.input_after_combat, 1)
+
+    def test_fast_runtime_turn_routes_progress_outside_transition_tracker(self) -> None:
+        state = self._state()
+        fast_counters = Counters()
+        fast_progress = []
+
+        transition, fast_role = _observe_fast_runtime_turn(
+            TurnTransitionTracker(),
+            fast_counters,
+            set(),
+            session=state.battle.session_key,
+            turn=1,
+            current_player="happi",
+            local_username="happi",
+            progress_observer=lambda *values: fast_progress.append(values),
+        )
+
+        self.assertIsNone(transition)
+        self.assertEqual("LOCAL", fast_role)
+        self.assertEqual(
+            [("LOCAL", state.battle.session_key, 1, 1, 0)],
+            fast_progress,
+        )
 
     def test_local_turn_deadline_warns_once_before_a_silent_skip(self) -> None:
         state = self._state()
@@ -2460,23 +2596,25 @@ class GameplayUiTests(unittest.TestCase):
                 for x in range(cx - 20, cx + 20):
                     offset = (y * width + x) * 3
                     rgb[offset : offset + 3] = bytes(color if (x + y) % 3 else (245, 245, 245))
-            self.assertTrue(
-                locate_gameplay_control(bytes(rgb), width, height, control).found
-            )
+            located = locate_gameplay_control(bytes(rgb), width, height, control)
+            self.assertTrue(located.found)
+            self.assertEqual(located.normalized_point, (point[0], 0.824))
 
-    def test_runtime_slots_recenter_two_tile_loadout(self) -> None:
-        width, height = 1280, 710
+    def test_runtime_slots_recenter_two_tile_loadout_on_native_wide_viewport(self) -> None:
+        # The real 1.7.4 prepared client is 1280x640.  Combat cards use the
+        # complete viewport, not the narrower left-anchored 16:9 lobby canvas.
+        width, height = 1280, 640
         rgb = bytearray(width * height * 3)
         expected = {
-            GameplayControl.EVOLVE: (0.471, 0.836),
-            GameplayControl.CAST_ATTACK: (0.529, 0.836),
+            GameplayControl.EVOLVE: (0.471, 0.824),
+            GameplayControl.CAST_ATTACK: (0.529, 0.824),
         }
         colors = {
             GameplayControl.EVOLVE: (40, 130, 230),
             GameplayControl.CAST_ATTACK: (230, 80, 30),
         }
         for control, point in expected.items():
-            cx, cy = round(point[0] * width), round(point[1] * height)
+            cx, cy = round(point[0] * width), round(0.836 * height)
             for y in range(cy - 35, cy + 35):
                 for x in range(cx - 24, cx + 24):
                     offset = (y * width + x) * 3
@@ -2502,20 +2640,24 @@ class GameplayUiTests(unittest.TestCase):
         )
 
         self.assertTrue(evolve.found)
-        self.assertEqual(evolve.normalized_point, expected[GameplayControl.EVOLVE])
+        self.assertAlmostEqual(evolve.normalized_point[0], 0.471)  # type: ignore[index]
+        self.assertAlmostEqual(evolve.normalized_point[1], 0.824)  # type: ignore[index]
+        self.assertEqual(evolve.metrics["layoutMode"], "POKIGUARD_2_1")
+        self.assertEqual(evolve.metrics["layoutSpace"], "FULL_VIEWPORT")
         self.assertTrue(attack.found)
-        self.assertEqual(
-            attack.normalized_point, expected[GameplayControl.CAST_ATTACK]
-        )
+        self.assertAlmostEqual(attack.normalized_point[0], 0.529)  # type: ignore[index]
+        self.assertAlmostEqual(attack.normalized_point[1], 0.824)  # type: ignore[index]
+        self.assertEqual(attack.metrics["layoutMode"], "POKIGUARD_2_1")
+        self.assertEqual(attack.metrics["layoutSpace"], "FULL_VIEWPORT")
 
     def test_runtime_four_slot_strip_preserves_v1_calibration(self) -> None:
         width, height = 800, 450
         rgb = bytearray(width * height * 3)
         for control, point, color in (
-            (GameplayControl.EVOLVE, (0.413, 0.836), (40, 130, 230)),
-            (GameplayControl.CAST_ATTACK, (0.471, 0.836), (230, 80, 30)),
+            (GameplayControl.EVOLVE, (0.413, 0.824), (40, 130, 230)),
+            (GameplayControl.CAST_ATTACK, (0.471, 0.824), (230, 80, 30)),
         ):
-            cx, cy = round(point[0] * width), round(point[1] * height)
+            cx, cy = round(point[0] * width), round(0.836 * height)
             for y in range(cy - 30, cy + 30):
                 for x in range(cx - 20, cx + 20):
                     offset = (y * width + x) * 3

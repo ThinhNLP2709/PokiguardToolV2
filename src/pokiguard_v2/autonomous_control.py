@@ -153,6 +153,7 @@ class PendingAutonomousAction:
     card_name: str | None = None
     card_element_type: str | None = None
     card_cost_source: str | None = None
+    card_interaction_authority: str | None = None
     card_interactable_before: bool | None = None
     card_has_used_this_turn_before: bool | None = None
     local_move_sequence_before: int | None = None
@@ -239,8 +240,8 @@ def direct_runtime_swap_preflight_failure(
     A full provider/policy re-read happens earlier, but screenshot/modal and
     coordinate work can consume most of a late turn.  This final direct read
     prevents a stale proposal from reaching the server after turn ownership
-    changed.  The timer is required to be *above* the configured floor because
-    two physical clicks still have to be delivered.
+    changed. The configured floor is inclusive, matching the policy gate and
+    live evidence that the game still accepts a SWAP at one displayed second.
     """
 
     identity = pending.identity
@@ -256,7 +257,7 @@ def direct_runtime_swap_preflight_failure(
         return "TURN_NOT_LOCAL"
     if remaining_seconds is None:
         return "TIMER_UNKNOWN"
-    if float(remaining_seconds) <= float(minimum_action_time):
+    if float(remaining_seconds) < float(minimum_action_time):
         return "TIMER_AT_OR_BELOW_ACTION_FLOOR"
     if (
         pending.local_move_sequence_before is not None

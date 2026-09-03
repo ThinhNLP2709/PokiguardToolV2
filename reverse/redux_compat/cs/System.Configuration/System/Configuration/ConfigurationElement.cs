@@ -1,0 +1,27 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Resources;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// Image 87: System.Configuration.dll - Assembly: System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a - Types 15976-15985
+
+namespace System.Configuration
+{
+	[DefaultMember("Item")]
+	public abstract class ConfigurationElement // TypeDefIndex: 15977
+	{
+		// Properties
+		protected internal virtual ConfigurationPropertyCollection Properties { get; } // 0x0000000181781C10-0x0000000181781C40 
+	
+		// Methods
+		protected internal virtual bool IsModified(); // 0x0000000181781B80-0x0000000181781BB0
+		protected internal virtual void Reset(ConfigurationElement parentElement); // 0x0000000181781BE0-0x0000000181781C10
+		protected internal virtual void ResetModified(); // 0x0000000181781BB0-0x0000000181781BE0
+	}
+}

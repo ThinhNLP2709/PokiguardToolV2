@@ -81,7 +81,7 @@ class OrientationAndOverlayTests(unittest.TestCase):
         geometry = BoardGeometry()
         top = geometry.center(1000, 1000, 0, 0)
         bottom = geometry.center(1000, 1000, 7, 0)
-        self.assertEqual(top, (360, 150))
+        self.assertEqual(top, (362, 162))
         self.assertGreater(bottom[1], top[1])
 
 

@@ -256,13 +256,14 @@ def run(args: argparse.Namespace) -> int:
     adapter = V1SolverAdapter(args.v1_root)
     config = adapter.config
     calibration = BoardCalibration(
-        float(config.get("board_first_center_x", 0.360)),
-        float(config.get("board_first_center_y", 0.150)),
-        float(config.get("board_step_x", 0.0410)),
-        float(config.get("board_step_y", 0.0760)),
+        float(config.get("board_first_center_x", 0.3620)),
+        float(config.get("board_first_center_y", 0.1625)),
+        float(config.get("board_step_x", 0.0393)),
+        float(config.get("board_step_y", 0.0787)),
     )
     calibration.validate()
-    click_delay = float(config.get("click_delay_seconds", 0.25))
+    click_delay = float(config.get("click_delay_seconds", 0.35))
+    cursor_settle = float(config.get("cursor_settle_seconds", 0.06))
     log_path = (
         args.log
         or PROJECT_ROOT
@@ -284,6 +285,7 @@ def run(args: argparse.Namespace) -> int:
         executor = ForegroundClickExecutor(
             backend,
             click_delay_seconds=click_delay,
+            cursor_settle_seconds=cursor_settle,
         )
         initial_window = executor.window_status(binding)
         if not initial_window.valid or initial_window.geometry is None:

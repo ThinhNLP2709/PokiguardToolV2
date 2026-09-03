@@ -3,7 +3,9 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +17,15 @@ from pokiguard_v2.boss_lobby_runtime import (  # noqa: E402
     MANAGER_ROOM_SELECTED_CARDS_OFFSET,
     ROOM_CARDS_OFFSET,
     _read_lobby_card_loadout,
+    read_boss_lobby_runtime,
 )
+from pokiguard_v2.boss_entry import BossLobbyState  # noqa: E402
+from pokiguard_v2.combat_lifecycle import (  # noqa: E402
+    CombatLifecycleObservation,
+    CombatLifecycleSignals,
+    CombatLifecycleState,
+)
+import pokiguard_v2.boss_lobby_runtime as lobby_runtime_module  # noqa: E402
 
 
 class FakeMemory:
@@ -131,7 +141,7 @@ class BossLobbyCardTests(unittest.TestCase):
         manager_raw = bytearray(0x110)
         struct.pack_into("<Q", manager_raw, MANAGER_ROOM_SELECTED_CARDS_OFFSET, manager_list)
         memory.map(manager, manager_raw)
-        room_raw = bytearray(0x58)
+        room_raw = bytearray(0x60)
         struct.pack_into("<Q", room_raw, ROOM_CARDS_OFFSET, room_list)
         memory.map(room, room_raw)
         map_list(memory, manager_list, manager_array, cards, array_class=array_class)
@@ -155,6 +165,66 @@ class BossLobbyCardTests(unittest.TestCase):
         self.assertEqual(stale.manager_attack_card_count, 0)
         self.assertEqual(stale.room_attack_card_count, 1)
         self.assertFalse(stale.sources_agree)
+
+
+class UnknownLifecycleRoomGateTests(unittest.TestCase):
+    @patch.object(lobby_runtime_module, "read_world_boss_list")
+    @patch.object(lobby_runtime_module, "read_chinh_phuc_room")
+    def test_exact_clean_room_recovers_uninitialized_combat_statics(
+        self, read_chinh: object, read_world: object
+    ) -> None:
+        candidate = object()
+        read_chinh.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(clean=True, reasons=()),
+            (candidate,),
+        )
+        read_world.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(clean_for_discovery=False, reasons=()),
+            (),
+        )
+        lifecycle = CombatLifecycleObservation(
+            CombatLifecycleState.UNKNOWN,
+            CombatLifecycleSignals(
+                active_instance=0x5000,
+                manager_match_instance=0x6000,
+            ),
+            "lifecycle_signals_missing_or_disagree",
+        )
+
+        snapshot = read_boss_lobby_runtime(object(), lifecycle)
+
+        self.assertEqual(snapshot.state, BossLobbyState.BOSS_LOBBY)
+        self.assertEqual(snapshot.branch, "CHINH_PHUC_ROOM")
+        self.assertEqual(snapshot.candidates, (candidate,))
+
+    @patch.object(lobby_runtime_module, "read_world_boss_list")
+    @patch.object(lobby_runtime_module, "read_chinh_phuc_room")
+    def test_unknown_lifecycle_never_overrides_combat_or_read_error(
+        self, read_chinh: object, read_world: object
+    ) -> None:
+        read_chinh.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(clean=True, reasons=()),
+            (),
+        )
+        read_world.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(clean_for_discovery=False, reasons=()),
+            (),
+        )
+        contradictory = (
+            CombatLifecycleSignals(board_instance=0x1234),
+            CombatLifecycleSignals(read_errors=("MatchHost:invalid",)),
+            CombatLifecycleSignals(scene_loading=True),
+        )
+        for signals in contradictory:
+            with self.subTest(signals=signals):
+                lifecycle = CombatLifecycleObservation(
+                    CombatLifecycleState.UNKNOWN,
+                    signals,
+                    "lifecycle_signals_missing_or_disagree",
+                )
+                snapshot = read_boss_lobby_runtime(object(), lifecycle)
+                self.assertEqual(snapshot.state, BossLobbyState.UNKNOWN)
+                self.assertIsNone(snapshot.branch)
 
 
 if __name__ == "__main__":

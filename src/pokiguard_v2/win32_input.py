@@ -11,7 +11,6 @@ import threading
 import time
 from typing import Callable, Protocol
 
-
 Cell = tuple[int, int]
 VK_F7 = 0x76
 VK_F8 = 0x77
@@ -24,7 +23,20 @@ SW_RESTORE = 9
 SWP_NOZORDER = 0x0004
 SWP_NOACTIVATE = 0x0010
 CANONICAL_CLIENT_WIDTH = 1280
-CANONICAL_CLIENT_HEIGHT = 720
+CANONICAL_CLIENT_HEIGHT = 640
+DEFAULT_SWAP_CLICK_DELAY_SECONDS = 0.35
+DEFAULT_SWAP_CURSOR_SETTLE_SECONDS = 0.06
+NATIVE_MOUSE_BUTTON_HOLD_SECONDS = 0.075
+DEFAULT_SWAP_DRAG_DURATION_SECONDS = 0.10
+DEFAULT_SWAP_DRAG_STEPS = 3
+DEFAULT_SWAP_DRAG_OVERSHOOT_FRACTION = 0.35
+
+
+class BoardInputMode(str, Enum):
+    """Normal game input gesture used only for adjacent board swaps."""
+
+    TWO_CLICK = "two_click"
+    DRAG = "drag"
 
 
 @dataclass(frozen=True)
@@ -37,10 +49,10 @@ class ClientGeometry:
 
 @dataclass(frozen=True)
 class BoardCalibration:
-    first_center_x: float = 0.360
-    first_center_y: float = 0.150
-    step_x: float = 0.0410
-    step_y: float = 0.0760
+    first_center_x: float = 0.3620
+    first_center_y: float = 0.1625
+    step_x: float = 0.0393
+    step_y: float = 0.0787
 
     def normalized_center(self, cell: Cell) -> tuple[float, float]:
         row, col = validate_cell(cell)
@@ -198,6 +210,8 @@ class Win32Backend(Protocol):
     def window_pid(self, hwnd: int) -> int | None: ...
     def set_cursor_pos(self, x: int, y: int) -> bool: ...
     def click_mouse(self) -> None: ...
+    def mouse_left_down(self) -> None: ...
+    def mouse_left_up(self) -> None: ...
     def virtual_screen(self) -> tuple[int, int, int, int]: ...
     def restore_and_foreground(self, hwnd: int) -> bool: ...
     def resize_client(self, hwnd: int, width: int, height: int) -> bool: ...
@@ -220,6 +234,12 @@ class ClickPairResult:
     pacing_mode: str | None = None
     pacing_reason: str | None = None
     lag_score: int | None = None
+    cursor_settle_seconds: float | None = None
+    mouse_button_hold_seconds: float | None = None
+    input_mode: str = BoardInputMode.TWO_CLICK.value
+    drag_duration_seconds: float | None = None
+    drag_steps: int | None = None
+    drag_overshoot_pixels: int | None = None
 
     @property
     def sent(self) -> bool:
@@ -270,7 +290,7 @@ class AdaptiveSwapPacer:
     Pokiguard does not expose a verified ping/FPS field in the read-only
     runtime.  Recovery/re-entry, exact SWAP outcome timeouts and slow accepted
     transitions are therefore used as conservative delivery-health signals.
-    The normal 0.25-second path remains unchanged, while the severe path spans
+    The normal 0.35-second path remains responsive, while the severe path spans
     several rendered frames even when the client temporarily falls to 3-4 FPS.
     """
 
@@ -285,7 +305,7 @@ class AdaptiveSwapPacer:
     def __init__(
         self,
         *,
-        base_delay_seconds: float = 0.25,
+        base_delay_seconds: float = DEFAULT_SWAP_CLICK_DELAY_SECONDS,
         maximum_delay_seconds: float = 1.50,
         slow_ack_seconds: float = 8.0,
         fast_ack_seconds: float = 4.0,
@@ -383,20 +403,38 @@ class AdaptiveSwapPacer:
 
 
 class ForegroundClickExecutor:
-    """Send two V1-style clicks without ever focusing or restoring a window."""
+    """Send a selected normal swap gesture without focusing/restoring a window."""
 
     def __init__(
         self,
         backend: Win32Backend,
         *,
-        click_delay_seconds: float = 0.25,
+        click_delay_seconds: float = DEFAULT_SWAP_CLICK_DELAY_SECONDS,
+        cursor_settle_seconds: float = DEFAULT_SWAP_CURSOR_SETTLE_SECONDS,
+        input_mode: BoardInputMode | str = BoardInputMode.TWO_CLICK,
+        drag_duration_seconds: float = DEFAULT_SWAP_DRAG_DURATION_SECONDS,
+        drag_steps: int = DEFAULT_SWAP_DRAG_STEPS,
+        drag_overshoot_fraction: float = DEFAULT_SWAP_DRAG_OVERSHOOT_FRACTION,
         sleeper: Callable[[float], None] = time.sleep,
         swap_pacer: AdaptiveSwapPacer | None = None,
     ) -> None:
         if not 0.05 <= click_delay_seconds <= 1.0:
             raise ValueError("click delay must be between 0.05 and 1.0 seconds")
+        if not 0.0 <= cursor_settle_seconds <= 0.25:
+            raise ValueError("cursor settle must be between 0 and 0.25 seconds")
+        if not 0.05 <= drag_duration_seconds <= 0.25:
+            raise ValueError("drag duration must be between 0.05 and 0.25 seconds")
+        if not 2 <= drag_steps <= 20:
+            raise ValueError("drag steps must be between 2 and 20")
+        if not 0.10 <= drag_overshoot_fraction <= 0.45:
+            raise ValueError("drag overshoot must be between 0.10 and 0.45 cells")
         self.backend = backend
         self.click_delay_seconds = click_delay_seconds
+        self.cursor_settle_seconds = cursor_settle_seconds
+        self.input_mode = BoardInputMode(input_mode)
+        self.drag_duration_seconds = float(drag_duration_seconds)
+        self.drag_steps = int(drag_steps)
+        self.drag_overshoot_fraction = float(drag_overshoot_fraction)
         self.sleeper = sleeper
         self.swap_pacer = swap_pacer or AdaptiveSwapPacer(
             base_delay_seconds=click_delay_seconds
@@ -434,7 +472,12 @@ class ForegroundClickExecutor:
         )
 
     def _send_one(
-        self, binding: WindowBinding, expected: ClientGeometry, point: PixelPoint
+        self,
+        binding: WindowBinding,
+        expected: ClientGeometry,
+        point: PixelPoint,
+        *,
+        settle_cursor: bool = False,
     ) -> ClickStatus:
         status = self.window_status(binding)
         if not status.valid or status.geometry is None:
@@ -445,6 +488,13 @@ class ForegroundClickExecutor:
             return ClickStatus.GAME_NOT_FOREGROUND
         if not self.backend.set_cursor_pos(point.screen_x, point.screen_y):
             return ClickStatus.CURSOR_MOVE_FAILED
+        # Unity's legacy mouse path samples cursor/button state on rendered
+        # frames.  SetCursorPos succeeding only proves the OS cursor moved; it
+        # does not prove the game has sampled that position yet.  The 1.7.4
+        # client dropped a correct tile-centre pair with the former immediate
+        # mouse pulse, so board swaps deliberately span several 60-FPS frames.
+        if settle_cursor and self.cursor_settle_seconds > 0:
+            self.sleeper(self.cursor_settle_seconds)
         if not self.backend.is_foreground(binding.hwnd):
             return ClickStatus.GAME_NOT_FOREGROUND
         self.backend.click_mouse()
@@ -458,7 +508,14 @@ class ForegroundClickExecutor:
         remaining_seconds: float | None = None,
     ) -> ClickPairResult:
         pacing = self.swap_pacer.decision(remaining_seconds=remaining_seconds)
-        first = self._send_one(binding, plan.client_geometry, plan.first)
+        if self.input_mode is BoardInputMode.DRAG:
+            return self._send_drag(binding, plan, pacing)
+        first = self._send_one(
+            binding,
+            plan.client_geometry,
+            plan.first,
+            settle_cursor=True,
+        )
         if first is not ClickStatus.SENT:
             return ClickPairResult(
                 first,
@@ -467,9 +524,17 @@ class ForegroundClickExecutor:
                 pacing.mode,
                 pacing.reason,
                 pacing.lag_score,
+                self.cursor_settle_seconds,
+                getattr(self.backend, "mouse_button_hold_seconds", None),
+                BoardInputMode.TWO_CLICK.value,
             )
         self.sleeper(pacing.delay_seconds)
-        second = self._send_one(binding, plan.client_geometry, plan.second)
+        second = self._send_one(
+            binding,
+            plan.client_geometry,
+            plan.second,
+            settle_cursor=True,
+        )
         if second is not ClickStatus.SENT:
             return ClickPairResult(
                 ClickStatus.PARTIAL_INPUT,
@@ -478,6 +543,9 @@ class ForegroundClickExecutor:
                 pacing.mode,
                 pacing.reason,
                 pacing.lag_score,
+                self.cursor_settle_seconds,
+                getattr(self.backend, "mouse_button_hold_seconds", None),
+                BoardInputMode.TWO_CLICK.value,
             )
         return ClickPairResult(
             ClickStatus.SENT,
@@ -486,7 +554,141 @@ class ForegroundClickExecutor:
             pacing.mode,
             pacing.reason,
             pacing.lag_score,
+            self.cursor_settle_seconds,
+            getattr(self.backend, "mouse_button_hold_seconds", None),
+            BoardInputMode.TWO_CLICK.value,
         )
+
+    def _send_drag(
+        self,
+        binding: WindowBinding,
+        plan: CoordinatePlan,
+        pacing: SwapPacingDecision,
+    ) -> ClickPairResult:
+        """Flick from the first gem and release beyond the second gem's centre.
+
+        ``Dot.OnMouseUp`` compares the press/release displacement with
+        ``swipeResit``; the accepted gesture is directional rather than tied to
+        the target centre.  Live evidence showed that a slow six-step traverse
+        left the first gem tap-selected, while a quick manual flick (including
+        an overshoot) was accepted.  Keep the gesture short and release inside
+        the far half of the adjacent target cell.  Every intermediate move
+        revalidates the exact HWND/PID, client geometry and foreground, and
+        LEFTUP is unconditional after a successful LEFTDOWN.
+        """
+
+        # Drag must remain a flick even after an unrelated unconfirmed action;
+        # adaptive two-click pacing must not stretch it back into the live-
+        # rejected slow gesture.  Adjacent cell centres provide the cell step.
+        duration = self.drag_duration_seconds
+        delta_x = plan.second.screen_x - plan.first.screen_x
+        delta_y = plan.second.screen_y - plan.first.screen_y
+        overshoot_x = round(delta_x * self.drag_overshoot_fraction)
+        overshoot_y = round(delta_y * self.drag_overshoot_fraction)
+        end_x = plan.second.screen_x + overshoot_x
+        end_y = plan.second.screen_y + overshoot_y
+        board_left, board_top, board_right, board_bottom = plan.board_rect_client
+        board_screen = (
+            plan.client_geometry.left + board_left,
+            plan.client_geometry.top + board_top,
+            plan.client_geometry.left + board_right,
+            plan.client_geometry.top + board_bottom,
+        )
+        if not (
+            board_screen[0] <= end_x <= board_screen[2]
+            and board_screen[1] <= end_y <= board_screen[3]
+        ):
+            # This should be impossible for an adjacent centre plus <0.5 cell,
+            # but fail closed if a future calibration violates that invariant.
+            return ClickPairResult(
+                status=ClickStatus.WINDOW_CHANGED,
+                sent_clicks=0,
+                pacing_mode=pacing.mode,
+                pacing_reason="DRAG_ENDPOINT_OUTSIDE_BOARD",
+                lag_score=pacing.lag_score,
+                cursor_settle_seconds=self.cursor_settle_seconds,
+                input_mode=BoardInputMode.DRAG.value,
+                drag_duration_seconds=round(duration, 3),
+                drag_steps=self.drag_steps,
+                drag_overshoot_pixels=max(abs(overshoot_x), abs(overshoot_y)),
+            )
+        drag_distance_x = end_x - plan.first.screen_x
+        drag_distance_y = end_y - plan.first.screen_y
+        overshoot_pixels = max(abs(overshoot_x), abs(overshoot_y))
+
+        def result(status: ClickStatus, sent_endpoints: int) -> ClickPairResult:
+            return ClickPairResult(
+                status=status,
+                sent_clicks=sent_endpoints,
+                inter_click_delay_seconds=None,
+                pacing_mode=pacing.mode,
+                pacing_reason=pacing.reason,
+                lag_score=pacing.lag_score,
+                cursor_settle_seconds=self.cursor_settle_seconds,
+                mouse_button_hold_seconds=None,
+                input_mode=BoardInputMode.DRAG.value,
+                drag_duration_seconds=round(duration, 3),
+                drag_steps=self.drag_steps,
+                drag_overshoot_pixels=overshoot_pixels,
+            )
+
+        status = self.window_status(binding)
+        if not status.valid or status.geometry is None:
+            return result(ClickStatus.WINDOW_INVALID, 0)
+        if status.geometry != plan.client_geometry:
+            return result(ClickStatus.WINDOW_CHANGED, 0)
+        if status.foreground is not True:
+            return result(ClickStatus.GAME_NOT_FOREGROUND, 0)
+        if not self.backend.set_cursor_pos(plan.first.screen_x, plan.first.screen_y):
+            return result(ClickStatus.CURSOR_MOVE_FAILED, 0)
+        if self.cursor_settle_seconds > 0:
+            self.sleeper(self.cursor_settle_seconds)
+        if not self.backend.is_foreground(binding.hwnd):
+            return result(ClickStatus.GAME_NOT_FOREGROUND, 0)
+
+        self.backend.mouse_left_down()
+        completed = False
+        failure = ClickStatus.PARTIAL_INPUT
+        try:
+            step_delay = duration / self.drag_steps
+            for index in range(1, self.drag_steps + 1):
+                current = self.window_status(binding)
+                if not current.valid or current.geometry is None:
+                    failure = ClickStatus.PARTIAL_INPUT
+                    break
+                if current.geometry != plan.client_geometry:
+                    failure = ClickStatus.PARTIAL_INPUT
+                    break
+                if current.foreground is not True:
+                    failure = ClickStatus.PARTIAL_INPUT
+                    break
+                fraction = index / self.drag_steps
+                screen_x = round(
+                    plan.first.screen_x
+                    + drag_distance_x * fraction
+                )
+                screen_y = round(
+                    plan.first.screen_y
+                    + drag_distance_y * fraction
+                )
+                if not self.backend.set_cursor_pos(screen_x, screen_y):
+                    failure = ClickStatus.PARTIAL_INPUT
+                    break
+                self.sleeper(step_delay)
+            else:
+                # Keep the release point beyond the target centre; moving back
+                # first would erase the extra displacement sampled by Unity.
+                if not self.backend.set_cursor_pos(end_x, end_y):
+                    failure = ClickStatus.PARTIAL_INPUT
+                elif not self.backend.is_foreground(binding.hwnd):
+                    failure = ClickStatus.PARTIAL_INPUT
+                else:
+                    completed = True
+        finally:
+            self.backend.mouse_left_up()
+        if not completed:
+            return result(failure, 1)
+        return result(ClickStatus.SENT, 2)
 
     def send_normalized_point(
         self,
@@ -626,6 +828,8 @@ if os.name == "nt":
 
 
 class NativeWin32Backend:
+    mouse_button_hold_seconds = NATIVE_MOUSE_BUTTON_HOLD_SECONDS
+
     def __init__(self) -> None:
         if os.name != "nt":
             raise OSError("normal Windows input is Windows-only")
@@ -737,8 +941,17 @@ class NativeWin32Backend:
         return bool(_user32.SetCursorPos(x, y))
 
     def click_mouse(self) -> None:
+        self.mouse_left_down()
+        # Hold across multiple rendered frames. A 25 ms pulse could begin and
+        # end between Unity input samples on the 1.7.4 client even though the
+        # cursor visibly reached the intended gem.
+        time.sleep(self.mouse_button_hold_seconds)
+        self.mouse_left_up()
+
+    def mouse_left_down(self) -> None:
         _user32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        time.sleep(0.025)
+
+    def mouse_left_up(self) -> None:
         _user32.mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
     def virtual_screen(self) -> tuple[int, int, int, int]:
@@ -801,7 +1014,7 @@ def prepare_bound_window(
 
     This is the desktop Start preflight.  It sends no keyboard or mouse input.
     Success means the exact HWND still belongs to the exact PID, is foreground,
-    and has the canonical client size after a fresh read.  Two bounded resize
+    and has the canonical 2:1 client size after a fresh read. Two bounded resize
     corrections tolerate a one-pixel non-client/DPI rounding adjustment.
     """
 

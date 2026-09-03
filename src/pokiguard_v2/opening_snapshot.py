@@ -27,10 +27,10 @@ from .live_state import dto_rejection_reasons
 
 # Metadata-usage slots referenced as typeof(...) by the local Newtonsoft.Json
 # native bodies.  These are build RVAs, never ASLR-dependent addresses.
-JARRAY_TYPE_INFO_RVA = 0x3554010
-JOBJECT_TYPE_INFO_RVA = 0x3554250
-JPROPERTY_TYPE_INFO_RVA = 0x35543D0
-JVALUE_TYPE_INFO_RVA = 0x3554A90
+JARRAY_TYPE_INFO_RVA = 0x2C47B68
+JOBJECT_TYPE_INFO_RVA = 0x2C47D68
+JPROPERTY_TYPE_INFO_RVA = 0x2C47EC0
+JVALUE_TYPE_INFO_RVA = 0x2C48578
 
 JARRAY_VALUES_OFFSET = 0x58
 LIST_ITEMS_OFFSET = 0x10

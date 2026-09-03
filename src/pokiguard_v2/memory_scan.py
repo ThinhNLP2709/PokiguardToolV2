@@ -68,6 +68,41 @@ def regions_containing_addresses(
     return tuple(sorted(selected, key=lambda region: region.base))
 
 
+def regions_sharing_anchor_allocations(
+    regions: Iterable[MemoryRegion], addresses: Iterable[int]
+) -> tuple[MemoryRegion, ...]:
+    """Return readable regions belonging to the anchors' allocations.
+
+    ``VirtualQueryEx`` reports one ``AllocationBase`` for all committed
+    regions originating from the same ``VirtualAlloc`` reservation.  IL2CPP
+    managed objects that belong to one combat can therefore occupy separate
+    protection/commit regions while still sharing this exact OS-owned
+    allocation.  This helper never guesses adjacency: if AllocationBase is
+    unavailable (as in older fixtures), it conservatively returns only the
+    regions that directly contain an anchor.
+    """
+
+    candidates = tuple(regions)
+    direct = regions_containing_addresses(candidates, addresses)
+    allocation_bases = {
+        region.allocation_base
+        for region in direct
+        if region.allocation_base is not None and region.allocation_base > 0
+    }
+    if not allocation_bases:
+        return direct
+    return tuple(
+        sorted(
+            (
+                region
+                for region in candidates
+                if region.allocation_base in allocation_bases
+            ),
+            key=lambda region: region.base,
+        )
+    )
+
+
 def scan_aligned_qwords(
     memory: MemoryReader,
     regions: Iterable[MemoryRegion],

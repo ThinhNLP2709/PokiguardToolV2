@@ -53,6 +53,7 @@ from pokiguard_v2.postmatch_ui import (  # noqa: E402
 )
 from pokiguard_v2.state import GemType  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
+    BoardInputMode,
     ForegroundClickExecutor,
     HotkeyEdges,
     NativeWin32Backend,
@@ -90,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--reset-evidence", type=Path, help="audited B5 reset evidence; required for --run-cycle")
     parser.add_argument("--artifacts", type=Path)
     parser.add_argument("--interval", type=float, default=0.12)
+    parser.add_argument(
+        "--board-input-mode",
+        choices=tuple(value.value for value in BoardInputMode),
+        default=BoardInputMode.TWO_CLICK.value,
+    )
     parser.add_argument("--lobby-timeout", type=float, default=180.0)
     parser.add_argument("--entry-timeout", type=float, default=45.0)
     parser.add_argument("--opening-timeout", type=float, default=35.0)
@@ -213,6 +219,9 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         watch=True,
         play_style=getattr(args, "play_style", "simple"),
         mana_priority=getattr(args, "mana_priority", "evolution"),
+        board_input_mode=getattr(
+            args, "board_input_mode", BoardInputMode.TWO_CLICK.value
+        ),
         intelligence="basic",
         # Live-confirmed product rule: a displayed 1 second is still sendable.
         minimum_action_time=1,
@@ -228,7 +237,11 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         max_fusion_attempts_per_turn=2,
         v1_root=None,
         timeout=args.combat_timeout,
-        postmatch_observation_timeout=min(args.return_lobby_timeout, 5.0),
+        # The normal result modal requires our explicit, capability-owned
+        # confirmation before Unity can return to the boss lobby.  One second
+        # is enough to accept a spontaneous lobby transition; after that the
+        # parent FarmRunner proves and clicks the visible result control.
+        postmatch_observation_timeout=min(args.return_lobby_timeout, 1.0),
         log=log_path,
         no_beep=args.no_beep,
         max_region_mib=args.max_region_mib,
@@ -840,7 +853,10 @@ def _run_cycle(args: Namespace, target: FarmTarget) -> int:
         with attach_target() as process, log_path.open("a", encoding="utf-8", buffering=1) as log:
             backend = NativeWin32Backend()
             binding = find_window_for_pid(process.pid, backend)
-            executor = ForegroundClickExecutor(backend)
+            executor = ForegroundClickExecutor(
+                backend,
+                input_mode=BoardInputMode(args.board_input_mode),
+            )
             provider = MemoryBoardStateProvider(
                 process,
                 MemoryProviderConfig(

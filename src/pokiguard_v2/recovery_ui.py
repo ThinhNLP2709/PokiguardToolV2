@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable
 
+from .unity_ui_layout import transform_for_capture
+
 
 class RecoveryControl(str, Enum):
     EXIT_BACK = "EXIT_BACK"
@@ -65,20 +67,21 @@ def _mask_components(
 def locate_exit_back(rgb: bytes, width: int, height: int) -> RecoveryUiLocation:
     """Locate the white ``<<`` control in the combat-only top-left ROI."""
 
+    transform = transform_for_capture(rgb, width, height)
     components = _mask_components(
         rgb,
         width,
         height,
-        (0.010, 0.025, 0.095, 0.120),
+        transform.rect((0.010, 0.025, 0.095, 0.120)),
         lambda r, g, b: r >= 225 and g >= 225 and b >= 225 and max(r, g, b) - min(r, g, b) <= 24,
     )
-    min_pixels = max(20, round(width * height * 0.000035))
+    min_pixels = max(20, round(transform.canvas_area * 0.000035))
     useful = [
         item
         for item in components
         if item[4] >= min_pixels
-        and item[2] - item[0] >= max(3, round(width * 0.003))
-        and item[3] - item[1] >= max(5, round(height * 0.010))
+        and item[2] - item[0] >= max(3, round(transform.canvas_width * 0.003))
+        and item[3] - item[1] >= max(5, round(transform.canvas_height * 0.010))
     ]
     total = sum(item[4] for item in useful[:6])
     if len(useful) < 2 or total < min_pixels * 3:
@@ -95,14 +98,18 @@ def locate_exit_back(rgb: bytes, width: int, height: int) -> RecoveryUiLocation:
     right = max(item[2] for item in useful[:6])
     bottom = max(item[3] for item in useful[:6])
     center = ((left + right) / 2 / width, (top + bottom) / 2 / height)
-    if not (0.015 <= center[0] <= 0.085 and 0.030 <= center[1] <= 0.110):
+    reference_center = transform.reference_point(center)
+    if not (
+        0.015 <= reference_center[0] <= 0.085
+        and 0.030 <= reference_center[1] <= 0.110
+    ):
         return RecoveryUiLocation(
             RecoveryControl.EXIT_BACK,
             False,
             None,
             0.0,
             "chevron_candidate_outside_combat_exit_anchor",
-            {"centerX": center[0], "centerY": center[1]},
+            {"centerX": center[0], "centerY": center[1], "layoutMode": transform.mode},
         )
     confidence = min(0.99, 0.72 + min(0.20, len(useful) * 0.035))
     return RecoveryUiLocation(
@@ -118,22 +125,27 @@ def locate_exit_back(rgb: bytes, width: int, height: int) -> RecoveryUiLocation:
 def locate_confirm_leave(rgb: bytes, width: int, height: int) -> RecoveryUiLocation:
     """Locate the left of two orange buttons in the leave-confirm modal."""
 
+    transform = transform_for_capture(rgb, width, height)
     components = _mask_components(
         rgb,
         width,
         height,
-        (0.250, 0.500, 0.720, 0.760),
+        transform.rect((0.250, 0.500, 0.720, 0.760)),
         lambda r, g, b: r >= 175 and 55 <= g <= 210 and b <= 105 and r >= g + 25,
     )
-    min_area = max(120, round(width * height * 0.00045))
+    min_area = max(120, round(transform.canvas_area * 0.00045))
     candidates = [
         item
         for item in components
         if item[4] >= min_area
-        and item[2] - item[0] >= width * 0.070
-        and item[3] - item[1] >= height * 0.040
-        and 0.30 <= (item[0] + item[2]) / 2 / width <= 0.70
-        and 0.56 <= (item[1] + item[3]) / 2 / height <= 0.73
+        and item[2] - item[0] >= transform.canvas_width * 0.070
+        and item[3] - item[1] >= transform.canvas_height * 0.040
+        and 0.30
+        <= transform.reference_point(((item[0] + item[2]) / 2 / width, 0.0))[0]
+        <= 0.70
+        and 0.56
+        <= transform.reference_point((0.0, (item[1] + item[3]) / 2 / height))[1]
+        <= 0.73
     ]
     if len(candidates) != 2:
         return RecoveryUiLocation(
@@ -153,8 +165,10 @@ def locate_confirm_leave(rgb: bytes, width: int, height: int) -> RecoveryUiLocat
     similar = (
         0.65 <= left_w / max(1, right_w) <= 1.35
         and 0.65 <= left_h / max(1, right_h) <= 1.35
-        and abs(left_center[1] - right_center[1]) <= height * 0.035
-        and left_center[0] < width * 0.50 < right_center[0]
+        and abs(left_center[1] - right_center[1]) <= transform.canvas_height * 0.035
+        and transform.reference_point((left_center[0] / width, 0.0))[0]
+        < 0.50
+        < transform.reference_point((right_center[0] / width, 0.0))[0]
     )
     if not similar:
         return RecoveryUiLocation(
@@ -166,7 +180,11 @@ def locate_confirm_leave(rgb: bytes, width: int, height: int) -> RecoveryUiLocat
             {"leftWidth": left_w, "rightWidth": right_w, "verticalDelta": abs(left_center[1] - right_center[1])},
         )
     point = (left_center[0] / width, left_center[1] / height)
-    if not (0.28 <= point[0] <= 0.49 and 0.54 <= point[1] <= 0.73):
+    reference_point = transform.reference_point(point)
+    if not (
+        0.28 <= reference_point[0] <= 0.49
+        and 0.54 <= reference_point[1] <= 0.73
+    ):
         return RecoveryUiLocation(
             RecoveryControl.CONFIRM_LEAVE,
             False,

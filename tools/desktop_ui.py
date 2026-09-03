@@ -44,7 +44,11 @@ from pokiguard_v2.desktop_ui import (  # noqa: E402
     create_root,
 )
 from pokiguard_v2.memory_board_provider import MemoryProviderConfig  # noqa: E402
-from tools.runtime_common import attach_target, utc_timestamp  # noqa: E402
+from tools.runtime_common import (  # noqa: E402
+    attach_target,
+    configure_game_location,
+    utc_timestamp,
+)
 
 
 def smoke_result_is_healthy(result: Any) -> bool:
@@ -170,6 +174,20 @@ def run(args: argparse.Namespace) -> int:
         args.preferences or paths.preferences_file
     )
     preference_load = preference_store.load()
+    configured_selection = None
+    game_location_error = None
+    if preference_load.game_location:
+        try:
+            configured_selection = configure_game_location(
+                preference_load.game_location
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            game_location_error = f"{type(exc).__name__}: {exc}"
+    effective_game_location = (
+        str(configured_selection.executable)
+        if configured_selection is not None
+        else preference_load.game_location
+    )
     runtime = (
         StaticUnavailableRuntimeProvider()
         if args.offline
@@ -184,6 +202,13 @@ def run(args: argparse.Namespace) -> int:
             ),
         )
     )
+
+    def apply_game_location(location: str) -> Any:
+        selection = configure_game_location(location)
+        reset = getattr(runtime, "reset_attachment", None)
+        if reset is not None:
+            reset()
+        return selection
     checkpoint = LatestCheckpointSummaryProvider(
         paths.farm_runs
     )
@@ -227,6 +252,13 @@ def run(args: argparse.Namespace) -> int:
         preferencePath=str(preference_store.path),
         preferenceLoaded=preference_load.loaded,
         preferenceWarnings=[asdict(value) for value in preference_load.warnings],
+        gameLocation=effective_game_location,
+        gameExecutable=(
+            str(configured_selection.executable)
+            if configured_selection is not None
+            else None
+        ),
+        gameLocationError=game_location_error,
         automaticStart=False,
         automaticResume=False,
         frozen=paths.frozen,
@@ -234,6 +266,16 @@ def run(args: argparse.Namespace) -> int:
         installRoot=str(paths.install_root),
         currentWorkingDirectoryIgnored=True,
     )
+    if game_location_error is not None:
+        event_log.write(
+            "game_location_load_warning",
+            reason="GAME_LOCATION_INVALID",
+            error=game_location_error,
+            operatorMessage=(
+                "Saved game location is invalid; choose the current game folder "
+                "in Settings."
+            ),
+        )
     try:
         root = create_root()
         app = DesktopApplication(
@@ -242,6 +284,13 @@ def run(args: argparse.Namespace) -> int:
             event_log=event_log,
             preference_store=preference_store,
             preference_warnings=preference_load.warnings,
+            game_location=effective_game_location,
+            game_executable=(
+                str(configured_selection.executable)
+                if configured_selection is not None
+                else ""
+            ),
+            game_location_changed=apply_game_location,
             auto_close_seconds=args.smoke_seconds,
         )
         result = app.run()
@@ -304,6 +353,12 @@ def run(args: argparse.Namespace) -> int:
             "path": str(preference_store.path),
             "loaded": preference_load.loaded,
             "warnings": [asdict(value) for value in preference_load.warnings],
+            "gameLocation": effective_game_location,
+            "resolvedGameExecutable": (
+                str(configured_selection.executable)
+                if configured_selection is not None
+                else None
+            ),
             "separateFromCheckpoint": True,
             "automaticStartOnLoad": False,
             "automaticResumeOnLoad": False,

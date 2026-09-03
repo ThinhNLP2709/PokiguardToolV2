@@ -16,7 +16,7 @@ from .il2cpp_external import is_canonical_user_pointer
 from .il2cpp_layout import LayoutValidationError
 
 
-BOARD_LEFT_ACTOR_NUMBERS_OFFSET = 0x2B0
+BOARD_LEFT_ACTOR_NUMBERS_OFFSET = 0x2C0
 HASHSET_BUCKETS_OFFSET = 0x10
 HASHSET_SLOTS_OFFSET = 0x18
 HASHSET_COUNT_OFFSET = 0x20

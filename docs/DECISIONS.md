@@ -83,8 +83,11 @@ to effective collected value.
 - Production input must still read an actual positive runtime Fusion cost; it
   must not guess 160 when runtime cost is unavailable.
 - With `ManaPriority=EVOLUTION`, if Fusion has not succeeded, the live action is
-  safely actionable, and Mana is sufficient, keep trying until success under
-  the response/lock/fresh-state safety contract.
+  safely actionable, and Mana is sufficient, keep trying from the second local
+  turn until success under the response/lock/fresh-state safety contract.
+- Production Step 1 uses the same inclusive one-second action floor as normal
+  input. The former ten-second EVOLVE follow-up floor is not a gameplay rule
+  and must not postpone an otherwise actionable evolution.
 - A failed attempt may retry only after the current-turn lock clears and fresh
   actionable state permits it; no tight loop.
 - With `ManaPriority=ATTACK`, do not evolve during that match.
@@ -103,6 +106,10 @@ to effective collected value.
   card actionable. The exact Fusion class, native object, Button pointer and
   `Button.interactable` state must still validate; zero or ambiguous validated
   candidates fail closed and board gameplay continues.
+- `FusionCardUI._boundPetId` must match the strongest current MatchService pet
+  identity (`selectedPetId`, falling back to `selectedUserPetId`). Cache only a
+  unique match; ambiguous or prior-combat wrappers must not suppress later
+  bounded discovery retries.
 
 ## CAST / Chưởng
 
@@ -133,6 +140,9 @@ to effective collected value.
   observed `1/3` and `2/3`.
 - At the state equivalent to `2/3`, the next action must consume the turn. A
   third PASS is prohibited.
+- Any exact current-session authoritative 2/3 payload latches this mandatory
+  requirement, including when it follows an unconfirmed/missed SWAP rather
+  than a tool-coordinated PASS.
 - SWAP or accepted CAST may satisfy the mandatory consuming action. EVOLVE
   alone does not.
 - A rejected/unproven action does not count as a successful reset.
@@ -163,6 +173,18 @@ to effective collected value.
   minimizing deterministic danger and UNKNOWN exposure.
 - Simulate deterministic consequences available from the known 64-cell board;
   do not award credit for unknown off-board spawns.
+- "Leaving Sword for the boss" includes both an immediate Sword match and a
+  known opponent move whose non-Sword direct clear deterministically cascades
+  into Sword. Every legal opponent reply on the settled known-board result is
+  audited for direct + cascade Sword before a move can be called safe.
+- If exactly one current move collects Sword but its settled result gives the
+  boss a deterministic Sword reply worth more effective Sword than we collect,
+  defer that unique Sword move. Continue the normal safe-resource policy first,
+  or PASS only when authoritative game-owned idle state permits it. If PASS is
+  unavailable, an off-region Sword-hold move is a narrow tactical exception:
+  every known boss Sword reply must deterministically leave a strictly larger
+  effective Sword follow-up for us. A Sword-hold is not labelled safe, UNKNOWN
+  earns no favorable credit, and mandatory-action rules still prohibit PASS.
 
 ## Sword Danger and Safe Moves
 
@@ -172,11 +194,18 @@ Strategy concepts:
   boss Sword match through a gap/support change.
 - A potential Sword match is a deterministic known-board opportunity left
   after the simulated move.
-- A safe move has no known Sword swap left, no hypothetical Sword completion
-  through exposed UNKNOWN cells, and no concentrated collapse through a known
-  Sword danger/support region under the accepted model.
+- A safe resource move is calculable (its direct clear starts at screen row 3
+  or lower), has no known Sword swap left, no hypothetical Sword completion
+  through exposed UNKNOWN cells, and no known Sword adjacent to an exposed
+  UNKNOWN slot that could be swapped into that slot to complete Sword
+  match-3. It also has no concentrated collapse through a known Sword
+  danger/support region and no opponent non-Sword match whose deterministic
+  cascade collects Sword.
 - A dangerous move violates one or more of those safety conditions. Danger is
   ranked; it is not one undifferentiated boolean.
+- A proven Sword-hold remains dangerous by this definition. It may be selected
+  only for the unique-adverse-Sword exception above, never by an ordinary safe
+  resource branch.
 - Horizontal moves are generally more predictable because they do not create
   vertical refill depth merely by orientation.
 - Vertical collapse can expose unknown top-board spawn.
@@ -332,6 +361,14 @@ that room's positive numeric runtime `enemyPetId` and name into the immutable
 FarmRun config. `WORLD_BOSS_LIST`, a missing/invalid pet ID, or ambiguous room
 identity keeps Start/Resume disabled and is revalidated again by the backend.
 Preferences never provide target authority and do not persist a pet ID.
+
+The exact game-executable path is a separate operator setting, not target or
+gameplay authority. The UI persists the operator-selected versioned launcher
+(`Pokiguard-<version>.exe`) beside `GameAssembly.dll`. When the filename changes
+after an update, the operator selects the new EXE. Attach must
+match the configured executable's full path, not merely a process-name prefix.
+Changing this setting is allowed only while the controller is idle and never
+modifies any game-installation file.
 
 Desktop Start/Resume also owns the game-window calibration boundary. Before
 FarmRunner binds an HWND or sends any normal UI/gameplay input, it must restore
@@ -540,13 +577,38 @@ gameplay, valid foreground/window ownership, and no pending action, PASS,
 Fusion or sequence-desync flow. Missing or ambiguous evidence resets the proof;
 this watchdog never authorizes a gameplay input.
 
-Normal SWAP input keeps the established 0.25-second two-click gap while
-delivery is healthy. A proven technical recovery/exact room re-entry or an
-unconfirmed SWAP may raise that gap adaptively, capped at 1.5 seconds. Pacing
-must use read-only/action-outcome evidence, remain logged per SWAP, decay only
-after sustained clean acknowledgements, and preserve the remaining server
-timer margin. Failure to read the unverified visual Ping/FPS overlay is not a
-reason to guess or add a blind OCR dependency.
+Normal board input is an immutable per-run operator preference. `two_click`
+keeps the established 0.35-second pair and may use evidence-backed adaptive
+pacing. `drag` uses the game-supported OnMouseDown/swipe/OnMouseUp path as a
+fixed quick flick: 0.10 seconds over three cursor moves, releasing 0.35 cell
+beyond the second centre while remaining within the target cell/Board. Drag is
+not lengthened by two-click recovery/lag pacing. This is based on live run
+`1e9097b2276948a7bdf7c78cc77281fa`, where the old slow 0.35-second/six-step
+drag was unconfirmed and left the first gem selected, plus a successful manual
+fast-flick comparison. Input mode, duration, steps and overshoot remain logged
+per SWAP. Cards and UI controls are never dragged. Failure to read the
+unverified visual Ping/FPS overlay is not a reason to guess or add a blind OCR
+dependency.
+
+## Pokiguard 1.7.4 Native Viewport Mapping
+
+The prepared 1280x640 game client has two evidenced layout spaces. Card,
+lobby, recovery and postmatch controls remain on a height-scaled, left-anchored
+16:9 UI canvas. The combat Board `DotsArea` separately preserves full-client
+normalized coordinates. Never apply the narrower card/UI canvas transform to
+board-cell input. A legacy 1280x720 capture may contain a centered 1280x640
+viewport with black bars; capture-based UI locators also apply its proven
+vertical offset.
+
+Evidence is FarmRun `d103ea509fb740b188df524283e61224`: a solver-legal
+rightmost-column Shield swap was incorrectly emitted at client `x=732`, while
+the saved opening frame places column 7 near `x=815`. FarmRun
+`2c55da2623874fda9f95b3eea0e6b742` additionally proves that the V1-era vertical
+calibration misses lower rows: intended `(row 6,col 5)<->(row 7,col 5)` was
+emitted at `(638,371)<->(638,417)`, while the frame places those centres near
+`(714,406)<->(714,456)`. The accepted 1.7.4 Board-only calibration is
+`first=(.3620,.1625)`, `step=(.0393,.0787)`. This incident is an input-layout
+fault, not a board-read, solver, or proven pacing fault.
 
 ## Local actor ownership and final SWAP preflight
 
@@ -563,3 +625,31 @@ the ordinary two-click input, reread MatchService and require the same MatchId,
 turn, local owner and local move sequence, with timer strictly above the
 configured one-second floor. A failure cancels the unsent permit and proposal;
 it is not a server rejection and must not pause the whole farm.
+
+## Standard-card action authority after the opening turn
+
+Do not delay a known standard card strip solely to discover its managed UI
+wrapper. After the mandatory opening board action, an exact current
+`Board.selectedCards` list, matching `Board.cardsInHand` cardinality/order,
+absence of a pet-specific skill layout, immutable `CardData`, and current
+MatchService/PlayerStats state are sufficient to propose the known Fusion or
+zero-cooldown Attack slot. A live CardUI/FusionCardUI remains preferred and a
+negative live Button state wins. Every direct-owner proposal still requires a
+fresh foreground capture proving the expected tile immediately before normal
+input. Non-zero cooldown cards without live UI state fail closed.
+
+Count energy from distinct game-owned local TurnNumbers, never from polls or
+physical actions. This makes EVOLVE+SWAP on one local turn cost one energy and
+keeps per-match accounting aligned with the game's turn model. The Control UI
+may project this existing counter during combat and must show the current match
+separately from completed-match totals; it must not trigger an additional
+memory scan or capture.
+
+For the exact standard direct-card authority
+`BOARD_SELECTED_CARDDATA_CARD_STRIP`, a nonterminal CAST is accepted when the
+current player mana decreases by exactly the runtime `CardData.conditionUse`
+cost and the immediately following authoritative turn belongs to the opponent.
+Both signals are mandatory. This substitutes only for unavailable dynamic
+`CardUI.lastTurnUsed/hasUsedThisTurn` fields on that direct path; one signal
+alone, another authority, a cost mismatch, or an ambiguous turn remains
+unconfirmed and cannot be fabricated as acceptance.

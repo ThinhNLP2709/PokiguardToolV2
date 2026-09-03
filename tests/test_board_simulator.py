@@ -10,8 +10,10 @@ from pokiguard_v2.board_simulator import (
     _CellValue,
     _collapse_support_hazard,
     _hypothetical_unknown_hazard,
+    _known_sword_opportunities,
     board_sword_danger_regions,
     evaluate_all_moves,
+    simulate_move,
 )
 from pokiguard_v2.state import BoardState, CellState, GemType
 
@@ -170,6 +172,74 @@ class BoardSimulatorTests(unittest.TestCase):
 
         self.assertEqual(_hypothetical_unknown_hazard(grid), (1, 3))
 
+    def test_known_sword_can_move_into_non_sword_refill_slot(self) -> None:
+        grid = self._hazard_grid()
+        grid[0][0] = _CellValue(GemType.SWORD, 1)
+        grid[0][1] = _CellValue(GemType.UNKNOWN, None)
+        grid[1][1] = _CellValue(GemType.SWORD, 1)
+        grid[2][1] = _CellValue(GemType.SWORD, 1)
+
+        # If the real refill at (0, 1) is not Sword, the boss can move the
+        # already-known Sword at (0, 0) into it and complete the vertical 3.
+        self.assertEqual(_hypothetical_unknown_hazard(grid), (1, 3))
+
+    def test_row_two_rage_clear_reproduces_reported_sword_drop_hazard(self) -> None:
+        grid = self._hazard_grid()
+        for row, col in ((0, 0), (0, 1), (2, 1), (2, 2)):
+            grid[row][col] = _CellValue(GemType.SWORD, 1)
+        grid[2][3] = _CellValue(GemType.SHIELD, 1)
+        grid[1][1] = _CellValue(GemType.RAGE, 1)
+        grid[1][2] = _CellValue(GemType.RAGE, 1)
+        grid[1][3] = _CellValue(GemType.MANA, 1)
+        grid[1][4] = _CellValue(GemType.RAGE, 1)
+        board = BoardState(
+            tuple(
+                tuple(
+                    CellState(row, col, value.gem, value.multiplier)
+                    for col, value in enumerate(values)
+                )
+                for row, values in enumerate(grid)
+            )
+        )
+
+        selected = simulate_move(board, SwapMove((1, 3), (1, 4)))
+
+        self.assertIsNotNone(selected)
+        assert selected is not None
+        self.assertEqual(selected.direct.effective(GemType.RAGE), 3)
+        self.assertEqual(selected.clear_rounds, (((1, 1), (1, 2), (1, 3)),))
+        self.assertEqual(selected.result[0][0].gem, GemType.SWORD)
+        self.assertEqual(selected.result[0][1].gem, GemType.UNKNOWN)
+        self.assertEqual(selected.result[1][1].gem, GemType.SWORD)
+        self.assertEqual(selected.result[2][1].gem, GemType.SWORD)
+        # The settled-board UNKNOWN-slot analysis, not the broad support
+        # heuristic, proves this one-row collapse hazard.
+        self.assertEqual(selected.sword_risk.collapse_support_hazard, 0)
+        self.assertEqual(selected.sword_risk.unknown_sword_completions, 1)
+        self.assertEqual(selected.sword_risk.unknown_sword_effective_max, 3)
+        self.assertFalse(selected.sword_risk.safe)
+
+    def test_opponent_non_sword_match_with_known_sword_cascade_is_a_reply(self) -> None:
+        grid = self._hazard_grid()
+        grid[0][0] = _CellValue(GemType.SWORD, 1)
+        grid[1][0] = _CellValue(GemType.SWORD, 2)
+        grid[2][0] = _CellValue(GemType.MANA, 1)
+        grid[3][0] = _CellValue(GemType.SWORD, 3)
+        grid[2][1] = _CellValue(GemType.MANA, 1)
+        grid[2][2] = _CellValue(GemType.RAGE, 1)
+        grid[3][2] = _CellValue(GemType.MANA, 1)
+
+        potentials, replies = _known_sword_opportunities(grid)
+        move = SwapMove((2, 2), (3, 2))
+        reply = next(value for value in replies if value.move == move)
+
+        self.assertFalse(any(value.move == move for value in potentials))
+        self.assertTrue(reply.indirect)
+        self.assertEqual(reply.direct_sword_effective, 0)
+        self.assertEqual(reply.cascade_sword_effective, 6)
+        self.assertEqual(reply.sword_cells, 3)
+        self.assertGreaterEqual(reply.cascade_rounds, 1)
+
     def test_retry17_mana_move_is_safe_after_current_turn_auto_cascade(self) -> None:
         selected = next(
             value
@@ -230,6 +300,19 @@ class BoardSimulatorTests(unittest.TestCase):
         self.assertEqual(selected.sword_risk.potential_effective_max, 0)
         self.assertEqual(selected.sword_risk.collapse_support_hazard, 0)
         self.assertTrue(selected.sword_risk.safe)
+
+    def test_top_area_clear_with_unknown_refill_is_not_promoted_safe(self) -> None:
+        selected = next(
+            value
+            for value in evaluate_all_moves(retry18_seq11_board())
+            if value.move == SwapMove((1, 6), (1, 7))
+        )
+
+        self.assertFalse(selected.calculable)
+        self.assertEqual(selected.sword_risk.opponent_sword_replies, 0)
+        self.assertEqual(selected.sword_risk.unknown_sword_completions, 0)
+        self.assertEqual(selected.unknown_exposure.cells, 3)
+        self.assertFalse(selected.sword_risk.safe)
 
     def test_retry24_calculable_horizontal_shield_move_is_bounded_safe(self) -> None:
         selected = next(

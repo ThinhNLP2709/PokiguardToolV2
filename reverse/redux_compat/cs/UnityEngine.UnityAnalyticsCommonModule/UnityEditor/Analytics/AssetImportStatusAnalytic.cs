@@ -1,0 +1,42 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using UnityEngine;
+using UnityEngine.Analytics;
+using UnityEngine.Internal;
+using UnityEngine.Scripting;
+
+// Image 58: UnityEngine.UnityAnalyticsCommonModule.dll - Assembly: UnityEngine.UnityAnalyticsCommonModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15685-15721
+
+namespace UnityEditor.Analytics
+{
+	[Serializable]
+	[ExcludeFromDocs]
+	[RequiredByNativeCode(GenerateProxy = true)]
+	internal class AssetImportStatusAnalytic : AnalyticsEventBase // TypeDefIndex: 15715
+	{
+		// Fields
+		public string package_name; // 0x30
+		public int package_items_count; // 0x38
+		public int package_import_status; // 0x3C
+		public string error_message; // 0x40
+		public int project_assets_count; // 0x48
+		public int unselected_assets_count; // 0x4C
+		public int selected_new_assets_count; // 0x50
+		public int selected_changed_assets_count; // 0x54
+		public int unchanged_assets_count; // 0x58
+		public string[] selected_asset_extensions; // 0x60
+	
+		// Constructors
+		public AssetImportStatusAnalytic(); // 0x00000001825C6750-0x00000001825C67C0
+	
+		// Methods
+		[RequiredByNativeCode]
+		public static AssetImportStatusAnalytic CreateAssetImportStatusAnalytic(); // 0x00000001825C66B0-0x00000001825C6750
+	}
+}

@@ -36,6 +36,7 @@ class PreferenceLoadResult:
     config: DesktopConfig
     loaded: bool
     warnings: tuple[PreferenceWarning, ...] = ()
+    game_location: str = ""
 
 
 class DesktopPreferenceStore:
@@ -80,16 +81,33 @@ class DesktopPreferenceStore:
                     config_raw.get("max_technical_recoveries", 1)
                 ),
                 max_match_attempts=str(config_raw.get("max_match_attempts", "")),
+                board_input_mode=str(
+                    config_raw.get(
+                        "board_input_mode", safe_defaults.board_input_mode.value
+                    )
+                ),
             ).without_target()
-            return PreferenceLoadResult(config, True)
+            game_location_raw = config_raw.get("game_location", "")
+            if not isinstance(game_location_raw, str):
+                raise PreferenceError(
+                    "PREFERENCE_GAME_LOCATION_INVALID",
+                    "game_location must be a string",
+                )
+            return PreferenceLoadResult(
+                config,
+                True,
+                game_location=game_location_raw.strip(),
+            )
         except (json.JSONDecodeError, OSError, PreferenceError, TypeError, ValueError) as exc:
             reason = getattr(exc, "reason", "PREFERENCE_LOAD_INVALID")
             warning = PreferenceWarning(reason, f"{type(exc).__name__}: {exc}")
             return PreferenceLoadResult(safe_defaults, False, (warning,))
 
-    def save(self, config: DesktopConfig) -> None:
+    def save(self, config: DesktopConfig, *, game_location: str = "") -> None:
         if not isinstance(config, DesktopConfig):
             raise TypeError("config must be DesktopConfig")
+        if not isinstance(game_location, str):
+            raise TypeError("game_location must be a string")
         payload: dict[str, Any] = {
             "schema": PREFERENCE_SCHEMA,
             "saved_at": utc_timestamp(),
@@ -97,10 +115,12 @@ class DesktopPreferenceStore:
                 "play_style": config.play_style.value,
                 "mana_priority": config.mana_priority.value,
                 "intelligence": config.intelligence.value,
+                "board_input_mode": config.board_input_mode.value,
                 "boss_id": None,
                 "boss_name": None,
                 "target_completed_matches": config.target_completed_matches,
                 "max_match_attempts": config.max_match_attempts,
+                "game_location": game_location.strip(),
             },
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)

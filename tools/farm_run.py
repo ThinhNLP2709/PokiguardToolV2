@@ -86,6 +86,7 @@ from pokiguard_v2.technical_recovery import (  # noqa: E402
     TechnicalRecoveryState,
 )
 from pokiguard_v2.win32_input import (  # noqa: E402
+    BoardInputMode,
     ClickStatus,
     CoordinateSafetyError,
     FarmControlHotkeyEdges,
@@ -198,6 +199,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--mana-priority",
         choices=("evolution", "attack"),
         default="evolution",
+    )
+    parser.add_argument(
+        "--board-input-mode",
+        choices=tuple(value.value for value in BoardInputMode),
+        default=BoardInputMode.DRAG.value,
+        help="adjacent board swap gesture; UI/card controls always use clicks",
     )
     parser.add_argument("--post-recovery-test-consuming-actions", type=int, default=1)
     resume_group = parser.add_mutually_exclusive_group()
@@ -774,6 +781,7 @@ def _confirm_postmatch(
     ui_timeout: float,
     hotkeys: HotkeyEdges,
     control_hotkeys: Any = None,
+    sleeper: Callable[[float], None] = time.sleep,
 ) -> tuple[bool, TerminalResult, str | None]:
     # Combat ownership becomes POSTMATCH before Unity finishes the terminal
     # animation.  In particular, the LOSS modal can materialize several
@@ -789,6 +797,28 @@ def _confirm_postmatch(
     first_wait_frame_written = False
     last_location = None
     last_capture = None
+
+    # Confirm authoritative POSTMATCH once before visual sampling.  Repeating
+    # the comparatively heavy provider poll for every screenshot used to add
+    # several seconds after the reward and button were already visible.  The
+    # final provider poll below remains the immediate pre-click lifecycle
+    # check, so stale/disconnected state still fails closed.
+    initial = provider.poll()
+    initial_lifecycle = (
+        initial.combat_lifecycle.state
+        if initial.combat_lifecycle is not None
+        else CombatLifecycleState.UNKNOWN
+    )
+    if initial_lifecycle is not CombatLifecycleState.POSTMATCH:
+        run.safe_stop(
+            FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+            detail=f"postmatch lifecycle changed to {initial_lifecycle.value}",
+        )
+        return False, TerminalResult.UNKNOWN, None
+    if initial.state is not None and initial.state.terminal_snapshot is not None:
+        snapshot = initial.state.terminal_snapshot
+        ui_observations.append((snapshot.ui_result, snapshot.ui_text))
+
     while process.is_running() and time.monotonic() < deadline:
         sample_number += 1
         external_stop = False
@@ -799,22 +829,6 @@ def _confirm_postmatch(
         if stop or external_stop:
             run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
             return False, TerminalResult.UNKNOWN, None
-        poll = provider.poll()
-        lifecycle = (
-            poll.combat_lifecycle.state
-            if poll.combat_lifecycle is not None
-            else CombatLifecycleState.UNKNOWN
-        )
-        if lifecycle is not CombatLifecycleState.POSTMATCH:
-            run.safe_stop(
-                FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
-                detail=f"postmatch lifecycle changed to {lifecycle.value}",
-            )
-            return False, TerminalResult.UNKNOWN, None
-        if poll.state is not None and poll.state.terminal_snapshot is not None:
-            snapshot = poll.state.terminal_snapshot
-            ui_observations.append((snapshot.ui_result, snapshot.ui_text))
-            ui_observations = ui_observations[-8:]
         capture = capture_client_rgb(process.pid)
         last_capture = capture
         if not first_wait_frame_written:
@@ -835,7 +849,7 @@ def _confirm_postmatch(
             break
         remaining = deadline - time.monotonic()
         if remaining > 0:
-            time.sleep(min(max(interval, 0.25), remaining))
+            sleeper(min(max(interval, 0.08), remaining))
 
     if not proof.proven or proof.normalized_point is None:
         if last_capture is not None:
@@ -2299,6 +2313,29 @@ def _notify_run_observer(
         return
 
 
+def _notify_combat_turn_progress(
+    observer: Callable[[Any, str], None] | None,
+    run: FarmRun,
+    role: str,
+    session: Any,
+    turn_number: int,
+    local_turns: int,
+    boss_turns: int,
+) -> None:
+    """Publish a deduplicated turn already read by the combat controller."""
+
+    if run.observe_combat_turn_counts(
+        session=session,
+        local_turns=local_turns,
+        boss_turns=boss_turns,
+    ):
+        _notify_run_observer(
+            observer,
+            run,
+            f"COMBAT_{role}_TURN_{turn_number}",
+        )
+
+
 def _run_live(
     args: Namespace,
     limits: FarmRunLimits,
@@ -2383,7 +2420,10 @@ def _run_live(
         with attach_target() as process:
             backend = NativeWin32Backend()
             binding = find_window_for_pid(process.pid, backend)
-            executor = ForegroundClickExecutor(backend)
+            executor = ForegroundClickExecutor(
+                backend,
+                input_mode=BoardInputMode(args.board_input_mode),
+            )
             provider = MemoryBoardStateProvider(
                 process,
                 MemoryProviderConfig(
@@ -2447,6 +2487,7 @@ def _run_live(
                 ),
                 target=target,
                 limits=limits,
+                boardInputMode=args.board_input_mode,
                 F6=("GRACEFUL_STOP" if controlled_run else "UNUSED"),
                 F7="DISABLED",
                 F8="ENTRY_CONFIRM",
@@ -2709,6 +2750,18 @@ def _run_live(
                     # Exit/Confirm/re-entry sequence.
                     dispatcher,
                     control_hotkeys,
+                    turn_progress_observer=(
+                        lambda role, observed_session, turn_number,
+                        local_turns, boss_turns: _notify_combat_turn_progress(
+                            observer,
+                            run,
+                            role,
+                            observed_session,
+                            turn_number,
+                            local_turns,
+                            boss_turns,
+                        )
+                    ),
                 )
 
                 if stage_b1 and run.technical_recoveries == 0:
@@ -2761,6 +2814,18 @@ def _run_live(
                         FarmRunGameplayCapability(run, session, control_hotkeys),
                         None,
                         control_hotkeys,
+                        turn_progress_observer=(
+                            lambda role, observed_session, turn_number,
+                            local_turns, boss_turns: _notify_combat_turn_progress(
+                                observer,
+                                run,
+                                role,
+                                observed_session,
+                                turn_number,
+                                local_turns,
+                                boss_turns,
+                            )
+                        ),
                     )
                     basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime)
                     records = _read_jsonl(combat_log)
@@ -3547,6 +3612,16 @@ def _run_live(
         flush=True,
     )
     final_artifact_size = _artifact_size_bytes(writer.directory)
+    completed_energy = tuple(
+        (attempt.attempt_index, attempt.local_turns)
+        for attempt in snapshot.attempts
+        if attempt.end_timestamp is not None
+        and attempt.result in {MatchResult.WIN, MatchResult.LOSS, MatchResult.UNKNOWN}
+    )
+    energy_text = ",".join(
+        f"#{attempt_index}:{turns}"
+        for attempt_index, turns in completed_energy
+    ) or "none"
     print(
         "Summary: "
         f"attempts={snapshot.match_attempts}, completed={snapshot.completed_matches}, "
@@ -3556,6 +3631,8 @@ def _run_live(
         f"{snapshot.total_swap_acknowledged}, CAST={snapshot.total_cast_sent}/"
         f"{snapshot.total_cast_accepted}, EVOLVE={snapshot.total_evolve_attempts}/"
         f"{snapshot.total_evolve_success}, PASS={snapshot.total_pass_count}, "
+        f"turns/energy=[{energy_text}] totalEnergy="
+        f"{sum(turns for _attempt_index, turns in completed_energy)}, "
         f"finalLifecycle={final_lifecycle}, duration={snapshot.duration_seconds}s, "
         f"artifactBytes~={final_artifact_size}",
         flush=True,

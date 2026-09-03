@@ -1,0 +1,22 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using UnityEngine;
+
+// Image 6: UnityEngine.CoreModule.dll - Assembly: UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 7341-8473
+
+namespace UnityEngine.Serialization
+{
+	internal struct UnityObjectReadEntry // TypeDefIndex: 7957
+	{
+		// Fields
+		public uint fieldOffset; // 0x00
+		public uint destOffset; // 0x04
+		public IntPtr klass; // 0x08
+	}
+}

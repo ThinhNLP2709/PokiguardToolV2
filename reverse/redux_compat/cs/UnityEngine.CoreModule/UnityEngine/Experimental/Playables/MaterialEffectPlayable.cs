@@ -1,0 +1,32 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using UnityEngine;
+using UnityEngine.Bindings;
+using UnityEngine.Playables;
+using UnityEngine.Scripting;
+
+// Image 6: UnityEngine.CoreModule.dll - Assembly: UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 7341-8473
+
+namespace UnityEngine.Experimental.Playables
+{
+	[NativeHeader("Runtime/Export/Director/MaterialEffectPlayable.bindings.h")]
+	[NativeHeader("Runtime/Director/Core/HPlayable.h")]
+	[NativeHeader("Runtime/Shaders/Director/MaterialEffectPlayable.h")]
+	[RequiredByNativeCode]
+	[StaticAccessor("MaterialEffectPlayableBindings", StaticAccessorType.DoubleColon)]
+	public struct MaterialEffectPlayable : IEquatable<UnityEngine.Experimental.Playables.MaterialEffectPlayable> // TypeDefIndex: 8225
+	{
+		// Fields
+		private PlayableHandle m_Handle; // 0x00
+	
+		// Methods
+		public PlayableHandle GetHandle(); // 0x000000018092E600-0x000000018092E610
+		public bool Equals(MaterialEffectPlayable other); // 0x000000018222B110-0x000000018222B130
+	}
+}

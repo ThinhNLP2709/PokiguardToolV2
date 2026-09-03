@@ -1,0 +1,13 @@
+// Image 55: UnityEngine.AccessibilityModule.dll - Assembly: UnityEngine.AccessibilityModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15611-15635
+[assembly: System.Runtime.CompilerServices.CompilationRelaxations(8)]
+[assembly: System.Diagnostics.Debuggable(System.Diagnostics.DebuggableAttribute.DebuggingModes.None | System.Diagnostics.DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Acessibility.VisionUtility.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("UnityEditor.CoreModule")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Modules.AccessibilityEditor.Tests.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("UnityEditor.AccessibilityModule")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Modules.Accessibility.Tests.Playmode")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Unity.Modules.Accessibility.Tests.Editor")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("UnityEngine")]
+[assembly: System.Runtime.CompilerServices.RuntimeCompatibility(WrapNonExceptionThrows = true)]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETStandard,Version=v2.1")]
+[assembly: UnityEngine.UnityEngineModuleAssembly]

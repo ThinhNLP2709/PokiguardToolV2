@@ -263,6 +263,71 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         )
         self.assertTrue(monitor._periodic_full_pending)
 
+    def test_periodic_opponent_refresh_scans_only_allocator_neighbors(self) -> None:
+        learned = MemoryRegion(0x3000, 0x1000, 0x04, 0x20000)
+        before = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        after = MemoryRegion(0x5000, 0x1000, 0x04, 0x20000)
+        outside = MemoryRegion(0x9000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 8
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {learned}
+        monitor._seen = set()
+        monitor._scans = 7
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_fixture",
+            turn=10,
+            current_player="__BOSS__",
+            local_username="happi",
+            remaining=14,
+            local_move_sequence=2,
+            last_move_sequence=2,
+            highest_acked_sequence=17,
+        )
+        scan = QwordScanResult({"chat_message": ()}, 0, 0x3000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(before, learned, after, outside),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ) as scanner,
+        ):
+            observation = monitor.poll(
+                session_key=(1,),
+                match_id="M_fixture",
+                turn=10,
+                srv_seq=17,
+                timestamp="now",
+                enable_gap_full_scan=False,
+            )
+
+        self.assertFalse(observation.full_scan_performed)
+        self.assertEqual(observation.scan_reason, "PERIODIC_REFRESH")
+        self.assertEqual(
+            tuple(scanner.call_args.args[1]),
+            (before, learned, after),
+        )
+        self.assertFalse(monitor._periodic_full_pending)
+
     def test_rebinds_evidenced_range_to_current_region_descriptor(self) -> None:
         old = MemoryRegion(0x1000, 0x2000, 0x04, 0x20000)
         grown = MemoryRegion(0x1000, 0x3000, 0x04, 0x20000)
@@ -531,14 +596,14 @@ class RuntimeRegionLearningTests(unittest.TestCase):
                 return_value=scan,
             ),
         ):
-            monitor.poll(
+            first = monitor.poll(
                 session_key=(1,),
                 match_id="M_current",
                 turn=21,
                 srv_seq=42,
                 timestamp="first",
                 allow_gap_full_escalation=True,
-                resolved_board_sequences=(44,),
+                available_board_sequences=(44,),
             )
             second = monitor.poll(
                 session_key=(1,),
@@ -547,9 +612,11 @@ class RuntimeRegionLearningTests(unittest.TestCase):
                 srv_seq=42,
                 timestamp="second",
                 allow_gap_full_escalation=True,
-                resolved_board_sequences=(44,),
+                available_board_sequences=(44,),
             )
 
+        self.assertFalse(first.full_scan_performed)
+        self.assertEqual(first.scan_reason, "LOCAL_TURN_ACK_GAP_BOUNDED")
         self.assertFalse(second.full_scan_performed)
         self.assertEqual(second.scan_reason, "LEARNED_REGIONS_WITH_NEIGHBORS")
 

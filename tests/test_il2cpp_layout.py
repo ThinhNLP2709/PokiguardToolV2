@@ -23,6 +23,7 @@ from pokiguard_v2.il2cpp_layout import (
 from pokiguard_v2.memory_scan import (
     bounded_private_writable_regions,
     regions_containing_addresses,
+    regions_sharing_anchor_allocations,
     scan_aligned_qwords,
     validate_dot_pointer_hits,
 )
@@ -176,6 +177,23 @@ class MemoryScanTests(unittest.TestCase):
             regions, (0x10000, 0x20FFF, 0x99999)
         )
         self.assertEqual(learned, (regions[0], regions[1]))
+
+    def test_anchor_allocation_includes_split_regions_without_guessing_neighbors(self) -> None:
+        regions = (
+            MemoryRegion(0x10000, 0x1000, 0x04, 0x20000, 0x10000),
+            MemoryRegion(0x13000, 0x2000, 0x04, 0x20000, 0x10000),
+            MemoryRegion(0x20000, 0x1000, 0x04, 0x20000, 0x20000),
+        )
+        selected = regions_sharing_anchor_allocations(regions, (0x10500,))
+        self.assertEqual(selected, (regions[0], regions[1]))
+
+    def test_anchor_allocation_falls_back_to_direct_region_without_metadata(self) -> None:
+        regions = (
+            MemoryRegion(0x10000, 0x1000, 0x04, 0x20000),
+            MemoryRegion(0x13000, 0x2000, 0x04, 0x20000),
+        )
+        selected = regions_sharing_anchor_allocations(regions, (0x10500,))
+        self.assertEqual(selected, (regions[0],))
 
     def test_aligned_qword_scan_and_dot_validation(self) -> None:
         memory = FakeMemory()

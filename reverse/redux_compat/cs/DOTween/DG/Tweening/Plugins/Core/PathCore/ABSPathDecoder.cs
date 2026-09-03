@@ -1,0 +1,28 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using UnityEngine;
+
+// Image 19: DOTween.dll - Assembly: DOTween, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null - Types 13338-13539
+
+namespace DG.Tweening.Plugins.Core.PathCore
+{
+	internal abstract class ABSPathDecoder // TypeDefIndex: 13492
+	{
+		// Properties
+		internal abstract int minInputWaypoints { get; }
+	
+		// Constructors
+		protected ABSPathDecoder(); // 0x00000001802E5CB0-0x00000001802E5CC0
+	
+		// Methods
+		internal abstract void FinalizePath(Path p, Vector3[] wps, bool isClosedPath);
+		internal abstract Vector3 GetPoint(float perc, Vector3[] wps, Path p, ControlPoint[] controlPoints);
+	}
+}

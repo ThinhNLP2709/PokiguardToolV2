@@ -1,0 +1,26 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Resources;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// Image 1: mscorlib.dll - Assembly: mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089 - Types 2027-3782
+
+namespace System.Runtime.Remoting.Messaging
+{
+	internal class MethodReturnDictionary : MessageDictionary // TypeDefIndex: 2996
+	{
+		// Fields
+		public static string[] InternalReturnKeys; // 0x00
+		public static string[] InternalExceptionKeys; // 0x08
+	
+		// Constructors
+		public MethodReturnDictionary(IMethodReturnMessage message); // 0x00000001814E3DC0-0x00000001814E3EA0
+		static MethodReturnDictionary(); // 0x00000001814E3BB0-0x00000001814E3DC0
+	}
+}

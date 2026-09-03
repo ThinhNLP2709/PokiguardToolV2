@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Sequence
 
 from .recovery_ui import _mask_components
+from .unity_ui_layout import transform_for_capture
 
 
 class PostmatchControl(str, Enum):
@@ -32,6 +33,137 @@ class StablePostmatchUi:
     max_drift: float | None = None
 
 
+def _viewport_rect(
+    transform: object,
+    rect: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    """Map a full-viewport normalized rect, independent of the narrow UI canvas."""
+
+    left, top, right, bottom = rect
+    return (
+        (transform.viewport_left + left * transform.viewport_width)
+        / transform.client_width,
+        (transform.viewport_top + top * transform.viewport_height)
+        / transform.client_height,
+        (transform.viewport_left + right * transform.viewport_width)
+        / transform.client_width,
+        (transform.viewport_top + bottom * transform.viewport_height)
+        / transform.client_height,
+    )
+
+
+def _viewport_point(
+    transform: object,
+    client_point: tuple[float, float],
+) -> tuple[float, float]:
+    x, y = client_point
+    return (
+        (x * transform.client_width - transform.viewport_left)
+        / transform.viewport_width,
+        (y * transform.client_height - transform.viewport_top)
+        / transform.viewport_height,
+    )
+
+
+def _locate_current_wide_result(
+    rgb: bytes,
+    width: int,
+    height: int,
+    transform: object,
+) -> PostmatchUiLocation | None:
+    """Recognize the 1.7.4 full-viewport result banner and blue confirm.
+
+    Unlike card/lobby controls, this overlay spans the whole 2:1 gameplay
+    viewport.  The proof deliberately requires both the unique large orange
+    winner banner and one unique centered blue button; either feature alone is
+    insufficient to grant input.
+    """
+
+    if not str(transform.mode).startswith("POKIGUARD_2_1"):
+        return None
+
+    banner_components = _mask_components(
+        rgb,
+        width,
+        height,
+        _viewport_rect(transform, (0.05, 0.0, 0.95, 0.35)),
+        lambda r, g, b: (
+            r >= 180
+            and 55 <= g <= 210
+            and b <= 100
+            and r >= g + 30
+        ),
+    )
+    viewport_area = transform.viewport_width * transform.viewport_height
+    banner_min_pixels = max(8_000, round(viewport_area * 0.04))
+    banners = [
+        item
+        for item in banner_components
+        if item[4] >= banner_min_pixels
+        and item[2] - item[0] >= transform.viewport_width * 0.60
+        and item[3] - item[1] >= transform.viewport_height * 0.12
+    ]
+
+    blue_components = _mask_components(
+        rgb,
+        width,
+        height,
+        _viewport_rect(transform, (0.35, 0.82, 0.65, 0.97)),
+        lambda r, g, b: b >= 140 and g >= 80 and b >= r + 35,
+    )
+    button_min_pixels = max(750, round(viewport_area * 0.0015))
+    buttons = [
+        item
+        for item in blue_components
+        if item[4] >= button_min_pixels
+        and transform.viewport_width * 0.07
+        <= item[2] - item[0]
+        <= transform.viewport_width * 0.16
+        and transform.viewport_height * 0.035
+        <= item[3] - item[1]
+        <= transform.viewport_height * 0.10
+    ]
+    if len(banners) != 1 or len(buttons) != 1:
+        return None
+
+    banner = banners[0]
+    button = buttons[0]
+    banner_point = (
+        (banner[0] + banner[2]) / 2 / width,
+        (banner[1] + banner[3]) / 2 / height,
+    )
+    button_point = (
+        (button[0] + button[2]) / 2 / width,
+        (button[1] + button[3]) / 2 / height,
+    )
+    banner_viewport = _viewport_point(transform, banner_point)
+    button_viewport = _viewport_point(transform, button_point)
+    if not (
+        0.42 <= banner_viewport[0] <= 0.58
+        and 0.05 <= banner_viewport[1] <= 0.20
+        and 0.46 <= button_viewport[0] <= 0.54
+        and 0.86 <= button_viewport[1] <= 0.94
+    ):
+        return None
+
+    return PostmatchUiLocation(
+        PostmatchControl.RESULT_CONFIRM,
+        True,
+        button_point,
+        0.99,
+        "single_blue_button_below_orange_result_banner",
+        {
+            "layoutVariant": "POKIGUARD_1_7_4_WIDE_RESULT",
+            "bannerPixels": banner[4],
+            "bannerWidth": banner[2] - banner[0],
+            "bannerHeight": banner[3] - banner[1],
+            "buttonPixels": button[4],
+            "buttonWidth": button[2] - button[0],
+            "buttonHeight": button[3] - button[1],
+        },
+    )
+
+
 def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLocation:
     """Locate the sole orange ``Đồng ý`` control inside the result-modal layout.
 
@@ -40,22 +172,36 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
     two-button leave-confirm modal.
     """
 
+    transform = transform_for_capture(rgb, width, height)
+    current_wide = _locate_current_wide_result(
+        rgb,
+        width,
+        height,
+        transform,
+    )
+    if current_wide is not None:
+        return current_wide
+
     panel_components = _mask_components(
         rgb,
         width,
         height,
-        (0.12, 0.08, 0.88, 0.84),
+        transform.rect((0.12, 0.08, 0.88, 0.84)),
         lambda r, g, b: b >= 100 and g >= 60 and b >= r + 35,
     )
-    panel_min_pixels = max(5_000, round(width * height * 0.12))
+    panel_min_pixels = max(5_000, round(transform.canvas_area * 0.12))
     panels = [
         item
         for item in panel_components
         if item[4] >= panel_min_pixels
-        and item[2] - item[0] >= width * 0.55
-        and item[3] - item[1] >= height * 0.45
-        and 0.38 <= (item[0] + item[2]) / 2 / width <= 0.62
-        and 0.30 <= (item[1] + item[3]) / 2 / height <= 0.62
+        and item[2] - item[0] >= transform.canvas_width * 0.55
+        and item[3] - item[1] >= transform.canvas_height * 0.45
+        and 0.38
+        <= transform.reference_point(((item[0] + item[2]) / 2 / width, 0.0))[0]
+        <= 0.62
+        and 0.30
+        <= transform.reference_point((0.0, (item[1] + item[3]) / 2 / height))[1]
+        <= 0.62
     ]
     if len(panels) != 1:
         return PostmatchUiLocation(
@@ -71,16 +217,20 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
         rgb,
         width,
         height,
-        (0.30, 0.74, 0.70, 0.97),
+        transform.rect((0.30, 0.74, 0.70, 0.97)),
         lambda r, g, b: r >= 180 and 70 <= g <= 230 and b <= 110 and r >= g + 20,
     )
-    min_button_pixels = max(500, round(width * height * 0.003))
+    min_button_pixels = max(500, round(transform.canvas_area * 0.003))
     button_shapes = [
         item
         for item in orange_components
         if item[4] >= min_button_pixels
-        and width * 0.08 <= item[2] - item[0] <= width * 0.20
-        and height * 0.04 <= item[3] - item[1] <= height * 0.12
+        and transform.canvas_width * 0.08
+        <= item[2] - item[0]
+        <= transform.canvas_width * 0.20
+        and transform.canvas_height * 0.04
+        <= item[3] - item[1]
+        <= transform.canvas_height * 0.12
     ]
     if len(button_shapes) != 1:
         return PostmatchUiLocation(
@@ -97,7 +247,11 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
         (button[0] + button[2]) / 2 / width,
         (button[1] + button[3]) / 2 / height,
     )
-    if not (0.44 <= point[0] <= 0.56 and 0.80 <= point[1] <= 0.94):
+    reference_point = transform.reference_point(point)
+    if not (
+        0.44 <= reference_point[0] <= 0.56
+        and 0.80 <= reference_point[1] <= 0.94
+    ):
         return PostmatchUiLocation(
             PostmatchControl.RESULT_CONFIRM,
             False,

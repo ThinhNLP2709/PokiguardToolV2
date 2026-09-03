@@ -1,0 +1,24 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
+using UnityEngine;
+using UnityEngine.Bindings;
+using UnityEngine.Scripting;
+
+// Image 46: UnityEngine.XRModule.dll - Assembly: UnityEngine.XRModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 15337-15374
+
+namespace UnityEngine.XR
+{
+	[NativeHeader("Modules/XR/Subsystems/Display/XRDisplaySubsystemDescriptor.h")]
+	[UsedByNativeCode]
+	public class XRDisplaySubsystemDescriptor : IntegratedSubsystemDescriptor<XRDisplaySubsystem> // TypeDefIndex: 15364
+	{
+		// Constructors
+		public XRDisplaySubsystemDescriptor(); // 0x0000000180A6DF30-0x0000000180A6DF40
+	}
+}
