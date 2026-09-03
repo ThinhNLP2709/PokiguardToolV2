@@ -43,6 +43,7 @@ MATCH_SERVICE_SERVER_QTE_READ_SIZE = 0x228
 
 # CardUI active Dot/Legend QTE state.
 CARD_UI_CARD_DATA_OFFSET = 0x20
+CARD_UI_BUTTON_OFFSET = 0x28
 CARD_UI_BOARD_OFFSET = 0x30
 CARD_UI_ACTIVE_OFFSET = 0x38
 CARD_UI_CURRENT_ACTOR_OFFSET = 0x54
@@ -68,6 +69,7 @@ CARD_UI_QTE_PRESSES_OFFSET = 0x320
 CARD_UI_READ_SIZE = 0x329
 UNITY_OBJECT_CACHED_PTR_OFFSET = 0x10
 UNITY_UI_TEXT_VALUE_OFFSET = 0xE8
+SELECTABLE_INTERACTABLE_OFFSET = 0xD8
 
 # ChatMessageDTO result fields.
 CHAT_MESSAGE_TYPE_OFFSET = 0x30
@@ -410,6 +412,9 @@ def read_server_qte_challenge(
 class CardUiQteSnapshot:
     address: int
     card_data_address: int
+    button_address: int | None
+    button_interactable: bool | None
+    button_validated: bool
     board_instance: int
     active_instance: int
     actor_number: int
@@ -464,6 +469,7 @@ def read_card_ui_qte(
     expected_board: int,
     expected_active: int,
     expected_card_data: int | None,
+    require_button: bool = False,
 ) -> CardUiQteSnapshot:
     before = _read_exact(memory, address, CARD_UI_READ_SIZE, "CardUI QTE")
     if _pointer(before, 0) != expected_class:
@@ -474,12 +480,27 @@ def read_card_ui_qte(
     ):
         raise LayoutValidationError("CardUI native object is invalid")
     card_data = _pointer(before, CARD_UI_CARD_DATA_OFFSET)
+    button = _pointer(before, CARD_UI_BUTTON_OFFSET)
     board = _pointer(before, CARD_UI_BOARD_OFFSET)
     active = _pointer(before, CARD_UI_ACTIVE_OFFSET)
     if board != expected_board or active != expected_active:
         raise LayoutValidationError("CardUI does not belong to current Board/Active")
     if expected_card_data is not None and card_data != expected_card_data:
         raise LayoutValidationError("CardUI does not own the current pet skill CardData")
+    button_interactable = None
+    button_validated = False
+    if button:
+        if not is_canonical_user_pointer(button) or not memory.is_readable(
+            button, SELECTABLE_INTERACTABLE_OFFSET + 1
+        ):
+            raise LayoutValidationError("CardUI Button pointer is invalid")
+        interactable_raw = memory.read(button + SELECTABLE_INTERACTABLE_OFFSET, 1)
+        if len(interactable_raw) != 1 or interactable_raw[0] not in (0, 1):
+            raise LayoutValidationError("Button.m_Interactable is not an IL2CPP bool")
+        button_interactable = bool(interactable_raw[0])
+        button_validated = True
+    elif require_button:
+        raise LayoutValidationError("CardUI Button is required for live-card ownership")
     actor = struct.unpack_from("<i", before, CARD_UI_CURRENT_ACTOR_OFFSET)[0]
     duration = struct.unpack_from("<f", before, CARD_UI_DURATION_OFFSET)[0]
     index, correct = struct.unpack_from("<ii", before, CARD_UI_CURRENT_INDEX_OFFSET)
@@ -533,6 +554,9 @@ def read_card_ui_qte(
     return CardUiQteSnapshot(
         address=address,
         card_data_address=card_data,
+        button_address=button or None,
+        button_interactable=button_interactable,
+        button_validated=button_validated,
         board_instance=board,
         active_instance=active,
         actor_number=actor,

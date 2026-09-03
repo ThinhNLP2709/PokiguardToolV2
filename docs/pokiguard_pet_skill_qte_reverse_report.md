@@ -624,3 +624,41 @@ bị ăn. Native family xác định automatic dot destruction và không có ma
 dots target. Exact `dotsToDestroy` không được envelope echo nên vẫn UNKNOWN; không
 tuyên bố Perfect luôn tối đa Sword. Phase đạt **PASS STRONG**, focused 22/22 và
 full 819/819 PASS, không có automated QTE input hay process write.
+
+## 21. Phase 3B.1 production correction — resource condition và turn edge
+
+Production live `phase3b1_qte_shadow_20260904_012107.jsonl` quan sát ba manual
+QTE generation trong MatchId `M_631e9914`. Ba server sequence đều khớp toàn bộ
+ba bộ `qtePresses` 7/7, với kết quả runtime GOOD/PERFECT/PERFECT. Supplemental
+live `phase3b1_live_retry_20260904_013537.jsonl`, MatchId `M_c2a5fef6`, quan sát
+generation thứ tư 7/7, elapsed 3.008 giây trong Perfect window
+`[3.000,3.300]`, runtime result PERFECT và current generic
+`MATCH_SKILL_USE_RES`. Envelope vẫn không echo `timingResult`.
+
+User làm rõ và raw production sample xác nhận semantics resource đúng:
+
+```text
+conditionUse = 200  -> Mana tiêu hao
+power        = 200  -> điều kiện Nộ tối thiểu để dùng thẻ
+manaCost     = 0    -> raw field
+powerCost    = 0    -> raw field
+```
+
+Sample production đọc Mana `262 -> 62` và Nộ `250 -> 250`. Vì vậy kết luận cũ
+`power=200` là Nộ cost bị supersede; production không kỳ vọng Nộ giảm 200.
+Resolver lấy cả hai giá trị từ exact runtime CardData/structural family, không
+hard-code pet ID, card ID, tên hoặc literal 200.
+
+Sau Space, Pet Skill tự phá board/cascade; operator không cần và không thực hiện
+manual SWAP cho effect đó. Sample production thấy HP `48970 -> 64058` và turn
+local 41 chuyển sang boss 42. Do đó Huyền Thoại 7 tiêu hao lượt. Sample Phase
+3A.1 giữ turn 33 đã được đọc trước khi automatic effect/turn edge hoàn tất và
+không còn là nguồn production cho turn semantics.
+
+Production observer còn sửa hai freshness/timing vấn đề: vùng ChatMessageDTO đã
+học được scan trước full bounded fallback để bắt response ngắn; timingText giữ
+lại từ QTE trước bị bỏ qua cho đến khi generation hiện tại có `finished=true`.
+Tổng live Phase 3B.1 là 28/28 manual directions, zero mismatch, zero stale
+generation được dùng current. Exact `dotsToDestroy` vẫn UNKNOWN vì generic
+response không echo và cascade/refill làm board diff không đủ chứng minh exact
+skill count.

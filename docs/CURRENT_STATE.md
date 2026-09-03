@@ -24,7 +24,7 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 3A.0 — PASS STRONG / SOURCE MAINTENANCE BASELINE** |
+| Current completed phase | **Phase 3B.1 — PASS STRONG / PRODUCTION SHADOW QTE OBSERVER** |
 | Active phase | **NONE** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
@@ -1858,3 +1858,46 @@ late GOOD-vs-BAD recollection is retained as historical uncertainty but does not
 block a controller that targets the authoritative Perfect interval. Focused tests
 are **22/22 PASS**, full regression **819/819 PASS**, compileall/diff check and
 read-only smoke pass. Phase 3B.1 may now be designed without guessing.
+
+## Phase 3B.1 — Production Shadow QTE Observer (2026-09-04)
+
+Phase 3B.1 is **PASS STRONG**. Production read-only primitives now expose an
+immutable `PetSkillCapability` and `QteSnapshot` without adding any gameplay
+input. Current skill discovery requires exact CombatSessionKey, Board/Active,
+runtime CardData and validated current CardUI/Button evidence. Ambiguous,
+metadata-only, stale and unknown candidates remain non-current.
+
+Live B1-B5 observed four manual QTEs across MatchIds `M_631e9914` and
+`M_c2a5fef6`. All 28 expected directions matched all 28 recorded manual presses;
+runtime results were one GOOD and three PERFECT with zero completion mismatch.
+Three same-match generations remained independent and the next MatchId reset the
+generation. The runtime Perfect window was `[3.000,3.300]` in all four samples;
+the computed `3.150` midpoint remained diagnostic only. Generic 1.7.4
+`MATCH_SKILL_USE_RES` was correlated to the current completed generation by exact
+MatchId and bounded server timestamp; it did not echo a server timing result, so
+that field correctly remains UNKNOWN.
+
+The production live sample corrects the resource/turn interpretation recorded in
+Phase 3A.1. For this exact `ATTACK_LEGEND_` fixture, `conditionUse=200` is the
+consumed Mana amount, while `power=200` is the minimum Rage eligibility
+requirement, not a consumed Rage cost. Raw `manaCost/powerCost` remain `0/0`.
+Observed Mana changed `262 -> 62`; Rage was `250 -> 250`, satisfying the
+requirement. The user confirmed that after Space the skill itself automatically
+eats the board and no manual SWAP is needed. The resulting turn changed from local
+41 to boss 42, so this Pet Skill consumes the turn. The Phase 3A.1 sample that
+read `274/215 -> 74/15` while turn 33 was still local captured an earlier point in
+the resolution and no longer defines the production semantics.
+
+The response scanner now checks provider-learned ChatMessageDTO regions before a
+bounded full fallback, preventing short-lived skill responses from being lost.
+Retained `CardUI.timingText` from a preceding generation is ignored until the
+current QTE itself is finished. Exact destroyed-gem/Sword count remains UNKNOWN;
+family/target mode are `AUTOMATIC_DOT_DESTRUCTION / AUTOMATIC`.
+
+Focused verification is **72/72 PASS**, full regression **869/869 PASS**,
+compileall and diff check pass. Automated Pet Skill clicks, directions,
+Space/Enter, process writes, direct gameplay calls and network manipulation are
+all zero. ManaPriority and the accepted BASIC gameplay path are unchanged. See
+[Phase 3B.1 report](phase3b1_report.md) and
+[runbook](phase3b1_runbook.md). Nominal next phase is Phase 3B.2, but it is not
+started automatically.

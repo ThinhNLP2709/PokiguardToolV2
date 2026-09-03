@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Passive Phase 3A.1 Pet Skill/QTE runtime observer (RPM only, no input)."""
+"""Production Phase 3B.1 Pet Skill/QTE shadow observer (RPM only, no input)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import sys
 import time
-from typing import Any, Iterable
+from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +54,14 @@ from pokiguard_v2.pet_qte_observer import (  # noqa: E402
     read_player_pet_skill,
     read_qte_card_data,
     read_server_qte_challenge,
+)
+from pokiguard_v2.pet_skill_shadow import (  # noqa: E402
+    LivePetSkillCard,
+    PetSkillCapabilityProvider,
+    PetSkillCapabilityStatus,
+    QteEvidenceStatus,
+    QteObserver,
+    live_pet_skill_card_from_state,
 )
 from pokiguard_v2.player_stats import read_active_participants  # noqa: E402
 from pokiguard_v2.state import GamePhase  # noqa: E402
@@ -114,33 +122,47 @@ def _scan_qte_results(
     full: bool,
     chunk_mib: int,
 ) -> tuple[Any, ...]:
-    selected: Iterable[Any] = (
-        all_regions
-        if full or not learned_regions
-        else tuple(sorted(learned_regions, key=lambda item: item.base))
-    )
-    scan = scan_aligned_qwords(
-        target.memory,
-        selected,
-        {"qte_result": dto_class},
-        chunk_size=chunk_mib * 1024 * 1024,
-    )
-    learned_regions.update(
-        regions_containing_addresses(all_regions, scan.matches["qte_result"])
-    )
     values = []
-    for address in scan.matches["qte_result"]:
-        try:
-            message = read_server_message(
-                target.memory,
-                address,
-                expected_class=dto_class,
-                expected_match_id=match_id,
-            )
-            if message.event_type in QTE_RESULT_TYPES:
-                values.append(message)
-        except (ExternalReadError, OSError, LayoutValidationError):
-            continue
+    primary: tuple[Any, ...] = (
+        tuple(sorted(learned_regions, key=lambda item: item.base))
+        if learned_regions
+        else all_regions
+    )
+    scan_sets = [primary]
+    if full and primary != all_regions:
+        # Always inspect the already learned ChatMessageDTO regions first.
+        # MATCH_SKILL_USE_RES can be short-lived, while a full private-memory
+        # scan is comparatively expensive.  The broad scan remains a bounded
+        # discovery fallback and never changes correlation authority.
+        scan_sets.append(all_regions)
+    seen_addresses: set[int] = set()
+    for selected in scan_sets:
+        scan = scan_aligned_qwords(
+            target.memory,
+            selected,
+            {"qte_result": dto_class},
+            chunk_size=chunk_mib * 1024 * 1024,
+        )
+        learned_regions.update(
+            regions_containing_addresses(all_regions, scan.matches["qte_result"])
+        )
+        for address in scan.matches["qte_result"]:
+            if address in seen_addresses:
+                continue
+            seen_addresses.add(address)
+            try:
+                message = read_server_message(
+                    target.memory,
+                    address,
+                    expected_class=dto_class,
+                    expected_match_id=match_id,
+                )
+                if message.event_type in QTE_RESULT_TYPES:
+                    values.append(message)
+            except (ExternalReadError, OSError, LayoutValidationError):
+                continue
+        if values:
+            break
     return tuple(values)
 
 
@@ -233,7 +255,7 @@ def run(args: argparse.Namespace) -> int:
     if not 1 <= args.max_region_mib <= 32 or not 1 <= args.chunk_mib <= 16:
         raise ValueError("scan size is outside the allowed range")
 
-    log_path = (args.log or default_log_path("phase3a1_pet_qte")).resolve()
+    log_path = (args.log or default_log_path("phase3b1_qte_shadow")).resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with attach_target() as target, log_path.open(
         "a", encoding="utf-8", buffering=1
@@ -248,11 +270,20 @@ def run(args: argparse.Namespace) -> int:
             ),
         )
         tracker = QteSessionTracker()
+        capability_provider = PetSkillCapabilityProvider()
+        shadow_observer = QteObserver()
         started = time.monotonic()
         last_state = None
         previous_pet_signature = None
         previous_skill_signature = None
         previous_qte_signature = None
+        previous_capability_signature = None
+        previous_shadow_generation = None
+        previous_shadow_direction_signature = None
+        previous_shadow_progress_signature = None
+        previous_shadow_timing_signature = None
+        previous_shadow_runtime_result_signature = None
+        previous_shadow_rejection_signature = None
         previous_match_id = None
         pending: BoundQteObservation | None = None
         pending_before = None
@@ -289,7 +320,7 @@ def run(args: argparse.Namespace) -> int:
             qteTarget=args.qtes,
             lobbyBaselineRequired=not args.allow_combat_start,
         )
-        print(f"Phase 3A.1 observer READ-ONLY; log: {log_path}", flush=True)
+        print(f"Phase 3B.1 production shadow observer READ-ONLY; log: {log_path}", flush=True)
         print("NO INPUT: perform every Pet Skill/QTE action manually.", flush=True)
 
         while target.is_running():
@@ -332,6 +363,7 @@ def run(args: argparse.Namespace) -> int:
                     turn=runtime.turn,
                 )
                 tracker.invalidate()
+                shadow_observer.invalidate("match_changed")
                 previous_match_id = runtime.match_id
                 pending = None
                 pending_before = None
@@ -339,6 +371,13 @@ def run(args: argparse.Namespace) -> int:
                 closed_identities.clear()
                 seen_results.clear()
                 learned_result_regions.clear()
+                previous_capability_signature = None
+                previous_shadow_generation = None
+                previous_shadow_direction_signature = None
+                previous_shadow_progress_signature = None
+                previous_shadow_timing_signature = None
+                previous_shadow_runtime_result_signature = None
+                previous_shadow_rejection_signature = None
 
             if (
                 last_state is None
@@ -394,19 +433,23 @@ def run(args: argparse.Namespace) -> int:
                 and pending.status is QteBindingStatus.COMPLETED_CURRENT
                 and pending_completion_epoch is not None
                 and dto_class is not None
-                and now - last_result_scan >= 0.5
+                and now - last_result_scan >= 0.1
             )
             if should_scan_result:
                 last_result_scan = now
                 result_scan_number += 1
                 all_regions = _regions(target, args.max_region_mib)
+                learned_result_regions.update(provider.transport_region_hints)
                 results = _scan_qte_results(
                     target,
                     dto_class=dto_class,
                     match_id=session.match_id,
                     all_regions=all_regions,
                     learned_regions=learned_result_regions,
-                    full=result_scan_number in (1, 2) or result_scan_number % 8 == 0,
+                    full=(
+                        not learned_result_regions
+                        or result_scan_number % 8 == 0
+                    ),
                     chunk_mib=args.chunk_mib,
                 )
                 observed_epoch = time.time()
@@ -453,8 +496,66 @@ def run(args: argparse.Namespace) -> int:
                     if correlation.current:
                         completed_qtes += 1
                         identity = pending.identity
+                        shadow_result = None
+                        resource_turn = None
                         if identity is not None:
                             closed_identities.add(identity)
+                            server_timing = dict(result.payload_strings).get(
+                                "timingResult"
+                            )
+                            shadow_result = shadow_observer.correlate_server_response(
+                                generation=identity.observer_generation,
+                                response_key=f"0x{result.address:016X}",
+                                match_id=result.match_id,
+                                skill_card_id=response_skill_card_id,
+                                correlation=correlation,
+                                server_timing_result=server_timing,
+                            )
+                            post_actor = (
+                                actor
+                                if runtime.current_player == runtime.local_username
+                                else current_resource.get("bossActor")
+                                if runtime.current_player
+                                else None
+                            )
+                            resource_turn = shadow_observer.observe_resolution(
+                                generation=identity.observer_generation,
+                                mana_after=current_resource["mana"],
+                                power_after=current_resource["power"],
+                                post_resolution_turn=runtime.turn,
+                                post_resolution_local_actor=post_actor,
+                            )
+                            _write(
+                                log,
+                                "qte_server_result_correlated",
+                                session=_session_text(session),
+                                generation=identity.observer_generation,
+                                responseAddress=hex_pointer(result.address),
+                                correlation=correlation,
+                                serverResult=(
+                                    shadow_result.server_resolved_result
+                                    if shadow_result is not None
+                                    else None
+                                ),
+                                serverResultRaw=server_timing,
+                                timingEchoAvailable=server_timing is not None,
+                            )
+                            if resource_turn is not None:
+                                resource_delta, turn_semantics = resource_turn
+                                _write(
+                                    log,
+                                    "pet_skill_resource_delta",
+                                    session=_session_text(session),
+                                    generation=identity.observer_generation,
+                                    resourceDelta=resource_delta,
+                                )
+                                _write(
+                                    log,
+                                    "pet_skill_turn_semantics_observed",
+                                    session=_session_text(session),
+                                    generation=identity.observer_generation,
+                                    turnSemantics=turn_semantics,
+                                )
                         _write(
                             log,
                             "qte_closed",
@@ -569,6 +670,14 @@ def run(args: argparse.Namespace) -> int:
                 for card in last_state.cards
                 if card.element_type.upper() in DOT_SKILL_ELEMENT_TYPES
             )
+            live_skill_candidates = [
+                live_pet_skill_card_from_state(
+                    card,
+                    session_key=session,
+                    active_instance=int(active_resolution.instance),
+                )
+                for card in runtime_skill_cards
+            ]
             if len(runtime_skill_cards) == 1:
                 runtime_card = runtime_skill_cards[0]
                 skill_signature = (
@@ -686,6 +795,7 @@ def run(args: argparse.Namespace) -> int:
                         expected_board=session.board_instance,
                         expected_active=int(active_resolution.instance),
                         expected_card_data=None,
+                        require_button=True,
                     )
                     active_qte_card = read_qte_card_data(
                         target.memory,
@@ -693,6 +803,19 @@ def run(args: argparse.Namespace) -> int:
                         expected_card_class=card_data_class,
                     )
                     candidates.append(qte)
+                    live_skill_candidates.append(
+                        LivePetSkillCard(
+                            session_key=session,
+                            card_data=active_qte_card,
+                            card_ui_address=qte.address,
+                            board_instance=qte.board_instance,
+                            active_instance=qte.active_instance,
+                            button_address=qte.button_address,
+                            button_interactable=qte.button_interactable,
+                            button_validated=qte.button_validated,
+                            source="CardUI.ActiveDotSkillCard",
+                        )
+                    )
                 except (ExternalReadError, OSError, LayoutValidationError) as exc:
                     _write(
                         log,
@@ -701,6 +824,54 @@ def run(args: argparse.Namespace) -> int:
                         object=hex_pointer(active_qte_resolution.instance),
                         detail=str(exc),
                     )
+            capability = capability_provider.observe(
+                observed_at=time.time(),
+                current_session=session,
+                source_pet=pet,
+                candidates=live_skill_candidates,
+            )
+            capability_signature = (
+                capability.status,
+                capability.session_key,
+                capability.card_data_address,
+                capability.live_card_address,
+                capability.live_card_actionable,
+                capability.effective_mana_cost,
+                capability.required_power,
+                capability.stale_reason,
+            )
+            if capability_signature != previous_capability_signature:
+                _write(
+                    log,
+                    "pet_skill_capability_observed",
+                    session=_session_text(session),
+                    capability=capability,
+                )
+                if capability.live_card_present:
+                    _write(
+                        log,
+                        "pet_skill_live_card_observed",
+                        session=_session_text(session),
+                        cardUi=hex_pointer(capability.live_card_address),
+                        button=hex_pointer(capability.live_button_address),
+                        interactable=capability.live_card_actionable,
+                        observationOnly=True,
+                    )
+                elif capability.status in {
+                    PetSkillCapabilityStatus.AMBIGUOUS,
+                    PetSkillCapabilityStatus.STALE,
+                    PetSkillCapabilityStatus.INVALID,
+                }:
+                    _write(
+                        log,
+                        "qte_ambiguous"
+                        if capability.status is PetSkillCapabilityStatus.AMBIGUOUS
+                        else "qte_stale_rejected",
+                        session=_session_text(session),
+                        capabilityStatus=capability.status,
+                        detail=capability.stale_reason,
+                    )
+                previous_capability_signature = capability_signature
             if not candidates or active_qte_card is None:
                 # Only a proven null singleton is an inactive edge.  A failed
                 # or torn read must not manufacture freshness mid-QTE.
@@ -709,6 +880,7 @@ def run(args: argparse.Namespace) -> int:
                     and active_qte_resolution.instance is None
                 ):
                     tracker.note_inactive(session)
+                    shadow_observer.note_inactive(session)
                 time.sleep(args.interval)
                 continue
 
@@ -737,12 +909,26 @@ def run(args: argparse.Namespace) -> int:
                 )
                 previous_skill_signature = qte_card_signature
 
+            if runtime.turn is None:
+                rejection_signature = (session, "TURN_UNKNOWN")
+                if rejection_signature != previous_shadow_rejection_signature:
+                    _write(
+                        log,
+                        "qte_stale_rejected",
+                        session=_session_text(session),
+                        status="TURN_UNKNOWN",
+                        detail="current MatchService turn is unavailable",
+                    )
+                    previous_shadow_rejection_signature = rejection_signature
+                time.sleep(args.interval)
+                continue
+
             context = QteBindingContext(
                 session_key=session,
                 local_actor_number=actor,
                 skill_card_id=int(active_qte_card.card_id),
                 card_data_address=int(active_qte_card.address),
-                turn_number=int(runtime.turn or 0),
+                turn_number=int(runtime.turn),
                 player_mana=current_resource["mana"],
                 player_power=current_resource["power"],
             )
@@ -752,6 +938,159 @@ def run(args: argparse.Namespace) -> int:
                 challenge,
                 element_type=active_qte_card.element_type,
             )
+            shadow = shadow_observer.observe(
+                observed_at=time.time(),
+                session_key=session,
+                observation=observation,
+                capability=capability,
+                player_mana=current_resource["mana"],
+                player_power=current_resource["power"],
+            )
+            if shadow.observationally_current:
+                if shadow.qte_generation != previous_shadow_generation:
+                    _write(
+                        log,
+                        "qte_generation_started",
+                        session=_session_text(session),
+                        snapshot=shadow,
+                    )
+                    _write(
+                        log,
+                        "qte_perfect_window_observed",
+                        session=_session_text(session),
+                        generation=shadow.qte_generation,
+                        perfectStart=shadow.perfect_start,
+                        perfectEnd=shadow.perfect_end,
+                        recommendedConfirmElapsed=shadow.recommended_confirm_elapsed,
+                        source="MatchService.ServerQteWindow+CardUI",
+                    )
+                    previous_shadow_generation = shadow.qte_generation
+                    previous_shadow_direction_signature = None
+                    previous_shadow_progress_signature = None
+                    previous_shadow_timing_signature = None
+                    previous_shadow_runtime_result_signature = None
+                direction_signature = (
+                    shadow.qte_generation,
+                    shadow.current_index,
+                    shadow.expected_direction,
+                )
+                if direction_signature != previous_shadow_direction_signature:
+                    _write(
+                        log,
+                        "qte_shadow_direction",
+                        session=_session_text(session),
+                        generation=shadow.qte_generation,
+                        index=shadow.current_index,
+                        expectedDirection=shadow.expected_direction,
+                        shadowOnly=True,
+                    )
+                    previous_shadow_direction_signature = direction_signature
+                progress_signature = (
+                    shadow.qte_generation,
+                    shadow.current_index,
+                    shadow.correct_count,
+                    shadow.raw_presses,
+                    shadow.completed,
+                )
+                if progress_signature != previous_shadow_progress_signature:
+                    _write(
+                        log,
+                        "qte_progress_observed",
+                        session=_session_text(session),
+                        generation=shadow.qte_generation,
+                        currentIndex=shadow.current_index,
+                        correctCount=shadow.correct_count,
+                        rawPresses=shadow.raw_presses,
+                        normalizedPresses=shadow.presses,
+                        completed=shadow.completed,
+                    )
+                    if shadow.completed:
+                        compared = min(len(shadow.sequence), len(shadow.presses))
+                        direction_matches = sum(
+                            1
+                            for expected, pressed in zip(
+                                shadow.sequence, shadow.presses
+                            )
+                            if expected == pressed
+                        )
+                        _write(
+                            log,
+                            "qte_generation_completed",
+                            session=_session_text(session),
+                            generation=shadow.qte_generation,
+                            qteElapsedMs=shadow.qte_elapsed_ms,
+                            predicted=shadow.predicted_timing_result,
+                            runtimeDisplay=shadow.runtime_display_result,
+                            expectedDirections=shadow.sequence,
+                            recordedPresses=shadow.presses,
+                            comparedDirections=compared,
+                            shadowDirectionMatches=direction_matches,
+                            shadowDirectionMismatches=compared - direction_matches,
+                            completeSequenceAgreement=(
+                                shadow.sequence == shadow.presses
+                            ),
+                        )
+                    previous_shadow_progress_signature = progress_signature
+                timing_signature = (
+                    shadow.qte_generation,
+                    shadow.timing_region,
+                    shadow.predicted_timing_result,
+                )
+                if timing_signature != previous_shadow_timing_signature:
+                    _write(
+                        log,
+                        "qte_shadow_timing_prediction",
+                        session=_session_text(session),
+                        generation=shadow.qte_generation,
+                        elapsed=shadow.current_elapsed,
+                        timingRegion=shadow.timing_region,
+                        prediction=shadow.predicted_timing_result,
+                        recommendedConfirmElapsed=shadow.recommended_confirm_elapsed,
+                        shadowOnly=True,
+                    )
+                    previous_shadow_timing_signature = timing_signature
+                runtime_result_signature = (
+                    shadow.qte_generation,
+                    shadow.runtime_result_text,
+                    shadow.runtime_display_result,
+                )
+                if (
+                    shadow.runtime_display_result is not None
+                    and runtime_result_signature
+                    != previous_shadow_runtime_result_signature
+                ):
+                    _write(
+                        log,
+                        "qte_runtime_result_observed",
+                        session=_session_text(session),
+                        generation=shadow.qte_generation,
+                        rawText=shadow.runtime_result_text,
+                        runtimeResult=shadow.runtime_display_result,
+                        prediction=shadow.predicted_timing_result,
+                        consistent=shadow.prediction_runtime_consistent,
+                    )
+                    previous_shadow_runtime_result_signature = runtime_result_signature
+            elif shadow.evidence_status in {
+                QteEvidenceStatus.STALE,
+                QteEvidenceStatus.AMBIGUOUS,
+            }:
+                rejection_signature = (
+                    session,
+                    shadow.evidence_status,
+                    shadow.ownership_status,
+                    shadow.stale_reason,
+                )
+                if rejection_signature != previous_shadow_rejection_signature:
+                    _write(
+                        log,
+                        "qte_ambiguous"
+                        if shadow.evidence_status is QteEvidenceStatus.AMBIGUOUS
+                        else "qte_stale_rejected",
+                        session=_session_text(session),
+                        status=shadow.ownership_status,
+                        detail=shadow.stale_reason,
+                    )
+                    previous_shadow_rejection_signature = rejection_signature
             qte_signature = (
                 observation.status,
                 observation.identity,
@@ -785,6 +1124,8 @@ def run(args: argparse.Namespace) -> int:
                         "currentTurnPlayer": runtime.current_player,
                         **current_resource,
                     }
+                    result_scan_number = 0
+                    last_result_scan = 0.0
                 pending = observation
                 if (
                     observation.status is QteBindingStatus.COMPLETED_CURRENT

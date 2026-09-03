@@ -77,6 +77,7 @@ class Fixture:
     ARROW_LIST = BASE + 0x14000
     ARROW_ITEMS = BASE + 0x15000
     TIMING_TEXT = BASE + 0x16000
+    BUTTON = BASE + 0x17000
 
     def __init__(self) -> None:
         self.memory = FakeMemory()
@@ -181,6 +182,7 @@ class Fixture:
         perfect_end: float = 3.0,
         presses: tuple[str, ...] = ("nutUp",),
         displayed_timing: str | None = None,
+        with_button: bool = False,
     ) -> int:
         address = address or self.QTE
         native = self.QTE_NATIVE if address == self.QTE else address + 0x500
@@ -196,6 +198,11 @@ class Fixture:
         struct.pack_into("<Q", raw, 0, self.QTE_CLASS)
         struct.pack_into("<Q", raw, 0x10, native)
         struct.pack_into("<Q", raw, 0x20, card or self.CARD)
+        if with_button:
+            button = bytearray(0xD9)
+            button[0xD8] = 1
+            self.memory.map(self.BUTTON, button)
+            struct.pack_into("<Q", raw, 0x28, self.BUTTON)
         struct.pack_into("<Q", raw, 0x30, board or self.BOARD)
         struct.pack_into("<Q", raw, 0x38, self.ACTIVE)
         struct.pack_into("<i", raw, 0x54, actor)
@@ -447,6 +454,37 @@ class PetQteObserverTests(unittest.TestCase):
         self.assertEqual(qte.displayed_timing_result, "BAD")
         self.assertEqual(normalize_displayed_timing_result("Perfect!"), "PERFECT!")
         self.assertIsNone(normalize_displayed_timing_result("waiting"))
+
+    def test_production_live_card_requires_and_reads_button(self) -> None:
+        fixture = Fixture()
+        fixture.map_pet()
+        address = fixture.map_qte(with_button=True)
+        qte = read_card_ui_qte(
+            fixture.memory,
+            address,
+            expected_class=fixture.QTE_CLASS,
+            expected_board=fixture.BOARD,
+            expected_active=fixture.ACTIVE,
+            expected_card_data=fixture.CARD,
+            require_button=True,
+        )
+        self.assertTrue(qte.button_validated)
+        self.assertTrue(qte.button_interactable)
+        self.assertEqual(qte.button_address, fixture.BUTTON)
+
+        fixture_without_button = Fixture()
+        fixture_without_button.map_pet()
+        address = fixture_without_button.map_qte()
+        with self.assertRaises(LayoutValidationError):
+            read_card_ui_qte(
+                fixture_without_button.memory,
+                address,
+                expected_class=fixture_without_button.QTE_CLASS,
+                expected_board=fixture_without_button.BOARD,
+                expected_active=fixture_without_button.ACTIVE,
+                expected_card_data=fixture_without_button.CARD,
+                require_button=True,
+            )
 
     def test_proven_inactive_edge_starts_a_fresh_reused_card_ui_generation(self) -> None:
         fixture = Fixture()
