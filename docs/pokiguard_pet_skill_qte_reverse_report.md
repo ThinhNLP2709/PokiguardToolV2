@@ -505,3 +505,122 @@ PetUserDTO
 tạo thành chuỗi từ pet skill card → QTE → input → kết quả skill.
 
 Phần còn thiếu để hiểu chính xác gameplay là native method body của các hàm xử lý input/QTE. Đây nên là mục reverse tiếp theo.
+
+## 20. Phase 3A.1 closure — Pokiguard 1.7.4 (2026-09-03)
+
+Phần 1–19 ở trên là lịch sử evidence từ artifact cũ. Native body của build 1.7.4
+trong `reverse/redux_compat` và `D:\pc\GameAssembly.dll` nay đã đóng nhiều UNKNOWN;
+không xóa lịch sử để tránh biến giả thuyết cũ thành bằng chứng mới.
+
+### Thay đổi layout cần lưu ý
+
+`PetUserDTO.skillCardId` của build 1.7.4 hiện tại là `int +0x20`, không phải
+`Nullable<int>` như artifact cũ. Giá trị 0 được observer giữ là missing; không tự
+suy ra card. `PetUserDTO.cardDTO +0x90` phải có `CardData.cardId` khớp
+`skillCardId` trước khi dùng làm identity.
+
+### Những điểm đã đóng bằng native body
+
+- `CardUI.IsDotSkillCard 0x1805B6980` và `RequiresDotSkillUI 0x1805B9550`:
+  family QTE được chọn bởi `CardData.elementTypeCard == ATTACK_LEGEND` hoặc
+  `ATTACK_LEGEND_`. Không được nhầm field này với `CardData.skillType`.
+- `MatchService.HandleQteChallenge 0x1803381F0`: chỉ nhận đúng current MatchId,
+  lưu server `arrows`, duration và sáu mốc Perfect/Good.
+- `CardUI.GenerateDotArrows 0x1805B50F0`: ưu tiên exact server arrow list. Local
+  random fallback tồn tại nhưng không đủ authoritative cho future automation.
+- `CardUI.NormalizeArrowDir 0x1805B7B30`: trim, bỏ prefix `nut`, map chính xác
+  up/down/left/right thành `nutUp/nutDown/nutLeft/nutRight`.
+- `CardUI.Update 0x1805BCD10`: Up/Down/Left/Right hoặc W/S/A/D đều được nhận;
+  Return hoặc Space đều là confirm.
+- `CardUI.CheckDotArrow 0x1805B0E20`: ghi presses, current index và correct count;
+  completion UI đạt ở correct count 7.
+- `CardUI.GetLastTimingResult 0x1805B5FF0`: Perfect dựa trên runtime elapsed và
+  inclusive `[perfectStartTime, perfectEndTime]`, không dựa trên blind sleep.
+- `CardUI.CurrentQteElapsedMs 0x1805B4700`: round/clamp elapsed sang ms.
+- `CardUI.HandleDotSkillSequence` state machine `0x1805CF430`: request challenge,
+  apply server window, pause/resume QTE clock, rồi chuyển exact
+  correct/result/dots/presses/elapsed sang `MatchService.SendSkillUse`.
+- `ATTACK_LEGEND_` gọi `CalculateDotsToDestroy 0x1805B0430`; nhánh này dùng
+  `eatPerfect/eatGood/eatBad` để tính/cap dot count, không dùng selected rows/dots.
+
+### Observer read-only
+
+`tools/pet_qte_observer.py` dùng `CardUI.ActiveDotSkillCard` static backing field,
+không heap-pick object mới nhất. Một QTE chỉ được bind sau current-session inactive
+edge và phải khớp MatchId, lifecycle epoch, Board, Active, actor, runtime CardData,
+server list, currentArrows count, timing window, turn và observer generation.
+Midstream/stale/ambiguous/unknown đều bị từ chối.
+
+Tại milestone này static/offline closure và 19 focused tests đã PASS. Các giá trị
+còn **UNKNOWN** ở thời điểm đó được đóng dần bởi live B1–B4 bên dưới. Xem
+`docs/phase3a1_report.md` và `docs/phase3a1_runbook.md`.
+
+### Runtime correction: skill card materializes after in-combat evolution
+
+Live attempt `20260903_232239` proved `Active.playerPets` can remain the ordinary
+source pet (`Silas`, `petId=2306`, no `skillCardId/cardDTO`) even after the player
+successfully evolves and opens the Legendary Pet Skill/QTE. Consequently,
+`PetUserDTO.cardDTO` is useful when present but is not a mandatory runtime owner
+for this in-combat evolution path.
+
+The current authoritative observation boundary is the newly available combat
+card followed by exact `CardUI.ActiveDotSkillCard.cardData` at QTE activation.
+The existing Board/Active/actor/MatchId/server-sequence/inactive-edge checks are
+preserved. This is a correction to observer ownership only; it does not authorize
+QTE input or change gameplay policy. Trạng thái pending tại thời điểm correction
+này được cập nhật bởi retry bên dưới.
+
+### Runtime closure retry và result hardening (2026-09-04)
+
+`phase3a1_pet_qte_20260904_000854.jsonl` chứng minh exact post-evolution card là
+`Huyền Thoại 7`, `CardData.cardId=7`, family `ATTACK_LEGEND_`, level 14,
+`conditionUse=200`, `manaCost=0`, `powerCost=0`, `cooldownTurns=0`,
+`needPerfection=false`, `eatPerfect/Good/Bad=0/20/12` và multiplier 1.8. Source
+`PetUserDTO` vẫn là Silas/petId 2306 không skill; QTE card materializes riêng sau
+tiến hóa. Sample mana/power 330/45 của retry này đến từ stable-board snapshot có
+thể trễ so với QTE; final direct-participant trace bên dưới thay thế nó cho resource
+proof.
+
+Sáu QTE được thấy; năm generation sau bind đầy đủ và hoàn tất với correctCount 7.
+Arrow/WASD và Space/Enter đều hoạt động trong live, phù hợp native mapping. Bốn
+completion ở Perfect window; một completion khoảng 4.95 giây được native
+`GetLastTimingResult` suy ra `GOOD!`, nhưng người dùng báo game hiển thị `BAD`.
+Vì observer cũ không đọc UI Text nên classification này là conflict, không phải
+evidence đã đóng.
+
+Layout hiện bổ sung `CardUI.timingText +0xF0` và
+`UnityEngine.UI.Text.m_Text +0xE8` từ current reverse. Observer giữ raw text và
+normalized result để retry tiếp theo lấy chính chữ game render, không OCR và không
+đoán. Lỗi inactive edge cũng được sửa: trạng thái singleton `instance_null` là
+freshness witness thật và xóa identity generation trước.
+
+Native `HandleMatchSkillUseRes 0x180337B50` đi qua generic response-envelope path.
+Live response đúng MatchId/timestamp để các field QTE-specific null, vì vậy exact
+echo-only correlation cũ là sai. Correlation mới nhận envelope chỉ khi có unique
+completed QTE, exact MatchId, bounded server timestamp và không explicit reject;
+old response object vẫn bị loại. Resource/HP được đọc trực tiếp quanh response mà
+không đợi board stable. Focused 22/22 và full 819/819 PASS; một direct-result live
+retry vẫn bắt buộc trước khi Phase 3A.1 được chốt.
+
+### Final direct-result closure — PASS STRONG
+
+`phase3a1_pet_qte_20260904_003250.jsonl`, match `M_a1cbb4b1`, turn 33 đã bind
+generation hiện tại và capture sequence/presses giống hệt nhau:
+`Right,Down,Right,Up,Down,Up,Right`. Progress kết thúc ở index/correct 7/7,
+elapsed 3.151977 giây trong server Perfect window `[3.000,3.300]`. Native
+prediction, exact `CardUI.timingText.m_Text` và visual result do operator báo đều
+là `PERFECT!`.
+
+Current generic `MATCH_SKILL_USE_RES` được bind bằng exact MatchId, bounded server
+timestamp, unique completed generation và no reject. Direct resources đổi từ
+mana/power `274/215` thành `74/15`: deduction chính xác `-200/-200`. Vì raw
+`manaCost/powerCost` là `0/0`, effective contract của riêng cardId 7 là
+`conditionUse=200` mana và `power=200` nộ. Không suy rộng contract này cho card
+khác.
+
+Turn trước/sau đều là turn 33 và owner local, chứng minh skill không tiêu thụ lượt.
+Immediate response sample chưa đổi board hash/HP; operator sau đó thấy nhiều Sword
+bị ăn. Native family xác định automatic dot destruction và không có manual rows/
+dots target. Exact `dotsToDestroy` không được envelope echo nên vẫn UNKNOWN; không
+tuyên bố Perfect luôn tối đa Sword. Phase đạt **PASS STRONG**, focused 22/22 và
+full 819/819 PASS, không có automated QTE input hay process write.

@@ -41,6 +41,8 @@ BOARD_WS_APPLIER_TYPE_INFO_RVA = 0x2BF2540
 CARD_UI_TYPE_INFO_RVA = 0x2BF7480
 FUSION_CARD_UI_TYPE_INFO_RVA = 0x2C21E08
 ACTIVE_PLAYER_STATS_TYPE_INFO_RVA = 0x2C40E28
+PET_USER_DTO_TYPE_INFO_RVA = 0x2BF1D98
+CARD_DATA_TYPE_INFO_RVA = 0x2BF6FE8
 
 BOARD_WIDTH_OFFSET = 0x88
 BOARD_HEIGHT_OFFSET = 0x8C
@@ -143,6 +145,12 @@ MATCH_SERVICE_SINGLETON = SingletonSpec(
 )
 CHAT_SERVICE_SINGLETON = SingletonSpec(
     "ChatService", CHAT_SERVICE_TYPE_INFO_RVA, 0x00
+)
+# CardUI.<ActiveDotSkillCard>k__BackingField is the first static field.  Its
+# native getter at RVA 0x5BDF30 follows Il2CppClass.static_fields + 0x00.
+# It is an observation anchor only; no method on the object is ever invoked.
+ACTIVE_DOT_SKILL_CARD = SingletonSpec(
+    "CardUI.ActiveDotSkillCard", CARD_UI_TYPE_INFO_RVA, 0x00
 )
 
 

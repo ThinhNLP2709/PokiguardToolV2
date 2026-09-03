@@ -1811,3 +1811,50 @@ deduplicated turn-counter helper as normal polling and leaves
 executes this exact helper boundary. Source version is `v1.0.23`; full offline
 verification is **797/797 PASS**. A fresh live start is required to confirm the
 hotfix past the opening action.
+
+## Phase 3A.1 — Pet Skill/QTE reverse closure (2026-09-04)
+
+Phase 3A.1 is **PASS STRONG**. No
+BASIC policy, FarmRunner, UI, packaging or production input was changed; the new
+observer remains strictly read-only.
+
+Native 1.7.4 evidence proves the CardUI Dot-QTE family, current-match server
+sequence/window, Arrow+WASD bindings, Enter+Space one-shot confirm, progress,
+elapsed-time calculation, Perfect predicate, result classifier and automatic
+dot-destruction path. The first live attempt then corrected ownership: source
+`Active.playerPets` remains Silas/petId 2306 without a skill after in-combat
+evolution, while the Legendary runtime card materializes separately. Current
+ownership therefore starts at exact `CardUI.ActiveDotSkillCard.cardData` and still
+requires current MatchId, lifecycle epoch, Board, Active, local actor, server
+challenge and a proven inactive edge.
+
+Retry `phase3a1_pet_qte_20260904_000854.jsonl` identified `Huyền Thoại 7`,
+cardId 7, `ATTACK_LEGEND_`, level 14, conditionUse 200, raw mana/power cost 0/0,
+zero cooldown, needPerfection false, eatPerfect/Good/Bad 0/20/12 and multiplier
+1.8. Six QTEs were observed; five current generations completed with correct 7.
+Arrow/WASD and Space/Enter both worked. A current `MATCH_SKILL_USE_RES` arrived
+without QTE-specific echo fields. Nó gợi ý non-consuming nhưng stable-board
+resource sample cũ không đủ đóng effective cost.
+
+Two observer defects found by this retry are fixed. `instance_null` now records
+the QTE inactive edge and clears the prior generation. Response correlation now
+supports 1.7.4's generic envelope using unique completed generation, exact MatchId,
+bounded server timestamp and explicit reject/success fields where present. It also
+reads fresh participant resources without waiting for a stable board.
+
+Final live `phase3a1_pet_qte_20260904_003250.jsonl` closed one exact current QTE:
+server sequence equals all seven recorded presses, correct/index is 7/7, elapsed
+3.151977 seconds is inside `[3.000,3.300]`, and native prediction, RAM timing text
+and operator visual result all equal `PERFECT!`. The current no-reject response was
+correlated by MatchId/generation/timestamp. Direct mana/power changed 274/215 to
+74/15, proving this card's effective cost is `conditionUse=200` mana plus
+`power=200` nộ despite raw `manaCost/powerCost=0/0`. Turn 33 remained local, so
+the skill is non-consuming.
+
+The actual family is automatic dot destruction with no manual row/dot targeting;
+the operator observed many Sword gems consumed. Exact server-resolved dot count is
+not echoed and remains UNKNOWN, so `PERFECT = max Sword` is not claimed. The prior
+late GOOD-vs-BAD recollection is retained as historical uncertainty but does not
+block a controller that targets the authoritative Perfect interval. Focused tests
+are **22/22 PASS**, full regression **819/819 PASS**, compileall/diff check and
+read-only smoke pass. Phase 3B.1 may now be designed without guessing.
