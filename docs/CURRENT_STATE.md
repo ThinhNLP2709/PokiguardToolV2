@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-03 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-04 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,8 +24,8 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 3B.1 — PASS STRONG / PRODUCTION SHADOW QTE OBSERVER** |
-| Active phase | **NONE** |
+| Current completed phase | **Phase 3B.2 — PASS STRONG / AUTOMATED QTE DIRECTIONS** |
+| Active phase | **NONE — STOPPED AFTER PHASE 3B.2** |
 | Current controller status | **STOPPED** |
 | Current live automation | **NONE** |
 
@@ -869,15 +869,15 @@ Intermediate retries are historical evidence, not current phase status.
 
 ## Current Test Baseline
 
-Verified on **2026-09-03**:
+Verified on **2026-09-04**:
 
 ```text
 python -m unittest discover -s tests -p 'test_*.py'
-Ran 797 tests
+Ran 908 tests
 OK
 ```
 
-Current source baseline: **797/797 PASS**. The accepted packaged Phase 2F.2 RC
+Current source baseline: **908/908 PASS**. The accepted packaged Phase 2F.2 RC
 remains at its original **740/740 PASS** baseline. Phase 2E desktop/controller and terminal
 hardening focused suites: **PASS**. `python -m compileall -q src tools tests`:
 **PASS**. `git diff --check`: **PASS**. The suite additionally covers terminal
@@ -1911,3 +1911,33 @@ all zero. ManaPriority and the accepted BASIC gameplay path are unchanged. See
 [Phase 3B.1 report](phase3b1_report.md) and
 [runbook](phase3b1_runbook.md). Nominal next phase is Phase 3B.2, but it is not
 started automatically.
+
+## Phase 3B.2 — Automated QTE Direction Sequence (2026-09-04)
+
+Phase 3B.2 is **PASS STRONG**. A dedicated
+one-generation diagnostic harness now exposes only `UP/DOWN/LEFT/RIGHT` through
+normal foreground-gated Windows input. It begins disarmed, requires an explicit
+`--arm-next` plus a proven inactive QTE baseline, binds the exact current
+MatchId/session/actor/card/turn/generation, sends one logical direction, and
+requires exact read-only `currentIndex`, `correctCount` and press-list progress
+before another direction can be authorized. Missing acknowledgement never
+retries; any stale identity, foreground/window change, abort or lifecycle loss
+disarms the generation.
+
+Pet Skill card click and Space/Enter remain manual and have no representation in
+the public direction executor. The shared controller lease excludes FarmRunner
+and other Pokiguard input owners. BASIC policy, ManaPriority, card/resource
+strategy and the accepted HT7/HT2 runtime cost resolver are unchanged. Offline
+verification is **39/39 focused**, **141/141 combined QTE/input/stats** and
+**912/912 full regression**, with compileall and diff check passing.
+
+Native evidence from 1.7.4 proves `CardUI.GetDirectionFromInput` uses legacy
+`UnityEngine.Input.GetKeyDown` for Arrow/WASD pairs. The matching normal Windows
+legacy key path completed three explicitly armed live generations across two
+MatchIds: **21/21 sent directions received authoritative RAM ACK**, with zero
+wrong, skipped, duplicate, stale, unconfirmed or blind-retry input. Completion
+times were 1.330--1.407 seconds against runtime Perfect start 3.000 seconds,
+leaving 1.593--1.670 seconds headroom. Manual Space results were one PERFECT and
+two GOOD. Pet Skill card clicks and Space/Enter remain fully manual and their
+automated counts are zero. See the [Phase 3B.2 report](phase3b2_report.md) and
+[live runbook](phase3b2_runbook.md).

@@ -461,6 +461,31 @@ class CardUiQteSnapshot:
         )
 
 
+def _card_ui_qte_consistency_signature(raw: bytes) -> tuple[bytes, ...]:
+    """Return only ownership, identity, progress and timing bytes.
+
+    ``CardUI.currentTimeValue`` changes every rendered frame while a QTE is
+    active.  Comparing the complete object before/after the dependent list
+    reads therefore rejects otherwise coherent snapshots.  Exclude that one
+    expected clock field (and unrelated animation/UI state), while retaining
+    every field used to bind a generation or acknowledge direction progress.
+    """
+
+    return (
+        raw[0x00:0x08],  # managed class
+        raw[0x10:0x18],  # Unity native object
+        raw[0x20:0x40],  # card/button/Board/Active ownership
+        raw[CARD_UI_CURRENT_ACTOR_OFFSET : CARD_UI_CURRENT_ACTOR_OFFSET + 4],
+        raw[CARD_UI_DURATION_OFFSET : CARD_UI_DURATION_OFFSET + 4],
+        raw[CARD_UI_TIMING_TEXT_OFFSET : CARD_UI_TIMING_TEXT_OFFSET + 8],
+        raw[CARD_UI_CURRENT_ARROWS_OFFSET : CARD_UI_ACTIVE_FLAG_OFFSET + 1],
+        raw[CARD_UI_DAMAGE_MULTIPLIER_OFFSET : CARD_UI_DAMAGE_MULTIPLIER_OFFSET + 4],
+        raw[CARD_UI_FINISHED_OFFSET : CARD_UI_FINISHED_OFFSET + 1],
+        raw[CARD_UI_PERFECT_START_OFFSET : CARD_UI_TIMING_BONUS_OFFSET + 4],
+        raw[CARD_UI_CURRENT_ARROW_SEED_OFFSET : CARD_UI_QTE_PRESSES_OFFSET + 8],
+    )
+
+
 def read_card_ui_qte(
     memory: MemoryReader,
     address: int,
@@ -549,7 +574,10 @@ def read_card_ui_qte(
         or not -0.05 <= current_time <= 1.05
     ):
         raise LayoutValidationError("CardUI QTE scalar fields are implausible")
-    if _read_exact(memory, address, CARD_UI_READ_SIZE, "CardUI QTE") != before:
+    after = _read_exact(memory, address, CARD_UI_READ_SIZE, "CardUI QTE")
+    if _card_ui_qte_consistency_signature(after) != _card_ui_qte_consistency_signature(
+        before
+    ):
         raise LayoutValidationError("CardUI QTE changed during read")
     return CardUiQteSnapshot(
         address=address,

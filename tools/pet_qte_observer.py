@@ -33,6 +33,7 @@ from pokiguard_v2.il2cpp_external import (  # noqa: E402
     ExternalReadError,
 )
 from pokiguard_v2.il2cpp_layout import LayoutValidationError  # noqa: E402
+from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
     MemoryProviderConfig,
@@ -63,7 +64,10 @@ from pokiguard_v2.pet_skill_shadow import (  # noqa: E402
     QteObserver,
     live_pet_skill_card_from_state,
 )
-from pokiguard_v2.player_stats import read_active_participants  # noqa: E402
+from pokiguard_v2.player_stats import (  # noqa: E402
+    read_active_participants,
+    read_match_local_actor_number,
+)
 from pokiguard_v2.state import GamePhase  # noqa: E402
 from tools.idle_state_watch import read_match_runtime, read_server_message  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
@@ -186,7 +190,7 @@ def _participant_snapshot(
     active_instance: int,
     stats_class: int | None,
     local_actor_number: int,
-    fallback_state: Any,
+    fallback_state: Any | None,
 ) -> dict[str, Any]:
     """Take a fresh participant sample without requiring a stable board frame."""
 
@@ -204,17 +208,29 @@ def _participant_snapshot(
             boss = next((item for item in participants if item.is_boss), None)
         except (ExternalReadError, OSError, LayoutValidationError):
             pass
-    fallback_player = fallback_state.player
+    fallback_player = fallback_state.player if fallback_state is not None else None
     fallback_boss = next(
-        (item for item in fallback_state.opponents if item.is_boss),
+        (
+            item
+            for item in (fallback_state.opponents if fallback_state is not None else ())
+            if item.is_boss
+        ),
         None,
     )
     return {
         "localActor": local_actor_number,
-        "localHp": local.hp if local is not None else fallback_player.hp,
-        "localMaxHp": local.max_hp if local is not None else fallback_player.max_hp,
-        "mana": local.mana if local is not None else fallback_player.mana,
-        "power": local.power if local is not None else fallback_player.power,
+        "localHp": local.hp if local is not None else (
+            fallback_player.hp if fallback_player is not None else None
+        ),
+        "localMaxHp": local.max_hp if local is not None else (
+            fallback_player.max_hp if fallback_player is not None else None
+        ),
+        "mana": local.mana if local is not None else (
+            fallback_player.mana if fallback_player is not None else None
+        ),
+        "power": local.power if local is not None else (
+            fallback_player.power if fallback_player is not None else None
+        ),
         "bossActor": boss.actor_number if boss is not None else (
             fallback_boss.actor_number if fallback_boss is not None else None
         ),
@@ -224,7 +240,9 @@ def _participant_snapshot(
         "bossMaxHp": boss.max_hp if boss is not None else (
             fallback_boss.max_hp if fallback_boss is not None else None
         ),
-        "boardHash": fallback_state.battle.board_hash,
+        "boardHash": (
+            fallback_state.battle.board_hash if fallback_state is not None else None
+        ),
     }
 
 
@@ -245,7 +263,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run(args: argparse.Namespace) -> int:
+def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
     if not args.watch:
         raise ValueError("start the observer with --watch")
     if not 0.02 <= args.interval <= 1.0:
@@ -272,6 +290,11 @@ def run(args: argparse.Namespace) -> int:
         tracker = QteSessionTracker()
         capability_provider = PetSkillCapabilityProvider()
         shadow_observer = QteObserver()
+        if runtime_hook is not None:
+            runtime_hook.attach(
+                target,
+                lambda event, **fields: _write(log, event, **fields),
+            )
         started = time.monotonic()
         last_state = None
         previous_pet_signature = None
@@ -313,15 +336,26 @@ def run(args: argparse.Namespace) -> int:
             architecture=target.architecture,
             gameAssemblyBase=hex_pointer(target.game_assembly.base),
             access=["PROCESS_QUERY_INFORMATION", "PROCESS_VM_READ"],
-            noInput=True,
+            noInput=runtime_hook is None,
             noProcessWrite=True,
             noIl2CppInvocation=True,
             requiredBoundary="current MatchId + lifecycle epoch + local actor + skill card + inactive edge",
             qteTarget=args.qtes,
             lobbyBaselineRequired=not args.allow_combat_start,
+            runtimeHook=(runtime_hook.name if runtime_hook is not None else None),
         )
-        print(f"Phase 3B.1 production shadow observer READ-ONLY; log: {log_path}", flush=True)
-        print("NO INPUT: perform every Pet Skill/QTE action manually.", flush=True)
+        if runtime_hook is None:
+            print(f"Phase 3B.1 production shadow observer READ-ONLY; log: {log_path}", flush=True)
+            print("NO INPUT: perform every Pet Skill/QTE action manually.", flush=True)
+        else:
+            runtime_hook.started(log_path)
+
+        def trace_runtime_stage(stage: str) -> None:
+            if runtime_hook is None:
+                return
+            callback = getattr(runtime_hook, "trace_stage", None)
+            if callable(callback):
+                callback(stage)
 
         while target.is_running():
             now = time.monotonic()
@@ -332,7 +366,9 @@ def run(args: argparse.Namespace) -> int:
                 _write(log, "observer_target_reached", completedQtes=completed_qtes)
                 break
             try:
+                trace_runtime_stage("provider_poll_begin")
                 poll = provider.poll()
+                trace_runtime_stage("provider_poll_end")
             except (ExternalReadError, OSError, LayoutValidationError, RuntimeError) as exc:
                 poll = None
                 _write(log, "provider_error", detail=str(exc))
@@ -343,12 +379,14 @@ def run(args: argparse.Namespace) -> int:
                     last_state = None
 
             try:
+                trace_runtime_stage("runtime_singletons_begin")
                 match_service_resolution = target.resolver.resolve_singleton(
                     MATCH_SERVICE_SINGLETON
                 )
                 active_resolution = target.resolver.resolve_singleton(ACTIVE_SINGLETON)
                 board_resolution = target.resolver.resolve_singleton(BOARD_SINGLETON)
                 _match_service, runtime = read_match_runtime(target)
+                trace_runtime_stage("runtime_singletons_end")
             except (ExternalReadError, OSError, LayoutValidationError) as exc:
                 _write(log, "runtime_error", detail=str(exc))
                 time.sleep(args.interval)
@@ -364,6 +402,8 @@ def run(args: argparse.Namespace) -> int:
                 )
                 tracker.invalidate()
                 shadow_observer.invalidate("match_changed")
+                if runtime_hook is not None:
+                    runtime_hook.invalidate("MATCH_CHANGED")
                 previous_match_id = runtime.match_id
                 pending = None
                 pending_before = None
@@ -379,22 +419,61 @@ def run(args: argparse.Namespace) -> int:
                 previous_shadow_runtime_result_signature = None
                 previous_shadow_rejection_signature = None
 
+            stable_state_current = bool(
+                last_state is not None
+                and last_state.battle.session_key is not None
+                and runtime.match_id == last_state.battle.session_key.match_id
+            )
+            direct_session = (
+                poll.session_key
+                if poll is not None
+                and poll.combat_lifecycle is not None
+                and poll.combat_lifecycle.state is CombatLifecycleState.ACTIVE
+                else None
+            )
+            session = (
+                last_state.battle.session_key
+                if stable_state_current and last_state is not None
+                else direct_session
+            )
             if (
-                last_state is None
-                or last_state.battle.session_key is None
-                or runtime.match_id != last_state.battle.session_key.match_id
+                session is None
+                or runtime.match_id != session.match_id
                 or not match_service_resolution.resolved
+                or match_service_resolution.instance is None
                 or not active_resolution.resolved
+                or active_resolution.instance is None
                 or not board_resolution.resolved
+                or board_resolution.instance != session.board_instance
             ):
+                if runtime_hook is not None:
+                    runtime_hook.invalidate("ACTIVE_COMBAT_OWNERSHIP_INVALID")
                 time.sleep(args.interval)
                 continue
-            session = last_state.battle.session_key
-            actor = last_state.battle.local_actor_number
-            if actor is None or last_state.player is None:
+            if stable_state_current and last_state is not None:
+                actor = last_state.battle.local_actor_number
+            else:
+                try:
+                    actor = read_match_local_actor_number(
+                        target.memory,
+                        int(match_service_resolution.instance),
+                        runtime.local_username,
+                    )
+                except (ExternalReadError, OSError, LayoutValidationError) as exc:
+                    _write(
+                        log,
+                        "local_actor_read_rejected",
+                        detail=str(exc),
+                        transient=True,
+                    )
+                    time.sleep(args.interval)
+                    continue
+            if actor is None:
                 time.sleep(args.interval)
                 continue
+            fallback_state = last_state if stable_state_current else None
 
+            trace_runtime_stage("type_classes_begin")
             if pet_class is None:
                 pet_class = target.resolver.resolve_type_info_class(
                     PET_USER_DTO_TYPE_INFO_RVA
@@ -415,14 +494,17 @@ def run(args: argparse.Namespace) -> int:
                 stats_class = target.resolver.resolve_type_info_class(
                     ACTIVE_PLAYER_STATS_TYPE_INFO_RVA
                 )
+            trace_runtime_stage("type_classes_end")
 
+            trace_runtime_stage("participant_snapshot_begin")
             current_resource = _participant_snapshot(
                 target,
                 active_instance=int(active_resolution.instance),
                 stats_class=stats_class,
                 local_actor_number=actor,
-                fallback_state=last_state,
+                fallback_state=fallback_state,
             )
+            trace_runtime_stage("participant_snapshot_end")
 
             # A 1.7.4 skill response is a generic ChatMessageDTO envelope and
             # normally appears after ActiveDotSkillCard has already become
@@ -648,12 +730,14 @@ def run(args: argparse.Namespace) -> int:
                         pending_completion_epoch = None
                         break
             try:
+                trace_runtime_stage("source_pet_begin")
                 pet = read_player_pet_skill(
                     target.memory,
                     int(active_resolution.instance),
                     expected_pet_class=pet_class,
                     expected_card_class=card_data_class,
                 )
+                trace_runtime_stage("source_pet_end")
             except (ExternalReadError, OSError, LayoutValidationError) as exc:
                 _write(log, "pet_read_rejected", detail=str(exc), session=_session_text(session))
                 pet = None
@@ -684,7 +768,7 @@ def run(args: argparse.Namespace) -> int:
 
             runtime_skill_cards = tuple(
                 card
-                for card in last_state.cards
+                for card in (fallback_state.cards if fallback_state is not None else ())
                 if card.element_type.upper() in DOT_SKILL_ELEMENT_TYPES
             )
             live_skill_candidates = [
@@ -787,24 +871,29 @@ def run(args: argparse.Namespace) -> int:
                     previous_pet_signature = pet_signature
 
             try:
+                trace_runtime_stage("server_challenge_begin")
                 challenge = read_server_qte_challenge(
                     target.memory,
                     int(match_service_resolution.instance),
                     match_id=runtime.match_id or "",
                 )
+                trace_runtime_stage("server_challenge_end")
             except (ExternalReadError, OSError, LayoutValidationError):
                 challenge = None
             candidates = []
             active_qte_card = None
+            trace_runtime_stage("active_qte_singleton_begin")
             active_qte_resolution = target.resolver.resolve_singleton(
                 ACTIVE_DOT_SKILL_CARD
             )
+            trace_runtime_stage("active_qte_singleton_end")
             if (
                 active_qte_resolution.resolved
                 and active_qte_resolution.instance is not None
                 and card_ui_class is not None
             ):
                 try:
+                    trace_runtime_stage("active_qte_read_begin")
                     qte = read_card_ui_qte(
                         target.memory,
                         int(active_qte_resolution.instance),
@@ -833,6 +922,7 @@ def run(args: argparse.Namespace) -> int:
                             source="CardUI.ActiveDotSkillCard",
                         )
                     )
+                    trace_runtime_stage("active_qte_read_end")
                 except (ExternalReadError, OSError, LayoutValidationError) as exc:
                     _write(
                         log,
@@ -898,6 +988,14 @@ def run(args: argparse.Namespace) -> int:
                 ):
                     tracker.note_inactive(session)
                     shadow_observer.note_inactive(session)
+                    if runtime_hook is not None:
+                        runtime_hook.inactive(session)
+                elif runtime_hook is not None:
+                    unreadable = getattr(runtime_hook, "unreadable", None)
+                    if callable(unreadable):
+                        unreadable("ACTIVE_QTE_UNREADABLE_OR_AMBIGUOUS")
+                    else:
+                        runtime_hook.invalidate("ACTIVE_QTE_UNREADABLE_OR_AMBIGUOUS")
                 time.sleep(args.interval)
                 continue
 
@@ -963,6 +1061,16 @@ def run(args: argparse.Namespace) -> int:
                 player_mana=current_resource["mana"],
                 player_power=current_resource["power"],
             )
+            if runtime_hook is not None:
+                runtime_hook.snapshot(
+                    shadow,
+                    lifecycle_valid=(
+                        runtime.match_id == session.match_id
+                        and match_service_resolution.resolved
+                        and active_resolution.resolved
+                        and board_resolution.instance == session.board_instance
+                    ),
+                )
             if shadow.observationally_current:
                 if shadow.qte_generation != previous_shadow_generation:
                     _write(
@@ -1152,7 +1260,17 @@ def run(args: argparse.Namespace) -> int:
 
             time.sleep(args.interval)
 
-        _write(log, "observer_stopped", completedQtes=completed_qtes)
+        if runtime_hook is not None:
+            runtime_hook.stop("HARNESS_STOPPED")
+        _write(
+            log,
+            "observer_stopped",
+            completedQtes=completed_qtes,
+            runtimeHook=(runtime_hook.name if runtime_hook is not None else None),
+            runtimeHookSummary=(
+                runtime_hook.summary if runtime_hook is not None else None
+            ),
+        )
         print(f"Observer stopped; QTE correlated: {completed_qtes}", flush=True)
         return 0
 

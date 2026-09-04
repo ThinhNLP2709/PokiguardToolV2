@@ -53,6 +53,22 @@ class FakeMemory:
         return size > 0 and all(address + index in self.bytes for index in range(size))
 
 
+class MutatingQteMemory(FakeMemory):
+    def __init__(self, qte_address: int, offset: int, replacement: bytes) -> None:
+        super().__init__()
+        self.qte_address = qte_address
+        self.offset = offset
+        self.replacement = replacement
+        self.qte_reads = 0
+
+    def read(self, address: int, size: int) -> bytes:
+        if address == self.qte_address and size == CARD_UI_READ_SIZE:
+            self.qte_reads += 1
+            if self.qte_reads == 2:
+                self.map(self.qte_address + self.offset, self.replacement)
+        return super().read(address, size)
+
+
 class Fixture:
     BASE = 0x0000021000000000
     ACTIVE = BASE + 0x1000
@@ -484,6 +500,44 @@ class PetQteObserverTests(unittest.TestCase):
                 expected_active=fixture_without_button.ACTIVE,
                 expected_card_data=fixture_without_button.CARD,
                 require_button=True,
+            )
+
+    def test_qte_clock_drift_during_read_is_coherent(self) -> None:
+        fixture = Fixture()
+        fixture.map_qte()
+        memory = MutatingQteMemory(
+            fixture.QTE,
+            0x154,
+            struct.pack("<f", 0.40),
+        )
+        memory.bytes.update(fixture.memory.bytes)
+        snapshot = read_card_ui_qte(
+            memory,
+            fixture.QTE,
+            expected_class=fixture.QTE_CLASS,
+            expected_board=fixture.BOARD,
+            expected_active=fixture.ACTIVE,
+            expected_card_data=fixture.CARD,
+        )
+        self.assertAlmostEqual(snapshot.current_time_value, 0.44)
+
+    def test_qte_progress_change_during_read_is_rejected(self) -> None:
+        fixture = Fixture()
+        fixture.map_qte(index=1, correct=1)
+        memory = MutatingQteMemory(
+            fixture.QTE,
+            0x148,
+            struct.pack("<ii", 2, 2),
+        )
+        memory.bytes.update(fixture.memory.bytes)
+        with self.assertRaisesRegex(LayoutValidationError, "changed during read"):
+            read_card_ui_qte(
+                memory,
+                fixture.QTE,
+                expected_class=fixture.QTE_CLASS,
+                expected_board=fixture.BOARD,
+                expected_active=fixture.ACTIVE,
+                expected_card_data=fixture.CARD,
             )
 
     def test_proven_inactive_edge_starts_a_fresh_reused_card_ui_generation(self) -> None:

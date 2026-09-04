@@ -19,6 +19,10 @@ VK_F10 = 0x79
 VK_F6 = 0x75
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
+KEYEVENTF_EXTENDEDKEY = 0x0001
+KEYEVENTF_KEYUP = 0x0002
+MAPVK_VK_TO_VSC = 0
+QTE_DIRECTION_KEY_HOLD_SECONDS = 0.04
 SW_RESTORE = 9
 SWP_NOZORDER = 0x0004
 SWP_NOACTIVATE = 0x0010
@@ -825,6 +829,15 @@ if os.name == "nt":
     _user32.GetWindowTextW.restype = ctypes.c_int
     _user32.EnumWindows.argtypes = [ctypes.c_void_p, wintypes.LPARAM]
     _user32.EnumWindows.restype = wintypes.BOOL
+    _user32.keybd_event.argtypes = [
+        wintypes.BYTE,
+        wintypes.BYTE,
+        wintypes.DWORD,
+        wintypes.WPARAM,
+    ]
+    _user32.keybd_event.restype = None
+    _user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
+    _user32.MapVirtualKeyW.restype = wintypes.UINT
 
 
 class NativeWin32Backend:
@@ -953,6 +966,40 @@ class NativeWin32Backend:
 
     def mouse_left_up(self) -> None:
         _user32.mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+
+    def press_virtual_key(self, virtual_key: int) -> bool:
+        """Emit one discrete normal Windows key press.
+
+        This is an internal OS primitive.  Phase-specific callers must expose
+        a narrower typed boundary; in particular the QTE direction executor
+        maps only the four proven arrow directions to this method.
+
+        The 1.7.4 ``CardUI.GetDirectionFromInput`` native body calls legacy
+        ``UnityEngine.Input.GetKeyDown`` for Arrow/WASD pairs.  Live evidence
+        showed that both virtual-key and scan-code ``SendInput`` events were
+        reported as sent by Windows but never advanced CardUI's authoritative
+        QTE index.  Use the matching legacy Windows keyboard synthesis path;
+        RAM progress remains the only acceptance acknowledgement.
+        """
+
+        if not 1 <= int(virtual_key) <= 0xFE:
+            raise ValueError("virtual_key is outside the Windows VK range")
+        scan_code = int(
+            _user32.MapVirtualKeyW(int(virtual_key), MAPVK_VK_TO_VSC)
+        ) & 0xFF
+        if scan_code == 0:
+            return False
+        flags = KEYEVENTF_EXTENDEDKEY if int(virtual_key) in (0x25, 0x26, 0x27, 0x28) else 0
+        _user32.keybd_event(int(virtual_key), scan_code, flags, 0)
+        # Keep the single logical press down across multiple rendered frames.
+        time.sleep(QTE_DIRECTION_KEY_HOLD_SECONDS)
+        _user32.keybd_event(
+            int(virtual_key),
+            scan_code,
+            flags | KEYEVENTF_KEYUP,
+            0,
+        )
+        return True
 
     def virtual_screen(self) -> tuple[int, int, int, int]:
         left = int(_user32.GetSystemMetrics(76))

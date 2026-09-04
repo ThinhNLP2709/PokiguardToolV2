@@ -194,18 +194,12 @@ Code có:
 - `CheckArrow(string dir)`
 - arrow sprites
 
-Do đó directional QTE được xác nhận ở mức kiến trúc.
-
-Tuy nhiên chưa thể khẳng định literal mapping `UP/DOWN/LEFT/RIGHT` hoặc key code cụ thể từ diffable C#.
-
-Cần reverse native:
-```text
-SkillPetEspect.Update()
-SkillPetEspect.HandleKeyPress()
-DotSkillManager.Update()
-DotSkillManager.GetDirectionFromInput()
-DotSkillManager.CheckArrow()
-```
+Do đó directional QTE được xác nhận ở mức kiến trúc. Native 1.7.4 sau đó đóng
+mapping tại `CardUI.GetDirectionFromInput @ RVA 0x5B59A0`: method gọi legacy
+`UnityEngine.Input.GetKeyDown` lần lượt với các cặp `DownArrow(274)/S(115)`,
+`LeftArrow(276)/A(97)`, `RightArrow(275)/D(100)`, và
+`UpArrow(273)/W(119)`. Live Phase 3B.2 xác nhận normal Windows arrow input đi
+qua legacy keyboard synthesis làm `currentIndex/correctCount` tăng đúng 21/21.
 
 ## 8. Space / phím hoàn tất
 

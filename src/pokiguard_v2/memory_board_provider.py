@@ -3021,6 +3021,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 None,
                 False,
                 "lobby_batch_baseline_unavailable",
+                session_key=candidate_session,
                 combat_lifecycle=lifecycle_observation,
             )
 
