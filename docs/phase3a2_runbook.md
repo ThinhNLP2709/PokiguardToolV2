@@ -1,10 +1,5 @@
 # Phase 3A.2 — Runbook cấu hình Pet và capability
 
-**Cập nhật 2026-09-11:** source v1.0.45 có bản sửa đọc bàn/sequence sau hai
-lượt test thủ công. Dùng [hướng dẫn test lại](phase3a2_manual_bugfix.md), mục
-cuối. Số liệu v1.0.44 dưới đây là acceptance lịch sử, không phải live acceptance
-của bản sửa. Full regression hiện tại: **1134 PASS**.
-
 Runbook này tái hiện đúng phạm vi cấu hình. Nó không chạy Pet Skill, không equip
 pet, không đổi Fusion target và không sửa gameplay policy.
 

@@ -1,18 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-11 (Asia/Saigon)**.
-
-## Current maintenance — v1.0.45, manual retest pending
-
-Phase 3A.2 scope remains. Two stopped manual runs exposed missed board
-acquisition and costly scans. Source v1.0.45 supports verified b2 preBoard and
-seqNum fallback, and compares transport srvSeq before the client sequence when
-deciding to escalate a heap scan. Runtime Fusion cost was already 120; no
-hard-coded cost change. Four Sword-bearing decision boards all selected Sword;
-the exact reported missed turn remains unproven because its board was not saved.
-Existing paused-clock/input gates are preserved. **1134 offline tests PASS**;
-no post-fix live match or packaged rebuild. Details and operator steps:
-[manual bugfix report](phase3a2_manual_bugfix.md).
+Canonical technical handoff as of **2026-09-10 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted

@@ -1,40 +1,5 @@
 # IL2CPP symbols — Phase 1
 
-## b2 transport / turn timing audit — 2026-09-11, v1.0.45
-
-Evidence: `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/{ChatMessageDTO,
-MatchPayloadPreparser,MatchService}.cs` and read-only native disassembly of
-GameAssembly SHA256 `7E001DA2DCBD196474E4B5D05AB4673ACB2D7B7FE4534383E930E6878E8E6991`.
-Offsets/ranges CONFIRMED; native behavior HIGH. Runtime absolute addresses
-are not configuration. See `phase3a2_manual_bugfix.md` for log limitations.
-
-| Member | Kind/type | Offset/RVA |
-|---|---|---|
-| ChatMessageDTO.seqNum | instance, Nullable<Int64> | +0xB8 flag, +0xC0 value |
-| ChatMessageDTO.preBoard | instance, BoardCellDTO[][] | +0x3C8 |
-| ChatMessageDTO.preBoardReady | instance, Boolean | +0x3D0 |
-| MatchPayloadPreparser.PrepareBoard | static void(ChatMessageDTO, Dictionary<string,object>) | 0x3919D0..0x391B70 |
-| MatchService.ParseCombatBatch | instance WsCombatBatch(ChatMessageDTO,string) | 0x3973E0..0x397A60 |
-| MatchService.TurnTimeRemainingSec | instance, Int32 | +0x138 |
-| MatchService.LastAnnounceHoldMs | instance, Int32 | +0x13C |
-| MatchService.ClockPaused / ClockPauseReason | instance, Boolean / String | +0x165 / +0x168 |
-| MatchService.IsStartGatePaused | instance Boolean getter | 0x39C230..0x39C290 |
-
-PrepareBoard writes preBoard at 0x391AD0 then ready=1 at 0x391AE6.
-ParseCombatBatch tests ready at 0x39765F and nonnull at 0x39766C; at
-0x39767A..0x397681 copies it into WsCombatBatch.board (+0x38). Otherwise it
-uses the payload decoder. At 0x397521 it loads message.seqNum value; at
-0x39753C..0x39754C passes it as fallback to ReadLong(payload,"srvSeq",fallback).
-The initialized string slot at module RVA 0x2DC7D80 was read as `srvSeq`;
-PrepareBoard's slot RVA 0x2DE43D8 was read as `board` in the installed process.
-This proves a message's seqNum need not equal payload.srvSeq.
-
-IsStartGatePaused requires HasServerClock, ClockPaused and the START_GATE
-reason. HandleMatchTurnEnd writes remaining at 0x396488, announcement hold
-at 0x3964A3, and clears local FX hold at 0x3964A9. Exact new animation duration
-and its complete cross-type lifetime remain UNKNOWN. Existing runtime
-clock/presentation/board-ready gates remain mandatory; no method was called.
-
 ## Current 1.7.4-b2 semantic correction — B4, 2026-09-10
 
 `Board.isUsingLegendCard : System.Boolean`, instance +0x391, remains a verified

@@ -620,7 +620,7 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         self.assertFalse(second.full_scan_performed)
         self.assertEqual(second.scan_reason, "LEARNED_REGIONS_WITH_NEIGHBORS")
 
-    def _assert_unoffered_board_prevents_full_scan(self, *, seq_num, payload_ints) -> None:
+    def test_unoffered_bounded_board_prevents_full_escalation(self) -> None:
         learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
         monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
         monitor.target = SimpleNamespace(memory=object())
@@ -656,7 +656,7 @@ class RuntimeRegionLearningTests(unittest.TestCase):
             timestamp="server-now",
             username="happi",
             payload_address=0x5000,
-            server_sequence=seq_num,
+            server_sequence=44,
             from_col=None,
             from_row=None,
             to_col=None,
@@ -666,7 +666,7 @@ class RuntimeRegionLearningTests(unittest.TestCase):
             reject_reason=None,
             idle_count=None,
             threshold=None,
-            payload_ints=payload_ints,
+            payload_ints=(),
             payload_bools=(),
             payload_strings=(),
         )
@@ -703,14 +703,6 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         self.assertEqual(observation.scan_reason, "LOCAL_TURN_ACK_GAP_BOUNDED")
         self.assertEqual(observation.board_messages, (message,))
         self.assertEqual(scanner.call_count, 1)
-
-    def test_unoffered_bounded_board_prevents_full_escalation(self) -> None:
-        self._assert_unoffered_board_prevents_full_scan(seq_num=44, payload_ints=())
-
-    def test_payload_srv_seq_prevents_scan_when_client_seq_num_differs(self) -> None:
-        self._assert_unoffered_board_prevents_full_scan(
-            seq_num=3, payload_ints=(("srvSeq", 44),),
-        )
 
     def test_stale_unoffered_board_does_not_hide_latest_ack_gap(self) -> None:
         learned = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)

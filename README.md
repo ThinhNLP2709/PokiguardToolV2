@@ -27,7 +27,7 @@ thư mục game. Release Candidate đã được clean-build và live-validate t
 e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
-The current source compatibility version is `v1.0.45`. The accepted packaged
+The current source compatibility version is `v1.0.44`. The accepted packaged
 Phase 2F.2 artifact above remains `v1.0.0+15`; rebuild packaging before
 distributing the maintenance version.
 
@@ -80,11 +80,7 @@ See [AGENTS.md](AGENTS.md) for workspace rules, the
 
 ## Current status
 
-The v1.0.45 maintenance fix adds b2 preBoard/sequence decoding and avoids
-unnecessary ACK-gap scans. Offline regression passed; manual live retest is
-pending. See the [manual bugfix report](docs/phase3a2_manual_bugfix.md).
-
-Phase 3A.2 is the current source phase at `v1.0.45`. It replaces the Desktop
+Phase 3A.2 is the current source phase at `v1.0.44`. It replaces the Desktop
 `ManaPriority` setting with typed **Pet của tôi**, **Tiến hóa**, and **Thẻ sát
 thương** fields. `NORMAL/NORMAL/DEFAULT_ATTACK` and
 `NORMAL/NONE/DEFAULT_ATTACK` retain the two old BASIC behaviors through a
@@ -135,8 +131,8 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.45`
-source baseline passes **1134 tests** and includes regression coverage
+The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.44`
+source baseline passes **1121 tests** and includes regression coverage
 for the Pet configuration/capability matrix, preference and checkpoint
 migrations, UI visibility/locking, safe future-profile gates, and the unchanged
 Phase 3B.3 Pet Skill primitive. It also retains coverage

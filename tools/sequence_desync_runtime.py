@@ -474,11 +474,7 @@ class RuntimeSequenceMonitor:
         bounded_found_unoffered_board = any(
             message.event_type == "MATCH_MOVE_RES"
             and message.payload_address is not None
-            # seqNum can be the client move counter. ParseCombatBatch uses
-            # payload.srvSeq first; comparing only seqNum caused a full heap
-            # scan even when this fast scan had already found the current board.
-            and dict(message.payload_ints).get("srvSeq", message.server_sequence)
-            == runtime.highest_acked_sequence
+            and message.server_sequence == runtime.highest_acked_sequence
             and message.address not in offered_addresses
             for message in decoded.values()
         )

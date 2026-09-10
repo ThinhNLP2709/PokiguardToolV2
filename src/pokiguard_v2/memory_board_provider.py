@@ -2407,7 +2407,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             snapshot.cells,
         )
         identity = self._register(
-            candidate, f"ChatMessageDTO.{event_type}.{snapshot.board_source}"
+            candidate, f"ChatMessageDTO.{event_type}.matchPayload.board"
         )
         self._transport_attested.add(identity)
         return True
@@ -4309,7 +4309,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         value
                         for value in self._sources.get(identity, ())
                         if value.startswith("ChatMessageDTO.")
-                        and value.endswith((".matchPayload.board", ".preBoard"))
+                        and value.endswith(".matchPayload.board")
                     )
                     source = (
                         (transport_sources[-1] if transport_sources else

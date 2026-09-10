@@ -440,17 +440,6 @@ class ActionabilityGateTests(unittest.TestCase):
         self.assertEqual(result.details["clockPauseReason"], "fusion_transition")
         self.assertFalse(result.details["startGatePaused"])
 
-    def test_turn_announcement_pause_then_resume_same_board(self) -> None:
-        state = actionable_state()
-        for reason in ("FX", "START_GATE"):
-            paused = replace(state, battle=replace(
-                state.battle, clock_paused=True, clock_pause_reason=reason,
-                start_gate_paused=reason == "START_GATE",
-            ))
-            with self.subTest(reason=reason):
-                self.assertEqual(ActionabilityGate.evaluate(paused, context()).reason, GateReason.CLOCK_PAUSED)
-                self.assertTrue(ActionabilityGate.evaluate(state, context()).actionable)
-
 
 if __name__ == "__main__":
     unittest.main()
