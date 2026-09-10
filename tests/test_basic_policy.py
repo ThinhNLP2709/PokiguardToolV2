@@ -266,6 +266,31 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertTrue(decision.requires_state_reread)
         self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
 
+    def test_runtime_fusion_cost_120_is_inclusive_and_not_fixed_at_160(self) -> None:
+        engine = BasicPolicyEngine(PolicyConfig(mana_priority=ManaPriority.EVOLUTION))
+        for mana in (119, 120, 159):
+            state = combat_state(fusion_used=False, mana=mana, turn=3)
+            state = replace(state, fusion=replace(state.fusion, mana_cost=120))
+            with self.subTest(mana=mana):
+                self.assertEqual(engine.decide(state).action is PolicyAction.EVOLVE, mana >= 120)
+
+    def test_manual_run_boards_do_not_skip_an_available_sword(self) -> None:
+        import json
+        from pathlib import Path
+        samples = json.loads((Path(__file__).resolve().parents[1] / "reference" /
+                              "phase3a2_manual_board_audit.json").read_text())
+        engine = BasicPolicyEngine(PolicyConfig(mana_priority=ManaPriority.EVOLUTION))
+        for sample in samples:
+            board = BoardState(tuple(tuple(
+                CellState(row, col, GemType(gem), multiplier)
+                for col, (gem, multiplier) in enumerate(values)
+            ) for row, values in enumerate(sample["board"])))
+            state = combat_state(board=board, mana=0, turn=sample["turn"])
+            with self.subTest(run=sample["run"], turn=sample["turn"]):
+                swords = [move for move in evaluate_all_moves(board) if move.sword_effective > 0]
+                self.assertEqual(len(swords), sample["swordCandidates"])
+                self.assertEqual(engine.decide(state).trace.policy_step == "STEP_2_SWORD", bool(swords))
+
     def test_evolution_starts_on_second_local_turn_not_opening_turn(self) -> None:
         opening = combat_state(
             fusion_used=False,

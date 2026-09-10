@@ -1,5 +1,10 @@
 # Phase 3A.2 — Pet Configuration + Capability Model
 
+**Maintenance 2026-09-11:** source v1.0.45 sửa hỗ trợ đọc bàn b2 và so sánh
+sequence sau hai run người dùng test. **277 focused / 1134 full PASS**, chưa
+chạy lại live. Xem [báo cáo bugfix](phase3a2_manual_bugfix.md). Acceptance
+v1.0.44 bên dưới được giữ nguyên như lịch sử.
+
 **Kết quả:** **PASS**, không xếp `PASS STRONG` vì mẫu live B3 không thu được
 bằng chứng terminal và không trở về `BOSS_LOBBY`.
 

@@ -1633,6 +1633,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                                 message_address=message.address,
                                 payload_address=message.payload_address,
                                 classes=opening_classes,
+                                expected_message_class=target.resolver.resolve_type_info_class(
+                                    CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                ),
                             )
                             preloaded_opening = decoded
                             offered_messages.add(message.address)
@@ -1659,6 +1662,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                                 payload_address=message.payload_address,
                                 classes=opening_classes,
                                 event_type=message.event_type,
+                                expected_message_class=target.resolver.resolve_type_info_class(
+                                    CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                ),
                             )
                             preloaded_transports[message.address] = decoded
                             offered_messages.add(message.address)
@@ -1819,6 +1825,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                                     message_address=message.address,
                                     payload_address=message.payload_address,
                                     classes=opening_classes,
+                                    expected_message_class=target.resolver.resolve_type_info_class(
+                                        CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                    ),
                                 )
                                 preloaded_opening = snapshot
                                 accepted = provider.offer_opening_snapshot(snapshot)
@@ -1841,6 +1850,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                                     payload_address=message.payload_address,
                                     classes=opening_classes,
                                     event_type=message.event_type,
+                                    expected_message_class=target.resolver.resolve_type_info_class(
+                                        CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                    ),
                                 )
                                 preloaded_transports[message.address] = snapshot
                                 accepted = provider.offer_transport_board_snapshot(

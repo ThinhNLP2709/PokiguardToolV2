@@ -22,7 +22,12 @@ import struct
 from typing import Any, Mapping
 
 from .il2cpp_external import ExternalReadError, is_canonical_user_pointer
-from .il2cpp_layout import BoardCellSnapshot, LayoutValidationError, read_il2cpp_string
+from .il2cpp_layout import (
+    BoardCellSnapshot,
+    LayoutValidationError,
+    read_board_cell_jagged_array,
+    read_il2cpp_string,
+)
 from .live_state import dto_rejection_reasons
 
 
@@ -59,10 +64,18 @@ JTOKEN_INTEGER = 6
 JTOKEN_STRING = 8
 MAX_SERVER_SEQUENCE = 10_000_000
 
+# 1.7.4-b2 ChatMessageDTO.cs and MatchService.ParseCombatBatch native body.
+CHAT_MESSAGE_TYPE_OFFSET = 0x30
+CHAT_MESSAGE_MATCH_ID_OFFSET = 0xB0
+CHAT_MESSAGE_SEQUENCE_OFFSET = 0xB8  # Nullable<Int64>: flag, padding, value
+CHAT_MESSAGE_PAYLOAD_OFFSET = 0xC8
+CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x3C8
+CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x3D0
+
 # All three response handlers in the supported 1.7.4 build delegate to
 # MatchService.HandleResEnvelope, which in turn calls ParseCombatBatch on the
-# exact ChatMessageDTO.  A response is still accepted below only when its
-# payload contains both a strict 8x8 board and a bounded srvSeq.
+# exact ChatMessageDTO. A response still requires a strict 8x8 board and a
+# bounded transport sequence, from the payload or verified preparse fields.
 SUPPORTED_TRANSPORT_BOARD_EVENTS = frozenset(
     {
         "MATCH_START",
@@ -99,6 +112,7 @@ class OpeningBoardSnapshot:
     board_token_address: int
     sequence: int
     cells: tuple[BoardCellSnapshot, ...]
+    board_source: str = "matchPayload.board"
 
     def __post_init__(self) -> None:
         if not self.match_id.strip():
@@ -339,13 +353,15 @@ def read_match_payload_board_snapshot(
     payload_address: int,
     classes: NewtonsoftClasses,
     event_type: str,
+    expected_message_class: int | None = None,
 ) -> OpeningBoardSnapshot:
     """Decode a current-match transport payload's exact board witness.
 
     The caller has already validated the enclosing ``ChatMessageDTO`` class,
     event type and match id. This function independently requires a supported
-    board-bearing event, a nonnegative boxed ``srvSeq`` and the board key
-    before it exposes cells.
+    board-bearing event and a bounded server sequence before exposing cells.
+    With an exact message class it also supports the game's preBoard and
+    nullable seqNum fallbacks, using the same precedence as ParseCombatBatch.
     """
 
     if not match_id.strip():
@@ -354,23 +370,64 @@ def read_match_payload_board_snapshot(
         raise LayoutValidationError(
             f"unsupported transport board event: {event_type}"
         )
+
+    def message_identity() -> tuple[int, int, int, bytes, int, bytes]:
+        _exact_class(memory, message_address, int(expected_message_class), "ChatMessageDTO")
+        type_pointer = _pointer(memory, message_address + CHAT_MESSAGE_TYPE_OFFSET)
+        match_pointer = _pointer(memory, message_address + CHAT_MESSAGE_MATCH_ID_OFFSET)
+        if (
+            read_il2cpp_string(memory, type_pointer, max_length=64) != event_type
+            or read_il2cpp_string(memory, match_pointer, max_length=256) != match_id
+            or _pointer(memory, message_address + CHAT_MESSAGE_PAYLOAD_OFFSET) != payload_address
+        ):
+            raise LayoutValidationError("transport board message identity changed")
+        return (
+            type_pointer, match_pointer, payload_address,
+            _read_exact(memory, message_address + CHAT_MESSAGE_SEQUENCE_OFFSET, 16),
+            _pointer(memory, message_address + CHAT_MESSAGE_PRE_BOARD_OFFSET),
+            _read_exact(memory, message_address + CHAT_MESSAGE_PRE_BOARD_READY_OFFSET, 1),
+        )
+
+    identity = message_identity() if expected_message_class is not None else None
     entries = _read_dictionary_entries(memory, payload_address, max_entries=64)
     board_token = entries.get("board")
     sequence_box = entries.get("srvSeq")
-    if board_token is None or sequence_box is None:
-        raise LayoutValidationError(
-            f"{event_type} payload lacks board/srvSeq"
+    if sequence_box is not None:
+        sequence = _read_boxed_integer(
+            memory, sequence_box, minimum=0, maximum=MAX_SERVER_SEQUENCE,
         )
-    # Live evidence shows MATCH_START uses a positive transport sequence (3 in
-    # the 2026-08-13 verification run) even though it has no _ackedSeqs entry.
-    # Do not conflate that independent transport sequence with LocalSeqNum=0.
-    sequence = _read_boxed_integer(
-        memory,
-        sequence_box,
-        minimum=0,
-        maximum=MAX_SERVER_SEQUENCE,
-    )
-    cells = read_opening_board_jarray(memory, board_token, classes=classes)
+    elif identity is not None and identity[3][0] == 1:
+        sequence = struct.unpack_from("<q", identity[3], 8)[0]
+        if not 0 <= sequence <= MAX_SERVER_SEQUENCE:
+            raise LayoutValidationError("transport seqNum outside bounds")
+    else:
+        raise LayoutValidationError(f"{event_type} payload lacks srvSeq/valid seqNum")
+
+    source = "matchPayload.board"
+    if identity is not None and identity[5] not in (b"\x00", b"\x01"):
+        raise LayoutValidationError("preBoardReady is not a valid boolean")
+    if identity is not None and identity[5] == b"\x01" and identity[4] != 0:
+        board_token = identity[4]
+        cells = read_board_cell_jagged_array(memory, board_token)
+        if dto_rejection_reasons(cells):
+            raise LayoutValidationError("preBoard semantic validation failed")
+        source = "preBoard"
+    elif board_token is not None:
+        cells = read_opening_board_jarray(memory, board_token, classes=classes)
+    else:
+        raise LayoutValidationError(f"{event_type} lacks board/ready preBoard")
+
+    # Preparse and dispatch can mutate these roots while the external reader
+    # runs. Retry a torn sample; never combine one message's grid and another's
+    # sequence. Render ACK and current-session readiness remain provider gates.
+    if identity is not None and (
+        message_identity() != identity
+        or _read_dictionary_entries(memory, payload_address, max_entries=64) != entries
+        or (sequence_box is not None and _read_boxed_integer(
+            memory, sequence_box, minimum=0, maximum=MAX_SERVER_SEQUENCE,
+        ) != sequence)
+    ):
+        raise LayoutValidationError("transport board changed during read")
     return OpeningBoardSnapshot(
         match_id=match_id,
         message_address=message_address,
@@ -378,6 +435,7 @@ def read_match_payload_board_snapshot(
         board_token_address=board_token,
         sequence=sequence,
         cells=cells,
+        board_source=source,
     )
 
 
@@ -487,6 +545,7 @@ def read_match_start_opening_snapshot(
     message_address: int,
     payload_address: int,
     classes: NewtonsoftClasses,
+    expected_message_class: int | None = None,
 ) -> OpeningBoardSnapshot:
     """Decode the exact ``MATCH_START.matchPayload`` opening witness."""
 
@@ -497,6 +556,7 @@ def read_match_start_opening_snapshot(
         payload_address=payload_address,
         classes=classes,
         event_type="MATCH_START",
+        expected_message_class=expected_message_class,
     )
 
 

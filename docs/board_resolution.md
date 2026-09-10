@@ -1,5 +1,27 @@
 # Board instance resolution — Phase 1
 
+## b2 transport witness correction — 2026-09-11
+
+`ChatMessageDTO` has a second verified board root: `preBoard +0x3C8`, gated by
+`preBoardReady +0x3D0`. The exact runtime class, message type/current match,
+matchPayload ownership, 8x8 coordinate/tag/multiplier invariants and unchanged
+message identity before/after decoding are required. This is the same typed
+grid copied by ParseCombatBatch into WsCombatBatch.board; native evidence is
+in `il2cpp_symbols.md`, current transport audit.
+
+Sequence follows game precedence: boxed `matchPayload.srvSeq`, else a valid
+nullable `ChatMessageDTO.seqNum`. Never substitute MatchService's current ACK
+as a missing message sequence. A retained response board still needs its exact
+sequence in the current-session ACK set plus ordinary stable/render/ready gates.
+Do not lower the watermark to an older board to conceal an unresolved gap.
+The opening authority marker remains the existing MATCH_START contract;
+response sources distinguish `.preBoard` from `.matchPayload.board` in logs.
+
+The pre-scan monitor must compare that effective transport sequence with ACK,
+not only seqNum: seqNum may be a client counter even when the payload carries
+the correct current board. See `phase3a2_manual_bugfix.md`; offline regression
+passed, post-fix live turn acquisition remains to be verified by the operator.
+
 ## Current 1.7.4-b2 addendum — 2026-09-07
 
 The ownership strategy is unchanged, but current build anchors must be used:

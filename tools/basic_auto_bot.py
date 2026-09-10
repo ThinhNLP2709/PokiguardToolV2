@@ -29,6 +29,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.actionability import ActionabilityGate, GateContext  # noqa: E402
+from pokiguard_v2.il2cpp_external import CHAT_MESSAGE_DTO_TYPE_INFO_RVA  # noqa: E402
 from pokiguard_v2.autonomous_control import (  # noqa: E402
     ActionResultKind,
     AutonomousActionIdentity,
@@ -3510,6 +3511,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                         message_address=early_start.address,
                                         payload_address=early_start.payload_address,
                                         classes=opening_classes,
+                                        expected_message_class=target.resolver.resolve_type_info_class(
+                                            CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                        ),
                                     )
                                 )
                                 preloaded_opening_message = early_start.address
@@ -3776,6 +3780,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     payload_address=int(message.payload_address),
                                     classes=opening_classes,
                                     event_type=message.event_type,
+                                    expected_message_class=target.resolver.resolve_type_info_class(
+                                        CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                    ),
                                 )
                                 accepted = provider.offer_transport_board_snapshot(
                                     snapshot, event_type=message.event_type
@@ -3791,6 +3798,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     ),
                                     srvSeq=snapshot.sequence,
                                     completeCells=len(snapshot.cells),
+                                    boardSource=snapshot.board_source,
                                     accepted=accepted,
                                 )
                             except (OSError, RuntimeError, ValueError) as exc:
@@ -3799,6 +3807,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     "transport_board_snapshot_rejected",
                                     eventType=message.event_type,
                                     messageAddress=hex_pointer(message.address),
+                                    seqNum=message.server_sequence,
+                                    payloadSrvSeq=dict(message.payload_ints).get("srvSeq"),
+                                    payloadFields=sorted(
+                                        dict(message.payload_ints) | dict(message.payload_strings)
+                                    ),
                                     reason=str(exc),
                                 )
                 except (OSError, RuntimeError, ValueError) as exc:
@@ -4316,6 +4329,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     message_address=start_message.address,
                                     payload_address=start_message.payload_address,
                                     classes=opening_classes,
+                                    expected_message_class=target.resolver.resolve_type_info_class(
+                                        CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                    ),
                                 )
                                 accepted = provider.offer_opening_snapshot(opening)
                                 opening_offered_message = start_message.address

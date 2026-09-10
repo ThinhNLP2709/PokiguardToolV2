@@ -327,6 +327,9 @@ def run(args: argparse.Namespace) -> int:
                                 message_address=message.address,
                                 payload_address=message.payload_address,
                                 classes=opening_classes,
+                                expected_message_class=target.resolver.resolve_type_info_class(
+                                    CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                                ),
                             )
                             offered = provider.offer_opening_snapshot(opening)
                             saw_match_start_board = saw_match_start_board or offered
