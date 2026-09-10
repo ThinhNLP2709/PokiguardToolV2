@@ -138,6 +138,22 @@ class ForegroundExecutorTests(unittest.TestCase):
             [(100 + int(0.40 * 1279), 200 + int(0.65 * 719))],
         )
 
+    def test_confirmed_ui_point_can_settle_cursor_before_single_click(self) -> None:
+        backend = FakeBackend()
+        sleeps: list[float] = []
+        executor = ForegroundClickExecutor(backend, sleeper=sleeps.append)
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+
+        result = executor.send_normalized_point(
+            binding,
+            (0.40, 0.65),
+            settle_cursor=True,
+        )
+
+        self.assertTrue(result.sent)
+        self.assertEqual(backend.clicks, 1)
+        self.assertEqual(sleeps, [executor.cursor_settle_seconds])
+
 
 class WindowPreparationTests(unittest.TestCase):
     def test_start_preflight_normalizes_exact_pid_to_canonical_client(self) -> None:

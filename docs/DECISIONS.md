@@ -41,6 +41,58 @@ future task:
 Gameplay input is normal Windows user input only. `PokiguardAuto` is reference
 only, and `pc` is strictly read only, as defined in `AGENTS.md`.
 
+## B3 manual-consumable test exclusion (user correction 2026-09-10)
+
+The tool must not use functional consumables to inject Mana or Rage. B3
+attempt 11 overlapped the operator's accidental manual Mana-card use; the user
+explicitly excludes this out-of-protocol sample from acceptance scoring. Keep
+its raw `CARD_CLICK_SENT_QTE_UNCONFIRMED` log, but label the test
+`EXCLUDED_OPERATOR_INTERFERENCE`: neither PASS nor FAIL, and no reset of the
+six-Perfect streak from attempts 5-10. This specific exclusion does not excuse
+ordinary automation failures or authorize automatic consumable use. No code or
+timing changes were requested. Subsequent tests use normally accumulated
+resources and the existing one-shot skill authority.
+
+## Pet Skill QTE Completion Contract (final correction 2026-09-09, v1.0.41)
+
+For the external automation boundary, `MATCH_SKILL_USE_RES` is **not** a
+mandatory success acknowledgement. The game still consumes its own server
+response internally to apply authoritative combat state/effects, but the tool
+must not fail a visibly completed current action merely because that short-lived
+callback was not captured from RAM.
+
+The accepted automation chain is:
+
+1. bind the current server-issued QTE challenge and exact action/session;
+2. send every direction closed-loop and require runtime progression to `7/7`;
+3. send exactly one Space inside the current runtime Perfect interval;
+4. require the same current CardUI generation to report runtime `PERFECT`;
+5. immediately finish the action as `SUCCESS_PERFECT` with reason
+   `CURRENT_GENERATION_RUNTIME_PERFECT`; send no more input for that action.
+
+The tool does not wait for or collect the post-Space callback, resource delta,
+board cascade, terminal result, or later settled board to accept this primitive.
+The v1.0.40 requirement to wait for a fresh post-skill GameState was an incomplete
+implementation of the user's correction and is superseded. A later callback
+cannot reopen or revoke an already completed QTE action.
+
+This completion does not declare the board playable. A future gameplay
+integration must acquire its normal fresh, stable, ready, non-cascading,
+actionable GameState before its next board/card action. GameState failure may
+delay or recover that future gameplay operation; it must not relabel the
+completed QTE as failed. Phase 3B.3 remains a one-action harness without
+BASIC/FarmRunner integration.
+
+Response decoders remain available for read-only diagnostics, but the production
+one-shot starts no dispatcher tap or response heap scan. If a caller already
+supplies an exactly correlated explicit reject before runtime completion, the
+unfinished action still fails closed. Stale responses never reject a new action.
+
+This decision supersedes the Phase 3B.3 prompt/report wording that required
+external callback correlation or post-effect GameState for action success. It
+does not remove the mandatory server challenge before input and does not
+authorize direct server/game calls.
+
 ## Gameplay Configuration
 
 The exact user-facing dimensions are:
@@ -653,3 +705,72 @@ Both signals are mandatory. This substitutes only for unavailable dynamic
 `CardUI.lastTurnUsed/hasUsedThisTurn` fields on that direct path; one signal
 alone, another authority, a cost mismatch, or an ambiguous turn remains
 unconfirmed and cannot be fabricated as acceptance.
+
+## Pet Skill strip order and future pet preferences (user clarification 2026-09-04)
+
+The user specifies these expected left-to-right combat layouts:
+
+1. Main pet already has a skill: **main-pet Skill -> Evolution -> user-selected cards**.
+2. Main pet has no skill; evolution pet has a skill: **Evolution -> user-selected
+   cards -> evolution-pet Skill**, with the last card appearing only AFTER
+   successful evolution. It does not replace Evolution's slot.
+
+The number of user-selected cards is variable. Never infer a universal slot
+index from the historical four/five-card loadout. Reuse existing card-data,
+resource, window mapping, visual sanity and foreground click primitives;
+extend the strip resolver instead of duplicating normal card input.
+
+These orders are user-confirmed gameplay/UI expectations. Case 2 also matches
+the Phase 3B.3 current native-hand evidence (five active cards, skill last).
+Case 1 has not had live acceptance in this test series. Configuration/order
+alone does not prove the current CardUI, Button, identity, resources or
+actionability; those still come from the current match. Do not silently use
+the old standard-card direct-owner shortcut as Pet Skill authorization.
+
+In a LATER phase, Preferences must let the user select the main pet/type and
+the evolution pet/type. Those required selections describe the intended
+loadout, not static absolute coordinates or authority to use a missing card.
+Do not add that UI, BASIC Pet Skill policy or resource planning in Phase 3B.3.
+The layout when BOTH pets supply skills after evolution is not fully specified
+or live-validated here; do not invent replacement/coexistence semantics.
+
+### Phase 3B.3 QTE timing correction (2026-09-04)
+
+User reported the automatic card click now works but directions are too slow
+to complete 7/7 and confirm Perfect. Preserve the accepted fast closed-loop
+3B.2 direction primitive. Remove full board/card scans from its critical poll
+path, not the per-key authoritative ACK. Confirm with one Space in the current
+runtime-derived Perfect window only after all directions are correct. No blind
+retry or early/late Space to compensate for game lag. This remains a one-shot
+acceptance harness; it does not authorize Pet Skill gameplay policy/farming.
+Evidence and pending live revalidation: `phase3b3_qte_timing_evidence.md`.
+
+The one-shot's second Pet Skill card preflight occurs before any input and must
+stay on the exact current-session native-hand/control-only read path. It must
+not depend on a full playable-board publication that can transiently disappear
+during the turn. This does not relax the final card identity, geometry,
+foreground, local-turn, resource, lifecycle or inactive-QTE gates and does not
+authorize retrying any emitted input.
+
+While a Pet Skill one-shot can still emit input, a synchronous observation or
+geometry stage must not be allowed to resume after an unbounded stall and send
+late input. A two-second stage watchdog revokes that one-shot's authority and
+records the exact stalled stage. It does not classify the game/server result,
+retry an input, or apply to the bounded read-only result/post-state wait after
+Space.
+
+### Phase 3B.3 B4 bounded same-match authorization (2026-09-10)
+
+Following B3's accepted ten-action streak, the user explicitly requested testing
+multiple QTEs in one combat and authorized B4 from the boss lobby. The B4-only
+harness may execute at most TWO full Pet Skills in the SAME retained session,
+using a fresh per-action executor and current QTE identity for each. It may not
+auto-play the board, evolve, use resource consumables, enter another match or
+integrate Pet Skill into BASIC/FarmRunner. The operator plays/prepares resources.
+
+Runtime PERFECT completes each action immediately under the existing revised
+contract. Readiness for action 2 is independent: current inactive QTE, later
+ready local turn, current resources/card/geometry, fresh generation/challenge.
+Reaching terminal before action 2 is incomplete same-match evidence, not a
+failure of an already accepted Perfect or permission to force a recovery.
+Stop after two successes or any post-input failure/session exit/operator abort.

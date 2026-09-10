@@ -17,6 +17,7 @@ It performs no process writes or game method calls.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import struct
 from typing import Any, Mapping
 
@@ -27,10 +28,10 @@ from .live_state import dto_rejection_reasons
 
 # Metadata-usage slots referenced as typeof(...) by the local Newtonsoft.Json
 # native bodies.  These are build RVAs, never ASLR-dependent addresses.
-JARRAY_TYPE_INFO_RVA = 0x2C47B68
-JOBJECT_TYPE_INFO_RVA = 0x2C47D68
-JPROPERTY_TYPE_INFO_RVA = 0x2C47EC0
-JVALUE_TYPE_INFO_RVA = 0x2C48578
+JARRAY_TYPE_INFO_RVA = 0x2E02ED0
+JOBJECT_TYPE_INFO_RVA = 0x2E030F8
+JPROPERTY_TYPE_INFO_RVA = 0x2E03268
+JVALUE_TYPE_INFO_RVA = 0x2E03990
 
 JARRAY_VALUES_OFFSET = 0x58
 LIST_ITEMS_OFFSET = 0x10
@@ -57,6 +58,19 @@ ENTRY_VALUE_OFFSET = 0x10
 JTOKEN_INTEGER = 6
 JTOKEN_STRING = 8
 MAX_SERVER_SEQUENCE = 10_000_000
+
+# All three response handlers in the supported 1.7.4 build delegate to
+# MatchService.HandleResEnvelope, which in turn calls ParseCombatBatch on the
+# exact ChatMessageDTO.  A response is still accepted below only when its
+# payload contains both a strict 8x8 board and a bounded srvSeq.
+SUPPORTED_TRANSPORT_BOARD_EVENTS = frozenset(
+    {
+        "MATCH_START",
+        "MATCH_MOVE_RES",
+        "MATCH_CARD_USE_RES",
+        "MATCH_SKILL_USE_RES",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -336,7 +350,7 @@ def read_match_payload_board_snapshot(
 
     if not match_id.strip():
         raise LayoutValidationError("transport board match id is empty")
-    if event_type not in {"MATCH_START", "MATCH_MOVE_RES"}:
+    if event_type not in SUPPORTED_TRANSPORT_BOARD_EVENTS:
         raise LayoutValidationError(
             f"unsupported transport board event: {event_type}"
         )
@@ -367,6 +381,105 @@ def read_match_payload_board_snapshot(
     )
 
 
+def parse_transport_board_envelope_json(
+    raw_json: str,
+    *,
+    expected_match_id: str,
+    expected_event_type: str,
+    message_address: int,
+    json_address: int,
+) -> OpeningBoardSnapshot:
+    """Decode the immutable raw websocket JSON owned by its queued callback.
+
+    ``ChatService.__c__DisplayClass275_0.json`` is assigned before the same
+    closure is enqueued on ``UnityMainThreadDispatcher``.  The deserialized
+    DTO's ``matchPayload`` can later be pre-parsed/mutated, while this string
+    remains the exact received envelope.  This fallback therefore validates
+    the full transport identity and 8x8 schema independently before offering
+    it to the existing ACK/stability gate.
+    """
+
+    if not raw_json or len(raw_json) > 262_144:
+        raise LayoutValidationError("transport JSON length is invalid")
+    if not is_canonical_user_pointer(message_address) or not is_canonical_user_pointer(
+        json_address
+    ):
+        raise LayoutValidationError("transport JSON owner pointer is invalid")
+    try:
+        envelope = json.loads(raw_json)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise LayoutValidationError("transport JSON is malformed") from exc
+    if not isinstance(envelope, dict):
+        raise LayoutValidationError("transport JSON envelope is not an object")
+    event_type = envelope.get("type")
+    match_id = envelope.get("matchId")
+    if event_type != expected_event_type or event_type not in SUPPORTED_TRANSPORT_BOARD_EVENTS:
+        raise LayoutValidationError("transport JSON event type is stale/unsupported")
+    if match_id != expected_match_id or not isinstance(match_id, str):
+        raise LayoutValidationError("transport JSON MatchId is stale")
+    payload = envelope.get("matchPayload")
+    if not isinstance(payload, dict):
+        raise LayoutValidationError("transport JSON matchPayload is absent")
+    sequence = payload.get("srvSeq")
+    if (
+        isinstance(sequence, bool)
+        or not isinstance(sequence, int)
+        or not 0 <= sequence <= MAX_SERVER_SEQUENCE
+    ):
+        raise LayoutValidationError("transport JSON srvSeq is invalid")
+    rows = payload.get("board")
+    if not isinstance(rows, list) or len(rows) != 8:
+        raise LayoutValidationError("transport JSON board is not 8x8")
+
+    cells: list[BoardCellSnapshot] = []
+    for row_values in rows:
+        if not isinstance(row_values, list) or len(row_values) != 8:
+            raise LayoutValidationError("transport JSON board is not 8x8")
+        for value in row_values:
+            if not isinstance(value, dict):
+                raise LayoutValidationError("transport JSON cell is not an object")
+            col = value.get("col")
+            row = value.get("row")
+            tag = value.get("tag")
+            multiplier = value.get("multiplier")
+            if (
+                isinstance(col, bool)
+                or not isinstance(col, int)
+                or isinstance(row, bool)
+                or not isinstance(row, int)
+                or isinstance(multiplier, bool)
+                or not isinstance(multiplier, int)
+                or not isinstance(tag, str)
+                or not tag
+                or any(ord(character) < 0x20 for character in tag)
+            ):
+                raise LayoutValidationError("transport JSON cell fields are invalid")
+            cells.append(
+                BoardCellSnapshot(
+                    address=json_address,
+                    col=col,
+                    row=row,
+                    tag_pointer=json_address,
+                    tag=tag,
+                    multiplier=multiplier,
+                )
+            )
+    ordered = tuple(sorted(cells, key=lambda cell: (cell.row, cell.col)))
+    reasons = dto_rejection_reasons(ordered)
+    if reasons:
+        raise LayoutValidationError(
+            "transport JSON board semantic validation failed: " + ";".join(reasons)
+        )
+    return OpeningBoardSnapshot(
+        match_id=match_id,
+        message_address=message_address,
+        payload_address=json_address,
+        board_token_address=json_address,
+        sequence=sequence,
+        cells=ordered,
+    )
+
+
 def read_match_start_opening_snapshot(
     memory: Any,
     *,
@@ -394,6 +507,8 @@ __all__ = [
     "JVALUE_TYPE_INFO_RVA",
     "NewtonsoftClasses",
     "OpeningBoardSnapshot",
+    "SUPPORTED_TRANSPORT_BOARD_EVENTS",
+    "parse_transport_board_envelope_json",
     "read_opening_board_jarray",
     "read_match_payload_board_snapshot",
     "read_match_start_opening_snapshot",

@@ -27,6 +27,7 @@ from pokiguard_v2.memory_board_provider import (
     _needs_immediate_full_ack_rescan,
     _next_direct_owner_grace,
     _owner_batches_confirmed_by_ack,
+    _pet_skill_ui_discovery_expected,
     _presentation_idle_for_publication,
     _region_size_band,
     _regions_with_address_neighbors,
@@ -45,6 +46,103 @@ from tests.test_basic_policy import combat_state
 
 
 class ExtendedFusionUiScanTests(unittest.TestCase):
+    def test_pet_skill_discovery_uses_durable_fusion_success_not_optional_pointer(self) -> None:
+        self.assertTrue(
+            _pet_skill_ui_discovery_expected(
+                SimpleNamespace(used_successfully=True, skill_card=None)
+            )
+        )
+        self.assertFalse(
+            _pet_skill_ui_discovery_expected(
+                SimpleNamespace(used_successfully=False, skill_card=0x123456)
+            )
+        )
+        self.assertFalse(_pet_skill_ui_discovery_expected(None))
+
+    def test_pet_skill_control_refresh_bypasses_board_batch_publication(self) -> None:
+        self._assert_pet_skill_control_refresh(legend_flag=False)
+
+    def test_pet_skill_control_refresh_reads_hand_after_latched_legend_flag(self) -> None:
+        self._assert_pet_skill_control_refresh(legend_flag=True)
+
+    def _assert_pet_skill_control_refresh(self, *, legend_flag: bool) -> None:
+        session = CombatSessionKey(1, 0x20000001000, "M_A")
+        board = SimpleNamespace(
+            accepted=True,
+            board_instance=session.board_instance,
+            active=0x20000002000,
+            is_using_legend_card=legend_flag,
+        )
+        fusion = SimpleNamespace(
+            used_successfully=True,
+            skill_card=0x20000003000,
+        )
+        candidate = SimpleNamespace(
+            address=0x20000004000,
+            button=0x20000005000,
+            card_data=fusion.skill_card,
+            element_type="ATTACK_LEGEND_",
+        )
+        canonical = SimpleNamespace(card_id=7)
+        entry = object()
+        hand = SimpleNamespace(
+            card_ui_addresses=(candidate.address,),
+            visible=(entry,),
+            entry_for_card=Mock(return_value=entry),
+            slot_for_card=Mock(return_value=0),
+        )
+        reader = Mock()
+        reader.read_hand.return_value = hand
+        target = SimpleNamespace(
+            is_running=Mock(return_value=True),
+            memory=object(),
+            resolver=SimpleNamespace(game_assembly_base=0x180000000),
+        )
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.target = target
+        provider._lifecycle_tracker = SimpleNamespace(session=session)
+        provider._last_pet_skill_cards = ()
+        provider._native_card_reason = "not_requested"
+        provider._card_ui_class = 0x20000006000
+        provider._native_card_reader = reader
+        provider._card_data_cache = {}
+        provider._card_addresses = set()
+        provider._resolve_board = Mock(return_value=board)
+        provider._resolve_match_service = Mock(return_value=0x20000007000)
+        provider._read_match_state = Mock(
+            return_value=(session.match_id, 11, "local", None, fusion)
+        )
+
+        with (
+            patch(
+                "pokiguard_v2.memory_board_provider.validate_combat_card_hits",
+                return_value=(candidate,),
+            ) as validate,
+            patch(
+                "pokiguard_v2.memory_board_provider._canonical_card",
+                return_value=canonical,
+            ) as canonicalize,
+        ):
+            cards = provider.refresh_pet_skill_cards(session)
+
+        self.assertEqual(cards, (canonical,))
+        self.assertEqual(provider.observed_pet_skill_cards, (canonical,))
+        self.assertEqual(
+            provider._native_card_reason,
+            "pet_skill_control_native_hand_validated",
+        )
+        validate.assert_called_once()
+        canonicalize.assert_called_once_with(
+            candidate,
+            ui_slot=0,
+            ui_slot_count=1,
+        )
+        reader.validate_button_owner.assert_called_once_with(
+            candidate.address,
+            candidate.button,
+            entry,
+        )
+
     def test_direct_owned_attack_card_uses_exact_data_and_runtime_slot(self) -> None:
         data = CardDataState(
             address=0x20000002000,
@@ -429,6 +527,33 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             chunk_size=2 * 1024 * 1024,
         )
         self.assertEqual(provider.metrics.memory_scans, 1)
+
+    def test_card_ui_anchor_includes_exact_current_board_allocation(self) -> None:
+        regions = (MemoryRegion(0x120000, 0x10000, 0x04, 0x20000),)
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.config = MemoryProviderConfig()
+        provider.target = SimpleNamespace(memory=object())
+        provider.metrics = ProviderMetrics()
+        provider._card_owner_allocation_regions = Mock(
+            return_value=(regions, False)
+        )
+        provider._last_cards_in_hand_allocation_expanded = False
+        result = SimpleNamespace(matches={"card_board_owner": ()}, bytes_read=0)
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.scan_aligned_qwords",
+            return_value=result,
+        ):
+            provider._scan_cards_in_hand_regions(
+                0x123000,
+                {"card_board_owner": 0x123000},
+                card_game_objects=(0x210000, 0x310000),
+                selected_card_count=1,
+            )
+
+        provider._card_owner_allocation_regions.assert_called_once_with(
+            {0x123000, 0x210000}
+        )
 
     def test_card_owner_allocation_expands_only_within_16_mib_budget(self) -> None:
         regions = (
@@ -837,6 +962,7 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
         }
 
         self.assertEqual(provider.transport_region_hints, (dto, batch))
+        self.assertEqual(provider.chat_message_region_hints, (dto,))
 
 
 class LobbyBaselineTests(unittest.TestCase):

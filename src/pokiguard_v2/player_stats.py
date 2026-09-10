@@ -46,7 +46,7 @@ MAX_DICTIONARY_SLOTS = 32
 # Dictionary<string, MatchPlayerSnapshotDTO> at +0xA8.  Active's
 # get_LocalActorNumberOrZero() indexes that dictionary with
 # ChatService.Username and returns MatchPlayerSnapshotDTO.actorNumber (+0x18).
-MATCH_SERVICE_PLAYERS_OFFSET = 0xA8
+MATCH_SERVICE_PLAYERS_OFFSET = 0xB8
 MATCH_PLAYER_SNAPSHOT_ACTOR_OFFSET = 0x18
 
 

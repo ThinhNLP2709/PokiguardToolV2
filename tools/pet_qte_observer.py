@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, is_dataclass, replace
 from datetime import datetime
 from enum import Enum
 import json
@@ -37,11 +37,21 @@ from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
     MemoryProviderConfig,
+    ProviderPoll,
 )
 from pokiguard_v2.memory_scan import (  # noqa: E402
     bounded_private_writable_regions,
     regions_containing_addresses,
     scan_aligned_qwords,
+)
+from pokiguard_v2.opening_snapshot import (  # noqa: E402
+    JARRAY_TYPE_INFO_RVA,
+    JOBJECT_TYPE_INFO_RVA,
+    JPROPERTY_TYPE_INFO_RVA,
+    JVALUE_TYPE_INFO_RVA,
+    NewtonsoftClasses,
+    OpeningBoardSnapshot,
+    read_match_payload_board_snapshot,
 )
 from pokiguard_v2.pet_qte_observer import (  # noqa: E402
     BoundQteObservation,
@@ -72,6 +82,174 @@ from pokiguard_v2.state import GamePhase  # noqa: E402
 from tools.idle_state_watch import read_match_runtime, read_server_message  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, default_log_path, hex_pointer  # noqa: E402
+
+
+# Keep the control loop free to sample MatchService.PendingCombat and
+# BoardWsApplier._pendingBatches while the pre-armed dispatcher tap waits for
+# the short-lived result callback.  A broad heap scan blocks that owner-root
+# sampling for 1.5--3.5 seconds.  Live v1.0.33 evidence observed the response
+# roughly one second after Space, exactly while the former 0.75-second fallback
+# scan was blocking.  Three seconds stays well inside the bounded 15-second
+# result deadline and leaves ample fallback time if the direct tap is absent.
+DISPATCHER_RESULT_EXCLUSIVE_WINDOW_SECONDS = 3.0
+
+
+def _defer_heap_result_scan(
+    *,
+    dispatcher_available: bool,
+    dispatcher_result_count: int,
+    completion_epoch: float | None,
+    observed_epoch: float,
+) -> bool:
+    if dispatcher_result_count > 0 or not dispatcher_available:
+        return False
+    if completion_epoch is None:
+        return False
+    elapsed = observed_epoch - completion_epoch
+    return 0.0 <= elapsed < DISPATCHER_RESULT_EXCLUSIVE_WINDOW_SECONDS
+
+
+def _poll_provider(provider: Any, runtime_hook: Any) -> tuple[Any, bool]:
+    def trace(stage: str) -> None:
+        callback = getattr(runtime_hook, "trace_stage", None)
+        if callable(callback):
+            callback(stage)
+
+    def control_poll(expected_session: Any) -> Any:
+        trace("qte_control_begin")
+        try:
+            return provider.poll_qte_control(expected_session)
+        finally:
+            trace("qte_control_end")
+
+    session = getattr(runtime_hook, "critical_qte_session", None)
+    if session is not None:
+        # As soon as the one Space has been sent, retain any directly owned
+        # PendingCombat/owner-queue batch while its short-lived root still
+        # exists. This path performs no heap scan and the candidate remains
+        # subject to the normal exact ACK and stability gates after response
+        # correlation.
+        result_wait = getattr(runtime_hook, "result_wait_session", None)
+        if result_wait is not None:
+            capture = getattr(provider, "capture_transient_batches", None)
+            if callable(capture):
+                capture()
+        control = control_poll(session)
+        if control.control_battle is not None or result_wait is None:
+            return control, True
+        # A PERFECT skill can end combat before the queued response is sampled.
+        # Read the normal provider once to preserve an exact terminal GameState,
+        # but never substitute an ordinary ACTIVE/stale full poll for the lost
+        # QTE control owner.
+        full = provider.poll()
+        if _exact_terminal_state_for_session(full, session):
+            return replace(
+                full,
+                reason=f"post_space_terminal:{control.reason}:{full.reason}",
+            ), True
+        return control, True
+    watch_session = getattr(runtime_hook, "pre_action_watch_session", None)
+    if watch_session is not None:
+        # Once one full poll has established exact combat ownership, Pet Skill
+        # discovery no longer depends on playable board publication. Refresh
+        # the native hand and current controls only; an ACK heap gap must not
+        # delay a lit card until the turn has expired.
+        refresh = getattr(provider, "refresh_pet_skill_cards", None)
+        refresh_started = time.monotonic()
+        cards: tuple[Any, ...] = ()
+        if callable(refresh):
+            trace("pet_skill_refresh_begin")
+            try:
+                cards = tuple(refresh(watch_session))
+            finally:
+                trace("pet_skill_refresh_end")
+        refresh_elapsed_ms = (time.monotonic() - refresh_started) * 1000
+        refresh_observed = getattr(
+            runtime_hook, "pet_skill_control_refresh", None
+        )
+        if callable(refresh_observed):
+            diagnostics = getattr(provider, "scan_diagnostics", {})
+            refresh_observed(
+                cards,
+                reason=str(
+                    diagnostics.get("nativeCardDiscoveryReason", "unknown")
+                ),
+                elapsed_ms=refresh_elapsed_ms,
+            )
+        return control_poll(watch_session), True
+    post_session = getattr(runtime_hook, "post_qte_session", None)
+    if post_session is not None:
+        offer_post_boards = getattr(
+            runtime_hook, "offer_dispatcher_post_qte_boards", None
+        )
+        if callable(offer_post_boards):
+            offer_post_boards(provider, post_session)
+    full = provider.poll()
+    if post_session is None:
+        return full, False
+    # Publication is allowed to wait during skill effects/cascade. Ownership
+    # is NOT allowed to fall back to a previously published board or session.
+    control = control_poll(post_session)
+    if control.control_battle is None:
+        if _exact_terminal_state_for_session(full, post_session):
+            return replace(
+                full,
+                reason=f"post_qte_terminal:{control.reason}:{full.reason}",
+            ), False
+        return replace(control, reason=f"post_qte_control_rejected:{full.reason}:{control.reason}"), False
+    if full.state is not None and (
+        full.state.phase is not GamePhase.COMBAT
+        or full.state.battle.session_key != post_session
+    ):
+        return ProviderPoll(None, False, "post_qte_state_session_disagrees"), False
+    return replace(full, session_key=control.session_key,
+                   combat_lifecycle=control.combat_lifecycle,
+                   control_battle=control.control_battle), False
+
+
+def _notify_explicit_server_reject(
+    runtime_hook: Any,
+    correlation: Any,
+    result: Any,
+) -> None:
+    """Forward only an already current/action-bounded explicit rejection."""
+
+    if runtime_hook is None or correlation.provenance != "EXPLICIT_REJECT":
+        return
+    callback = getattr(runtime_hook, "server_rejected_result", None)
+    if callable(callback):
+        callback(reason=correlation.reason, response_address=result.address)
+
+
+def _exact_terminal_state_for_session(poll: Any, session: Any) -> bool:
+    """Require a terminal GameState tied to the retained action MatchId."""
+
+    state = getattr(poll, "state", None)
+    battle = getattr(state, "battle", None) if state is not None else None
+    if battle is None or session is None:
+        return False
+    terminal_snapshot = getattr(state, "terminal_snapshot", None)
+    match_ids = {
+        value
+        for value in (
+            getattr(battle, "match_id", None),
+            getattr(terminal_snapshot, "match_id", None),
+        )
+        if value
+    }
+    if getattr(session, "match_id", None) not in match_ids:
+        return False
+    return bool(
+        getattr(battle, "combat_lifecycle", None) is CombatLifecycleState.POSTMATCH
+        or getattr(battle, "match_over", None) is True
+        or getattr(battle, "board_is_game_over", None) is True
+        or getattr(battle, "local_has_left_match", None) is True
+    )
+
+
+def _poll_delay(interval: float, runtime_hook: Any) -> float:
+    callback = getattr(runtime_hook, "poll_delay_seconds", None)
+    return min(interval, max(0.005, float(callback()))) if callable(callback) else interval
 
 
 def _jsonable(value: Any) -> Any:
@@ -170,6 +348,33 @@ def _scan_qte_results(
     return tuple(values)
 
 
+def _requires_full_qte_result_scan(
+    scan_number: int,
+    learned_region_count: int,
+) -> bool:
+    """Schedule bounded rediscovery for a short-lived result envelope.
+
+    A successful live action on 2026-09-08 proved that one ascending full scan
+    can race a newly allocated ``MATCH_SKILL_USE_RES``: the scan found ordinary
+    ChatMessageDTO regions, then every later pass remained confined to those
+    stale hints.  The first two scans therefore always rediscover the bounded
+    private/writable envelope.  Afterwards a full pass every eighth scan keeps
+    discovering newly used managed regions while the fast learned-region scan
+    remains the common path.  Result collection occurs only after the one Space
+    has already been sent and never grants input authority.
+    """
+
+    if scan_number <= 0:
+        raise ValueError("QTE result scan number must be positive")
+    if learned_region_count < 0:
+        raise ValueError("learned region count cannot be negative")
+    return bool(
+        learned_region_count == 0
+        or scan_number <= 2
+        or scan_number % 8 == 0
+    )
+
+
 def _server_timestamp_epoch(value: str | None) -> float | None:
     """Convert the game's ISO timestamp to epoch using local time if naive."""
 
@@ -184,6 +389,70 @@ def _server_timestamp_epoch(value: str | None) -> float | None:
     return time.mktime(parsed.timetuple()) + parsed.microsecond / 1_000_000.0
 
 
+def _resolve_newtonsoft_classes(target: Any) -> NewtonsoftClasses | None:
+    values = tuple(
+        target.resolver.resolve_type_info_class(rva)
+        for rva in (
+            JARRAY_TYPE_INFO_RVA,
+            JOBJECT_TYPE_INFO_RVA,
+            JPROPERTY_TYPE_INFO_RVA,
+            JVALUE_TYPE_INFO_RVA,
+        )
+    )
+    if any(value is None for value in values):
+        return None
+    return NewtonsoftClasses(*(int(value) for value in values))
+
+
+def _offer_qte_result_board_snapshot(
+    target: Any,
+    provider: Any,
+    result: Any,
+    *,
+    classes: NewtonsoftClasses,
+) -> tuple[OpeningBoardSnapshot, bool]:
+    """Offer the exact current skill response board to the normal ACK gate."""
+
+    if result.event_type != "MATCH_SKILL_USE_RES":
+        raise LayoutValidationError("QTE result is not a skill-use response")
+    if result.payload_address is None:
+        raise LayoutValidationError("skill-use response has no matchPayload")
+    snapshot = read_match_payload_board_snapshot(
+        target.memory,
+        match_id=result.match_id,
+        message_address=result.address,
+        payload_address=result.payload_address,
+        classes=classes,
+        event_type=result.event_type,
+    )
+    accepted = provider.offer_transport_board_snapshot(
+        snapshot,
+        event_type=result.event_type,
+    )
+    return snapshot, accepted
+
+
+def _offer_dispatcher_raw_qte_board_snapshot(
+    provider: Any,
+    result: Any,
+    snapshot: OpeningBoardSnapshot,
+) -> tuple[OpeningBoardSnapshot, bool]:
+    """Bind a strict callback-JSON board to its exact decoded response."""
+
+    if result.event_type != "MATCH_SKILL_USE_RES":
+        raise LayoutValidationError("QTE result is not a skill-use response")
+    if (
+        snapshot.match_id != result.match_id
+        or snapshot.message_address != result.address
+    ):
+        raise LayoutValidationError("callback JSON board identity differs from response")
+    accepted = provider.offer_transport_board_snapshot(
+        snapshot,
+        event_type=result.event_type,
+    )
+    return snapshot, accepted
+
+
 def _participant_snapshot(
     target: Any,
     *,
@@ -196,6 +465,7 @@ def _participant_snapshot(
 
     local = None
     boss = None
+    resource_read_error = None
     if stats_class is not None:
         try:
             participants = read_active_participants(
@@ -206,8 +476,12 @@ def _participant_snapshot(
             )
             local = next((item for item in participants if item.is_local), None)
             boss = next((item for item in participants if item.is_boss), None)
-        except (ExternalReadError, OSError, LayoutValidationError):
-            pass
+            if local is None:
+                resource_read_error = "current local actor is absent from Active.playerStatsMap"
+        except (ExternalReadError, OSError, LayoutValidationError) as exc:
+            resource_read_error = f"{type(exc).__name__}: {exc}"
+    else:
+        resource_read_error = "Active.PlayerStats class is unresolved"
     fallback_player = fallback_state.player if fallback_state is not None else None
     fallback_boss = next(
         (
@@ -218,6 +492,15 @@ def _participant_snapshot(
         None,
     )
     return {
+        # Mana and power authorize a real card click.  Never substitute the
+        # board provider's older participant snapshot when the exact
+        # Active.playerStatsMap read is torn; the next fast-watch sample will
+        # retry it.  HP remains observational and may use the current board
+        # fallback for post-skill diagnostics.
+        "resourceCurrent": local is not None,
+        "resourceSource": local.source if local is not None else "UNAVAILABLE",
+        "resourceReadError": resource_read_error,
+        "resourceSampledMonotonic": time.monotonic(),
         "localActor": local_actor_number,
         "localHp": local.hp if local is not None else (
             fallback_player.hp if fallback_player is not None else None
@@ -225,12 +508,8 @@ def _participant_snapshot(
         "localMaxHp": local.max_hp if local is not None else (
             fallback_player.max_hp if fallback_player is not None else None
         ),
-        "mana": local.mana if local is not None else (
-            fallback_player.mana if fallback_player is not None else None
-        ),
-        "power": local.power if local is not None else (
-            fallback_player.power if fallback_player is not None else None
-        ),
+        "mana": local.mana if local is not None else None,
+        "power": local.power if local is not None else None,
         "bossActor": boss.actor_number if boss is not None else (
             fallback_boss.actor_number if fallback_boss is not None else None
         ),
@@ -315,8 +594,10 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
         seen_results: set[int] = set()
         learned_result_regions: set[Any] = set()
         result_scan_number = 0
+        full_result_scan_count = 0
         last_result_scan = 0.0
         completed_qtes = 0
+        board_payload_classes: NewtonsoftClasses | None = None
 
         pet_class = target.resolver.resolve_type_info_class(PET_USER_DTO_TYPE_INFO_RVA)
         card_data_class = target.resolver.resolve_type_info_class(
@@ -365,13 +646,234 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
             if args.qtes and completed_qtes >= args.qtes:
                 _write(log, "observer_target_reached", completedQtes=completed_qtes)
                 break
+            if runtime_hook is not None and bool(
+                getattr(runtime_hook, "done", False)
+            ):
+                _write(
+                    log,
+                    "runtime_hook_target_reached",
+                    completedQtes=completed_qtes,
+                    runtimeHook=runtime_hook.name,
+                )
+                break
+            critical_poll = getattr(runtime_hook, "critical_qte_session", None) is not None
+            watch_poll = getattr(runtime_hook, "pre_action_watch_session", None) is not None
+            owned_poll = (
+                critical_poll
+                or watch_poll
+                or getattr(runtime_hook, "post_qte_session", None) is not None
+            )
+            poll_started = time.monotonic()
             try:
                 trace_runtime_stage("provider_poll_begin")
-                poll = provider.poll()
+                poll, critical_poll = _poll_provider(provider, runtime_hook)
                 trace_runtime_stage("provider_poll_end")
             except (ExternalReadError, OSError, LayoutValidationError, RuntimeError) as exc:
                 poll = None
                 _write(log, "provider_error", detail=str(exc))
+            provider_poll_ms = (time.monotonic() - poll_started) * 1000
+            if owned_poll:
+                last_state = None  # control-only read is never a playable board
+            if owned_poll and (poll is None or poll.control_battle is None):
+                # No stale last_state fallback while QTE owns input.
+                last_state = None
+                control_reason = (
+                    poll.reason if poll is not None else "QTE_CONTROL_READ_FAILED"
+                )
+                retain_post_space = getattr(
+                    runtime_hook,
+                    "retain_post_space_after_control_read_failure",
+                    None,
+                )
+                if callable(retain_post_space) and retain_post_space(control_reason):
+                    # No input remains after the one Space.  Keep the immutable
+                    # completed QTE/ActionId alive while the pre-armed dispatcher
+                    # tap captures the exact old-MatchId response.  This branch
+                    # intentionally does not resolve current combat singletons.
+                    if (
+                        pending is not None
+                        and pending.status is QteBindingStatus.COMPLETED_CURRENT
+                        and pending_completion_epoch is not None
+                        and now - last_result_scan >= 0.1
+                    ):
+                        last_result_scan = now
+                        result_scan_number += 1
+                        direct = getattr(runtime_hook, "dispatcher_qte_results", None)
+                        results = (
+                            tuple(direct(pending.identity.session_key.match_id))
+                            if callable(direct) and pending.identity is not None
+                            else ()
+                        )
+                        diagnostics = getattr(
+                            runtime_hook, "dispatcher_tap_diagnostics", None
+                        )
+                        _write(
+                            log,
+                            "qte_result_scan",
+                            session=(
+                                _session_text(pending.identity.session_key)
+                                if pending.identity is not None
+                                else None
+                            ),
+                            scanNumber=result_scan_number,
+                            fullRequested=False,
+                            fullDirection=None,
+                            fullScanCount=full_result_scan_count,
+                            learnedRegionCount=len(learned_result_regions),
+                            learnedRegionBytes=sum(
+                                region.size for region in learned_result_regions
+                            ),
+                            allRegionCount=0,
+                            resultCount=len(results),
+                            elapsedMs=0.0,
+                            discoverySource="dispatcher_owned_callback_terminal_wait",
+                            dispatcherTap=diagnostics,
+                        )
+                        observed_epoch = time.time()
+                        for result in results:
+                            if result.address in seen_results:
+                                continue
+                            seen_results.add(result.address)
+                            payload_ints = dict(result.payload_ints)
+                            response_skill_card_id = (
+                                result.skill_card_id
+                                if result.skill_card_id is not None
+                                else payload_ints.get("skillCardId")
+                            )
+                            correlation = correlate_qte_response_envelope(
+                                pending,
+                                event_type=result.event_type,
+                                match_id=result.match_id,
+                                skill_card_id=response_skill_card_id,
+                                qte_challenge_id=result.qte_challenge_id,
+                                reject_reason=result.reject_reason,
+                                payload_bools=result.payload_bools,
+                                server_timestamp_epoch=_server_timestamp_epoch(
+                                    result.timestamp
+                                ),
+                                completion_epoch=pending_completion_epoch,
+                                observed_epoch=observed_epoch,
+                            )
+                            _write(
+                                log,
+                                "qte_result_message",
+                                session=(
+                                    _session_text(pending.identity.session_key)
+                                    if pending.identity is not None
+                                    else None
+                                ),
+                                result=result,
+                                correlation=correlation,
+                                predicted=pending.predicted_timing_result,
+                                displayed=(
+                                    pending.qte.displayed_timing_result
+                                    if pending.qte is not None
+                                    else None
+                                ),
+                                before=pending_before,
+                                after=None,
+                                terminalReadOnly=True,
+                            )
+                            _notify_explicit_server_reject(
+                                runtime_hook, correlation, result
+                            )
+                            identity = pending.identity
+                            if not correlation.current or identity is None:
+                                continue
+                            server_timing = dict(result.payload_strings).get(
+                                "timingResult"
+                            )
+                            shadow_result = shadow_observer.correlate_server_response(
+                                generation=identity.observer_generation,
+                                response_key=f"0x{result.address:016X}",
+                                match_id=result.match_id,
+                                skill_card_id=response_skill_card_id,
+                                correlation=correlation,
+                                server_timing_result=server_timing,
+                            )
+                            if shadow_result is None:
+                                continue
+                            _write(
+                                log,
+                                "qte_server_result_correlated",
+                                session=_session_text(identity.session_key),
+                                generation=identity.observer_generation,
+                                responseAddress=hex_pointer(result.address),
+                                correlation=correlation,
+                                serverResult=shadow_result.server_resolved_result,
+                                serverResultRaw=server_timing,
+                                timingEchoAvailable=server_timing is not None,
+                                terminalReadOnly=True,
+                            )
+                            result_callback = getattr(
+                                runtime_hook, "correlated_readonly_result", None
+                            )
+                            if callable(result_callback):
+                                result_callback(
+                                    shadow_result,
+                                    sampled_monotonic=now,
+                                )
+                            completed_qtes += 1
+                            closed_identities.add(identity)
+                            _write(
+                                log,
+                                "qte_closed",
+                                completedQtes=completed_qtes,
+                                session=_session_text(identity.session_key),
+                                generation=identity.observer_generation,
+                                correlationProvenance=correlation.provenance,
+                                predictedTiming=pending.predicted_timing_result,
+                                displayedTiming=(
+                                    pending.qte.displayed_timing_result
+                                    if pending.qte is not None
+                                    else None
+                                ),
+                                rawDisplayedTiming=(
+                                    pending.qte.displayed_timing_text
+                                    if pending.qte is not None
+                                    else None
+                                ),
+                                resourceDelta=None,
+                                boardHashBefore=(
+                                    pending_before.get("boardHash")
+                                    if pending_before is not None
+                                    else None
+                                ),
+                                boardHashAfter=None,
+                                turnBefore=(
+                                    pending_before.get("turn")
+                                    if pending_before is not None
+                                    else None
+                                ),
+                                turnAfter=None,
+                                currentPlayerAfter=None,
+                                terminalReadOnly=True,
+                            )
+                            pending = None
+                            pending_before = None
+                            pending_completion_epoch = None
+                            break
+                    readonly_tick = getattr(
+                        runtime_hook, "observe_post_space_readonly", None
+                    )
+                    if callable(readonly_tick):
+                        readonly_tick(
+                            poll.state if poll is not None else None,
+                            sampled_monotonic=poll_started,
+                            reason=control_reason,
+                        )
+                    time.sleep(_poll_delay(args.interval, runtime_hook))
+                    continue
+                retain = getattr(
+                    runtime_hook,
+                    "retain_pre_action_after_control_read_failure",
+                    None,
+                )
+                if callable(retain) and retain(control_reason):
+                    time.sleep(_poll_delay(args.interval, runtime_hook))
+                    continue
+                runtime_hook.invalidate(control_reason)
+                continue
             if poll is not None and poll.state is not None:
                 if poll.state.phase is GamePhase.COMBAT:
                     last_state = poll.state
@@ -389,6 +891,17 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 trace_runtime_stage("runtime_singletons_end")
             except (ExternalReadError, OSError, LayoutValidationError) as exc:
                 _write(log, "runtime_error", detail=str(exc))
+                if owned_poll:
+                    reason = "QTE_CURRENT_RUNTIME_UNREADABLE"
+                    retain = getattr(
+                        runtime_hook,
+                        "retain_pre_action_after_transient_read_failure",
+                        None,
+                    )
+                    if callable(retain) and retain(reason):
+                        time.sleep(_poll_delay(args.interval, runtime_hook))
+                        continue
+                    runtime_hook.invalidate(reason)
                 time.sleep(args.interval)
                 continue
 
@@ -411,6 +924,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 closed_identities.clear()
                 seen_results.clear()
                 learned_result_regions.clear()
+                full_result_scan_count = 0
                 previous_capability_signature = None
                 previous_shadow_generation = None
                 previous_shadow_direction_signature = None
@@ -447,6 +961,15 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 or board_resolution.instance != session.board_instance
             ):
                 if runtime_hook is not None:
+                    if owned_poll:
+                        _write(log, "qte_ownership_rejected",
+                               providerReason=poll.reason if poll is not None else None,
+                               providerSession=poll.session_key if poll is not None else None,
+                               lifecycle=poll.combat_lifecycle if poll is not None else None,
+                               control=poll.control_battle if poll is not None else None,
+                               selectedSession=session, runtimeMatchId=runtime.match_id,
+                               matchService=match_service_resolution, active=active_resolution,
+                               board=board_resolution, ownedPoll=owned_poll)
                     runtime_hook.invalidate("ACTIVE_COMBAT_OWNERSHIP_INVALID")
                 time.sleep(args.interval)
                 continue
@@ -466,12 +989,29 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                         detail=str(exc),
                         transient=True,
                     )
+                    if owned_poll:
+                        reason = "QTE_CURRENT_ACTOR_UNREADABLE"
+                        retain = getattr(
+                            runtime_hook,
+                            "retain_pre_action_after_transient_read_failure",
+                            None,
+                        )
+                        if callable(retain) and retain(reason):
+                            time.sleep(_poll_delay(args.interval, runtime_hook))
+                            continue
+                        runtime_hook.invalidate(reason)
                     time.sleep(args.interval)
                     continue
             if actor is None:
+                if owned_poll:
+                    runtime_hook.invalidate("QTE_CURRENT_ACTOR_UNAVAILABLE")
                 time.sleep(args.interval)
                 continue
             fallback_state = last_state if stable_state_current else None
+            if owned_poll and not critical_poll:
+                _write(log, "post_qte_provider_poll", reason=poll.reason,
+                       session=session, currentBoardAvailable=fallback_state is not None,
+                       control=poll.control_battle, providerMs=round(provider_poll_ms, 3))
 
             trace_runtime_stage("type_classes_begin")
             if pet_class is None:
@@ -517,22 +1057,104 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 and dto_class is not None
                 and now - last_result_scan >= 0.1
             )
+            dispatcher_results: tuple[Any, ...] = ()
+            dispatcher_diagnostics = None
+            if should_scan_result and runtime_hook is not None:
+                direct = getattr(runtime_hook, "dispatcher_qte_results", None)
+                if callable(direct):
+                    dispatcher_results = tuple(direct(session.match_id))
+                    dispatcher_diagnostics = getattr(
+                        runtime_hook, "dispatcher_tap_diagnostics", None
+                    )
+                    # Phase 3B.3 finishes at current runtime PERFECT and does
+                    # not start a response tap. Other diagnostic observers may
+                    # still supply a tap; an optional empty result must never
+                    # trigger a broad response heap scan.
+                    if (
+                        bool(getattr(runtime_hook, "server_result_optional", False))
+                        and not dispatcher_results
+                    ):
+                        should_scan_result = False
+                    elif _defer_heap_result_scan(
+                        dispatcher_available=True,
+                        dispatcher_result_count=len(dispatcher_results),
+                        completion_epoch=pending_completion_epoch,
+                        observed_epoch=time.time(),
+                    ):
+                        should_scan_result = False
             if should_scan_result:
                 last_result_scan = now
                 result_scan_number += 1
-                all_regions = _regions(target, args.max_region_mib)
-                learned_result_regions.update(provider.transport_region_hints)
-                results = _scan_qte_results(
-                    target,
-                    dto_class=dto_class,
-                    match_id=session.match_id,
-                    all_regions=all_regions,
-                    learned_regions=learned_result_regions,
-                    full=(
-                        not learned_result_regions
-                        or result_scan_number % 8 == 0
+                result_scan_started = time.monotonic()
+                if dispatcher_results:
+                    results = dispatcher_results
+                    all_regions: tuple[Any, ...] = ()
+                    full_result_scan = False
+                    full_scan_direction = "dispatcher_owned_callback"
+                    discovery_source = (
+                        "UnityMainThreadDispatcher.PendingAction->"
+                        "ChatService.__c__DisplayClass275_0.message"
+                    )
+                else:
+                    all_regions = _regions(target, args.max_region_mib)
+                    # MATCH_SKILL_USE_RES is a short-lived ChatMessageDTO. Do not
+                    # dilute its scan cadence with regions learned only from the
+                    # WsCombatBatch class: those are captured separately through
+                    # direct owner roots and become relevant only to post-state.
+                    message_hints = getattr(
+                        provider, "chat_message_region_hints", ()
+                    )
+                    learned_result_regions.update(message_hints)
+                    full_result_scan = _requires_full_qte_result_scan(
+                        result_scan_number,
+                        len(learned_result_regions),
+                    )
+                    if full_result_scan:
+                        full_result_scan_count += 1
+                    # Alternate the broad pass so a just-allocated DTO cannot be
+                    # missed forever merely because its region was traversed before
+                    # the server populated it.  Learned regions are still searched
+                    # first inside _scan_qte_results.
+                    full_scan_direction = (
+                        "descending"
+                        if full_result_scan and full_result_scan_count % 2 == 0
+                        else "ascending"
+                    )
+                    scan_regions = (
+                        tuple(reversed(all_regions))
+                        if full_scan_direction == "descending"
+                        else all_regions
+                    )
+                    results = _scan_qte_results(
+                        target,
+                        dto_class=dto_class,
+                        match_id=session.match_id,
+                        all_regions=scan_regions,
+                        learned_regions=learned_result_regions,
+                        full=full_result_scan,
+                        chunk_mib=args.chunk_mib,
+                    )
+                    discovery_source = "bounded_heap_scan"
+                result_scan_ms = (time.monotonic() - result_scan_started) * 1000
+                _write(
+                    log,
+                    "qte_result_scan",
+                    session=_session_text(session),
+                    scanNumber=result_scan_number,
+                    fullRequested=full_result_scan,
+                    fullDirection=(
+                        full_scan_direction if full_result_scan else None
                     ),
-                    chunk_mib=args.chunk_mib,
+                    fullScanCount=full_result_scan_count,
+                    learnedRegionCount=len(learned_result_regions),
+                    learnedRegionBytes=sum(
+                        region.size for region in learned_result_regions
+                    ),
+                    allRegionCount=len(all_regions),
+                    resultCount=len(results),
+                    elapsedMs=round(result_scan_ms, 3),
+                    discoverySource=discovery_source,
+                    dispatcherTap=dispatcher_diagnostics,
                 )
                 observed_epoch = time.time()
                 for result in results:
@@ -550,6 +1172,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                         event_type=result.event_type,
                         match_id=result.match_id,
                         skill_card_id=response_skill_card_id,
+                        qte_challenge_id=result.qte_challenge_id,
                         reject_reason=result.reject_reason,
                         payload_bools=result.payload_bools,
                         server_timestamp_epoch=_server_timestamp_epoch(result.timestamp),
@@ -575,7 +1198,103 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                             **current_resource,
                         },
                     )
+                    _notify_explicit_server_reject(runtime_hook, correlation, result)
                     if correlation.current:
+                        direct_board = None
+                        if runtime_hook is not None:
+                            direct_board_reader = getattr(
+                                runtime_hook,
+                                "dispatcher_qte_board_snapshot",
+                                None,
+                            )
+                            if callable(direct_board_reader):
+                                direct_board = direct_board_reader(
+                                    result.match_id, result.address
+                                )
+                        if direct_board is not None:
+                            try:
+                                result_board, result_board_accepted = (
+                                    _offer_dispatcher_raw_qte_board_snapshot(
+                                        provider,
+                                        result,
+                                        direct_board,
+                                    )
+                                )
+                                _write(
+                                    log,
+                                    "qte_result_board_snapshot_offered",
+                                    session=_session_text(session),
+                                    responseAddress=hex_pointer(result.address),
+                                    boardAddress=hex_pointer(
+                                        result_board.board_token_address
+                                    ),
+                                    srvSeq=result_board.sequence,
+                                    completeCells=len(result_board.cells),
+                                    accepted=result_board_accepted,
+                                    authority=(
+                                        "ChatService.__c__DisplayClass275_0.json+"
+                                        "MATCH_SKILL_USE_RES.matchPayload.board+"
+                                        "MatchService._ackedSeqs"
+                                    ),
+                                )
+                            except (LayoutValidationError, ValueError) as exc:
+                                _write(
+                                    log,
+                                    "qte_result_board_snapshot_rejected",
+                                    session=_session_text(session),
+                                    responseAddress=hex_pointer(result.address),
+                                    reason=str(exc),
+                                )
+                        else:
+                            if board_payload_classes is None:
+                                board_payload_classes = _resolve_newtonsoft_classes(target)
+                            if board_payload_classes is None:
+                                _write(
+                                    log,
+                                    "qte_result_board_snapshot_unavailable",
+                                    session=_session_text(session),
+                                    responseAddress=hex_pointer(result.address),
+                                    reason="NEWTONSOFT_TYPE_INFO_UNAVAILABLE",
+                                )
+                            else:
+                                try:
+                                    result_board, result_board_accepted = (
+                                        _offer_qte_result_board_snapshot(
+                                            target,
+                                            provider,
+                                            result,
+                                            classes=board_payload_classes,
+                                        )
+                                    )
+                                    _write(
+                                        log,
+                                        "qte_result_board_snapshot_offered",
+                                        session=_session_text(session),
+                                        responseAddress=hex_pointer(result.address),
+                                        boardAddress=hex_pointer(
+                                            result_board.board_token_address
+                                        ),
+                                        srvSeq=result_board.sequence,
+                                        completeCells=len(result_board.cells),
+                                        accepted=result_board_accepted,
+                                        authority=(
+                                            "MATCH_SKILL_USE_RES.matchPayload.board+"
+                                            "MatchService._ackedSeqs"
+                                        ),
+                                    )
+                                except (
+                                    ExternalReadError,
+                                    OSError,
+                                    LayoutValidationError,
+                                    ValueError,
+                                ) as exc:
+                                    _write(
+                                        log,
+                                        "qte_result_board_snapshot_rejected",
+                                        session=_session_text(session),
+                                        responseAddress=hex_pointer(result.address),
+                                        reason=str(exc),
+                                    )
                         completed_qtes += 1
                         identity = pending.identity
                         shadow_result = None
@@ -655,6 +1374,20 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                                     generation=identity.observer_generation,
                                     turnSemantics=turn_semantics,
                                 )
+                            if runtime_hook is not None:
+                                result_callback = getattr(
+                                    runtime_hook, "correlated_result", None
+                                )
+                                if callable(result_callback):
+                                    result_callback(
+                                        shadow_observer.pending_completed
+                                        or shadow_result,
+                                        sampled_monotonic=now,
+                                        game_state=fallback_state,
+                                        resources=current_resource,
+                                        runtime=runtime,
+                                        control_battle=(poll.control_battle if owned_poll else None),
+                                    )
                         _write(
                             log,
                             "qte_closed",
@@ -766,11 +1499,20 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                     )
                     previous_pet_signature = signature
 
-            runtime_skill_cards = tuple(
-                card
-                for card in (fallback_state.cards if fallback_state is not None else ())
-                if card.element_type.upper() in DOT_SKILL_ELEMENT_TYPES
-            )
+            # The ordinary GameState card tuple intentionally excludes the
+            # post-Fusion Pet Skill so BASIC cannot treat it as CAST.  The
+            # memory provider exposes that exact CardUI/Button through a
+            # separate observation-only channel for the 3B harnesses.
+            runtime_skill_cards_by_identity = {
+                (card.object_address, card.data_address): card
+                for card in provider.observed_pet_skill_cards
+            }
+            for card in (fallback_state.cards if fallback_state is not None else ()):
+                if card.element_type.upper() in DOT_SKILL_ELEMENT_TYPES:
+                    runtime_skill_cards_by_identity.setdefault(
+                        (card.object_address, card.data_address), card
+                    )
+            runtime_skill_cards = tuple(runtime_skill_cards_by_identity.values())
             live_skill_candidates = [
                 live_pet_skill_card_from_state(
                     card,
@@ -828,7 +1570,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 matching_card = next(
                     (
                         card
-                        for card in last_state.cards
+                        for card in runtime_skill_cards
                         if card.card_id == pet.skill_card_id
                         or card.data_address == pet.card_data_address
                     ),
@@ -870,6 +1612,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                     )
                     previous_pet_signature = pet_signature
 
+            challenge_read_error = None
             try:
                 trace_runtime_stage("server_challenge_begin")
                 challenge = read_server_qte_challenge(
@@ -878,10 +1621,26 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                     match_id=runtime.match_id or "",
                 )
                 trace_runtime_stage("server_challenge_end")
-            except (ExternalReadError, OSError, LayoutValidationError):
+            except (ExternalReadError, OSError, LayoutValidationError) as exc:
                 challenge = None
+                challenge_read_error = f"{type(exc).__name__}: {exc}"
+                # A failed stable read is not evidence that the server challenge
+                # disappeared.  Preserve the exception so the tracker can bridge
+                # at most one sample from an already-bound, still-exact CardUI
+                # generation instead of relabelling it WRONG_SESSION.
+                _write(
+                    log,
+                    "server_qte_challenge_read_rejected",
+                    session=_session_text(session),
+                    turn=runtime.turn,
+                    detail=challenge_read_error,
+                    boundGeneration=(tracker.identity.observer_generation
+                                     if tracker.identity is not None else None),
+                    transient=True,
+                )
             candidates = []
             active_qte_card = None
+            qte_sampled_monotonic = time.monotonic()
             trace_runtime_stage("active_qte_singleton_begin")
             active_qte_resolution = target.resolver.resolve_singleton(
                 ACTIVE_DOT_SKILL_CARD
@@ -909,6 +1668,15 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                         expected_card_class=card_data_class,
                     )
                     candidates.append(qte)
+                    # During a live challenge ActiveDotSkillCard is the exact
+                    # current QTE owner.  If Unity represents it with a second
+                    # CardUI wrapper for the same CardData, do not manufacture
+                    # an ambiguity against the pre-click strip wrapper.
+                    live_skill_candidates = [
+                        item
+                        for item in live_skill_candidates
+                        if item.card_data.address != active_qte_card.address
+                    ]
                     live_skill_candidates.append(
                         LivePetSkillCard(
                             session_key=session,
@@ -937,6 +1705,41 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 source_pet=pet,
                 candidates=live_skill_candidates,
             )
+            if runtime_hook is not None:
+                context_callback = getattr(runtime_hook, "runtime_context", None)
+                if callable(context_callback):
+                    context_callback(
+                        sampled_monotonic=qte_sampled_monotonic,
+                        control_sampled_monotonic=(poll_started if owned_poll else None),
+                        session=session,
+                        runtime=runtime,
+                        local_actor=actor,
+                        resources=current_resource,
+                        capability=capability,
+                        live_cards=runtime_skill_cards,
+                        card_diagnostics={key: value for key, value in provider.scan_diagnostics.items()
+                                          if key.startswith("runtimeCardLayout")
+                                          or key == "nativeCardDiscoveryReason"},
+                        game_state=fallback_state,
+                        game_state_sampled_monotonic=(poll_started if owned_poll and fallback_state is not None else None),
+                        control_battle=(poll.control_battle if owned_poll else None),
+                        lifecycle_valid=(
+                            runtime.match_id == session.match_id
+                            and match_service_resolution.resolved
+                            and active_resolution.resolved
+                            and board_resolution.instance == session.board_instance
+                        ),
+                    )
+                    # Clear the deduplication key only after the whole current
+                    # ownership/runtime/actor/resource context has succeeded,
+                    # not merely after its first control sub-read.  Persistent
+                    # torn actor/runtime samples therefore remain bounded in
+                    # the log while still being retried by fast-watch.
+                    read_success = getattr(
+                        runtime_hook, "note_control_read_success", None
+                    )
+                    if callable(read_success):
+                        read_success()
             capability_signature = (
                 capability.status,
                 capability.session_key,
@@ -1047,12 +1850,20 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 player_mana=current_resource["mana"],
                 player_power=current_resource["power"],
             )
-            observation = tracker.observe(
-                context,
-                candidates,
-                challenge,
-                element_type=active_qte_card.element_type,
-            )
+            if challenge_read_error is not None:
+                observation = tracker.observe_after_server_challenge_read_failure(
+                    context,
+                    candidates,
+                    element_type=active_qte_card.element_type,
+                    read_error=challenge_read_error,
+                )
+            else:
+                observation = tracker.observe(
+                    context,
+                    candidates,
+                    challenge,
+                    element_type=active_qte_card.element_type,
+                )
             shadow = shadow_observer.observe(
                 observed_at=time.time(),
                 session_key=session,
@@ -1071,6 +1882,12 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                         and board_resolution.instance == session.board_instance
                     ),
                 )
+            if critical_poll:
+                _write(log, "qte_critical_poll", providerMs=round(provider_poll_ms, 3),
+                       cycleMs=round((time.monotonic() - poll_started) * 1000, 3),
+                       sampleAgeMs=round((time.monotonic() - qte_sampled_monotonic) * 1000, 3),
+                       currentIndex=shadow.current_index, correctCount=shadow.correct_count,
+                       elapsed=shadow.current_elapsed)
             if shadow.observationally_current:
                 if shadow.qte_generation != previous_shadow_generation:
                     _write(
@@ -1250,6 +2067,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                         **current_resource,
                     }
                     result_scan_number = 0
+                    full_result_scan_count = 0
                     last_result_scan = 0.0
                 pending = observation
                 if (
@@ -1258,7 +2076,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 ):
                     pending_completion_epoch = time.time()
 
-            time.sleep(args.interval)
+            time.sleep(_poll_delay(args.interval, runtime_hook))
 
         if runtime_hook is not None:
             runtime_hook.stop("HARNESS_STOPPED")

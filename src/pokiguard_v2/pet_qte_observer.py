@@ -20,7 +20,7 @@ from .state import CombatSessionKey
 
 
 # Active / PetUserDTO (Assembly-CSharp, Pokiguard 1.7.4).
-ACTIVE_PLAYER_PET_OFFSET = 0x300
+ACTIVE_PLAYER_PET_OFFSET = 0x310
 PET_USER_ID_OFFSET = 0x10
 PET_USER_USER_ID_OFFSET = 0x14
 PET_USER_PET_ID_OFFSET = 0x1C
@@ -36,37 +36,39 @@ PET_USER_CARD_DATA_OFFSET = 0x90
 PET_USER_READ_SIZE = 0x98
 
 # MatchService server-owned current QTE challenge.
-MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET = 0x200
-MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET = 0x208
-MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET = 0x20C
-MATCH_SERVICE_SERVER_QTE_READ_SIZE = 0x228
+MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET = 0x220
+MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET = 0x228
+MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET = 0x22C
+MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET = 0x250
+MATCH_SERVICE_SERVER_QTE_READ_SIZE = 0x258
 
 # CardUI active Dot/Legend QTE state.
 CARD_UI_CARD_DATA_OFFSET = 0x20
 CARD_UI_BUTTON_OFFSET = 0x28
 CARD_UI_BOARD_OFFSET = 0x30
 CARD_UI_ACTIVE_OFFSET = 0x38
-CARD_UI_CURRENT_ACTOR_OFFSET = 0x54
-CARD_UI_DURATION_OFFSET = 0xB8
-CARD_UI_TIMING_TEXT_OFFSET = 0xF0
-CARD_UI_CURRENT_ARROWS_OFFSET = 0x138
-CARD_UI_DIRECTIONS_OFFSET = 0x140
-CARD_UI_CURRENT_INDEX_OFFSET = 0x148
-CARD_UI_CORRECT_COUNT_OFFSET = 0x14C
-CARD_UI_ACTIVE_FLAG_OFFSET = 0x150
-CARD_UI_CURRENT_TIME_VALUE_OFFSET = 0x154
-CARD_UI_DAMAGE_MULTIPLIER_OFFSET = 0x158
-CARD_UI_FINISHED_OFFSET = 0x170
-CARD_UI_PERFECT_START_OFFSET = 0x1A0
-CARD_UI_PERFECT_END_OFFSET = 0x1A4
-CARD_UI_GOOD_START_1_OFFSET = 0x1A8
-CARD_UI_GOOD_END_1_OFFSET = 0x1AC
-CARD_UI_GOOD_START_2_OFFSET = 0x1B0
-CARD_UI_GOOD_END_2_OFFSET = 0x1B4
-CARD_UI_TIMING_BONUS_OFFSET = 0x1B8
-CARD_UI_CURRENT_ARROW_SEED_OFFSET = 0x318
-CARD_UI_QTE_PRESSES_OFFSET = 0x320
-CARD_UI_READ_SIZE = 0x329
+CARD_UI_CURRENT_ACTOR_OFFSET = 0x58
+CARD_UI_DURATION_OFFSET = 0xC0
+CARD_UI_TIMING_TEXT_OFFSET = 0xF8
+CARD_UI_CURRENT_ARROWS_OFFSET = 0x140
+CARD_UI_DIRECTIONS_OFFSET = 0x148
+CARD_UI_CURRENT_INDEX_OFFSET = 0x150
+CARD_UI_CORRECT_COUNT_OFFSET = 0x154
+CARD_UI_ACTIVE_FLAG_OFFSET = 0x158
+CARD_UI_CURRENT_TIME_VALUE_OFFSET = 0x15C
+CARD_UI_DAMAGE_MULTIPLIER_OFFSET = 0x160
+CARD_UI_FINISHED_OFFSET = 0x178
+CARD_UI_PERFECT_START_OFFSET = 0x310
+CARD_UI_PERFECT_END_OFFSET = 0x314
+CARD_UI_GOOD_START_1_OFFSET = 0x318
+CARD_UI_GOOD_END_1_OFFSET = 0x31C
+CARD_UI_GOOD_START_2_OFFSET = 0x320
+CARD_UI_GOOD_END_2_OFFSET = 0x324
+CARD_UI_TIMING_BONUS_OFFSET = 0x328
+CARD_UI_CURRENT_ARROW_SEED_OFFSET = 0x488
+CARD_UI_QTE_PRESSES_OFFSET = 0x490
+CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET = 0x498
+CARD_UI_READ_SIZE = 0x49A
 UNITY_OBJECT_CACHED_PTR_OFFSET = 0x10
 UNITY_UI_TEXT_VALUE_OFFSET = 0xE8
 SELECTABLE_INTERACTABLE_OFFSET = 0xD8
@@ -81,7 +83,8 @@ CHAT_MESSAGE_TIMING_RESULT_OFFSET = 0x118
 CHAT_MESSAGE_DOTS_TO_DESTROY_OFFSET = 0x120
 CHAT_MESSAGE_QTE_PRESSES_OFFSET = 0x138
 CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET = 0x140
-CHAT_MESSAGE_QTE_RESULT_READ_SIZE = 0x148
+CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET = 0x148
+CHAT_MESSAGE_QTE_RESULT_READ_SIZE = 0x158
 
 MANAGED_LIST_ITEMS_OFFSET = 0x10
 MANAGED_LIST_SIZE_OFFSET = 0x18
@@ -364,6 +367,7 @@ class ServerQteChallengeSnapshot:
     raw_sequence: tuple[str, ...]
     normalized_sequence: tuple[str | None, ...]
     window: QteWindowSnapshot
+    challenge_id: int | None = None
 
     @property
     def sequence_known(self) -> bool:
@@ -395,6 +399,11 @@ def read_server_qte_challenge(
         raise LayoutValidationError("ServerQteDurationMs disagrees with ServerQteWindow")
     if any(value < 0 or value > 300_000 for value in window_values):
         raise LayoutValidationError("server QTE timing value is implausible")
+    challenge_id_raw = struct.unpack_from(
+        "<q", before, MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET
+    )[0]
+    if challenge_id_raw < 0:
+        raise LayoutValidationError("server QTE challenge id is invalid")
     if _read_exact(
         memory, match_service, MATCH_SERVICE_SERVER_QTE_READ_SIZE, "MatchService QTE"
     ) != before:
@@ -405,6 +414,7 @@ def read_server_qte_challenge(
         raw_sequence=sequence,
         normalized_sequence=tuple(normalize_qte_direction(value) for value in sequence),
         window=QteWindowSnapshot(*window_values),
+        challenge_id=challenge_id_raw or None,
     )
 
 
@@ -439,6 +449,7 @@ class CardUiQteSnapshot:
     current_arrow_seed: int
     qte_presses_list_address: int | None
     qte_presses: tuple[str, ...]
+    arrows_from_server: bool = False
 
     @property
     def elapsed_seconds(self) -> float:
@@ -483,6 +494,10 @@ def _card_ui_qte_consistency_signature(raw: bytes) -> tuple[bytes, ...]:
         raw[CARD_UI_FINISHED_OFFSET : CARD_UI_FINISHED_OFFSET + 1],
         raw[CARD_UI_PERFECT_START_OFFSET : CARD_UI_TIMING_BONUS_OFFSET + 4],
         raw[CARD_UI_CURRENT_ARROW_SEED_OFFSET : CARD_UI_QTE_PRESSES_OFFSET + 8],
+        raw[
+            CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET :
+            CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET + 1
+        ],
     )
 
 
@@ -557,6 +572,11 @@ def read_card_ui_qte(
         if presses_pointer
         else ()
     )
+    arrows_from_server = _bool(
+        before,
+        CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET,
+        "CardUI._qteArrowsFromServer",
+    )
     current_arrows_pointer = _pointer(before, CARD_UI_CURRENT_ARROWS_OFFSET)
     current_arrow_count = (
         _read_stable_list_count(
@@ -611,6 +631,7 @@ def read_card_ui_qte(
         current_arrow_seed=seed,
         qte_presses_list_address=presses_pointer or None,
         qte_presses=presses,
+        arrows_from_server=arrows_from_server,
     )
 
 
@@ -717,6 +738,7 @@ class QteResultSnapshot:
     dots_to_destroy: int | None
     qte_presses: tuple[str, ...]
     qte_elapsed_ms: int | None
+    qte_challenge_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -732,6 +754,7 @@ def correlate_qte_response_envelope(
     event_type: str,
     match_id: str,
     skill_card_id: int | None,
+    qte_challenge_id: int | None = None,
     reject_reason: str | None,
     payload_bools: Iterable[tuple[str, bool]],
     server_timestamp_epoch: float | None,
@@ -762,13 +785,13 @@ def correlate_qte_response_envelope(
     if match_id != identity.session_key.match_id:
         return QteResponseCorrelation(False, "NONE", "response MatchId is stale")
 
-    flags = dict(payload_bools)
-    if reject_reason or flags.get("rejected") is True:
-        return QteResponseCorrelation(False, "EXPLICIT_REJECT", "server rejected skill")
-    if flags.get("success") is False or flags.get("accepted") is False:
-        return QteResponseCorrelation(False, "EXPLICIT_REJECT", "server reported failure")
     if skill_card_id is not None and skill_card_id != identity.skill_card_id:
         return QteResponseCorrelation(False, "NONE", "response skillCardId differs")
+    if (
+        qte_challenge_id is not None
+        and qte_challenge_id != identity.server_challenge_id
+    ):
+        return QteResponseCorrelation(False, "NONE", "response QTE challenge differs")
     if not math.isfinite(completion_epoch) or not math.isfinite(observed_epoch):
         return QteResponseCorrelation(False, "NONE", "observer timestamps are invalid")
     if observed_epoch < completion_epoch:
@@ -776,27 +799,39 @@ def correlate_qte_response_envelope(
     if observed_epoch - completion_epoch > maximum_response_delay_seconds:
         return QteResponseCorrelation(False, "NONE", "response observation is too late")
 
-    if skill_card_id is not None:
-        return QteResponseCorrelation(
-            True,
-            "EXACT_SESSION_CARD",
-            "current MatchId and explicit skillCardId agree",
+    provenance: str
+    success_reason: str
+    if qte_challenge_id is not None:
+        provenance = "EXACT_QTE_CHALLENGE_ID"
+        success_reason = "current MatchId and explicit qteChallengeId agree"
+    elif skill_card_id is not None:
+        provenance = "EXACT_SESSION_CARD"
+        success_reason = "current MatchId and explicit skillCardId agree"
+    else:
+        if server_timestamp_epoch is None or not math.isfinite(server_timestamp_epoch):
+            return QteResponseCorrelation(
+                False,
+                "NONE",
+                "generic response lacks a usable server timestamp",
+            )
+        # The game timestamp is local wall time without a timezone suffix in the
+        # observed 1.7.4 build.  Permit small scheduling/clock rounding skew only.
+        if not completion_epoch - 2.0 <= server_timestamp_epoch <= observed_epoch + 2.0:
+            return QteResponseCorrelation(False, "NONE", "generic response is stale")
+        provenance = "CURRENT_ENVELOPE_TEMPORAL_SESSION"
+        success_reason = (
+            "unique completed QTE, exact MatchId and bounded response timestamp agree"
         )
-    if server_timestamp_epoch is None or not math.isfinite(server_timestamp_epoch):
-        return QteResponseCorrelation(
-            False,
-            "NONE",
-            "generic response lacks a usable server timestamp",
-        )
-    # The game timestamp is local wall time without a timezone suffix in the
-    # observed 1.7.4 build.  Permit small scheduling/clock rounding skew only.
-    if not completion_epoch - 2.0 <= server_timestamp_epoch <= observed_epoch + 2.0:
-        return QteResponseCorrelation(False, "NONE", "generic response is stale")
-    return QteResponseCorrelation(
-        True,
-        "CURRENT_ENVELOPE_TEMPORAL_SESSION",
-        "unique completed QTE, exact MatchId and bounded response timestamp agree",
-    )
+
+    # Rejection is actionable only after the envelope has passed the same
+    # current-action identity/time gates as a success.  A stale same-MatchId
+    # reject object must never invalidate the new action.
+    flags = dict(payload_bools)
+    if reject_reason or flags.get("rejected") is True:
+        return QteResponseCorrelation(False, "EXPLICIT_REJECT", "server rejected skill")
+    if flags.get("success") is False or flags.get("accepted") is False:
+        return QteResponseCorrelation(False, "EXPLICIT_REJECT", "server reported failure")
+    return QteResponseCorrelation(True, provenance, success_reason)
 
 
 def _nullable_i32(raw: bytes, offset: int, label: str) -> int | None:
@@ -804,6 +839,13 @@ def _nullable_i32(raw: bytes, offset: int, label: str) -> int | None:
     if flag not in (0, 1):
         raise LayoutValidationError(f"{label} Nullable flag is invalid")
     return struct.unpack_from("<i", raw, offset + 4)[0] if flag else None
+
+
+def _nullable_i64(raw: bytes, offset: int, label: str) -> int | None:
+    flag = raw[offset]
+    if flag not in (0, 1):
+        raise LayoutValidationError(f"{label} Nullable flag is invalid")
+    return struct.unpack_from("<q", raw, offset + 8)[0] if flag else None
 
 
 def read_qte_result_message(
@@ -858,6 +900,9 @@ def read_qte_result_message(
         qte_elapsed_ms=_nullable_i32(
             before, CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET, "qteElapsedMs"
         ),
+        qte_challenge_id=_nullable_i64(
+            before, CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET, "qteChallengeId"
+        ),
     )
     if _read_exact(
         memory, address, CHAT_MESSAGE_QTE_RESULT_READ_SIZE, "QTE result DTO"
@@ -888,6 +933,7 @@ class QteGenerationIdentity:
     current_arrows_list_address: int
     current_arrow_seed: int
     observer_generation: int
+    server_challenge_id: int = 0
 
 
 @dataclass(frozen=True)
@@ -927,6 +973,9 @@ class QteSessionTracker:
         self._saw_inactive = False
         self._generation = 0
         self._identity: QteGenerationIdentity | None = None
+        self._bound_challenge: ServerQteChallengeSnapshot | None = None
+        self._bridged_challenge_read_failure = False
+        self._bridge_in_progress = False
 
     @property
     def identity(self) -> QteGenerationIdentity | None:
@@ -936,6 +985,8 @@ class QteSessionTracker:
         self._session_key = None
         self._saw_inactive = False
         self._identity = None
+        self._bound_challenge = None
+        self._bridged_challenge_read_failure = False
 
     def note_inactive(self, session_key: CombatSessionKey) -> None:
         """Record a current-session inactive edge without requiring card identity.
@@ -951,7 +1002,112 @@ class QteSessionTracker:
         # generations.  Retaining the preceding identity here made the next
         # QTE look like a mutated stale object instead of a fresh generation.
         self._identity = None
+        self._bound_challenge = None
+        self._bridged_challenge_read_failure = False
         self._saw_inactive = True
+
+    def observe_after_server_challenge_read_failure(
+        self,
+        context: QteBindingContext,
+        candidates: Iterable[CardUiQteSnapshot],
+        *,
+        element_type: str | None,
+        read_error: str,
+    ) -> BoundQteObservation:
+        """Bridge one torn MatchService read using an already-bound generation.
+
+        The bridge never creates a generation and never guesses a direction.  It
+        reuses the previously validated server sequence only when the live
+        ``CardUI`` still proves the exact owner/object/list identity and its
+        recorded presses are an exact, all-correct prefix of that sequence.
+        A second consecutive failed server read is rejected fail-closed.
+        """
+
+        values = tuple(candidates)
+        qte, selection_error = select_single_qte_candidate(values)
+        if selection_error is not None:
+            return BoundQteObservation(
+                selection_error,
+                f"server challenge unreadable and QTE candidate is ambiguous: {read_error}",
+                None,
+                None,
+                None,
+            )
+        if self._identity is None or self._bound_challenge is None:
+            return BoundQteObservation(
+                QteBindingStatus.SEQUENCE_UNAVAILABLE,
+                f"server challenge unreadable before a generation was bound: {read_error}",
+                None,
+                qte,
+                None,
+            )
+        if self._bridged_challenge_read_failure:
+            self._identity = None
+            self._bound_challenge = None
+            return BoundQteObservation(
+                QteBindingStatus.STALE_OR_CHANGED_QTE,
+                f"consecutive server challenge reads failed: {read_error}",
+                None,
+                qte,
+                None,
+            )
+        if qte is None or not qte.active:
+            return BoundQteObservation(
+                QteBindingStatus.SEQUENCE_UNAVAILABLE,
+                f"server challenge unreadable and active QTE is unavailable: {read_error}",
+                None,
+                qte,
+                None,
+            )
+
+        sequence = tuple(
+            value for value in self._bound_challenge.normalized_sequence if value
+        )
+        normalized_presses = tuple(
+            normalize_qte_direction(value) for value in qte.qte_presses
+        )
+        prefix_is_exact = (
+            bool(sequence)
+            and all(normalized_presses)
+            and len(normalized_presses) == qte.current_index
+            and tuple(normalized_presses) == sequence[: qte.current_index]
+            and qte.correct_count == qte.current_index
+        )
+        if not prefix_is_exact:
+            self._identity = None
+            self._bound_challenge = None
+            return BoundQteObservation(
+                QteBindingStatus.STALE_OR_CHANGED_QTE,
+                "server challenge unreadable and CardUI progress is not an exact "
+                "all-correct prefix of the bound sequence",
+                None,
+                qte,
+                None,
+            )
+
+        self._bridged_challenge_read_failure = True
+        self._bridge_in_progress = True
+        try:
+            retained = self.observe(
+                context,
+                (qte,),
+                self._bound_challenge,
+                element_type=element_type,
+            )
+        finally:
+            self._bridge_in_progress = False
+        if not retained.current:
+            return retained
+        return BoundQteObservation(
+            retained.status,
+            "one transient MatchService challenge read was bridged by the exact "
+            "bound generation and CardUI press prefix",
+            retained.identity,
+            retained.qte,
+            retained.challenge,
+            retained.normalized_sequence,
+            retained.predicted_timing_result,
+        )
 
     def observe(
         self,
@@ -961,21 +1117,26 @@ class QteSessionTracker:
         *,
         element_type: str | None,
     ) -> BoundQteObservation:
+        if not self._bridge_in_progress:
+            self._bridged_challenge_read_failure = False
         values = tuple(candidates)
         if self._session_key != context.session_key:
             self._session_key = context.session_key
             self._saw_inactive = not values or all(not value.active for value in values)
             self._identity = None
+            self._bound_challenge = None
 
         qte, selection_error = select_single_qte_candidate(values)
         if selection_error is QteBindingStatus.AMBIGUOUS_QTE_CANDIDATES:
             self._identity = None
+            self._bound_challenge = None
             return BoundQteObservation(
                 selection_error, "more than one current QTE candidate", None, None, challenge
             )
         if qte is None or not qte.active:
             self._saw_inactive = True
             self._identity = None
+            self._bound_challenge = None
             return BoundQteObservation(
                 QteBindingStatus.INACTIVE,
                 "current session has an inactive QTE baseline",
@@ -1022,6 +1183,24 @@ class QteSessionTracker:
             return BoundQteObservation(
                 QteBindingStatus.SEQUENCE_UNAVAILABLE,
                 "current server challenge has no direction sequence",
+                None,
+                qte,
+                challenge,
+            )
+        if not qte.arrows_from_server:
+            return BoundQteObservation(
+                QteBindingStatus.SEQUENCE_UNAVAILABLE,
+                "CardUI direction sequence is not attested as server-provided",
+                None,
+                qte,
+                challenge,
+            )
+        if challenge.challenge_id is None and (
+            self._identity is None or not qte.finished
+        ):
+            return BoundQteObservation(
+                QteBindingStatus.SEQUENCE_UNAVAILABLE,
+                "current server QTE challenge has no active challenge id",
                 None,
                 qte,
                 challenge,
@@ -1106,7 +1285,9 @@ class QteSessionTracker:
                 current_arrows_list_address=qte.current_arrows_list_address or 0,
                 current_arrow_seed=qte.current_arrow_seed,
                 observer_generation=self._generation,
+                server_challenge_id=challenge.challenge_id or 0,
             )
+            self._bound_challenge = challenge
         elif (
             self._identity.card_ui_address != qte.address
             or self._identity.server_sequence_list_address
@@ -1114,9 +1295,14 @@ class QteSessionTracker:
             or self._identity.current_arrows_list_address
             != (qte.current_arrows_list_address or 0)
             or self._identity.skill_card_id != context.skill_card_id
+            or (
+                challenge.challenge_id is not None
+                and self._identity.server_challenge_id != challenge.challenge_id
+            )
         ):
             stale = self._identity
             self._identity = None
+            self._bound_challenge = None
             return BoundQteObservation(
                 QteBindingStatus.STALE_OR_CHANGED_QTE,
                 f"QTE identity changed after bind (old generation {stale.observer_generation})",
@@ -1125,6 +1311,10 @@ class QteSessionTracker:
                 challenge,
                 sequence,
             )
+        elif not self._bridge_in_progress:
+            # Keep the newest independently stable read for a possible single
+            # torn-read bridge on the next control cycle.
+            self._bound_challenge = challenge
         result = classify_qte_timing(
             element_type=element_type,
             correct_count=qte.correct_count,
@@ -1143,7 +1333,7 @@ class QteSessionTracker:
         )
         return BoundQteObservation(
             status,
-            "inactive edge, current ownership, card and server challenge agree",
+            "inactive edge, current ownership, card and server challenge id agree",
             self._identity,
             qte,
             challenge,
@@ -1168,6 +1358,7 @@ def correlate_qte_result(
         or result.correct_count != qte.correct_count
         or result.qte_elapsed_ms != qte.qte_elapsed_ms
         or result.qte_presses != qte.qte_presses
+        or result.qte_challenge_id != identity.server_challenge_id
     ):
         return False
     return result.timing_result == observation.predicted_timing_result

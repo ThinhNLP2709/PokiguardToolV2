@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import struct
 import unittest
 
@@ -11,6 +12,7 @@ from pokiguard_v2.memory_board_provider import (
 from pokiguard_v2.opening_snapshot import (
     NewtonsoftClasses,
     OpeningBoardSnapshot,
+    parse_transport_board_envelope_json,
     read_match_payload_board_snapshot,
     read_match_start_opening_snapshot,
 )
@@ -177,6 +179,72 @@ class SnapshotBuilder:
 
 
 class OpeningSnapshotTests(unittest.TestCase):
+    @staticmethod
+    def raw_board() -> list[list[dict[str, object]]]:
+        tags = ("vang Dot", "xanhduong Dot", "do Dot", "tim Dot", "xanh Dot", "trang Dot")
+        return [
+            [
+                {
+                    "col": col,
+                    "row": row,
+                    "tag": tags[(row + col) % len(tags)],
+                    "multiplier": 1 + (row + col) % 4,
+                }
+                for col in range(8)
+            ]
+            for row in range(8)
+        ]
+
+    def test_callback_owned_raw_json_decodes_strict_transport_board(self) -> None:
+        raw = json.dumps({
+            "type": "MATCH_SKILL_USE_RES",
+            "matchId": "M_test",
+            "matchPayload": {"srvSeq": 63, "board": self.raw_board()},
+        })
+
+        snapshot = parse_transport_board_envelope_json(
+            raw,
+            expected_match_id="M_test",
+            expected_event_type="MATCH_SKILL_USE_RES",
+            message_address=0x0000030000001000,
+            json_address=0x0000030000002000,
+        )
+
+        self.assertEqual(snapshot.sequence, 63)
+        self.assertEqual(len(snapshot.cells), 64)
+        self.assertEqual(snapshot.board_token_address, 0x0000030000002000)
+
+    def test_callback_owned_raw_json_rejects_stale_or_invalid_board(self) -> None:
+        base = {
+            "type": "MATCH_SKILL_USE_RES",
+            "matchId": "M_test",
+            "matchPayload": {"srvSeq": 63, "board": self.raw_board()},
+        }
+        cases = []
+        stale = dict(base)
+        stale["matchId"] = "M_old"
+        cases.append(stale)
+        bad_sequence = dict(base)
+        bad_sequence["matchPayload"] = dict(base["matchPayload"], srvSeq=True)
+        cases.append(bad_sequence)
+        short_board = dict(base)
+        short_board["matchPayload"] = dict(base["matchPayload"], board=self.raw_board()[:7])
+        cases.append(short_board)
+        duplicate = json.loads(json.dumps(base))
+        duplicate["matchPayload"]["board"][0][0]["col"] = 1
+        cases.append(duplicate)
+
+        for envelope in cases:
+            with self.subTest(envelope=envelope):
+                with self.assertRaises(LayoutValidationError):
+                    parse_transport_board_envelope_json(
+                        json.dumps(envelope),
+                        expected_match_id="M_test",
+                        expected_event_type="MATCH_SKILL_USE_RES",
+                        message_address=0x0000030000001000,
+                        json_address=0x0000030000002000,
+                    )
+
     def test_exact_match_start_jarray_decodes_64_cells(self) -> None:
         builder = SnapshotBuilder()
         payload, board = builder.payload()
@@ -210,6 +278,23 @@ class OpeningSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot.sequence, 9)
         self.assertEqual(len(snapshot.cells), 64)
 
+    def test_exact_match_skill_response_jarray_decodes_64_cells(self) -> None:
+        builder = SnapshotBuilder()
+        payload, board = builder.payload(sequence=12)
+
+        snapshot = read_match_payload_board_snapshot(
+            builder.memory,
+            match_id="M_test",
+            message_address=0x0000030000002000,
+            payload_address=payload,
+            classes=builder.classes,
+            event_type="MATCH_SKILL_USE_RES",
+        )
+
+        self.assertEqual(snapshot.board_token_address, board)
+        self.assertEqual(snapshot.sequence, 12)
+        self.assertEqual(len(snapshot.cells), 64)
+
     def test_non_board_transport_event_fails_closed(self) -> None:
         builder = SnapshotBuilder()
         payload, _board = builder.payload(sequence=9)
@@ -221,7 +306,7 @@ class OpeningSnapshotTests(unittest.TestCase):
                 message_address=0x0000030000001000,
                 payload_address=payload,
                 classes=builder.classes,
-                event_type="MATCH_CARD_USE_RES",
+                event_type="MATCH_TURN_END",
             )
 
     def test_non_8x8_outer_array_fails_closed(self) -> None:
@@ -289,7 +374,7 @@ class OpeningSnapshotTests(unittest.TestCase):
         self.assertEqual(provider.metrics.opening_snapshots_accepted, 1)
         self.assertEqual(provider.metrics.opening_snapshot_rejections, 0)
 
-    def test_move_response_snapshot_is_session_bound_but_not_self_acked(self) -> None:
+    def test_transport_response_snapshot_is_session_bound_but_not_self_acked(self) -> None:
         builder = SnapshotBuilder()
         payload, _board = builder.payload(sequence=9)
         snapshot = read_match_payload_board_snapshot(
@@ -333,9 +418,31 @@ class OpeningSnapshotTests(unittest.TestCase):
         )
         self.assertFalse(
             provider.offer_transport_board_snapshot(
-                snapshot, event_type="MATCH_CARD_USE_RES"
+                snapshot, event_type="MATCH_TURN_END"
             )
         )
+
+        skill_snapshot = OpeningBoardSnapshot(
+            match_id=snapshot.match_id,
+            message_address=snapshot.message_address + 0x200,
+            payload_address=snapshot.payload_address,
+            board_token_address=snapshot.board_token_address,
+            sequence=snapshot.sequence + 1,
+            cells=snapshot.cells,
+        )
+        self.assertTrue(
+            provider.offer_transport_board_snapshot(
+                skill_snapshot, event_type="MATCH_SKILL_USE_RES"
+            )
+        )
+        skill_identity = next(
+            identity for identity in provider._tracked if identity[1] == 10
+        )
+        self.assertIn(
+            "ChatMessageDTO.MATCH_SKILL_USE_RES.matchPayload.board",
+            provider._sources[skill_identity],
+        )
+        self.assertNotIn(skill_identity, provider._ack_attested)
 
 
 if __name__ == "__main__":

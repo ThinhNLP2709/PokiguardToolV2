@@ -1,5 +1,32 @@
 # Board instance resolution — Phase 1
 
+## Current 1.7.4-b2 addendum — 2026-09-07
+
+The ownership strategy is unchanged, but current build anchors must be used:
+
+1. `GameAssembly.base + 0x2DA5890 -> Board Il2CppClass -> static_fields +0x10 -> Board*`;
+2. `GameAssembly.base + 0x2D96E60 -> Active Il2CppClass -> static_fields +0x00 -> Active* -> board +0x38`;
+3. `GameAssembly.base + 0x2D947D0 -> ManagerMatch Il2CppClass -> static_fields +0x00 -> ManagerMatch* -> active +0x130 -> board +0x38`.
+
+`Il2CppClass.static_fields` remains runtime-verified at `+0x98`. The Board
+back-reference/cycle checks remain mandatory, and Board can legitimately be
+null in the boss lobby. A live read-only b2 smoke observed exactly that lobby
+condition while still resolving MatchService and ChatService and proving the
+clean ChinhPhuc room. No absolute runtime pointer is persisted.
+
+Evidence: `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/Board.cs`,
+`Active.cs`, `ManagerMatch.cs`, and exact TypeInfo mappings in
+`reverse/reverse_1.7.4-b2/il2cpp.json`. Confidence: **HIGH/CONFIRMED**.
+
+## Phase 3B.3 addendum (2026-09-04): Board-owned new skill UI
+
+The accepted Board singleton resolution is unchanged. A newly verified child
+chain is `Board.cardsInHand -> GameObject -> native components -> even scripting
+handle -> managed CardUI`, checked against current Board/Active/CardData/Button.
+See [native card evidence](phase3b3_native_card_evidence.md) for exact build,
+RVAs, offsets, roundtrip checks and UNKNOWNs. This replaces allocation-neighbor
+scanning for the post-evolution skill; it does not assume a fixed card order.
+
 > **Phase 1.5 update (2026-08-11):** The external anchor blocker described in
 > this original Phase 1 document is now resolved for the current hashed game
 > build. Cpp2IL ISIL proves the Board, Active, and ManagerMatch type-info slot

@@ -2688,7 +2688,10 @@ class GameplayUiTests(unittest.TestCase):
         self.assertEqual(layout.slot_count, 5)
         self.assertIsNone(layout.fusion_slot)
         self.assertEqual(layout.card_slots, ())
-        self.assertEqual(layout.reason, "pet_skill_layout_deferred")
+        self.assertEqual(
+            layout.reason,
+            "pet_skill_requires_current_native_geometry",
+        )
 
     def test_arbitrary_selected_order_maps_attack_by_card_data_not_type_slot(self) -> None:
         layout = resolve_runtime_card_strip(

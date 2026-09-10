@@ -12,7 +12,11 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
-from pokiguard_v2.il2cpp_external import MemoryRegion
+from pokiguard_v2.il2cpp_external import (
+    BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET,
+    BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET,
+    MemoryRegion,
+)
 from pokiguard_v2.il2cpp_layout import (
     LayoutValidationError,
     all_dots_index,
@@ -244,12 +248,14 @@ class MemoryScanTests(unittest.TestCase):
         for pointer in (board_ws_class, queue_class, array_class):
             memory.map(pointer, bytearray(8))
 
-        ws_raw = bytearray(0x59)
+        ws_raw = bytearray(BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET + 1)
         struct.pack_into("<Q", ws_raw, 0, board_ws_class)
         struct.pack_into("<Q", ws_raw, 0x10, 0x0000058000000000)
         struct.pack_into("<Q", ws_raw, 0x20, board)
-        struct.pack_into("<Q", ws_raw, 0x50, queue)
-        ws_raw[0x58] = 1
+        struct.pack_into(
+            "<Q", ws_raw, BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET, queue
+        )
+        ws_raw[BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET] = 1
         memory.map(board_ws, ws_raw)
 
         queue_raw = bytearray(0x30)

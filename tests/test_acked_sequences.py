@@ -12,7 +12,10 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
     if import_path not in sys.path:
         sys.path.insert(0, import_path)
 
-from pokiguard_v2.acked_sequences import read_acked_sequences
+from pokiguard_v2.acked_sequences import (
+    MATCH_SERVICE_ACKED_SEQS_OFFSET,
+    read_acked_sequences,
+)
 from pokiguard_v2.il2cpp_layout import LayoutValidationError
 
 
@@ -43,8 +46,8 @@ class AckedSequenceTests(unittest.TestCase):
 
     def make_memory(self, values: tuple[int, ...]) -> FakeMemory:
         memory = FakeMemory()
-        match = bytearray(0x1A0)
-        struct.pack_into("<Q", match, 0x198, self.SET)
+        match = bytearray(MATCH_SERVICE_ACKED_SEQS_OFFSET + 8)
+        struct.pack_into("<Q", match, MATCH_SERVICE_ACKED_SEQS_OFFSET, self.SET)
         memory.map(self.MATCH, match)
         capacity = max(3, len(values) + 2)
         hashset = bytearray(0x40)

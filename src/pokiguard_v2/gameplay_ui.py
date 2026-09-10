@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import math
 
 from .unity_ui_layout import transform_for_capture
 
@@ -17,6 +18,7 @@ from .unity_ui_layout import transform_for_capture
 class GameplayControl(str, Enum):
     EVOLVE = "EVOLVE"
     CAST_ATTACK = "CAST_ATTACK"
+    PET_SKILL = "PET_SKILL"
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class RuntimeCardStripLayout:
     card_slots: tuple[tuple[int, int], ...]
     fusion_slot: int | None
     reason: str
+    pet_skill_slot: int | None = None
 
     def slot_for_card_data(self, address: int) -> int | None:
         return next(
@@ -75,13 +78,14 @@ def resolve_runtime_card_strip(
     cards_in_hand_count: int,
     fusion_expected: bool,
     fusion_skill_card_data_address: int | None,
+    prior_current_session_layout: RuntimeCardStripLayout | None = None,
 ) -> RuntimeCardStripLayout:
-    """Resolve the standard-pet visual strip from current Board lists.
+    """Resolve the current visual strip from authoritative Board/CardUI data.
 
-    Live combat and lobby evidence shows Fusion in the leftmost slot followed
-    by ordinary ``selectedCards`` in list order.  A pet-specific skill changes
-    that layout; support for that variant is intentionally deferred and must
-    fail closed instead of guessing a click target.
+    The normal pre-Fusion mapping follows the accepted Board list contract.
+    A newly created Pet Skill requires the separate native geometry reader.
+    The legacy prior-layout parameter is deliberately ignored: a baseline
+    alone cannot prove that the skill replaces Fusion or inherits its slot.
     """
 
     selected = tuple(selected_card_data_addresses)
@@ -100,14 +104,13 @@ def resolve_runtime_card_strip(
     if skill is not None and skill in selected:
         return RuntimeCardStripLayout(False, 0, (), None, "ambiguous_pet_skill_pointer")
     if skill is not None:
+        # List count and a pre-evolution layout do not prove the new CardUI's
+        # location. AddFusionSkillCard creates another GameObject. Only the
+        # native ownership/RectTransform path may locate that new card.
         return RuntimeCardStripLayout(
-            False,
-            cards_in_hand_count,
-            (),
-            None,
-            "pet_skill_layout_deferred",
+            False, cards_in_hand_count, (), None,
+            "pet_skill_requires_current_native_geometry",
         )
-
     expected_rendered = set(selected)
     if not set(rendered).issubset(expected_rendered):
         return RuntimeCardStripLayout(False, 0, (), None, "unexpected_live_card_data")
@@ -144,7 +147,7 @@ def _layout_anchor(
     slot_count: int | None,
 ) -> tuple[float, float] | None:
     if slot_index is None and slot_count is None:
-        return _LEGACY_ANCHORS[control]
+        return _LEGACY_ANCHORS.get(control)
     if (
         slot_index is None
         or slot_count is None
@@ -301,10 +304,41 @@ def locate_gameplay_control(
     )
 
 
+def locate_native_pet_skill_control(
+    rgb: bytes, width: int, height: int,
+    viewport_rect: tuple[float, float, float, float], *, root_aspect: float,
+) -> GameplayUiLocation:
+    """Visual sanity only; identity/rectangle must come from the native reader.
+
+    Unlike ordinary-card calibration this path never derives X from a slot.
+    The accepted full-viewport combat Canvas must match this capture's aspect.
+    """
+    control = GameplayControl.PET_SKILL
+    if width < 640 or height < 360 or len(rgb) != width * height * 3:
+        return GameplayUiLocation(control, False, None, 0.0, "invalid_client_capture")
+    left, top, right, bottom = viewport_rect
+    transform = transform_for_capture(rgb, width, height)
+    if (not math.isfinite(root_aspect) or not all(0 <= v <= 1 for v in viewport_rect)
+            or not 0.01 <= right - left <= 0.20
+            or not 0.02 <= bottom - top <= 0.30
+            or abs(root_aspect - transform.viewport_width / transform.viewport_height) > 0.01):
+        return GameplayUiLocation(control, False, None, 0.0, "native_canvas_viewport_mismatch")
+    metrics = _region_metrics(rgb, width, height, transform.viewport_rect(viewport_rect))
+    if (int(metrics["samples"]) < 100 or int(metrics["dynamicRange"]) < 100
+            or float(metrics["colorfulRatio"]) < 0.10
+            or float(metrics["brightRatio"]) < 0.025
+            or float(metrics["darkRatio"]) > 0.82):
+        return GameplayUiLocation(control, False, None, 0.0, "native_card_tile_visual_not_proven", metrics)
+    point = transform.viewport_point(((left + right) / 2, top + (bottom - top) * 0.4))
+    return GameplayUiLocation(control, True, tuple(round(v, 6) for v in point),
+                              0.97, "current_native_button_rectangle_plus_visual", metrics)
+
+
 __all__ = [
     "GameplayControl",
     "GameplayUiLocation",
     "RuntimeCardStripLayout",
     "locate_gameplay_control",
+    "locate_native_pet_skill_control",
     "resolve_runtime_card_strip",
 ]

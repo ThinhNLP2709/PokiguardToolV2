@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-04 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-10 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,10 +24,1221 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 3B.2 — PASS STRONG / AUTOMATED QTE DIRECTIONS** |
-| Active phase | **NONE — STOPPED AFTER PHASE 3B.2** |
-| Current controller status | **STOPPED** |
-| Current live automation | **NONE** |
+| Current completed phase | **Phase 3B.3 — PASS STRONG / FULL PET SKILL + CURRENT RUNTIME PERFECT, v1.0.43** |
+| Active phase | **NONE — final audit complete; awaiting user review / next phase prompt** |
+| Current controller status | **STOPPED cleanly at 2026-09-10 13:14:33.727 ICT after B4 PERFECT 2/2; exit 0** |
+| Current live automation | **NONE; bounded B4 completed, no BASIC/FarmRunner or automatic third action** |
+
+## Phase 3B.3 final closeout — 2026-09-10
+
+Read [phase3b3_closeout.md](phase3b3_closeout.md) for the final acceptance,
+scope changes, timing statistics, safety audit and Git receipt procedure.
+B1 PASS, B2 3/3, B3 ten consecutive **scored** Perfects, B4 two current
+Perfects in one retained match: all mandatory live milestones are complete.
+HT2 full-auto remains optional NOT_OBSERVED, not a required retry.
+Final offline audit: **282 focused / 1083 full tests PASS**, compileall PASS.
+
+The final user-approved action boundary ends immediately on current-generation
+runtime PERFECT after 7/7 RAM ACKs and one in-window Space. No callback capture
+or post-effect board wait is required to accept that action. This is not proof
+of server damage/rewards, nor authority to play the next board without its
+normal fresh-actionability gate. Historical failures/exclusions remain visible.
+
+Next safe phase, only after approval: **3A.2 — Pet Configuration + Capability
+Model**, before BASIC Pet-Skill policy. Do not start it automatically. The
+general board-policy use of `isUsingLegendCard` requires a separate lifetime
+audit before continuous skill integration; the accepted B4 fix only changes
+fast card rediscovery. No packaging, release tag or automatic farming added.
+
+## Historical implementation and live audit trail
+
+The dated entries below preserve prior observations and pending states. The
+final closeout above supersedes their old status/retry instructions.
+
+### v1.0.43 — fix B4 second-card discovery blocked by latched flag
+
+**B4 retry 1 PASS:** user reported two Perfects, independently verified in
+`logs/phase3b3_pet_skill_action_20260910_124435_b4_retry1_two_same_match_v1043.jsonl`,
+`--b4-two-same-match --timeout 1800`, execution session 70040, replacement game
+PID 23784. Both actions share MatchId `M_60410580`, epoch 1, Board
+`0x0000021E58B7F540`, local actor 1 and HT7 CardUI. Observer generations 1 -> 2
+have distinct server challenges and source turns 13 -> 21. Each has 7/7 RAM
+ACKs, one card click and one in-window Space, current runtime PERFECT and zero
+direction violations. Directions take 1.152945 / 1.150411 s; Space estimates
+3.154792 / 3.167089 s in current [3.0, 3.299999952] windows. The same CardUI
+and arrows-list object are safely reused with a new identity/current sequence.
+
+Inactive edge after action 1 is logged at 13:13:42.110 ICT. A geometry-change
+preflight before action 2 rejected/rearmed with zero input; it is not a third
+action or retry of sent input. Final `B4_SUCCESS_TWO_CURRENT_PERFECT`, accepted
+2/2, exit 0; observer stopped 27 ms after result 2, no remaining Python input
+controller. The latched-flag fix is live validated. No further B3/B4 retry is
+needed for these milestones; final phase/isolation audit and handoff remain.
+No new controller, code change, commit, push or phase expansion in this review.
+
+B4 v1.0.42 log below has first current PERFECT in MatchId `M_8718fdf8`, turn
+39; ActionId `e0fc95bd6bb7419d86104df24d88f1e2`, 7/7 RAM ACKs in 1.234789 s,
+one Space at 3.185688 s within [3.0, 3.299999952], zero direction violations.
+The inactive edge appears 1.141 s later. At turn 43 resources are 360/250,
+but `refresh_pet_skill_cards` returns no cards on `isUsingLegendCard=true`.
+This persists across later turns, so B4 is **INCOMPLETE / discovery bug**, not
+two accepted actions or insufficient resources. First accepted action remains.
+
+Read-only b2 disassembly confirms `CardUI.SetLegendMultiplier` sets Board's
++0x391 flag true; the observed lifetime is not the current QTE lifetime.
+v1.0.43 removes that fast-hand-discovery suppression only; exact current card,
+inactive QTE, resource/turn/readiness and input timing protections are unchanged.
+See `phase3b3_native_card_evidence.md` and `phase3b3_report.md`.
+
+Execution session 16429 was interrupted during diagnosis (exit 1; no final
+`observer_stopped` footer). Process inspection confirms Python PID 35544 is
+gone; no input controller remains. Raw log is preserved, not rewritten.
+Do not hot-restart in the user's ongoing combat; retry from the exact boss
+lobby when the user is ready. B3's prior scored streak is unchanged.
+Offline verification for v1.0.43: targeted **122 PASS**, full suite **1083 PASS**.
+
+### v1.0.42 — B4 retained-session two-action validation (2026-09-10)
+
+The user authorized testing two QTEs in the SAME combat. The new optional
+`--b4-two-same-match` coordinator retains the observer/generation tracker but
+creates a fresh one-action executor after the first current runtime PERFECT.
+The existing direction/Space primitive and immediate-success contract are
+unchanged. No response scan or post-effect wait is reintroduced for success.
+
+Only action 2 waits for a fresh proven inactive-QTE edge, a later local turn,
+fresh ready control flags, resources and current native card/geometry proofs.
+Its QTE must have a higher observer generation and a different positive server
+challenge in the exact same session. Repeated sequence/window VALUES are legal;
+their ownership must be current. The coordinator stops at two successes, any
+post-input failure, session/actor change, terminal state, timeout or operator
+abort. A match ending after one success is incomplete B4, not two successes.
+No automatic third action, consumable, board move, recovery or re-entry.
+
+Control readiness fields are projected from values already read by
+`poll_qte_control`; no new offsets, board scan or additional RPM scan is added.
+See `phase3b3_runbook.md` for the operator protocol and `phase3b3_report.md`
+for verification. B3's scored 10/10 evidence below remains unchanged.
+
+Offline regression: **1080 PASS**, targeted B4/control **57 PASS**. User-authorized
+live invocation started successfully from the lobby:
+`logs/phase3b3_pet_skill_action_20260910_020559_b4_two_same_match_v1042.jsonl`,
+`--b4-two-same-match --timeout 1800`, execution session 16429. The started line
+confirms the two-action protocol. This invocation subsequently stopped after
+the first success and second-card discovery blocker; see v1.0.43 above.
+
+### v1.0.41 — complete the action at runtime PERFECT (2026-09-09)
+
+Live **B3 attempt 15 PASS PERFECT**, completed 2026-09-10 01:36:59 ICT. Log:
+`logs/phase3b3_pet_skill_action_20260910_013402_b3_attempt15_v1041.jsonl`.
+ActionId `4107bba60ea84692900e64d37d099998`, MatchId `M_316ad722`, turn 21,
+PID 11324; HT7/card id 7, resources 300 Mana / 250 Rage. One click, 7/7 RAM ACKs
+in 1.068051 s, zero direction violations; one Space at estimated elapsed
+3.153467 s inside `[3.0, 3.299999952]`, current runtime `PERFECT!`.
+`SUCCESS_PERFECT`, exit zero, observer stopped 28 ms after result; no surviving
+input controller. User reported done. No code/timing change or further action.
+Accounting: **15 full attempts = 13 accepted + 1 scored unconfirmed + 1 excluded**;
+**14 scored**, scored streak **10/10**, cumulative confirmed directions **91/91**.
+Direct final-summary audit of attempts **5-10 and 12-15** confirms 10 current
+Perfect results, 70/70 directions, one card/Space each, zero direction violations
+and all Space estimates within runtime windows. Attempt 11 remains excluded
+by explicit user decision; pre-input startup refusals are not full actions.
+**B3 reliability milestone PASS STRONG** under that declared protocol, not an
+unqualified 15/15 success rate. No further B3 live invocation is needed.
+Phase 3B.3 overall remains pending final scope/isolation audit and handoff;
+no commit/push/package or next-phase integration performed in this log review.
+
+Live **B3 attempt 14 PASS PERFECT**, completed 2026-09-10 01:29:14 ICT. Log:
+`logs/phase3b3_pet_skill_action_20260910_011910_b3_attempt14_v1041.jsonl`.
+ActionId `217917dac8434242a28b16eb7f7ca352`, MatchId `M_edd151b4`, epoch 2,
+turn 31, PID 11324; resources 385 Mana / 235 Rage, HT7/card id 7. One click,
+7/7 RAM ACKs in 1.051448 s, zero direction violations, one Space at estimated
+elapsed 3.153671 s inside `[3.0, 3.299999952]`, current runtime `PERFECT!`.
+`SUCCESS_PERFECT`, exit zero, observer stopped 27 ms after result; no surviving
+input controller. User reported done. A preceding geometry-change preflight
+was rejected/rearmed with zero input; it is not another full action or a retry
+after sending a click. Raw diagnostic preserved. No code/timing changes.
+Accounting: **14 full attempts = 12 accepted + 1 scored unconfirmed + 1 excluded**;
+scored streak **9/10**, cumulative confirmed directions **84/84**.
+Next: **B3 attempt 15**, candidate tenth success; no auto-start during review.
+
+Live **B3 attempt 13 retry 1 PASS PERFECT**, completed 2026-09-10 01:12:07 ICT.
+Log: `logs/phase3b3_pet_skill_action_20260910_010424_b3_attempt13_retry1_v1041.jsonl`.
+ActionId `fa558d3ad90b492db7fb9c756606fd5c`, MatchId `M_091afa9a`, turn 53;
+replacement PID 11324, HT7/card id 7, pre-action resources 570 Mana / 250 Rage.
+One card click, 7/7 RAM ACKs in 1.167758 s, zero direction violations; one Space
+at estimated elapsed 3.151877 s inside `[3.0, 3.299999952]`, runtime `PERFECT!`.
+`SUCCESS_PERFECT`, exit zero, stopped 26 ms after result; no input controller
+remains. User reported done. No source/timing changes or callback/post-state wait.
+Accounting: **13 full attempts = 11 accepted + 1 scored unconfirmed + 1 excluded**,
+current scored streak **8/10**, cumulative confirmed directions **77/77**.
+The first attempt-13 launch ended before input and is not a full action.
+Next: **B3 attempt 14**, candidate ninth success; no auto-start during review.
+
+**B3 attempt-13 launch stopped before any action**, 2026-09-10 00:52:30 ICT. Log:
+`logs/phase3b3_pet_skill_action_20260910_005144_b3_attempt13_v1041.jsonl`.
+The observer had attached to PID 35016 at 00:51:46 ICT. Its final summary is
+`IDLE`, `invocationConsumed=false`, all input timestamps null; exit 1.
+User reported the game went out. Read-only process check now finds game PID
+11324 and no Python harness: the old attachment is not alive or attached to
+the replacement process. The log does not establish why the old game exited.
+No action was attempted, so acceptance totals and streak **7/10** are unchanged.
+Next: **retry B3 attempt 13** from the exact boss lobby, with explicit user
+authorization and a fresh process/session binding. No automatic restart or
+source/timing changes during this status review.
+
+Live **B3 attempt 12 PASS PERFECT**, completed 2026-09-10 00:47:06 ICT.
+Log: `logs/phase3b3_pet_skill_action_20260910_004009_b3_attempt12_v1041.jsonl`.
+ActionId `f8f75f111fb64b21b3348a1afe4a3b4a`, MatchId `M_b7052e6c`, turn 49;
+HT7/card id 7; pre-action resources 230 Mana / 204 Rage. One card click,
+7/7 RAM ACKs in 1.050251 s, zero direction violations, one Space at 3.168426 s
+inside current `[3.0, 3.299999952]`, runtime `PERFECT!`, `SUCCESS_PERFECT`.
+Exit zero, observer stopped 00:47:06.362 ICT; no surviving input controller.
+No code/timing change, callback scan or post-state wait. User reported done.
+Accounting: 12 full attempts = **10 accepted / 11 scored attempts + 1 excluded**;
+current streak **7/10** (attempt 11 excluded per explicit user decision),
+cumulative confirmed directions **70/70**. Next: **B3 attempt 13**.
+
+**B3 attempt 11 ended without a QTE** at 2026-09-10 00:35:28 ICT. Log:
+`logs/phase3b3_pet_skill_action_20260910_003243_b3_attempt11_v1041.jsonl`.
+Match `M_9c449306`, turn 15, ActionId `6fbba057810c4004a9f5d38827a043b3`.
+Mana changed 171 -> 271 with Rage 230; one skill click, no fresh QTE, zero
+direction/Space input, `CARD_CLICK_SENT_QTE_UNCONFIRMED_NO_RETRY`, exit 1.
+User reported clicking a mana consumable whose animation was still running,
+then explicitly requested an unchanged-code retry rather than a fix. Raw log
+does not independently identify the animation/blocking flag at click time.
+No code or timing changed. User explicitly corrected the acceptance accounting:
+attempt 11 is `EXCLUDED_OPERATOR_INTERFERENCE`, neither PASS nor FAIL, because
+manual Mana injection is outside the test protocol. Raw result is preserved.
+Totals: 11 full attempts = 9 accepted + 1 scored unconfirmed + 1 excluded;
+scored sample count remains 10 and the current success streak remains **6/10**.
+The earlier streak-reset assessment is superseded by this user decision, not
+by a reinterpretation of the raw action result. Tool consumable use remains
+prohibited; next valid action is a candidate seventh successive Perfect.
+The requested attempt-12 launch was rejected before attach/input:
+`start MemoryBoardStateProvider in the lobby before Board.Instance exists`.
+It is not a twelfth full action. Wait for the user's exact boss-lobby baseline;
+do not bypass the lobby requirement or start another controller automatically.
+
+Live **B3 attempt 10 PASS PERFECT** (2026-09-10 ICT). Log:
+`logs/phase3b3_pet_skill_action_20260910_001348_b3_attempt10_v1041.jsonl`.
+ActionId `597c6d3aadb24137af302c66d4b273ee`, MatchId `M_47a26f41`, turn 27;
+HT7/card id 7; resources 233/248. One card click, 7/7 RAM ACKs in 1.135214 s,
+zero direction violations, one Space at 3.170393 s inside current
+`[3.0, 3.299999952]`, runtime `PERFECT!`. User requested log verification;
+visible result was not separately reported for this action.
+`SUCCESS_PERFECT`, exit zero; observer stopped about 27 ms after acceptance,
+with no callback scan/post-state wait or surviving input controller.
+Accounting: **10 attempts / 9 accepted / 1 unconfirmed**, current streak **6/10**,
+cumulative confirmed directions **63/63**. Next: **B3 attempt 11**.
+
+Live **B3 attempt 9 PASS PERFECT** (2026-09-10 ICT). Log:
+`logs/phase3b3_pet_skill_action_20260910_000638_b3_attempt9_v1041.jsonl`.
+ActionId `9565e7f238d2405eb314214c84dd1fd3`, MatchId `M_7c1eba11`, turn 19;
+HT7/card id 7; resources 360/250. One click, 7/7 RAM-confirmed directions in
+1.250835 s, zero direction violations, one Space at 3.152789 s within the
+current `[3.0, 3.299999952]` interval; RAM and user confirmed Perfect.
+`SUCCESS_PERFECT`, exit zero, observer stopped about 29 ms after acceptance;
+no callback scan/post-state wait or surviving input controller.
+Accounting: **9 attempts / 8 accepted / 1 unconfirmed**, current streak **5/10**,
+cumulative confirmed directions **56/56**. Next: **B3 attempt 10**.
+
+Live **B3 attempt 8 PASS PERFECT** (completed 2026-09-10 ICT). Log:
+`logs/phase3b3_pet_skill_action_20260909_235156_b3_attempt8_v1041.jsonl`.
+ActionId `e3014f3b8cb644c2bd622306692f4b3f`, MatchId `M_63347773`, source
+turn 77; HT7/card id 7; resources 240/250. One card click, 7/7 directions
+RAM-confirmed in 1.284190 s, zero direction violations, one Space at 3.151786 s
+inside `[3.0, 3.299999952]`, current `PERFECT!`, user-confirmed Perfect.
+`SUCCESS_PERFECT`, process exit zero; observer stopped about 28 ms after
+acceptance. No callback scan/post-state wait or surviving input controller.
+Accounting: **8 attempts / 7 accepted / 1 unconfirmed**, current streak **4/10**,
+cumulative confirmed directions **49/49**. Next: **B3 attempt 9**.
+
+Live **B3 attempt 7 PASS PERFECT**. Log:
+`logs/phase3b3_pet_skill_action_20260909_233727_b3_attempt7_v1041.jsonl`.
+ActionId `a2d79a409a80417ab2cefef42f4b6493`, MatchId `M_5e2aed5d`, turn 75;
+HT7/card id 7; resources 430/250. One card click, 7/7 RAM-confirmed directions
+in 1.084980 s, zero direction violations, one Space at 3.153923 s within
+`[3.0, 3.299999952]`, runtime `PERFECT!`, user-confirmed Perfect. The harness
+returned `SUCCESS_PERFECT` and exited zero, stopping about 28 ms after runtime
+acceptance. No callback scan/post-state wait or surviving input controller.
+Accounting: **7 attempts / 6 accepted / 1 unconfirmed**, current streak **3/10**,
+cumulative confirmed directions **42/42**. Next: **B3 attempt 8**.
+
+Live **B3 attempt 6 PASS PERFECT**. Log:
+`logs/phase3b3_pet_skill_action_20260909_232748_b3_attempt6_v1041.jsonl`.
+ActionId `7129a97e00fc417baacce20063cbdbd4`, MatchId `M_eef5529e`, source
+turn 43; HT7/card id 7; pre-action resources 390/250. One card click, 7/7
+directions RAM-confirmed in 1.201285 s, zero direction violations, one Space at
+3.152418 s in `[3.0, 3.299999952]`, current runtime `PERFECT!`, user-confirmed
+Perfect. The harness returned `SUCCESS_PERFECT` and exited zero, with the
+observer stopped about 28 ms after acceptance. No response/post-state wait.
+Accounting: **6 full attempts / 5 accepted / 1 unconfirmed**, current streak
+**2/10**, cumulative confirmed directions **35/35**. Next: **B3 attempt 7**.
+No input controller remains; code and timings are unchanged.
+
+Live B3 retry / full-action attempt 5 **PASS**. Log:
+`logs/phase3b3_pet_skill_action_20260909_231903_b3_attempt5_v1041.jsonl`.
+ActionId `ea4f713d62d74cb4b389cfd02d66bc9b`, MatchId `M_ad73d344`, turn 25,
+HT7/card id 7, current resources 330/250. One click, fresh generation 1,
+7/7 RAM-confirmed directions in 1.234045 s, zero direction violations, and one
+Space at 3.183263 s inside `[3.0, 3.299999952]` yielded current `PERFECT!`.
+User confirmed one Perfect. The executor returned `SUCCESS_PERFECT`, process
+exit zero, and the observer stopped about 27 ms after runtime acceptance.
+There was no callback scan/post-state wait. No input controller remains.
+Accounting: **5 full attempts / 4 accepted / 1 unconfirmed**, current streak
+**1/10** following attempt 4. Next is controlled **B3 attempt 6** from boss lobby.
+No code or timing changes were needed for this successful retry.
+
+B3 action 4 ended **CARD_CLICK_SENT_QTE_UNCONFIRMED**, exit 1. Log:
+`logs/phase3b3_pet_skill_action_20260909_230144_b3_action4_v1041.jsonl`.
+At turn 55 of `M_5a7fcc7d`, ActionId `58a8a512b0e1422f9f9e3cd21658594e`,
+the native hand proved current HT7 at slot 4/5, actionable, resources 360/250,
+cost 200/200. One click was sent at 23:13:38; no fresh QTE appeared before the
+3-second deadline. No directions or Space were sent; the harness stopped.
+This full-action attempt is retained: final-contract aggregate **4 attempted /
+3 accepted / 1 unconfirmed**, current consecutive reliability streak **0/10**.
+Historical B2 PASS remains valid.
+
+After the user's disconnect report, read-only checks on PID 35016 still found
+the same MatchId/Board, turn 67 advancing to 72, exact HT7 slot 4/5 and current
+resources 510 Mana / 225 Rage at turn 67. No input controller remained.
+Player.log confirms DNS connection failures and WS close code 1006 ending at
+23:05:59, before combat was first observed at 23:07:23. That supports the
+reported earlier disconnect but does not establish why the 23:13:38 click had
+no observed QTE. Lost click vs delayed/missing challenge remains UNKNOWN.
+No code changes or automatic restart were made during the diagnostic review.
+The historical successful sequence and timing evidence below remain preserved.
+
+Live B2 action 3 **PASS**. Log:
+`logs/phase3b3_pet_skill_action_20260909_024319_b2_action3_v1041.jsonl`.
+ActionId `c6bc1d4de62040f991dd21351b1f48d9`, match `M_76c33a56`, lifecycle
+epoch 2, source turn 57. One HT7 click, **7/7** ACKs in **1.200452 s**, zero
+direction violations, one Space at **3.201961 s** in `[3.0, 3.299999952]`,
+current runtime `PERFECT!`, and clean exit zero. Runtime acceptance was observed
+47 ms after Space; observer stopped about 27 ms after the acceptance event.
+No callback scan or post-state wait occurred. User reported completion.
+
+**B2 PASS: 3 full actions / 3 accepted under the final contract**, 21/21
+directions, three card clicks, three Space confirms, PERFECT 3 / GOOD 0 / BAD 0,
+zero critical input violations. Action 1 is explicitly reclassified v1.0.40
+evidence; actions 2 and 3 are clean v1.0.41 runs. The next reliability milestone
+extends this same recorded streak toward 10: **B3 action 4/10**, not a reset.
+Three distinct MatchIds and fresh action/QTE identities support session isolation.
+Phase 3B.3 remains PARTIAL until remaining acceptance/finalization is complete.
+
+The action-2/action-1 paragraphs below retain their chronological counts.
+
+Live B2 action 2 **PASS** on v1.0.41. Log:
+`logs/phase3b3_pet_skill_action_20260909_023218_b2_action2_v1041.jsonl`,
+ActionId `da95a2ef9a574277b30a29456ee6b2e4`, match `M_bea34652`, turn 49.
+One HT7 card click, 7/7 RAM-ACKed directions in 1.151995 s, zero direction
+violations, and one Space at 3.168201 s inside `[3.0, 3.299999952]` produced
+current CardUI `PERFECT!`; the user confirmed one Perfect. The executor returned
+`SUCCESS_PERFECT / CURRENT_GENERATION_RUNTIME_PERFECT` and exited zero about
+29 ms after logging runtime acceptance, with no response scan or post-state wait.
+The legacy `completedQtes=0` counter counts correlated callbacks, not completed
+input actions; `runtimeHookSummary` proves the one successful action.
+B2 is now **2/3** (two full actions / two accepted under the final contract).
+Next is **B2 action 3/3**. The action-1 reclassification below remains historical
+context; action 2 is a fresh v1.0.41 live validation.
+
+The final user contract in `DECISIONS.md` is now implemented: exact current
+server challenge, all directions RAM-ACKed, one in-window Space, and the same
+CardUI generation reporting runtime `PERFECT` immediately produce
+`SUCCESS_PERFECT / CURRENT_GENERATION_RUNTIME_PERFECT`.
+No response tap, callback heap scan, transient transport capture, post-effect
+board wait, or second input is part of this action. Subsequent gameplay must
+still pass its independent normal GameState/actionability gate.
+
+The B2 action-1 log is
+`logs/phase3b3_pet_skill_action_20260909_b2_action1_v1040.jsonl`, ActionId
+`530143a332e24f7fb584b7fee275ca11`, match `M_a04f76c1`, source turn 79.
+It proves one card click, **7/7** ACKs in **1.234376 s**, zero direction
+violations, and one Space at **3.183324 s** inside `[3.0, 3.299999952]`.
+Both runtime RAM and the user reported Perfect. The original v1.0.40 harness
+then failed solely on its leftover 30-second post-state gate: 107 polls reported
+`latest_acked_batch_not_resolved`, four `awaiting_direct_owner_batch_capture`.
+
+That original failure/log is preserved. Evidence review under the final user
+contract accepts this completed QTE as **B2 1/3**, with **one full action / one
+accepted / zero input or timing failures** in this new sequence. This is a
+reclassification of a v1.0.40 live capture, not a claimed v1.0.41 live run. Its
+earlier zero-click turn-boundary rejection is separately recorded and does not
+consume an action. Next: controlled **B2 action 2/3** on v1.0.41.
+
+The old post-state tests were replaced with active completion, no-extra-input,
+ownership/generation rejection and no-response-capture tests. No obsolete test
+class is skipped. Detailed validation and evidence are in `phase3b3_report.md`.
+Verification: **137/137 focused** and **1065/1065 full regression PASS**, zero
+skipped tests; compileall and diff checks PASS. The reduced total reflects
+replacement of 24 obsolete post-state tests with 10 current boundary/helper
+tests (plus the new ownership/reject/tap coverage), not hidden failures.
+All versioned entries below retain the historical acceptance rule at that time;
+they do not override this section or `DECISIONS.md`.
+
+### Historical v1.0.40 — intermediate runtime PERFECT + settled-state gate
+
+Live B1 revalidation is **PASS**. Log
+`phase3b3_pet_skill_action_20260909_012152.jsonl`, ActionId
+`e7ea05db917a46d0aae9547cbb983d47`, match `M_702266cf`, source turn 49:
+
+- one dynamic HT7 card click and one fresh QTE generation;
+- sequence `RIGHT LEFT DOWN RIGHT UP LEFT LEFT`, all **7/7** individually
+  RAM-ACKed in 1.167871 s;
+- wrong/missing/duplicate/stale/blind retry: **0/0/0/0/0**;
+- exactly one Space at 3.153660 s inside the current runtime interval
+  `[3.0, 3.299999952]`, 3.660 ms after its midpoint and with 153.660/146.340
+  ms margins;
+- predicted `PERFECT`, CardUI runtime `PERFECT!`, and user-visible `Perfect`;
+- later full GameState was current, stable, board-ready and non-cascading, with
+  authoritative turn progress 49 -> 51 and resources 238/250 -> 140/150;
+- clean `SUCCESS_PERFECT / CURRENT_GENERATION_RUNTIME_PERFECT_AND_SETTLED_GAME_STATE`
+  termination; harness exited and sent no second action.
+
+The callback happened to correlate in this sample but carried no semantic
+server result (`server_result=null`). It is recorded only as telemetry and was
+not the success gate. The settled GameState progress completed the action.
+B1 is closed; the next milestone is controlled B2 at **0/3 consecutive**.
+
+The user corrected the Phase 3B.3 acceptance boundary after repeated live
+actions where the game accepted `7/7 + Space`, CardUI reported `PERFECT`, the
+Pet Skill executed (including a lethal win), but the external observer did not
+retain `MATCH_SKILL_USE_RES`. Native b2 inspection confirms two different
+server interactions: the pre-input server challenge supplies the authoritative
+direction sequence/timing and remains mandatory; the post-Space response is
+handled internally by `CardUI.WaitForWsSkillResolution`/`MatchService` to apply
+combat state, but need not remain externally observable.
+
+v1.0.40 therefore completes QTE input on exact current-generation CardUI
+runtime `PERFECT`, then waits for a later exact terminal state or fresh stable,
+ready, non-cascading full GameState with progress in board identity, turn or
+local resources. Only that settled-state gate completes the
+one-shot. Missing callback, missing timing echo and callback-without-board are
+telemetry conditions, not failures. The direct dispatcher tap remains armed as
+a non-blocking telemetry/board fast path; broad heap result scans are disabled
+for this callback-optional harness so they cannot delay the settled-state read.
+An explicit reject is still fatal, but only after current MatchId, explicit
+skill/challenge identity or bounded generic timestamp checks pass.
+
+Offline verification: **149/149 focused** and **1077/1077 full regression
+PASS**. Python compilation and diff checks remain required at final handoff.
+
+### B2 retry: PERFECT skill won and closed combat before result correlation (2026-09-08, v1.0.39)
+
+Log `phase3b3_pet_skill_action_20260908_231448.jsonl`, ActionId
+`ef0116e70f014ef3a21cfdd152b98c4f`, match `M_2ba7d737`, source turn 41.
+The one current HT7 click produced `UP RIGHT RIGHT UP RIGHT DOWN UP`; all 7/7
+directions were RAM-ACKed in 1.150914 s. Exactly one Space at 3.186133 s was
+inside `[3.0, 3.299999952]`. Runtime RAM reported `PERFECT!` with
+`qteElapsedMs=3186`, and the user confirmed the skill won the match.
+
+About 0.62 s after QTE closure, combat lifecycle ended before the queued server
+callback was sampled. The old observer treated the failed ACTIVE control poll
+as an action invalidation, immediately disarmed the response tap and stopped.
+Visible win/PERFECT is not a substitute for the mandatory current server result
+and fresh post-skill state, so this action is not accepted. B2 remains **0/3**;
+cumulative full actions are **12: 2 accepted, 10 failed**.
+
+v1.0.39 adds the missing terminal handoff. Only after one Space and a bound
+runtime-completed QTE, loss of ACTIVE ownership enters a bounded read-only wait:
+the immutable ActionId/MatchId and pre-armed dispatcher tap remain alive, no
+additional input is possible, and only an exact old-MatchId callback may
+correlate. Completion then requires a later, fresh terminal GameState tied to
+the same match. Pre-Space lifecycle loss, stale QTEs, wrong-match terminal state,
+Emergency Stop and timeout still fail closed. Offline verification is
+**297/297 focused** and **1072/1072 full regression PASS**; compileall and diff
+check are clean. A live retry is required.
+
+### B2 retry: skill response had no board and later transport boards escaped (2026-09-08, v1.0.38)
+
+Log `phase3b3_pet_skill_action_20260908_224056.jsonl`, ActionId
+`743ebfa7f9e84af5ae44d95b2830e15b`, match `M_bba167e4`, turn 47. One click
+created `RIGHT LEFT LEFT LEFT DOWN DOWN UP`; 7/7 directions were RAM-ACKed in
+1.185870 s. One Space at 3.171934 s landed inside `[3.0, 3.299999952]`;
+runtime/RAM reported `PERFECT!`, `qteElapsedMs=3156`, and exact current server
+correlation passed.
+
+This response variant genuinely lacked `board/srvSeq`. During the 30-second
+post-state wait the match advanced through turns 48--51, but all 111 polls had
+no current ACK-attested complete batch (5 direct-capture grace, then 106
+`no_current_ack_attested_complete_batch`). The pre-armed dispatcher tap was
+disarmed immediately after result correlation, so it could not retain a later
+short-lived `MATCH_MOVE_RES`/`MATCH_CARD_USE_RES` board. No board was invented;
+the action is not accepted. B2 stays **0/3** and cumulative full actions are
+**11: 2 accepted, 9 failed**.
+
+v1.0.38 keeps the same read-only tap armed through the bounded post-state wait.
+It now retains strict current-MatchId boards from later supported response
+events, distinguishes address reuse by closure JSON identity, and offers each
+snapshot once to the unchanged provider. Exact `srvSeq`, 64-cell semantics,
+latest `_ackedSeqs`, presentation idle and stability remain mandatory before a
+fresh GameState can pass. This cannot emit card/direction/Space input. A new
+live action is required. Offline verification is **293/293 focused** and
+**1068/1068 full regression PASS**; compileall and diff check are clean.
+
+### B2 retry: immutable JSON observed but result decode still depended on mutable DTO (2026-09-08, v1.0.37)
+
+Log `phase3b3_pet_skill_action_20260908_222828.jsonl`, ActionId
+`5b98fadfab394d6b9bb75958fc1bc998`, match `M_3c2943da`, turn 21. One click
+created `RIGHT DOWN UP DOWN DOWN UP UP`; all 7/7 directions were RAM-ACKed in
+1.101554 s with zero violations. One Space at 3.186741 s was inside
+`[3.0, 3.299999952]`; runtime/RAM reported `PERFECT!` and
+`qteElapsedMs=3172`.
+
+The pre-armed dispatcher tap completed 6,017 stable root reads with zero torn
+reads and observed 44 callback candidates, but decoded zero skill responses.
+Code review found the remaining dependency: it read the immutable closure JSON
+only *after* mutable `ChatMessageDTO` decoding succeeded. When Unity cleared or
+reused that DTO before the 2 ms sample, the still-owned raw response was ignored.
+The current action therefore has no server correlation and is not accepted;
+B2 remains **0/3**, cumulative full actions **10: 2 accepted, 8 failed**.
+
+v1.0.37 parses exact `MATCH_SKILL_USE_RES` and current MatchId directly from
+the callback-owned raw JSON even when its DTO is unreadable. Only the bounded
+correlation fields already consumed by the observer are projected; the raw
+timestamp must still pass current-generation temporal correlation, while any
+board independently retains strict 8x8/`srvSeq` validation and the unchanged
+ACK/stability gate. Other callback events and stale MatchIds remain invisible.
+No input retry, memory write, hook, game call or network access was added. A new
+live action is required. Offline verification is **291/291 focused** and
+**1066/1066 full regression PASS**; compileall and diff check are clean.
+
+### B2 retry: raw response board proven; long presentation exceeded 15 s (2026-09-08, v1.0.36)
+
+Log `phase3b3_pet_skill_action_20260908_164100.jsonl`, ActionId
+`545efe7efae74f129d3d68f83efed806`, match `M_52debf2f`, turn 63. One current
+HT7 click created `LEFT UP UP RIGHT DOWN LEFT DOWN`; all 7/7 directions were
+RAM-ACKed in 1.184840 s with zero direction violations. Exactly one Space was
+sent at 3.202731 s inside `[3.0, 3.299999952]`; runtime/RAM reported
+`PERFECT!` and `qteElapsedMs=3188`. The current server response was correlated.
+
+This live retry proves the v1.0.35 callback path: immutable closure JSON decoded
+a strict 64-cell board for current `MATCH_SKILL_USE_RES`/`srvSeq=146`, with zero
+raw-board rejection, and the unchanged transport gate accepted the offer. The
+provider then spent 19 polls waiting for the latest ACK-attested batch, reached
+one valid stability confirmation after the long skill cascade, and immediately
+entered the next turn's presentation. The fixed 15-second post-state deadline
+expired with 10 `presentation_busy_or_batch_pending` polls. No stale board was
+published and the action is not accepted. B2 remains **0/3**; cumulative full
+actions are **9: 2 accepted, 7 failed**.
+
+v1.0.36 changes only the controlled harness's bounded read-only post-state wait
+from 15 to 30 seconds. The exact MatchId/session, response-board semantics,
+`_ackedSeqs`, latest-sequence, presentation-idle and stability gates are
+unchanged. No card click, direction or Space can be retried during this wait.
+A new live action is required. Offline verification is **266/266 focused** and
+**1063/1063 full regression PASS**; compileall and diff check are clean.
+
+### B2 action 2: mutable DTO board absent; callback raw-JSON path added (2026-09-08, v1.0.35)
+
+Log `phase3b3_pet_skill_action_20260908_161553.jsonl`, ActionId
+`904832e6d5aa4af58fd62ad37ec02e87`, match `M_8c1c22c3`, turn 27. One click
+created a fresh QTE; 7/7 directions were RAM-ACKed in 1.233585 s with zero
+direction violations. One Space at 3.153407 s was centered inside
+`[3.0, 3.299999952]`; runtime/RAM reported `PERFECT!`, and the pre-armed tap
+captured current `MATCH_SKILL_USE_RES`/`srvSeq=63` after about 1.2 seconds.
+The three-second direct window worked and no blocking heap scan occurred.
+
+The deserialized DTO's `matchPayload` no longer contained `board`, while the
+owner capture retained only an older ACK-attested batch; 43 post-state polls
+correctly rejected it as `latest_acked_batch_not_resolved`. This action is not
+accepted and resets B2 consecutive progress to **0/3**. Cumulative full actions
+are **8: 2 accepted, 6 failed**.
+
+Reverse evidence already declares immutable closure field
+`ChatService.__c__DisplayClass275_0.json +0x18`, assigned before the callback
+is enqueued, alongside mutable/deserialized `message +0x20`. v1.0.35 now reads
+that exact callback-owned IL2CPP string only for a decoded current
+`MATCH_SKILL_USE_RES`, strictly parses exact type/MatchId, bounded `srvSeq`,
+8x8 cell shape, coordinates, tags and multipliers, then offers the board to the
+unchanged transport + `_ackedSeqs` + stability gates. Malformed/stale JSON
+cannot authorize state. No target write, hook or network interception is used.
+Validation is **148/148 focused** and **1062/1062 full regression PASS**, with
+compileall and diff check clean.
+
+### LIVE B2 fresh sequence — action 1/3 accepted (2026-09-08, v1.0.34)
+
+Log `phase3b3_pet_skill_action_20260908_160105.jsonl`, ActionId
+`9d7d75488ae04f21b58e670153bf614e`, match `M_aee2377f`, turn 25: one current
+HT7 click created a fresh seven-direction QTE. All 7/7 directions were
+individually RAM-ACKed in 1.234155 s with zero wrong, missing, duplicate, stale
+or blind-retry inputs. Exactly one Space was sent at 3.169678 s in the current
+`[3.0, 3.299999952]` interval; margins were 0.169678/0.130322 s and runtime
+reported `qteElapsedMs=3170`, `PERFECT!`.
+
+The pre-armed tap retained exact current `MATCH_SKILL_USE_RES`, MatchId
+`M_aee2377f`, `srvSeq=59`; temporal-session correlation passed. The response
+board was accepted and the normal ACK/stability gate produced a fresh
+post-skill GameState at turn 26. Resources changed 523 Mana/250 Rage to
+623/150 after the board effect, retained as a net delta rather than changing
+the proven gross skill cost. Result: `SUCCESS_PERFECT`. B2 consecutive progress
+is now **1/3**. The harness exited cleanly and no controller remains.
+
+### Latest B2 retry: response captured; broad fallback blocked post-state owner capture (2026-09-08, v1.0.34)
+
+Log `phase3b3_pet_skill_action_20260908_154136.jsonl`, ActionId
+`41e5a99b88024ae4b7eeb42d8a5cb608`, match `M_8938a3ae`, turn 29: the v1.0.33
+pre-armed tap worked. One HT7 click produced a fresh QTE, 7/7 directions were
+RAM-ACKed, one Space landed inside the current Perfect window, runtime/RAM
+reported `PERFECT!`, and the direct dispatcher root retained the exact current
+`MATCH_SKILL_USE_RES` with `payload.srvSeq=69`. Correlation passed through
+`CURRENT_ENVELOPE_TEMPORAL_SESSION`. The response variant did not contain a
+board, and a 1.5-second broad heap fallback had blocked the main loop during
+the response window, so no transient `PendingCombat`/owner-queue batch was
+retained. The post-state gate correctly timed out. This action is not accepted:
+B2 remains **0/3**; cumulative full actions are **6: 1 accepted, 5 failed**.
+
+v1.0.34 gives the already pre-armed 2 ms dispatcher tap an exclusive
+three-second result window before permitting the blocking broad heap fallback.
+During that interval the normal 25 ms control loop continues read-only capture
+of `MatchService.PendingCombat` and `BoardWsApplier._pendingBatches`; captured
+batches still require their exact sequence in `_ackedSeqs` plus all normal
+stability gates. The 15-second action deadline and fallback scan remain, while
+all result/post-state authority requirements are unchanged. Validation is
+**136/136 focused** and **1058/1058 full regression PASS**, with compileall and
+diff check clean. A new live action is required.
+
+### Latest B2 retry: QTE/Perfect passed, dispatcher tap armed too late (2026-09-08, v1.0.33)
+
+Log `phase3b3_pet_skill_action_20260908_022704.jsonl`, ActionId
+`35073db47b56444b8d31a4cbdb023b70`, match `M_2cf12832`, turn 57: current
+HT7 preflight proved 280 Mana/250 Rage; the action RAM-ACKed 7/7 directions in
+1.134015 s and sent one Space at 3.184344 s inside
+`[3.0, 3.299999952]`. Runtime/RAM both reported `PERFECT!`, but neither the
+dispatcher tap nor bounded heap fallback retained `MATCH_SKILL_USE_RES`, so
+the strict action correctly failed without retry. This is not accepted for B2:
+consecutive progress remains **0/3** and cumulative B2 full actions are
+**5: 1 accepted, 4 failed**.
+
+The new telemetry isolated the implementation race: the tap observed stable
+dispatcher roots 2,809 times and other callback candidates 18 times, but it
+was first armed only after Space had already been sent. The polling thread
+could therefore start after Unity had enqueued and drained the short-lived
+skill response. v1.0.33 pre-arms the same read-only ownership tap as soon as
+the one-shot action identity exists, before the card click. Result acceptance
+is unchanged: a response is not promoted until the current QTE is complete
+and exact MatchId, bounded server timestamp, runtime Perfect and fresh
+post-state gates all pass. Validation is **135/135 focused** and **1057/1057
+full regression PASS**, with compileall and diff check clean. A new live action
+is required; no controller is running.
+
+### Latest B2 retry: second result-envelope miss; dispatcher tap added (2026-09-08, v1.0.32)
+
+Log `phase3b3_pet_skill_action_20260908_014748.jsonl`, ActionId
+`c2e8607752ed481b9afbf25dd80c2c43`, match `M_9390287b`, turn 51: one current
+HT7 click produced a fresh QTE; all 7/7 directions were RAM-ACKed in
+1.150589 s with zero direction violations. One Space at 3.151488 s was within
+`[3.0, 3.299999952]`; runtime/RAM reported `PERFECT!`. Four alternating full
+rediscovery passes (3.203–3.375 s each) plus learned scans still found no
+short-lived `MATCH_SKILL_USE_RES`, so strict response/post-state acceptance
+correctly failed with no input retry. B2 remains **0/3**; cumulative B2 full
+actions are **4: 1 accepted, 3 failed**.
+
+Fresh b2 native evidence proves `ChatService.OnWebSocketMessage` stores the
+deserialized message in `__c__DisplayClass275_0.message +0x20`, then calls
+`UnityMainThreadDispatcher.TryEnqueue(Action,bool)`. v1.0.32 now arms a
+read-only 2 ms direct tap immediately after the one Space. It stable-reads the
+exact `_executionQueue` and `_drainBuffer`, requires the verified queue/list/
+closure classes, follows `Action.m_target +0x20`, and retains only a current
+MatchId `MATCH_SKILL_USE_RES`. Mutable container shape/version and roots are
+re-read; torn samples fail closed. The old bounded heap scan remains a delayed
+fallback and every correlation/post-state gate remains unchanged. Validation:
+**54/54 dispatcher/QTE focused**, **1056/1056 full regression**, compileall and
+diff check PASS. Live validation of this new capture path is pending; no
+controller is running.
+
+### Latest B2 retry: action executed, result-envelope scan raced (2026-09-08, v1.0.31)
+
+Log `phase3b3_pet_skill_action_20260908_011400.jsonl`, ActionId
+`7da3bdfc86b4488c9c8f42789fa6fa03`: the current HT7 click was accepted,
+7/7 directions were RAM-ACKed without violations, and one Space at 3.154924 s
+produced runtime/RAM `PERFECT!`; the operator saw the skill execute. The first
+full ChatMessageDTO scan missed the response, then 77 scans remained confined
+to ten old learned regions. With no current response/post-state proof the
+harness correctly stopped and did not retry input.
+
+v1.0.31 starts direct transient-batch capture immediately after Space and adds
+two opposite-direction bounded full discovery passes plus periodic bounded
+rediscovery. Correlation and post-state acceptance remain strict. Validation:
+**133/133 focused**, **1047/1047 full regression PASS**. B2 consecutive count
+remains 0/3; cumulative full-action attempts are 3 (1 accepted, 2 failed).
+
+### B2 action 2 failed at click acceptance (2026-09-08, v1.0.30)
+
+Log `phase3b3_pet_skill_action_20260908_004701.jsonl`, ActionId
+`5a7058210c224218922e669e8aa4f9ab`, proved fresh 590 Mana/250 Rage and current
+HT7/CardUI/Button at turn 73. Exactly one Windows click was sent, but no fresh
+QTE appeared in RAM within three seconds. The harness sent zero directions and
+zero Space, did not retry the card, and terminated
+`CARD_CLICK_SENT_QTE_UNCONFIRMED_NO_RETRY`.
+
+The single-point UI path moved the cursor and pulsed the button immediately,
+although the reliable 1.7.4 board path already settles the cursor for 60 ms so
+Unity can sample its new position. v1.0.30 requests that same existing settle
+only for the Pet Skill click and retains the 75 ms mouse hold, one-click limit
+and RAM QTE acknowledgement. Telemetry now records the point/settle/hold.
+Validation is **132/132 focused**, **1046/1046 full regression**, compileall
+and diff check PASS. Consecutive B2 progress is reset to **0/3**; cumulative
+full-action attempts are 2 with 1 success and 1 failure. No controller runs.
+
+### Historical LIVE B2 action 1 accepted (2026-09-07, v1.0.28)
+
+Action `447375a608b642fbaa8fa6a2652ec62b` in match `M_3b575383` completed
+`SUCCESS_PERFECT`: one card click, 7/7 RAM-ACKed directions, zero direction
+violations, and one Space at 3.170186 s inside `[3.0, 3.299999952]`. The current
+response correlated and a fresh turn-34 post-state was published. At that time
+consecutive B2 progress was **1/3** from **1 attempt / 0 failures**. The later
+action-2 click failure supersedes that consecutive count.
+
+### B2 action 2 zero-input diagnostic (2026-09-08, v1.0.29)
+
+Log `phase3b3_pet_skill_action_20260908_000716.jsonl` found the exact current
+HT7 CardUI but stopped producing fresh samples after a transient
+`MatchService.Players changed during read` at `17:11:54.609Z`. The last logged
+157 Mana/40 Rage predates the operator's later high-resource/card-lit frame and
+is not current evidence. This was no Pet Skill invocation: card click,
+direction and Space counts are all zero, so accepted B2 progress remained
+**1/3 at that diagnostic point**. The later action-2 failure above supersedes
+the consecutive count.
+
+v1.0.29 retains input-free fast-watch across transient runtime/actor torn
+reads and retries fresh ownership/resource sampling. It does not retain clean
+session loss and never retains after input. Resource authorization is now
+fail-closed to fresh `Active.playerStatsMap` values; old board fallback values
+cannot authorize a click. Telemetry exposes `resourceCurrent`,
+`resourceSource`, `resourceReadError` and sample time. Reverse b2 confirms
+currentMana `+0x34`, currentPower `+0x54`, unchanged ObfuscatedInt decoding and
+HT7 gross requirement 200 Mana/200 Rage. Offline validation: **101/101
+focused**, **1045/1045 full regression**, compileall PASS. No controller is
+running; retry the next B2 action from boss lobby.
+
+### LIVE B1 accepted (2026-09-07, v1.0.28)
+
+Log `phase3b3_pet_skill_action_20260907_232352.jsonl` completed one full HT7
+action in match `M_951c8052`, turn 61. It sent one current CardUI click, bound a
+fresh seven-direction challenge, received authoritative progress for all 7/7
+directions, and sent one Space at 3.151958 s inside the runtime Perfect window
+`[3.0, 3.299999952]`. Predicted/runtime result was `PERFECT`; RAM displayed
+`PERFECT!`. The current server response envelope correlated by exact MatchId
+and bounded timestamp, supplied an accepted 64-cell board, and the provider
+published fresh turn 62 post-state. Resources changed 221/250 to 21/150.
+
+Terminal result was `SUCCESS_PERFECT` with zero wrong/missing/duplicate/stale/
+unconfirmed/blind-retry directions, one card click and one Space. B1 is PASS;
+B2 three-consecutive-action acceptance is next. No controller is running.
+
+### Latest B1 retry 23 remediation (2026-09-07, v1.0.28)
+
+Retry 23 log `phase3b3_pet_skill_action_20260907_223807.jsonl` reached an
+actionable HT7 at turn 47 (`mana=311`, `power=219`, Button interactable). The
+independent final native-hand read then returned the explicit transient error
+`geometry changed during walk`; its empty candidate set became
+`FINAL_CARD_CURRENT_PET_SKILL_CAPABILITY_MISSING`. No input was emitted.
+
+v1.0.28 re-arms this zero-input final preflight only when its same sample also
+contains exact `pet_skill_control_read_error:*` evidence. It does not make a
+real missing capability retryable and does not re-arm after any click/key.
+Offline validation is **73/73 focused** and **1042/1042 full regression PASS**.
+A corrected lobby-start live retry remains pending; no controller is running.
+
+### Latest B1 retry 22 remediation (2026-09-07, v1.0.27)
+
+Retry 22 log `phase3b3_pet_skill_action_20260907_215135.jsonl` stopped producing
+fresh state while the operator could see the Pet Skill card lit. Its last state
+was still the old pre-Fusion `pet_skill_not_unlocked_by_fusion`; automatic input
+was zero and the controller was explicitly stopped.
+
+The control path previously mutated `CombatSessionTracker` with a lifecycle
+sample before rejecting that sample's read errors. One torn sample could erase
+the exact watch session and force the idle harness back into an expensive full
+provider scan. v1.0.27 rejects lifecycle read errors before session mutation,
+retains input-free IDLE/PREFLIGHT across transient control rejection, and retries
+the same control-only path without stale authorization or full-scan fallback.
+A clean lifecycle exit/session loss still invalidates immediately; after card
+click no rejection is retained. Exact rejected operand was not logged by retry
+22 and remains UNKNOWN. A fresh lobby-start live retry is pending; no controller
+is running.
+
+### Latest B1 retry 21 remediation (2026-09-07, v1.0.26)
+
+The latest one-shot clicked the exact HT7 card and bound the current seven-key
+server challenge. RAM acknowledged the first four keys; the next CardUI sample
+proved the fifth key was also accepted (`currentIndex=5`, `correctCount=5`,
+exact five-key press prefix). A stable MatchService challenge read then threw,
+but the old loop discarded the exception and projected `challenge=null` as a
+wrong session. The controller stopped at 5/7, so this run is not B1 PASS.
+
+v1.0.26 may bridge one such failed read only from an already-bound generation
+whose exact CardUI owner/object/arrow identity, timing and all-correct press
+prefix remain current. It never creates a generation or guesses a key; a
+second consecutive read failure or any mismatch remains fail-closed. The raw
+exception is now logged. A separate zero-input final-preflight turn/Button race
+returns the one-shot to waiting; nothing after an emitted click can re-arm.
+Offline validation is **71/71 focused** and **1040/1040 full regression PASS**,
+with compileall and diff check clean. Corrected live B1 remains pending; no
+controller is currently running.
+
+### 1.7.4-b2 compatibility closure (2026-09-07)
+
+The fresh exact reverse dump is now available under
+`reverse/reverse_1.7.4-b2`. It matches the installed binary pair and supersedes
+the blocker recorded below:
+
+- current `GameAssembly.dll`: 53,603,328 file bytes, SHA-256
+  `7E001DA2DCBD196474E4B5D05AB4673ACB2D7B7FE4534383E930E6878E8E6991`;
+- current `global-metadata.dat`: 15,394,348 bytes, SHA-256
+  `F011F33763C6451CA2E84EBC61CC1F1F02F7BA077C7F0F1DE04297C6C64B50A6`;
+- metadata magic `0xFAB11BAF`, header version `110`;
+- reverse inventory: 103,967 method definitions, 12,401 type-info
+  pointers and 456 described fields.
+
+The build-specific type-info RVAs and shifted Board, MatchService,
+BoardWsApplier, CardUI/QTE, combat-card, player-stat and boss-room layouts were
+replaced only where the new dump provides an exact declaration. Current native
+method bytes also revalidated the Unity component bridge: all 15 required
+Unity signatures match, the component icall slot is now RVA `0x302CEE8`, and
+the new unmarshal signature is gated at RVA `0xBB7CF4`.
+
+A live read-only smoke attached to PID 26452/x64 in the exact pet boss room and
+reported `lifecycle=LOBBY`, `lobbyState=BOSS_LOBBY`,
+`branch=CHINH_PHUC_ROOM`, a clean room graph and three selected cards including
+one Attack card. It sent zero input. Offline validation is **1028/1028 full
+regression PASS**, compileall and diff check PASS. The old C67 layout is
+intentionally no longer allowlisted because this source tree has one active
+build profile. One corrected B1 live retry is still required; Phase 3B.3 is not
+yet a live PASS.
+
+The later QTE UI/mechanics audit found a new server challenge identity boundary:
+`MatchService.ServerQteChallengeId +0x250`,
+`CardUI._qteArrowsFromServer +0x498`, and
+`ChatMessageDTO.qteChallengeId +0x148`. Version v1.0.25 binds input to that exact
+ID and rejects local/stale arrow lists. The new timeline/D-pad presentation does
+not change accepted arrow/WASD + Space/Enter input or the Perfect predicate.
+Offline validation after this addendum is **1033/1033 full regression PASS**;
+corrected live B1 remains pending.
+
+### Superseded runtime blocker — unverified same-name update
+
+B1 retry was requested from the pet lobby, but no harness was launched. The
+read-only precheck found PID 26452 / `Pokiguard-1.7.4.exe`, then attachment
+failed closed before any offset/RVA read because the installed binary changed:
+
+- current `GameAssembly.dll`: 53,603,328 bytes, SHA-256
+  `7E001DA2DCBD196474E4B5D05AB4673ACB2D7B7FE4534383E930E6878E8E6991`;
+- current `global-metadata.dat`: 15,394,348 bytes, SHA-256
+  `F011F33763C6451CA2E84EBC61CC1F1F02F7BA077C7F0F1DE04297C6C64B50A6`;
+- currently reverse-verified 1.7.4 GameAssembly hash:
+  `C67FF9CC3BB280CC63B3B9BE24D45ED038937F70A95E13075D361C8DDDE95A78`.
+
+The installed GameAssembly/metadata timestamps are 2026-09-06, while the
+available `reverse/redux_compat` output is from 2026-09-01. The unchanged EXE
+name is not compatibility evidence. Do not add the new hash to the allowlist,
+reuse old offsets/RVAs, or run B1 until a fresh reverse dump for this exact
+pair is supplied and the required Phase 3B.3 symbols/native signatures are
+revalidated. This blocker is now closed by the compatibility evidence above;
+the paragraph is retained as historical fail-closed evidence.
+
+Retry 19 log `logs/phase3b3_pet_skill_action_20260906_213144.jsonl`: after
+Fusion the control refresh found the exact HT7 slot 4. Its last recorded sample
+at turn 7 was Button non-interactable and 260 Mana / 0 Rage, so
+`INSUFFICIENT_RAGE` was correct only for that sample. The operator later had
+enough resources and manually used the card, but the log had stopped at
+21:33:41 while controller PID 3424 remained alive until inspected around
+21:36:30. The worker therefore never observed the later resource state.
+
+The controller was stopped by Ctrl+C before further testing. Automatic card
+click, directions and Space were all **zero**; the manual QTE is not acceptance
+evidence. The old build had no per-call stage marker, so the exact blocking
+synchronous call is UNKNOWN.
+
+The current build traces nested native-card refresh, QTE control, observer
+runtime reads and geometry proof. A daemon watchdog is active only while input
+could still be emitted; any one stage exceeding 2 seconds revokes input
+authority and records `pet_skill_action_stage_stalled` before a delayed click
+can occur. Lobby scans and read-only result/post-state waits are excluded. No
+input retry or relaxed authority gate was added. **145/145 focused and
+1028/1028 full regression PASS**, compileall/diff check PASS.
+
+Retry 18 log `logs/phase3b3_pet_skill_action_20260906_212126.jsonl`, MatchId
+`M_8c2f4e06`, source turn 21: direct native refresh read the exact HT7 card at
+slot 4, current CardUI/Button, `interactable=true`, 855 Mana / 250 Rage and
+effective cost 200/200. Current geometry proof completed in 156 ms and the
+one-shot entered `PREFLIGHT`.
+
+No input had been emitted. The next mandatory preflight sample incorrectly
+fell back to the full board provider instead of retaining the exact
+native-hand/control-only route. It hit aggregate guard
+`ACTIVE_COMBAT_OWNERSHIP_INVALID` about 0.46 seconds later and consumed the
+attempt with **zero** card clicks, directions and Space. The old unowned branch
+did not log the individual guard operands, so the precise transient operand is
+UNKNOWN; this is scheduling evidence, not a failed game click.
+
+The input-free `PREFLIGHT` state now remains bound to its action session through
+`refresh_pet_skill_cards(session) + poll_qte_control(session)`. Fresh direct
+geometry and all card/identity/turn/resource/foreground/QTE gates remain
+mandatory; no click/key/Space retry was added. **142/142 focused and 1025/1025
+full regression PASS**, compileall/diff check PASS. A new live B1 retry is still
+required.
+
+Retry 17 log `logs/phase3b3_pet_skill_action_20260906_204900.jsonl`, MatchId
+`M_0bd305f9`: initial turn-1 capability was correctly absent, but no later
+capability transition was logged before the match ended at turn 33. The
+operator observed the Pet Skill card lit and one local turn was missed. The
+harness sent **zero** card/direction/Space input and was explicitly terminated
+before another match.
+
+Read-only retained MatchService evidence after combat proves Fusion actually
+succeeded (`usedSuccessfully=true`, `lastAttemptTurn=25`) and its
+`LocalFusionSkillCard` remains a valid HT7 CardData (`cardId=7`,
+`ATTACK_LEGEND_`, costs 200 Mana / 200 Rage). The old Board/native hand had
+already been destroyed, so this completed log cannot prove whether the live
+refresh was not entered or its native hand validation returned empty during
+that exact turn. Do not infer either case.
+
+The next build emits bounded `pet_skill_control_refresh` evidence on every
+state change and at most once per five seconds otherwise: elapsed time, exact
+reason and current card/Button state. This does not add scans or input and will
+distinguish the remaining cases during the first lit-card turn. **142/142
+focused and 1025/1025 full regression PASS**, compileall/diff check PASS.
+
+Retry 16 log `logs/phase3b3_pet_skill_action_20260906_203812.jsonl`, MatchId
+`M_3f10490b`: the harness established the session at turn 1, reported
+`CURRENT_PET_SKILL_CAPABILITY_MISSING`, then never emitted another current
+capability before the operator reported that the HT7 card was lit. No card,
+direction or Space input was sent; the harness was manually disarmed to prevent
+a delayed click.
+
+An immediate read-only native diagnostic on the same live match proved Fusion
+success (`lastAttemptTurn=13`), the exact five-slot native hand and current HT7
+at slot 4. The direct owner/CardUI/CardData/Button read took 166–209 ms and
+reported `cardId=7`, `ATTACK_LEGEND_`, correct Fusion skill CardData and a live
+interactable Button. Root cause: the provider discovered the native hand early
+but assigned `observed_pet_skill_cards` only after unrelated board/ACK batch
+resolution. An unresolved ACK could run an expensive heap scan or return before
+that assignment, so the one-shot action never saw a lit card.
+
+Offline remediation adds a dedicated `refresh_pet_skill_cards(session)` path:
+exact current Board/Match ownership, successful Fusion, native cardsInHand,
+CardUI/CardData/Button and live flags are refreshed without board/batch scans
+or GameState publication. After the first full poll establishes the session,
+the idle B1 harness uses this control-plane refresh plus `poll_qte_control`.
+Live read-only validation on turn 54 found the exact HT7 slot in **208.806 ms**.
+Board/solver/ACK publication rules are unchanged. **93/93 focused and
+1024/1024 full regression PASS**, compileall/diff check PASS. A clean B1 retry
+from boss lobby remains required.
+
+Retry 15 log `logs/phase3b3_pet_skill_action_20260905_160701.jsonl`, MatchId
+`M_e053e2fd`, source turn 23, ActionId
+`8f2e5d29a25142949728a0bcbce76f55`: one current HT7 card click; sequence
+DOWN LEFT UP RIGHT UP UP LEFT reached **7/7 RAM ACK** in 1.117173 s with zero
+wrong/skipped/duplicate/stale/unconfirmed/blind retry; one Space at 3.168743 s
+inside `[3.000000,3.299999952]`; runtime `PERFECT!` / 3169 ms. The game effect
+completed normally according to the operator.
+
+The harness then incorrectly invalidated `GAME_NOT_FOREGROUND` after all input
+had already ended, when the operator returned to Codex. Seven result scans
+also mixed ChatMessageDTO and batch-only allocation regions: 76 regions,
+703–797 ms per learned scan and 2.563 s for the first learned+full scan. No
+response was retained before invalidation, so retry 15 is not full B1 PASS.
+
+Offline remediation makes foreground mandatory only while an input can still
+be emitted. `WAIT_RESULT` and post-state remain read-only and can continue
+after focus changes, without retrying card/direction/Space. The response scan
+now uses only regions that actually contained `ChatMessageDTO`; batch-only
+regions remain on the separate direct-owner/post-state path. When current
+message hints exist the critical result wait no longer immediately broad-scans
+the process. Exact MatchId/generation/timestamp correlation, strict response
+board decode and exact ACK/stability gates are unchanged. **139/139 focused
+and 1022/1022 full regression PASS**, compileall/diff check PASS. One fresh B1
+retry remains required for response + board offer + fresh post-state.
+
+Retry 14 log `logs/phase3b3_pet_skill_action_20260905_152539.jsonl`, MatchId
+`M_53b8ad51`, source turn 23, ActionId
+`ac2184fbaff74668bc8863937f37978c`: one card click, 7/7 RAM-confirmed
+directions in 1.185443 s, zero violations/retries, one Space at 3.166887 s in
+the current `[3.000000,3.299999952]` window, runtime `PERFECT!` / 3167 ms.
+User observed the skill consume the board, cascade/refill and the next turn
+continue normally. Thus live action/game effect succeeded.
+
+The audit still ended `SPACE_SENT_RESULT_UNCONFIRMED_NO_RETRY`: no response DTO
+was found in 15 s, so the skill-response board decoder added after retry 13 was
+not exercised. Log timing exposes a scheduling race: after runtime completion,
+all 23 result-wait cycles ran the full provider before response discovery
+(31–703 ms each, median 359 ms; 8.326 s total). A short-lived
+`MATCH_SKILL_USE_RES` can be reclaimed while this unrelated full scan runs.
+
+Offline remediation keeps the exact current QTE on fast control-only RPM until
+server response correlation, starts the first result scan with learned regions
+plus bounded full fallback, and captures direct `PendingCombat`/
+`BoardWsApplier._pendingBatches` roots while waiting. These captures remain
+unpublishable until exact ACK and normal stability checks. Only after response
+correlation does full GameState polling resume. Result-scan timing/count is now
+logged. No direction/Space/card timing, response authority or timeout is
+relaxed. **109/109 focused and 1020/1020 full regression PASS**, compileall/
+diff check PASS. Retry 14 is visible action PASS but not full audited B1 PASS;
+one fresh live retry remains required before B2.
+
+Retry 13 log `logs/phase3b3_pet_skill_action_20260905_144943.jsonl`, MatchId
+`M_d3106c16`, source turn 19, ActionId
+`ceb63ff8b7534390a70fed3a4e7e60f5`: one current HT7 card click, 7/7
+RAM-confirmed directions in 1.159891 s, zero violations/retries, and one Space
+at projected 3.163413 s in `[3.000000,3.299999952]`. Runtime result was
+`PERFECT!` / 3163 ms. Exact current `MATCH_SKILL_USE_RES` correlated and the
+cleanup wait sent no extra input.
+
+The 15 s reread then failed `CORRELATED_PERFECT_BUT_FRESH_POST_STATE_UNAVAILABLE`:
+37 polls stayed at `awaiting_direct_owner_batch_capture` then
+`latest_acked_batch_not_resolved` even while the same session advanced through
+turns 20–22. This disproves the earlier presentation-delay hypothesis for this
+sample. Static 1.7.4 native evidence shows `HandleMatchSkillUseRes` delegates
+to `HandleResEnvelope`, which calls `ParseCombatBatch` for that exact
+`ChatMessageDTO`; the strict transport decoder/provider had nevertheless
+allowed only `MATCH_MOVE_RES`. The current skill response's server board was
+therefore never offered to the normal exact-ACK gate.
+
+Offline remediation now decodes only a correlated current
+`MATCH_SKILL_USE_RES.matchPayload` that contains bounded `srvSeq` and a strict
+64-cell board, then offers it to the unchanged provider gate. Publication still
+requires the same `MatchService._ackedSeqs`, current session and all Dot/render/
+stability checks; absent/malformed payload remains fail-closed. No cache, old
+batch or non-board ACK is promoted. **109/109 focused and 1020/1020 full
+regression PASS**, compileall/diff check PASS. Retry 13 is not full B1 PASS;
+one fresh live retry must demonstrate `qte_result_board_snapshot_offered` and
+`SUCCESS_PERFECT` before B2.
+
+User confirmed retry 12 visibly completed Perfect, the pet consumed the board,
+and its animation finished, then returned to the exact boss lobby. That is
+strong visible effect evidence but the stopped harness cannot retroactively
+bind a response it did not capture.
+
+Retry 12 log `logs/phase3b3_pet_skill_action_20260905_144152.jsonl`,
+`M_e40051dc`, source turn 15, ActionId
+`9679da7994714a67a0f46c1316d9de09`: one current HT7 card click, 7/7
+RAM-confirmed directions, zero violations/retries, one Space in the current
+Perfect window, qteElapsed 3174 ms and RAM `PERFECT!`. User reported the QTE
+completed. Current server response did not arrive before the old 5 s result
+deadline, so the harness exited `SPACE_SENT_RESULT_UNCONFIRMED_NO_RETRY` with
+no extra input, no correlation and no post-state. Retry 11 had already observed
+a comparable response after about 6.025 s, proving 5 s shorter than real
+observed latency.
+
+Result wait is now bounded at 15 s, matching the already corrected 15 s
+post-state wait and the existing hard maximum. Waiting is read-only; exactly
+one Space/card remains enforced and missing correlation still fails closed.
+**102/102 focused and 1018/1018 full regression PASS**, compileall/diff check
+PASS. Harness terminal 16967 exited code 1; superseded by retry 13 diagnostics.
+
+Retry 11 log `logs/phase3b3_pet_skill_action_20260905_005856.jsonl`,
+`M_1bc9ed56`, local source turn 23, ActionId
+`596321bcb0454a5ab2bf03ff1fcd77ac`: one automatic current HT7 card click,
+7/7 RAM-confirmed directions, zero direction violations/retries, one Space in
+the runtime-derived Perfect window, qteElapsed 3166 ms, RAM `PERFECT!`; user
+confirmed Perfect. The new cleanup path retained result ownership without any
+extra input and the exact current server envelope correlated successfully.
+
+Fresh full board remained unavailable as `presentation_busy_or_batch_pending`
+for 4.157 s after correlation, exceeding the old 4 s post-state deadline.
+Therefore retry 11 is NOT full B1 PASS: the required fresh post-skill GameState
+is still absent. Default post-state wait is now bounded at 15 s (the existing
+hard maximum), read-only, with no stale-board acceptance or input/deadline
+retry. **102/102 focused and 1018/1018 full regression PASS**, compileall and
+diff check PASS. Harness terminal 73692 exited code 1 and no controller remains.
+Await user readiness for one corrected B1 retry; do not start B2 yet.
+
+Retry 10 log `logs/phase3b3_pet_skill_action_20260905_003531.jsonl`:
+first match M_d126ec41 ended without skill capability or any automated action;
+user continued into M_854938f2 under the same still-unused invocation.
+Second match had current HT7/200+200 cost, Mana/Rage 760/250. At local turn 29,
+initial geometry preflight passed (125 ms), final geometry proof became absent
+(16 ms); action `bf8e410b76bf4b4f97347584bd2355c3` failed
+`FINAL_CARD_PET_SKILL_BUTTON_GEOMETRY_UNKNOWN`. Card/direction/Space counts 0.
+The final underlying geometry reason was not logged, so its exact branch is
+UNKNOWN. Earlier waiting rows contain busy geometry and Button state changes.
+
+Read-only native tracing during the combat reproduced the busy geometry path:
+42/48 whole-hand reads succeeded, 6 rejected (2 job pending, 1 changed during
+read, 3 changed during walk). Changed bytes were the shared native Transform
+job field, not evidence of wrong card identity. An earlier 12/12 sample batch
+was stable, proving the rejection is intermittent; not a FPS/ping diagnosis.
+
+Fix: typed busy-geometry errors permit ONE fresh whole-hand reread before any
+click (max 2 attempts), no cached geometry or sleep/age extension. Invalid
+layout/index/owner/signatures do not retry. Final card usability/identity and
+350 ms total age remain mandatory. Prior provider slot is no longer needed to
+read the actual native hand; layout diagnostics in the observation come from
+that exact current proof, without changing the cached card or resources.
+Final events now include geometryReason/readAttempts/retryReason. QTE input
+timing is unchanged. **1017/1017 regression, 101/101 native/action/control PASS**,
+9 new tests, compileall/diff check PASS. Post-fix read-only probe found no
+current Board (zero input); live activation still pending. Await user readiness.
+
+User explicitly requested `retry b1` after terminal-cleanup remediation.
+Read-only precheck: game PID 26436 x64, LOBBY (combat objects absent),
+HWND 4130696 / client 1280x640, native signatures PASS, no competing controller.
+Foreground was false at precheck; operator must foreground game before playing.
+Harness PID 2852 / terminal session 92604, timeout 1800 s, log
+`logs/phase3b3_pet_skill_action_20260905_003531.jsonl`: now ended with the
+zero-input rejection above. Do not assume PID 2852/session 92604 still waits.
+
+Retry 9 log `logs/phase3b3_pet_skill_action_20260905_001953.jsonl`,
+`M_2bee7569`, local turn 49, ActionId `ffe5caed04c44db19cb6489868409bb2`:
+one card click, 7/7 directions confirmed, zero direction errors/retries, one
+Space, runtime **PERFECT / 3181 ms**; user confirmed Perfect. Directions done
+at elapsed 1.244 s (1.756 s headroom), control median 15.5 ms / cycle 31 ms.
+No initialization-wait event occurred; retry 8's missing-sequence branch was
+not exercised by this live sample.
+
+The post-QTE full poll retained valid fresh control, but then normal CardUI
+cleanup changed the projected QTE to INACTIVE with identity=None. Result wait
+incorrectly rejected that as `QTE_GENERATION_CHANGED_OR_STALE` ~0.52 s after
+Space, before server correlation/reread. Exact 7/7, finished=true, PERFECT text
+remained in the same raw CardUI. Full B1 is NOT PASS.
+
+Narrow fix: after one Space and a validated completion of the bound generation,
+an exact-session INACTIVE snapshot with current clicked capability/actor can
+wait read-only for the original result deadline. Historical completion does
+not become current QTE/input authority or success. Wrong/stale/new generations,
+owner/session changes and stop gates still reject. Full+control polling remains
+selected after completion even when later snapshots lose their completion flag.
+Server correlation and a later fresh full board remain mandatory. No input
+timing change, additional click/Space, deadline extension, auto retry or BASIC.
+**1008/1008 regression, 68/68 focused PASS**, 6 new terminal-cleanup tests;
+reproduction failed before the fix. Compileall/diff check PASS. New live retry
+requires user readiness; see `phase3b3_report.md`.
+
+User explicitly requested `retry B1`. Read-only precheck: game PID 26436 x64,
+LOBBY (combat objects absent), HWND 4130696, client 1280x640, foreground true,
+native signatures PASS, no competing Python/controller. Launched the corrected
+one-shot harness PID 18952 with timeout 1800 s, terminal session 5239, log
+`logs/phase3b3_pet_skill_action_20260905_001953.jsonl`. This invocation has now
+finished with the partial result above. Operator manually entered/evolved/
+collected resources. Do not assume PID 18952 is still waiting.
+
+Previous result log `logs/phase3b3_pet_skill_action_20260904_231540.jsonl`, match
+`M_04c99254`, local turn 41: **one automatic card click, zero directions,
+zero Space**. At the first active QTE read, CardUI had index/correctCount 0/0,
+normalized timeLeft 1.0, but the current server challenge's sequence pointer
+was null. Tracker returned `SEQUENCE_UNAVAILABLE`; the action failed at once
+with `QTE_NOT_CURRENT_OR_AMBIGUOUS`, about 1.54 s after the card click, before
+its existing generation deadline. User reported BAD after this; observer had
+already stopped, so BAD is user-observed, not a correlated runtime result.
+There is no evidence of an automated direction being sent too early/lost.
+
+Remediation: exact current clicked CardUI/CardData/Button + unchanged current
+session/actor/source turn may wait read-only for `SEQUENCE_UNAVAILABLE` ONLY
+before generation binding, within the ORIGINAL 3 s default click deadline.
+No card retry, guessed local arrows, early keys, FPS sleep or timeout reset.
+Wrong ownership/stale evidence and sequence loss after binding still stop.
+The fast per-key/ACK and runtime Perfect scheduling from retry 7 are unchanged.
+New one-shot diagnostic: `pet_skill_qte_initialization_wait`.
+Full regression **1002/1002 PASS**, focused **62/62 PASS**, including 5 new
+initialization-wait tests. Compileall/diff check PASS. Neither this fix nor
+the post-QTE handoff fix has full live B1 acceptance yet. Await user readiness
+before a new retry; see `phase3b3_report.md` and timing evidence.
+
+After user confirmed boss lobby and said continue, fresh precheck found PID
+26436 x64 LOBBY, HWND 4130696 / 1280x640, no competing controller. Foreground
+was false; operator must foreground the game. B1 retry 8 uses the post-QTE
+handoff fix, terminal session 44668, timeout 1800 s, log
+`logs/phase3b3_pet_skill_action_20260904_231540.jsonl`. This launch has now
+finished with the failure above; do not assume session 44668 is still waiting.
+User manually entered/evolved/collected resources. It is not B1 acceptance.
+
+Initial startup log `phase3b3_pet_skill_action_20260904_231435.jsonl` was stopped
+in lobby (PID 25044, zero action-state/input events) to suppress repeated
+idle-only ownership diagnostics. Diagnostics now emit only while the harness
+owns an action. Focused tests rerun 57/57 PASS before the corrected launch.
+
+User explicitly requested `retry B1` after QTE control-only polling fix.
+Fresh read-only precheck: PID 26436 x64, LOBBY (no active combat rig),
+HWND 4130696, client 1280x640, no competing Python/controller. Foreground was
+false during the check; operator must foreground game before playing.
+Harness PID 27228 / terminal session 65291 has finished (exit 1); log
+`logs/phase3b3_pet_skill_action_20260904_223027.jsonl`. User reported PERFECT.
+In `M_448d6389`, turn 79: one automatic card click, 7/7 directions confirmed
+at elapsed 1.378 s (1.622 s before Perfect start), one Space, runtime elapsed
+3.156 s and `PERFECT!`. All direction error/retry counts zero. Control poll
+median 15 ms; QTE cycle median 31 ms over 51 samples.
+
+The next full-provider cycle invalidated with `ACTIVE_COMBAT_OWNERSHIP_INVALID`
+before server correlation or fresh post-skill GameState. Full B1 is NOT PASS.
+Inspect the fast-control -> normal full-provider handoff: last_state is clear,
+while normal non-publishing ProviderPoll paths may omit combat_lifecycle, so
+the observer cannot derive direct_session. The old event lacks detailed
+poll/root diagnostics; exact failing live branch remains UNKNOWN. Do not
+weaken ownership guards or restore stale board authority to force a PASS.
+No code fix/restart was performed during that result review.
+
+Subsequent user requested continuing from boss lobby. The post-QTE handoff is
+now fixed offline: normal board poll plus fresh control evidence, no stale
+last_state authority, detailed root/poll rejection diagnostics, and a strictly
+later board read after server correlation (timestamp barrier). Direction/Space
+timing code is unchanged. Regression **997/997 PASS** including 7 new post-QTE
+tests. New full B1 acceptance remains pending; see `phase3b3_report.md`.
+
+Retry 6 log `logs/phase3b3_pet_skill_action_20260904_220109.jsonl`:
+one successful card click in `M_de6ac78f`, then QTE too slow (5/7 by timeout,
+BAD, zero Space). PID 14264 / session 43998 finished. Read-only precheck now
+finds game PID 26436 in LOBBY and no Python controller. Do not assume the old
+invocation is waiting or silently restart it.
+
+Latest remediation isolates fresh QTE control-plane polling from full board/
+card/native geometry work; accepted 3B.2 key/ACK primitive remains unchanged.
+Space requires all directions and actual RAM time inside current Perfect;
+missed windows fail closed. Per-key/per-poll timing and failure summaries are
+retained. Read-only smoke completed; live corrected B1 still pending. See
+[QTE timing evidence](phase3b3_qte_timing_evidence.md).
+
+Offline validation after QTE remediation: **990/990 tests PASS** (14 new
+control/timing tests); read-only observer smoke: clean exit, zero QTE/input.
+Retry 7 now establishes live direction/Perfect timing; full B1 correlation
+and post-state acceptance remain incomplete.
+
+User confirmed boss lobby and authorized B1 retry after the Canvas correction.
+Read-only precheck: game PID 26436 x64, provider LOBBY baseline, native Unity
+code signatures PASS; no competing Python/controller process was present.
+Harness PID 26944 / terminal session 37504, timeout 1800 seconds, log
+`logs/phase3b3_pet_skill_action_20260904_213919.jsonl`. Attach event confirms
+HWND 4130696, one card click / one full action, no process writes or game-method
+calls. In `M_cf7e3c5a` it resolved CURRENT HT7 CardUI/Button/geometry BEFORE
+activation, with enough Mana/Rage and interactable=true, but preflight rejected
+the sample as stale. Zero automated inputs/QTEs. User reported the lit card;
+harness was stopped with Ctrl+C, not restarted. This is NOT a B1 PASS.
+
+The FIRST six unsuccessful B1 harnesses sent zero automated inputs; retry 6
+(the seventh harness) did click the card but did not finish the QTE. Earlier manual QTEs do
+not count toward full-auto acceptance. The old fixed-count/previous-Fusion-slot
+inference has been removed. Post-evolution skill discovery now uses verified
+native component/handle ownership and current RectTransform geometry, with
+signature guards. Evidence and remaining validation are in
+[Phase 3B.3 report](phase3b3_report.md) and
+[native card evidence](phase3b3_native_card_evidence.md). No BASIC skill policy,
+packaging, commit or live PASS is claimed by this remediation.
+
+Earlier B1 retry log `phase3b3_pet_skill_action_20260904_210747.jsonl`
+exposed `native_card_ui: non-RectTransform geometry`: the reader walked past
+the combat's root Canvas into a plain scene Transform. It now stops at the
+verified root Canvas, including when nested Canvas raw mode differs. Read-only
+inspection then resolved all five live card rectangles and the exact HT7
+CardUI/Button. At that point regression was **968/968 PASS**. The match had ended before
+the production observer recheck (`local_match_end_flag`); no post-fix automatic
+click/full action has been live-accepted. Harness PID 22832 was stopped; do not
+reuse this combat's pointers or silently restart automation.
+
+Latest remediation: packed BGRA-to-RGB uses equivalent bulk channel slices;
+the common Canvas ancestor path is reused only within a single hand read,
+with existing end-of-read parent/TRS/rect/Canvas fences retained. Read-only
+native+capture+visual samples improved from 675–742 ms to 197–250 ms; this is
+NOT an automatic-click acceptance result. Original 0.35-second preflight age
+guard and sample timestamp are unchanged. Logs now include geometry/sample
+age timings. Full regression **976/976 PASS**, focused **221/221 PASS**. Full
+post-fix B1 and later B2–B4 remain pending. Await user readiness before retry.
+
+User clarified two skill-strip orders and required main/evolution pet choices
+in future Preferences. Recorded in DECISIONS and section 22 of the Pet Skill
+reverse report. Case 2 (skill appended after successful evolution) matches
+current live evidence; case 1 (main-pet skill first) is user-confirmed but not
+live-accepted here. No new Preferences or slot-only skill authority was added.
 
 Phase 2F.2 Release Candidate `v1.0.0+15` passed clean staging and packaged-live
 acceptance B1-B6 against one unchanged binary. The accepted RC archive is

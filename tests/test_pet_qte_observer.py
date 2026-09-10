@@ -14,9 +14,33 @@ if str(SRC_ROOT) not in sys.path:
 from pokiguard_v2.il2cpp_layout import LayoutValidationError  # noqa: E402
 from pokiguard_v2.pet_qte_observer import (  # noqa: E402
     ACTIVE_PLAYER_PET_OFFSET,
+    CARD_UI_ACTIVE_FLAG_OFFSET,
+    CARD_UI_CORRECT_COUNT_OFFSET,
+    CARD_UI_CURRENT_ACTOR_OFFSET,
+    CARD_UI_CURRENT_ARROW_SEED_OFFSET,
+    CARD_UI_CURRENT_ARROWS_OFFSET,
+    CARD_UI_CURRENT_INDEX_OFFSET,
+    CARD_UI_CURRENT_TIME_VALUE_OFFSET,
+    CARD_UI_DAMAGE_MULTIPLIER_OFFSET,
+    CARD_UI_DURATION_OFFSET,
+    CARD_UI_FINISHED_OFFSET,
+    CARD_UI_GOOD_END_1_OFFSET,
+    CARD_UI_GOOD_END_2_OFFSET,
+    CARD_UI_GOOD_START_1_OFFSET,
+    CARD_UI_GOOD_START_2_OFFSET,
+    CARD_UI_PERFECT_START_OFFSET,
+    CARD_UI_QTE_PRESSES_OFFSET,
+    CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET,
     CARD_UI_READ_SIZE,
+    CARD_UI_TIMING_BONUS_OFFSET,
+    CARD_UI_TIMING_TEXT_OFFSET,
     CHAT_MESSAGE_QTE_RESULT_READ_SIZE,
+    CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET,
     MATCH_SERVICE_SERVER_QTE_READ_SIZE,
+    MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET,
+    MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET,
+    MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET,
+    MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET,
     PET_USER_READ_SIZE,
     CardUiQteSnapshot,
     QteBindingContext,
@@ -175,12 +199,22 @@ class Fixture:
         sequence: tuple[str, ...] = ("up", "nutLeft", "RIGHT"),
         *,
         window: tuple[int, ...] = (5000, 2500, 3000, 2000, 2500, 3000, 3500),
+        challenge_id: int = 7001,
     ) -> None:
         self.string_list(self.SERVER_LIST, self.SERVER_ITEMS, sequence)
         raw = bytearray(MATCH_SERVICE_SERVER_QTE_READ_SIZE)
-        struct.pack_into("<Q", raw, 0x200, self.SERVER_LIST)
-        struct.pack_into("<i", raw, 0x208, window[0])
-        struct.pack_into("<7i", raw, 0x20C, *window)
+        struct.pack_into(
+            "<Q", raw, MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET, self.SERVER_LIST
+        )
+        struct.pack_into(
+            "<i", raw, MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET, window[0]
+        )
+        struct.pack_into(
+            "<7i", raw, MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET, *window
+        )
+        struct.pack_into(
+            "<q", raw, MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET, challenge_id
+        )
         self.memory.map(self.MATCH_SERVICE, raw)
 
     def map_qte(
@@ -199,6 +233,7 @@ class Fixture:
         presses: tuple[str, ...] = ("nutUp",),
         displayed_timing: str | None = None,
         with_button: bool = False,
+        arrows_from_server: bool = True,
     ) -> int:
         address = address or self.QTE
         native = self.QTE_NATIVE if address == self.QTE else address + 0x500
@@ -221,25 +256,37 @@ class Fixture:
             struct.pack_into("<Q", raw, 0x28, self.BUTTON)
         struct.pack_into("<Q", raw, 0x30, board or self.BOARD)
         struct.pack_into("<Q", raw, 0x38, self.ACTIVE)
-        struct.pack_into("<i", raw, 0x54, actor)
-        struct.pack_into("<f", raw, 0xB8, 5.0)
+        struct.pack_into("<i", raw, CARD_UI_CURRENT_ACTOR_OFFSET, actor)
+        struct.pack_into("<f", raw, CARD_UI_DURATION_OFFSET, 5.0)
         if displayed_timing is not None:
             timing_text = bytearray(0xF0)
             struct.pack_into("<Q", timing_text, 0xE8, self.string(displayed_timing))
             self.memory.map(self.TIMING_TEXT, timing_text)
-            struct.pack_into("<Q", raw, 0xF0, self.TIMING_TEXT)
-        struct.pack_into("<Q", raw, 0x138, self.ARROW_LIST)
-        struct.pack_into("<ii", raw, 0x148, index, correct)
-        raw[0x150] = int(active)
-        struct.pack_into("<f", raw, 0x154, 0.44)  # elapsed = 2.8 seconds
-        struct.pack_into("<f", raw, 0x158, 1.5)
-        raw[0x170] = int(finished)
+            struct.pack_into("<Q", raw, CARD_UI_TIMING_TEXT_OFFSET, self.TIMING_TEXT)
+        struct.pack_into("<Q", raw, CARD_UI_CURRENT_ARROWS_OFFSET, self.ARROW_LIST)
+        struct.pack_into("<i", raw, CARD_UI_CURRENT_INDEX_OFFSET, index)
+        struct.pack_into("<i", raw, CARD_UI_CORRECT_COUNT_OFFSET, correct)
+        raw[CARD_UI_ACTIVE_FLAG_OFFSET] = int(active)
         struct.pack_into(
-            "<6f", raw, 0x1A0, perfect_start, perfect_end, 2.0, 2.5, 3.0, 3.5
+            "<f", raw, CARD_UI_CURRENT_TIME_VALUE_OFFSET, 0.44
+        )  # elapsed = 2.8 seconds
+        struct.pack_into("<f", raw, CARD_UI_DAMAGE_MULTIPLIER_OFFSET, 1.5)
+        raw[CARD_UI_FINISHED_OFFSET] = int(finished)
+        struct.pack_into(
+            "<6f",
+            raw,
+            CARD_UI_PERFECT_START_OFFSET,
+            perfect_start,
+            perfect_end,
+            2.0,
+            2.5,
+            3.0,
+            3.5,
         )
-        struct.pack_into("<i", raw, 0x1B8, 2)
-        struct.pack_into("<i", raw, 0x318, 7009)
-        struct.pack_into("<Q", raw, 0x320, self.QTE_LIST)
+        struct.pack_into("<i", raw, CARD_UI_TIMING_BONUS_OFFSET, 2)
+        struct.pack_into("<i", raw, CARD_UI_CURRENT_ARROW_SEED_OFFSET, 7009)
+        struct.pack_into("<Q", raw, CARD_UI_QTE_PRESSES_OFFSET, self.QTE_LIST)
+        raw[CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET] = int(arrows_from_server)
         self.memory.map(address, raw)
         return address
 
@@ -400,6 +447,7 @@ class PetQteObserverTests(unittest.TestCase):
             challenge.normalized_sequence,
             ("nutUp", "nutDown", "nutLeft", "nutRight"),
         )
+        self.assertEqual(challenge.challenge_id, 7001)
         self.assertTrue(challenge.sequence_known)
         self.assertEqual(normalize_qte_direction("  NuTUP "), "nutUp")
 
@@ -414,6 +462,139 @@ class PetQteObserverTests(unittest.TestCase):
             context(), (fixture.read_qte(),), challenge, element_type="ATTACK_LEGEND_"
         )
         self.assertIs(result.status, QteBindingStatus.UNKNOWN_DIRECTION)
+
+    def test_local_fallback_arrows_are_not_authoritative(self) -> None:
+        fixture = Fixture()
+        fixture.map_server()
+        tracker = QteSessionTracker()
+        result = bind(
+            tracker,
+            context(),
+            fixture.read_qte(arrows_from_server=False),
+            fixture.challenge(),
+        )
+        self.assertIs(result.status, QteBindingStatus.SEQUENCE_UNAVAILABLE)
+
+    def test_active_server_qte_requires_current_challenge_id(self) -> None:
+        fixture = Fixture()
+        fixture.map_server(challenge_id=0)
+        tracker = QteSessionTracker()
+        result = bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        self.assertIs(result.status, QteBindingStatus.SEQUENCE_UNAVAILABLE)
+
+    def test_changed_server_challenge_id_invalidates_bound_generation(self) -> None:
+        fixture = Fixture()
+        fixture.map_server(challenge_id=7001)
+        tracker = QteSessionTracker()
+        first = bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        self.assertTrue(first.current)
+        fixture.map_server(challenge_id=7002)
+        changed = tracker.observe(
+            context(),
+            (fixture.read_qte(),),
+            fixture.challenge(),
+            element_type="ATTACK_LEGEND_",
+        )
+        self.assertIs(changed.status, QteBindingStatus.STALE_OR_CHANGED_QTE)
+
+    def test_one_torn_server_challenge_read_retains_exact_bound_prefix(self) -> None:
+        fixture = Fixture()
+        fixture.map_server()
+        tracker = QteSessionTracker()
+        first = bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        self.assertTrue(first.current)
+
+        bridged = tracker.observe_after_server_challenge_read_failure(
+            context(),
+            (
+                fixture.read_qte(
+                    index=2,
+                    correct=2,
+                    presses=("nutUp", "nutLeft"),
+                ),
+            ),
+            element_type="ATTACK_LEGEND_",
+            read_error="LayoutValidationError: changed during read",
+        )
+
+        self.assertIs(bridged.status, QteBindingStatus.BOUND_CURRENT)
+        self.assertEqual(bridged.identity, first.identity)
+        self.assertIn("bridged", bridged.reason)
+
+    def test_torn_read_bridge_rejects_wrong_prefix_and_consecutive_failure(self) -> None:
+        fixture = Fixture()
+        fixture.map_server()
+        tracker = QteSessionTracker()
+        first = bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        self.assertTrue(first.current)
+
+        wrong = tracker.observe_after_server_challenge_read_failure(
+            context(),
+            (fixture.read_qte(index=2, correct=2, presses=("nutUp", "nutRight")),),
+            element_type="ATTACK_LEGEND_",
+            read_error="torn",
+        )
+        self.assertIs(wrong.status, QteBindingStatus.STALE_OR_CHANGED_QTE)
+
+        tracker = QteSessionTracker()
+        bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        accepted = tracker.observe_after_server_challenge_read_failure(
+            context(),
+            (fixture.read_qte(index=1, correct=1, presses=("nutUp",)),),
+            element_type="ATTACK_LEGEND_",
+            read_error="first",
+        )
+        self.assertTrue(accepted.current)
+        rejected = tracker.observe_after_server_challenge_read_failure(
+            context(),
+            (fixture.read_qte(index=1, correct=1, presses=("nutUp",)),),
+            element_type="ATTACK_LEGEND_",
+            read_error="second",
+        )
+        self.assertIs(rejected.status, QteBindingStatus.STALE_OR_CHANGED_QTE)
+
+    def test_fresh_server_read_resets_single_read_bridge_budget(self) -> None:
+        fixture = Fixture()
+        fixture.map_server()
+        tracker = QteSessionTracker()
+        bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        first_bridge = tracker.observe_after_server_challenge_read_failure(
+            context(),
+            (fixture.read_qte(index=1, correct=1, presses=("nutUp",)),),
+            element_type="ATTACK_LEGEND_",
+            read_error="first",
+        )
+        self.assertTrue(first_bridge.current)
+        fresh = tracker.observe(
+            context(),
+            (fixture.read_qte(index=1, correct=1, presses=("nutUp",)),),
+            fixture.challenge(),
+            element_type="ATTACK_LEGEND_",
+        )
+        self.assertTrue(fresh.current)
+        second_bridge = tracker.observe_after_server_challenge_read_failure(
+            context(),
+            (fixture.read_qte(index=2, correct=2, presses=("nutUp", "nutLeft")),),
+            element_type="ATTACK_LEGEND_",
+            read_error="later",
+        )
+        self.assertTrue(second_bridge.current)
+
+    def test_completed_bound_qte_survives_native_challenge_clear(self) -> None:
+        fixture = Fixture()
+        fixture.map_server(challenge_id=7001)
+        tracker = QteSessionTracker()
+        first = bind(tracker, context(), fixture.read_qte(), fixture.challenge())
+        self.assertTrue(first.current)
+        fixture.map_server(challenge_id=0)
+        completed = tracker.observe(
+            context(),
+            (fixture.read_qte(finished=True, index=3, correct=7),),
+            fixture.challenge(),
+            element_type="ATTACK_LEGEND_",
+        )
+        self.assertIs(completed.status, QteBindingStatus.COMPLETED_CURRENT)
+        self.assertEqual(completed.identity.server_challenge_id, 7001)
 
     def test_missing_timing_fields_are_invalid(self) -> None:
         fixture = Fixture()
@@ -507,7 +688,7 @@ class PetQteObserverTests(unittest.TestCase):
         fixture.map_qte()
         memory = MutatingQteMemory(
             fixture.QTE,
-            0x154,
+            CARD_UI_CURRENT_TIME_VALUE_OFFSET,
             struct.pack("<f", 0.40),
         )
         memory.bytes.update(fixture.memory.bytes)
@@ -526,7 +707,7 @@ class PetQteObserverTests(unittest.TestCase):
         fixture.map_qte(index=1, correct=1)
         memory = MutatingQteMemory(
             fixture.QTE,
-            0x148,
+            CARD_UI_CURRENT_INDEX_OFFSET,
             struct.pack("<ii", 2, 2),
         )
         memory.bytes.update(fixture.memory.bytes)
@@ -598,10 +779,61 @@ class PetQteObserverTests(unittest.TestCase):
             completion_epoch=100.0,
             observed_epoch=101.0,
         )
+        stale_reject = correlate_qte_response_envelope(
+            observation,
+            event_type="MATCH_SKILL_USE_RES",
+            match_id="M_A",
+            skill_card_id=None,
+            reject_reason="old denial",
+            payload_bools=(),
+            server_timestamp_epoch=70.0,
+            completion_epoch=100.0,
+            observed_epoch=101.0,
+        )
+        wrong_skill_reject = correlate_qte_response_envelope(
+            observation,
+            event_type="MATCH_SKILL_USE_RES",
+            match_id="M_A",
+            skill_card_id=999,
+            reject_reason="denied",
+            payload_bools=(),
+            server_timestamp_epoch=100.5,
+            completion_epoch=100.0,
+            observed_epoch=101.0,
+        )
+        exact_challenge = correlate_qte_response_envelope(
+            observation,
+            event_type="MATCH_SKILL_USE_RES",
+            match_id="M_A",
+            skill_card_id=None,
+            qte_challenge_id=7001,
+            reject_reason=None,
+            payload_bools=(),
+            server_timestamp_epoch=None,
+            completion_epoch=100.0,
+            observed_epoch=101.0,
+        )
+        wrong_challenge = correlate_qte_response_envelope(
+            observation,
+            event_type="MATCH_SKILL_USE_RES",
+            match_id="M_A",
+            skill_card_id=321,
+            qte_challenge_id=9999,
+            reject_reason=None,
+            payload_bools=(),
+            server_timestamp_epoch=100.5,
+            completion_epoch=100.0,
+            observed_epoch=101.0,
+        )
         self.assertTrue(current.current)
         self.assertEqual(current.provenance, "CURRENT_ENVELOPE_TEMPORAL_SESSION")
         self.assertFalse(stale.current)
         self.assertEqual(rejected.provenance, "EXPLICIT_REJECT")
+        self.assertEqual(stale_reject.provenance, "NONE")
+        self.assertEqual(wrong_skill_reject.provenance, "NONE")
+        self.assertTrue(exact_challenge.current)
+        self.assertEqual(exact_challenge.provenance, "EXACT_QTE_CHALLENGE_ID")
+        self.assertFalse(wrong_challenge.current)
 
     def test_old_active_challenge_after_new_match_needs_new_inactive_edge(self) -> None:
         fixture = Fixture()
@@ -634,6 +866,10 @@ class PetQteObserverTests(unittest.TestCase):
         struct.pack_into("<i", raw, 0x124, 12)
         struct.pack_into("<Q", raw, 0x138, fixture.QTE_LIST)
         struct.pack_into("<i", raw, 0x144, qte.qte_elapsed_ms)
+        raw[CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET] = 1
+        struct.pack_into(
+            "<q", raw, CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET + 8, 7001
+        )
         fixture.memory.map(fixture.RESULT, raw)
         result = read_qte_result_message(
             fixture.memory,

@@ -96,6 +96,7 @@ from .live_state import (
 )
 from .match_presence import read_left_actor_numbers
 from .gameplay_ui import RuntimeCardStripLayout, resolve_runtime_card_strip
+from .native_card_ui import NativeCardUiReader, NativeCardHand
 from .memory_scan import (
     MEM_PRIVATE,
     WRITABLE_PAGE_TYPES,
@@ -138,6 +139,7 @@ OWNER_ADDRESS_MISS_GRACE_POLLS = 4
 # direct-owner publication window. Retry 12 proved that two polls followed by
 # learned-region miss + next-poll full fallback consumed the 14-second turn.
 DIRECT_OWNER_BATCH_GRACE_POLLS = 1
+PET_SKILL_ELEMENT_TYPES = frozenset({"ATTACK_LEGEND", "ATTACK_LEGEND_"})
 
 
 class RuntimeTargetLike(Protocol):
@@ -362,6 +364,22 @@ def _attack_card_ui_discovery_expected(
     if preentry_sources_agree is True:
         return preentry_attack_card_count > 0
     return True
+
+
+def _pet_skill_ui_discovery_expected(
+    memory_fusion: MemoryFusionState | None,
+) -> bool:
+    """Whether to inspect the current hand for a post-Fusion Pet Skill.
+
+    LocalFusionUsed is a discovery trigger, not proof of a card's existence or
+    position. LocalFusionSkillCard was non-null BEFORE activation in retry 3;
+    an earlier scan miss must not be interpreted as an absent skill. Exact
+    authority still requires one current
+    Board/Active-owned CardUI, a validated Button and a recognized Pet Skill
+    element type; this helper merely says that such a wrapper is expected.
+    """
+
+    return bool(memory_fusion is not None and memory_fusion.used_successfully)
 
 
 def _expected_fusion_ui_pet_ids(
@@ -654,6 +672,8 @@ class ProviderPoll:
     session_key: CombatSessionKey | None = None
     dto_rejections: tuple[str, ...] = ()
     combat_lifecycle: CombatLifecycleObservation | None = None
+    # Never disguise a QTE control-only read as a playable GameState.
+    control_battle: BattleState | None = None
 
 
 @dataclass(frozen=True)
@@ -1121,6 +1141,7 @@ def _canonical_card(
         ui_slot=ui_slot,
         ui_slot_count=ui_slot_count,
         interaction_authority="CARD_UI_BUTTON",
+        button_address=card.button,
     )
 
 
@@ -1306,9 +1327,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._published: set[tuple[CombatSessionKey, int, str]] = set()
         self._last_phase = GamePhase.UNKNOWN
         self._last_cards: tuple[CardState, ...] = ()
+        # Pet Skill CardUI is deliberately kept outside GameState.cards until
+        # a later policy phase.  Exposing ATTACK_LEGEND* there would let BASIC
+        # mistake it for an ordinary CAST action.  Phase 3B.3 consumes this
+        # separate, read-only exact-CardUI view through its controlled harness.
+        self._last_pet_skill_cards: tuple[CardState, ...] = ()
         self._last_card_layout = RuntimeCardStripLayout(
             False, 0, (), None, "not_observed"
         )
+        self._native_card_reader: NativeCardUiReader | None = None
+        self._native_card_reason = "not_requested"
         self._preentry_card_identity: tuple[tuple[int, int, str], ...] = ()
         self._preentry_attack_card_count = 0
         self._preentry_card_sources_agree: bool | None = None
@@ -1770,11 +1798,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
         card_game_objects: tuple[int, ...] | None = None,
         selected_card_count: int | None = None,
     ) -> tuple[tuple[int, ...], tuple[Any, ...], Any | None]:
-        """Scan only regions selected by current ``Board.cardsInHand`` owners.
+        """Scan regions selected by current card GameObjects and Board owner.
 
         Cpp2IL proves the list ownership and that the spawned Fusion GameObject
-        is appended to it. Region membership is discovery evidence only; every
-        returned class-pointer hit still needs its exact object validator.
+        is appended to it. Live 1.7.4 HT7 evidence additionally places the
+        post-Fusion Pet Skill ``CardUI`` beside the current Board rather than
+        beside its ``cardsInHand`` GameObject. Include the exact Board address
+        only for ``CardUI.board`` discovery; it selects a bounded allocation
+        region and never authorizes a candidate by itself. Every class-pointer
+        hit still needs exact CardUI class, Board, Active, native object,
+        CardData and Button validation.
         """
 
         if not needles:
@@ -1785,6 +1818,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 board_instance,
             )
         anchor_addresses = set(card_game_objects)
+        if "card_board_owner" in needles:
+            anchor_addresses.add(board_instance)
         if (
             "card_board_owner" in needles
             and selected_card_count is not None
@@ -1792,7 +1827,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
         ):
             # Ordinary CardUI owners correspond to the selected-card prefix;
             # do not make their scan pay for a separately allocated Fusion GO.
-            anchor_addresses = set(card_game_objects[:selected_card_count])
+            anchor_addresses = {
+                board_instance,
+                *card_game_objects[:selected_card_count],
+            }
         if (
             "fusion_ui" in needles
             and "card_board_owner" not in needles
@@ -2159,9 +2197,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._gate = StableSnapshotGate(self.config.required_confirmations)
         self._published.clear()
         self._last_cards = ()
+        self._last_pet_skill_cards = ()
         self._last_card_layout = RuntimeCardStripLayout(
             False, 0, (), None, "new_combat_not_observed"
         )
+        self._native_card_reason = "session_reset"
         self._last_fusion = None
         self._last_memory_fusion_state = None
         self._local_actor_number = None
@@ -2268,9 +2308,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
         _drop_session_volatile_learned_regions(self._learned_regions)
         self._gate = StableSnapshotGate(self.config.required_confirmations)
         self._last_cards = ()
+        self._last_pet_skill_cards = ()
         self._last_card_layout = RuntimeCardStripLayout(
             False, 0, (), None, "combat_cleared"
         )
+        self._native_card_reason = "session_reset"
         self._last_fusion = None
         self._last_memory_fusion_state = None
         self._local_actor_number = None
@@ -2344,7 +2386,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
         ``poll`` must later observe the same ``srvSeq`` in MatchService._ackedSeqs.
         """
 
-        if event_type != "MATCH_MOVE_RES":
+        if event_type not in {
+            "MATCH_MOVE_RES",
+            "MATCH_CARD_USE_RES",
+            "MATCH_SKILL_USE_RES",
+        }:
             return False
         session = self._session_key
         if (
@@ -2361,7 +2407,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             snapshot.cells,
         )
         identity = self._register(
-            candidate, "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+            candidate, f"ChatMessageDTO.{event_type}.matchPayload.board"
         )
         self._transport_attested.add(identity)
         return True
@@ -2839,6 +2885,209 @@ class MemoryBoardStateProvider(BoardStateProvider):
         except (ExternalReadError, OSError, LayoutValidationError):
             return None
 
+    def poll_qte_control(self, expected_session: CombatSessionKey) -> ProviderPoll:
+        """Fresh control-plane RPM only while one QTE owns input authority.
+
+        No DTO/board scan, card discovery, geometry, baseline or publication.
+        This is NOT a playable board snapshot. The normal poll resumes after
+        confirm to read the result/cascade. Never reuse cached lifecycle flags.
+        """
+        if not self.target.is_running():
+            return ProviderPoll(None, False, "qte_control_process_exited")
+        if self._lifecycle_tracker.session != expected_session:
+            return ProviderPoll(None, False, "qte_control_session_not_owned")
+        try:
+            board = self._resolve_board()
+            match_service = self._resolve_match_service()
+            if board is None or not board.accepted or match_service is None:
+                raise LayoutValidationError("QTE current owner unavailable")
+            match_id = self._read_string_field(match_service, MATCH_SERVICE_CURRENT_MATCH_ID_OFFSET)
+            turn = self.target.resolver.read_i32(match_service + MATCH_SERVICE_TURN_NUMBER_OFFSET)
+            current_player = self._read_string_field(match_service, MATCH_SERVICE_CURRENT_TURN_PLAYER_OFFSET)
+            signals = self._read_action_signals(match_service)
+            lifecycle = read_combat_lifecycle(
+                self.target.resolver, board=board, match_id=match_id,
+                match_over=signals.match_over, deferred_game_over=signals.deferred_game_over,
+            )
+            # A torn lifecycle read is absence of evidence, not an observed
+            # transition.  Do not let CombatSessionTracker.invalidate the
+            # already-owned pre-action session before the next clean sample.
+            # A clean non-ACTIVE lifecycle still flows through observe() below
+            # and invalidates immediately.
+            if lifecycle.signals.read_errors:
+                raise LayoutValidationError("QTE lifecycle changed or unreadable")
+            session = self._lifecycle_tracker.observe(lifecycle.state, board.board_instance, match_id)
+            if session != expected_session:
+                raise LayoutValidationError("QTE lifecycle changed or unreadable")
+            actor = read_match_local_actor_number(self.target.memory, match_service, signals.local_username)
+            left = read_left_actor_numbers(self.target.memory, board.board_instance)
+            if (actor is None or signals.connection_ready is not True
+                    or signals.reconnecting is not False or signals.match_resyncing):
+                raise LayoutValidationError("QTE actor/connection unavailable or recovering")
+            # Fence the current owner/turn, not merely a cached session key.
+            after_board = self._resolve_board()
+            if (after_board is None or not after_board.accepted
+                    or after_board.board_instance != board.board_instance
+                    or after_board.active != board.active
+                    or after_board.is_game_over != board.is_game_over
+                    or after_board.is_board_ready != board.is_board_ready
+                    or self._resolve_match_service() != match_service
+                    or self._read_string_field(match_service, MATCH_SERVICE_CURRENT_MATCH_ID_OFFSET) != match_id
+                    or self.target.resolver.read_i32(match_service + MATCH_SERVICE_TURN_NUMBER_OFFSET) != turn
+                    or self._read_string_field(match_service, MATCH_SERVICE_CURRENT_TURN_PLAYER_OFFSET) != current_player):
+                raise LayoutValidationError("QTE control read changed during sample")
+            control = BattleState(
+                combat_lifecycle=lifecycle.state, session_key=session,
+                board_instance=board.board_instance, match_id=match_id,
+                turn_number=turn, current_turn_player=current_player,
+                local_username=signals.local_username, local_actor_number=actor,
+                is_local_turn=signals.is_local_turn(current_player),
+                local_has_left_match=actor in left.actor_numbers,
+                board_is_game_over=board.is_game_over,
+                match_over=signals.match_over, deferred_game_over=signals.deferred_game_over,
+                connection_ready=signals.connection_ready, reconnecting=signals.reconnecting,
+                match_resyncing=signals.match_resyncing,
+                sources=("QTE_CONTROL_ONLY_NO_BOARD_PUBLICATION",),
+                # Already-read control signals, not a playable board snapshot.
+                # B4 uses these to fence its second action after QTE cleanup.
+                is_board_ready=board.is_board_ready,
+                is_cascade_running=board.is_cascade_running,
+                board_current_state=board.current_state,
+                board_is_processing_ui=board.is_processing_ui,
+                board_is_resuming=board.is_resuming,
+                presentation_busy=signals.in_flight_batches > 0,
+                clock_paused=signals.clock_paused,
+                start_gate_paused=signals.start_gate_paused,
+            )
+            return ProviderPoll(None, False, "qte_control_only", session_key=session,
+                                combat_lifecycle=lifecycle, control_battle=control)
+        except (ExternalReadError, OSError, LayoutValidationError, ValueError) as exc:
+            return ProviderPoll(None, False, f"qte_control_rejected:{exc}")
+
+    def refresh_pet_skill_cards(
+        self,
+        expected_session: CombatSessionKey,
+    ) -> tuple[CardState, ...]:
+        """Refresh the current Pet Skill hand without board/batch discovery.
+
+        Pet Skill actionability is a control-plane concern: exact current
+        Board/Match ownership, successful Fusion, native cardsInHand ownership,
+        CardUI/CardData/Button identity and live flags are sufficient to expose
+        the card to the one-shot QTE harness.  It must not wait for an unrelated
+        WsCombatBatch/ACK heap scan or publish a playable board.
+        """
+
+        self._last_pet_skill_cards = ()
+        if (
+            not self.target.is_running()
+            or self._lifecycle_tracker.session != expected_session
+        ):
+            self._native_card_reason = "pet_skill_control_session_not_owned"
+            return ()
+        try:
+            board = self._resolve_board()
+            match_service = self._resolve_match_service()
+            if (
+                board is None
+                or not board.accepted
+                or board.active is None
+                or match_service is None
+                or board.board_instance != expected_session.board_instance
+            ):
+                raise LayoutValidationError("Pet Skill current owner unavailable")
+            match_id, _turn, _player, _pending, fusion = self._read_match_state(
+                match_service
+            )
+            if match_id != expected_session.match_id:
+                raise LayoutValidationError("Pet Skill current match changed")
+            if fusion is None or not fusion.used_successfully:
+                self._native_card_reason = "pet_skill_not_unlocked_by_fusion"
+                return ()
+            # Do not use Board.isUsingLegendCard as a current-QTE busy signal.
+            # In 1.7.4-b2 SetLegendMultiplier writes it true; B4 live evidence
+            # shows it still true after QTE cleanup and multiple later turns.
+            # This read only discovers the current native hand. Input remains
+            # gated by proven inactive ActiveDotSkillCard, current CardUI/Button,
+            # resources, turn and (for B4 action 2) settled control evidence.
+            # See docs/phase3b3_native_card_evidence.md, B4 latched flag addendum.
+            if self._card_ui_class is None:
+                self._refresh_type_info()
+            if self._card_ui_class is None:
+                raise LayoutValidationError("CardUI type info unavailable")
+            if self._native_card_reader is None:
+                self._native_card_reader = NativeCardUiReader(
+                    self.target.memory,
+                    self.target.resolver.game_assembly_base,
+                )
+            hand = self._native_card_reader.read_hand(
+                board.board_instance,
+                int(self._card_ui_class),
+            )
+            candidates = validate_combat_card_hits(
+                self.target.memory,
+                hand.card_ui_addresses,
+                expected_class=int(self._card_ui_class),
+                expected_board=board.board_instance,
+                expected_active=board.active,
+                card_data_cache=self._card_data_cache,
+            )
+            for candidate in candidates:
+                entry = hand.entry_for_card(candidate.address)
+                if entry is None:
+                    raise LayoutValidationError(
+                        "Pet Skill CardUI has no unique native hand owner"
+                    )
+                self._native_card_reader.validate_button_owner(
+                    candidate.address,
+                    candidate.button,
+                    entry,
+                )
+            skill_data = (
+                int(fusion.skill_card)
+                if fusion.skill_card is not None
+                and is_canonical_user_pointer(int(fusion.skill_card))
+                else None
+            )
+            cards = tuple(
+                _canonical_card(
+                    candidate,
+                    ui_slot=hand.slot_for_card(candidate.address),
+                    ui_slot_count=len(hand.visible),
+                )
+                for candidate in candidates
+                if candidate.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+                and (skill_data is None or candidate.card_data == skill_data)
+            )
+            after = self._resolve_board()
+            after_match, *_ = self._read_match_state(match_service)
+            if (
+                after is None
+                or not after.accepted
+                or after.board_instance != board.board_instance
+                or after.active != board.active
+                or after_match != match_id
+                or self._resolve_match_service() != match_service
+            ):
+                raise LayoutValidationError(
+                    "Pet Skill current owner changed during native refresh"
+                )
+            self._card_addresses = {candidate.address for candidate in candidates}
+            self._last_pet_skill_cards = cards
+            self._native_card_reason = (
+                "pet_skill_control_native_hand_validated"
+                if cards
+                else "pet_skill_control_card_missing_or_ambiguous"
+            )
+            return cards
+        except (
+            ExternalReadError,
+            OSError,
+            LayoutValidationError,
+            ValueError,
+        ) as exc:
+            self._native_card_reason = f"pet_skill_control_read_error:{exc}"
+            return ()
+
     def poll(self) -> ProviderPoll:
         self.metrics.polls += 1
         if not self.target.is_running():
@@ -3257,6 +3506,70 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     memory_fusion
                 )
         fusion_expected = fusion_ui_discovery_expected
+        runtime_pet_skill_data_hint = (
+            int(memory_fusion.skill_card)
+            if memory_fusion is not None
+            and memory_fusion.skill_card is not None
+            and is_canonical_user_pointer(int(memory_fusion.skill_card))
+            else None
+        )
+        pet_skill_ui_discovery_expected = _pet_skill_ui_discovery_expected(
+            memory_fusion
+        )
+        # AddFusionSkillCard allocates a NEW CardUI. Its managed wrapper need
+        # not share an allocation with Board or the owned GameObject. Follow
+        # the verified native component/handle chain instead of spending or
+        # exhausting the ordinary-card heap scan budget after evolution.
+        native_hand: NativeCardHand | None = None
+        native_candidates: tuple[MemoryCardState, ...] = ()
+        if pet_skill_ui_discovery_expected and board.is_using_legend_card:
+            self._native_card_reason = "suspended_during_skill_execution"
+        if (pet_skill_ui_discovery_expected and not opening_board_action_priority
+                and not board.is_using_legend_card
+                and self._card_ui_class is not None and board.active is not None):
+            try:
+                if self._native_card_reader is None:
+                    self._native_card_reader = NativeCardUiReader(
+                        self.target.memory, self.target.resolver.game_assembly_base
+                    )
+                native_hand = self._native_card_reader.read_hand(
+                    board.board_instance, int(self._card_ui_class)
+                )
+                native_candidates = validate_combat_card_hits(
+                    self.target.memory, native_hand.card_ui_addresses,
+                    expected_class=int(self._card_ui_class),
+                    expected_board=board.board_instance, expected_active=board.active,
+                    card_data_cache=self._card_data_cache,
+                )
+                for candidate in native_candidates:
+                    entry = native_hand.entry_for_card(candidate.address)
+                    self._native_card_reader.validate_button_owner(
+                        candidate.address, candidate.button, entry
+                    )
+                self._card_addresses = {card.address for card in native_candidates}
+                self._native_card_reason = "current_hand_components_handles_validated"
+            except (ExternalReadError, OSError, LayoutValidationError, ValueError) as exc:
+                native_hand = None
+                native_candidates = ()
+                self._native_card_reason = str(exc)
+        cached_pet_skill_cards = tuple(
+            card
+            for card in self._last_pet_skill_cards
+            if card.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+            and card.button_address is not None
+            and (
+                runtime_pet_skill_data_hint is None
+                or card.data_address == runtime_pet_skill_data_hint
+            )
+        )
+        pet_skill_ui_resolved = len(cached_pet_skill_cards) == 1
+        pet_skill_data_hint = (
+            runtime_pet_skill_data_hint
+            if runtime_pet_skill_data_hint is not None
+            else cached_pet_skill_cards[0].data_address
+            if pet_skill_ui_resolved
+            else None
+        )
         direct_card_layout = RuntimeCardStripLayout(
             False,
             0,
@@ -3264,15 +3577,17 @@ class MemoryBoardStateProvider(BoardStateProvider):
             None,
             "direct_board_card_lists_unavailable",
         )
-        if selected_cards_hint is not None:
+        if selected_cards_hint is not None and not (
+            pet_skill_ui_discovery_expected and pet_skill_data_hint is None
+        ):
             direct_card_layout = resolve_runtime_card_strip(
                 selected_card_data_addresses=selected_card_data_hint,
                 rendered_card_data_addresses=(),
                 cards_in_hand_count=len(cards_in_hand_hint),
                 fusion_expected=fusion_expected,
                 fusion_skill_card_data_address=(
-                    memory_fusion.skill_card
-                    if memory_fusion is not None and fusion_expected
+                    pet_skill_data_hint
+                    if pet_skill_ui_discovery_expected and fusion_expected
                     else None
                 ),
             )
@@ -3284,6 +3599,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     self._card_ui_class is not None
                     and attack_card_ui_discovery_expected
                 )
+                or pet_skill_ui_discovery_expected
                 or fusion_ui_discovery_expected
             )
         )
@@ -3335,12 +3651,22 @@ class MemoryBoardStateProvider(BoardStateProvider):
             and self.config.extended_fusion_ui_region_mib is not None
         )
         needs_extended_card_ui_scan = bool(
+            not pet_skill_ui_discovery_expected
+            and
             not opening_board_action_priority
             and not direct_card_actions_authorized
             and self.config.extended_card_ui_region_mib is not None
             and self._card_ui_class is not None
-            and attack_card_ui_discovery_expected
-            and not any(card.is_attack for card in self._last_cards)
+            and (
+                (
+                    attack_card_ui_discovery_expected
+                    and not any(card.is_attack for card in self._last_cards)
+                )
+                or (
+                    pet_skill_ui_discovery_expected
+                    and not pet_skill_ui_resolved
+                )
+            )
             and _extended_card_scan_relevant(
                 participants_hint,
                 is_local_turn=is_local_turn_hint,
@@ -3350,21 +3676,39 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 turn_time_remaining_seconds=optional_scan_timer.remaining_seconds,
             )
         )
+        post_fusion_skill_discovery_needed = bool(
+            pet_skill_ui_discovery_expected
+            and not pet_skill_ui_resolved
+            and self._card_owner_anchor_scan_attempts < 3
+        )
         needs_card_owner_anchor_scan = bool(
+            not pet_skill_ui_discovery_expected
+            and
             not opening_board_action_priority
             and not direct_card_actions_authorized
-            and attack_card_ui_discovery_expected
             and self._card_ui_class is not None
             and board.active is not None
-            and not any(card.is_attack for card in self._last_cards)
-            and _extended_card_scan_relevant(
-                participants_hint,
-                is_local_turn=is_local_turn_hint,
-                turn=turn,
-                last_scanned_turn=self._card_owner_anchor_scan_turn,
-                attempts=self._card_owner_anchor_scan_attempts,
-                turn_time_remaining_seconds=optional_scan_timer.remaining_seconds,
-                max_attempts=3,
+            and (
+                (
+                    attack_card_ui_discovery_expected
+                    and not any(card.is_attack for card in self._last_cards)
+                )
+                or (
+                    pet_skill_ui_discovery_expected
+                    and not pet_skill_ui_resolved
+                )
+            )
+            and (
+                post_fusion_skill_discovery_needed
+                or _extended_card_scan_relevant(
+                    participants_hint,
+                    is_local_turn=is_local_turn_hint,
+                    turn=turn,
+                    last_scanned_turn=self._card_owner_anchor_scan_turn,
+                    attempts=self._card_owner_anchor_scan_attempts,
+                    turn_time_remaining_seconds=optional_scan_timer.remaining_seconds,
+                    max_attempts=3,
+                )
             )
         )
         if needs_owner_scan:
@@ -3412,14 +3756,31 @@ class MemoryBoardStateProvider(BoardStateProvider):
             attack_card_ui_resolved = any(
                 card.is_attack for card in normal_cards
             )
-            needs_extended_card_ui_scan = _extended_card_scan_still_needed(
-                needs_extended_card_ui_scan,
-                normal_cards,
+            normal_pet_skill_cards = tuple(
+                card
+                for card in normal_cards
+                if card.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+                and card.button_address is not None
+                and (
+                    runtime_pet_skill_data_hint is None
+                    or card.data_address == runtime_pet_skill_data_hint
+                )
             )
-            needs_card_owner_anchor_scan = _extended_card_scan_still_needed(
-                needs_card_owner_anchor_scan,
-                normal_cards,
+            pet_skill_ui_resolved = len(normal_pet_skill_cards) == 1
+            if pet_skill_ui_resolved:
+                pet_skill_data_hint = normal_pet_skill_cards[0].data_address
+            unresolved_card_target = bool(
+                (
+                    attack_card_ui_discovery_expected
+                    and not attack_card_ui_resolved
+                )
+                or (
+                    pet_skill_ui_discovery_expected
+                    and not pet_skill_ui_resolved
+                )
             )
+            needs_extended_card_ui_scan &= unresolved_card_target
+            needs_card_owner_anchor_scan &= unresolved_card_target
         if (
             needs_fusion_owner_anchor_scan or needs_extended_fusion_ui_scan
         ) and self._fusion_ui_class is not None:
@@ -3443,7 +3804,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 self._last_fusion_owner_anchor_reason = (
                     "current_fusion_ui_resolved_by_session_warmup"
                 )
-        # Metadata-110 proves Board.cardsInHand at +0x320. Ordinary card and
+        # Metadata-110 b2 proves Board.cardsInHand at +0x348. Ordinary card and
         # Fusion GameObjects can occupy different allocations, so scan their
         # exact owner envelopes separately instead of combining them into a
         # larger/incorrect region set.
@@ -3464,7 +3825,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
                             else None
                         ),
                         selected_card_count=(
-                            len(selected_card_data_hint)
+                            None
+                            if pet_skill_ui_discovery_expected
+                            else len(selected_card_data_hint)
                             if selected_cards_hint is not None
                             else None
                         ),
@@ -3511,9 +3874,34 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         }
                     if any(card.is_attack_card for card in anchored_cards):
                         attack_card_ui_resolved = True
+                    anchored_pet_skill_cards = tuple(
+                        card
+                        for card in anchored_cards
+                        if card.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+                        and (
+                            runtime_pet_skill_data_hint is None
+                            or card.card_data == runtime_pet_skill_data_hint
+                        )
+                    )
+                    pet_skill_ui_resolved = len(anchored_pet_skill_cards) == 1
+                    if pet_skill_ui_resolved:
+                        pet_skill_data_hint = anchored_pet_skill_cards[0].card_data
+                    unresolved_card_target = bool(
+                        (
+                            attack_card_ui_discovery_expected
+                            and not attack_card_ui_resolved
+                        )
+                        or (
+                            pet_skill_ui_discovery_expected
+                            and not pet_skill_ui_resolved
+                        )
+                    )
+                    if not unresolved_card_target:
                         needs_extended_card_ui_scan = False
+                        self._last_card_owner_anchor_reason = "current_card_targets_resolved"
+                    elif pet_skill_ui_discovery_expected and not pet_skill_ui_resolved:
                         self._last_card_owner_anchor_reason = (
-                            "current_attack_card_resolved"
+                            "current_pet_skill_card_not_resolved"
                         )
                     else:
                         self._last_card_owner_anchor_reason = (
@@ -3609,7 +3997,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
         # below remains the final bounded compatibility path.
         needs_bounded_card_ui_scan = bool(
             needs_card_owner_anchor_scan
-            and not attack_card_ui_resolved
+            and (
+                (attack_card_ui_discovery_expected and not attack_card_ui_resolved)
+                or (pet_skill_ui_discovery_expected and not pet_skill_ui_resolved)
+            )
             and self._card_ui_class is not None
         )
         needs_bounded_fusion_ui_scan = bool(
@@ -3650,9 +4041,25 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         }
                     if any(card.is_attack_card for card in bounded_cards):
                         attack_card_ui_resolved = True
+                    bounded_pet_skill_cards = tuple(
+                        card
+                        for card in bounded_cards
+                        if card.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+                        and (
+                            runtime_pet_skill_data_hint is None
+                            or card.card_data == runtime_pet_skill_data_hint
+                        )
+                    )
+                    pet_skill_ui_resolved = len(bounded_pet_skill_cards) == 1
+                    if pet_skill_ui_resolved:
+                        pet_skill_data_hint = bounded_pet_skill_cards[0].card_data
+                    if not (
+                        (attack_card_ui_discovery_expected and not attack_card_ui_resolved)
+                        or (pet_skill_ui_discovery_expected and not pet_skill_ui_resolved)
+                    ):
                         needs_extended_card_ui_scan = False
                         self._last_card_owner_anchor_reason = (
-                            "current_attack_card_resolved_by_bounded_fallback"
+                            "current_card_targets_resolved_by_bounded_fallback"
                         )
                 if needs_bounded_fusion_ui_scan:
                     bounded_fusion = validate_fusion_card_ui_hits(
@@ -3898,9 +4305,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
             if identity in self._tracked and identity[1] in ack_values:
                 self._ack_attested.add(identity)
                 if identity in self._transport_attested:
+                    transport_sources = sorted(
+                        value
+                        for value in self._sources.get(identity, ())
+                        if value.startswith("ChatMessageDTO.")
+                        and value.endswith(".matchPayload.board")
+                    )
                     source = (
-                        "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board+"
-                        "MatchService._ackedSeqs"
+                        (transport_sources[-1] if transport_sources else
+                         "ChatMessageDTO.UNKNOWN.matchPayload.board")
+                        + "+MatchService._ackedSeqs"
                     )
                 else:
                     source = (
@@ -4152,19 +4566,63 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 else:
                     selected_card_data = selected_card_data_hint
                     cards_in_hand = cards_in_hand_hint
-                card_layout = resolve_runtime_card_strip(
-                    selected_card_data_addresses=selected_card_data,
-                    rendered_card_data_addresses=tuple(
-                        card.card_data for card in card_candidates
-                    ),
-                    cards_in_hand_count=len(cards_in_hand),
-                    fusion_expected=fusion_expected,
-                    fusion_skill_card_data_address=(
-                        memory_fusion.skill_card
-                        if memory_fusion is not None and fusion_expected
-                        else None
-                    ),
+                current_pet_skill_candidates = tuple(
+                    card
+                    for card in card_candidates
+                    if card.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+                    and (
+                        runtime_pet_skill_data_hint is None
+                        or card.card_data == runtime_pet_skill_data_hint
+                    )
                 )
+                current_pet_skill_data = (
+                    current_pet_skill_candidates[0].card_data
+                    if len(current_pet_skill_candidates) == 1
+                    else None
+                )
+                if pet_skill_ui_discovery_expected and native_hand is not None:
+                    # Slots describe CURRENT visible rectangles, never list
+                    # insertion order or the previous Fusion slot. The action
+                    # harness rereads the exact Button rectangle before input.
+                    slots = tuple(
+                        (card.card_data, native_hand.slot_for_card(card.address))
+                        for card in native_candidates
+                    )
+                    skill_slot = next((slot for data, slot in slots
+                                       if data == current_pet_skill_data), None)
+                    resolved = bool(
+                        current_pet_skill_data is not None and skill_slot is not None
+                        and all(slot is not None for _, slot in slots)
+                        and len({data for data, _ in slots}) == len(slots)
+                    )
+                    card_layout = RuntimeCardStripLayout(
+                        resolved, len(native_hand.visible), slots if resolved else (),
+                        None, "current_native_cardui_rectangles" if resolved else
+                        "native_hand_pet_skill_missing_or_ambiguous",
+                        pet_skill_slot=skill_slot if resolved else None,
+                    )
+                elif pet_skill_ui_discovery_expected:
+                    card_layout = RuntimeCardStripLayout(
+                        False,
+                        len(cards_in_hand),
+                        (),
+                        None,
+                        f"post_fusion_native_card_ui_unavailable:{self._native_card_reason}",
+                    )
+                else:
+                    card_layout = resolve_runtime_card_strip(
+                        selected_card_data_addresses=selected_card_data,
+                        rendered_card_data_addresses=tuple(
+                            card.card_data for card in card_candidates
+                        ),
+                        cards_in_hand_count=len(cards_in_hand),
+                        fusion_expected=fusion_expected,
+                        fusion_skill_card_data_address=(
+                            current_pet_skill_data
+                            if pet_skill_ui_discovery_expected and fusion_expected
+                            else None
+                        ),
+                    )
             except (
                 ExternalReadError,
                 OSError,
@@ -4192,6 +4650,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 ),
             )
             for card in card_candidates
+        )
+        pet_skill_cards = tuple(
+            card
+            for card in live_cards
+            if card.element_type.upper() in PET_SKILL_ELEMENT_TYPES
+            and card.button_address is not None
+            and (
+                runtime_pet_skill_data_hint is None
+                or card.data_address == runtime_pet_skill_data_hint
+            )
         )
         cards_by_data = {card.data_address: card for card in live_cards}
         if card_layout.resolved and selected_cards_hint is not None:
@@ -4230,6 +4698,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         cards_changed = cards != self._last_cards
         fusion_changed = fusion != self._last_fusion
         self._last_cards = cards
+        self._last_pet_skill_cards = pet_skill_cards
         self._last_fusion = fusion
 
         opening_hash = (
@@ -4780,6 +5249,12 @@ class MemoryBoardStateProvider(BoardStateProvider):
         return self._last_cards
 
     @property
+    def observed_pet_skill_cards(self) -> tuple[CardState, ...]:
+        """Exact live Pet Skill CardUI/Button views, never BASIC actions."""
+
+        return self._last_pet_skill_cards
+
+    @property
     def last_published_state(self) -> GameState | None:
         """Return the immutable last publication for a bounded handoff check.
 
@@ -4802,6 +5277,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
         hinted = set(self._learned_regions.get("chat_message", ()))
         hinted.update(self._learned_regions.get("batch", ()))
         return tuple(sorted(hinted, key=lambda region: region.base))
+
+    @property
+    def chat_message_region_hints(self) -> tuple[Any, ...]:
+        """Current allocation regions that actually contained ChatMessageDTO.
+
+        QTE result collection searches for a short-lived ChatMessageDTO, not a
+        standalone WsCombatBatch.  Keeping this narrower view separate avoids
+        repeatedly traversing batch-only regions while preserving all normal
+        message decoding and current-match correlation checks.
+        """
+
+        return tuple(
+            sorted(
+                self._learned_regions.get("chat_message", ()),
+                key=lambda region: region.base,
+            )
+        )
 
     def set_preentry_card_loadout(
         self,
@@ -4970,7 +5462,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "runtimeCardLayoutResolved": self._last_card_layout.resolved,
             "runtimeCardLayoutSlotCount": self._last_card_layout.slot_count,
             "runtimeCardLayoutFusionSlot": self._last_card_layout.fusion_slot,
+            "runtimeCardLayoutPetSkillSlot": self._last_card_layout.pet_skill_slot,
             "runtimeCardLayoutReason": self._last_card_layout.reason,
+            "nativeCardDiscoveryReason": self._native_card_reason,
+            "livePetSkillCardIdentity": tuple(
+                sorted(
+                    (
+                        card.data_id,
+                        card.card_id,
+                        card.element_type.upper(),
+                        card.object_address,
+                        card.button_address,
+                        card.ui_slot,
+                        card.ui_slot_count,
+                    )
+                    for card in self._last_pet_skill_cards
+                )
+            ),
             "cachedFusionUiAddresses": len(self._fusion_ui_addresses),
             "fusionInteractionAuthority": (
                 self._last_fusion.interaction_authority

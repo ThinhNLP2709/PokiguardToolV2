@@ -284,9 +284,9 @@ def live_pet_skill_card_from_state(
         card_ui_address=card.object_address if live_wrapper else None,
         board_instance=session_key.board_instance,
         active_instance=active_instance,
-        button_address=None,
+        button_address=card.button_address if live_wrapper else None,
         button_interactable=card.interactable if live_wrapper else None,
-        button_validated=live_wrapper,
+        button_validated=live_wrapper and card.button_address is not None,
         source=card.interaction_authority,
     )
 

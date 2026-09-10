@@ -41,15 +41,16 @@ CARD_UI_HAS_USED_THIS_MATCH_OFFSET = 0x40
 CARD_UI_HAS_USED_THIS_TURN_OFFSET = 0x41
 CARD_UI_LAST_TURN_USED_OFFSET = 0x44
 CARD_UI_ACTION_PENDING_OFFSET = 0x48
-CARD_UI_IS_PLACEHOLDER_OFFSET = 0x78
-CARD_UI_READ_SIZE = 0x79
+CARD_UI_IS_PLACEHOLDER_OFFSET = 0x80
+CARD_UI_READ_SIZE = 0x81
 
 # Board owns both the configured CardData order and the instantiated card
 # GameObjects for the current combat.  Cpp2IL
-# Il2CppInspector metadata-110 output declares selectedCards at +0x318 and
-# cardsInHand at +0x320 for Pokiguard 1.7.4.
-BOARD_SELECTED_CARDS_OFFSET = 0x318
-BOARD_CARDS_IN_HAND_OFFSET = 0x320
+# Il2CppInspector metadata-110 b2 output declares cardContainer at +0x328,
+# selectedCards at +0x340 and cardsInHand at +0x348.
+BOARD_CARD_CONTAINER_OFFSET = 0x328
+BOARD_SELECTED_CARDS_OFFSET = 0x340
+BOARD_CARDS_IN_HAND_OFFSET = 0x348
 MANAGED_LIST_ITEMS_OFFSET = 0x10
 MANAGED_LIST_SIZE_OFFSET = 0x18
 MANAGED_LIST_VERSION_OFFSET = 0x1C

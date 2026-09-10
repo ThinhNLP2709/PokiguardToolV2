@@ -446,6 +446,9 @@ class CardState:
     ui_slot: int | None = None
     ui_slot_count: int | None = None
     interaction_authority: str = "CARD_UI_BUTTON"
+    # Exact live UnityEngine.UI.Button wrapper when a validated CardUI exists.
+    # Direct Board.selectedCards fallbacks deliberately leave this unknown.
+    button_address: int | None = None
 
     @property
     def is_attack(self) -> bool:

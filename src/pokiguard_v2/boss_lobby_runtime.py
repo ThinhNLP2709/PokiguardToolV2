@@ -33,14 +33,14 @@ from .il2cpp_layout import LayoutValidationError, read_il2cpp_string, read_refer
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
-MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x2C53AC8
-MANAGER_ROOM_TYPE_INFO_RVA = 0x2C53C20
-WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x2C300F0
+MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x2D94AB0
+MANAGER_ROOM_TYPE_INFO_RVA = 0x2D94C20
+WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x2DEB6E8
 
 # ManagerQuangTruong (Assembly-CSharp).
 MQT_PANEL_BOSS_OFFSET = 0x108
-MQT_PANEL_CHINH_PHUC_OFFSET = 0x2B0
-MQT_MANAGER_BOSS_OFFSET = 0x3A0
+MQT_PANEL_CHINH_PHUC_OFFSET = 0x2C0
+MQT_MANAGER_BOSS_OFFSET = 0x3E0
 
 # ManagerRoom (Assembly-CSharp).
 MANAGER_ROOM_ROOM_PANEL_OFFSET = 0x20
@@ -48,7 +48,7 @@ MANAGER_ROOM_BUTTON_START_OFFSET = 0x28
 MANAGER_ROOM_LOADING_OFFSET = 0x30
 MANAGER_ROOM_ROOM_DATA_OFFSET = 0x100
 MANAGER_ROOM_SELECTED_CARDS_OFFSET = 0x108
-MANAGER_ROOM_IS_OPENING_FLOW_OFFSET = 0x130
+MANAGER_ROOM_IS_OPENING_FLOW_OFFSET = 0x148
 
 # RoomDTO.
 ROOM_ID_OFFSET = 0x10
@@ -489,7 +489,7 @@ def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple
     candidates: list[BossCandidate] = []
     try:
         manager_qt = _static_instance(
-            resolver, MANAGER_QUANG_TRUONG_TYPE_INFO_RVA, size=0x370
+            resolver, MANAGER_QUANG_TRUONG_TYPE_INFO_RVA, size=0x3E8
         )
         if manager_qt is None:
             reasons.append("ManagerQuangTruong.Instance unavailable")

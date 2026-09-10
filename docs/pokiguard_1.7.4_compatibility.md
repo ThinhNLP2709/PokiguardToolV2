@@ -1,7 +1,28 @@
 # Pokiguard 1.7.4 IL2CPP compatibility
 
-Status: source integration complete; read-only boss-room/combat attachment
-validated; corrected combat-input layout awaiting one live retry.
+## Current b2 build — supersedes the historical profile below
+
+As of 2026-09-07 the active supported build is the exact 53,603,328-byte
+`GameAssembly.dll` with SHA-256
+`7E001DA2DCBD196474E4B5D05AB4673ACB2D7B7FE4534383E930E6878E8E6991`.
+Its metadata is 15,394,348 bytes, SHA-256
+`F011F33763C6451CA2E84EBC61CC1F1F02F7BA077C7F0F1DE04297C6C64B50A6`,
+magic `0xFAB11BAF`, header version 110. The exact reverse source is
+`reverse/reverse_1.7.4-b2`.
+
+Current TypeInfo RVAs and shifted Board/MatchService/CardUI/QTE/boss-room
+layouts are summarized in [il2cpp_symbols.md](il2cpp_symbols.md). A live
+read-only smoke attached to PID 26452/x64 and proved `LOBBY -> BOSS_LOBBY /
+CHINH_PHUC_ROOM`, clean room ownership, three selected cards and one Attack
+card, with zero input. Full source validation is **1028/1028 PASS**. The C67
+profile and the detailed history below are retained only as historical evidence
+and are not allowlisted by the current single-profile runtime.
+
+Current status (2026-09-10): source integration, read-only boss-room/combat
+attachment and bounded full Pet Skill/QTE input are live validated through
+Phase 3B.3 B1-B4. Final v1.0.43 regression: 1083 PASS. See
+[phase3b3_closeout.md](phase3b3_closeout.md). The earlier retry/1028-test status
+above and C67 profile below are historical, not a pending live requirement.
 
 ## Exact input build
 

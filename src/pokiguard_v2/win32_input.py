@@ -698,6 +698,8 @@ class ForegroundClickExecutor:
         self,
         binding: WindowBinding,
         normalized_point: tuple[float, float],
+        *,
+        settle_cursor: bool = False,
     ) -> ClickPointResult:
         """Send one confirmed UI click after foreground/geometry revalidation."""
 
@@ -716,7 +718,14 @@ class ForegroundClickExecutor:
             geometry.left + client_x,
             geometry.top + client_y,
         )
-        return ClickPointResult(self._send_one(binding, geometry, point))
+        return ClickPointResult(
+            self._send_one(
+                binding,
+                geometry,
+                point,
+                settle_cursor=settle_cursor,
+            )
+        )
 
     def move_normalized_point(
         self,

@@ -81,6 +81,7 @@ CHAT_MESSAGE_TO_ROW_OFFSET = 0xE8
 CHAT_MESSAGE_CARD_ID_OFFSET = 0xF0
 CHAT_MESSAGE_REJECT_REASON_OFFSET = 0x100
 CHAT_MESSAGE_SKILL_CARD_ID_OFFSET = 0x108
+CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET = 0x148
 
 DICTIONARY_ENTRIES_OFFSET = 0x18
 DICTIONARY_COUNT_OFFSET = 0x20
@@ -152,6 +153,7 @@ class ServerMessage:
     payload_ints: tuple[tuple[str, int], ...]
     payload_bools: tuple[tuple[str, bool], ...]
     payload_strings: tuple[tuple[str, str], ...]
+    qte_challenge_id: int | None = None
 
     @property
     def source_turn(self) -> int | None:
@@ -352,6 +354,9 @@ def read_server_message(
     skill_card_id = _read_nullable_i32(
         memory, address + CHAT_MESSAGE_SKILL_CARD_ID_OFFSET
     )
+    qte_challenge_id = _read_nullable_i64(
+        memory, address + CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET
+    )
     reject_reason = _string_field(memory, address, CHAT_MESSAGE_REJECT_REASON_OFFSET)
     payload = _read_pointer(memory, address + CHAT_MESSAGE_PAYLOAD_OFFSET)
     payload_address = payload if is_canonical_user_pointer(payload) else None
@@ -367,6 +372,7 @@ def read_server_message(
                 "turnNumber",
                 "turnDurationSec",
                 "turnTimeRemainingSec",
+                "srvSeq",
                 "cardId",
                 "skillCardId",
                 "mana",
@@ -451,6 +457,7 @@ def read_server_message(
         payload_ints=tuple(sorted(ints.items())),
         payload_bools=tuple(sorted(bools.items())),
         payload_strings=tuple(sorted(strings.items())),
+        qte_challenge_id=qte_challenge_id,
     )
 
 

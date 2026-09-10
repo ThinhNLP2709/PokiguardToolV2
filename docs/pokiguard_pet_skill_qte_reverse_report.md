@@ -1,5 +1,110 @@
 # Pokiguard – Pet Skill QTE Reverse Report
 
+## Addendum 2026-09-09 — final external completion boundary (v1.0.41)
+
+Current build 1.7.4-b2 native evidence separates the mandatory pre-input
+challenge from the post-Space resolution callback:
+
+- `CardUI.<HandleDotSkillSequence>.MoveNext` calls
+  `MatchService.SendSkillUse` at RVA `0x6F63D3`, then
+  `CardUI.WaitForWsSkillResolution` at RVA `0x6F63F8`.
+- `WaitForWsSkillResolution.MoveNext` reads
+  `MatchService.get_IsRenderingCombat` at RVAs `0x6FA60E` and `0x6FA664`;
+  managed defaults are `resWaitSec=3` and `renderWaitSec=14`.
+- `HandleMatchSkillUseRes` RVA `0x395FA0` enters generic
+  `HandleResEnvelope` RVA `0x396A70`, which parses ops/combat batches and
+  applies server state internally.
+
+Therefore the response remains meaningful to the **game**, but capturing that
+short-lived managed envelope is not a valid mandatory acknowledgement for an
+external read-only tool. Live logs prove CardUI runtime `PERFECT` and the skill
+effect/win can occur with no externally retained callback. The corrected tool
+contract is current server challenge -> closed-loop `7/7` -> one in-window
+Space -> current CardUI runtime `PERFECT` -> immediate action success.
+The game's subsequent board/resource changes and terminal outcome are outside
+that input primitive. The one-shot starts no response tap, response heap scan,
+transport capture or post-effect board wait. A later gameplay controller still
+requires its normal fresh/actionable GameState before sending another input.
+This supersedes both v1.0.39's callback requirement and v1.0.40's remaining
+post-state requirement, without changing the game's server-authoritative model.
+
+Latest supporting log:
+`logs/phase3b3_pet_skill_action_20260909_b2_action1_v1040.jsonl`, ActionId
+`530143a332e24f7fb584b7fee275ca11`. The exact generation reached 7/7, one
+Space at 3.183324 s in `[3.0, 3.299999952]`, then runtime `PERFECT!`.
+The external board publication failed for 30 seconds afterward; that does not
+negate the observed successful QTE input. The game advanced source turn 79 to
+81/83 during that old wait. The existing callback ownership findings below
+remain reverse evidence for diagnostic use, not action completion requirements.
+
+## Addendum build 1.7.4-b2 — 2026-09-07
+
+The new exact reverse output is `reverse/reverse_1.7.4-b2`. It confirms the same
+server-owned QTE model and input semantics, but the managed layouts moved.
+Production now uses MatchService QTE fields at `+0x220/+0x228/+0x22C` and the
+CardUI QTE block at `+0x58..+0x490`; exact field-by-field values are recorded in
+[phase3b3_qte_timing_evidence.md](phase3b3_qte_timing_evidence.md). Skill-card
+ownership now starts from `Board.cardContainer +0x328` and
+`Board.cardsInHand +0x348`, with current native anchors recorded in
+[phase3b3_native_card_evidence.md](phase3b3_native_card_evidence.md).
+
+This addendum supersedes build-specific RVAs/offsets in the historical sections
+below. It does not change the accepted gameplay rule or authorize direct game
+method calls.
+
+### Addendum: short-lived skill-response ownership
+
+The latest B2 retry proved that repeated full heap rediscovery can still miss
+`MATCH_SKILL_USE_RES`. The current native/Inspector output provides a direct
+read-only owner chain before main-thread dispatch:
+
+```text
+UnityMainThreadDispatcher._executionQueue / instance._drainBuffer
+  -> PendingAction.Action
+  -> System.Action.m_target
+  -> ChatService.__c__DisplayClass275_0
+       |- json +0x18 -> immutable received websocket JSON
+       `- message +0x20 -> deserialized/mutable ChatMessageDTO
+```
+
+Relevant current TypeInfo RVAs are dispatcher `0x2DE08F8`, pending-action
+queue/list `0x2DE5D48/0x2DDB970`, and closure `0x2D97A60`. The closure's
+`json`/`message` fields are `+0x18/+0x20`; native `OnWebSocketMessage` stores
+the raw JSON at `0x37CA27`, writes the DTO at `0x37CA8C`, then reaches the
+TryEnqueue call at `0x37CCEC`. v1.0.33 pre-arms this chain before card input.
+Live evidence then showed some queued DTO payloads had already lost `board`
+through pre-parse while the closure-owned JSON remained available. v1.0.35
+decodes the raw string only after the DTO proves exact event/current MatchId,
+and independently validates event, MatchId, `srvSeq`, 8x8 shape and all cell
+semantics before the unchanged ACK/stability gate. It does not invoke
+dispatcher/game methods, intercept network traffic or write target memory.
+Live action `545efe7efae74f129d3d68f83efed806` then validated this chain:
+the closure JSON retained current `MATCH_SKILL_USE_RES`, MatchId
+`M_52debf2f`, `srvSeq=146` and a strict 64-cell board while the action resolved
+runtime PERFECT. The raw decoder recorded one accepted board and zero semantic
+rejections. Publication still remained subject to the independent latest-ACK
+and presentation-stability gates.
+The following action observed 44 stable callback roots while the mutable DTO
+decoder returned no skill response. That evidence closes the ownership nuance:
+`json +0x18` can remain usable after `message +0x20` is cleared or reused.
+v1.0.37 therefore validates exact event/current MatchId directly from the raw
+envelope first; it still requires the existing bounded temporal-generation
+correlation and does not treat arbitrary callback JSON as a QTE result.
+Live response `0x0000026706BD7000` then confirmed that a valid
+`MATCH_SKILL_USE_RES` may omit both `board` and `srvSeq`. The same dispatcher
+closure ownership applies to later current-match move/card responses that do
+carry board snapshots. v1.0.38 retains those strict callback boards during the
+bounded post-result interval; they remain candidates only until separately
+confirmed by exact `_ackedSeqs` and presentation stability.
+
+Live action `ef0116e70f014ef3a21cfdd152b98c4f` adds one lifecycle fact: a
+lethal HT7 Perfect can close ACTIVE_COMBAT about 0.62 seconds after the QTE
+finishes, before an external sample has retained the queued response. This does
+not change response ownership or relax correlation. v1.0.39 simply keeps the
+already pre-armed read-only tap bound to the original MatchId across that
+post-Space terminal edge; a current callback and later same-match terminal
+GameState are still mandatory.
+
 **Ngày:** 2026-08-20  
 **Phạm vi:** Reverse-engineering client Unity/IL2CPP từ `cpp2il_cs` và các kết quả reverse đã thu thập.
 
@@ -674,3 +779,67 @@ Perfect window và runtime result PERFECT. Generic response current đã correla
 nhưng observer dừng trước boss damage/final turn edge; exact damage formula và
 turn semantics của HT2 vẫn UNKNOWN. Fixture này không được tích hợp gameplay
 policy.
+
+## 22. Làm rõ thứ tự thẻ và tái sử dụng luồng cũ (2026-09-04)
+
+Nguồn phần này là **mô tả trực tiếp của user** và live Phase 3B.3, không phải
+suy ra offset/thứ tự chỉ từ tên method trong reverse.
+
+- Pet chính có skill: **Skill pet chính -> Tiến hóa -> các thẻ user chọn**.
+- Pet chính thường, pet tiến hóa có skill: **Tiến hóa -> các thẻ user chọn ->
+  Skill pet tiến hóa**; thẻ cuối chỉ xuất hiện sau tiến hóa thành công.
+- Số thẻ user chọn thay đổi; không cố định skill ở slot 0/4 cho mọi loadout.
+
+Case tiến hóa khớp native `Board.AddFusionSkillCard` và live current hand của
+`M_bfb931a0`/`M_cf7e3c5a`: skill mới được thêm ở cuối, Evolution vẫn là object
+riêng. Chi tiết method RVA/ownership/geometry trong
+[phase3b3_native_card_evidence.md](phase3b3_native_card_evidence.md).
+Case pet chính có skill là user-confirmed, chưa live-accept trong đợt này.
+
+Luồng skill hiện đã dùng lại `combat_cards` validator, model thẻ, cost resolver,
+`transform_for_capture`, visual region metrics và `ForegroundClickExecutor`.
+Resolver slot cũ chỉ chấp nhận standard Evolution + selected cards; việc có
+Pet Skill không tự mở authority của shortcut đó. Bổ sung hai kiểu bố cục phải
+giữ exact current identity/Button/resource checks, không thay bằng phỏng đoán
+tọa độ từ cấu hình.
+
+User yêu cầu ở phase sau có Preferences chọn pet chính/loại pet chính và pet
+tiến hóa/loại tiến hóa. Đã lưu quy tắc tại [DECISIONS.md](DECISIONS.md).
+Chưa thêm UI này và chưa tích hợp Pet Skill vào BASIC ở Phase 3B.3.
+
+## 23. Deadline QTE và timing regression (2026-09-04)
+
+Retry 6 đã tự bấm đúng thẻ HT7 nhưng full board/card polling làm hướng/ACK
+cách nhau khoảng một giây: 5/7 khi timeout, BAD, không gửi Space. Đã đối chiếu
+`ApplyServerQteWindow`, `HandleDotSkillSequence.MoveNext`, `GetLastTimingResult`
+với native code 1.7.4. QTE dùng duration/Perfect window hiện tại; elapsed dựa
+trên `Time.deltaTime` và currentTimeValue, không phải 14 s của lượt đấu.
+
+Trong fixture này, tổng thời gian 5 s nhưng Perfect chỉ 3.0–3.3 s. Phải có đủ
+7/7 trước confirm trong cửa sổ đó. Không hard-code các số fixture cho mọi skill.
+Đã tách control-only poll khỏi full provider, giữ nguyên backend/ACK 3B.2 và
+thêm chặn Space nếu RAM chưa thực sự vào Perfect khi Unity bị đứng hình.
+Chi tiết evidence/native RVA, test và phần live còn thiếu:
+[phase3b3_qte_timing_evidence.md](phase3b3_qte_timing_evidence.md).
+
+## 24. Board hậu Pet Skill trong response envelope (2026-09-05)
+
+Native build 1.7.4 xác nhận `HandleMatchSkillUseRes` RVA `0x337B50` chỉ là
+wrapper chuyển `ChatMessageDTO` và kind metadata vào `HandleResEnvelope` RVA
+`0x338540`. Hàm envelope kiểm tra exact current MatchId, đọc
+`ChatMessageDTO.matchPayload +0xC8`, gọi `ParseOps`, `ApplyStateDelta`, rồi gọi
+`ParseCombatBatch` RVA `0x338AE0`. `WsCombatBatch` khai báo `srvSeq +0x10` và
+`BoardCellDTO[][] board +0x38`.
+
+Do đó `MATCH_SKILL_USE_RES.matchPayload` là một transport board candidate cùng
+pipeline với MOVE/CARD response. Đây không có nghĩa mọi response chắc chắn có
+board: external decoder chỉ chấp nhận khi payload thực tế chứa cả bounded
+`srvSeq` và strict 8x8 `board`. Sau exact current QTE correlation, snapshot này
+được offer vào provider nhưng vẫn chưa publish cho tới khi sequence khớp
+`MatchService._ackedSeqs` và tất cả owner/render/stability checks đạt. Payload
+thiếu/sai giữ UNKNOWN; bare ACK không được coi là board.
+
+Evidence runtime retry 13: QTE PERFECT và current response correlated, nhưng
+decoder cũ không offer event skill nên 37 post-state polls kẹt ở unresolved
+latest ACK. Fix offline **1020/1020 tests PASS**; live proof của payload board
+và final fresh GameState còn pending.

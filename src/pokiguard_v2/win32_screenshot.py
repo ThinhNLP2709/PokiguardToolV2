@@ -249,6 +249,17 @@ def read_png_rgb(path: Path) -> PngRgbImage:
     return PngRgbImage(width, height, rgb)
 
 
+def _bgra_to_rgb(bgra: bytes) -> bytes:
+    """Reorder packed 32-bit pixels without a Python loop per screen pixel."""
+    if len(bgra) % 4:
+        raise ValueError("BGRA buffer must contain complete pixels")
+    rgb = bytearray(len(bgra) // 4 * 3)
+    rgb[0::3] = bgra[2::4]
+    rgb[1::3] = bgra[1::4]
+    rgb[2::3] = bgra[0::4]
+    return bytes(rgb)
+
+
 def capture_client_rgb(pid: int) -> ClientRgbCapture:
     """Capture visible client pixels in top-down RGB order."""
 
@@ -336,12 +347,7 @@ def capture_client_rgb(pid: int) -> ClientRgbCapture:
         if rows != height:
             raise RuntimeError(f"GetDIBits returned {rows}/{height} rows")
         bgra = bytes(pixels)
-        rgb = bytearray(width * height * 3)
-        for source in range(0, len(bgra), 4):
-            target = (source // 4) * 3
-            rgb[target : target + 3] = bytes(
-                (bgra[source + 2], bgra[source + 1], bgra[source])
-            )
+        rgb = _bgra_to_rgb(bgra)
     finally:
         if old_bitmap and memory_dc:
             gdi32.SelectObject(memory_dc, old_bitmap)

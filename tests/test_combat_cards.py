@@ -14,6 +14,11 @@ if str(SRC_ROOT) not in sys.path:
 from pokiguard_v2.combat_cards import (  # noqa: E402
     BOARD_CARDS_IN_HAND_OFFSET,
     BOARD_SELECTED_CARDS_OFFSET,
+    CARD_UI_ACTION_PENDING_OFFSET,
+    CARD_UI_HAS_USED_THIS_TURN_OFFSET,
+    CARD_UI_IS_PLACEHOLDER_OFFSET,
+    CARD_UI_LAST_TURN_USED_OFFSET,
+    CARD_UI_READ_SIZE,
     FUSION_CARD_UI_READ_SIZE,
     SELECTABLE_INTERACTABLE_OFFSET,
     read_cards_in_hand_anchors,
@@ -109,14 +114,14 @@ class CombatCardTests(unittest.TestCase):
         skill_card = self.BASE + 0x1000
         drop_reason = self.BASE + 0x2000
         string_class = self.BASE + 0x3000
-        raw = bytearray(0x88)
+        raw = bytearray(0x98)
         struct.pack_into("<i", raw, 0x40, 19)
-        raw[0x54] = 1
-        struct.pack_into("<ii", raw, 0x58, 25, 30)
         raw[0x60] = 1
-        struct.pack_into("<i", raw, 0x64, 19)
-        struct.pack_into("<qqQ", raw, 0x68, 101, 202, skill_card)
-        struct.pack_into("<Q", raw, 0x80, drop_reason)
+        struct.pack_into("<ii", raw, 0x64, 25, 30)
+        raw[0x6C] = 1
+        struct.pack_into("<i", raw, 0x70, 19)
+        struct.pack_into("<qqQ", raw, 0x78, 101, 202, skill_card)
+        struct.pack_into("<Q", raw, 0x90, drop_reason)
         memory.map(service, raw)
         memory.map(skill_card, bytearray(0x20))
         memory.map(string_class, bytearray(8))
@@ -219,12 +224,12 @@ class CombatCardTests(unittest.TestCase):
         button_raw[SELECTABLE_INTERACTABLE_OFFSET] = 1
         memory.map(button, button_raw)
 
-        ui_raw = bytearray(0x79)
+        ui_raw = bytearray(CARD_UI_READ_SIZE)
         struct.pack_into("<Q", ui_raw, 0, card_class)
         struct.pack_into("<Q", ui_raw, 0x10, native)
         struct.pack_into("<QQQQ", ui_raw, 0x20, card_data, button, board, active)
-        ui_raw[0x41] = 1
-        struct.pack_into("<i", ui_raw, 0x44, 12)
+        ui_raw[CARD_UI_HAS_USED_THIS_TURN_OFFSET] = 1
+        struct.pack_into("<i", ui_raw, CARD_UI_LAST_TURN_USED_OFFSET, 12)
         memory.map(card_ui, ui_raw)
 
         card_data_cache = {}

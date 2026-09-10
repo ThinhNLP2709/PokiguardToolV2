@@ -13,7 +13,10 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.il2cpp_layout import LayoutValidationError
-from pokiguard_v2.match_presence import read_left_actor_numbers
+from pokiguard_v2.match_presence import (
+    BOARD_LEFT_ACTOR_NUMBERS_OFFSET,
+    read_left_actor_numbers,
+)
 
 
 class FakeMemory:
@@ -39,8 +42,8 @@ class MatchPresenceTests(unittest.TestCase):
 
     def make_memory(self, values: tuple[int, ...]) -> FakeMemory:
         memory = FakeMemory()
-        board = bytearray(0x2C8)
-        struct.pack_into("<Q", board, 0x2C0, self.SET)
+        board = bytearray(BOARD_LEFT_ACTOR_NUMBERS_OFFSET + 8)
+        struct.pack_into("<Q", board, BOARD_LEFT_ACTOR_NUMBERS_OFFSET, self.SET)
         memory.map(self.BOARD, board)
         capacity = max(3, len(values) + 2)
         hashset = bytearray(0x40)

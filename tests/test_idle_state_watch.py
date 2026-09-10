@@ -4,10 +4,14 @@ import struct
 import unittest
 
 from tools.idle_state_watch import (
+    CHAT_MESSAGE_MATCH_ID_OFFSET,
+    CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET,
+    CHAT_MESSAGE_TYPE_OFFSET,
     ServerMessage,
     _server_response_status,
     read_dictionary_entries,
     read_jobject_value_pointers,
+    read_server_message,
     read_small_boxed_int,
 )
 
@@ -68,6 +72,34 @@ class IdleStateWatchTests(unittest.TestCase):
         self.assertEqual(_server_response_status(accepted), "SERVER_ACCEPTED_EXPLICIT")
         rejected = self.message(reject_reason="NO_MANA")
         self.assertEqual(_server_response_status(rejected), "SERVER_REJECTED")
+
+    def test_reads_current_qte_challenge_id_from_server_message(self) -> None:
+        memory = FakeMemory()
+        address = 0x20000010000
+        dto_class = 0x20000011000
+        string_class = 0x20000012000
+        event_type = 0x20000013000
+        match_id = 0x20000014000
+        raw = bytearray(0x158)
+        struct.pack_into("<Q", raw, 0, dto_class)
+        struct.pack_into("<Q", raw, CHAT_MESSAGE_TYPE_OFFSET, event_type)
+        struct.pack_into("<Q", raw, CHAT_MESSAGE_MATCH_ID_OFFSET, match_id)
+        raw[CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET] = 1
+        struct.pack_into(
+            "<q", raw, CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET + 8, 88001234
+        )
+        memory.map(address, raw)
+        memory.map(string_class, bytearray(8))
+        memory.map(event_type, il2cpp_string("MATCH_SKILL_USE_RES", string_class))
+        memory.map(match_id, il2cpp_string("M_test", string_class))
+
+        result = read_server_message(
+            memory,
+            address,
+            expected_class=dto_class,
+            expected_match_id="M_test",
+        )
+        self.assertEqual(result.qte_challenge_id, 88001234)
 
     def test_reads_idle_dictionary_without_maintaining_a_counter(self) -> None:
         memory = FakeMemory()

@@ -13,6 +13,7 @@ if str(SRC) not in sys.path:
 from pokiguard_v2.obfuscated_int import encode_for_test
 from pokiguard_v2.il2cpp_layout import LayoutValidationError
 from pokiguard_v2.player_stats import (
+    MATCH_SERVICE_PLAYERS_OFFSET,
     read_active_participants,
     read_match_local_actor_number,
 )
@@ -115,7 +116,10 @@ def install_match_players(
     dictionary = BASE + 0xC000
     entries_array = BASE + 0xD000
     memory.map(BASE + 0x1F000, bytes(8))
-    memory.map(match_service + 0xA8, struct.pack("<Q", dictionary))
+    memory.map(
+        match_service + MATCH_SERVICE_PLAYERS_OFFSET,
+        struct.pack("<Q", dictionary),
+    )
     header = bytearray(0x30)
     struct.pack_into("<Q", header, 0x18, entries_array)
     struct.pack_into("<i", header, 0x20, len(entries))

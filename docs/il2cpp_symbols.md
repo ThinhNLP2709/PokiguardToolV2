@@ -1,5 +1,96 @@
 # IL2CPP symbols — Phase 1
 
+## Current 1.7.4-b2 semantic correction — B4, 2026-09-10
+
+`Board.isUsingLegendCard : System.Boolean`, instance +0x391, remains a verified
+field, but **true does not imply current QTE execution**. Native
+`CardUI.SetLegendMultiplier(float) : void` (instance, RVA 0x6D0370) writes it
+true at RVA 0x6D03D8 through `CardUI.board +0x30`. B4 observed it still true
+after the proven inactive QTE edge and multiple later local turns. The fast
+Pet Skill hand reader must not hide the card on this flag alone. Offset/body
+and runtime evidence are in `phase3b3_native_card_evidence.md`, B4 addendum;
+global reset lifetime is UNKNOWN. Earlier modal interpretation below is
+historical, not a confirmed current-skill actionability predicate.
+
+## Current 1.7.4-b2 addendum — 2026-09-07
+
+This addendum supersedes earlier 1.7.4 RVA/offset values for the currently
+installed build. Exact evidence is in `reverse/reverse_1.7.4-b2/cs` and
+`reverse/reverse_1.7.4-b2/il2cpp.json`; preferred image base is
+`0x180000000`. Runtime addressing remains `GameAssembly.base + RVA`.
+
+| Type | TypeInfo RVA | Key current fields |
+|---|---:|---|
+| `Board` | `0x2DA5890` | `allDots +0x150`; `isGameOver +0x2E0`; `cardContainer +0x328`; `selectedCards +0x340`; `cardsInHand +0x348`; `isBoardReady +0x390`; `isUsingLegendCard +0x391`; `isUsingMega +0x398`; `isResuming +0x3B0`; `isMega1PanelOpen +0x470` |
+| `Active` | `0x2D96E60` | `board +0x38`; `playerPets +0x310` |
+| `ManagerMatch` | `0x2D947D0` | `active +0x130`; `isBossBattle +0x138` |
+| `MatchService` | `0x2D96548` | Fusion block `+0x60..+0x90`; `Players +0xB8`; `_localSeqNum +0xC0`; turn remaining `+0x138`; pending/acked `+0x1A8/+0x1B8`; QTE arrows/duration/window/challenge ID `+0x220/+0x228/+0x22C/+0x250` |
+| `CardUI` | `0x2DAB7F0` | ordinary head `cardData/button/board/active = +0x20/+0x28/+0x30/+0x38`; `isPlaceholder +0x80`; QTE fields `+0x58..+0x498`, including `_qteArrowsFromServer +0x498`, as detailed in the current compatibility report |
+| `BoardWsApplier` | `0x2DA5B70` | `board +0x20`; pending batches `+0x60`; render running `+0x68` |
+| `Dot` | `0x2DCC268` | core fields used by the provider unchanged |
+| `WsCombatBatch` | `0x2DEB350` | core sequence/board fields used by the provider unchanged |
+| `FusionCardUI` | `0x2DD97E8` | fields used by the tool unchanged |
+| `Active.PlayerStats` | `0x2DFD1A0` | player stat fields used by the tool unchanged |
+| `PetUserDTO` | `0x2DA86D0` | fields used by the QTE identity reader unchanged |
+| `CardData` | `0x2DAB070` | card identity/cost fields used by the tool unchanged |
+| `UnityMainThreadDispatcher` | `0x2DE08F8` | static `_instance +0x00`; static `_executionQueue +0x08`; instance `_drainBuffer +0x20`; `Update` RVA `0x3D5730` |
+| `Queue<UnityMainThreadDispatcher.PendingAction>` | `0x2DE5D48` | `_array +0x10`; `_head +0x18`; `_tail +0x1C`; `_size +0x20`; `_version +0x24` |
+| `List<UnityMainThreadDispatcher.PendingAction>` | `0x2DDB970` | `_items +0x10`; `_size +0x18`; `_version +0x1C` |
+| `ChatService.__c__DisplayClass275_0` | `0x2D97A60` | `__this +0x10`; `json +0x18`; `message +0x20`; callback RVA `0x38EBB0` |
+
+Additional current TypeInfo RVAs: `ChatService=0x2DAD230`,
+`ChatMessageDTO=0x2DAD0B0`, `MatchHost=0x2D95F88`,
+`MatchSceneLoader=0x2D96490`, `HubSuspendManager=0x2DE3C78`,
+`ManagerQuangTruong=0x2D94AB0`, `ManagerRoom=0x2D94C20`, and
+`WsRoomService=0x2DEB6E8`. The new dump also proves MatchHost static `State`
+at `+0x04` (CurrentRig remains `+0x10`) and the current boss-room shifts
+`panelChinhPhuc +0x2C0`, `_managerBoss +0x3E0`, and
+`ManagerRoom._IsOpeningRoomFlow +0x148`.
+
+Confidence: **CONFIRMED** for declarations/offsets and JSON TypeInfo mappings;
+**HIGH** for the native TypeInfo use verified against current runtime method
+bytes. Old values below remain milestone history only.
+
+Native `ChatService.OnWebSocketMessage` RVA `0x37C940` stores the deserialized
+DTO at closure `+0x20` (`0x37CA8C`) before calling
+`UnityMainThreadDispatcher.TryEnqueue(Action,bool)` (`0x37CCEC`, callee RVA
+`0x3D5620`). `System.Delegate.m_target` is declared at delegate-field `+0x10`,
+therefore object offset `+0x20`; `PendingAction` is a 16-byte value with Action
+at `+0x00` and bool Heavy at `+0x08`. Evidence:
+`reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/ChatService.cs`,
+`UnityMainThreadDispatcher.cs`, `il2cpp.h`,
+`cpp/appdata/il2cpp-types-ptr.h`, and read-only native disassembly of the
+installed hash-gated `GameAssembly.dll`. Confidence: **CONFIRMED** for declared
+types/offsets/RVAs, **HIGH** for the native ownership/control-flow reading.
+
+## Current 1.7.4 addendum — Phase 3B.3 (2026-09-04)
+
+New skill creation, native Unity component ownership, scripting-handle
+conversion and current RectTransform evidence are recorded in
+[phase3b3_native_card_evidence.md](phase3b3_native_card_evidence.md).
+These native offsets are signature-gated and must not be confused with managed
+Cpp2IL fields or reused for an unverified UnityPlayer build. Live automatic B1
+for the corrected path remains pending.
+
+QTE deadline fields, server-window application, coroutine timeout and timing
+predicate were rechecked against 1.7.4 native code after B1 retry 6. Exact
+assembly/type/member/offset/RVA/source/confidence and the build hash are in
+[phase3b3_qte_timing_evidence.md](phase3b3_qte_timing_evidence.md). The external
+reader uses those existing runtime fields; no game methods are invoked.
+
+The fresh 1.7.4-b2 audit also confirms `MatchService.ServerQteChallengeId`
+(`long`, instance, `+0x250`), `CardUI.CurrentQteChallengeId()` (instance method,
+RVA `0x6C5950`), `CardUI._qteArrowsFromServer` (`bool`, instance, `+0x498`),
+and `ChatMessageDTO.qteChallengeId` (`long?`, instance, `+0x148`). Exact native
+flow and the unchanged key/timing rules are recorded in
+[phase3b3_qte_timing_evidence.md](phase3b3_qte_timing_evidence.md).
+
+Retry 8 addendum in the same evidence file records current
+`MatchService._ServerQteArrows_k__BackingField` (+0x200, `List<string>`) and
+`CardUI._HandleDotSkillSequence_d__159._qteWait_5__6` (+0x44, `float`), with
+native coroutine wait RVAs and its verified float constant. The coroutine
+constant is evidence only, not a new external sleep or guessed ready signal.
+
 ### Actual-action / idle audit addendum (Phase 2C.2A.1)
 
 | Assembly | Namespace | Type | Member | Kind | Static | Declared type | Offset | RVA | Confidence |
@@ -688,3 +779,29 @@ one unlocked/interactable closure with `petId=1289`, cached group index 5 and
 pet index 7 (hunt order 8), matching the three read-only PlayerPrefs keys.
 Runtime addresses are deliberately not documented as stable symbols because
 they are process/session allocations and subject to ASLR and Unity lifetime.
+
+### Redux 1.7.4 skill-response combat envelope addendum (Phase 3B.3)
+
+| Assembly | Namespace | Type | Member | Kind | Static | Exact declared type | Field offset | Method RVA | Confidence |
+|---|---|---|---|---|---:|---|---:|---:|---|
+| Assembly-CSharp | global | `ChatMessageDTO` | `matchPayload` | field | no | `Dictionary<string, object>` | `+0xC8` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `MatchService` | `HandleMatchSkillUseRes(ChatMessageDTO)` | method | no | `System.Void` | N/A | `0x337B50` | HIGH; complete native wrapper |
+| Assembly-CSharp | global | `MatchService` | `HandleResEnvelope(ChatMessageDTO,string)` | method | no | `System.Void` | N/A | `0x338540` | HIGH; complete native body |
+| Assembly-CSharp | global | `MatchService` | `ParseCombatBatch(ChatMessageDTO,string)` | method | no | `WsCombatBatch` | N/A | `0x338AE0` | HIGH; complete native body |
+| Assembly-CSharp | global | `WsCombatBatch` | `srvSeq` | field | no | `System.Int64` | `+0x10` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `WsCombatBatch` | `board` | field | no | `BoardCellDTO[][]` | `+0x38` | N/A | CONFIRMED |
+
+`HandleMatchSkillUseRes` routes the exact DTO through `HandleResEnvelope`;
+the envelope reads `matchPayload`, applies state/ops and invokes
+`ParseCombatBatch`. This proves the skill response is processed as a combat
+batch envelope. It does not prove that every payload contains a board, so the
+reader must still require concrete `board` + `srvSeq` and fail closed when
+either is absent.
+
+Evidence:
+
+- `reverse/redux_compat/cs/Assembly-CSharp/ChatMessageDTO.cs`
+- `reverse/redux_compat/cs/Assembly-CSharp/MatchService.cs`
+- `reverse/redux_compat/cs/Assembly-CSharp/WsCombatBatch.cs`
+- `D:\pc\GameAssembly.dll`, read-only disassembly at the RVAs above; absolute
+  runtime addresses remain ASLR-dependent and are not hard-coded.
