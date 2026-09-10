@@ -113,6 +113,9 @@ from tools.runtime_common import attach_target, utc_timestamp  # noqa: E402
 from tools.sequence_desync_runtime import RuntimeSequenceMonitor  # noqa: E402
 
 
+from pokiguard_v2.pet_configuration import add_pet_arguments, gameplay_config_from_args
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -195,11 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("simple", "careful"),
         default="simple",
     )
-    parser.add_argument(
-        "--mana-priority",
-        choices=("evolution", "attack"),
-        default="evolution",
-    )
+    add_pet_arguments(parser)
     parser.add_argument(
         "--board-input-mode",
         choices=tuple(value.value for value in BoardInputMode),
@@ -256,6 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_args(args: Namespace) -> FarmRunLimits:
+    gameplay_config_from_args(args).require_farm_policy()
     # Hard finite bounds.  Phase 2D.6 deliberately ships no infinite mode:
     # FarmRunLimits itself rejects target<=0, so "0 means unlimited" cannot
     # be expressed anywhere in this CLI.
@@ -546,6 +546,7 @@ def _resume_decision(args: Namespace, limits: FarmRunLimits, target: FarmTarget)
         target_completed_matches=limits.target_completed_matches,
         max_technical_recoveries=limits.max_technical_recoveries,
         max_match_attempts=limits.max_match_attempts,
+        gameplay_config=gameplay_config_from_args(args),
     )
     return payload, decision
 
@@ -2343,6 +2344,8 @@ def _run_live(
     control_edges: FarmControlHotkeyEdges | None = None,
     observer: Callable[[Any, str], None] | None = None,
 ) -> int:
+    gameplay_config = gameplay_config_from_args(args)
+    gameplay_config.require_farm_policy()
     stage_b1 = bool(args.stage_b1_recovery_resume)
     stage_d5_b1 = bool(args.stage_d5_b1_terminal)
     stage_d5_b2 = bool(args.stage_d5_b2_soak)
@@ -2386,6 +2389,7 @@ def _run_live(
         continuation_of=(
             resume_payload.farm_run_id if resume_payload is not None else None
         ),
+        gameplay_config=gameplay_config,
     )
     root = (args.artifacts or current_app_paths().farm_runs).resolve()
     writer = FarmRunArtifactWriter.create(root, run.farm_run_id)

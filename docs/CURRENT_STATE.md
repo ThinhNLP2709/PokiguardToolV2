@@ -24,10 +24,38 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 3B.3 — PASS STRONG / FULL PET SKILL + CURRENT RUNTIME PERFECT, v1.0.43** |
-| Active phase | **NONE — final audit complete; awaiting user review / next phase prompt** |
-| Current controller status | **STOPPED cleanly at 2026-09-10 13:14:33.727 ICT after B4 PERFECT 2/2; exit 0** |
-| Current live automation | **NONE; bounded B4 completed, no BASIC/FarmRunner or automatic third action** |
+| Current completed phase | **Phase 3A.2 — PASS / Pet Configuration + Capability Model, v1.0.44** |
+| Active phase | **NONE — implementation/audit complete; awaiting user review** |
+| Current controller status | **STOPPED after bounded B3 fail-closed `COMBAT_TERMINAL_UNPROVEN`; no attempt 2** |
+| Current live automation | **NONE; Desktop/poller/Pet Skill harness stopped; game may remain running** |
+
+## Phase 3A.2 — Pet Configuration + Capability Model
+
+Read [phase3a2_report.md](phase3a2_report.md) and
+[phase3a2_runbook.md](phase3a2_runbook.md). Source `v1.0.44` replaces the
+operator-facing `ManaPriority` with typed Main Pet, Evolution target/mode and
+Damage-card fields. Preferences v2 and checkpoint v2 persist the immutable
+profile. v1 migrations map old EVOLUTION and ATTACK to the two exact BASIC
+profiles without creating Pet Skill intent.
+
+The capability model keeps zero, one or multiple skill sources explicitly.
+Future `LEGENDARY/NONE/PET_SKILL` is valid and persistable, but Start/Resume is
+blocked before FarmRunner. `LEGENDARY/LEGENDARY` remains ambiguous; no source
+is selected. EVOLVED/MEGA choices stay visible and disabled. The current
+runtime `PetSkillCapability` and Phase 3B.3 executor remain unchanged.
+
+Offline: **377 focused / 1121 full tests PASS**, compileall PASS, diff check
+PASS. Live B1 UI/migration and B2 zero-input gate passed. B3 used exactly one
+attempt and confirmed existing BASIC MANA/SWORD branches with two normal SWAPs,
+zero PetSkillAction and no extra attempt. The game then moved directly to the
+main lobby before memory/UI proved a terminal result; FarmRunner correctly
+stopped `COMBAT_TERMINAL_UNPROVEN`. Completed count stayed zero and final
+lifecycle was `LOBBY_OTHER`, so this phase is PASS but not PASS STRONG.
+
+`Board.isUsingLegendCard` full-game reset semantics remain **UNKNOWN** and must
+be audited before continuous Pet Skill plus board-policy integration. The next
+smallest safe phase, only after a new prompt, is **Phase 3C.0 — Legend-Card
+Busy-State + Same-Turn Continuation Audit**.
 
 ## Phase 3B.3 final closeout — 2026-09-10
 
@@ -44,8 +72,8 @@ or post-effect board wait is required to accept that action. This is not proof
 of server damage/rewards, nor authority to play the next board without its
 normal fresh-actionability gate. Historical failures/exclusions remain visible.
 
-Next safe phase, only after approval: **3A.2 — Pet Configuration + Capability
-Model**, before BASIC Pet-Skill policy. Do not start it automatically. The
+The next phase at this historical point was **3A.2 — Pet Configuration +
+Capability Model**; it is now recorded above. The
 general board-policy use of `isUsingLegendCard` requires a separate lifetime
 audit before continuous skill integration; the accepted B4 fix only changes
 fast card rediscovery. No packaging, release tag or automatic farming added.

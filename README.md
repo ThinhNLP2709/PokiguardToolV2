@@ -27,7 +27,7 @@ thư mục game. Release Candidate đã được clean-build và live-validate t
 e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
-The current source compatibility version is `v1.0.23`. The accepted packaged
+The current source compatibility version is `v1.0.44`. The accepted packaged
 Phase 2F.2 artifact above remains `v1.0.0+15`; rebuild packaging before
 distributing the maintenance version.
 
@@ -70,6 +70,8 @@ computer-vision path remains available as a fallback.
 - no HP, damage, reward, or server-authoritative state modification.
 
 See [AGENTS.md](AGENTS.md) for workspace rules, the
+[Phase 3A.2 report](docs/phase3a2_report.md),
+[Phase 3A.2 runbook](docs/phase3a2_runbook.md),
 [Phase 3A.0 report](docs/phase3a0_report.md),
 [Phase 3A.0 runbook](docs/phase3a0_runbook.md),
 [Phase 2F.2 report](docs/phase2f2_report.md),
@@ -78,9 +80,22 @@ See [AGENTS.md](AGENTS.md) for workspace rules, the
 
 ## Current status
 
-Phase 3A.0 is the latest formally accepted source phase (**PASS STRONG**),
-freezing source compatibility version `v1.0.23` after a clean five-match live
-run on Pokiguard 1.7.4. Phase 2F.2 remains the latest accepted packaged RC
+Phase 3A.2 is the current source phase at `v1.0.44`. It replaces the Desktop
+`ManaPriority` setting with typed **Pet của tôi**, **Tiến hóa**, and **Thẻ sát
+thương** fields. `NORMAL/NORMAL/DEFAULT_ATTACK` and
+`NORMAL/NONE/DEFAULT_ATTACK` retain the two old BASIC behaviors through a
+temporary internal adapter. Future Pet Skill profiles can be configured and
+saved, while Start and Resume remain blocked until gameplay integration exists.
+See the [Phase 3A.2 report](docs/phase3a2_report.md) and
+[runbook](docs/phase3a2_runbook.md).
+
+The Phase 3A.2 live UI, migration, gate, input audit, and clean shutdown passed.
+Its single default-profile match exercised the existing BASIC branches without
+Pet Skill, then failed closed as `COMBAT_TERMINAL_UNPROVEN` after the game moved
+directly to the main lobby before a terminal result was observable. The report
+keeps this B3 limitation explicit; no second match was launched.
+
+Phase 2F.2 remains the latest accepted packaged RC
 (**PASS STRONG / BASIC COMPLETE**) and passed all packaged-live stages B1-B6,
 including:
 
@@ -116,8 +131,11 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.23`
-source compatibility baseline passes **797 tests** and includes regression coverage
+The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.44`
+source baseline passes **1121 tests** and includes regression coverage
+for the Pet configuration/capability matrix, preference and checkpoint
+migrations, UI visibility/locking, safe future-profile gates, and the unchanged
+Phase 3B.3 Pet Skill primitive. It also retains coverage
 for the raised card click point, faster fail-closed result confirmation,
 direct/indirect opponent Sword replies, the unique-adverse-Sword policy, and
 versioned game-location resolution, build-fingerprint gating, the corrected
@@ -142,7 +160,7 @@ transport maintenance is allocator-neighbour bounded instead of a timer-only
 full heap scan; exact unresolved ACK evidence still retains the fail-closed
 broad fallback.
 
-Source maintenance reproduction steps are in the
-[Phase 3A.0 runbook](docs/phase3a0_runbook.md). Build and acceptance steps for
+Current source reproduction steps are in the
+[Phase 3A.2 runbook](docs/phase3a2_runbook.md). Build and acceptance steps for
 the accepted RC are in the
 [Phase 2F.2 runbook](docs/phase2f2_runbook.md).

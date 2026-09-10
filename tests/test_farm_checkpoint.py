@@ -372,6 +372,7 @@ class CheckpointRoundTripTests(unittest.TestCase):
     def test_boolean_counter_in_external_json_is_not_coerced_to_integer(self) -> None:
         payload = _payload()
         raw = dict(payload.__dict__)
+        raw["gameplay_config"] = payload.gameplay_config.to_dict()
         raw["match_attempts"] = False
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "checkpoint.json"

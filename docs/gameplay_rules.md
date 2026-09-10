@@ -9,7 +9,23 @@ file này. Bản triển khai kỹ thuật (simulator, trace, fail-closed gates)
 
 Ta có 2 lựa chọn lối chơi: **Đơn giản**, **Cẩn thận**.
 
-Ta có 2 lựa chọn ưu tiên mana: **Tiến hóa**, **Chưởng và không tiến hóa**.
+Ba trường cấu hình pet hiện hành là:
+
+- **Pet của tôi**: Pet thường, Huyền thoại; Pet tiến hóa và Mega được hiển thị
+  nhưng chưa cho chọn.
+- **Tiến hóa**: Không tiến hóa, Tiến hóa pet thường, Tiến hóa pet huyền thoại;
+  mục tiêu Pet tiến hóa và Mega được hiển thị nhưng chưa cho chọn.
+- **Thẻ sát thương**: Thẻ chưởng mặc định hoặc Thẻ skill của pet. Thẻ skill chỉ
+  cho chọn khi cấu hình có ít nhất một nguồn skill về mặt khái niệm.
+
+Hai profile đang chạy được với BASIC giữ nguyên hành vi cũ:
+
+- `NORMAL / NORMAL / DEFAULT_ATTACK`: có Bước 1 Tiến hóa;
+- `NORMAL / NONE / DEFAULT_ATTACK`: bỏ Bước 1 và dùng thẻ chưởng thường.
+
+Các profile mới khác có thể hợp lệ và lưu được, nhưng Start/Resume bị chặn vì
+policy FarmRunner chưa được triển khai. Pet Skill policy integration đang chờ
+Phase 3C.x; cấu hình này không làm FarmRunner gọi `PetSkillAction`.
 
 Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 
@@ -60,8 +76,9 @@ Quyết định đi nước được đưa ra bằng cách xét **lần lượt*
 
 ### Bước 1 — Thẻ tiến hóa
 
-Sử dụng thẻ tiến hóa nếu đủ 3 yếu tố: **chưa tiến hóa** + **160 mana** + **cài
-đặt ưu tiên mana là tiến hóa**. Thì cứ thử tiến hóa cho tới khi nào thành công.
+Với profile chạy được `NORMAL / NORMAL / DEFAULT_ATTACK`, sử dụng thẻ tiến hóa
+nếu đủ 3 yếu tố: **chưa tiến hóa** + **160 mana** + **đã yêu cầu tiến hóa pet
+thường**. Thì cứ thử tiến hóa cho tới khi nào thành công.
 
 Lượt đầu tiên vẫn phải đi một nước trên bàn. **Từ lượt của chúng ta lần thứ 2
 trở đi**, nếu thẻ/pet tiến hóa hiện tại được game xác nhận, chưa tiến hóa thành
@@ -69,7 +86,8 @@ công và mana đủ chi phí runtime, thì Bước 1 phải được xét trư�
 bàn. Production dùng cùng ngưỡng hành động inclusive 1 giây; không tự trì hoãn
 tiến hóa chỉ vì còn dưới 10 giây.
 
-Nếu cài đặt ưu tiên là chưởng thì bỏ qua — toàn trận không tiến hóa.
+Với profile chạy được `NORMAL / NONE / DEFAULT_ATTACK`, bỏ qua Bước 1 — toàn
+trận không tiến hóa.
 
 Ngoại lệ kết liễu: khi máu hiện tại của boss nhỏ hơn hoặc bằng ngưỡng cấu hình
 `cast_when_boss_hp_below` (mặc định 30000, `0` là tắt), **không tiến hóa**, kể
@@ -228,7 +246,9 @@ tham số còn ghi `—` mới chỉ cấu hình được qua code, chưa có UI
 | Bước 5 — boss nộ cao (hút) | `boss_high_rage` | — | `100` |
 | Bước 5 — boss tài nguyên thấp (khiên) | `boss_low_resource` | — | `50` |
 | Lối chơi | `play_style` | `--play-style` | `simple` |
-| Ưu tiên mana | `mana_priority` | `--mana-priority` | `evolution` |
+| Pet của tôi | `main_pet` | `--main-pet` | `normal` |
+| Tiến hóa | `evolution` | `--evolution-target` | `normal` |
+| Thẻ sát thương | `damage_card` | `--damage-card` | `default_attack` |
 | Độ thông minh | `intelligence` | `--intelligence` | `basic` |
 | Biên đồng hồ lượt tối thiểu, inclusive (giây) | `minimum_turn_time_seconds` | `--minimum-action-time` | `1` |
 
@@ -238,6 +258,10 @@ policy đọc chi phí thật từ runtime (`FusionState.mana_cost`,
 
 ## 8. Lịch sử thay đổi
 
+- **2026-09-10** — Phase 3A.2 thay setting sản phẩm `ManaPriority` bằng ba
+  trường typed Pet/Tiến hóa/Thẻ sát thương. Adapter nội bộ tạm thời ánh xạ đúng
+  hai profile BASIC cũ; không thay đổi thứ tự hay quyết định trong
+  `BasicPolicyEngine`. Profile Pet Skill được lưu nhưng chưa được chạy.
 - **2026-08-17** — Bổ sung chưởng kết liễu ở Bước 3
   (`cast_when_boss_hp_below`, mặc định 30000). Lý do: khi test thấy bot liên
   tục tích mana mà không dùng thẻ chưởng, vì Bước 5 chỉ chưởng khi mana > 480.

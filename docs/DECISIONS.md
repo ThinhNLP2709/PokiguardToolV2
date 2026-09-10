@@ -102,14 +102,45 @@ PlayStyle:
 - SIMPLE
 - CAREFUL
 
-ManaPriority:
-- EVOLUTION
-- ATTACK
+Pet của tôi / MainPetType:
+- NORMAL (Pet thường)
+- LEGENDARY (Huyền thoại)
+- EVOLVED (Tiến hóa; visible but disabled)
+- MEGA (Mega; visible but disabled)
+
+Tiến hóa / EvolutionTarget:
+- NONE (Không tiến hóa)
+- NORMAL (Tiến hóa pet thường)
+- LEGENDARY (Tiến hóa pet huyền thoại)
+- EVOLVED (Tiến hóa pet tiến hóa; visible but disabled)
+- MEGA (Tiến hóa pet Mega; visible but disabled)
+
+Thẻ sát thương / DamageCardMode:
+- DEFAULT_ATTACK (Thẻ chưởng mặc định)
+- PET_SKILL (Thẻ skill của pet, only selectable with a conceptual skill source)
 
 Intelligence:
 - BASIC
 - REASONING
 ```
+
+The default is `NORMAL / NORMAL / DEFAULT_ATTACK`. The second currently
+runnable profile is `NORMAL / NONE / DEFAULT_ATTACK`. These preserve the old
+`EVOLUTION` and `ATTACK` BASIC behavior respectively. `ManaPriority` is no
+longer a product or Desktop setting. A narrow internal adapter still creates
+the old `PolicyConfig.mana_priority` for these two proven profiles; remove that
+adapter in Phase 3C.1.
+
+`LEGENDARY / NONE / PET_SKILL` is a valid, persistable product choice, but its
+FarmRunner policy is not implemented. Start and Resume must fail closed without
+translating it to ordinary Attack. `NORMAL / LEGENDARY` exposes an evolution
+target skill source. `LEGENDARY / LEGENDARY` exposes both main-pet and
+evolution-target sources; the product has no source-selection rule yet and no
+implementation may choose one implicitly.
+
+These fields describe operator intent. They do not equip a pet, choose an
+inventory item, navigate the Pet UI, prove current resources, or replace the
+runtime `PetSkillCapability` that validates the current CardUI and QTE.
 
 `BASIC` is defined. `REASONING` is intentionally undefined and not
 implemented. An agent must not invent REASONING behavior.
@@ -134,18 +165,20 @@ to effective collected value.
 - Current accepted/observed Evolution cost is 160 Mana.
 - Production input must still read an actual positive runtime Fusion cost; it
   must not guess 160 when runtime cost is unavailable.
-- With `ManaPriority=EVOLUTION`, if Fusion has not succeeded, the live action is
-  safely actionable, and Mana is sufficient, keep trying from the second local
-  turn until success under the response/lock/fresh-state safety contract.
+- In the runnable `NORMAL / NORMAL / DEFAULT_ATTACK` profile, if Fusion has not
+  succeeded, the live action is safely actionable, and Mana is sufficient,
+  keep trying from the second local turn until success under the
+  response/lock/fresh-state safety contract.
 - Production Step 1 uses the same inclusive one-second action floor as normal
   input. The former ten-second EVOLVE follow-up floor is not a gameplay rule
   and must not postpone an otherwise actionable evolution.
 - A failed attempt may retry only after the current-turn lock clears and fresh
   actionable state permits it; no tight loop.
-- With `ManaPriority=ATTACK`, do not evolve during that match.
+- In the runnable `NORMAL / NONE / DEFAULT_ATTACK` profile, do not evolve
+  during that match.
 - While the boss current HP is at or below the enabled configurable low-HP
   threshold (`cast_when_boss_hp_below`, default 30000), do not evolve even when
-  `ManaPriority=EVOLUTION`; preserve mana for the Sword/Mana/CAST finisher path.
+  evolution is requested; preserve mana for the Sword/Mana/CAST finisher path.
 - EVOLVE is a functional action and does not consume the gameplay turn.
 - After successful EVOLVE, reread full `GameState`; a consuming SWAP or CAST
   may still occur in the same turn.
@@ -281,10 +314,10 @@ safe or every vertical move is dangerous.
 
 ## Mana
 
-- Under `ManaPriority=EVOLUTION`, Mana supports repeated safe Evolution
-  attempts until success when the runtime action is eligible.
-- Under `ManaPriority=ATTACK`, Evolution is disabled for that match and Mana is
-  retained for the dynamic ATTACK-card rule.
+- Under `NORMAL / NORMAL / DEFAULT_ATTACK`, Mana supports repeated safe
+  Evolution attempts until success when the runtime action is eligible.
+- Under `NORMAL / NONE / DEFAULT_ATTACK`, Evolution is disabled for that match
+  and Mana is retained for the dynamic ATTACK-card rule.
 - Outside a higher Sword/Rage branch, safe Mana is the normal resource choice
   before the health/card/boss-resource branches.
 - In low-boss-HP mode, safe Mana moves ahead of safe Rage after Sword and an

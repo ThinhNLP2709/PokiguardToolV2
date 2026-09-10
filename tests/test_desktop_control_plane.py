@@ -7,7 +7,8 @@ from dataclasses import replace
 from pathlib import Path
 import unittest
 
-from pokiguard_v2.basic_policy import Intelligence, ManaPriority, PlayStyle
+from pokiguard_v2.pet_configuration import EvolutionTarget
+from pokiguard_v2.basic_policy import Intelligence, PlayStyle
 from pokiguard_v2.desktop_control_plane import (
     DesktopConfig,
     DesktopControlPlane,
@@ -110,14 +111,14 @@ def _checkpoint_payload() -> CheckpointPayload:
 class DesktopConfigTests(unittest.TestCase):
     def test_supported_canonical_values_validate(self) -> None:
         config = DesktopConfig(
-            PlayStyle.CAREFUL,
-            ManaPriority.ATTACK,
-            Intelligence.BASIC,
-            "1289",
-            "Starburst",
-            25,
-            3,
-            32,
+            play_style=PlayStyle.CAREFUL,
+            evolution=EvolutionTarget.NONE,
+            intelligence=Intelligence.BASIC,
+            boss_id="1289",
+            boss_name="Starburst",
+            target_completed_matches=25,
+            max_technical_recoveries=3,
+            max_match_attempts=32,
         )
         self.assertEqual(config.normalized_boss_id, "1289")
         self.assertEqual(config.target_completed_matches, 25)
@@ -138,7 +139,7 @@ class DesktopConfigTests(unittest.TestCase):
     def test_string_mapping_has_no_ui_only_values(self) -> None:
         config = DesktopConfig.from_strings(
             play_style="simple",
-            mana_priority="evolution",
+            evolution="normal",
             intelligence="basic",
             boss_id="1289",
             boss_name="Starburst",
@@ -150,7 +151,7 @@ class DesktopConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             DesktopConfig.from_strings(
                 play_style="invented",
-                mana_priority="evolution",
+                evolution="normal",
                 intelligence="basic",
                 boss_id="1289",
                 boss_name="Starburst",

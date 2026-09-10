@@ -7,11 +7,23 @@ This phase is proposal-only. `BasicPolicyEngine` produces `EVOLVE`, `CAST`,
 mouse input, card click, exit click, game method call, process write, or
 network path.
 
-The represented configuration is:
+The current user-facing configuration is:
 
 - `PlayStyle`: `SIMPLE`, `CAREFUL`;
-- `ManaPriority`: `EVOLUTION`, `ATTACK`;
+- `MainPetType`: `NORMAL`, `LEGENDARY` (`EVOLVED`/`MEGA` are visible but
+  disabled);
+- `EvolutionTarget`: `NONE`, `NORMAL`, `LEGENDARY` (`EVOLVED`/`MEGA` are
+  visible but disabled);
+- `DamageCardMode`: `DEFAULT_ATTACK`, `PET_SKILL` where a conceptual source
+  exists;
 - `Intelligence`: `BASIC`, `REASONING`.
+
+This document describes the existing `BasicPolicyEngine`, whose internal
+`PolicyConfig` still contains `ManaPriority` until Phase 3C.1. Phase 3A.2 maps
+only `NORMAL/NORMAL/DEFAULT_ATTACK` to `EVOLUTION` and
+`NORMAL/NONE/DEFAULT_ATTACK` to `ATTACK`. Every other product profile is gated
+before FarmRunner. Pet Skill integration is pending; the rules below were not
+changed by the configuration migration.
 
 The user-authored gameplay rules these steps implement live in
 `docs/gameplay_rules.md`, which is the source of truth for behaviour. Every

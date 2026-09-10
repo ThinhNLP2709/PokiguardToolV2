@@ -9,7 +9,8 @@ import time
 import unittest
 from unittest.mock import patch
 
-from pokiguard_v2.basic_policy import ManaPriority, PlayStyle
+from pokiguard_v2.pet_configuration import EvolutionTarget
+from pokiguard_v2.basic_policy import PlayStyle
 from pokiguard_v2.desktop_control_plane import (
     DesktopConfig,
     DesktopControlPlane,
@@ -412,7 +413,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
     def test_production_adapter_preserves_basic_policy_and_finite_limits(self) -> None:
         config = DesktopConfig(
             play_style=PlayStyle.CAREFUL,
-            mana_priority=ManaPriority.ATTACK,
+            evolution=EvolutionTarget.NONE,
             boss_id="1289",
             boss_name="Starburst",
             target_completed_matches=4,
@@ -429,7 +430,8 @@ class DesktopFarmControllerTests(unittest.TestCase):
         args = run.call_args.args[0]
         self.assertTrue(args.stage_e2_ui)
         self.assertEqual(args.play_style, "careful")
-        self.assertEqual(args.mana_priority, "attack")
+        self.assertIsNone(args.mana_priority)
+        self.assertEqual(args.evolution_target, "none")
         self.assertEqual(args.board_input_mode, "drag")
         self.assertEqual(args.target_matches, 4)
         # The legacy CLI field remains parse-compatible but the desktop no
@@ -622,7 +624,7 @@ class DesktopControlCommandTests(unittest.TestCase):
             )
             completed = plane.refresh()
             self.assertFalse(completed.controls.resume.actionable)
-            self.assertIn("INVALID_LAUNCH", completed.controls.resume.reason)
+            self.assertEqual("CHECKPOINT_ALREADY_COMPLETED", completed.controls.resume.reason)
             self.assertFalse(plane.resume_from_checkpoint().accepted)
 
             write_checkpoint(
@@ -636,7 +638,7 @@ class DesktopControlCommandTests(unittest.TestCase):
             )
             emergency = plane.refresh()
             self.assertFalse(emergency.controls.resume.actionable)
-            self.assertIn("INVALID_LAUNCH", emergency.controls.resume.reason)
+            self.assertEqual("CHECKPOINT_NOT_RESUMABLE", emergency.controls.resume.reason)
             plane.close()
 
     def test_start_requires_fresh_exact_boss_lobby(self) -> None:

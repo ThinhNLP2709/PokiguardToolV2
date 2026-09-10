@@ -14,9 +14,11 @@ import tempfile
 from typing import Any
 
 from .desktop_control_plane import DesktopConfig, utc_timestamp
+from .pet_configuration import GameplayConfig
 
 
-PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v1"
+PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v2"
+LEGACY_PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v1"
 
 
 class PreferenceError(RuntimeError):
@@ -55,7 +57,7 @@ class DesktopPreferenceStore:
                 raise PreferenceError(
                     "PREFERENCE_ROOT_INVALID", "preference root must be an object"
                 )
-            if raw.get("schema") != PREFERENCE_SCHEMA:
+            if raw.get("schema") not in {PREFERENCE_SCHEMA, LEGACY_PREFERENCE_SCHEMA}:
                 raise PreferenceError(
                     "PREFERENCE_SCHEMA_UNSUPPORTED",
                     f"unsupported preference schema: {raw.get('schema')!r}",
@@ -65,9 +67,14 @@ class DesktopPreferenceStore:
                 raise PreferenceError(
                     "PREFERENCE_CONFIG_INVALID", "preference config must be an object"
                 )
+            gameplay = GameplayConfig.from_dict(
+                config_raw, legacy=raw["schema"] == LEGACY_PREFERENCE_SCHEMA
+            )
             config = DesktopConfig.from_strings(
                 play_style=str(config_raw.get("play_style", "")),
-                mana_priority=str(config_raw.get("mana_priority", "")),
+                main_pet=gameplay.main_pet.value,
+                evolution=gameplay.evolution.value,
+                damage_card=gameplay.damage_card.value,
                 intelligence=str(config_raw.get("intelligence", "")),
                 # Target identity is farm-session authority and is never
                 # restored from preferences, including older v1 files.
@@ -86,7 +93,7 @@ class DesktopPreferenceStore:
                         "board_input_mode", safe_defaults.board_input_mode.value
                     )
                 ),
-            ).without_target()
+            ).with_gameplay_config(gameplay).without_target()
             game_location_raw = config_raw.get("game_location", "")
             if not isinstance(game_location_raw, str):
                 raise PreferenceError(
@@ -98,7 +105,7 @@ class DesktopPreferenceStore:
                 True,
                 game_location=game_location_raw.strip(),
             )
-        except (json.JSONDecodeError, OSError, PreferenceError, TypeError, ValueError) as exc:
+        except (KeyError, UnicodeError, json.JSONDecodeError, OSError, PreferenceError, TypeError, ValueError) as exc:
             reason = getattr(exc, "reason", "PREFERENCE_LOAD_INVALID")
             warning = PreferenceWarning(reason, f"{type(exc).__name__}: {exc}")
             return PreferenceLoadResult(safe_defaults, False, (warning,))
@@ -112,10 +119,7 @@ class DesktopPreferenceStore:
             "schema": PREFERENCE_SCHEMA,
             "saved_at": utc_timestamp(),
             "config": {
-                "play_style": config.play_style.value,
-                "mana_priority": config.mana_priority.value,
-                "intelligence": config.intelligence.value,
-                "board_input_mode": config.board_input_mode.value,
+                **config.to_dict(),
                 "boss_id": None,
                 "boss_name": None,
                 "target_completed_matches": config.target_completed_matches,

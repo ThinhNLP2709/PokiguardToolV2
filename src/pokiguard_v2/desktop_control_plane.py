@@ -14,7 +14,8 @@ import threading
 import time
 from typing import Callable, Protocol
 
-from .basic_policy import Intelligence, ManaPriority, PlayStyle, PolicyConfig
+from .basic_policy import Intelligence, PlayStyle
+from .pet_configuration import GameplayConfig, MainPetType, EvolutionTarget, DamageCardMode
 from .boss_entry import FarmTarget
 from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
 from .farm_run import FarmRunLimits
@@ -34,12 +35,9 @@ def utc_timestamp() -> str:
 
 
 @dataclass(frozen=True)
-class DesktopConfig:
+class DesktopConfig(GameplayConfig):
     """Session-local UI draft backed only by accepted canonical models."""
 
-    play_style: PlayStyle = PlayStyle.SIMPLE
-    mana_priority: ManaPriority = ManaPriority.EVOLUTION
-    intelligence: Intelligence = Intelligence.BASIC
     # The desktop draft may be target-unbound while idle.  Start/Resume pins
     # the exact target proven by the current Chinh Phuc room before handing an
     # immutable config to FarmRunner.  This avoids a product dependency on a
@@ -49,21 +47,9 @@ class DesktopConfig:
     target_completed_matches: int = 3
     max_technical_recoveries: int = 1
     max_match_attempts: int = 5
-    # Keep this appended so older positional DesktopConfig construction stays
-    # source-compatible. The legacy two-click path remains selectable.
-    board_input_mode: BoardInputMode = BoardInputMode.DRAG
 
     def __post_init__(self) -> None:
-        if self.intelligence is not Intelligence.BASIC:
-            raise ValueError("REASONING is not implemented")
-        # Delegate validation to the accepted gameplay/target/run models.  The
-        # UI deliberately owns no independent gameplay rules.
-        PolicyConfig(
-            play_style=self.play_style,
-            mana_priority=self.mana_priority,
-            intelligence=self.intelligence,
-        )
-        BoardInputMode(self.board_input_mode)
+        super().__post_init__()
         if self.normalized_boss_id is not None or self.normalized_boss_name is not None:
             FarmTarget(self.normalized_boss_id, self.normalized_boss_name)
         FarmRunLimits(
@@ -71,6 +57,14 @@ class DesktopConfig:
             self.max_technical_recoveries,
             self.max_match_attempts,
         )
+
+    @property
+    def gameplay_config(self) -> GameplayConfig:
+        return GameplayConfig.from_dict(self.to_dict())
+
+    def with_gameplay_config(self, config: GameplayConfig) -> "DesktopConfig":
+        from dataclasses import fields
+        return replace(self, **{f.name: getattr(config, f.name) for f in fields(GameplayConfig)})
 
     @property
     def normalized_boss_id(self) -> str | None:
@@ -99,7 +93,6 @@ class DesktopConfig:
         cls,
         *,
         play_style: str,
-        mana_priority: str,
         intelligence: str,
         boss_id: str,
         boss_name: str,
@@ -107,10 +100,21 @@ class DesktopConfig:
         max_technical_recoveries: str,
         max_match_attempts: str,
         board_input_mode: str = BoardInputMode.DRAG.value,
+        main_pet: str = MainPetType.NORMAL.value,
+        evolution: str = EvolutionTarget.NORMAL.value,
+        damage_card: str = DamageCardMode.DEFAULT_ATTACK.value,
+        cast_when_boss_hp_below: str = "30000",
+        cast_mana_stockpile: str = "480",
+        rage_target: str = "100",
     ) -> "DesktopConfig":
         return cls(
             play_style=PlayStyle(play_style),
-            mana_priority=ManaPriority(mana_priority),
+            main_pet=MainPetType(main_pet),
+            evolution=EvolutionTarget(evolution),
+            damage_card=DamageCardMode(damage_card),
+            cast_when_boss_hp_below=int(cast_when_boss_hp_below),
+            cast_mana_stockpile=int(cast_mana_stockpile),
+            rage_target=int(rage_target),
             intelligence=Intelligence(intelligence),
             board_input_mode=BoardInputMode(board_input_mode),
             boss_id=boss_id,
@@ -158,6 +162,7 @@ class CheckpointSummary:
     stop_reason: str | None = None
     updated_at: float | None = None
     error: str | None = None
+    gameplay_config: GameplayConfig | None = None
 
     @property
     def resumable_candidate(self) -> bool:
@@ -272,7 +277,7 @@ class LatestCheckpointSummaryProvider:
     def __init__(self, farm_runs_root: Path) -> None:
         self._root = farm_runs_root.resolve()
         self._cached_path: Path | None = None
-        self._cached_mtime_ns: int | None = None
+        self._cached_mtime_ns: tuple[int, int | None] | None = None
         self._cached = CheckpointSummary(False)
 
     def read_latest(self) -> CheckpointSummary:
@@ -284,7 +289,9 @@ class LatestCheckpointSummaryProvider:
                 self._cached = CheckpointSummary(False)
                 return self._cached
             path = max(candidates, key=lambda value: value.stat().st_mtime_ns)
-            mtime_ns = path.stat().st_mtime_ns
+            run_summary = path.parent / "run.json"
+            mtime_ns = (path.stat().st_mtime_ns,
+                        run_summary.stat().st_mtime_ns if run_summary.is_file() else None)
             if path == self._cached_path and mtime_ns == self._cached_mtime_ns:
                 return self._cached
             payload = load_checkpoint(path)
@@ -320,6 +327,7 @@ def _checkpoint_summary(path: Path, payload: CheckpointPayload) -> CheckpointSum
         stop_request_state=payload.stop_request_state,
         stop_reason=payload.stop_reason,
         updated_at=payload.updated_at,
+        gameplay_config=payload.gameplay_config,
     )
 
 
@@ -487,6 +495,8 @@ class DesktopControlPlane:
         return pinned, None
 
     def _start_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
+        if not snapshot.config.capability.farm_policy_supported:
+            return snapshot.config.capability.blocker_reason
         reason = self._runtime_command_preflight(snapshot)
         if reason is not None:
             return reason
@@ -498,6 +508,8 @@ class DesktopControlPlane:
         return self._controller.launch_rejection_reason(pinned)
 
     def _resume_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
+        if not snapshot.config.capability.farm_policy_supported:
+            return snapshot.config.capability.blocker_reason
         reason = self._runtime_command_preflight(snapshot)
         if reason is not None:
             return reason
@@ -652,6 +664,24 @@ class DesktopControlPlane:
             )
             self._refresh_controls_locked()
             return self._snapshot
+
+    def load_checkpoint_preferences(self) -> DesktopConfig:
+        """Explicitly load durable intent into the idle draft; never Resume."""
+        with self._lock:
+            if self._closed or self._controller_snapshot().active:
+                raise RuntimeError("CONFIG_LOCKED_CONTROLLER_ACTIVE")
+            path = self._snapshot.checkpoint.path
+            if path is None:
+                raise CheckpointError("CHECKPOINT_MISSING", "no checkpoint available")
+            payload = load_checkpoint(Path(path))
+            if payload.gameplay_config is None:
+                raise CheckpointError("CHECKPOINT_PROFILE_UNKNOWN", "historical profile is UNKNOWN")
+            config = replace(
+                self._snapshot.config.with_gameplay_config(payload.gameplay_config).without_target(),
+                **payload.configured_limits,
+            )
+            self.update_config(config)
+            return config
 
     def refresh(self) -> ControlPlaneSnapshot:
         with self._lock:

@@ -277,7 +277,7 @@ class DesktopViewModelTests(unittest.TestCase):
         view_model = DesktopViewModel(plane, poller, stale_after_seconds=3.0)
         config = view_model.apply_draft(
             play_style="careful",
-            mana_priority="attack",
+            evolution="none",
             intelligence="basic",
             boss_id="1289",
             boss_name="Starburst",

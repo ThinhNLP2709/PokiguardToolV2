@@ -4,12 +4,14 @@ import json
 import math
 import os
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
+from .pet_configuration import GameplayConfig
 
 
-CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v1"
+CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v2"
+LEGACY_CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v1"
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,7 @@ class CheckpointPayload:
     stop_request_state: str | None
     stop_reason: str | None
     finalized_status: str | None
+    gameplay_config: GameplayConfig | None = GameplayConfig()
 
 
 ALLOWED_KEYS = frozenset(
@@ -72,6 +75,7 @@ ALLOWED_KEYS = frozenset(
         "stop_request_state",
         "stop_reason",
         "finalized_status",
+        "gameplay_config",
     }
 )
 
@@ -110,6 +114,7 @@ class ResumeDecision:
     historical_consistency_aggregates: dict[str, int] = field(default_factory=dict)
     run_started_at: float = 0.0
     last_completed_match_id: str | None = None
+    gameplay_config: GameplayConfig | None = None
 
 
 def write_checkpoint(path: Path, payload: CheckpointPayload) -> None:
@@ -147,7 +152,11 @@ def load_checkpoint(path: Path) -> CheckpointPayload:
             "CHECKPOINT_INVALID",
             f"forbidden gameplay state keys present: {sorted(forbidden)}",
         )
-    missing = ALLOWED_KEYS - set(raw.keys())
+    schema = str(raw.get("schema_version", ""))
+    if schema not in {CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA}:
+        raise CheckpointError("CHECKPOINT_SCHEMA_UNSUPPORTED", f"unsupported schema {schema!r}")
+    required = ALLOWED_KEYS if schema == CHECKPOINT_SCHEMA else ALLOWED_KEYS - {"gameplay_config"}
+    missing = required - set(raw.keys())
     if missing:
         raise CheckpointError(
             "CHECKPOINT_INVALID",
@@ -159,21 +168,66 @@ def load_checkpoint(path: Path) -> CheckpointPayload:
             "CHECKPOINT_INVALID",
             f"unexpected keys: {sorted(extra)}",
         )
-    schema = str(raw.get("schema_version", ""))
-    if schema != CHECKPOINT_SCHEMA:
-        raise CheckpointError(
-            "CHECKPOINT_SCHEMA_UNSUPPORTED",
-            f"unsupported schema {schema!r}; expected {CHECKPOINT_SCHEMA}",
-        )
     _validate_raw_payload_types(raw)
     try:
         payload = _dict_to_payload(raw)
-    except (TypeError, ValueError) as exc:
+    except (KeyError, TypeError, ValueError) as exc:
         raise CheckpointError(
             "CHECKPOINT_INVALID", f"checkpoint value conversion failed: {exc}"
         ) from exc
     _validate_payload(payload)
+    if schema == LEGACY_CHECKPOINT_SCHEMA and payload.gameplay_config is None:
+        payload = replace(payload, gameplay_config=_legacy_artifact_config(path, payload))
     return payload
+
+
+def _legacy_artifact_config(path: Path, payload: CheckpointPayload) -> GameplayConfig | None:
+    """Read bounded startup records beside genuine v1 history, without rewriting it.
+
+    v1 never persisted policy. Bind the sibling run summary to this FarmRun and
+    its MatchIds, then require one identical startup profile for every recorded
+    combat. Missing/conflicting evidence remains UNKNOWN; no rarity guessing.
+    """
+    try:
+        summary_path = path.parent / "run.json"
+        if summary_path.stat().st_size > 16 * 1024 * 1024:
+            return None
+        snapshot = json.loads(summary_path.read_text(encoding="utf-8"))["snapshot"]
+        if (snapshot["farm_run_id"] != payload.farm_run_id
+                or set(snapshot["unique_match_ids"]) != set(payload.seen_match_ids)
+                or str(snapshot["target"]["boss_id"]) != payload.target_boss_id
+                or str(snapshot["target"].get("boss_name") or "") != payload.target_boss_name):
+            return None
+        configs = set()
+        attempts = snapshot["attempts"]
+        if not attempts or len(attempts) != payload.match_attempts:
+            return None
+        if ({item["match_id"] for item in attempts} != set(payload.seen_match_ids)
+                or {item["attempt_index"] for item in attempts} != set(range(1, payload.match_attempts + 1))):
+            return None
+        for attempt in attempts:
+            index = attempt["attempt_index"]
+            if type(index) is not int or not 1 <= index <= payload.match_attempts:
+                return None
+            if attempt["match_id"] not in payload.seen_match_ids:
+                return None
+            combat = path.parent / "matches" / f"attempt_{index:03d}" / "combat.jsonl"
+            found = None
+            with combat.open(encoding="utf-8") as handle:
+                for _ in range(16):
+                    line = handle.readline(256 * 1024)
+                    if not line or not line.endswith("\n"):
+                        break
+                    row = json.loads(line)
+                    if row.get("event") == "auto_controller_started":
+                        found = GameplayConfig.from_dict(row["config"], legacy=True)
+                        break
+            if found is None:
+                return None
+            configs.add(found)
+        return next(iter(configs)) if len(configs) == 1 else None
+    except (OSError, UnicodeError, KeyError, TypeError, ValueError):
+        return None
 
 
 def validate_for_resume(
@@ -184,6 +238,7 @@ def validate_for_resume(
     target_completed_matches: int,
     max_technical_recoveries: int,
     max_match_attempts: int,
+    gameplay_config: GameplayConfig | None = None,
 ) -> ResumeDecision:
     if payload.finalized_status == "COMPLETED":
         return ResumeDecision(False, "CHECKPOINT_ALREADY_COMPLETED", {}, (), 0)
@@ -229,6 +284,17 @@ def validate_for_resume(
         return ResumeDecision(False, "CHECKPOINT_CONFIG_MISMATCH", {}, (), 0)
     if payload.completed_matches >= target_completed_matches:
         return ResumeDecision(False, "CHECKPOINT_ALREADY_COMPLETED", {}, (), 0)
+    historical_config = payload.gameplay_config
+    if historical_config is None:
+        # An empty v1 checkpoint has no combat behavior to preserve. For any
+        # actual history, missing profile evidence blocks gameplay, not reading.
+        if payload.match_attempts > 0 or gameplay_config is None:
+            return ResumeDecision(False, "CHECKPOINT_PROFILE_UNKNOWN", {}, (), 0)
+        historical_config = gameplay_config
+    if not historical_config.capability.farm_policy_supported:
+        return ResumeDecision(False, historical_config.capability.blocker_reason, {}, (), 0)
+    if gameplay_config is not None and gameplay_config != historical_config:
+        return ResumeDecision(False, "CHECKPOINT_CONFIG_MISMATCH", {}, (), 0)
     counters = {
         "match_attempts": payload.match_attempts,
         "completed_matches": payload.completed_matches,
@@ -252,6 +318,7 @@ def validate_for_resume(
         historical_consistency_aggregates=dict(payload.consistency_aggregates),
         run_started_at=payload.run_started_at,
         last_completed_match_id=payload.last_completed_match_id,
+        gameplay_config=historical_config,
     )
 
 
@@ -335,6 +402,13 @@ def _validate_raw_payload_types(raw: dict[str, Any]) -> None:
 def _validate_payload(payload: CheckpointPayload) -> None:
     """Reject internally inconsistent history before it can authorize input."""
 
+    if payload.schema_version not in {CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA}:
+        raise CheckpointError("CHECKPOINT_SCHEMA_UNSUPPORTED", "unsupported checkpoint schema")
+    if payload.gameplay_config is None:
+        if payload.schema_version != LEGACY_CHECKPOINT_SCHEMA:
+            raise CheckpointError("CHECKPOINT_INVALID", "new checkpoint requires gameplay configuration")
+    elif not isinstance(payload.gameplay_config, GameplayConfig):
+        raise CheckpointError("CHECKPOINT_INVALID", "invalid gameplay configuration")
     scalar_counts = {
         "checkpoint_seq": payload.checkpoint_seq,
         "match_attempts": payload.match_attempts,
@@ -478,6 +552,8 @@ def _validate_payload(payload: CheckpointPayload) -> None:
 def _payload_to_dict(payload: CheckpointPayload) -> dict[str, Any]:
     return {
         "schema_version": payload.schema_version,
+        **({"gameplay_config": payload.gameplay_config.to_dict()}
+           if payload.gameplay_config is not None else {}),
         "farm_run_id": payload.farm_run_id,
         "continuation_of": payload.continuation_of,
         "checkpoint_seq": payload.checkpoint_seq,
@@ -510,6 +586,12 @@ def _payload_to_dict(payload: CheckpointPayload) -> dict[str, Any]:
 def _dict_to_payload(raw: dict[str, Any]) -> CheckpointPayload:
     return CheckpointPayload(
         schema_version=str(raw["schema_version"]),
+        gameplay_config=(
+            GameplayConfig.from_dict(raw["gameplay_config"], legacy=(
+                raw["schema_version"] == LEGACY_CHECKPOINT_SCHEMA
+                and "main_pet" not in raw["gameplay_config"]
+            )) if "gameplay_config" in raw else None
+        ),
         farm_run_id=str(raw["farm_run_id"]),
         continuation_of=(str(raw["continuation_of"]) if raw.get("continuation_of") else None),
         checkpoint_seq=int(raw["checkpoint_seq"]),

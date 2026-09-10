@@ -51,6 +51,10 @@ from pokiguard_v2.postmatch_ui import (  # noqa: E402
     locate_result_confirm,
     prove_stable_result_confirm,
 )
+from pokiguard_v2.pet_configuration import (  # noqa: E402
+    gameplay_config_from_args,
+    legacy_basic_policy,
+)
 from pokiguard_v2.state import GemType  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     BoardInputMode,
@@ -207,7 +211,7 @@ def _resolve_pass_stage(args: Namespace) -> str:
         return explicit
     if getattr(args, "reset_evidence", None) is None:
         return "DISABLED"
-    if getattr(args, "mana_priority", "evolution") == "attack":
+    if legacy_basic_policy(gameplay_config_from_args(args)).mana_priority.value == "attack":
         return "B4"
     if getattr(args, "play_style", "simple") == "simple":
         return "B5"
@@ -215,10 +219,11 @@ def _resolve_pass_stage(args: Namespace) -> str:
 
 
 def _combat_args(args: Namespace, log_path: Path) -> Namespace:
+    policy = legacy_basic_policy(gameplay_config_from_args(args))
     return Namespace(
         watch=True,
         play_style=getattr(args, "play_style", "simple"),
-        mana_priority=getattr(args, "mana_priority", "evolution"),
+        mana_priority=policy.mana_priority.value,
         board_input_mode=getattr(
             args, "board_input_mode", BoardInputMode.TWO_CLICK.value
         ),

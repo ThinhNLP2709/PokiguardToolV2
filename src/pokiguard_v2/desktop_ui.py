@@ -11,7 +11,12 @@ import threading
 import time
 from typing import Any, Callable
 
-from .basic_policy import Intelligence, ManaPriority, PlayStyle
+from .basic_policy import Intelligence, PlayStyle
+from .pet_configuration import (
+    MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
+    EVOLUTION_LABELS, DAMAGE_LABELS, SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
+    loadout_capability, normalize_damage,
+)
 from .desktop_control_plane import (
     ControlPlaneSnapshot,
     DesktopConfig,
@@ -42,7 +47,9 @@ DESKTOP_TAB_TITLES = ("Control", "Preferences", "Settings", "Diagnostics / Log")
 PREFERENCE_TABLE_ROWS = (
     "PlayStyle",
     "Intelligence",
-    "ManaPriority",
+    "Pet của tôi",
+    "Tiến hóa",
+    "Thẻ sát thương",
     "Board input",
 )
 SETTINGS_TABLE_ROWS = ("Game executable",)
@@ -500,6 +507,11 @@ class DesktopViewModel:
     def reason_text(reason: str) -> str:
         code = reason.split(":", 1)[0]
         messages = {
+            "PET_SKILL_POLICY_NOT_IMPLEMENTED": "Thẻ skill của pet: chưa có tích hợp gameplay để tự động farm.",
+            "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
+            "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
+            "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
+            "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
             "AVAILABLE": "Ready.",
             "INITIALIZING": "Initializing runtime status.",
             "CONTROL_PLANE_CLOSED": "The desktop controller is closing.",
@@ -574,6 +586,14 @@ class DesktopViewModel:
                 f"(W/L/U {checkpoint.wins}/{checkpoint.losses}/"
                 f"{checkpoint.unknown_results}) — {checkpoint.farm_run_id}"
             )
+            if checkpoint.gameplay_config is not None:
+                saved = checkpoint.gameplay_config
+                checkpoint_text += (
+                    f"\n{MAIN_PET_LABELS[saved.main_pet]} / {EVOLUTION_LABELS[saved.evolution]}"
+                    f" / {DAMAGE_LABELS[saved.damage_card]}"
+                )
+            else:
+                checkpoint_text += "\nCấu hình lịch sử: UNKNOWN"
         elif checkpoint.error:
             checkpoint_text = f"UNAVAILABLE — {checkpoint.error}"
         else:
@@ -624,7 +644,7 @@ class DesktopViewModel:
             error=snapshot.last_error or "NONE",
             refreshed=f"{snapshot.timestamp} (age {age:.1f}s, version {snapshot.version})",
             read_only_notice=(
-                "PHASE 2E.3 — READ-ONLY game memory; all actions use the "
+                "PHASE 3A.2 — READ-ONLY game memory; all actions use the "
                 "accepted bounded FarmRunner and normal foreground input"
             ),
             controller=controller_text,
@@ -745,7 +765,12 @@ class DesktopApplication:
 
         config = view_model.control_plane.snapshot().config
         self.play_style = tk.StringVar(value=config.play_style.value)
-        self.mana_priority = tk.StringVar(value=config.mana_priority.value)
+        self.main_pet = tk.StringVar(value=config.main_pet.value)
+        self.evolution = tk.StringVar(value=config.evolution.value)
+        self.damage_card = tk.StringVar(value=config.damage_card.value)
+        self._updating_pet_fields = False
+        self._pet_option_widgets: dict[tuple[str, str], Any] = {}
+        self.profile_notice_var = tk.StringVar()
         self.intelligence = tk.StringVar(value=Intelligence.BASIC.value)
         self.board_input_mode = tk.StringVar(value=config.board_input_mode.value)
         self.boss_id = tk.StringVar(value=config.normalized_boss_id or "")
@@ -804,19 +829,24 @@ class DesktopApplication:
             ),
             editable_state="disabled",
         )
+        for row, label, name, variable, labels, supported in (
+            (2, "Pet của tôi", "main_pet", self.main_pet, MAIN_PET_LABELS, SUPPORTED_MAIN_PETS),
+            (3, "Tiến hóa", "evolution", self.evolution, EVOLUTION_LABELS, SUPPORTED_EVOLUTIONS),
+            (4, "Thẻ sát thương", "damage_card", self.damage_card, DAMAGE_LABELS, frozenset(DamageCardMode)),
+        ):
+            ttk.Label(preferences_frame, text=f"{label}:").grid(
+                row=row, column=0, sticky=tk.NW, padx=(0, 12), pady=5)
+            options = ttk.Frame(preferences_frame)
+            options.grid(row=row, column=1, sticky=tk.EW, pady=5)
+            for value, caption in labels.items():
+                state = "normal" if value in supported else "disabled"
+                button = ttk.Radiobutton(options, text=caption, variable=variable,
+                                         value=value.value, state=state)
+                button.pack(anchor=tk.W)
+                self._pet_option_widgets[name, value.value] = button
+                self._config_widgets.append((button, state))
         preference_field(
-            row=2,
-            label="ManaPriority",
-            widget=ttk.Combobox(
-                preferences_frame,
-                textvariable=self.mana_priority,
-                values=tuple(value.value for value in ManaPriority),
-                state="readonly",
-            ),
-            editable_state="readonly",
-        )
-        preference_field(
-            row=3,
+            row=5,
             label="Board input",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -863,8 +893,17 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=4, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
         )
+        ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
+                  wraplength=390).grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.load_checkpoint_preferences_button = ttk.Button(
+            preferences_frame, text="Load Checkpoint Preferences", command=self._load_checkpoint_preferences)
+        self.load_checkpoint_preferences_button.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
+        for variable in (self.main_pet, self.evolution, self.damage_card):
+            variable.trace_add("write", self._pet_selection_changed)
+        self._sync_pet_options()
 
         settings_frame = ttk.LabelFrame(
             settings_outer, text="Game Installation", padding=12
@@ -1076,6 +1115,7 @@ class DesktopApplication:
         self._locked_run_limits = run_limit_text(config)
         self.target_matches.set(self._locked_run_limits[0])
         self.max_attempts.set(self._locked_run_limits[1])
+        self._display_pet_config(config)
         self._set_config_editable(False)
         self.start_button.configure(state="disabled")
         self.resume_button.configure(state="disabled")
@@ -1205,7 +1245,9 @@ class DesktopApplication:
     def _draft_fields(self) -> dict[str, str]:
         return {
             "play_style": self.play_style.get(),
-            "mana_priority": self.mana_priority.get(),
+            "main_pet": self.main_pet.get(),
+            "evolution": self.evolution.get(),
+            "damage_card": self.damage_card.get(),
             "intelligence": self.intelligence.get(),
             "board_input_mode": self.board_input_mode.get(),
             "boss_id": self.boss_id.get(),
@@ -1217,7 +1259,65 @@ class DesktopApplication:
                 self.view_model.control_plane.snapshot().config.max_technical_recoveries
             ),
             "max_match_attempts": self.max_attempts.get(),
+            **{name: str(getattr(self.view_model.control_plane.snapshot().config, name))
+               for name in ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target")},
         }
+
+    def _display_pet_config(self, config: DesktopConfig) -> None:
+        self._updating_pet_fields = True
+        try:
+            for name in ("main_pet", "evolution", "damage_card"):
+                getattr(self, name).set(getattr(config, name).value)
+        finally:
+            self._updating_pet_fields = False
+
+    def _load_checkpoint_preferences(self) -> None:
+        try:
+            config = self.view_model.control_plane.load_checkpoint_preferences()
+            self._display_pet_config(config)
+            self.play_style.set(config.play_style.value)
+            self.intelligence.set(config.intelligence.value)
+            self.board_input_mode.set(config.board_input_mode.value)
+            self.target_matches.set(str(config.target_completed_matches))
+            self.max_attempts.set(str(config.max_match_attempts))
+            self._sync_pet_options()
+            self.command_feedback.set("Checkpoint preferences loaded; Resume requires a separate command.")
+            self.event_log.write("checkpoint_preferences_loaded", config=asdict(config))
+        except Exception as exc:
+            self.command_feedback.set(f"Checkpoint preferences unavailable — {exc}")
+            self.event_log.write("checkpoint_preferences_rejected", error=str(exc))
+
+    def _sync_pet_options(self) -> None:
+        capability = loadout_capability(MainPetType(self.main_pet.get()),
+                                       EvolutionTarget(self.evolution.get()),
+                                       DamageCardMode(self.damage_card.get()))
+        editable = self._config_editable is not False
+        self._pet_option_widgets["damage_card", "pet_skill"].configure(
+            state="normal" if editable and capability.pet_skill_selectable else "disabled")
+        self.profile_notice_var.set(
+            self.view_model.reason_text(capability.blocker_reason)
+            if capability.blocker_reason else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
+
+    def _pet_selection_changed(self, *_args: Any) -> None:
+        if self._updating_pet_fields:
+            return
+        snapshot = self.view_model.control_plane.snapshot()
+        if snapshot.controller.active:
+            self._display_pet_config(snapshot.config)
+            return
+        try:
+            normalized = normalize_damage(MainPetType(self.main_pet.get()),
+                                          EvolutionTarget(self.evolution.get()),
+                                          DamageCardMode(self.damage_card.get()))
+            if self.damage_card.get() != normalized.value:
+                self._updating_pet_fields = True
+                self.damage_card.set(normalized.value)
+                self._updating_pet_fields = False
+            self._sync_pet_options()
+            self.view_model.apply_draft(**self._draft_fields())
+        except (TypeError, ValueError):
+            # Other draft fields may be mid-edit. Start parses everything again.
+            return
 
     def _publish_command(self, command: str, result: Any) -> None:
         self.command_feedback.set(
@@ -1308,6 +1408,7 @@ class DesktopApplication:
         for widget, editable_state in self._config_widgets:
             widget.configure(state=editable_state if editable else "disabled")
         self.validate_button.configure(state="normal" if editable else "disabled")
+        self._sync_pet_options()
 
     def _render_operator_log(self) -> None:
         import tkinter as tk
@@ -1534,6 +1635,7 @@ class DesktopApplication:
                 # drift while this controller generation owns the run.
                 self.target_matches.set(self._locked_run_limits[0])
                 self.max_attempts.set(self._locked_run_limits[1])
+                self._display_pet_config(snapshot.config)
             elif not snapshot.controller.active:
                 self._locked_run_limits = None
             if (
@@ -1553,12 +1655,16 @@ class DesktopApplication:
                 self.boss_id.set("")
                 self.boss_name.set("")
             draft_valid, draft_error = self._draft_validity()
+            profile_reason = None
+            if draft_valid:
+                profile_reason = DesktopConfig.from_strings(**self._draft_fields()).capability.blocker_reason
             config_editable = controls.config_editable and not close_pending
             self._set_config_editable(config_editable)
             start_actionable = bool(
                 controls.start.actionable
                 and presentation.snapshot_actionable
                 and draft_valid
+                and profile_reason is None
                 and not close_pending
             )
             self.start_button.configure(
@@ -1570,6 +1676,7 @@ class DesktopApplication:
                     if controls.resume.actionable
                     and presentation.snapshot_actionable
                     and draft_valid
+                    and profile_reason is None
                     and not close_pending
                     else "disabled"
                 )
@@ -1591,6 +1698,8 @@ class DesktopApplication:
                 reason_text = "Runtime snapshot is stale; controls are non-actionable."
             elif not draft_valid:
                 reason_text = f"Invalid configuration: {draft_error}"
+            elif profile_reason:
+                reason_text = self.view_model.reason_text(profile_reason)
             elif start_actionable:
                 reason_text = (
                     "Start available: exact current pet room will be pinned; "

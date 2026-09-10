@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch the Phase 2E.3 hardened bounded FarmRunner desktop UI."""
+"""Launch the current source bounded FarmRunner desktop UI."""
 
 from __future__ import annotations
 
@@ -32,6 +32,7 @@ from pokiguard_v2.desktop_farm_controller import (  # noqa: E402
 )
 from pokiguard_v2.desktop_preferences import (  # noqa: E402
     DesktopPreferenceStore,
+    PREFERENCE_SCHEMA,
 )
 from pokiguard_v2.app_paths import (  # noqa: E402
     create_unique_directory,
@@ -349,7 +350,7 @@ def run(args: argparse.Namespace) -> int:
         "farmRunnerStarted": final_snapshot.controller.safety.starts > 0,
         "controllerStopped": not final_snapshot.controller.active,
         "preferences": {
-            "schema": "pokiguard.desktop_preferences.v1",
+            "schema": PREFERENCE_SCHEMA,
             "path": str(preference_store.path),
             "loaded": preference_load.loaded,
             "warnings": [asdict(value) for value in preference_load.warnings],

@@ -233,8 +233,8 @@ class BoundedOperatorLogTests(unittest.TestCase):
 class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
-        self.assertEqual("v1.0.43", APP_VERSION)
-        self.assertEqual("Pokiguard Tool V2 - v1.0.43", APP_TITLE)
+        self.assertEqual("v1.0.44", APP_VERSION)
+        self.assertEqual("Pokiguard Tool V2 - v1.0.44", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(
@@ -269,7 +269,7 @@ class CompactPresentationContractTests(unittest.TestCase):
             DESKTOP_TAB_TITLES,
         )
         self.assertEqual(
-            ("PlayStyle", "Intelligence", "ManaPriority", "Board input"),
+            ("PlayStyle", "Intelligence", "Pet của tôi", "Tiến hóa", "Thẻ sát thương", "Board input"),
             PREFERENCE_TABLE_ROWS,
         )
         self.assertEqual(("Game executable",), SETTINGS_TABLE_ROWS)
@@ -291,6 +291,7 @@ class CompactPresentationContractTests(unittest.TestCase):
             target_matches=Mock(),
             max_attempts=Mock(),
             _set_config_editable=Mock(),
+            _display_pet_config=Mock(),
             start_button=Mock(),
             resume_button=Mock(),
             notebook=Mock(),

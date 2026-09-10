@@ -21,6 +21,7 @@ from .farm_checkpoint import (
     CheckpointPayload,
     ResumeDecision,
 )
+from .pet_configuration import GameplayConfig
 from .farm_control import FarmControlState, GracefulStopController
 from .farm_cycle import OpeningEvidence
 from .state import (
@@ -334,6 +335,7 @@ class FarmRunSnapshot:
     graceful_stop_requested_at: str | None = None
     checkpoint_seq: int = 0
     continuation_of: str | None = None
+    gameplay_config: GameplayConfig = GameplayConfig()
 
 
 class FarmRun:
@@ -361,7 +363,12 @@ class FarmRun:
         resume: ResumeDecision | None = None,
         continuation_of: str | None = None,
         max_retained_events: int = 4000,
+        gameplay_config: GameplayConfig | None = None,
     ) -> None:
+        self._gameplay_config = gameplay_config or (resume.gameplay_config if resume else None) or GameplayConfig()
+        self._gameplay_config.require_farm_policy()
+        if resume and resume.gameplay_config is not None and resume.gameplay_config != self._gameplay_config:
+            raise ValueError("CHECKPOINT_CONFIG_MISMATCH")
         self.farm_run_id = farm_run_id or uuid4().hex
         self.target = target
         self.limits = limits or FarmRunLimits()
@@ -508,6 +515,7 @@ class FarmRun:
         control = self._control.snapshot() if self._control is not None else None
         return CheckpointPayload(
             schema_version=CHECKPOINT_SCHEMA,
+            gameplay_config=self._gameplay_config,
             farm_run_id=self.farm_run_id,
             continuation_of=self.continuation_of,
             checkpoint_seq=self.checkpoint_seq,
@@ -797,6 +805,7 @@ class FarmRun:
             ),
             self.checkpoint_seq,
             self.continuation_of,
+            self._gameplay_config,
         )
 
     def observe_initial_lobby(self, lobby: BossLobbyState) -> bool:

@@ -14,7 +14,8 @@ import threading
 import time
 from typing import Any, Callable
 
-from .basic_policy import Intelligence, PolicyConfig
+from .basic_policy import Intelligence
+from .pet_configuration import FarmPolicyUnavailable, legacy_basic_policy
 from .boss_entry import FarmTarget
 from .controller_lease import AutomationControllerLease
 from .farm_checkpoint import CheckpointError, load_checkpoint, validate_for_resume
@@ -184,11 +185,7 @@ class DesktopFarmControllerManager:
         config = launch.config
         if config.intelligence is not Intelligence.BASIC:
             raise ValueError("REASONING is not implemented")
-        PolicyConfig(
-            play_style=config.play_style,
-            mana_priority=config.mana_priority,
-            intelligence=config.intelligence,
-        )
+        legacy_basic_policy(config.gameplay_config)
         BoardInputMode(config.board_input_mode)
         target = FarmTarget(
             config.normalized_boss_id,
@@ -209,6 +206,7 @@ class DesktopFarmControllerManager:
             target_completed_matches=limits.target_completed_matches,
             max_technical_recoveries=limits.max_technical_recoveries,
             max_match_attempts=limits.max_match_attempts,
+            gameplay_config=config.gameplay_config,
         )
         if not decision.allowed:
             raise CheckpointError(
@@ -248,7 +246,9 @@ class DesktopFarmControllerManager:
                 raise FileNotFoundError(
                     f"reset evidence not found: {self.reset_evidence}"
                 )
-        except (CheckpointError, FileNotFoundError, TypeError, ValueError) as exc:
+        except (FarmPolicyUnavailable, CheckpointError) as exc:
+            return exc.reason
+        except (FileNotFoundError, TypeError, ValueError) as exc:
             return f"INVALID_LAUNCH: {exc}"
         return None
 
@@ -607,6 +607,7 @@ class DesktopFarmControllerManager:
         edges: FarmControlHotkeyEdges,
         observer: Callable[[Any, str], None],
     ) -> int:
+        launch.config.gameplay_config.require_farm_policy()
         from tools import farm_run as farm_run_tool
 
         config = launch.config
@@ -620,8 +621,18 @@ class DesktopFarmControllerManager:
             str(config.max_match_attempts),
             "--play-style",
             config.play_style.value,
-            "--mana-priority",
-            config.mana_priority.value,
+            "--main-pet",
+            config.main_pet.value,
+            "--evolution-target",
+            config.evolution.value,
+            "--damage-card",
+            config.damage_card.value,
+            "--cast-when-boss-hp-below",
+            str(config.cast_when_boss_hp_below),
+            "--cast-mana-stockpile",
+            str(config.cast_mana_stockpile),
+            "--rage-target",
+            str(config.rage_target),
             "--board-input-mode",
             config.board_input_mode.value,
             "--reset-evidence",
