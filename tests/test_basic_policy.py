@@ -35,6 +35,10 @@ from pokiguard_v2.state import (
 from tests.test_board_simulator import (
     cyclic_board,
     fixture_board,
+    reported_seq40_board,
+    reported_seq69_board,
+    reported_20260911_sword_board,
+    reported_20260911_155630_sword_board,
     retry17_seq19_board,
     retry18_seq11_board,
 )
@@ -164,6 +168,52 @@ def no_sword_or_mana_board() -> BoardState:
 
 
 class BasicPolicyTests(unittest.TestCase):
+    def test_reported_20260911_board_prioritizes_evolution_at_120_mana(self) -> None:
+        state = combat_state(
+            board=reported_20260911_sword_board(),
+            mana=135,
+            fusion_used=False,
+            fusion_available=True,
+            turn=9,
+        )
+        state = replace(state, fusion=replace(state.fusion, mana_cost=120))
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
+
+    def test_reported_20260911_board_has_a_step_two_sword_swap(self) -> None:
+        decision = BasicPolicyEngine().decide(
+            combat_state(
+                board=reported_20260911_sword_board(),
+                mana=135,
+                fusion_used=True,
+                turn=9,
+            )
+        )
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD")
+        assert decision.trace.selected_candidate is not None
+        self.assertGreater(decision.trace.selected_candidate.sword_effective, 0)
+
+    def test_reported_155630_missing_turn_board_has_obvious_sword_swap(self) -> None:
+        decision = BasicPolicyEngine().decide(
+            combat_state(
+                board=reported_20260911_155630_sword_board(),
+                mana=0,
+                fusion_used=True,
+                turn=7,
+            )
+        )
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD")
+        self.assertEqual(decision.move, SwapMove((0, 4), (0, 5)))
+        assert decision.trace.selected_candidate is not None
+        self.assertEqual(decision.trace.selected_candidate.sword_effective, 3)
+
     def test_no_selected_fusion_pet_skips_evolve_and_plays_board(self) -> None:
         state = combat_state(fusion_used=False, fusion_available=True, mana=500)
         state = replace(
@@ -255,6 +305,62 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertEqual(decision.action, PolicyAction.SWAP)
         self.assertEqual(decision.trace.policy_step, "STEP_3_MANA")
         self.assertEqual(decision.move, SwapMove((2, 3), (2, 4)))
+        self.assertTrue(decision.trace.selected_candidate.safe)
+
+    def test_reported_top_resource_is_taken_instead_of_pass(self) -> None:
+        state = combat_state(
+            board=reported_seq69_board(),
+            mana=0,
+            rage=57,
+            fusion_used=False,
+            fusion_available=True,
+            turn=33,
+            boss_hp=8212,
+        )
+        boss = replace(state.opponents[0], mana=445, power=250)
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                consecutive_pass_status=(
+                    GameOwnedIdleStatus.RESET_BASELINE_CONFIRMED
+                ),
+                consecutive_pass_source="accepted_consuming_reset_baseline",
+            ),
+            opponents=(boss,),
+            participants=(state.player, boss),
+        )
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "STEP_5_DRAIN")
+        self.assertEqual(decision.move, SwapMove((0, 4), (1, 4)))
+        self.assertTrue(decision.trace.selected_candidate.safe)
+
+    def test_reported_seq40_takes_safe_mana_instead_of_pass(self) -> None:
+        state = combat_state(
+            board=reported_seq40_board(),
+            mana=114,
+            rage=110,
+            fusion_used=False,
+            fusion_available=True,
+            turn=21,
+            boss_hp=39_661,
+        )
+        boss = replace(state.opponents[0], mana=246, power=55)
+        state = replace(
+            state,
+            fusion=replace(state.fusion, mana_cost=120),
+            opponents=(boss,),
+            participants=(state.player, boss),
+        )
+
+        decision = BasicPolicyEngine().decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "STEP_3_MANA")
+        self.assertEqual(decision.move, SwapMove((5, 0), (5, 1)))
         self.assertTrue(decision.trace.selected_candidate.safe)
 
     def test_evolution_is_first_and_requires_reread(self) -> None:
@@ -411,6 +517,17 @@ class BasicPolicyTests(unittest.TestCase):
                 for reason in decision.trace.failed_higher_priority_branches
             )
         )
+
+    def test_evolution_uses_updated_runtime_cost_of_120(self) -> None:
+        state = combat_state(fusion_used=False, mana=120, turn=3)
+        state = replace(state, fusion=replace(state.fusion, mana_cost=120))
+
+        decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertIn("mana 120 >= 120", decision.trace.why_selected)
 
     def test_failed_evolution_cannot_retry_while_same_turn_is_locked(self) -> None:
         decision = BasicPolicyEngine(

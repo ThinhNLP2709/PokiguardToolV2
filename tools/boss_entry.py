@@ -96,6 +96,7 @@ from pokiguard_v2.opening_snapshot import (  # noqa: E402
     JVALUE_TYPE_INFO_RVA,
     NewtonsoftClasses,
     OpeningBoardSnapshot,
+    is_transport_board_source,
     read_match_payload_board_snapshot,
     read_match_start_opening_snapshot,
 )
@@ -115,7 +116,10 @@ from pokiguard_v2.win32_screenshot import (  # noqa: E402
 from tools.idle_state_watch import CHAT_MESSAGE_DTO_TYPE_INFO_RVA  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, hex_pointer  # noqa: E402
-from tools.sequence_desync_runtime import RuntimeSequenceMonitor  # noqa: E402
+from tools.sequence_desync_runtime import (  # noqa: E402
+    ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
+    RuntimeSequenceMonitor,
+)
 
 
 @dataclass(frozen=True)
@@ -178,8 +182,9 @@ def _entry_opening_timeout_recovery_required(
         and current.get("localMoveSequence") == 0
         and int(current.get("srvSeq") or 0) > 0
         and bool(current.get("boardHash"))
-        and current.get("boardSource")
-        == "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+        and is_transport_board_source(
+            current.get("boardSource"), event_type="MATCH_MOVE_RES"
+        )
         and entry_clicks in {1, 2}
         and gameplay_inputs == 0
     )
@@ -1619,6 +1624,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     turn=(poll.state.battle.turn_number if poll.state else None),
                     srv_seq=(poll.state.battle.srv_seq if poll.state else None),
                     timestamp=utc_timestamp(),
+                    force_full_scan=False,
+                    allow_gap_full_escalation=False,
+                    allow_full_scan=False,
+                    max_scan_bytes=ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
                 )
                 for message in _retryable_board_messages(
                     observation, offered_messages
@@ -1798,7 +1807,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                         turn=None,
                         srv_seq=None,
                         timestamp=utc_timestamp(),
-                        force_full_scan=True,
+                        force_full_scan=False,
+                        allow_gap_full_escalation=False,
+                        allow_full_scan=False,
+                        max_scan_bytes=(
+                            ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES
+                        ),
                     )
                     _write(
                         log,
@@ -1892,8 +1906,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     (
                         source
                         for source in poll.state.battle.sources
-                        if source
-                        == "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+                        if is_transport_board_source(
+                            source, event_type="MATCH_MOVE_RES"
+                        )
                     ),
                     None,
                 )

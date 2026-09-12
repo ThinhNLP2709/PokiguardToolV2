@@ -177,6 +177,38 @@ def _poll_provider(provider: Any, runtime_hook: Any) -> tuple[Any, bool]:
                 elapsed_ms=refresh_elapsed_ms,
             )
         return control_poll(watch_session), True
+    continuation_session = getattr(
+        runtime_hook, "continuation_audit_session", None
+    )
+    if continuation_session is not None:
+        # Phase 3C.0 owns no gameplay input after runtime PERFECT.  Probe the
+        # immutable action/session boundary before asking the normal provider
+        # for a playable board.  Legend-card animation can temporarily remove
+        # Board/Active; calling provider.poll() during that gap would invalidate
+        # its lifecycle tracker and manufacture a new epoch when the same board
+        # returns.
+        control = control_poll(continuation_session)
+        if control.control_battle is None:
+            return control, False
+        full = provider.poll()
+        if full.state is not None and (
+            full.state.phase is not GamePhase.COMBAT
+            or full.state.battle.session_key != continuation_session
+        ):
+            return ProviderPoll(
+                None,
+                False,
+                "continuation_state_session_disagrees",
+                session_key=control.session_key,
+                combat_lifecycle=control.combat_lifecycle,
+                control_battle=control.control_battle,
+            ), False
+        return replace(
+            full,
+            session_key=control.session_key,
+            combat_lifecycle=control.combat_lifecycle,
+            control_battle=control.control_battle,
+        ), False
     post_session = getattr(runtime_hook, "post_qte_session", None)
     if post_session is not None:
         offer_post_boards = getattr(
@@ -662,6 +694,8 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 critical_poll
                 or watch_poll
                 or getattr(runtime_hook, "post_qte_session", None) is not None
+                or getattr(runtime_hook, "continuation_audit_session", None)
+                is not None
             )
             poll_started = time.monotonic()
             try:
@@ -862,6 +896,17 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                             sampled_monotonic=poll_started,
                             reason=control_reason,
                         )
+                    time.sleep(_poll_delay(args.interval, runtime_hook))
+                    continue
+                retain_post_perfect = getattr(
+                    runtime_hook,
+                    "retain_post_perfect_after_control_read_failure",
+                    None,
+                )
+                if callable(retain_post_perfect) and retain_post_perfect(
+                    control_reason,
+                    poll=poll,
+                ):
                     time.sleep(_poll_delay(args.interval, runtime_hook))
                     continue
                 retain = getattr(
@@ -1721,7 +1766,23 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                                           if key.startswith("runtimeCardLayout")
                                           or key == "nativeCardDiscoveryReason"},
                         game_state=fallback_state,
-                        game_state_sampled_monotonic=(poll_started if owned_poll and fallback_state is not None else None),
+                        # A normal provider publication is the only current,
+                        # playable board sample.  Retained ``last_state`` is
+                        # useful to the QTE primitive but must not be mistaken
+                        # for post-PERFECT evidence by the 3C.0 audit.
+                        provider_state_fresh=bool(
+                            poll is not None
+                            and poll.state is not None
+                            and poll.state.phase is GamePhase.COMBAT
+                        ),
+                        provider_reason=(poll.reason if poll is not None else None),
+                        game_state_sampled_monotonic=(
+                            poll_started
+                            if poll is not None
+                            and poll.state is not None
+                            and poll.state.phase is GamePhase.COMBAT
+                            else None
+                        ),
                         control_battle=(poll.control_battle if owned_poll else None),
                         lifecycle_valid=(
                             runtime.match_id == session.match_id

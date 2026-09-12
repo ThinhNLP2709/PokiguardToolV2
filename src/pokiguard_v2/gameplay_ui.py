@@ -141,6 +141,90 @@ def resolve_runtime_card_strip(
     )
 
 
+def resolve_native_standard_card_strip(
+    *,
+    selected_card_data_addresses: tuple[int, ...],
+    native_card_slots: tuple[tuple[int, int | None], ...],
+    visible_card_count: int,
+    pet_skill_card_data_address: int | None,
+) -> RuntimeCardStripLayout:
+    """Resolve ordinary cards from their exact current native rectangles.
+
+    A successful Fusion may create a Pet Skill tile without publishing a
+    usable ``FusionSkillCardData`` pointer. That missing optional identity
+    keeps the Pet Skill action disabled, but it does not invalidate the
+    independently proven ``CardUI`` rectangles of every selected ordinary
+    card. Callers supply only Board-owned, Button-validated native entries.
+    """
+
+    selected = tuple(selected_card_data_addresses)
+    observed = tuple(native_card_slots)
+    skill = pet_skill_card_data_address
+    if not 1 <= visible_card_count <= 16:
+        return RuntimeCardStripLayout(
+            False, 0, (), None, "invalid_native_visible_card_count"
+        )
+    if any(value <= 0 for value in selected):
+        return RuntimeCardStripLayout(
+            False, visible_card_count, (), None, "invalid_card_data_pointer"
+        )
+    if len(set(selected)) != len(selected):
+        return RuntimeCardStripLayout(
+            False, visible_card_count, (), None, "duplicate_card_data_pointer"
+        )
+    if skill is not None and (skill <= 0 or skill in selected):
+        return RuntimeCardStripLayout(
+            False, visible_card_count, (), None, "invalid_pet_skill_pointer"
+        )
+    if any(
+        data <= 0
+        or slot is None
+        or type(slot) is not int
+        or not 0 <= slot < visible_card_count
+        for data, slot in observed
+    ):
+        return RuntimeCardStripLayout(
+            False, visible_card_count, (), None, "invalid_native_card_slot"
+        )
+    observed_data = tuple(data for data, _slot in observed)
+    observed_slots = tuple(
+        int(slot) for _data, slot in observed if slot is not None
+    )
+    if (
+        len(set(observed_data)) != len(observed_data)
+        or len(set(observed_slots)) != len(observed_slots)
+    ):
+        return RuntimeCardStripLayout(
+            False, visible_card_count, (), None, "ambiguous_native_card_slot"
+        )
+
+    slot_by_data = {
+        data: int(slot) for data, slot in observed if slot is not None
+    }
+    if any(address not in slot_by_data for address in selected):
+        return RuntimeCardStripLayout(
+            False,
+            visible_card_count,
+            (),
+            None,
+            "native_selected_cardui_missing_or_ambiguous",
+        )
+    card_slots = tuple((address, slot_by_data[address]) for address in selected)
+    pet_skill_slot = slot_by_data.get(skill) if skill is not None else None
+    return RuntimeCardStripLayout(
+        True,
+        visible_card_count,
+        card_slots,
+        None,
+        (
+            "current_native_cardui_rectangles"
+            if pet_skill_slot is not None
+            else "current_native_selected_cardui_rectangles_pet_skill_unresolved"
+        ),
+        pet_skill_slot=pet_skill_slot,
+    )
+
+
 def _layout_anchor(
     control: GameplayControl,
     slot_index: int | None,
@@ -340,5 +424,6 @@ __all__ = [
     "RuntimeCardStripLayout",
     "locate_gameplay_control",
     "locate_native_pet_skill_control",
+    "resolve_native_standard_card_strip",
     "resolve_runtime_card_strip",
 ]

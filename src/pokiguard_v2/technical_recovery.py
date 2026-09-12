@@ -28,6 +28,7 @@ from .board_diagnostics import (
     game_state_payload,
 )
 from .combat_lifecycle import CombatLifecycleState
+from .opening_snapshot import is_transport_board_source
 from .state import (
     CombatSessionKey,
     GameOwnedIdleStatus,
@@ -1414,8 +1415,9 @@ class TechnicalRecoveryDispatcher:
             and local_move_sequence == 0
             and srv_seq > 0
             and bool(board_hash)
-            and board_source
-            == "ChatMessageDTO.MATCH_MOVE_RES.matchPayload.board"
+            and is_transport_board_source(
+                board_source, event_type="MATCH_MOVE_RES"
+            )
         )
         if not exact:
             return False

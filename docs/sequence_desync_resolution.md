@@ -23,8 +23,8 @@ when present. Free-text payload matching is used only when neither structured
 source exists. An unrelated `MATCH_REJECT`, such as card cooldown or mana
 failure, does not set sequence desync.
 
-`MatchService.cs` independently declares `_localSeqNum` at `0xB0`,
-`_ackedSeqs` at `0x180`, and `LastMoveSeqNum` at `0x1D0`; these are telemetry,
+Current b2 `MatchService.cs` independently declares `_localSeqNum` at `0xC0`,
+`_ackedSeqs` at `0x1B8`, and `LastMoveSeqNum` at `0x208`; these are telemetry,
 not writable repair targets. Cpp2IL also names `HandleMatchReject`,
 `HandleMatchResync`, and `RequestResync`, but their presence does not authorize
 or justify direct invocation.
@@ -120,4 +120,3 @@ Fusion state/attempt count is correlated, while `causalityClaim` remains null.
 No `_localSeqNum` write, WriteProcessMemory, fake ACK, packet send/replay,
 RequestResync call, SendMove call, WebSocket call, injection, hook, or binary
 patch exists in this implementation.
-

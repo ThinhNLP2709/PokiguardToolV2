@@ -106,6 +106,126 @@ def retry18_seq11_board() -> BoardState:
     )
 
 
+def reported_seq69_board() -> BoardState:
+    """Reported Phase-2 board where a zero-Sword-risk top clear was skipped."""
+
+    gems = (
+        ("sword", "mana", "drain", "shield", "drain", "sword", "health", "rage"),
+        ("drain", "shield", "sword", "rage", "shield", "drain", "drain", "rage"),
+        ("rage", "rage", "sword", "shield", "shield", "drain", "mana", "health"),
+        ("mana", "mana", "health", "shield", "sword", "shield", "sword", "shield"),
+        ("drain", "rage", "drain", "health", "rage", "mana", "sword", "shield"),
+        ("rage", "shield", "mana", "drain", "drain", "health", "mana", "health"),
+        ("mana", "sword", "mana", "sword", "drain", "shield", "rage", "drain"),
+        ("drain", "rage", "drain", "mana", "sword", "drain", "shield", "drain"),
+    )
+    multipliers = (
+        (2, 1, 4, 2, 4, 1, 4, 1),
+        (1, 4, 1, 1, 1, 4, 1, 1),
+        (3, 1, 1, 2, 1, 1, 1, 2),
+        (1, 1, 1, 1, 1, 1, 1, 4),
+        (1, 1, 1, 1, 2, 1, 1, 4),
+        (1, 3, 1, 4, 1, 2, 1, 1),
+        (1, 1, 1, 1, 4, 2, 1, 1),
+        (1, 1, 1, 1, 1, 1, 1, 1),
+    )
+    return BoardState(
+        tuple(
+            tuple(
+                CellState(row, col, GemType(gem), multipliers[row][col])
+                for col, gem in enumerate(values)
+            )
+            for row, values in enumerate(gems)
+        )
+    )
+
+
+def reported_seq40_board() -> BoardState:
+    """Runtime board where support proximity falsely vetoed safe Mana."""
+
+    gems = (
+        ("health", "rage", "sword", "sword", "drain", "health", "health", "drain"),
+        ("drain", "rage", "health", "health", "shield", "rage", "mana", "shield"),
+        ("health", "sword", "shield", "mana", "rage", "shield", "health", "rage"),
+        ("shield", "mana", "shield", "sword", "health", "mana", "shield", "shield"),
+        ("mana", "mana", "rage", "sword", "shield", "mana", "shield", "mana"),
+        ("mana", "sword", "health", "mana", "mana", "rage", "health", "sword"),
+        ("rage", "health", "mana", "shield", "mana", "drain", "mana", "drain"),
+        ("mana", "rage", "shield", "sword", "shield", "shield", "health", "rage"),
+    )
+    multipliers = (
+        (1, 3, 2, 1, 2, 2, 1, 4),
+        (1, 1, 2, 1, 1, 1, 3, 1),
+        (1, 1, 1, 3, 1, 2, 2, 1),
+        (1, 1, 1, 1, 1, 4, 1, 1),
+        (1, 1, 1, 1, 1, 3, 4, 3),
+        (1, 1, 1, 1, 2, 1, 1, 1),
+        (1, 1, 1, 1, 1, 1, 2, 1),
+        (1, 1, 1, 1, 1, 1, 2, 1),
+    )
+    return BoardState(
+        tuple(
+            tuple(
+                CellState(row, col, GemType(gem), multipliers[row][col])
+                for col, gem in enumerate(values)
+            )
+            for row, values in enumerate(gems)
+        )
+    )
+
+
+def reported_20260911_sword_board() -> BoardState:
+    """Board transcribed from the user's 15:02:48 Phase-2 screenshot."""
+
+    gems = (
+        ("sword", "shield", "sword", "mana", "shield", "drain", "health", "rage"),
+        ("sword", "sword", "mana", "shield", "rage", "rage", "health", "health"),
+        ("shield", "health", "health", "mana", "sword", "shield", "sword", "drain"),
+        ("rage", "drain", "drain", "sword", "drain", "drain", "health", "health"),
+        ("shield", "drain", "shield", "rage", "health", "health", "shield", "drain"),
+        ("rage", "rage", "health", "drain", "rage", "shield", "drain", "health"),
+        ("shield", "shield", "sword", "mana", "sword", "drain", "health", "mana"),
+        ("sword", "health", "health", "rage", "drain", "mana", "shield", "drain"),
+    )
+    multipliers = tuple(
+        tuple(2 if (row, col) == (2, 0) else 1 for col in range(8))
+        for row in range(8)
+    )
+    return BoardState(
+        tuple(
+            tuple(
+                CellState(row, col, GemType(gem), multipliers[row][col])
+                for col, gem in enumerate(values)
+            )
+            for row, values in enumerate(gems)
+        )
+    )
+
+
+def reported_20260911_155630_sword_board() -> BoardState:
+    """Board transcribed from the user's 15:56:30 missing-turn screenshot."""
+
+    gems = (
+        ("drain", "drain", "sword", "sword", "rage", "sword", "shield", "drain"),
+        ("rage", "drain", "rage", "shield", "mana", "drain", "mana", "drain"),
+        ("drain", "rage", "drain", "rage", "shield", "sword", "rage", "health"),
+        ("health", "mana", "rage", "sword", "drain", "mana", "drain", "health"),
+        ("rage", "drain", "sword", "mana", "drain", "rage", "sword", "shield"),
+        ("rage", "rage", "health", "mana", "mana", "rage", "rage", "shield"),
+        ("drain", "health", "sword", "drain", "drain", "shield", "mana", "health"),
+        ("shield", "health", "mana", "rage", "rage", "sword", "health", "health"),
+    )
+    return BoardState(
+        tuple(
+            tuple(
+                CellState(row, col, GemType(gem), 1)
+                for col, gem in enumerate(values)
+            )
+            for row, values in enumerate(gems)
+        )
+    )
+
+
 def retry24_seq20_board() -> BoardState:
     """Runtime-attested board behind the post-Fusion no-safe-move beep."""
 
@@ -301,7 +421,7 @@ class BoardSimulatorTests(unittest.TestCase):
         self.assertEqual(selected.sword_risk.collapse_support_hazard, 0)
         self.assertTrue(selected.sword_risk.safe)
 
-    def test_top_area_clear_with_unknown_refill_is_not_promoted_safe(self) -> None:
+    def test_top_area_clear_without_any_sword_path_is_safe(self) -> None:
         selected = next(
             value
             for value in evaluate_all_moves(retry18_seq11_board())
@@ -312,7 +432,37 @@ class BoardSimulatorTests(unittest.TestCase):
         self.assertEqual(selected.sword_risk.opponent_sword_replies, 0)
         self.assertEqual(selected.sword_risk.unknown_sword_completions, 0)
         self.assertEqual(selected.unknown_exposure.cells, 3)
-        self.assertFalse(selected.sword_risk.safe)
+        self.assertTrue(selected.sword_risk.safe)
+
+    def test_reported_top_drain_has_zero_sword_risk(self) -> None:
+        selected = next(
+            value
+            for value in evaluate_all_moves(reported_seq69_board())
+            if value.move == SwapMove((0, 4), (1, 4))
+        )
+
+        self.assertFalse(selected.calculable)
+        self.assertEqual(selected.total.effective(GemType.DRAIN), 9)
+        self.assertEqual(selected.sword_risk.opponent_sword_replies, 0)
+        self.assertEqual(selected.sword_risk.unknown_sword_completions, 0)
+        self.assertEqual(selected.sword_risk.danger_score, 0)
+        self.assertTrue(selected.sword_risk.safe)
+
+    def test_reported_seq40_support_overlap_does_not_veto_safe_mana(self) -> None:
+        selected = next(
+            value
+            for value in evaluate_all_moves(reported_seq40_board())
+            if value.move == SwapMove((5, 0), (5, 1))
+        )
+
+        self.assertTrue(selected.calculable)
+        self.assertEqual(selected.total.effective(GemType.MANA), 3)
+        self.assertEqual(selected.sword_risk.opponent_sword_replies, 0)
+        self.assertEqual(selected.sword_risk.indirect_sword_replies, 0)
+        self.assertEqual(selected.sword_risk.unknown_sword_completions, 0)
+        self.assertEqual(selected.sword_risk.collapse_support_hazard, 2)
+        self.assertEqual(selected.sword_risk.danger_score, 60)
+        self.assertTrue(selected.sword_risk.safe)
 
     def test_retry24_calculable_horizontal_shield_move_is_bounded_safe(self) -> None:
         selected = next(

@@ -111,6 +111,41 @@ class ActionabilityGateTests(unittest.TestCase):
         self.assertTrue(result.actionable)
         self.assertEqual(result.reason, GateReason.PASS)
 
+    def test_exact_legend_telemetry_does_not_independently_block(self) -> None:
+        state = actionable_state()
+        legend_latched = replace(
+            state,
+            battle=replace(
+                state.battle,
+                board_modal_open=False,
+                board_is_using_legend_card=True,
+                board_is_using_mega=False,
+                board_is_mega1_panel_open=False,
+                board_is_mega2_panel_open=False,
+            ),
+        )
+
+        result = ActionabilityGate.evaluate(legend_latched, context())
+
+        self.assertTrue(result.actionable)
+        self.assertEqual(result.reason, GateReason.PASS)
+
+    def test_turn_announcement_blocks_input(self) -> None:
+        state = actionable_state()
+        blocked = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_announcer_blocking=True,
+            ),
+        )
+
+        result = ActionabilityGate.evaluate(blocked, context())
+
+        self.assertFalse(result.actionable)
+        self.assertEqual(result.reason, GateReason.PRESENTATION_BUSY)
+        self.assertTrue(result.details["turnAnnouncerBlocking"])
+
     def test_local_player_left_signal_blocks_all_gameplay(self) -> None:
         state = actionable_state()
         left = replace(

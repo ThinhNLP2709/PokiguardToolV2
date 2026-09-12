@@ -12,7 +12,12 @@ import math
 import struct
 
 from .combat_cards import BOARD_CARD_CONTAINER_OFFSET, read_cards_in_hand_anchors
-from .il2cpp_layout import LayoutValidationError, is_canonical_user_pointer
+from .il2cpp_layout import (
+    BoardCellSnapshot,
+    LayoutValidationError,
+    is_canonical_user_pointer,
+    read_il2cpp_string,
+)
 
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
@@ -82,6 +87,16 @@ class NativeCardHand:
     def slot_for_card(self, card_ui: int) -> int | None:
         return next((index for index, entry in enumerate(self.visible)
                      if card_ui in entry.card_ui_addresses), None)
+
+
+@dataclass(frozen=True)
+class NativeDotBoard:
+    """Current Board-owned Dot identities read without a heap scan."""
+
+    board: int
+    game_objects: tuple[int, ...]
+    dot_addresses: tuple[int, ...]
+    cells: tuple[BoardCellSnapshot, ...]
 
 
 class NativeCardUiReader:
@@ -188,6 +203,186 @@ class NativeCardUiReader:
         if value not in (0, 1):
             raise LayoutValidationError("native_card_ui: activeInHierarchy cache unknown")
         return bool(value)
+
+    def _dot_sample(
+        self, dot: int
+    ) -> tuple[int, int, int, int, int, int, int, int, int, int, int]:
+        """Read only the b2 fields that define one settled Dot identity."""
+
+        # One bounded object read avoids nine extra ReadProcessMemory calls per
+        # sample while preserving the same fail-closed field validation.
+        raw = self._read(dot, 0x12A)
+        class_pointer = struct.unpack_from("<Q", raw, 0)[0]
+        native_component = struct.unpack_from("<Q", raw, 0x10)[0]
+        column, row = struct.unpack_from("<ii", raw, 0x20)
+        board = struct.unpack_from("<Q", raw, 0x48)[0]
+        multiplier = struct.unpack_from("<i", raw, 0x88)[0]
+        is_falling = raw[0xB0]
+        is_prediction = raw[0xE0]
+        squashing = raw[0xF4]
+        pool_tag = struct.unpack_from("<Q", raw, 0xF8)[0]
+        render_hidden = raw[0x129]
+        for name, value in (
+            ("class", class_pointer),
+            ("native component", native_component),
+            ("Board", board),
+            ("PoolTag", pool_tag),
+        ):
+            if not is_canonical_user_pointer(value):
+                raise LayoutValidationError(
+                    f"native_card_ui: Dot {name} pointer is invalid"
+                )
+        for name, value in (
+            ("isFalling", is_falling),
+            ("isPredictionSwap", is_prediction),
+            ("squashing", squashing),
+            ("RenderHidden", render_hidden),
+        ):
+            if value not in (0, 1):
+                raise LayoutValidationError(
+                    f"native_card_ui: Dot.{name} is not a valid bool"
+                )
+        return (
+            class_pointer,
+            native_component,
+            column,
+            row,
+            board,
+            multiplier,
+            is_falling,
+            is_prediction,
+            squashing,
+            pool_tag,
+            render_hidden,
+        )
+
+    def read_dot_board(
+        self,
+        board: int,
+        game_objects: tuple[int, ...],
+        dot_class: int,
+    ) -> NativeDotBoard:
+        """Walk ``Board.allDots -> GameObject components -> Dot`` exactly.
+
+        Pokiguard 1.7.4-b2 writes the spawn tag to ``Dot.PoolTag +0xF8`` and
+        keeps column, row, multiplier and Board ownership on that same managed
+        component. Every wrapper/native/component relationship and every Dot
+        identity field is sampled again after all 64 cells have been decoded.
+        """
+
+        if not is_canonical_user_pointer(board) or not is_canonical_user_pointer(
+            dot_class
+        ):
+            raise LayoutValidationError("native_card_ui: invalid Dot board/class")
+        if len(game_objects) != 64 or len(set(game_objects)) != 64:
+            raise LayoutValidationError(
+                "native_card_ui: Board.allDots does not contain 64 unique objects"
+            )
+
+        records = []
+        cells = []
+        for game_object in game_objects:
+            native_game_object = self._pointer(game_object + 0x10)
+            if self._managed(native_game_object) != game_object:
+                raise LayoutValidationError(
+                    "native_card_ui: Dot GameObject roundtrip mismatch"
+                )
+            if not self._active(native_game_object):
+                raise LayoutValidationError(
+                    "native_card_ui: Board.allDots contains an inactive object"
+                )
+            components = self._components(native_game_object)
+            candidates = []
+            for component in components:
+                managed = self._managed(component, optional=True)
+                if managed is not None and self._pointer(managed) == dot_class:
+                    candidates.append((component, managed))
+            if len(candidates) != 1:
+                raise LayoutValidationError(
+                    "native_card_ui: Dot component is missing or ambiguous"
+                )
+            native_component, dot = candidates[0]
+            sample = self._dot_sample(dot)
+            (
+                _class_pointer,
+                observed_native_component,
+                column,
+                row,
+                observed_board,
+                multiplier,
+                is_falling,
+                is_prediction,
+                squashing,
+                pool_tag,
+                render_hidden,
+            ) = sample
+            if observed_native_component != native_component:
+                raise LayoutValidationError(
+                    "native_card_ui: Dot component roundtrip mismatch"
+                )
+            if observed_board != board:
+                raise LayoutValidationError("native_card_ui: foreign Dot Board owner")
+            if not 0 <= column < 8 or not 0 <= row < 8:
+                raise LayoutValidationError(
+                    "native_card_ui: Dot coordinates are outside the 8x8 board"
+                )
+            if multiplier not in (1, 2, 3, 4):
+                raise LayoutValidationError(
+                    "native_card_ui: Dot multiplier is outside the b2 domain"
+                )
+            if is_falling or is_prediction or squashing or render_hidden:
+                raise NativeGeometryBusyError(
+                    "native_card_ui: Dot board is still moving/rendering"
+                )
+            tag = read_il2cpp_string(self.memory, pool_tag, max_length=64)
+            if not tag or any(ord(character) < 0x20 for character in tag):
+                raise LayoutValidationError("native_card_ui: Dot.PoolTag is invalid")
+            cells.append(
+                BoardCellSnapshot(dot, column, row, pool_tag, tag, multiplier)
+            )
+            records.append(
+                (
+                    game_object,
+                    native_game_object,
+                    components,
+                    native_component,
+                    dot,
+                    sample,
+                )
+            )
+
+        coordinates = {(cell.row, cell.col) for cell in cells}
+        dot_addresses = tuple(cell.address for cell in cells)
+        if len(coordinates) != 64 or len(set(dot_addresses)) != 64:
+            raise LayoutValidationError(
+                "native_card_ui: Dot coordinates/components are not unique"
+            )
+
+        for (
+            game_object,
+            native_game_object,
+            components,
+            native_component,
+            dot,
+            sample,
+        ) in records:
+            if (
+                self._pointer(game_object + 0x10) != native_game_object
+                or self._managed(native_game_object) != game_object
+                or not self._active(native_game_object)
+                or self._components(native_game_object) != components
+                or self._managed(native_component) != dot
+                or self._dot_sample(dot) != sample
+            ):
+                raise NativeGeometryBusyError(
+                    "native_card_ui: Dot board changed during ownership walk"
+                )
+        return NativeDotBoard(
+            board,
+            game_objects,
+            dot_addresses,
+            tuple(sorted(cells, key=lambda cell: (cell.row, cell.col))),
+        )
 
     def _node(self, transform: int):
         if transform in self._nodes:

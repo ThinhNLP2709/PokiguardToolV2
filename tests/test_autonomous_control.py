@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import replace
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+from pokiguard_v2.actionability import ActionabilityGate, GateContext
 from pokiguard_v2.autonomous_control import (
     ActionResultKind,
     AutonomousActionIdentity,
@@ -36,6 +37,7 @@ from pokiguard_v2.combat_lifecycle import CombatLifecycleState
 from pokiguard_v2.gameplay_ui import (
     GameplayControl,
     locate_gameplay_control,
+    resolve_native_standard_card_strip,
     resolve_runtime_card_strip,
 )
 from pokiguard_v2.game_owned_idle import (
@@ -55,6 +57,7 @@ from pokiguard_v2.state import (
 from tests.test_basic_policy import attack_card, combat_state
 from tools.idle_state_watch import ServerMessage
 from tools.basic_auto_bot import (
+    ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
     _attack_cost_evidence,
     _authoritative_idle_owner_rejection,
     _b4_cast_acceptance_evidence,
@@ -64,6 +67,7 @@ from tools.basic_auto_bot import (
     EvolveOnlyTurnWait,
     _acceptance_forced_pass_decision,
     _action_budget_reached,
+    _active_combat_transport_poll,
     _attempt_classification,
     _beep,
     _bounded_stop_reason,
@@ -81,7 +85,6 @@ from tools.basic_auto_bot import (
     _mandatory_reset_recovery_warning_seconds,
     _farm_owned_board_only_pass_tracking_allowed,
     _farm_owned_pass_unknown_can_wait_for_recovery,
-    _force_full_pass_scan_once,
     _fresh_opening_handoff_state,
     _must_pause_for_no_safe_move,
     _observe_b4_cast_idle_reset,
@@ -90,16 +93,20 @@ from tools.basic_auto_bot import (
     _pass_cycle_coverage,
     _pass_lifecycle_evidence,
     _pass_wait_activity_is_fresh,
+    _pass_response_observation_complete,
     _pass_terminal_disposition,
     _post_evolve_settle_status,
     _evolve_only_turn_wait_status,
     _evolve_terminal_touches_turn,
+    _dispatcher_runtime_observation_for_controller,
+    _offer_dispatcher_transport_boards,
     _policy_none_stop_reason,
     _policy_branch,
     _provider_available_board_sequences,
     _provider_poll_for_controller,
     _record_policy_observation,
     _record_sent_input_safety,
+    _record_transport_board_decode_failure,
     _record_turn_observation,
     _reported_cast_reset_confidence,
     _retain_mandatory_consuming_action_requirement,
@@ -116,6 +123,179 @@ from tools.basic_auto_bot import (
 
 
 class AutonomousGuardTests(unittest.TestCase):
+    def test_active_combat_transport_poll_forbids_full_heap_scan(self) -> None:
+        observation = object()
+        monitor = Mock()
+        monitor.poll.return_value = observation
+
+        with patch("tools.basic_auto_bot.utc_timestamp", return_value="now"):
+            actual = _active_combat_transport_poll(
+                monitor,
+                session_key="session",
+                match_id="M_A",
+                turn=7,
+                srv_seq=14,
+                available_board_sequences=(14,),
+                offered_board_message_addresses=(0x1234,),
+            )
+
+        self.assertIs(actual, observation)
+        monitor.poll.assert_called_once_with(
+            session_key="session",
+            match_id="M_A",
+            turn=7,
+            srv_seq=14,
+            timestamp="now",
+            force_full_scan=False,
+            enable_gap_full_scan=True,
+            allow_gap_full_escalation=False,
+            allow_full_scan=False,
+            max_scan_bytes=ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
+            available_board_sequences=(14,),
+            offered_board_message_addresses=(0x1234,),
+        )
+
+    def test_dispatcher_runtime_path_avoids_heap_monitor_poll(self) -> None:
+        runtime = SimpleNamespace(match_id="M_A")
+        tap = Mock()
+        tap.diagnostics = SimpleNamespace(armed_match_id="M_A", healthy=True)
+        tap.messages.return_value = ("exact-message",)
+        monitor = Mock()
+        monitor.observe_captured_messages.return_value = (
+            ("exact-message",),
+            False,
+        )
+
+        with patch(
+            "tools.basic_auto_bot.read_match_runtime",
+            return_value=(0x1234, runtime),
+        ):
+            observation = _dispatcher_runtime_observation_for_controller(
+                Mock(),
+                monitor,
+                tap,
+                session_key="session",
+                match_id="M_A",
+                turn=3,
+                srv_seq=6,
+            )
+
+        self.assertIsNotNone(observation)
+        self.assertEqual(observation.messages, ("exact-message",))
+        self.assertFalse(observation.scan_performed)
+        monitor.observe_captured_messages.assert_called_once()
+        monitor.poll.assert_not_called()
+
+    def test_unhealthy_dispatcher_requires_existing_fallback(self) -> None:
+        tap = Mock()
+        tap.diagnostics = SimpleNamespace(armed_match_id="M_A", healthy=False)
+        with patch("tools.basic_auto_bot.read_match_runtime") as read_runtime:
+            observation = _dispatcher_runtime_observation_for_controller(
+                Mock(),
+                Mock(),
+                tap,
+                session_key="session",
+                match_id="M_A",
+                turn=3,
+                srv_seq=6,
+            )
+        self.assertIsNone(observation)
+        read_runtime.assert_not_called()
+
+    def test_dispatcher_sample_completes_pass_response_observation_without_heap_scan(self) -> None:
+        observation = SimpleNamespace(scan_performed=False)
+
+        self.assertTrue(
+            _pass_response_observation_complete(
+                observation,
+                from_dispatcher=True,
+            )
+        )
+        self.assertFalse(
+            _pass_response_observation_complete(
+                observation,
+                from_dispatcher=False,
+            )
+        )
+        self.assertTrue(
+            _pass_response_observation_complete(
+                SimpleNamespace(scan_performed=True),
+                from_dispatcher=False,
+            )
+        )
+        self.assertFalse(
+            _pass_response_observation_complete(
+                None,
+                from_dispatcher=True,
+            )
+        )
+
+    def test_healthy_dispatcher_with_missing_ack_board_requests_bounded_fallback(self) -> None:
+        runtime = SimpleNamespace(match_id="M_A")
+        tap = Mock()
+        tap.diagnostics = SimpleNamespace(armed_match_id="M_A", healthy=True)
+        tap.messages.return_value = ()
+        monitor = Mock()
+        monitor.observe_captured_messages.return_value = ((), False)
+        monitor.needs_transport_gap_recovery.return_value = True
+
+        with patch(
+            "tools.basic_auto_bot.read_match_runtime",
+            return_value=(0x1234, runtime),
+        ):
+            observation = _dispatcher_runtime_observation_for_controller(
+                Mock(),
+                monitor,
+                tap,
+                session_key="session",
+                match_id="M_A",
+                turn=23,
+                srv_seq=47,
+                available_board_sequences=(40, 42, 45, 47),
+            )
+
+        self.assertIsNone(observation)
+        monitor.needs_transport_gap_recovery.assert_called_once_with(
+            runtime,
+            published_srv_seq=47,
+            available_board_sequences=(40, 42, 45, 47),
+        )
+
+    def test_dispatcher_board_offer_is_deduplicated_and_keeps_ack_gate(self) -> None:
+        snapshot = SimpleNamespace(
+            match_id="M_A",
+            message_address=0x1000,
+            board_token_address=0x2000,
+            sequence=6,
+        )
+        tap = Mock()
+        tap.transport_board_snapshots.return_value = (
+            ("MATCH_MOVE_RES", snapshot),
+        )
+        provider = Mock()
+        provider.offer_transport_board_snapshot.return_value = True
+        offered: set[tuple[str, int, int, int]] = set()
+
+        first = _offer_dispatcher_transport_boards(
+            tap,
+            provider,
+            match_id="M_A",
+            offered=offered,
+        )
+        second = _offer_dispatcher_transport_boards(
+            tap,
+            provider,
+            match_id="M_A",
+            offered=offered,
+        )
+
+        self.assertEqual(first, (("MATCH_MOVE_RES", snapshot, True),))
+        self.assertEqual(second, ())
+        provider.offer_transport_board_snapshot.assert_called_once_with(
+            snapshot,
+            event_type="MATCH_MOVE_RES",
+        )
+
     def test_idle_owner_rejection_does_not_require_cache_invalidation(self) -> None:
         self.assertIsNone(_authoritative_idle_owner_rejection("happi", "HAPPI"))
         self.assertEqual(
@@ -540,6 +720,17 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertTrue(after_reset.complete_reset_cycle)
         self.assertFalse(after_reset.begin_p3_mandatory_reset)
 
+    def test_b5_missed_pass_payload_forces_consuming_action_on_next_local_turn(self) -> None:
+        disposition = _pass_terminal_disposition(
+            "B5",
+            PassResultKind.PASS_STATE_UNCONFIRMED,
+            p3_reset_validation_pending=False,
+        )
+
+        self.assertFalse(disposition.confirmed)
+        self.assertFalse(disposition.stop)
+        self.assertTrue(disposition.begin_p3_mandatory_reset)
+
     def test_unknown_authoritative_pass_state_has_distinct_safe_stop(self) -> None:
         state = self._state(rage=100)
         decision = BasicPolicyEngine().decide(state)
@@ -588,15 +779,6 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertEqual(result.reason, "pass_wait_runtime_only")
         self.assertEqual(result.session_key, session)
         self.assertIsNone(result.state)
-
-    def test_pass_wait_forces_only_one_full_message_scan_per_attempt(self) -> None:
-        identity = ("session", 17, 37)
-        self.assertTrue(_force_full_pass_scan_once(identity, None))
-        self.assertFalse(_force_full_pass_scan_once(identity, identity))
-        self.assertTrue(
-            _force_full_pass_scan_once(("session", 25, 53), identity)
-        )
-        self.assertFalse(_force_full_pass_scan_once(None, identity))
 
     def test_prevalidated_transport_board_suppresses_duplicate_full_scan(self) -> None:
         diagnostics = {
@@ -671,6 +853,19 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertFalse(_mandatory_cached_board_fastpath_allowed(True, 2))
         self.assertFalse(_mandatory_cached_board_fastpath_allowed(False, 0))
         self.assertFalse(_mandatory_cached_board_fastpath_allowed(True, -1))
+
+    def test_transport_board_decode_failure_is_retired_after_one_retry(self) -> None:
+        attempts: dict[int, int] = {}
+
+        self.assertEqual(
+            _record_transport_board_decode_failure(attempts, 0x1234),
+            (1, False),
+        )
+        self.assertEqual(
+            _record_transport_board_decode_failure(attempts, 0x1234),
+            (2, True),
+        )
+        self.assertEqual(attempts, {0x1234: 2})
 
     @staticmethod
     def _state(**kwargs):
@@ -927,6 +1122,36 @@ class AutonomousGuardTests(unittest.TestCase):
             battle=replace(state.battle, srv_seq=state.battle.srv_seq + 1),
         )
         self.assertFalse(source.matches(changed))
+
+    def test_pristine_opening_last_move_sentinels_have_one_action_identity(self) -> None:
+        state = self._state()
+        opening = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_number=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            ),
+        )
+        source = AutonomousSource.from_state(opening)
+
+        self.assertTrue(
+            source.matches(
+                replace(
+                    opening,
+                    battle=replace(opening.battle, last_move_sequence=-1),
+                )
+            )
+        )
+        self.assertTrue(
+            source.matches(
+                replace(
+                    opening,
+                    battle=replace(opening.battle, last_move_sequence=0),
+                )
+            )
+        )
 
     def test_only_one_consuming_action_per_turn(self) -> None:
         state = self._state()
@@ -1644,6 +1869,118 @@ class AutonomousGuardTests(unittest.TestCase):
             handoff.state.battle.turn_time_remaining_seconds, 7
         )
 
+    def test_opening_preflight_preserves_equivalent_pristine_last_move_sentinel(self) -> None:
+        state = self._state()
+        session = state.battle.session_key
+        opening = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_number=1,
+                current_turn_player="happi",
+                local_username="happi",
+                is_local_turn=True,
+                local_move_sequence=0,
+                last_move_sequence=None,
+                turn_time_remaining_seconds=10,
+                sources=("ChatMessageDTO.MATCH_START.matchPayload.board",),
+            ),
+        )
+        runtime = SimpleNamespace(
+            match_id=session.match_id,
+            turn=1,
+            current_player="happi",
+            local_username="happi",
+            remaining=7,
+            local_move_sequence=0,
+            last_move_sequence=-1,
+        )
+        source = AutonomousSource.from_state(opening)
+
+        refreshed = _fresh_opening_handoff_state(
+            opening, runtime, expected_session=session
+        )
+
+        self.assertIsNotNone(refreshed)
+        self.assertTrue(source.matches(refreshed))
+        self.assertIsNone(refreshed.battle.last_move_sequence)
+
+    def test_opening_preflight_uses_current_dynamic_gate_observation(self) -> None:
+        state = self._state()
+        session = state.battle.session_key
+        frozen_match_start = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_number=1,
+                current_turn_player="happi",
+                local_username="happi",
+                is_local_turn=True,
+                local_move_sequence=0,
+                last_move_sequence=-1,
+                turn_time_remaining_seconds=14,
+                clock_paused=True,
+                clock_pause_reason="FX",
+                latest=True,
+                board_hash="0" * 64,
+                is_board_ready=True,
+                is_cascade_running=False,
+                board_current_state=1,
+                board_is_processing_ui=False,
+                presentation_busy=False,
+                turn_announcer_blocking=False,
+                board_has_destroyed_this_turn=False,
+                board_is_game_over=False,
+                match_over=False,
+                deferred_game_over=False,
+                board_modal_open=False,
+                board_is_resuming=False,
+                local_has_left_match=False,
+                connection_ready=True,
+                reconnecting=False,
+                match_resyncing=False,
+                client_move_allowed=True,
+                sources=("ChatMessageDTO.MATCH_START.matchPayload.board",),
+            ),
+        )
+        current_duplicate = replace(
+            frozen_match_start,
+            battle=replace(
+                frozen_match_start.battle,
+                turn_time_remaining_seconds=13,
+                clock_paused=False,
+                clock_pause_reason=None,
+            ),
+        )
+        runtime = SimpleNamespace(
+            match_id=session.match_id,
+            turn=1,
+            current_player="happi",
+            local_username="happi",
+            remaining=12,
+            local_move_sequence=0,
+            last_move_sequence=-1,
+        )
+
+        refreshed = _fresh_opening_handoff_state(
+            current_duplicate, runtime, expected_session=session
+        )
+
+        self.assertIsNotNone(refreshed)
+        self.assertFalse(refreshed.battle.clock_paused)
+        self.assertIsNone(refreshed.battle.clock_pause_reason)
+        gate = ActionabilityGate.evaluate(
+            refreshed,
+            GateContext(
+                current_session=session,
+                game_foreground=True,
+                window_valid=True,
+                allow_opening_board_only=True,
+                allow_authoritative_board_only_stats=True,
+            ),
+        )
+        self.assertTrue(gate.actionable, gate)
+
     def test_stage_b3_emergency_ceiling_waits_for_terminal_then_pauses(self) -> None:
         counters = Counters(input_actions_total=100, turn_consuming_actions_total=90)
         state = self._state()
@@ -1832,6 +2169,20 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertEqual(_local_turn_deadline_warning_seconds(2), 2)
         self.assertEqual(_local_turn_deadline_warning_seconds(4), 4)
         self.assertEqual(_local_turn_deadline_warning_seconds(10), 10)
+        self.assertEqual(
+            _local_turn_deadline_warning_seconds(
+                1,
+                mandatory_board_unavailable=True,
+            ),
+            5,
+        )
+        self.assertEqual(
+            _local_turn_deadline_warning_seconds(
+                8,
+                mandatory_board_unavailable=True,
+            ),
+            8,
+        )
         with self.assertRaises(ValueError):
             _local_turn_deadline_warning_seconds(-1)
 
@@ -2089,6 +2440,48 @@ class AutonomousGuardTests(unittest.TestCase):
             last_attempt_turn=state.battle.turn_number - 1,
         )
         self.assertIsNone(_fusion_terminal_result(pending, stale_turn))
+
+    def test_durable_failed_fusion_attempt_is_terminal_without_heap_response(self) -> None:
+        state = self._state(fusion_used=False)
+        decision = BasicPolicyEngine(
+            PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
+        ).decide(state)
+        identity = AutonomousActionIdentity.from_decision(state, decision, attempt=1)
+        pending = PendingAutonomousAction(
+            identity,
+            1.0,
+            210,
+            120,
+            fusion_last_attempt_turn_before=-1,
+            fusion_used_before=False,
+        )
+        durable_failure = replace(
+            state.fusion,
+            used=False,
+            available=False,
+            locked_this_turn=True,
+            last_attempt_turn=state.battle.turn_number,
+        )
+
+        self.assertFalse(pending.server_response_seen)
+        self.assertEqual(
+            _fusion_terminal_result(pending, durable_failure),
+            ActionResultKind.EVOLVE_FAILED,
+        )
+
+        no_new_attempt = replace(
+            pending,
+            fusion_last_attempt_turn_before=state.battle.turn_number,
+        )
+        self.assertIsNone(
+            _fusion_terminal_result(no_new_attempt, durable_failure)
+        )
+        self.assertIsNone(
+            _fusion_terminal_result(
+                pending,
+                replace(durable_failure, locked_this_turn=False),
+            )
+        )
 
     def test_unsent_reservation_can_be_cancelled_and_recomputed(self) -> None:
         state = self._state()
@@ -2692,6 +3085,49 @@ class GameplayUiTests(unittest.TestCase):
             layout.reason,
             "pet_skill_requires_current_native_geometry",
         )
+
+    def test_native_standard_cards_remain_resolved_when_pet_skill_is_missing(self) -> None:
+        layout = resolve_native_standard_card_strip(
+            selected_card_data_addresses=(0x1000, 0x2000, 0x3000),
+            native_card_slots=((0x1000, 1), (0x2000, 2), (0x3000, 3)),
+            visible_card_count=4,
+            pet_skill_card_data_address=None,
+        )
+
+        self.assertTrue(layout.resolved)
+        self.assertEqual(layout.slot_count, 4)
+        self.assertEqual(layout.slot_for_card_data(0x1000), 1)
+        self.assertEqual(layout.slot_for_card_data(0x3000), 3)
+        self.assertIsNone(layout.pet_skill_slot)
+        self.assertEqual(
+            layout.reason,
+            "current_native_selected_cardui_rectangles_pet_skill_unresolved",
+        )
+
+    def test_native_standard_cards_require_every_selected_cardui(self) -> None:
+        layout = resolve_native_standard_card_strip(
+            selected_card_data_addresses=(0x1000, 0x2000, 0x3000),
+            native_card_slots=((0x1000, 1), (0x3000, 3)),
+            visible_card_count=4,
+            pet_skill_card_data_address=None,
+        )
+
+        self.assertFalse(layout.resolved)
+        self.assertEqual(
+            layout.reason,
+            "native_selected_cardui_missing_or_ambiguous",
+        )
+
+    def test_native_standard_cards_reject_duplicate_visual_slots(self) -> None:
+        layout = resolve_native_standard_card_strip(
+            selected_card_data_addresses=(0x1000, 0x2000),
+            native_card_slots=((0x1000, 1), (0x2000, 1)),
+            visible_card_count=3,
+            pet_skill_card_data_address=None,
+        )
+
+        self.assertFalse(layout.resolved)
+        self.assertEqual(layout.reason, "ambiguous_native_card_slot")
 
     def test_arbitrary_selected_order_maps_attack_by_card_data_not_type_slot(self) -> None:
         layout = resolve_runtime_card_strip(

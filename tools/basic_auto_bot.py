@@ -141,9 +141,11 @@ from pokiguard_v2.win32_input import (  # noqa: E402
 )
 from pokiguard_v2.win32_screenshot import capture_client_png, capture_client_rgb  # noqa: E402
 from tools.idle_state_watch import ServerMessage, read_match_runtime  # noqa: E402
+from tools.dispatcher_qte_result_tap import DispatcherTransportTap  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, hex_pointer  # noqa: E402
 from tools.sequence_desync_runtime import (  # noqa: E402
+    ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
     RuntimeSequenceMonitor,
     RuntimeSequenceObservation,
 )
@@ -433,18 +435,6 @@ def _dispatch_technical_recovery(
     return False
 
 
-def _force_full_pass_scan_once(
-    current_attempt_identity: tuple[Any, ...] | None,
-    last_forced_identity: tuple[Any, ...] | None,
-) -> bool:
-    """Use one discovery scan per PASS attempt, then fast learned regions."""
-
-    return bool(
-        current_attempt_identity is not None
-        and current_attempt_identity != last_forced_identity
-    )
-
-
 def _provider_available_board_sequences(
     scan_diagnostics: dict[str, Any],
 ) -> tuple[int, ...]:
@@ -494,6 +484,169 @@ def _unoffered_transport_board_messages(
         if message.event_type == "MATCH_MOVE_RES"
         and message.payload_address is not None
         and message.address not in offered_addresses
+    )
+
+
+TRANSPORT_BOARD_DECODE_MAX_ATTEMPTS = 2
+
+
+def _record_transport_board_decode_failure(
+    attempts: dict[int, int],
+    message_address: int,
+    *,
+    maximum_attempts: int = TRANSPORT_BOARD_DECODE_MAX_ATTEMPTS,
+) -> tuple[int, bool]:
+    """Bound retries for one mutable DTO that never exposes a board.
+
+    A heap sample can observe Newtonsoft population in progress, so one retry
+    is retained.  A callback/heap object that still lacks ``board/srvSeq`` on
+    the second stable controller iteration is retired for this lifecycle;
+    retrying it forever cannot recover a newer ACK and was measured 1,247
+    times in one short b2 match.
+    """
+
+    if maximum_attempts <= 0:
+        raise ValueError("maximum transport-board attempts must be positive")
+    count = attempts.get(message_address, 0) + 1
+    attempts[message_address] = count
+    return count, count >= maximum_attempts
+
+
+def _offer_dispatcher_transport_boards(
+    dispatcher_tap: Any,
+    provider: MemoryBoardStateProvider,
+    *,
+    match_id: str,
+    offered: set[tuple[str, int, int, int]],
+) -> tuple[tuple[str, Any, bool], ...]:
+    """Bind immutable callback boards to the provider's current session."""
+
+    results: list[tuple[str, Any, bool]] = []
+    for event_type, snapshot in dispatcher_tap.transport_board_snapshots(match_id):
+        if snapshot.match_id != match_id:
+            continue
+        identity = (
+            event_type,
+            snapshot.message_address,
+            snapshot.board_token_address,
+            snapshot.sequence,
+        )
+        if identity in offered:
+            continue
+        if event_type == "MATCH_START":
+            accepted = provider.offer_opening_snapshot(snapshot)
+        else:
+            accepted = provider.offer_transport_board_snapshot(
+                snapshot,
+                event_type=event_type,
+            )
+        offered.add(identity)
+        results.append((event_type, snapshot, accepted))
+    return tuple(results)
+
+
+def _offer_dispatcher_runtime_batches(
+    dispatcher_tap: Any,
+    provider: MemoryBoardStateProvider,
+    *,
+    match_id: str,
+    offered: set[tuple[str, int, int, str]],
+) -> tuple[tuple[str, Any, bool], ...]:
+    """Bind typed batches retained by the high-cadence current-owner sampler."""
+
+    results: list[tuple[str, Any, bool]] = []
+    for source, batch in dispatcher_tap.runtime_batches(match_id):
+        identity = (
+            source,
+            batch.address,
+            batch.sequence,
+            board_state_hash(batch.cells),
+        )
+        if identity in offered:
+            continue
+        accepted = provider.offer_transient_runtime_batch(batch, source=source)
+        offered.add(identity)
+        results.append((source, batch, accepted))
+    return tuple(results)
+
+
+def _dispatcher_runtime_observation_for_controller(
+    target: Any,
+    monitor: RuntimeSequenceMonitor,
+    dispatcher_tap: Any,
+    *,
+    session_key: Any,
+    match_id: str,
+    turn: int | None,
+    srv_seq: int | None,
+    available_board_sequences: Sequence[int] = (),
+) -> RuntimeSequenceObservation | None:
+    """Use stable callback roots instead of a blocking managed-heap scan."""
+
+    diagnostics = dispatcher_tap.diagnostics
+    if diagnostics.armed_match_id != match_id or not diagnostics.healthy:
+        return None
+    _service, runtime = read_match_runtime(target)
+    if runtime.match_id != match_id:
+        return None
+    captured_messages = dispatcher_tap.messages(match_id)
+    messages, first = monitor.observe_captured_messages(
+        captured_messages,
+        session_key=session_key,
+        match_id=match_id,
+        turn=turn,
+        srv_seq=srv_seq,
+        timestamp=utc_timestamp(),
+        runtime=runtime,
+    )
+    if monitor.needs_transport_gap_recovery(
+        runtime,
+        published_srv_seq=srv_seq,
+        available_board_sequences=available_board_sequences,
+    ) is True:
+        # Returning None deliberately selects the existing Phase-2 bounded ACK
+        # recovery below. It runs once for this exact watermark, rather than
+        # trusting "dispatcher healthy" as proof that a board was captured.
+        return None
+    board_messages = tuple(
+        message
+        for message in captured_messages
+        if getattr(message, "event_type", None) in {"MATCH_START", "MATCH_MOVE_RES"}
+        and getattr(message, "payload_address", None) is not None
+    )
+    current_match_start = next(
+        (
+            message
+            for message in reversed(captured_messages)
+            if getattr(message, "event_type", None) == "MATCH_START"
+        ),
+        None,
+    )
+    return RuntimeSequenceObservation(
+        runtime,
+        messages,
+        first,
+        current_match_start,
+        board_messages,
+    )
+
+
+def _pass_response_observation_complete(
+    observation: RuntimeSequenceObservation | None,
+    *,
+    from_dispatcher: bool,
+) -> bool:
+    """Recognize both supported complete PASS-response observation paths.
+
+    The dispatcher callback tap is the primary b2 transport source and samples
+    its retained messages without a heap scan. Requiring ``scan_performed``
+    alone leaves PASS_WAIT locked forever after a missed transient AFK payload,
+    even after MatchService has advanced back to the next local turn.
+    """
+
+    return bool(
+        observation is not None
+        and (from_dispatcher or observation.scan_performed)
     )
 
 
@@ -1127,11 +1280,12 @@ def _fusion_terminal_result(
     """Classify a Fusion response or its durable terminal equivalent.
 
     A local ``MATCH_FUSION_RES success=false`` is itself the terminal failure
-    result requested by Stage B2. A current-session MatchService transition
-    from ``LocalFusionUsed=false`` to ``true`` with
-    ``LocalFusionLastAttemptTurn == source turn`` is the terminal success
-    equivalent and can arrive before the heap message scan. A positive response
-    still requires the durable ``fusion.used`` state.
+    result requested by Stage B2. ``HandleFusionRes`` durably records
+    ``LocalFusionLastAttemptTurn`` for either result and sets
+    ``LocalFusionUsed`` only on success. Therefore a new same-source-turn lock
+    with ``used=false`` is also an exact failure equivalent when the transient
+    callback was missed. A ``used=false -> true`` transition is the success
+    equivalent. A positive response still requires that durable used state.
     """
 
     durable_success = bool(
@@ -1142,6 +1296,17 @@ def _fusion_terminal_result(
     )
     if durable_success:
         return ActionResultKind.EVOLVE_SUCCESS
+    durable_failure = bool(
+        fusion_now is not None
+        and pending.fusion_used_before is False
+        and fusion_now.used is False
+        and fusion_now.locked_this_turn is True
+        and fusion_now.last_attempt_turn == pending.identity.source.turn
+        and pending.fusion_last_attempt_turn_before
+        != pending.identity.source.turn
+    )
+    if durable_failure:
+        return ActionResultKind.EVOLVE_FAILED
     if not pending.server_response_seen or pending.response_success is None:
         return None
     if pending.response_success is False:
@@ -1276,12 +1441,40 @@ def _runtime_observation_for_controller(
     if fast_bounded_handoff:
         _service, runtime = read_match_runtime(target)
         return RuntimeSequenceObservation(runtime, (), False)
+    return _active_combat_transport_poll(
+        monitor,
+        session_key=session_key,
+        match_id=match_id,
+        turn=turn,
+        srv_seq=srv_seq,
+    )
+
+
+def _active_combat_transport_poll(
+    monitor: RuntimeSequenceMonitor,
+    *,
+    session_key: Any,
+    match_id: str,
+    turn: int | None,
+    srv_seq: int | None,
+    available_board_sequences: Sequence[int] = (),
+    offered_board_message_addresses: Sequence[int] = (),
+) -> RuntimeSequenceObservation:
+    """Run the only heap fallback permitted after a match becomes active."""
+
     return monitor.poll(
         session_key=session_key,
         match_id=match_id,
         turn=turn,
         srv_seq=srv_seq,
         timestamp=utc_timestamp(),
+        force_full_scan=False,
+        enable_gap_full_scan=True,
+        allow_gap_full_escalation=False,
+        allow_full_scan=False,
+        max_scan_bytes=ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
+        available_board_sequences=available_board_sequences,
+        offered_board_message_addresses=offered_board_message_addresses,
     )
 
 
@@ -1336,7 +1529,10 @@ def _fresh_opening_handoff_state(
         turn_time_remaining_seconds=int(runtime.remaining),
         turn_timer_source="MatchService.server_tick",
         local_move_sequence=0,
-        last_move_sequence=runtime.last_move_sequence,
+        # ``None`` and ``-1`` are equivalent pristine sentinels in the b2
+        # opening. Preserve the already proven cached representation so two
+        # adjacent direct-root reads cannot invalidate the same opening action.
+        last_move_sequence=battle.last_move_sequence,
         last_move_from_col=None,
         last_move_from_row=None,
         last_move_to_col=None,
@@ -1461,15 +1657,26 @@ def _local_turn_action_deadline_reached(
     return (session, int(turn)) not in consuming_action_turns
 
 
-def _local_turn_deadline_warning_seconds(minimum_action_time: int) -> int:
-    """Allow input at one displayed second; block only below that floor."""
+def _local_turn_deadline_warning_seconds(
+    minimum_action_time: int,
+    *,
+    mandatory_board_unavailable: bool = False,
+) -> int:
+    """Choose the input floor, with time to exit before a proven third idle."""
 
     if minimum_action_time < 0:
         raise ValueError("minimum action time cannot be negative")
-    return min(
+    normal_floor = min(
         max(minimum_action_time, MANDATORY_RESET_RECOVERY_FLOOR_SECONDS),
         10,
     )
+    if mandatory_board_unavailable:
+        # At exact authoritative idle 2/3, another zero-input turn ejects the
+        # player. If the current board is still unavailable, reserve enough of
+        # the 14-second turn for the existing exact-session recovery UI instead
+        # of waiting until the countdown reaches zero.
+        return max(normal_floor, 5)
+    return normal_floor
 
 
 def _mandatory_reset_recovery_warning_seconds(minimum_action_time: int) -> int:
@@ -1960,6 +2167,22 @@ def _pass_terminal_disposition(
         PassResultKind.PASS_CONFIRMED_IDLE_1,
         PassResultKind.PASS_CONFIRMED_IDLE_2,
     }
+    if (
+        not confirmed
+        and pass_stage == "B5"
+        and result is PassResultKind.PASS_STATE_UNCONFIRMED
+    ):
+        # MatchService has already completed the zero-input source turn and
+        # returned ownership to the local player. The AFK payload may have been
+        # too short-lived for the read-only observer, so its numeric count is
+        # unknown. A consuming SWAP/CAST is safe for every possible count and
+        # immediately breaks the idle chain; keeping PASS_WAIT locked would
+        # silently sacrifice this and every later local turn.
+        return PassTerminalDisposition(
+            False,
+            False,
+            begin_p3_mandatory_reset=True,
+        )
     if not confirmed:
         return PassTerminalDisposition(False, True, result.value)
     if pass_stage == "P1":
@@ -2617,7 +2840,15 @@ def _create_shared_combat_runtime(
             chunk_mib=args.chunk_mib,
             required_confirmations=2,
             require_lobby_start=True,
-            allow_ack_heap_scan=True,
+            # Dispatcher callbacks and the shared runtime monitor already
+            # retain exact current-match boards. Repeating a multi-MiB ACK
+            # heap scan in this process can starve the 2 ms callback tap and
+            # lose the next board-bearing response before Unity drains it.
+            allow_ack_heap_scan=False,
+            # Dot discovery is audit-only and cannot authorize or veto the
+            # immutable transport board. Its large owner-allocation scan used
+            # most of several 14-second turns in the reported 1.7.4 run.
+            enable_dot_audit=False,
             ack_heap_region_mib=args.ack_heap_region_mib,
             extended_fusion_ui_region_mib=max(args.max_region_mib, 16),
             extended_card_ui_region_mib=max(args.max_region_mib, 16),
@@ -2696,7 +2927,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     )
 
     runtime_owner = attach_target() if shared_runtime is None else nullcontext(shared_runtime.target)
-    with runtime_owner as target, log_path.open("a", encoding="utf-8", buffering=1) as log:
+    with (
+        runtime_owner as target,
+        log_path.open("a", encoding="utf-8", buffering=1) as log,
+        DispatcherTransportTap(target) as dispatcher_tap,
+    ):
         runtime = shared_runtime or _create_shared_combat_runtime(target, args, v1_config)
         binding = runtime.binding
         executor = runtime.executor
@@ -2833,6 +3068,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             )
 
         active_session = runtime.expected_session
+        if active_session is not None:
+            dispatcher_tap.arm(active_session.match_id)
         handoff_session_pending = runtime.expected_session is not None
         opening_fast_action_pending = runtime.expected_session is not None
         started = time.monotonic()
@@ -2846,6 +3083,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         opening_ready_logged: set[Any] = set()
         opening_board_only_logged: set[Any] = set()
         transport_offered_messages: set[int] = set()
+        transport_board_decode_attempts: dict[int, int] = {}
+        dispatcher_offered_boards: set[tuple[str, int, int, int]] = set()
+        dispatcher_offered_runtime_batches: set[tuple[str, int, int, str]] = set()
         runtime_offered_batches: set[tuple[int, int]] = set()
         fast_transition_deadline: float | None = None
         stop_reason = "PROCESS_OR_CONTROLLER_STOPPED"
@@ -2863,7 +3103,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         session_cleared = False
         combat_ended = False
         postmatch_observation_deadline: float | None = None
-        pass_full_scan_attempt_identity: tuple[Any, ...] | None = None
         p3_mandatory_reset_pending = False
         mandatory_cached_board_fastpath_polls = 0
         p3_reset_validation_pending = False
@@ -2889,6 +3128,46 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             tuple[Any, int], set[PolicyAction]
         ] = {}
         active_progress_watchdog = ActiveCombatProgressWatchdog()
+        dispatcher_ready_sessions: set[Any] = set()
+
+        def offer_dispatcher_boards_now(session: Any) -> None:
+            dispatcher_tap.configure_runtime_owners(
+                board_instance=provider.current_board_instance,
+                board_ws_addresses=provider.board_ws_owner_addresses,
+            )
+            for event_type, snapshot, accepted in _offer_dispatcher_transport_boards(
+                dispatcher_tap,
+                provider,
+                match_id=session.match_id,
+                offered=dispatcher_offered_boards,
+            ):
+                _write(
+                    log,
+                    "dispatcher_board_snapshot_offered",
+                    source="ChatService callback immutable JSON",
+                    eventType=event_type,
+                    messageAddress=hex_pointer(snapshot.message_address),
+                    jsonAddress=hex_pointer(snapshot.board_token_address),
+                    srvSeq=snapshot.sequence,
+                    completeCells=len(snapshot.cells),
+                    accepted=accepted,
+                )
+            for source, batch, accepted in _offer_dispatcher_runtime_batches(
+                dispatcher_tap,
+                provider,
+                match_id=session.match_id,
+                offered=dispatcher_offered_runtime_batches,
+            ):
+                _write(
+                    log,
+                    "dispatcher_runtime_batch_offered",
+                    source=source,
+                    address=hex_pointer(batch.address),
+                    srvSeq=batch.sequence,
+                    boardHash=board_state_hash(batch.cells),
+                    completeCells=len(batch.cells),
+                    accepted=accepted,
+                )
 
         def observe_b5_server_reset(observed_idle: Any) -> None:
             """Consume only exact server idle evidence after a reset action."""
@@ -3456,6 +3735,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         early_match_id
                         and early_match_id != lobby_runtime_match_id
                     ):
+                        dispatcher_tap.arm(early_match_id)
                         if early_match_id != preopening_match_id:
                             if preopening_session is not None:
                                 monitor.end_session(preopening_session)
@@ -3475,12 +3755,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 matchId=early_match_id,
                                 runtime=early_runtime,
                             )
-                        early_observation = monitor.poll(
+                        early_observation = _active_combat_transport_poll(
+                            monitor,
                             session_key=preopening_session,
                             match_id=early_match_id,
                             turn=early_runtime.turn,
                             srv_seq=None,
-                            timestamp=utc_timestamp(),
                         )
                         early_start = early_observation.current_match_start
                         if (
@@ -3567,8 +3847,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             # witness can ever become publishable.
             early_messages: tuple[ServerMessage, ...] = ()
             early_observation = None
+            early_observation_from_dispatcher = False
             if active_session is not None:
                 try:
+                    dispatcher_tap.arm(active_session.match_id)
+                    offer_dispatcher_boards_now(active_session)
                     if not p3_mandatory_reset_pending:
                         mandatory_cached_board_fastpath_polls = 0
                     absorbed_transport_regions = monitor.absorb_region_hints(
@@ -3579,31 +3862,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             log,
                             "transport_regions_absorbed_from_provider_warmup",
                             addedRegions=absorbed_transport_regions,
-                            source="boss_turn_combined_card_chat_class_scan",
+                            source="provider_validated_transport_region_hints",
                         )
-                    pass_scan_identity = None
-                    if (
-                        pass_coordinator is not None
-                        and pass_coordinator.gameplay_locked
-                        and pass_coordinator.attempt is not None
-                    ):
-                        pass_scan_identity = (
-                            pass_coordinator.attempt.session_id,
-                            pass_coordinator.attempt.source_turn,
-                            pass_coordinator.attempt.source_srv_seq,
-                        )
-                    force_full_pass_scan = _force_full_pass_scan_once(
-                        pass_scan_identity,
-                        pass_full_scan_attempt_identity,
-                    )
                     # Capture short-lived MATCH_MOVE_RES objects as soon as an
                     # ACK advances, including while the opponent still owns the
                     # turn. Waiting for the opponent -> local boundary lost the
                     # board-bearing boss response in E2.3 B6 attempt 4. The
-                    # monitor reserves one bounded/full opportunity per exact
-                    # (match, turn, ACK) identity, so an unchanged watermark
-                    # cannot trigger repeated broad scans.
-                    allow_gap_full_scan = True
+                    # monitor reserves one byte-budgeted learned-region scan
+                    # per exact (match, turn, ACK) identity, so an unchanged
+                    # watermark cannot trigger repeated work. Full-heap scans
+                    # are forbidden after combat becomes active.
                     provider_scan_diagnostics = provider.scan_diagnostics
                     available_board_sequences = (
                         _provider_available_board_sequences(
@@ -3616,7 +3884,40 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             mandatory_cached_board_fastpath_polls,
                         )
                     )
-                    if fast_bounded_handoff_iteration or mandatory_cached_fastpath:
+                    dispatcher_observation = (
+                        _dispatcher_runtime_observation_for_controller(
+                            target,
+                            monitor,
+                            dispatcher_tap,
+                            session_key=active_session,
+                            match_id=active_session.match_id,
+                            turn=(
+                                last_state.battle.turn_number
+                                if last_state is not None
+                                else None
+                            ),
+                            srv_seq=(
+                                last_state.battle.srv_seq
+                                if last_state is not None
+                                else None
+                            ),
+                            available_board_sequences=available_board_sequences,
+                        )
+                    )
+                    if dispatcher_observation is not None:
+                        early_observation = dispatcher_observation
+                        early_observation_from_dispatcher = True
+                        offer_dispatcher_boards_now(active_session)
+                        if active_session not in dispatcher_ready_sessions:
+                            dispatcher_ready_sessions.add(active_session)
+                            _write(
+                                log,
+                                "dispatcher_transport_ready",
+                                session=active_session,
+                                diagnostics=dispatcher_tap.diagnostics,
+                                serverDtoScanPerformed=False,
+                            )
+                    elif fast_bounded_handoff_iteration or mandatory_cached_fastpath:
                         early_observation = _runtime_observation_for_controller(
                             target,
                             monitor,
@@ -3654,7 +3955,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             ),
                         )
                     else:
-                        early_observation = monitor.poll(
+                        early_observation = _active_combat_transport_poll(
+                            monitor,
                             session_key=active_session,
                             match_id=active_session.match_id,
                             turn=(
@@ -3667,20 +3969,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 if last_state is not None
                                 else None
                             ),
-                            timestamp=utc_timestamp(),
-                            force_full_scan=force_full_pass_scan,
-                            enable_gap_full_scan=allow_gap_full_scan,
-                            allow_gap_full_escalation=True,
                             available_board_sequences=available_board_sequences,
                             offered_board_message_addresses=(
                                 transport_offered_messages
                             ),
                         )
-                        if (
-                            force_full_pass_scan
-                            and early_observation.scan_performed
-                        ):
-                            pass_full_scan_attempt_identity = pass_scan_identity
                     early_messages = early_observation.messages
                     if (
                         pass_coordinator is not None
@@ -3780,6 +4073,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 accepted = provider.offer_transport_board_snapshot(
                                     snapshot, event_type=message.event_type
                                 )
+                                transport_board_decode_attempts.pop(
+                                    message.address, None
+                                )
                                 transport_offered_messages.add(message.address)
                                 _write(
                                     log,
@@ -3794,12 +4090,20 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     accepted=accepted,
                                 )
                             except (OSError, RuntimeError, ValueError) as exc:
+                                attempt, retired = _record_transport_board_decode_failure(
+                                    transport_board_decode_attempts,
+                                    message.address,
+                                )
+                                if retired:
+                                    transport_offered_messages.add(message.address)
                                 _write(
                                     log,
                                     "transport_board_snapshot_rejected",
                                     eventType=message.event_type,
                                     messageAddress=hex_pointer(message.address),
                                     reason=str(exc),
+                                    decodeAttempt=attempt,
+                                    retired=retired,
                                 )
                 except (OSError, RuntimeError, ValueError) as exc:
                     _write(log, "early_runtime_monitor_error", detail=str(exc))
@@ -3925,6 +4229,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 poll.lifecycle_event,
                 str(poll.combat_lifecycle.state) if poll.combat_lifecycle else None,
                 provider.scan_diagnostics["lobbyBaselineReady"],
+                poll.dto_rejections,
             )
             if provider_status != last_provider_status:
                 lifecycle_key = (
@@ -3958,6 +4263,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     ),
                     confirmations=poll.confirmations,
                     session=poll.session_key,
+                    dtoRejections=poll.dto_rejections,
                     diagnostics=provider.scan_diagnostics,
                 )
                 last_provider_status = provider_status
@@ -4074,9 +4380,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     direct_pending,
                     direct_fusion,
                 )
-                if direct_result is ActionResultKind.EVOLVE_SUCCESS:
+                if direct_result is not None:
                     guard.complete_pending()
-                    counters.evolve_success += 1
+                    if direct_result is ActionResultKind.EVOLVE_SUCCESS:
+                        counters.evolve_success += 1
+                    else:
+                        counters.evolve_failed += 1
                     terminal_evolve_activity_turns.add(
                         (
                             direct_pending.identity.source.session,
@@ -4129,6 +4438,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
                     break
                 active_session = poll.session_key
+                dispatcher_tap.arm(active_session.match_id)
                 handoff_session_pending = False
                 if runtime.expected_session is not None:
                     _write(log, "farm_handoff_session_confirmed", session=active_session)
@@ -4153,6 +4463,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 opening_ready_logged.clear()
                 opening_board_only_logged.clear()
                 transport_offered_messages.clear()
+                transport_board_decode_attempts.clear()
+                dispatcher_offered_boards.clear()
+                dispatcher_offered_runtime_batches.clear()
                 runtime_offered_batches.clear()
                 fast_transition_deadline = None
                 action_baseline_ready = False
@@ -4197,6 +4510,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             messages: tuple[ServerMessage, ...] = ()
             raw_runtime = None
             observation = None
+            observation_from_dispatcher = False
             if active_session is not None:
                 try:
                     # The pre-provider observation was taken in this same
@@ -4209,8 +4523,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     # provider.poll(), no early observation exists and the
                     # normal post-provider poll still runs.
                     observation = early_observation
+                    observation_from_dispatcher = (
+                        early_observation_from_dispatcher
+                    )
                     if observation is None:
-                        observation = monitor.poll(
+                        observation = _active_combat_transport_poll(
+                            monitor,
                             session_key=active_session,
                             match_id=active_session.match_id,
                             turn=(
@@ -4223,7 +4541,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 if state is not None
                                 else None
                             ),
-                            timestamp=utc_timestamp(),
                         )
                     messages = tuple(
                         dict.fromkeys((*early_messages, *observation.messages))
@@ -4575,7 +4892,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             afkWarnPayload=terminal.authoritative_idle,
                             idleAfter=idle_cache.state,
                         )
-                        if _dispatch_unconfirmed_pass_recovery(
+                        disposition = _pass_terminal_disposition(
+                            pass_stage,
+                            terminal.result,
+                            p3_reset_validation_pending=(
+                                p3_reset_validation_pending
+                            ),
+                        )
+                        if disposition.stop and _dispatch_unconfirmed_pass_recovery(
                             runtime,
                             terminal=terminal,
                             raw_runtime=raw_runtime,
@@ -4598,11 +4922,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             acceptance_stop_requested = True
                             pass_coordinator.take_terminal()
                             continue
-                        disposition = _pass_terminal_disposition(
-                            pass_stage,
-                            terminal.result,
-                            p3_reset_validation_pending=p3_reset_validation_pending,
-                        )
                         if disposition.stop:
                             guard.pause(automatic=True)
                             stop_reason = disposition.stop_reason
@@ -4634,6 +4953,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     allowedActions=["SWAP", "CAST"],
                                     evolveSatisfiesMandatory=False,
                                     thirdPassForbidden=True,
+                                    source=(
+                                        "PASS_STATE_UNCONFIRMED_NEXT_LOCAL"
+                                        if terminal.result
+                                        is PassResultKind.PASS_STATE_UNCONFIRMED
+                                        else "AUTHORITATIVE_IDLE_2"
+                                    ),
+                                    numericIdleUnknown=(
+                                        terminal.result
+                                        is PassResultKind.PASS_STATE_UNCONFIRMED
+                                    ),
                                 )
                             pass_coordinator.take_terminal()
 
@@ -4790,6 +5119,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             idle_cache.end_session(recovered_idle_session)
                     if pass_coordinator is not None:
                         pass_coordinator.clear_session()
+                    dispatcher_tap.disarm()
                     active_session = None
                     source_decisions.clear()
                     consuming_turns.clear()
@@ -4873,8 +5203,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         if runtime_for_pass is not None
                         else None
                     ),
-                    scan_complete_for_next_local_turn=bool(
-                        observation is not None and observation.scan_performed
+                    response_observation_complete_for_next_local_turn=(
+                        _pass_response_observation_complete(
+                            observation,
+                            from_dispatcher=observation_from_dispatcher,
+                        )
                     ),
                 )
                 if pass_terminal is not None:
@@ -4913,7 +5246,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         afkWarnPayload=pass_terminal.authoritative_idle,
                         idleAfter=idle_cache.state,
                     )
-                    if _dispatch_unconfirmed_pass_recovery(
+                    disposition = _pass_terminal_disposition(
+                        pass_stage,
+                        pass_terminal.result,
+                        p3_reset_validation_pending=(
+                            p3_reset_validation_pending
+                        ),
+                    )
+                    if disposition.stop and _dispatch_unconfirmed_pass_recovery(
                         runtime,
                         terminal=pass_terminal,
                         raw_runtime=raw_runtime,
@@ -4935,11 +5275,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         _beep("recovery", not args.no_beep)
                         pass_coordinator.take_terminal()
                         break
-                    disposition = _pass_terminal_disposition(
-                        pass_stage,
-                        pass_terminal.result,
-                        p3_reset_validation_pending=p3_reset_validation_pending,
-                    )
                     if disposition.stop:
                         guard.pause(automatic=True)
                         stop_reason = disposition.stop_reason
@@ -4970,6 +5305,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             allowedActions=["SWAP", "CAST"],
                             evolveSatisfiesMandatory=False,
                             thirdPassForbidden=True,
+                            source=(
+                                "PASS_STATE_UNCONFIRMED_NEXT_LOCAL"
+                                if pass_terminal.result
+                                is PassResultKind.PASS_STATE_UNCONFIRMED
+                                else "AUTHORITATIVE_IDLE_2"
+                            ),
+                            numericIdleUnknown=(
+                                pass_terminal.result
+                                is PassResultKind.PASS_STATE_UNCONFIRMED
+                            ),
                         )
                     pass_coordinator.take_terminal()
                 if pass_coordinator.gameplay_locked:
@@ -5232,7 +5577,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 )
             )
             deadline_warning_seconds = _local_turn_deadline_warning_seconds(
-                args.minimum_action_time
+                args.minimum_action_time,
+                mandatory_board_unavailable=bool(
+                    p3_mandatory_reset_pending and state is None
+                ),
             )
             if _local_turn_action_deadline_reached(
                 session=active_session,
@@ -5531,6 +5879,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 counters.sessions_completed += 1
                 guard.stop()
                 stop_reason = lifecycle_stop_reason
+                dispatcher_tap.disarm()
                 active_session = None
                 active_progress_watchdog.reset()
                 source_decisions.clear()
@@ -7085,7 +7434,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 try:
                     _service, opening_fresh_runtime = read_match_runtime(target)
                     opening_fresh_state = _fresh_opening_handoff_state(
-                        provider.last_published_state,
+                        # ``provider.poll()`` returns a freshly sampled state
+                        # even when the immutable board key is a duplicate.
+                        # Use that current observation here: the provider's
+                        # ``last_published_state`` deliberately remains the
+                        # original MATCH_START publication and can therefore
+                        # retain a transient ClockPaused/FX flag after the
+                        # visible countdown has started.  Reusing that frozen
+                        # battle envelope made every opening preflight abort
+                        # until turn 1 expired on a later farm-cycle match.
+                        state,
                         opening_fresh_runtime,
                         expected_session=active_session,
                     )
@@ -7897,6 +8255,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             fullCombatResult=full_combat_result,
             terminalCombatSnapshot=terminal_combat_snapshot,
             providerMetrics=provider.metrics,
+            dispatcherTransport=dispatcher_tap.diagnostics,
             swapInputPacing=executor.swap_pacer.decision(),
             localTurnsObserved=counters.local_turns_observed,
             bossTurnsObserved=counters.boss_turns_observed,

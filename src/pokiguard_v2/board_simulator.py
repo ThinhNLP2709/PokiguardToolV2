@@ -681,9 +681,7 @@ def simulate_move(
     )
     # A calculable low-board horizontal clear that exposes only one new cell
     # per affected column is bounded by the 64 known cells in the user's BASIC
-    # model.  Keep the hypothetical refill risk in danger_score for ranking,
-    # but do not turn that possibility alone into a forced PASS.  Vertical
-    # clears and deeper/multi-layer refills remain fail-closed.
+    # model. Keep the hypothetical refill risk in danger_score for ranking.
     calculable = min(row for row, _col in clear_rounds[0]) >= 2
     bounded_horizontal_refill = bool(
         move.horizontal
@@ -691,15 +689,13 @@ def simulate_move(
         and exposure.max_column_depth <= 1
     )
     safe = bool(
-        # User rule: a resource move is safe only when its direct clear starts
-        # at screen row 3 or lower. A top-area clear necessarily depends on
-        # off-board refill before its post-collapse Sword shape is knowable;
-        # absence of one hypothetical UNKNOWN-Sword completion is not proof of
-        # safety. Sword collection itself remains a separate higher-priority
-        # branch and mandatory turns retain their least-risk fallback.
-        calculable
-        and reply_effective_max == 0
-        and support_hazard == 0
+        # Runtime-attested 1.7.4 boards contain valid resource clears that a
+        # broad pre-move Sword support region overlaps. That overlap remains a
+        # danger-score ranking signal, but cannot veto a move after exhaustive
+        # settled-board reply analysis and the UNKNOWN-Sword check both prove
+        # zero effective Sword. A bounded horizontal refill remains valid under
+        # the previously accepted one-cell-per-column rule.
+        reply_effective_max == 0
         and (unknown_effective == 0 or bounded_horizontal_refill)
     )
     risk = SwordRisk(

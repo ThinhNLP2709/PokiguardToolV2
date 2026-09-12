@@ -1,11 +1,12 @@
 # Board data sources — Phase 2A
 
 > Phase 2B.5 hardening: a heap-scanned `WsCombatBatch` alone is not a production
-> candidate. See `docs/memory_board_hardening.md`. Publication requires that the
-> batch was absent from the lobby baseline and that its `srvSeq` is present in
-> the current match-reset `MatchService._ackedSeqs` set. A Board/match-ID-matched
-> idle `BoardWsApplier` and stable `Board.allDots` remain presentation gates.
-> Dot is independent telemetry, not a mandatory source.
+> candidate. See `docs/memory_board_hardening.md`. Because the class has no
+> MatchId and sequences restart per combat, ACK equality alone cannot bind a raw
+> object to the current session. Publication requires an independent exact
+> current-match transport or Board-owner witness; otherwise the current rendered
+> `Board.allDots` path supplies the board. A Board/match-ID-matched idle
+> `BoardWsApplier` remains a presentation gate.
 
 ## Evidence standard
 

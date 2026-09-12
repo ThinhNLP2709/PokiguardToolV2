@@ -1245,6 +1245,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="B4 only: authorize at most two full actions in one retained match/session",
     )
+    authority.add_argument(
+        "--c0-continuation-audit",
+        action="store_true",
+        help=(
+            "3C.0 only: execute one Pet Skill, then observe same-turn "
+            "legend-card state with zero further input"
+        ),
+    )
     parser.add_argument("--log", type=Path, help="JSONL output path")
     parser.add_argument("--interval", type=float, default=0.025)
     parser.add_argument("--timeout", type=float, default=900.0)
@@ -1271,6 +1279,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--continuation-timeout",
+        type=float,
+        default=60.0,
+        help=(
+            "3C.0 bounded read-only wait through the next local turn after "
+            "PERFECT (default: 60 seconds)"
+        ),
+    )
+    parser.add_argument(
         "--allow-combat-start",
         action="store_true",
         help="diagnostic only; starting in the boss lobby is the accepted procedure",
@@ -1280,11 +1297,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run(args: argparse.Namespace) -> int:
     b4 = bool(getattr(args, "b4_two_same_match", False))
-    if not args.execute_once and not b4:
-        raise ValueError("explicit --execute-once or --b4-two-same-match authority required")
-    if b4 and args.allow_combat_start:
-        raise ValueError("B4 requires a fresh boss-lobby baseline")
-    log_path = (args.log or default_log_path("phase3b3_pet_skill_action")).resolve()
+    c0 = bool(getattr(args, "c0_continuation_audit", False))
+    if not args.execute_once and not b4 and not c0:
+        raise ValueError(
+            "explicit --execute-once, --b4-two-same-match, or "
+            "--c0-continuation-audit authority required"
+        )
+    if (b4 or c0) and args.allow_combat_start:
+        phase = "B4" if b4 else "Phase 3C.0"
+        raise ValueError(f"{phase} requires a fresh boss-lobby baseline")
+    default_log = (
+        "phase3c0_legend_card_continuation"
+        if c0
+        else "phase3b3_pet_skill_action"
+    )
+    log_path = (args.log or default_log_path(default_log)).resolve()
     observer_args = argparse.Namespace(
         watch=True,
         log=log_path,
@@ -1301,12 +1328,18 @@ def run(args: argparse.Namespace) -> int:
     if b4:
         from tools.pet_skill_b4 import Phase3b3B4RuntimeHook
         hook_type = Phase3b3B4RuntimeHook
-    hook = hook_type(
+    elif c0:
+        from tools.legend_card_continuation_audit import Phase3c0RuntimeHook
+        hook_type = Phase3c0RuntimeHook
+    hook_kwargs = dict(
         direction_ack_timeout_seconds=args.direction_ack_timeout,
         qte_generation_timeout_seconds=args.qte_generation_timeout,
         result_timeout_seconds=args.result_timeout,
         post_state_timeout_seconds=args.post_state_timeout,
     )
+    if c0:
+        hook_kwargs["continuation_timeout_seconds"] = args.continuation_timeout
+    hook = hook_type(**hook_kwargs)
     previous_interrupt = signal.getsignal(signal.SIGINT)
     previous_terminate = signal.getsignal(signal.SIGTERM)
 

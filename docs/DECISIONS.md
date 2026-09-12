@@ -41,6 +41,39 @@ future task:
 Gameplay input is normal Windows user input only. `PokiguardAuto` is reference
 only, and `pc` is strictly read only, as defined in `AGENTS.md`.
 
+## Phase 2 b2 compatibility repair (user correction 2026-09-11)
+
+Default settings with a normal pet, normal-pet Evolution and the default Attack
+card remain Phase 2 scope. Phase 3 gameplay is not being accepted or closed by
+this repair. The work remains uncommitted and awaits the user's live test.
+
+For Pokiguard 1.7.4-b2:
+
+- Evolution eligibility uses the current positive runtime Fusion cost; current
+  live evidence is **120 Mana**. The tool must not retain the older 160 value.
+- PASS remains a last resort after exhaustive safe-move evaluation. A broad
+  collapse/support overlap may rank a move as more dangerous, but it cannot
+  veto a candidate after exact direct, indirect and UNKNOWN Sword checks prove
+  zero Sword reply.
+- Missing the board snapshot for a newer ACK is a technical capture gap, not a
+  policy PASS. Recovery may be bounded per exact `(match, turn, ACK)` and may
+  not forge, replay or modify network state. Once combat has started it may
+  never escalate to a full managed-heap scan: the callback tap is primary and
+  the fallback is one rotating, lobby-learned window capped at 64 MiB.
+- For b2 callbacks, the primary typed board is the exact
+  `ChatMessageDTO.preBoard` prepared by the game before dispatcher enqueue.
+  Its event, MatchId and sequence must remain bound to the same immutable raw
+  callback and exact game ACK; this does not relax currentness or stability.
+- Board capture and card discovery are separate work. A board ACK gap must not
+  trigger CardUI/FusionCardUI discovery. Reuse the lobby card expectation and
+  cached validated owners; defer optional live card discovery until after the
+  opening action (the following boss turn / turn 2 boundary).
+- The new game-owned turn announcement delay must come from the verified
+  `TurnAnnouncer` runtime blocker. The tool must not guess a sleep duration.
+- Three consecutive idle turns remain forbidden. At authoritative idle 2/3,
+  the next consuming action must be SWAP or CAST under the existing Phase 2
+  policy.
+
 ## B3 manual-consumable test exclusion (user correction 2026-09-10)
 
 The tool must not use functional consumables to inject Mana or Rage. B3
@@ -162,9 +195,9 @@ to effective collected value.
 
 ## Evolution
 
-- Current accepted/observed Evolution cost is 160 Mana.
+- Current accepted/observed Evolution cost in 1.7.4-b2 is 120 Mana.
 - Production input must still read an actual positive runtime Fusion cost; it
-  must not guess 160 when runtime cost is unavailable.
+  must not guess 120 when runtime cost is unavailable.
 - In the runnable `NORMAL / NORMAL / DEFAULT_ATTACK` profile, if Fusion has not
   succeeded, the live action is safely actionable, and Mana is sufficient,
   keep trying from the second local turn until success under the
@@ -807,3 +840,19 @@ ready local turn, current resources/card/geometry, fresh generation/challenge.
 Reaching terminal before action 2 is incomplete same-match evidence, not a
 failure of an already accepted Perfect or permission to force a recovery.
 Stop after two successes or any post-input failure/session exit/operator abort.
+
+### Phase 3C.0 Legend latch and turn semantics (2026-09-12)
+
+Live retries 4 and 5 prove that Huyền Thoại 7 Pet Skill consumes the source
+turn. Policy must not attempt a board swap after its accepted Perfect in that
+same turn.
+
+Retry 5 also proves `Board.isUsingLegendCard` is a durable telemetry latch: it
+remained true through the boss turn and into the next settled local turn while
+`isUsingMega` and both Mega panels were false and all other actionability checks
+passed. It must not, by itself, block ordinary board play. The production modal
+aggregate keeps Mega execution and both Mega panels as blockers; the exact
+Legend flag remains available to the dedicated Pet Skill/QTE path and logs.
+
+Phase 3C.0 does not authorize Pet Skill selection in BASIC or FarmRunner. That
+policy/resource integration is a separate Phase 3C.1 change.

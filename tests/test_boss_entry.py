@@ -149,6 +149,20 @@ class BossEntryLoggingTests(unittest.TestCase):
                 gameplay_inputs=0,
             )
         )
+        self.assertTrue(
+            _entry_opening_timeout_recovery_required(
+                active_session=active,
+                current={
+                    **exact,
+                    "boardSource": (
+                        "ChatMessageDTO.MATCH_MOVE_RES."
+                        "preBoard+raw.matchPayload.srvSeq"
+                    ),
+                },
+                entry_clicks=1,
+                gameplay_inputs=0,
+            )
+        )
         for changes in (
             {"active_session": CombatSessionKey(15, 0x22220008, "M_other")},
             {"current": {**exact, "turn": 1}},

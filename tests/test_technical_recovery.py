@@ -598,6 +598,14 @@ class LiveRecoveryPreflightTests(unittest.TestCase):
             "PRODUCTION_ENTRY_OPENING_TIMEOUT",
         )
 
+        accepted_b2, _ = dispatch(
+            board_source=(
+                "ChatMessageDTO.MATCH_MOVE_RES."
+                "preBoard+raw.matchPayload.srvSeq+MatchService._ackedSeqs"
+            )
+        )
+        self.assertTrue(accepted_b2)
+
         for changes in (
             {"provider_session": CombatSessionKey(15, 0x22220008, "M_other")},
             {"match_id": "M_other"},

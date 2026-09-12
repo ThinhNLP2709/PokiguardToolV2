@@ -32,9 +32,10 @@ Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 ## 2. Hai thẻ chức năng
 
 1. **Thẻ tiến hóa** — dùng để tiến hóa pet giúp tăng máu, tăng dame (có thể),
-   tăng giới hạn mana, nói chung là để mạnh hơn. Tiêu hao 160 mana. Khi dùng
-   thẻ tiến hóa thì được tính là **chức năng**, nên sau khi dùng vẫn có thể đi
-   tiếp được nước trên bàn cờ.
+   tăng giới hạn mana, nói chung là để mạnh hơn. Chi phí phải đọc từ runtime;
+   bản 1.7.4-b2 hiện quan sát là **120 mana**. Khi dùng thẻ tiến hóa thì được
+   tính là **chức năng**, nên sau khi dùng vẫn có thể đi tiếp được nước trên
+   bàn cờ.
 2. **Thẻ chưởng** — tiêu tốn 160 mana để ra chưởng gây sát thương cho boss.
    Khi dùng thẻ chưởng thì **tính là 1 lượt**, nên không thể ra nước đi trên
    bàn cờ.
@@ -56,10 +57,12 @@ Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
   còn cách nhau vài đơn vị nên chưa thể tạo được match-3 tiềm năng; hoặc là
   kiếm ở cùng 1 hàng nhưng cách nhau 1 cột (hàng 2 cột 1, hàng 2 cột 3) — nếu
   chúng ta ăn dọc match-3 ở cột 2 thì khả năng rơi kiếm cho boss là 2/3.
-- **Nước đi an toàn**: các nước có thể tính toán được trên 64 viên trên bàn cờ
-  mà sau khi ăn không chừa lại match-3 kiếm tiềm năng cho boss. Thường là
-  những nước ngang tính toán được, hoặc những nước dọc cách các vùng kiếm nguy
-  hiểm 2 đơn vị.
+- **Nước đi an toàn**: nước mà mô phỏng từ 64 viên đã biết không chừa lại
+  match-3 kiếm trực tiếp/gián tiếp cho boss và không có nhánh refill UNKNOWN
+  hoàn tất kiếm. Nước ngang ở vùng trên vẫn có thể chứng minh là an toàn nếu
+  phần sập/refill liên quan không tạo nguy cơ kiếm; vị trí hàng 3 trở xuống và
+  khoảng cách với vùng kiếm dùng để xếp hạng độ nguy hiểm, không tự động phủ
+  quyết một nước đã qua các kiểm tra kiếm chính xác.
 - **Nước đi nguy hiểm**: thường là các nước đi dọc với những phần chưa biết mà
   khi ăn có thể tạo thành match-3 kiếm tiềm năng. Nước ngang dễ tính toán hơn;
   nước dọc sập 1 lần 3 viên nên độ khó cao hơn, và cũng không biết được phía
@@ -77,8 +80,9 @@ Quyết định đi nước được đưa ra bằng cách xét **lần lượt*
 ### Bước 1 — Thẻ tiến hóa
 
 Với profile chạy được `NORMAL / NORMAL / DEFAULT_ATTACK`, sử dụng thẻ tiến hóa
-nếu đủ 3 yếu tố: **chưa tiến hóa** + **160 mana** + **đã yêu cầu tiến hóa pet
-thường**. Thì cứ thử tiến hóa cho tới khi nào thành công.
+nếu đủ 3 yếu tố: **chưa tiến hóa** + **đủ chi phí runtime** + **đã yêu cầu
+tiến hóa pet thường**. Bản 1.7.4-b2 hiện trả chi phí **120 mana**. Thì cứ thử
+tiến hóa cho tới khi nào thành công.
 
 Lượt đầu tiên vẫn phải đi một nước trên bàn. **Từ lượt của chúng ta lần thứ 2
 trở đi**, nếu thẻ/pet tiến hóa hiện tại được game xác nhận, chưa tiến hóa thành
@@ -205,6 +209,11 @@ Nếu qua các bước vẫn chưa có nước đi an toàn thì chúng ta có t
 quyền bỏ **2 lượt chủ động liên tiếp**, reset lại trạng thái bỏ lượt bằng cách
 ăn nước hoặc chưởng.
 
+Không nhận được board đúng sequence hoặc hết deadline kỹ thuật **không phải**
+là quyết định PASS. Khi đã có ACK mới mà thiếu snapshot tương ứng, runtime phải
+thử đường phục hồi capture có giới hạn ngay trong lượt; trạng thái kỹ thuật
+không được giả thành bằng chứng rằng bàn không còn nước an toàn.
+
 Đó là lý do tại sao chừa lại 320 mana (2 lượt chưởng) — thì chúng ta sẽ có thể
 skip lượt chờ boss làm mới bàn cờ.
 
@@ -252,12 +261,23 @@ tham số còn ghi `—` mới chỉ cấu hình được qua code, chưa có UI
 | Độ thông minh | `intelligence` | `--intelligence` | `basic` |
 | Biên đồng hồ lượt tối thiểu, inclusive (giây) | `minimum_turn_time_seconds` | `--minimum-action-time` | `1` |
 
-Chi phí 160 mana của tiến hóa và của chưởng **không bao giờ được hard-code**:
-policy đọc chi phí thật từ runtime (`FusionState.mana_cost`,
-`CardData.manaCost` / `conditionUse`) và fail-closed nếu chưa chứng minh được.
+Chi phí tiến hóa (1.7.4-b2 hiện quan sát **120**) và chi phí chưởng (hiện quan
+sát **160**) **không bao giờ được hard-code**: policy đọc chi phí thật từ
+runtime (`FusionState.mana_cost`, `CardData.manaCost` / `conditionUse`) và
+fail-closed nếu chưa chứng minh được.
 
 ## 8. Lịch sử thay đổi
 
+- **2026-09-11** — Mở lại Phase 2 để tương thích bản 1.7.4-b2: xác nhận chi
+  phí tiến hóa runtime 120; không dùng collapse/support heuristic làm veto nếu
+  kiểm tra Sword/UNKNOWN chính xác đã chứng minh nước an toàn; phân biệt PASS
+  policy với việc thiếu board đúng ACK; thêm game-owned `TurnAnnouncer` vào
+  cổng thao tác. Chờ người dùng test live, chưa chốt phase và chưa commit/push.
+- **2026-09-11** — Log chẩn đoán tiếp theo chứng minh các lượt đứng im không
+  phải policy PASS (`pass_totals=0`) mà do recovery quét 1.28--1.31 GiB trong
+  7.02--7.18 giây. Trong combat cấm full-heap scan; mỗi ACK mới chỉ được một
+  cửa sổ xoay tối đa 64 MiB từ vùng đã học ở lobby. Đọc board và khám phá thẻ
+  tách riêng; thẻ dùng cache đầu trận và chỉ khám phá tùy chọn sau lượt mở màn.
 - **2026-09-10** — Phase 3A.2 thay setting sản phẩm `ManaPriority` bằng ba
   trường typed Pet/Tiến hóa/Thẻ sát thương. Adapter nội bộ tạm thời ánh xạ đúng
   hai profile BASIC cũ; không thay đổi thứ tự hay quyết định trong

@@ -37,6 +37,24 @@ class FakeMemory:
         )
 
 
+class MutatingHeaderMemory(FakeMemory):
+    def __init__(self, hashset_address: int) -> None:
+        super().__init__()
+        self.hashset_address = hashset_address
+        self.header_reads = 0
+
+    def read(self, address: int, size: int) -> bytes:
+        data = super().read(address, size)
+        if address == self.hashset_address and size == 0x40:
+            self.header_reads += 1
+            if self.header_reads == 2:
+                changed = bytearray(data)
+                version = struct.unpack_from("<i", changed, 0x38)[0]
+                struct.pack_into("<i", changed, 0x38, version + 1)
+                return bytes(changed)
+        return data
+
+
 class AckedSequenceTests(unittest.TestCase):
     MATCH = 0x0000020000000000
     SET = 0x0000021000000000
@@ -80,6 +98,16 @@ class AckedSequenceTests(unittest.TestCase):
         result = read_acked_sequences(self.make_memory(()), self.MATCH)
         self.assertEqual(result.sequences, ())
         self.assertIsNone(result.highest)
+
+    def test_hashset_rollover_during_read_fails_closed(self) -> None:
+        stable = self.make_memory((61, 63, 65))
+        memory = MutatingHeaderMemory(self.SET)
+        memory.bytes.update(stable.bytes)
+
+        with self.assertRaisesRegex(
+            LayoutValidationError, "HashSet changed during read"
+        ):
+            read_acked_sequences(memory, self.MATCH)
 
 
 if __name__ == "__main__":

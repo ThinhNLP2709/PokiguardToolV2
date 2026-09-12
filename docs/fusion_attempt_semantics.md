@@ -53,7 +53,7 @@ gains, SWAPs or CASTs cannot change the recorded mana delta or turn result.
 |---|---|---|
 | Does failure mark Fusion complete? | No. `LocalFusionUsed` remains false. | runtime-confirmed in Phase 2C.2A.3 |
 | Can failure be retried immediately in the same turn? | No on the observed client path: last attempt locks that turn and the UI must become interactable. | high; static getter/UI path plus runtime lock transitions |
-| Can BASIC propose it again later? | Yes, only after a response and a fresh actionable snapshot, while unused and mana is sufficient. | implemented/tested proposal behavior; execution remains disabled |
+| Can BASIC propose it again later? | Yes, after a terminal response or exact durable terminal equivalent and a fresh actionable snapshot on a later turn, while unused and mana is sufficient. | implemented and regression-tested |
 | Does failure cost mana? | Yes in the accepted turn-7 sample: `210 -> 50`, exactly `-160`. | runtime-confirmed, one sample |
 | Does failure consume the turn? | No in the accepted turn-7 sample. The response was false, the local turn remained 7, and a SWAP was server-accepted in that same turn at 6 seconds. | runtime-confirmed, one sample |
 | Does failure reset idle? | UNKNOWN. | no uncontaminated authoritative before/after pair |
@@ -92,12 +92,13 @@ success instead of being overwritten.
 proof that Fusion consumed the turn: scanner delay or another action may have
 intervened. The activity/confounder list must be considered.
 
-## Retry contract for future execution
+## Runtime retry contract
 
-No executor exists in this phase. The formal gate for a later retry is:
+The formal gate for a later retry is:
 
 ```text
-MATCH_FUSION_RES received with a known result
+terminal result proven by MATCH_FUSION_RES
+OR by a new exact LocalFusionLastAttemptTurn/current-turn lock transition
 AND Fusion is enabled
 AND fusion.used == false
 AND LocalFusionLockedThisTurn == false
@@ -107,10 +108,34 @@ AND the normal combat actionability gate passes
 AND mana >= actual/configured cost
 ```
 
+The durable failure equivalent additionally requires `LocalFusionUsed=false`
+and a last-attempt turn different from the pre-click snapshot. Native
+`HandleFusionRes` writes the last-attempt turn for both outcomes and writes
+`LocalFusionUsed=true` only for success, so this distinguishes a processed
+failure from an untouched or stale state even when the transient response DTO
+has already disappeared.
+
 This deliberately does not invent a millisecond cooldown from
-`_nextRefreshAt`. An absent/ambiguous UI object, pending response or locked turn
-fails closed. A successful attempt permanently stops future EVOLVE proposals;
+`_nextRefreshAt`. An absent/ambiguous terminal result or locked retry turn fails
+closed. A successful attempt permanently stops future EVOLVE proposals;
 insufficient mana or actionability also stops the current proposal.
+
+## b2 missed-response incident (2026-09-12)
+
+FarmRun `71526bd08c114d02b42a90129d60c2b1`, attempt 3, proved the
+transient-response gap. At local turn 6 / game turn 11 the controller sent
+EVOLVE with 210 mana against runtime cost 120. No `MATCH_FUSION_RES` was retained,
+but the next exact provider sample at `18:56:16.901Z` durably showed
+`last_attempt_turn=11`, `locked_this_turn=true`, `used=false` and ACK advance
+from source sequence 23 to 25. That stable failure state remained present until
+the turn ended. The old controller waited for the missing DTO, suppressing a
+same-turn Sword move even though the board/provider remained readable.
+
+Production now classifies that new exact transition as `EVOLVE_FAILED`, enters
+the existing presentation settle, then evaluates the fresh board in the same
+turn. It does not retry EVOLVE during the lock and does not infer success,
+rejection or idle state from an absent callback. See
+`phase2_b2_evolve_response_miss_incident.md`.
 
 ## Idle classification
 

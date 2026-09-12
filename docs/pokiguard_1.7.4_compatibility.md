@@ -1,5 +1,101 @@
 # Pokiguard 1.7.4 IL2CPP compatibility
 
+## Phase 2 b2 gameplay repair — 2026-09-11
+
+Phase 2 default gameplay is reopened after two user live tests; the repair is
+waiting for a new live retest and is not committed, pushed or phase-closed.
+The exact installed GameAssembly and metadata hashes still match the b2 reverse
+profile below, so no offset was changed speculatively.
+
+Evidence and resulting fixes:
+
+- `logs/farm_runs/e354ad0b878f4959838b3e07c4fbdcf0` proves the provider
+  exposed `manaCost=120`, BASIC proposed Evolution with player Mana 154, input
+  charged 120, and the exact `MATCH_FUSION_RES` returned `success=false`.
+  Therefore b2 Evolution cost is already runtime-driven at 120; the failed
+  evolution was an authoritative game outcome, not a retained 160 threshold.
+- `logs/farm_runs/2b7ce245380c45848285ad087ef86ea7` records five acknowledged
+  swaps, two formal PASS decisions, then `LOCAL_TURN_ACTION_DEADLINE`. At the
+  final local turn the ACK advanced to 50 while the last published board was
+  sequence 47. No third policy PASS was emitted; the missing input nevertheless
+  became the server's third idle and caused removal from the room.
+- The same run's sequence-40/45 board has 12 legal moves. The Mana move
+  `(5,0)<->(5,1)` has zero direct, indirect and UNKNOWN Sword reply, but the old
+  broad support heuristic reported `collapse_support_hazard=2` and vetoed it.
+  Support overlap now ranks danger only; the exact board is a regression
+  fixture and BASIC selects that Mana SWAP instead of PASS.
+- A dispatcher callback can retain valid `ChatMessageDTO.matchPayload.board`
+  even when the raw JSON shape is rejected. The tap now decodes that exact DTO
+  fallback. A healthy dispatcher no longer suppresses recovery when the exact
+  current `(match, turn, ACK)` board is absent; each gap is attempted once.
+- Follow-up run `bef23282eac3461bb6ca629e36f63537` emitted zero formal PASS
+  actions but missed input on several local turns. It performed eleven
+  `LOCAL_TURN_ACK_GAP_FULL_ESCALATION` scans of 1.28--1.31 GiB, each taking
+  7.02--7.18 seconds. This proves the apparent PASS loop was a self-amplifying
+  capture stall: the broad recovery starved the callback tap and then missed
+  the next board. Active combat now disallows full-heap scans and caps the one
+  rotating learned-region fallback at 64 MiB per new ACK; the dispatcher tap
+  target interval is 1 ms.
+- Latest run `ab7e9331f5774a48b2da8549e2f7e77a` made 44,956 dispatcher
+  direct-root polls, of which 44,951 were stable, but retained only four move
+  boards. It observed six local turns and emitted only two policy decisions;
+  therefore the reported idle/Sword skip occurred before the solver. The same
+  log repeated 1,247 failed legacy payload decodes against a small set of old
+  `ChatMessageDTO` allocations.
+- The b2 mechanism behind the miss is now proven. Before enqueue,
+  `ChatService.OnWebSocketMessage` calls `MatchPayloadPreparser.Prepare`, whose
+  `PrepareBoard` stores a typed board at `ChatMessageDTO.preBoard +0x3C8` and
+  marks `preBoardReady +0x3D0`. Production now reads that exact class-checked
+  owner, samples its identity and owner fields before/after all 64 cells, and
+  binds the board to immutable raw `matchPayload.srvSeq`. Normal exact ACK and
+  stability gates remain mandatory. Legacy DTO failures are capped at two
+  attempts per allocation.
+- New run `c756bbc90fc64366802c7df3ade5f4ba` shows the remaining boundary:
+  29,179 tap polls retained sequence-6 and sequence-10 boss boards but missed
+  the sequence-14 callback completely. ACK advanced to 14 while the published
+  board stayed at 10; the visible Sword turn therefore reached neither the
+  decoder nor the policy. Successful captured DTOs had `preBoardReady=1`, so
+  this is callback lifetime loss rather than a `preBoard` layout failure.
+- The tap now samples the b2 typed current-owner roots at the same 1 ms cadence:
+  `MatchService.PendingCombat +0x1A8` and the provider-validated
+  `BoardWsApplier._pendingBatches +0x60`. MatchId/pointer and queue
+  owner/version/content are sampled before and after each strict 64-cell read.
+  Captured batches remain unusable until the exact ACK and all existing
+  stability/actionability checks pass.
+- That run also recorded 51 opening Rage proposals canceled before input even
+  though session, `srvSeq` and board hash were unchanged. The fast opening
+  preflight was replacing one valid pristine LastMove sentinel with another
+  (`None`/`-1`) and then treating the representation change as gameplay. It now
+  preserves the proven cached sentinel while separately validating that both
+  reads remain pristine.
+- The same run proves card scanning was not responsible:
+  `extended_card_ui_scans=0`, `card_owner_anchor_scans=0` and
+  `fusion_owner_anchor_scans=0`. Board transport and optional card discovery
+  remain separate, with card discovery deferred past the opening action and
+  cached owner/loadout evidence reused.
+- The user's 15:02:48 screenshot is now a replay fixture. At 135 Mana with the
+  runtime Fusion cost set to 120, BASIC chooses Evolution. If Fusion is already
+  complete, it swaps screen `(0,1)<->(1,1)` and collects Sword-3 at Step 2.
+  Thus the captured visible board is not a PASS board; end-to-end live capture
+  after the `preBoard` repair still awaits retest.
+- The user's 15:56:30 screenshot is a second replay fixture. With Fusion
+  already used, BASIC chooses Step 2 Sword and screen swap
+  `(0,4)<->(0,5)`, producing Sword-3. No formal PASS was logged for that live
+  turn because its board was never published.
+- Reverse b2 proves `Board.IsPlayerAllowedToMove` calls
+  `TurnAnnouncer.IsBlockingInput`. `TurnAnnouncer` TypeInfo RVA is `0x2DDAE68`,
+  `_blocking` is static-fields `+0x80`, `_blockDeadline` is `+0x84`, and the
+  hard block constant is 3 seconds. The provider reads `_blocking` through the
+  verified static-field chain and fails closed while it is true; it does not
+  invent a sleep or call Unity time.
+
+The first four findings come from immutable run logs and deterministic replay;
+the turn-delay finding comes from `TurnAnnouncer.cs`, `Board.cs`, exact TypeInfo
+mapping in `cpp/appdata/il2cpp-types-ptr.h`, and read-only disassembly of the
+hash-gated installed DLL. Production behavior still requires the user's live
+retest before Phase 2 can be accepted again. Final offline verification is
+**1160/1160 tests PASS**; `compileall` and `git diff --check` pass.
+
 ## Current b2 build — supersedes the historical profile below
 
 As of 2026-09-07 the active supported build is the exact 53,603,328-byte
@@ -18,11 +114,10 @@ card, with zero input. Full source validation is **1028/1028 PASS**. The C67
 profile and the detailed history below are retained only as historical evidence
 and are not allowlisted by the current single-profile runtime.
 
-Current status (2026-09-10): source integration, read-only boss-room/combat
-attachment and bounded full Pet Skill/QTE input are live validated through
-Phase 3B.3 B1-B4. Final v1.0.43 regression: 1083 PASS. See
-[phase3b3_closeout.md](phase3b3_closeout.md). The earlier retry/1028-test status
-above and C67 profile below are historical, not a pending live requirement.
+Current status (2026-09-11): the prior source integration and read-only runtime
+evidence remain valid, but Phase 2 default gameplay has a newly repaired live
+regression and is awaiting user retest. Phase 3 reports below remain historical
+technical evidence; they do not close this current Phase 2 repair.
 
 ## Exact input build
 
@@ -548,3 +643,50 @@ tracker call. This preserves the tracker API, adds no process read, and keeps
 projection errors isolated from gameplay. A regression test exercises the
 exact fast path. Source verification is **797/797 PASS**; live retry remains
 pending.
+
+## Unversioned Phase 2 repair — b2 ops-only ACK board fallback
+
+Run `4ea0b9f50cd54dc08d3bfdb984fd1f95` timed out three local turns
+without entering policy. The durable ACK watermark advanced beyond the most
+recent full-board DTO, so the provider waited for a same-sequence object that
+b2 was not required to create. Native `HandleResEnvelope` proves that combat
+responses can apply incremental `ops` and be acknowledged without carrying a
+replacement board.
+
+The provider now uses the current rendered 8x8 Dot grid only for this exact gap.
+It follows Board-owned GameObjects into signature-gated native component lists,
+requires one exact managed Dot per cell, reads b2 `PoolTag`/coordinate/
+multiplier fields, rejects every motion/render flag, and repeats all ownership
+plus ACK checks before publication. This is bounded to 64 current objects and
+removes the multi-second heap recovery from the normal path. Same-sequence DTO
+capture remains preferred.
+
+This repair has no version bump, commit or push because the default Phase 2
+live behavior is still under test. Offline checks pass. First live run
+`2f9116700bac4331b5830ab438983229` completed one STRONG/CONSISTENT win,
+accepted 5/5 native current-board reads with zero rejection, and executed a
+consuming action on all eight local turns with zero PASS. It also made three
+valid 120-mana Fusion requests; the server returned `success=false` and charged
+120 each time, so evolution did not complete in this sample. Phase closure
+remains pending user review.
+
+## b2 multi-match opening pause handoff
+
+Run `a588b67a29834419a9e8b351cfbed926` proved a tool-side cache defect exposed
+by b2's delayed opening clock. Attempt 1 won and evolved successfully. Attempt
+2 had an exact new MatchId, Board and 64-cell opening, and policy selected a
+safe Sword move at 13 seconds. No input was sent because opening preflight
+reused the first published MATCH_START battle envelope, which still contained
+the earlier `ClockPaused=true / FX` signal. It aborted the same valid decision
+41 times until the turn expired. The run contains zero formal PASS decisions.
+
+`MatchService.cs` in `reverse_1.7.4-b2` declares `ClockPaused +0x165`,
+`ClockPauseReason +0x168` and `_startGateSeen +0x178`; native
+`ApplyTimingFields` updates this state. The compatibility layer therefore keeps
+the pause gate. The correction is at the preflight cache boundary: it retains
+the current duplicate state's dynamic actionability fields instead of restoring
+the frozen first publication, then revalidates exact MatchService
+identity/turn/timer and the pristine opening sequence. No heap scan or input is
+added. Offline verification is **1165/1165 PASS**; multi-match live soak is
+pending. See
+[Phase 2 b2 multi-match incident](phase2_b2_multi_match_opening_incident.md).

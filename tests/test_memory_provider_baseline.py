@@ -10,7 +10,10 @@ from pokiguard_v2.memory_board_provider import (
     MemoryBoardStateProvider,
     MemoryProviderConfig,
     ProviderMetrics,
+    _blocking_board_modal_open,
     _combat_type_info_blocker,
+    _batch_has_current_session_witness,
+    _acknowledged_transport_source,
     _canonical_direct_card,
     _drop_session_volatile_learned_regions,
     _durable_non_board_fusion_transition,
@@ -39,10 +42,87 @@ from pokiguard_v2.memory_board_provider import (
 from pokiguard_v2.combat_cards import CardDataState
 from pokiguard_v2.actionability import ActionabilityGate, GateContext
 from pokiguard_v2.state import CombatSessionKey, FusionState
-from pokiguard_v2.il2cpp_external import MemoryRegion
-from pokiguard_v2.il2cpp_layout import BoardCellSnapshot, CombatBatchSnapshot
+from pokiguard_v2.il2cpp_external import (
+    IL2CPP_CLASS_STATIC_FIELDS_OFFSET,
+    MemoryRegion,
+    TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET,
+    TURN_ANNOUNCER_TYPE_INFO_RVA,
+)
+from pokiguard_v2.il2cpp_layout import (
+    BoardCellSnapshot,
+    CombatBatchSnapshot,
+    LayoutValidationError,
+)
 from pokiguard_v2.state import ParticipantState
 from tests.test_basic_policy import combat_state
+
+
+class TurnAnnouncerSignalTests(unittest.TestCase):
+    def test_reads_exact_verified_static_blocking_field(self) -> None:
+        klass = 0x20000001000
+        fields = 0x20000002000
+        resolver = Mock()
+        resolver.resolve_type_info_class.return_value = klass
+        resolver.read_pointer.return_value = fields
+        resolver.read_bool.return_value = True
+        memory = Mock()
+        memory.is_readable.return_value = True
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.target = SimpleNamespace(resolver=resolver, memory=memory)
+
+        self.assertTrue(provider._read_turn_announcer_blocking())
+
+        resolver.resolve_type_info_class.assert_called_once_with(
+            TURN_ANNOUNCER_TYPE_INFO_RVA
+        )
+        resolver.read_pointer.assert_called_once_with(
+            klass + IL2CPP_CLASS_STATIC_FIELDS_OFFSET
+        )
+        memory.is_readable.assert_called_once_with(
+            fields, TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET + 1
+        )
+        resolver.read_bool.assert_called_once_with(
+            fields + TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET
+        )
+
+    def test_missing_type_info_fails_closed(self) -> None:
+        resolver = Mock()
+        resolver.resolve_type_info_class.return_value = None
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider.target = SimpleNamespace(resolver=resolver, memory=Mock())
+
+        with self.assertRaisesRegex(
+            LayoutValidationError, "TurnAnnouncer type-info is unavailable"
+        ):
+            provider._read_turn_announcer_blocking()
+
+
+class BlockingBoardModalTests(unittest.TestCase):
+    def test_durable_legend_latch_does_not_block_board(self) -> None:
+        board = SimpleNamespace(
+            is_mega2_panel_open=False,
+            is_mega1_panel_open=False,
+            is_using_legend_card=True,
+            is_using_mega=False,
+        )
+
+        self.assertFalse(_blocking_board_modal_open(board))
+
+    def test_mega_execution_and_panels_remain_blocking(self) -> None:
+        names = (
+            "is_mega2_panel_open",
+            "is_mega1_panel_open",
+            "is_using_mega",
+        )
+        for name in names:
+            with self.subTest(name=name):
+                values = dict.fromkeys(names, False)
+                values[name] = True
+                board = SimpleNamespace(
+                    **values,
+                    is_using_legend_card=False,
+                )
+                self.assertTrue(_blocking_board_modal_open(board))
 
 
 class ExtendedFusionUiScanTests(unittest.TestCase):
@@ -265,6 +345,28 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
         identity = next(iter(provider._runtime_heap_attested))
         self.assertEqual(identity[1], 7)
         self.assertIn("RuntimeSequenceMonitor.WsCombatBatch", provider._sources[identity])
+
+    def test_fast_transient_batch_is_owner_attested_but_still_not_acked(self) -> None:
+        provider = MemoryBoardStateProvider.__new__(MemoryBoardStateProvider)
+        provider._session_key = CombatSessionKey(1, 0x100000, "M_fixture")
+        provider._session_batch_baseline = set()
+        provider._tracked = {}
+        provider._sources = {}
+        provider._owner_attested = set()
+        provider.metrics = ProviderMetrics()
+
+        batch = self._complete_batch(sequence=14)
+        self.assertTrue(
+            provider.offer_transient_runtime_batch(
+                batch, source="MatchService.PendingCombat"
+            )
+        )
+        identity = next(iter(provider._owner_attested))
+        self.assertEqual(identity[1], 14)
+        self.assertIn("MatchService.PendingCombat", provider._sources[identity])
+        self.assertFalse(
+            provider.offer_transient_runtime_batch(batch, source="unverified")
+        )
 
     def test_config_rejects_ack_heap_envelope_below_normal_scan(self) -> None:
         with self.assertRaises(ValueError):
@@ -1121,6 +1223,23 @@ class PresentationIdleGateTests(unittest.TestCase):
 
 
 class OwnerAckPromotionTests(unittest.TestCase):
+    def test_preparsed_transport_provenance_survives_ack_promotion(self) -> None:
+        source = (
+            "ChatMessageDTO.MATCH_MOVE_RES."
+            "preBoard+raw.matchPayload.srvSeq"
+        )
+
+        self.assertEqual(
+            _acknowledged_transport_source({source}),
+            source + "+MatchService._ackedSeqs",
+        )
+        self.assertEqual(
+            _acknowledged_transport_source(
+                {source, source + "+MatchService._ackedSeqs"}
+            ),
+            source + "+MatchService._ackedSeqs",
+        )
+
     def test_only_current_owner_capture_with_exact_ack_is_promoted(self) -> None:
         owned = (0x2000, 5, "owned")
         unowned = (0x3000, 5, "unowned")
@@ -1190,6 +1309,32 @@ class OwnerAckPromotionTests(unittest.TestCase):
             transport,
         )
 
+    def test_raw_runtime_heap_batch_cannot_be_bound_by_reused_ack_alone(self) -> None:
+        retained_old_match = (0x3000, 26, "old-match-board")
+        current_transport = (0x4000, 26, "current-match-board")
+
+        self.assertFalse(
+            _batch_has_current_session_witness(
+                retained_old_match,
+                runtime_heap_attested={retained_old_match},
+                current_session_strong=set(),
+            )
+        )
+        self.assertTrue(
+            _batch_has_current_session_witness(
+                retained_old_match,
+                runtime_heap_attested={retained_old_match},
+                current_session_strong={retained_old_match},
+            )
+        )
+        self.assertTrue(
+            _batch_has_current_session_witness(
+                current_transport,
+                runtime_heap_attested={retained_old_match},
+                current_session_strong={current_transport},
+            )
+        )
+
     def test_direct_owner_gets_bounded_capture_window_before_heap_scan(self) -> None:
         sequence = None
         polls = 0
@@ -1252,6 +1397,7 @@ class NonBoardFusionTransitionTests(unittest.TestCase):
             clock_paused=False,
             clock_pause_reason=None,
             start_gate_paused=False,
+            turn_announcer_blocking=False,
             local_move_sequence=local_sequence,
             last_move_from_col=4,
             last_move_from_row=7,

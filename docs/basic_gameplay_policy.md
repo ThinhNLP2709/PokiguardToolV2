@@ -1,5 +1,37 @@
 # Phase 2C.2A BASIC gameplay policy
 
+## 1.7.4-b2 Phase 2 repair — 2026-09-11
+
+The default `NORMAL / NORMAL / DEFAULT_ATTACK` run and ordinary Evolution are
+Phase 2 gameplay. The current repair is reopened and awaits a user live retest;
+it is not a Phase 3 acceptance or closeout.
+
+Reverse b2 adds a game-owned `TurnAnnouncer.IsBlockingInput` condition to
+`Board.IsPlayerAllowedToMove`. The provider now reads the exact static
+`TurnAnnouncer._blocking +0x80` through TypeInfo RVA `0x2DDAE68`; while true,
+actionability reports `PRESENTATION_BUSY`. It does not guess a fixed sleep.
+
+Two live failure classes are also separated. A policy `PASS` requires a fully
+published board and no proven safe move. An ACK whose exact board snapshot was
+missed is a transport-capture gap, so the dispatcher path attempts bounded
+raw-board, b2 typed `ChatMessageDTO.preBoard`, then legacy DTO-payload recovery
+and permits one 64 MiB rotating scan of regions
+learned before entry for that exact `(match, turn, ACK)`. Full heap scans are
+forbidden after a match becomes active, including PASS wait and opening
+preload. Technical deadline expiry is never relabeled as a third policy PASS.
+
+The user's 15:02:48 board is an exact policy regression fixture. Default
+Evolution at 135 Mana/current cost 120 proposes `EVOLVE`; after Fusion is used,
+the same state proposes screen `(0,1)<->(1,1)` at `STEP_2_SWORD`. The live
+failure had no policy decision for that turn, which classifies it as capture
+loss rather than a legal Sword move being ranked below PASS.
+
+Board capture does not perform card discovery. The opening action uses the
+lobby card expectation/cache; optional CardUI/FusionCardUI discovery begins
+only after the opening action and stays on its own validated owner path. The
+latest diagnostic run performed zero extended card, card-owner and
+fusion-owner scans while the slow board-recovery loop was reproduced.
+
 ## Scope
 
 This phase is proposal-only. `BasicPolicyEngine` produces `EVOLVE`, `CAST`,
@@ -40,7 +72,7 @@ A proposal requires a stable combat `GameState`, proven local turn,
 
 - `turn_duration_seconds`: `MatchService.TurnDurationSec +0x44`;
 - `turn_time_remaining_seconds`: latest server tick at
-  `MatchService.TurnTimeRemainingSec +0x118`;
+  `MatchService.TurnTimeRemainingSec +0x138`;
 - `turn_timer_source = MatchService.server_tick`.
 
 This is a coarse server-tick value, not the game's smooth UI getter. The latter
@@ -82,13 +114,15 @@ Sword indirectly. UNKNOWN exposure is checked in both directions: a spawned
 Sword may create a reply, and an adjacent Sword already present in the 64 known
 cells may move into a non-Sword refill slot to complete match-3.
 
-`safe` is conservative: the direct clear must be calculable (screen row 3 or
-lower), there must be no known direct or indirect deterministic opponent Sword
-reply, no disallowed hypothetical UNKNOWN Sword completion, and no concentrated
-collapse through a known Sword danger/support region. A top-area clear that
-introduces UNKNOWN refill is never promoted to safe merely because one
-hypothetical refill test found no Sword. The integer `danger_score` keeps the
-reasons visible; it is not a hidden boolean-only rule.
+`safe` requires no known direct or indirect deterministic opponent Sword reply
+and no disallowed hypothetical UNKNOWN Sword completion. `calculable` and
+collapse/support overlap remain visible in `danger_score` and candidate
+ranking; the broad support-region heuristic does not veto a move whose exact
+settled-board and UNKNOWN checks both prove zero effective Sword. A bounded
+horizontal refill may be accepted only under its existing one-cell-per-column
+rule. This distinction fixes the reported live board where a safe Mana swap
+had `collapse_support_hazard=2` but zero direct, indirect and UNKNOWN Sword
+reply.
 
 The unique-adverse-Sword exception has a separate `SwordHoldEvaluation`. A
 candidate must collect no Sword itself, and replaying every known boss Sword
@@ -147,6 +181,10 @@ general detector rather than a hard-coded coordinate case.
    cooldown cards without a live wrapper fail closed. Every CAST still needs
    current mana, current-turn capability, exact strip position, and a visual
    proof of that tile just before the normal foreground click.
+   After a successful evolution, exact current native CardUI/Button rectangles
+   resolve the ordinary selected-card slots independently of Pet Skill
+   discovery. A missing Pet Skill data pointer disables only Pet Skill; it does
+   not hide a separately owned and located Attack CardUI.
    Otherwise select safe Drain only when boss Mana >`boss_high_mana` and Rage
    >`boss_high_rage`, or safe Shield only when both are <`boss_low_resource`.
 
@@ -171,11 +209,15 @@ If exhaustive simulation finds zero legal swaps, the result is `EXIT_MATCH`.
 Phase 2C.2A only logs that proposal.
 
 For a failed Fusion attempt, BASIC does not permanently mark evolution as
-tried. The same turn is blocked by `LocalFusionLockedThisTurn`. A later proposal
-is allowed only after the server response and a fresh state where Fusion is
-unused, unlocked and actually actionable, with sufficient mana. Success,
-insufficient mana, or failed actionability stops the proposal. Phase 2C.2A.3.1
-still does not execute the proposal.
+tried. The same turn is blocked by `LocalFusionLockedThisTurn`. A terminal
+result is either an exact `MATCH_FUSION_RES` or the equivalent durable
+MatchService transition: a newly recorded current `LocalFusionLastAttemptTurn`,
+current-turn lock and `LocalFusionUsed=false`. After that terminal failure and
+the existing 3.5-second presentation settle, policy reads fresh state and may
+still choose a consuming SWAP/CAST in the same turn. A later EVOLVE proposal is
+allowed only on a fresh later turn where Fusion is unused, unlocked and actually
+actionable, with sufficient mana. Success, insufficient mana, or failed
+actionability stops the proposal.
 
 Runtime execution addendum (Stage B5): after a terminal EVOLVE response,
 policy is still evaluated in the same turn. If that decision is PASS, the
@@ -188,17 +230,32 @@ reread.
 
 If an input was sent but its response/ACK is not captured before the bounded
 deadline, the executor does not relabel it as rejected and does not resend the
-physical input. It may extend the read-only observation window once when the
-exact source turn is still local and has safe time remaining. Otherwise it
-records `ACTION_OUTCOME_UNCONFIRMED`, suppresses further input for that source
-turn, and waits for authoritative turn/AFK state. No local idle counter is
-incremented.
+physical input. EVOLVE may finish earlier when the exact durable success or
+failure transition above is present. Without a response or such a terminal
+equivalent, it may extend the read-only observation window once when the exact
+source turn is still local and has safe time remaining. Otherwise it records
+`ACTION_OUTCOME_UNCONFIRMED`, suppresses further input for that source turn, and
+waits for authoritative turn/AFK state. No local idle counter is incremented.
+
+For an intentional PASS, the callback dispatcher and the bounded response scan
+are both complete read-only observation paths. If MatchService has advanced
+through the opponent turn and returned to the next local turn, two complete
+samples without a correlated AFK payload terminate `PASS_WAIT` as
+`PASS_STATE_UNCONFIRMED`. Production B5 does not infer an idle count from that
+absence. It conservatively prohibits another PASS and EVOLVE, then requires a
+consuming SWAP/CAST on the current board; minimum-risk mandatory selection is
+used when no safe move exists. This breaks the possible idle chain while
+preserving server payloads as the only numeric idle source.
 
 ## Explicit fail-closed gaps
 
 - Game-owned consecutive-pass state is currently `UNKNOWN`. The client event
   carries `idleCount/threshold`, but this build does not persist it in a proven
   field. Autonomous PASS is therefore blocked; no local counter replaces it.
+- A healthy dispatcher poll is not proof that every callback was captured. If
+  the current ACK advances but its exact board is absent, one bounded recovery
+  attempt is permitted for that exact gap. Repeated full scans remain blocked,
+  and no missing snapshot is interpreted as “no safe move”.
 - Intermediate boss resource states are not defined by the user. If safe moves
   exist but no exact branch selects one, BASIC returns `NONE` with
   `BASIC_INTERMEDIATE_FALLBACK_UNDEFINED` instead of inventing a preference.

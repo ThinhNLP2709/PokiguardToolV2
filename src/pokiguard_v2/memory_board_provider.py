@@ -1,8 +1,9 @@
 """Read-only DTO-first state provider for the current hashed build.
 
-Publishable batches must be tied to the current match's persistent render-ACK
-set and must not exist in the pre-match lobby heap baseline. Dot is independent
-telemetry; incomplete Dot discovery cannot veto a valid 64-cell DTO snapshot.
+Publishable boards must be tied to the current match's persistent render-ACK
+set and current presentation. A complete same-sequence DTO remains preferred;
+when b2 acknowledges an ops-only response, the provider can instead decode all
+64 exact current Dot components through Board.allDots without a heap scan.
 """
 
 from __future__ import annotations
@@ -53,6 +54,7 @@ from .il2cpp_external import (
     CARD_UI_TYPE_INFO_RVA,
     DOT_TYPE_INFO_RVA,
     FUSION_CARD_UI_TYPE_INFO_RVA,
+    IL2CPP_CLASS_STATIC_FIELDS_OFFSET,
     MATCH_SERVICE_CURRENT_TURN_PLAYER_OFFSET,
     MATCH_SERVICE_CURRENT_MATCH_ID_OFFSET,
     MATCH_SERVICE_DEFERRED_WINNER_OFFSET,
@@ -74,6 +76,8 @@ from .il2cpp_external import (
     MATCH_SERVICE_TURN_NUMBER_OFFSET,
     MATCH_SERVICE_TURN_DURATION_SEC_OFFSET,
     MATCH_SERVICE_TURN_TIME_REMAINING_SEC_OFFSET,
+    TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET,
+    TURN_ANNOUNCER_TYPE_INFO_RVA,
     UNITY_UI_TEXT_VALUE_OFFSET,
     WS_COMBAT_BATCH_TYPE_INFO_RVA,
     ExternalReadError,
@@ -95,7 +99,11 @@ from .live_state import (
     to_board_state,
 )
 from .match_presence import read_left_actor_numbers
-from .gameplay_ui import RuntimeCardStripLayout, resolve_runtime_card_strip
+from .gameplay_ui import (
+    RuntimeCardStripLayout,
+    resolve_native_standard_card_strip,
+    resolve_runtime_card_strip,
+)
 from .native_card_ui import NativeCardUiReader, NativeCardHand
 from .memory_scan import (
     MEM_PRIVATE,
@@ -109,7 +117,7 @@ from .memory_scan import (
     validate_dot_pointer_hits,
 )
 from .player_stats import read_active_participants, read_match_local_actor_number
-from .opening_snapshot import OpeningBoardSnapshot
+from .opening_snapshot import OpeningBoardSnapshot, is_transport_board_source
 from .state import (
     BattleState,
     BoardStateProvider,
@@ -142,6 +150,22 @@ DIRECT_OWNER_BATCH_GRACE_POLLS = 1
 PET_SKILL_ELEMENT_TYPES = frozenset({"ATTACK_LEGEND", "ATTACK_LEGEND_"})
 
 
+def _blocking_board_modal_open(board: Any) -> bool:
+    """Return only modal states that block ordinary board input.
+
+    Phase 3C.0 retry 5 proved that ``is_using_legend_card`` can remain latched
+    through the next settled local turn after the Legend QTE has ended.  Keep
+    that exact field as telemetry, but do not let the durable latch deadlock
+    normal board play.  Mega execution and both Mega panels remain blockers.
+    """
+
+    return bool(
+        board.is_mega2_panel_open
+        or board.is_mega1_panel_open
+        or board.is_using_mega
+    )
+
+
 class RuntimeTargetLike(Protocol):
     memory: Any
     resolver: Any
@@ -167,6 +191,7 @@ class MemoryProviderConfig:
     max_anchor_region_mib: int = 128
     max_anchor_total_mib: int = 256
     allow_ack_heap_scan: bool = True
+    enable_dot_audit: bool = True
     ack_heap_region_mib: int | None = None
     extended_fusion_ui_region_mib: int | None = None
     extended_card_ui_region_mib: int | None = None
@@ -613,6 +638,9 @@ class ProviderMetrics:
     opening_snapshot_rejections: int = 0
     transient_capture_polls: int = 0
     transient_batches_captured: int = 0
+    native_dot_board_reads: int = 0
+    native_dot_boards_accepted: int = 0
+    native_dot_board_rejections: int = 0
     extended_fusion_ui_scans: int = 0
     extended_fusion_ui_bytes: int = 0
     extended_card_ui_scans: int = 0
@@ -690,6 +718,7 @@ class ActionRuntimeSignals:
     clock_paused: bool
     clock_pause_reason: str | None
     start_gate_paused: bool
+    turn_announcer_blocking: bool
     local_move_sequence: int
     last_move_from_col: int | None
     last_move_from_row: int | None
@@ -805,6 +834,51 @@ def _owner_batches_confirmed_by_ack(
         for identity in owner_attested
         if identity in tracked and identity[1] in ack_sequences
     }
+
+
+def _batch_has_current_session_witness(
+    identity: tuple[int, int, str],
+    *,
+    runtime_heap_attested: set[tuple[int, int, str]],
+    current_session_strong: set[tuple[int, int, str]],
+) -> bool:
+    """Reject a raw heap batch unless another path binds that exact object.
+
+    ``WsCombatBatch`` has no MatchId. Its sequence restarts in each combat, so
+    an old managed object can collide with the current MatchService ACK. A raw
+    RuntimeSequenceMonitor hit is therefore diagnostic only. The same identity
+    becomes usable only if a current Board owner or current-match transport DTO
+    independently attests it.
+    """
+
+    return (
+        identity not in runtime_heap_attested
+        or identity in current_session_strong
+    )
+
+
+def _acknowledged_transport_source(sources: set[str]) -> str:
+    """Preserve the exact transport decoder when ACK grants authority."""
+
+    ack_suffix = "+MatchService._ackedSeqs"
+    candidates = sorted(
+        source[: -len(ack_suffix)] if source.endswith(ack_suffix) else source
+        for source in sources
+        if any(
+            is_transport_board_source(source, event_type=event_type)
+            for event_type in {
+                "MATCH_MOVE_RES",
+                "MATCH_CARD_USE_RES",
+                "MATCH_SKILL_USE_RES",
+            }
+        )
+    )
+    base = (
+        candidates[-1]
+        if candidates
+        else "ChatMessageDTO.UNKNOWN.matchPayload.board"
+    )
+    return base + ack_suffix
 
 
 def _recovered_ack_epoch_view(
@@ -1295,6 +1369,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._owner_attested: set[tuple[int, int, str]] = set()
         self._transport_attested: set[tuple[int, int, str]] = set()
         self._runtime_heap_attested: set[tuple[int, int, str]] = set()
+        self._live_board_attested: set[tuple[int, int, str]] = set()
         self._ack_attested: set[tuple[int, int, str]] = set()
         self._lobby_batch_baseline: set[tuple[int, int, str]] = set()
         self._session_batch_baseline: set[tuple[int, int, str]] = set()
@@ -1337,6 +1412,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         )
         self._native_card_reader: NativeCardUiReader | None = None
         self._native_card_reason = "not_requested"
+        self._native_dot_reason = "not_requested"
         self._preentry_card_identity: tuple[tuple[int, int, str], ...] = ()
         self._preentry_attack_card_count = 0
         self._preentry_card_sources_agree: bool | None = None
@@ -1957,6 +2033,33 @@ class MemoryBoardStateProvider(BoardStateProvider):
         )
         return value or None
 
+    def _read_turn_announcer_blocking(self) -> bool:
+        """Read the b2 game-owned turn-announcement input block fail-closed."""
+
+        resolver = self.target.resolver
+        turn_announcer_class = resolver.resolve_type_info_class(
+            TURN_ANNOUNCER_TYPE_INFO_RVA
+        )
+        if turn_announcer_class is None:
+            raise LayoutValidationError("TurnAnnouncer type-info is unavailable")
+        turn_announcer_fields = resolver.read_pointer(
+            turn_announcer_class + IL2CPP_CLASS_STATIC_FIELDS_OFFSET
+        )
+        required_size = TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET + 1
+        if (
+            not is_canonical_user_pointer(turn_announcer_fields)
+            or not self.target.memory.is_readable(turn_announcer_fields, required_size)
+        ):
+            raise LayoutValidationError("TurnAnnouncer static fields are invalid")
+        # Native Board.IsPlayerAllowedToMove calls
+        # TurnAnnouncer.get_IsBlockingInput. That getter also checks Unity's
+        # unscaled time; its Runner clears this bool when the deadline expires.
+        # Reading the bool can conservatively block one extra frame but never
+        # invents a delay or opens input while the game's announcement owns it.
+        return resolver.read_bool(
+            turn_announcer_fields + TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET
+        )
+
     def _read_action_signals(self, match_service: int) -> ActionRuntimeSignals:
         """Read only native-proven fields; unavailable identity fails closed later."""
 
@@ -2009,6 +2112,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         )
         if resync_pointer and not is_canonical_user_pointer(resync_pointer):
             raise LayoutValidationError("MatchService resync pointer is invalid")
+        turn_announcer_blocking = self._read_turn_announcer_blocking()
 
         local_username: str | None = None
         connected: bool | None = None
@@ -2053,6 +2157,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             start_gate_paused=bool(
                 has_clock and clock_paused and clock_reason == "START_GATE"
             ),
+            turn_announcer_blocking=turn_announcer_blocking,
             local_move_sequence=local_move_sequence,
             last_move_from_col=last_move_coordinates[0],
             last_move_from_row=last_move_coordinates[1],
@@ -2177,6 +2282,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._owner_attested.clear()
         self._transport_attested.clear()
         self._runtime_heap_attested.clear()
+        self._live_board_attested.clear()
         self._ack_attested.clear()
         self._batch_scan_miss_seq = None
         self._ack_heap_region_cursor = 0
@@ -2202,6 +2308,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             False, 0, (), None, "new_combat_not_observed"
         )
         self._native_card_reason = "session_reset"
+        self._native_dot_reason = "session_reset"
         self._last_fusion = None
         self._last_memory_fusion_state = None
         self._local_actor_number = None
@@ -2260,6 +2367,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._owner_attested.clear()
         self._transport_attested.clear()
         self._runtime_heap_attested.clear()
+        self._live_board_attested.clear()
         self._ack_attested.clear()
         self._batch_scan_miss_seq = None
         self._optional_ui_region_cursor = 0
@@ -2313,6 +2421,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             False, 0, (), None, "combat_cleared"
         )
         self._native_card_reason = "session_reset"
+        self._native_dot_reason = "session_reset"
         self._last_fusion = None
         self._last_memory_fusion_state = None
         self._local_actor_number = None
@@ -2407,7 +2516,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             snapshot.cells,
         )
         identity = self._register(
-            candidate, f"ChatMessageDTO.{event_type}.matchPayload.board"
+            candidate, f"ChatMessageDTO.{event_type}.{snapshot.provenance}"
         )
         self._transport_attested.add(identity)
         return True
@@ -2416,9 +2525,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
         """Retain a structurally validated batch found by the shared DTO scan.
 
         The runtime monitor searches for the batch class in bytes it already
-        reads for sequence DTOs.  This method only binds that candidate to the
-        current session; publication still requires its exact sequence in
-        ``MatchService._ackedSeqs`` and all normal stability/actionability gates.
+        reads for sequence DTOs. ``WsCombatBatch`` contains no MatchId, so this
+        offer is diagnostic until the same exact identity is independently tied
+        to the current Board owner or current-match transport DTO. ACK equality
+        alone cannot bind it because server sequences restart every combat.
         """
 
         if (
@@ -2430,6 +2540,33 @@ class MemoryBoardStateProvider(BoardStateProvider):
             return False
         identity = self._register(batch, "RuntimeSequenceMonitor.WsCombatBatch")
         self._runtime_heap_attested.add(identity)
+        return True
+
+    def offer_transient_runtime_batch(
+        self, batch: CombatBatchSnapshot, *, source: str
+    ) -> bool:
+        """Bind a typed batch sampled from an exact current-owner runtime root.
+
+        The high-cadence sampler only retains a batch after stable MatchId and
+        owner checks. Publication remains fail-closed until ``poll`` observes
+        the exact sequence in ``MatchService._ackedSeqs`` and all normal board
+        stability and presentation gates pass.
+        """
+
+        if source not in {
+            "MatchService.PendingCombat",
+            "BoardWsApplier._pendingBatches",
+        }:
+            return False
+        if (
+            self._session_key is None
+            or batch.sequence < 0
+            or dto_rejection_reasons(batch.cells)
+            or batch_identity(batch) in self._session_batch_baseline
+        ):
+            return False
+        identity = self._register(batch, source)
+        self._owner_attested.add(identity)
         return True
 
     def capture_transient_batches(self) -> tuple[tuple[int, int, str], ...]:
@@ -2731,18 +2868,14 @@ class MemoryBoardStateProvider(BoardStateProvider):
             player.actor_number in left_actors if player is not None else None
         )
         local_turn = action_after.is_local_turn(current_turn_player)
-        modal_open = bool(
-            board_after.is_mega2_panel_open
-            or board_after.is_mega1_panel_open
-            or board_after.is_using_legend_card
-            or board_after.is_using_mega
-        )
+        modal_open = _blocking_board_modal_open(board_after)
         client_move_allowed = bool(
             not board_after.is_game_over
             and board_after.active is not None
             and bool(match_id)
             and local_has_left is not True
             and not action_after.start_gate_paused
+            and not action_after.turn_announcer_blocking
             and local_turn is True
             and not board_after.is_processing_ui
             and not board_after.has_destroyed_this_turn
@@ -2777,6 +2910,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 board_is_processing_ui=board_after.is_processing_ui,
                 board_is_game_over=board_after.is_game_over,
                 board_modal_open=modal_open,
+                board_is_using_legend_card=board_after.is_using_legend_card,
+                board_is_using_mega=board_after.is_using_mega,
+                board_is_mega1_panel_open=board_after.is_mega1_panel_open,
+                board_is_mega2_panel_open=board_after.is_mega2_panel_open,
                 board_is_resuming=board_after.is_resuming,
                 match_over=action_after.match_over,
                 deferred_game_over=action_after.deferred_game_over,
@@ -2789,7 +2926,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 connection_ready=action_after.connection_ready,
                 reconnecting=action_after.reconnecting,
                 match_resyncing=action_after.match_resyncing,
-                presentation_busy=False,
+                turn_announcer_blocking=action_after.turn_announcer_blocking,
+                presentation_busy=action_after.turn_announcer_blocking,
                 local_username=action_after.local_username,
                 is_local_turn=local_turn,
                 local_actor_number=(
@@ -2944,6 +3082,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 is_local_turn=signals.is_local_turn(current_player),
                 local_has_left_match=actor in left.actor_numbers,
                 board_is_game_over=board.is_game_over,
+                board_is_using_legend_card=board.is_using_legend_card,
+                board_is_using_mega=board.is_using_mega,
+                board_is_mega1_panel_open=board.is_mega1_panel_open,
+                board_is_mega2_panel_open=board.is_mega2_panel_open,
                 match_over=signals.match_over, deferred_game_over=signals.deferred_game_over,
                 connection_ready=signals.connection_ready, reconnecting=signals.reconnecting,
                 match_resyncing=signals.match_resyncing,
@@ -2955,7 +3097,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 board_current_state=board.current_state,
                 board_is_processing_ui=board.is_processing_ui,
                 board_is_resuming=board.is_resuming,
-                presentation_busy=signals.in_flight_batches > 0,
+                turn_announcer_blocking=signals.turn_announcer_blocking,
+                presentation_busy=bool(
+                    signals.in_flight_batches > 0
+                    or signals.turn_announcer_blocking
+                ),
                 clock_paused=signals.clock_paused,
                 start_gate_paused=signals.start_gate_paused,
             )
@@ -4302,23 +4448,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
         if non_board_fusion_poll is not None:
             return non_board_fusion_poll
         for identity in self._transport_attested | self._runtime_heap_attested:
-            if identity in self._tracked and identity[1] in ack_values:
+            if (
+                identity in self._tracked
+                and identity[1] in ack_values
+                and _batch_has_current_session_witness(
+                    identity,
+                    runtime_heap_attested=self._runtime_heap_attested,
+                    current_session_strong=current_session_strong,
+                )
+            ):
                 self._ack_attested.add(identity)
                 if identity in self._transport_attested:
-                    transport_sources = sorted(
-                        value
-                        for value in self._sources.get(identity, ())
-                        if value.startswith("ChatMessageDTO.")
-                        and value.endswith(".matchPayload.board")
-                    )
-                    source = (
-                        (transport_sources[-1] if transport_sources else
-                         "ChatMessageDTO.UNKNOWN.matchPayload.board")
-                        + "+MatchService._ackedSeqs"
+                    source = _acknowledged_transport_source(
+                        self._sources.get(identity, set())
                     )
                 else:
                     source = (
-                        "RuntimeSequenceMonitor.WsCombatBatch+"
+                        "RuntimeSequenceMonitor.WsCombatBatch+CurrentSessionWitness+"
                         "MatchService._ackedSeqs"
                     )
                 self._sources.setdefault(identity, set()).add(source)
@@ -4330,7 +4476,99 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
         )
         if effective_acked_highest is not None:
-            if self._batch_class is None:
+            have_highest = any(
+                identity[1] == effective_acked_highest
+                and (not recovery_ack_isolated or identity in current_session_strong)
+                for identity in self._ack_attested
+            )
+            # b2 acknowledges every rendered combat response, including
+            # responses whose payload contains only incremental ``ops`` and no
+            # replacement 8x8 board DTO.  Therefore the largest durable ACK is
+            # a presentation watermark, not proof that a same-sequence DTO
+            # must exist.  When that DTO is absent, reconstruct the current
+            # settled board through the exact Board.allDots ownership chain.
+            # This path is bounded to 64 current GameObjects and performs no
+            # heap scan or engine call.
+            native_dot_ready = bool(
+                not have_highest
+                and not recovery_ack_isolated
+                and not opening_board_action_priority
+                and self._dot_class is not None
+                and array_before is not None
+                and array_before.layout_verified
+                and len(array_before.elements) == 64
+                and len(valid_owners) == 1
+                and not valid_owners[0][0].render_running
+                and valid_owners[0][1].size == 0
+                and pending is None
+                and action_before.in_flight_batches == 0
+                and board.is_board_ready
+                and not board.is_cascade_running
+                and not board.is_processing_ui
+            )
+            if native_dot_ready:
+                self.metrics.native_dot_board_reads += 1
+                try:
+                    if self._native_card_reader is None:
+                        self._native_card_reader = NativeCardUiReader(
+                            self.target.memory,
+                            self.target.resolver.game_assembly_base,
+                        )
+                    native_board = self._native_card_reader.read_dot_board(
+                        board.board_instance,
+                        tuple(int(value) for value in array_before.elements),
+                        int(self._dot_class),
+                    )
+                    native_rejections = dto_rejection_reasons(native_board.cells)
+                    if native_rejections:
+                        raise LayoutValidationError(
+                            "native Dot board rejected: "
+                            + "; ".join(native_rejections)
+                        )
+                    # ACK must remain byte-for-byte stable across the complete
+                    # 64-Dot ownership walk. Otherwise the sampled board may
+                    # straddle a newly rendered response.
+                    acked_after_native = read_acked_sequences(
+                        self.target.memory, int(match_service)
+                    )
+                    self.metrics.ack_reads += 1
+                    if acked_after_native != acked:
+                        raise LayoutValidationError(
+                            "ACK set changed during native Dot board read"
+                        )
+                    live_batch = CombatBatchSnapshot(
+                        board.all_dots,
+                        effective_acked_highest,
+                        board.all_dots,
+                        native_board.cells,
+                    )
+                    live_identity = self._register(
+                        live_batch,
+                        "Board.allDots->GameObject.components->Dot.PoolTag+"
+                        "MatchService._ackedSeqs",
+                    )
+                    self._live_board_attested.add(live_identity)
+                    self._ack_attested.add(live_identity)
+                    current_session_strong.add(live_identity)
+                    have_highest = True
+                    self.metrics.native_dot_boards_accepted += 1
+                    self._native_dot_reason = (
+                        "current_settled_board_owned_and_ack_stable"
+                    )
+                except (
+                    ExternalReadError,
+                    OSError,
+                    LayoutValidationError,
+                    TypeError,
+                    ValueError,
+                ) as exc:
+                    self.metrics.native_dot_board_rejections += 1
+                    self._native_dot_reason = str(exc)
+                    rejection_details.append(f"nativeDot:{exc}")
+            elif not have_highest:
+                self._native_dot_reason = "presentation_not_ready_for_native_board"
+
+            if not have_highest and self._batch_class is None:
                 self._gate.observe(("batch_type_info_unavailable",), False)
                 return ProviderPoll(
                     None,
@@ -4339,11 +4577,6 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     lifecycle,
                     session_key=session_key,
                 )
-            have_highest = any(
-                identity[1] == effective_acked_highest
-                and (not recovery_ack_isolated or identity in current_session_strong)
-                for identity in self._ack_attested
-            )
             (
                 self._direct_owner_grace_seq,
                 self._direct_owner_grace_polls,
@@ -4588,18 +4821,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         (card.card_data, native_hand.slot_for_card(card.address))
                         for card in native_candidates
                     )
-                    skill_slot = next((slot for data, slot in slots
-                                       if data == current_pet_skill_data), None)
-                    resolved = bool(
-                        current_pet_skill_data is not None and skill_slot is not None
-                        and all(slot is not None for _, slot in slots)
-                        and len({data for data, _ in slots}) == len(slots)
-                    )
-                    card_layout = RuntimeCardStripLayout(
-                        resolved, len(native_hand.visible), slots if resolved else (),
-                        None, "current_native_cardui_rectangles" if resolved else
-                        "native_hand_pet_skill_missing_or_ambiguous",
-                        pet_skill_slot=skill_slot if resolved else None,
+                    card_layout = resolve_native_standard_card_strip(
+                        selected_card_data_addresses=selected_card_data,
+                        native_card_slots=slots,
+                        visible_card_count=len(native_hand.visible),
+                        pet_skill_card_data_address=current_pet_skill_data,
                     )
                 elif pet_skill_ui_discovery_expected:
                     card_layout = RuntimeCardStripLayout(
@@ -4756,6 +4982,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 for identity in eligible_identities
                 if identity[1] in ack_values
                 and identity not in self._session_batch_baseline
+                and _batch_has_current_session_witness(
+                    identity,
+                    runtime_heap_attested=self._runtime_heap_attested,
+                    current_session_strong=current_session_strong,
+                )
                 and not dto_rejection_reasons(self._tracked[identity].cells)
             ]
         if rejection_details:
@@ -4801,12 +5032,12 @@ class MemoryBoardStateProvider(BoardStateProvider):
         latest = [identity for identity in eligible if identity[1] == highest]
         selected = _select_latest_identity(
             latest,
-            # A raw WsCombatBatch found by the runtime monitor has no match-id
-            # field. Its sequence can therefore collide with a retained DTO
-            # from an earlier combat. It remains eligible when it is the sole
-            # hash, but must not overrule current-owner or current-session
-            # ChatMessageDTO evidence when hashes conflict.
-            self._owner_attested | self._transport_attested,
+            # Raw RuntimeSequenceMonitor batches cannot reach this set without
+            # an exact current-session witness. Prefer that witness whenever
+            # independently bound hashes conflict.
+            self._owner_attested
+            | self._transport_attested
+            | self._live_board_attested,
         )
         if selected is None:
             self.metrics.ambiguous_latest_skips += 1
@@ -4857,36 +5088,43 @@ class MemoryBoardStateProvider(BoardStateProvider):
             self.metrics.server_transitions += 1
         self._latest_identity = selected
         batch = self._tracked[selected]
-        # Dot discovery remains audit-only. Board.allDots contains GameObject
-        # references, not Dot component pointers, so no production board may
-        # be reconstructed from those references without a proven component
-        # traversal.
-        dots = (
-            self._current_dots(
-                board.board_instance,
-                array_before,
-                batch,
-                set(scan_matches.get("board", ())),
-            )
-            if self._dot_class is not None
-            else DotCandidateResult(
-                0,
-                (),
-                {},
-                tuple((row, col) for row in range(8) for col in range(8)),
-                {},
-            )
-        )
-        self._dot_pointer_hits = {
-            candidate.address + 0x48 for candidate in dots.candidates
-        }
-        check = dot_crosscheck(batch, dots)
-        if len(dots.by_coordinate) == 64 and not dots.duplicate_coordinates:
+        if selected in self._live_board_attested:
+            # The selected batch was itself decoded from all 64 exact Dot
+            # components. It is already a complete render crosscheck and must
+            # not pay for the older allocation-region audit scan.
+            self._dot_pointer_hits = {cell.address + 0x48 for cell in batch.cells}
+            check = RenderCrosscheck(64, (), (), ())
             self.metrics.dot_complete_polls += 1
         else:
-            self.metrics.dot_incomplete_polls += 1
+            dots = (
+                self._current_dots(
+                    board.board_instance,
+                    array_before,
+                    batch,
+                    set(scan_matches.get("board", ())),
+                )
+                if self._dot_class is not None and self.config.enable_dot_audit
+                else DotCandidateResult(
+                    0,
+                    (),
+                    {},
+                    tuple((row, col) for row in range(8) for col in range(8)),
+                    {},
+                )
+            )
+            self._dot_pointer_hits = {
+                candidate.address + 0x48 for candidate in dots.candidates
+            }
+            check = dot_crosscheck(batch, dots)
+            if len(dots.by_coordinate) == 64 and not dots.duplicate_coordinates:
+                self.metrics.dot_complete_polls += 1
+            else:
+                self.metrics.dot_incomplete_polls += 1
 
+        owner_after = None
+        queue_after = None
         owner_after_idle = False
+        native_ack_stable = selected not in self._live_board_attested
         try:
             board_after = self._resolve_board()
             array_after = (
@@ -4923,6 +5161,15 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     and not owner_after.render_running
                     and queue_after.size == 0
                 )
+            if selected in self._live_board_attested:
+                acked_after = read_acked_sequences(
+                    self.target.memory, int(match_service)
+                )
+                self.metrics.ack_reads += 1
+                native_ack_stable = bool(
+                    acked_after == acked
+                    and selected[1] in acked_after.sequences
+                )
         except (ExternalReadError, OSError, LayoutValidationError):
             board_after = None
             array_after = None
@@ -4951,6 +5198,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 action_after.in_flight_batches if action_after is not None else None
             ),
         )
+        if not presentation_idle:
+            owner_before = valid_owners[0][0] if len(valid_owners) == 1 else None
+            queue_before = valid_owners[0][1] if len(valid_owners) == 1 else None
+            rejection_details.append(
+                "presentation:"
+                f"owners={len(valid_owners)};"
+                f"renderBefore={getattr(owner_before, 'render_running', None)};"
+                f"queueBefore={getattr(queue_before, 'size', None)};"
+                f"renderAfter={getattr(owner_after, 'render_running', None)};"
+                f"queueAfter={getattr(queue_after, 'size', None)};"
+                f"selectedQueued={selected in queue_active};"
+                f"selectedPending={selected in active_pending};"
+                f"pendingBefore={pending is not None};"
+                f"pendingAfter={pending_after is not None};"
+                f"inFlightBefore={action_before.in_flight_batches};"
+                f"inFlightAfter={getattr(action_after, 'in_flight_batches', None)}"
+            )
         array_stable = bool(
             array_before is not None
             and array_after is not None
@@ -4982,6 +5246,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             and board.is_using_legend_card == board_after.is_using_legend_card
             and board.is_using_mega == board_after.is_using_mega
             and board.is_resuming == board_after.is_resuming
+            and native_ack_stable
         )
         try:
             model = to_board_state(batch.cells)
@@ -5061,18 +5326,14 @@ class MemoryBoardStateProvider(BoardStateProvider):
             player.actor_number in left_actors if player is not None else None
         )
         local_turn = action_before.is_local_turn(current_turn_player)
-        modal_open = bool(
-            board.is_mega2_panel_open
-            or board.is_mega1_panel_open
-            or board.is_using_legend_card
-            or board.is_using_mega
-        )
+        modal_open = _blocking_board_modal_open(board)
         client_move_allowed = bool(
             not board.is_game_over
             and board.active is not None
             and bool(match_id)
             and local_has_left is not True
             and not action_before.start_gate_paused
+            and not action_before.turn_announcer_blocking
             and local_turn is True
             and not board.is_processing_ui
             and not board.has_destroyed_this_turn
@@ -5118,6 +5379,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 board_is_processing_ui=board.is_processing_ui,
                 board_is_game_over=board.is_game_over,
                 board_modal_open=modal_open,
+                board_is_using_legend_card=board.is_using_legend_card,
+                board_is_using_mega=board.is_using_mega,
+                board_is_mega1_panel_open=board.is_mega1_panel_open,
+                board_is_mega2_panel_open=board.is_mega2_panel_open,
                 board_is_resuming=board.is_resuming,
                 match_over=action_before.match_over,
                 deferred_game_over=action_before.deferred_game_over,
@@ -5137,7 +5402,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 connection_ready=action_before.connection_ready,
                 reconnecting=action_before.reconnecting,
                 match_resyncing=action_before.match_resyncing,
-                presentation_busy=action_before.in_flight_batches > 0,
+                turn_announcer_blocking=action_before.turn_announcer_blocking,
+                presentation_busy=bool(
+                    action_before.in_flight_batches > 0
+                    or action_before.turn_announcer_blocking
+                ),
                 local_username=action_before.local_username,
                 is_local_turn=local_turn,
                 local_actor_number=(
@@ -5381,6 +5650,12 @@ class MemoryBoardStateProvider(BoardStateProvider):
         return self._current_board
 
     @property
+    def board_ws_owner_addresses(self) -> tuple[int, ...]:
+        """Return only roots already validated and cached by this provider."""
+
+        return tuple(sorted(self._board_ws_addresses))
+
+    @property
     def current_session_key(self) -> CombatSessionKey | None:
         return self._session_key
 
@@ -5414,6 +5689,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "ownerAttestedBatches": len(self._owner_attested),
             "transportAttestedBatches": len(self._transport_attested),
             "runtimeHeapAttestedBatches": len(self._runtime_heap_attested),
+            "liveBoardAttestedBatches": len(self._live_board_attested),
             "ackAttestedBatches": len(self._ack_attested),
             "lobbyBaselineBatches": len(self._lobby_batch_baseline),
             "sessionBaselineBatches": len(self._session_batch_baseline),
@@ -5427,6 +5703,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "directOwnerGracePolls": self._direct_owner_grace_polls,
             "directOwnerGraceLimit": DIRECT_OWNER_BATCH_GRACE_POLLS,
             "ackHeapEnabled": self.config.allow_ack_heap_scan,
+            "dotAuditEnabled": self.config.enable_dot_audit,
             "ackHeapScans": self.metrics.ack_batch_scans,
             "ackHeapRegionMiB": (
                 self.config.ack_heap_region_mib
@@ -5465,6 +5742,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "runtimeCardLayoutPetSkillSlot": self._last_card_layout.pet_skill_slot,
             "runtimeCardLayoutReason": self._last_card_layout.reason,
             "nativeCardDiscoveryReason": self._native_card_reason,
+            "nativeDotBoardReason": self._native_dot_reason,
+            "nativeDotBoardReads": self.metrics.native_dot_board_reads,
+            "nativeDotBoardsAccepted": self.metrics.native_dot_boards_accepted,
+            "nativeDotBoardRejections": self.metrics.native_dot_board_rejections,
             "livePetSkillCardIdentity": tuple(
                 sorted(
                     (

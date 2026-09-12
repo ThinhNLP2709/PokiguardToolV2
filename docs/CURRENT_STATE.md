@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-10 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-12 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,15 +24,203 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current completed phase | **Phase 3A.2 — PASS / Pet Configuration + Capability Model, v1.0.44** |
-| Active phase | **NONE — implementation/audit complete; awaiting user review** |
-| Current controller status | **STOPPED after bounded B3 fail-closed `COMBAT_TERMINAL_UNPROVEN`; no attempt 2** |
-| Current live automation | **NONE; Desktop/poller/Pet Skill harness stopped; game may remain running** |
+| Current accepted gameplay phase | **Phase 2 BASIC/default — reaccepted after clean 5/5 live completion** |
+| Active phase | **None — Phase 3C.0 is closed; Phase 3C.1 has not started** |
+| Phase 3 status | **Phase 3A.2 model and Phase 3C.0 continuation audit complete** |
+| Current controller status | **Phase 3C.0 retry 5 completed and harness stopped normally** |
+| Current live automation | **None** |
 
-## Phase 3A.2 — Pet Configuration + Capability Model
+## Phase 3C.0 — PASS STRONG
+
+Read [phase3c0_report.md](phase3c0_report.md) and
+[phase3c0_runbook.md](phase3c0_runbook.md). The audit executed exactly one
+already-accepted Pet Skill and then performed read-only observation through the
+next local turn. It separated `Board.isUsingLegendCard +0x391` from the three
+other known modal flags. A current session, local actor, source turn,
+inactive-QTE edge and fresh post-Perfect full board remained mandatory.
+
+B1a and retry 1 each produced a valid Huyền Thoại 7 runtime Perfect with 7/7
+confirmed directions and one Space. The skill killed Starburst from 49,620 HP
+and then from 69,276 HP. Both sessions ended before a fresh same-turn board, so
+those samples were inconclusive and sent zero post-Perfect input.
+`isUsingLegendCard` was already false in both exact control samples at Perfect.
+Retry 2 used the higher-HP boss and produced another valid Perfect: one click,
+7/7 directions and one Space at 3.154079 s. The boss still had
+248,555/509,272 HP at the last exact QTE sample, proving that the audit's
+ownership failure 0.246 s later was not evidence of a kill. The audit had
+called the full provider before retaining the exact post-Perfect control owner;
+the animation's temporary `Board`/`Active` gap invalidated the lifecycle epoch.
+Artifact:
+`logs/phase3c0_legend_card_continuation_20260912_live_b1_retry2_high_hp_boss.jsonl`.
+
+The corrected route now checks the exact control owner first, retains temporary
+post-Perfect gaps within the bounded wait without polling a full board, and
+allows a full provider publication only after that owner returns. It emits no
+post-Perfect input. Retry 3 timed out in the lobby after 30 minutes with no
+match, action or input.
+
+Retry 4 produced a valid Huyền Thoại 7 Perfect at source turn 23: one click,
+7/7 confirmed directions and one Space at 3.152554 s. The corrected route kept
+the same lifecycle and observed a proven-null QTE edge. Runtime advanced to
+boss turn 24 only 1.216 s after Perfect; the first stable board still had
+`isUsingLegendCard=true` while the three other known modal flags were false.
+This proves the skill ends the source turn. The audit was extended through the
+boss turn to classify the next fresh local turn, with a 60-second bound.
+There is currently no harness running. Artifacts:
+`logs/phase3c0_legend_card_continuation_20260912_live_b1_retry3_transient_fix.jsonl`.
+`logs/phase3c0_legend_card_continuation_20260912_live_b1_retry4_transient_fix.jsonl`.
+Retry artifact:
+`logs/phase3c0_legend_card_continuation_20260912_live_b1_retry1.jsonl`.
+
+Retry 5 closed the audit in match `M_d5a467a1`. It produced a runtime Perfect
+with one click, 7/7 confirmed directions and one Space at 3.152790 seconds.
+The next settled local turn 19 still had `isUsingLegendCard=true`, while
+`isUsingMega=false`, both Mega panels were closed and every other gate passed.
+The former aggregate returned `MODAL_OPEN`; removing only the Legend contributor
+returned `PASS`. No post-Perfect gameplay input was emitted.
+
+Production `board_modal_open` now excludes this proven durable Legend latch and
+continues to include Mega execution and both Mega panels. Exact Legend telemetry
+and every presentation/cascade/clock/turn/lifecycle check remain intact.
+Correction-focused tests are **103/103 PASS** and full regression is
+**1189/1189 PASS**; compileall and diff check pass. No FarmRunner Pet Skill
+integration, push, package or version bump was made. Artifact:
+`logs/phase3c0_legend_card_continuation_20260912_live_b1_retry5_next_local_turn.jsonl`.
+
+The user accepted this evidence and authorized the phase commit on 2026-09-12.
+Phase 3C.0 is closed at **PASS STRONG**. Phase 3C.1 requires a new scope; it has
+not been started automatically.
+
+## Phase 2 b2 compatibility repair — live retest accepted
+
+FarmRun `cddb3de3caef45dd8042d07cc28aab62` completed five attempts as five
+strong, consistent wins and returned to `BOSS_LOBBY`. It recorded 50 SWAPs,
+five CASTs, six evolution attempts, one policy PASS, no technical recovery,
+no safe stop and consistent result/attempt accounting. The user accepted this
+5/5 run as stable default behavior and authorized the next phase.
+
+## Historical Phase 2 b2 compatibility repair investigation
+
+The relevant immutable runs include
+`logs/farm_runs/e354ad0b878f4959838b3e07c4fbdcf0`,
+`logs/farm_runs/2b7ce245380c45848285ad087ef86ea7` and
+`logs/farm_runs/bef23282eac3461bb6ca629e36f63537`. The latest diagnostic
+runs are `logs/farm_runs/ab7e9331f5774a48b2da8549e2f7e77a` and
+`logs/farm_runs/c756bbc90fc64366802c7df3ade5f4ba`.
+
+Findings:
+
+- Evolution is already runtime-driven at 120 Mana. The earlier run proposed it
+  at player Mana 154, sent cost 120, and received exact
+  `MATCH_FUSION_RES success=false`. The latest run had Mana 114 at the relevant
+  turns, below 120, so not evolving there was correct.
+- On the reported sequence-40/45 board, `(5,0)<->(5,1)` is a legal Mana x3
+  move with zero direct, indirect and UNKNOWN Sword reply. The former support
+  overlap veto (`collapse_support_hazard=2`) incorrectly removed it. Support
+  overlap now contributes only to risk ranking, and an exact replay regression
+  requires BASIC Step 3 Mana SWAP instead of PASS.
+- The last run recorded only two formal PASS actions. On the next local turn,
+  ACK advanced to 50 while the latest published board remained sequence 47;
+  controller expiry sent no input and the server counted the effective third
+  idle. The dispatcher now falls back from rejected raw JSON board shape to the
+  same callback's DTO payload. The subsequent diagnostic run below proves that
+  escalating this gap recovery to a full heap scan was itself unsafe.
+- Run `bef23282eac3461bb6ca629e36f63537` recorded 11 local turns, six sent and
+  acknowledged SWAPs, **zero policy PASS actions** and a user F9 stop. The
+  visible idle turns were technical board-publication gaps, not solver PASS:
+  every unresolved ACK launched a 1.28--1.31 GiB scan lasting 7.02--7.18
+  seconds. Eleven such scans starved the high-cadence dispatcher and repeatedly
+  missed the following board callback. The lobby baseline had retained 197
+  candidate regions / 169.75 MiB, so even the first learned-neighbour pass was
+  too broad before it escalated process-wide.
+- Active combat now forbids every full-heap transport scan, including opening
+  preload, post-entry fallback and PASS wait. The dispatcher tap samples at a
+  1 ms target interval and remains the primary source. One exact missing ACK
+  may scan only a rotating window of lobby-learned regions capped at 64 MiB;
+  an unchanged `(match, turn, ACK)` cannot repeat that work. Broad discovery
+  remains confined to the pre-entry lobby boundary.
+- The latest run proves the remaining Sword/evolution failure was still not a
+  policy PASS. It observed six local turns but emitted only two
+  `policy_decision` records and two acknowledged Rage swaps; the other four
+  local turns never received a publishable board. The dispatcher made 44,956
+  bounded direct-root polls (44,951 stable, five torn), yet retained only four
+  move boards. It also repeated 1,247 decodes of five/six old DTO allocations
+  whose legacy payload no longer contained `board/srvSeq`.
+- Reverse b2 explains that exact pattern. `ChatService.OnWebSocketMessage`
+  calls `MatchPayloadPreparser.ShouldPrepare/Prepare` before dispatcher enqueue;
+  `PrepareBoard` moves the typed `BoardCellDTO[8][8]` into
+  `ChatMessageDTO.preBoard +0x3C8` and sets `preBoardReady +0x3D0`. The old
+  raw/`matchPayload` readers ignored this b2 owner. The tap now combines the
+  same callback's class-checked, stable `preBoard` with immutable raw
+  `matchId/type/matchPayload.srvSeq`, then still requires the exact
+  `MatchService._ackedSeqs` value before publication. Failed legacy DTO
+  allocations are retired after one retry instead of being decoded throughout
+  the match.
+- Run `c756bbc90fc64366802c7df3ade5f4ba` disproves the assumption that the
+  `preBoard` fallback alone closes every gap. The tap made 29,179 polls (29,099
+  stable), decoded boards only for boss responses at sequences 6 and 10, and
+  never observed the sequence-14 callback. ACK reached 14 while the published
+  board remained at 10. The user's 15:56:30 screenshot is that missing local
+  turn and visibly contains Sword; no policy decision or formal PASS exists for
+  it. The successful sequence-6/10 DTOs had non-null `preBoardReady=1`; sampled
+  local response DTOs normally had `preBoard=0/preBoardReady=0`. Therefore the
+  decoder was valid, but the required callback itself was absent from the
+  sampled dispatcher roots.
+- The 1 ms tap now also samples the two typed owners already declared by the b2
+  reverse output: `MatchService.PendingCombat +0x1A8` and
+  `BoardWsApplier._pendingBatches +0x60`. PendingCombat is accepted only across
+  stable current MatchId/pointer reads. A queued batch additionally requires a
+  provider-validated BoardWsApplier address, exact class/Board/bootstrapped
+  MatchId, and identical queue address/version/content before and after its
+  64-cell read. Retention alone gives no action authority: provider publication
+  still requires the exact sequence in `MatchService._ackedSeqs` plus normal
+  stability and presentation gates.
+- The same run found a separate opening defect. At turn 1, BASIC repeatedly
+  chose a safe Rage swap, but the final preflight emitted 51
+  `ACTION_ABORTED_STATE_CHANGED` results with the same session, sequence and
+  board hash, then the turn expired. The opening handoff allowed both `None`
+  and `-1` as equivalent pristine LastMove sentinels but copied the latest raw
+  representation into the fresh state, invalidating the otherwise identical
+  action identity. The preflight now preserves the already proven cached
+  pristine representation; a regression proves `None` versus `-1` cannot
+  cancel the same opening action.
+- Card and board acquisition remain separate. In the diagnostic run,
+  `extended_card_ui_scans`, `card_owner_anchor_scans` and
+  `fusion_owner_anchor_scans` were all zero. The opening turn used the lobby
+  card expectation/cache; optional current UI discovery remained deferred
+  until after the opening action. Card discovery did not cause the 7-second
+  stalls.
+- At game turn 21 the player had 367 Mana, but authoritative idle was already
+  2/3. Existing Phase 2 safety therefore correctly required a turn-consuming
+  SWAP/CAST; Evolution does not consume the turn and could not satisfy that
+  reset. The absence of earlier evolution proposals came from missing
+  publishable boards or insufficient Mana, rather than a retained 160 cost.
+- The 15:02:48 screenshot is transcribed as a deterministic regression board.
+  With the shown 135 Mana and current 120 cost, default Phase 2 selects
+  `EVOLVE`. With Fusion already used, the same board selects Step 2 Sword,
+  swapping screen `(0,1)<->(1,1)` for Sword-3. This proves BASIC does not PASS
+  that board when it receives it; the live log proves it did not receive that
+  board in the affected local turn.
+- The 15:56:30 screenshot is also a deterministic regression board. With
+  Fusion already used, BASIC selects Step 2 Sword and swaps screen
+  `(0,4)<->(0,5)` to collect Sword-3. This further localizes the incident to
+  board capture rather than policy ranking.
+- Reverse b2 proves the new turn announcement gate: `Board.IsPlayerAllowedToMove`
+  calls `TurnAnnouncer.IsBlockingInput`; TypeInfo RVA is `0x2DDAE68`, static
+  `_blocking +0x80`, deadline `+0x84`. The provider reads the game-owned bool
+  and blocks input while true instead of guessing a delay.
+
+Focused regression for the repaired policy, capture, actionability and provider
+paths passed at that checkpoint. Offline verification was **1160/1160 tests
+PASS** with compileall and diff check passing. This historical pre-live status
+is superseded by the accepted 5/5 Phase 2 run and Phase 3C.0 closeout above.
+
+## Historical Phase 3A.2 implementation record
 
 Read [phase3a2_report.md](phase3a2_report.md) and
-[phase3a2_runbook.md](phase3a2_runbook.md). Source `v1.0.44` replaces the
+[phase3a2_runbook.md](phase3a2_runbook.md) as historical implementation
+evidence only. At that checkpoint the phase had not yet been accepted. Source
+`v1.0.44` replaces the
 operator-facing `ManaPriority` with typed Main Pet, Evolution target/mode and
 Damage-card fields. Preferences v2 and checkpoint v2 persist the immutable
 profile. v1 migrations map old EVOLUTION and ATTACK to the two exact BASIC
@@ -52,10 +240,8 @@ main lobby before memory/UI proved a terminal result; FarmRunner correctly
 stopped `COMBAT_TERMINAL_UNPROVEN`. Completed count stayed zero and final
 lifecycle was `LOBBY_OTHER`, so this phase is PASS but not PASS STRONG.
 
-`Board.isUsingLegendCard` full-game reset semantics remain **UNKNOWN** and must
-be audited before continuous Pet Skill plus board-policy integration. The next
-smallest safe phase, only after a new prompt, is **Phase 3C.0 — Legend-Card
-Busy-State + Same-Turn Continuation Audit**.
+At that checkpoint, `Board.isUsingLegendCard` reset semantics were **UNKNOWN**.
+Phase 3C.0 above has now resolved that uncertainty and closed the bounded audit.
 
 ## Phase 3B.3 final closeout — 2026-09-10
 
@@ -3180,3 +3366,150 @@ leaving 1.593--1.670 seconds headroom. Manual Space results were one PERFECT and
 two GOOD. Pet Skill card clicks and Space/Enter remain fully manual and their
 automated counts are zero. See the [Phase 3B.2 report](phase3b2_report.md) and
 [live runbook](phase3b2_runbook.md).
+
+## Phase 2 b2 ops-only ACK repair — chưa chốt, live test 1 PASS (2026-09-11)
+
+FarmRun `4ea0b9f50cd54dc08d3bfdb984fd1f95` bị game xử lý như bỏ ba
+lượt liên tiếp ở local turn 9/11/13. Đây không phải policy chọn PASS: log không
+có `policy_decision` ở ba lượt đó và toàn run có `auto_pass_started=0`,
+`pass_required=0`, `policy_no_safe_move=0`. Bốn input trước đó đều được ACK.
+Provider đã dừng trước policy vì ACK tăng `21 -> 24 -> 26 -> 28` trong khi full
+board DTO cuối cùng giữ sequence 21.
+
+Reverse b2 xác minh `HandleResEnvelope` có thể apply combat `ops` và ACK response
+mà không kèm full 8x8 board. Giả định cũ “highest ACK phải có full-board DTO cùng
+sequence” vì vậy sai với b2. ACK vẫn bền và đúng vai trò render watermark.
+
+Provider hiện ưu tiên exact DTO như cũ. Khi latest ACK thiếu DTO, nó đọc trực
+tiếp đúng 64 Dot hiện hành qua
+`Board.allDots -> GameObject native components -> managed Dot`. Mỗi object,
+component, class, Board owner, coordinate, `PoolTag`, multiplier và motion flag
+được kiểm tra hai lần; ACK HashSet, Board flags, queue/render/pending/in-flight
+và toàn bộ allDots cũng phải bất biến. Đường này không heap scan, không gọi hàm
+game và không nới bất kỳ actionability gate nào. Unit test mới bao phủ board
+đủ 64 ô, Dot đang chuyển động và mutation giữa hai sample.
+
+Live run `2f9116700bac4331b5830ab438983229` hoàn thành một trận setting
+mặc định với kết quả **WIN / STRONG / UI-memory CONSISTENT**. Cả 8 local turn
+đều có hành động tiêu thụ lượt, formal PASS bằng 0. Native current-board path
+đọc 5 lần, accept 5, reject 0; không có read error, DTO rejection, stale hoặc
+ambiguous publication. Đây là live proof đầu tiên rằng ops-only ACK không còn
+làm policy bị đói bàn rồi hết giờ.
+
+Trận này gửi ba EVOLVE ở turn 7/9/11 với mana trước lần lượt 180/150/120 và
+runtime cost 120. Cả ba nhận exact current-match `MATCH_FUSION_RES
+success=false`, `LocalFusionUsed` vẫn false, và mana sau phản hồi giảm đúng
+120 thành 60/30/0. Vì vậy click/request và điều kiện `mana >= 120` đều đúng;
+game xử lý ba lần tiến hóa thất bại theo cơ chế xác suất. `evolve_success=0`,
+không có Pet Skill sau tiến hóa. Sau mỗi failure tool đọc fresh state rồi SWAP
+trong cùng lượt như policy quy định.
+
+Phase 2 vẫn chưa được chốt và không có commit/push/version bump. Một live run
+đã xác nhận sửa lỗi bỏ lượt; quyết định cần thêm soak hay chốt phase thuộc bước
+review tiếp theo.
+
+## Phase 2 b2 multi-match opening preflight repair — chờ live soak (2026-09-11)
+
+FarmRun `a588b67a29834419a9e8b351cfbed926` chạy target 5 / attempts 8. Trận 1
+WIN / STRONG / CONSISTENT, tiến hóa thành công và formal PASS bằng 0. Trận 2
+vào đúng session mới nhưng local turn đầu hết giờ; lượt local kế tiếp SWAP mana
+được ACK, sau đó người dùng F9.
+
+Đây không phải policy chọn PASS và cũng không phải provider thiếu bàn. Policy
+đã chọn Sword an toàn lúc còn 13 giây. Preflight sau đó hủy cùng nước 41 lần
+với `CLOCK_PAUSED/FX` đến hết lượt. Vòng chính dùng current duplicate state đã
+unpause, còn opening preflight lấy `provider.last_published_state` đóng băng từ
+MATCH_START lúc game vẫn đang pause trước khi đồng hồ bắt đầu.
+
+Preflight nay dùng chính current provider state rồi mới refresh exact
+MatchService identity/turn/timer. Board MATCH_START vẫn được cache, không thêm
+scan; actionability của game vẫn được giữ và không click trong khoảng pause thật.
+Offline regression là **1165/1165 PASS**. Cần live multi-match soak trước khi
+chốt Phase 2; không commit/push/version bump. Xem
+[báo cáo sự cố](phase2_b2_multi_match_opening_incident.md).
+
+## Phase 2 b2 PASS_WAIT lock repair — chờ live soak (2026-09-12)
+
+FarmRun `dcd4bc3c6d55430abee17139c4257e67` thắng bốn attempt đầu. Attempt 5
+chọn một formal PASS hợp lệ ở turn 13 nhưng sau đó `PASS_WAIT` giữ khóa qua
+turn 15 và 17 của local; hai lượt ấy không hề chạy policy hay gửi input, rồi
+game đưa người chơi về lobby. Match 4 thực tế đã WIN; UI `Completed 4/5` là số
+trận hoàn thành trước attempt lỗi.
+
+Nguyên nhân là dispatcher callback mới trả observation không heap scan với
+`scan_performed=false`, trong khi coordinator cũ chỉ công nhận heap scan là
+một mẫu AFK hoàn chỉnh. Nếu payload AFK ngắn bị lỡ, coordinator không thể thoát
+dù MatchService đã quay lại lượt local. Đây không phải board/solver/ACK failure:
+attempt lỗi có sáu SWAP trước đó đều ACK và toàn run có 0 provider read/DTO/
+stale/ambiguous error.
+
+Production B5 nay công nhận cả dispatcher sample và bounded scan. Sau hai mẫu
+ở lượt local kế tiếp mà AFK vẫn không tương quan, nó kết thúc trạng thái chờ,
+giữ numeric idle là UNKNOWN và bắt buộc SWAP/CAST để cắt chuỗi zero-input.
+Không có AFK không được diễn giải thành idle 0/1/2. Các stage acceptance khác
+vẫn fail closed như cũ. Focused regression **122/122 PASS**, full regression
+**1167/1167 PASS**. Phase 2 vẫn chưa chốt; cần live target 5 / attempts 8 để
+xác nhận. Xem [báo cáo sự cố](phase2_b2_pass_wait_lock_incident.md).
+
+## Phase 2 b2 missed EVOLVE response repair — chờ live soak (2026-09-12)
+
+FarmRun `71526bd08c114d02b42a90129d60c2b1` thắng hai attempt đầu; attempt 3
+được F9 sau khi người dùng thấy tool bỏ kiếm ở local turn thứ 6, game turn 11.
+Toàn run có formal PASS bằng 0 và provider có 0 read/DTO/stale/ambiguous error.
+
+Ở turn lỗi policy chọn EVOLVE lúc còn 13 giây, mana 210 và runtime cost 120.
+Khoảng một giây sau input, exact MatchService state đã ghi bền vững
+`LocalFusionLastAttemptTurn=11`, `LocalFusionLockedThisTurn=true` và
+`LocalFusionUsed=false`, nhưng không giữ được transient `MATCH_FUSION_RES`.
+Controller cũ chỉ nhận durable success, nên tiếp tục chờ response thất bại bị
+hụt đến gần hết lượt và không chạy lại policy cho nước Sword.
+
+Controller nay nhận một last-attempt mới đúng source turn, current-turn lock và
+`used=false` là terminal `EVOLVE_FAILED`, đúng với native `HandleFusionRes`.
+Sau settle trình bày 3.5 giây, nó đọc fresh board và tiếp tục cùng-turn policy;
+không retry EVOLVE, không đoán idle state. Focused regression **108/108 PASS**,
+full regression **1168/1168 PASS**. Phase 2 vẫn chưa chốt; cần live multi-match
+soak xác nhận. Xem
+[báo cáo sự cố](phase2_b2_evolve_response_miss_incident.md).
+
+## Phase 2 b2 cross-match raw batch repair — chờ live soak (2026-09-12)
+
+FarmRun `ff774dfb07134ca68789f46a25aed264` thắng bốn trận đầu. Attempt 5 bị F9
+sau một Sword SWAP đã gửi nhưng không được game nhận. Formal PASS toàn run bằng
+0 và provider không có read/DTO/stale/ambiguous error.
+
+Evidence xác nhận board chéo trận: attempt 4 kết thúc ở `srvSeq=26` với hash
+`9b5ad414...febe` và policy Sword `(5,0)<->(5,1)`. Attempt 5 sau đó dùng đúng
+sequence, đúng hash và đúng move ở turn 13. Nguồn duy nhất là standalone
+`RuntimeSequenceMonitor.WsCombatBatch`; object không có MatchId/Board owner/
+transport witness nhưng được ACK 26 của trận mới cấp quyền nhầm. Click vì vậy
+dựa trên board cũ và không tạo swap trên board thật.
+
+Raw heap batch nay không được ACK-attest hoặc vào eligible set nếu thiếu exact
+current-session witness. Nó chỉ còn telemetry; latest ACK thiếu DTO sẽ dùng
+bounded current `Board.allDots` fallback hoặc fail closed. Provider-focused
+regression **68/68 PASS**, full regression **1169/1169 PASS**. Phase 2 vẫn chưa
+chốt; cần live multi-match soak. Xem
+[báo cáo sự cố](phase2_b2_cross_match_heap_batch_incident.md).
+
+## Phase 2 b2 post-Fusion Attack-slot repair — chờ live soak (2026-09-12)
+
+FarmRun `f6af5b106e2949b7990ec52c2648dc7a` thắng ba attempt đầu. Attempt 4,
+MatchId `M_721352fb`, tiến hóa thành công ở turn 13 nhưng không CAST lần nào.
+Từ turn 15, game vẫn có ba selected CardUI chuẩn và native hand bốn ô, nhưng
+pet hiện tại không xuất bản `FusionSkillCardData` pointer. Provider cũ buộc
+layout thẻ thường phụ thuộc vào pet-skill identity nên xóa slot của Chưởng.
+
+Ở turn 25 boss đã còn 23.124 HP, mana 560 và Chưởng cost 160; policy vẫn loại
+Chưởng chỉ vì `uiLocated=false`. Sau nhiều SWAP, turn 35/37 tạo hai formal PASS
+khi board không có safe move dù Chưởng vẫn hợp lệ trên giao diện. Turn Sword
+trong ảnh cuối không bị bỏ: policy gửi Sword lúc `19:45:07.493Z`; F9 đến sau
+khi game chuyển turn.
+
+Provider nay tách hai capability: exact native CardUI rectangles của toàn bộ
+`selectedCards` đủ cấp slot cho thẻ thường; pet skill vẫn fail closed riêng nếu
+identity/slot của nó chưa được chứng minh. Dynamic CardUI gates và visual
+preflight trước click vẫn giữ nguyên. Focused regression **111/111 PASS** và
+bốn suite liên quan **206/206 PASS**; full regression **1172/1172 PASS**.
+Phase 2 vẫn chưa chốt; cần live soak để xác nhận post-EVOLVE finisher CAST. Xem
+[báo cáo sự cố](phase2_b2_post_fusion_attack_card_slot_incident.md).

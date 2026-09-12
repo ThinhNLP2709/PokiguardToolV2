@@ -355,7 +355,7 @@ class AuthoritativePassTests(unittest.TestCase):
             current_turn=5,
             is_local_turn=True,
             current_local_move_sequence=2,
-            scan_complete_for_next_local_turn=True,
+            response_observation_complete_for_next_local_turn=True,
         )
         self.assertIsNone(result)
         result = controller.observe_runtime(
@@ -367,7 +367,7 @@ class AuthoritativePassTests(unittest.TestCase):
             current_turn=5,
             is_local_turn=True,
             current_local_move_sequence=2,
-            scan_complete_for_next_local_turn=True,
+            response_observation_complete_for_next_local_turn=True,
         )
         self.assertEqual(result.result, PassResultKind.PASS_STATE_UNCONFIRMED)
 

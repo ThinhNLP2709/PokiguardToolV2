@@ -56,14 +56,17 @@ class QteControlPollTests(unittest.TestCase):
         p._lifecycle_tracker.observe(CombatLifecycleState.ACTIVE, SESSION_A.board_instance, SESSION_A.match_id)
         self.board = SimpleNamespace(accepted=True, board_instance=SESSION_A.board_instance,
             active=0x9000, is_game_over=False, is_board_ready=True,
-            is_cascade_running=False, current_state=1, is_processing_ui=False, is_resuming=False)
+            is_cascade_running=False, current_state=1, is_processing_ui=False,
+            is_using_legend_card=True, is_using_mega=False,
+            is_mega1_panel_open=False, is_mega2_panel_open=False,
+            is_resuming=False)
         p._resolve_board = Mock(return_value=self.board)
         p._resolve_match_service = Mock(return_value=0xA000)
         p._read_string_field = Mock(return_value=SESSION_A.match_id)
         self.signals = SimpleNamespace(local_username="local", connection_ready=True,
             reconnecting=False, match_resyncing=False, match_over=False, deferred_game_over=False,
             is_local_turn=lambda _: True, in_flight_batches=0, clock_paused=False,
-            start_gate_paused=False)
+            start_gate_paused=False, turn_announcer_blocking=False)
         p._read_action_signals = Mock(return_value=self.signals)
         self.lifecycle = CombatLifecycleObservation(CombatLifecycleState.ACTIVE,
             CombatLifecycleSignals(), "test_current")
@@ -93,12 +96,26 @@ class QteControlPollTests(unittest.TestCase):
         self.assertTrue(result.control_battle.is_board_ready)
         self.assertEqual(result.control_battle.board_current_state, 1)
         self.assertFalse(result.control_battle.is_cascade_running)
+        self.assertFalse(result.control_battle.turn_announcer_blocking)
         self.assertFalse(result.control_battle.board_is_processing_ui)
+        self.assertTrue(result.control_battle.board_is_using_legend_card)
+        self.assertFalse(result.control_battle.board_is_using_mega)
+        self.assertFalse(result.control_battle.board_is_mega1_panel_open)
+        self.assertFalse(result.control_battle.board_is_mega2_panel_open)
         self.assertFalse(result.control_battle.board_is_resuming)
         self.assertFalse(result.control_battle.presentation_busy)
         self.assertFalse(result.control_battle.clock_paused)
         self.assertFalse(result.control_battle.start_gate_paused)
         self.assertEqual(p._resolve_board.call_count, 2)
+
+    def test_turn_announcement_is_exposed_as_qte_presentation_busy(self):
+        self.signals.turn_announcer_blocking = True
+
+        result = self.provider.poll_qte_control(SESSION_A)
+
+        self.assertEqual(result.reason, "qte_control_only")
+        self.assertTrue(result.control_battle.turn_announcer_blocking)
+        self.assertTrue(result.control_battle.presentation_busy)
 
     def test_missing_session_does_not_read_stale_roots(self):
         result = self.provider.poll_qte_control(SESSION_B)

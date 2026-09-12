@@ -1,5 +1,57 @@
 # Phase 2C.1 actionability signals
 
+## Current 1.7.4-b2 correction — 2026-09-11
+
+This section supersedes the historical field offsets later in this document.
+The current default-gameplay repair remains Phase 2 and awaits live retest.
+
+| Signal | Exact b2 source | Gate behavior |
+|---|---|---|
+| Render ACK | `MatchService._ackedSeqs +0x1B8` | selected `srvSeq` must be current and ACK-attested |
+| Board move state | `Board.active +0x168`, `currentState +0x78`, `hasDestroyedThisTurn +0x125`, `isProcessingUI +0x1E0`, `isGameOver +0x2E0` | reproduce the corresponding native move checks |
+| Start/clock gate | `HasServerClock +0x164`, `ClockPaused +0x165`, `ClockPauseReason +0x168` | paused/start gate blocks input |
+| Turn timer | `TurnDurationSec +0x44`, `TurnTimeRemainingSec +0x138` | exact integer server tick; missing/invalid fails closed |
+| Connection/recovery | `ChatService isConnected +0x28`, explicit disconnect `+0x2D4`, reconnect coroutine `+0x2D8`, connecting `+0x2E4`; `MatchService` resync `+0x1F0` | unavailable/disconnected/recovering blocks input |
+| Presentation batches | `MatchService._inFlightBatches +0x1B0` | positive value gives `PRESENTATION_BUSY` |
+| New turn announcement | `TurnAnnouncer` TypeInfo RVA `0x2DDAE68` -> static fields -> `_blocking +0x80` | true gives `PRESENTATION_BUSY` and `client_move_allowed=false` |
+| Board modal/action flags | Mega-2 `+0x129`, Mega `+0x398`, resume `+0x3B0`, Mega-1 `+0x470` | active Mega/modal/action transition blocks normal board input |
+| Legend telemetry | Legend `+0x391` | retained for Pet Skill/QTE state; does not alone block a settled ordinary board |
+
+Reverse b2 declares `_blockDeadline +0x84` and `HARD_BLOCK_SEC=3`. Native
+`Board.IsPlayerAllowedToMove` calls `TurnAnnouncer.get_IsBlockingInput` at RVA
+`0x3D3870`. The external provider reads the static `_blocking` bool only. The
+game Runner clears it after the deadline, so this may conservatively block one
+extra frame but cannot open input early. No fixed wait is guessed.
+
+An ACK can advance for an ops-only combat response that has no replacement
+8x8 board DTO. In that case the provider reads the current rendered board by
+the exact bounded chain `Board.allDots -> GameObject native components -> Dot`.
+All 64 Dot components must have the exact Dot class, current Board owner,
+unique coordinates, known `PoolTag`, valid multiplier and no motion/render flag.
+The entire chain and ACK HashSet are sampled twice. A missing/unstable result is
+state unavailability; it never becomes a policy PASS.
+
+### Phase 3C.0 exact modal telemetry and durable-latch correction — 2026-09-12
+
+`BattleState` exposes the four exact b2 flags:
+
+- `board_is_using_legend_card` from `Board +0x391`;
+- `board_is_using_mega` from `Board +0x398`;
+- `board_is_mega1_panel_open` from `Board +0x470`;
+- `board_is_mega2_panel_open` from `Board +0x129`.
+
+Live retry 5, match `M_d5a467a1`, proved that `isUsingLegendCard` remains true
+through the boss turn and into the next settled local turn after a runtime
+Perfect. On local turn 19, all three Mega/modal flags were false and every
+other gate passed; the former aggregate returned `MODAL_OPEN`, while removing
+only the Legend contributor returned `PASS`.
+
+The production `board_modal_open` aggregate therefore contains Mega execution,
+Mega1 panel and Mega2 panel only. Exact Legend state remains available as
+telemetry and for the dedicated Pet Skill/QTE control path. Presentation,
+cascade, clock, turn, lifecycle and board-state gates continue to block input
+during the actual Legend animation. See [phase3c0_report.md](phase3c0_report.md).
+
 ## Phase 2C.2A.4 terminal override
 
 `SEQUENCE_DESYNC` is now evaluated before every gameplay permission below. A
@@ -12,17 +64,18 @@ This document records every signal used to authorize one normal Windows
 two-click board swap.  The controller fails closed: a missing or inconsistent
 required signal produces a non-actionable `GateReason`.
 
-All offsets below are for the currently inspected Pokiguard build. Runtime
-objects are resolved through verified IL2CPP static/type-info chains using
-`GameAssembly.dll base + RVA`; no absolute ASLR-dependent address is stored.
+Offsets below this correction are retained as historical Phase 2C.1 evidence.
+Runtime objects are resolved through verified IL2CPP static/type-info chains
+using `GameAssembly.dll base + RVA`; no absolute ASLR-dependent address is
+stored.
 
 ## Current snapshot and session
 
 | Requirement | Runtime source | Authorization rule | Evidence/confidence |
 |---|---|---|---|
 | Combat exists | resolved `Board.Instance` and current `(epoch, Board*, matchId)` session key | Board must exist and the snapshot session must equal the provider's current session | Phase 2B.5 runtime lifecycle; HIGH |
-| Production board | `WsCombatBatch.board : BoardCellDTO[][]` | exactly 64 unique coordinates, exact known tags, multipliers in x1..x4 | `memory_board_hardening.md`; PASS STRONG |
-| Current/acknowledged | `MatchService._ackedSeqs : HashSet<Int64>` at `+0x180` | selected `srvSeq` must be the highest valid ACK-attested batch for the session | `MatchService.SendAnimAck`; PASS STRONG |
+| Production board | preferred `WsCombatBatch.board : BoardCellDTO[][]`; b2 ops-only fallback `Board.allDots -> GameObject -> Dot` | exactly 64 unique coordinates, exact known tags, multipliers in x1..x4; direct fallback additionally requires exact component/Board ownership and settled Dot flags | `memory_board_hardening.md`; HIGH, first live run 5/5 accepted |
+| Current/acknowledged | `MatchService._ackedSeqs : HashSet<Int64>` at b2 `+0x1B8` | selected sequence must equal the highest stable ACK watermark; the board may be a same-sequence DTO or the double-sampled rendered Dot board after that ACK | b2 `HandleResEnvelope`/`SendAnimAck`; HIGH, first live run passed |
 | Stable/rendered | `BoardWsApplier` owner/queue/render state, `Board.allDots` reference-array stability, identical DTO/hash confirmation twice | publisher must label the state stable, ready and non-cascade | Phase 2B.5 acceptance; PASS STRONG |
 
 `ActionabilityGate` also requires a valid 64-character SHA-256 `boardHash`,

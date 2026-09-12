@@ -33,6 +33,14 @@ from tools.idle_state_watch import (
 from tools.lifecycle_idle_watch import _message_identity, _message_sort_key
 
 
+# The immutable dispatcher callback is the primary transport source. A missed
+# ACK may fall back to lobby-learned allocation regions, but the active combat
+# path must not traverse the full managed heap. The 2026-09-11 b2 run measured
+# 1.28--1.31 GiB / 7.0--7.2 s for one such escalation; 64 MiB keeps recovery
+# within a short sampling window and rotates on later ACK identities.
+ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES = 64 * 1024 * 1024
+
+
 @dataclass(frozen=True)
 class RuntimeSequenceObservation:
     runtime: MatchRuntime
@@ -106,6 +114,47 @@ def _learned_regions_with_allocator_neighbors(
     return tuple(current[index] for index in sorted(indexes))
 
 
+def _rotating_regions_within_byte_budget(
+    regions: Iterable[Any],
+    *,
+    max_bytes: int,
+    start_index: int = 0,
+) -> tuple[tuple[Any, ...], int]:
+    """Select one deterministic rotating window without splitting regions.
+
+    The production combat monitor uses this only after a lobby baseline has
+    identified likely transport allocations. Rotation lets later ACK gaps
+    cover the rest of that evidence while bounding any single callback-
+    recovery pause. The budget is soft for one oversized region so the cursor
+    can always make progress; production regions are already capped below the
+    combat budget by ``_regions``.
+    """
+
+    if max_bytes <= 0:
+        raise ValueError("region scan byte budget must be positive")
+    ordered = tuple(sorted(regions, key=lambda region: region.base))
+    if not ordered:
+        return (), 0
+    if sum(region.size for region in ordered) <= max_bytes:
+        return ordered, 0
+
+    index = start_index % len(ordered)
+    selected: list[Any] = []
+    selected_bytes = 0
+    visited = 0
+    while visited < len(ordered):
+        region = ordered[index]
+        if selected and selected_bytes + region.size > max_bytes:
+            break
+        selected.append(region)
+        selected_bytes += region.size
+        index = (index + 1) % len(ordered)
+        visited += 1
+        if selected_bytes >= max_bytes:
+            break
+    return tuple(selected), index
+
+
 def _transport_gap_scan_identity(
     runtime: MatchRuntime,
     *,
@@ -170,6 +219,8 @@ class RuntimeSequenceMonitor:
         self._last_gap_scan_identity: tuple[str, int, int] | None = None
         self._last_gap_scan_stage = 0
         self._periodic_full_pending = False
+        self._transport_baseline_observed = False
+        self._bounded_region_cursor = 0
 
     def begin_session(self, session_key: Any, match_id: str, *, clean: bool) -> bool:
         accepted = self.tracker.begin_session(session_key, match_id, clean=clean)
@@ -185,6 +236,8 @@ class RuntimeSequenceMonitor:
             self._last_gap_scan_identity = None
             self._last_gap_scan_stage = 0
             self._periodic_full_pending = False
+            self._transport_baseline_observed = False
+            self._bounded_region_cursor = 0
             self.events = SequenceEventRing(50)
         return accepted
 
@@ -298,6 +351,114 @@ class RuntimeSequenceMonitor:
             )
         return self.prime_regions()
 
+    def observe_captured_messages(
+        self,
+        messages: Iterable[ServerMessage],
+        *,
+        session_key: Any,
+        match_id: str,
+        turn: int | None,
+        srv_seq: int | None,
+        timestamp: str,
+        runtime: MatchRuntime,
+    ) -> tuple[tuple[ServerMessage, ...], bool]:
+        """Apply exact dispatcher messages to the normal sequence tracker.
+
+        The caller must establish a stable dispatcher-root read before using
+        this entry point. MatchId is checked again here, every message goes
+        through the same deduplication/classification path as heap-discovered
+        DTOs, and malformed or stale-session objects remain invisible.
+        """
+
+        if runtime.match_id != match_id:
+            return (), False
+        self._transport_baseline_observed = True
+        fresh: list[ServerMessage] = []
+        for message in sorted(messages, key=_message_sort_key):
+            if message.match_id != match_id:
+                continue
+            identity = _message_identity(message)
+            if identity in self._seen:
+                continue
+            self._seen.add(identity)
+            fresh.append(message)
+
+        first = False
+        for message in fresh:
+            strings = dict(message.payload_strings)
+            ints = dict(message.payload_ints)
+            code = (
+                ints.get("errorCode")
+                or ints.get("code")
+                or strings.get("errorCode")
+                or strings.get("code")
+            )
+            signal = classify_sequence_signal(
+                event_type=message.event_type,
+                reject_code=code,
+                reject_reason=message.reject_reason,
+                fallback_text=(
+                    strings.get("reason")
+                    or strings.get("error")
+                    or strings.get("message")
+                ),
+            )
+            self.events.append(
+                {
+                    "timestamp": timestamp,
+                    "event": "server_match_message",
+                    "session": session_key,
+                    "turn": turn,
+                    "srvSeq": srv_seq,
+                    "localMoveSequence": runtime.local_move_sequence,
+                    "lastMoveSequence": runtime.last_move_sequence,
+                    "highestAckedSequence": runtime.highest_acked_sequence,
+                    "message": message,
+                    "sequenceSignal": signal,
+                }
+            )
+            first = self.tracker.observe(
+                signal,
+                timestamp=timestamp,
+                session_key=session_key,
+                match_id=match_id,
+                turn=turn,
+                srv_seq=srv_seq,
+                root_telemetry=SequenceRootTelemetry.observed(
+                    observed_client_sequence=runtime.local_move_sequence,
+                    current_server_sequence=srv_seq,
+                    highest_acked_sequence=runtime.highest_acked_sequence,
+                    last_move_sequence=runtime.last_move_sequence,
+                ),
+            ) or first
+        return tuple(fresh), first
+
+    def needs_transport_gap_recovery(
+        self,
+        runtime: MatchRuntime,
+        *,
+        published_srv_seq: int | None,
+        available_board_sequences: Iterable[int] = (),
+    ) -> bool:
+        """Request one legacy Phase-2 scan for an uncaptured local-turn board.
+
+        A healthy dispatcher proves that its roots are readable; it does not
+        prove that every board-bearing callback survived strict decoding. The
+        gap scan remains bounded by the monitor's exact ``(match, turn, ACK)``
+        identity, so a missing board cannot start repeated heap scans.
+        """
+
+        identity = _transport_gap_scan_identity(
+            runtime,
+            published_srv_seq=published_srv_seq,
+        )
+        if identity is None:
+            return False
+        available = frozenset(int(value) for value in available_board_sequences)
+        if runtime.highest_acked_sequence in available:
+            return False
+        return identity != self._last_gap_scan_identity
+
     def poll(
         self,
         *,
@@ -309,6 +470,8 @@ class RuntimeSequenceMonitor:
         force_full_scan: bool = False,
         enable_gap_full_scan: bool = True,
         allow_gap_full_escalation: bool = False,
+        allow_full_scan: bool = True,
+        max_scan_bytes: int | None = None,
         available_board_sequences: Iterable[int] = (),
         offered_board_message_addresses: Iterable[int] = (),
     ) -> RuntimeSequenceObservation:
@@ -359,6 +522,7 @@ class RuntimeSequenceMonitor:
         gap_full_escalation = bool(
             enable_gap_full_scan
             and allow_gap_full_escalation
+            and allow_full_scan
             and gap_scan_identity is not None
             and gap_scan_identity
             == getattr(self, "_last_gap_scan_identity", None)
@@ -373,25 +537,29 @@ class RuntimeSequenceMonitor:
             and runtime.current_player.casefold()
             == runtime.local_username.casefold()
         )
+        effective_force_full_scan = bool(force_full_scan and allow_full_scan)
         periodic_due = bool(
             self._scans % self.full_rescan_interval == 0
             or getattr(self, "_periodic_full_pending", False)
         )
         periodic_refresh = bool(
             periodic_due
-            and (not runtime_local_turn or force_full_scan)
+            and (not runtime_local_turn or effective_force_full_scan)
         )
         self._periodic_full_pending = bool(periodic_due and not periodic_refresh)
         full = bool(
-            force_full_scan
-            or not self._learned_regions
-            or gap_full_escalation
+            allow_full_scan
+            and (
+                effective_force_full_scan
+                or not self._learned_regions
+                or gap_full_escalation
+            )
         )
         if full:
             self._periodic_full_pending = False
         scan_reason = (
             "EXPLICIT_FORCE"
-            if force_full_scan
+            if effective_force_full_scan
             else "LOCAL_TURN_ACK_GAP_FULL_ESCALATION"
             if gap_full_escalation
             else "LOCAL_TURN_ACK_GAP_BOUNDED"
@@ -433,6 +601,14 @@ class RuntimeSequenceMonitor:
             )
         else:
             selected = current_learned
+        if not full and max_scan_bytes is not None:
+            selected, self._bounded_region_cursor = (
+                _rotating_regions_within_byte_budget(
+                    selected,
+                    max_bytes=max_scan_bytes,
+                    start_index=getattr(self, "_bounded_region_cursor", 0),
+                )
+            )
         scan_started = time.perf_counter()
         needles = {"chat_message": int(self._dto_class)}
         batch_class = getattr(self, "_batch_class", None)
@@ -481,6 +657,7 @@ class RuntimeSequenceMonitor:
         immediate_gap_escalation = bool(
             gap_refresh
             and allow_gap_full_escalation
+            and allow_full_scan
             and not full
             and runtime.highest_acked_sequence not in available_sequences
             and runtime.remaining is not None
@@ -547,10 +724,8 @@ class RuntimeSequenceMonitor:
                 # transient batch becomes unreadable during validation.
                 combat_batches = ()
 
-        messages: list[ServerMessage] = []
         board_messages: list[ServerMessage] = []
         for address, message in sorted(decoded.items()):
-            identity = _message_identity(message)
             if (
                 message.event_type in {"MATCH_START", "MATCH_MOVE_RES"}
                 and message.payload_address is not None
@@ -565,62 +740,18 @@ class RuntimeSequenceMonitor:
                 # current-match DTO pointer while the surrounding combat
                 # session is active; consumers always revalidate its memory.
                 self._current_match_start = message
-            if identity in self._seen:
-                continue
-            self._seen.add(identity)
-            messages.append(message)
-
-        first = False
-        for message in sorted(messages, key=_message_sort_key):
-            strings = dict(message.payload_strings)
-            ints = dict(message.payload_ints)
-            code = (
-                ints.get("errorCode")
-                or ints.get("code")
-                or strings.get("errorCode")
-                or strings.get("code")
-            )
-            signal = classify_sequence_signal(
-                event_type=message.event_type,
-                reject_code=code,
-                reject_reason=message.reject_reason,
-                fallback_text=(
-                    strings.get("reason")
-                    or strings.get("error")
-                    or strings.get("message")
-                ),
-            )
-            self.events.append(
-                {
-                    "timestamp": timestamp,
-                    "event": "server_match_message",
-                    "session": session_key,
-                    "turn": turn,
-                    "srvSeq": srv_seq,
-                    "localMoveSequence": runtime.local_move_sequence,
-                    "lastMoveSequence": runtime.last_move_sequence,
-                    "highestAckedSequence": runtime.highest_acked_sequence,
-                    "message": message,
-                    "sequenceSignal": signal,
-                }
-            )
-            first = self.tracker.observe(
-                signal,
-                timestamp=timestamp,
-                session_key=session_key,
-                match_id=match_id,
-                turn=turn,
-                srv_seq=srv_seq,
-                root_telemetry=SequenceRootTelemetry.observed(
-                    observed_client_sequence=runtime.local_move_sequence,
-                    current_server_sequence=srv_seq,
-                    highest_acked_sequence=runtime.highest_acked_sequence,
-                    last_move_sequence=runtime.last_move_sequence,
-                ),
-            ) or first
+        messages, first = self.observe_captured_messages(
+            decoded.values(),
+            session_key=session_key,
+            match_id=match_id,
+            turn=turn,
+            srv_seq=srv_seq,
+            timestamp=timestamp,
+            runtime=runtime,
+        )
         return RuntimeSequenceObservation(
             runtime,
-            tuple(messages),
+            messages,
             first,
             self._current_match_start,
             tuple(board_messages),
@@ -635,13 +766,17 @@ class RuntimeSequenceMonitor:
 
     @property
     def has_scanned(self) -> bool:
-        """Whether at least one current-match DTO baseline scan completed."""
+        """Whether one current-match transport baseline completed."""
 
-        return self._scans > 0
+        return self._scans > 0 or getattr(
+            self, "_transport_baseline_observed", False
+        )
 
 
 __all__ = [
+    "ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES",
     "RuntimeRegionPrime",
     "RuntimeSequenceMonitor",
     "RuntimeSequenceObservation",
+    "_rotating_regions_within_byte_budget",
 ]

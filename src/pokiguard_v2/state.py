@@ -185,6 +185,13 @@ class BattleState:
     board_is_processing_ui: bool | None = None
     board_is_game_over: bool | None = None
     board_modal_open: bool | None = None
+    # Keep the exact native modal contributors as telemetry.  The blocking
+    # aggregate excludes the durable Legend latch; live Phase 3C.0 retry 5
+    # proved that it can remain true into the next settled local turn.
+    board_is_using_legend_card: bool | None = None
+    board_is_using_mega: bool | None = None
+    board_is_mega1_panel_open: bool | None = None
+    board_is_mega2_panel_open: bool | None = None
     board_is_resuming: bool | None = None
     match_over: bool | None = None
     deferred_game_over: bool | None = None
@@ -203,6 +210,7 @@ class BattleState:
     connection_ready: bool | None = None
     reconnecting: bool | None = None
     match_resyncing: bool | None = None
+    turn_announcer_blocking: bool | None = None
     presentation_busy: bool | None = None
     local_username: str | None = None
     is_local_turn: bool | None = None

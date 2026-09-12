@@ -171,11 +171,16 @@ class ActionabilityGate:
                 GateReason.BOARD_NOT_MOVE_STATE,
                 boardCurrentState=battle.board_current_state,
             )
-        if battle.board_is_processing_ui is True or battle.presentation_busy is True:
+        if (
+            battle.board_is_processing_ui is True
+            or battle.presentation_busy is True
+            or battle.turn_announcer_blocking is True
+        ):
             return cls._reject(
                 GateReason.PRESENTATION_BUSY,
                 boardProcessingUi=battle.board_is_processing_ui,
                 presentationBusy=battle.presentation_busy,
+                turnAnnouncerBlocking=battle.turn_announcer_blocking,
             )
         if battle.board_has_destroyed_this_turn is True:
             return cls._reject(GateReason.TURN_ALREADY_RESOLVING)

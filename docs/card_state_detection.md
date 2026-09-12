@@ -193,11 +193,14 @@ Runtime click placement is loadout-independent. The provider reads the ordered
 creation sequence is ordinary selected cards, Fusion when a fusion pet is
 selected, then the optional fusion-pet skill card. Live standard-pet combat and
 lobby evidence separately establishes the visual order: Fusion is leftmost and
-ordinary cards retain `selectedCards` list order after it. Each canonical card
-and Fusion state receives `ui_slot/ui_slot_count` only when list shape, pointer
-identity, and rendered count agree. Pet-specific skill layout support is
-explicitly deferred; detecting its pointer leaves every card slot unresolved.
-Missing, deferred, or ambiguous layout data disables only card input and
+ordinary cards retain `selectedCards` list order after it. Before evolution,
+each canonical card and Fusion state receives `ui_slot/ui_slot_count` only when
+list shape, pointer identity, and rendered count agree. After evolution, each
+ordinary card uses its exact current `cardsInHand -> GameObject -> CardUI/Button
+-> RectTransform` slot. Pet Skill identity and geometry remain a separate
+capability: missing or ambiguous Pet Skill evidence disables only that skill,
+while a fully validated ordinary-card mapping remains usable. Missing or
+ambiguous ordinary-card geometry disables only ordinary card input and
 preserves board-only gameplay.
 
 The additional exact `CardData` fields are `description +0x28`, `value +0x38`,

@@ -90,7 +90,7 @@ class AuthoritativePassCoordinator:
         self._last_confirmed_pass_source_turn: int | None = None
         self._turn_end_observed = False
         self._pending_direct_idle: GameOwnedIdleState | None = None
-        self._next_local_scans = 0
+        self._next_local_response_observations = 0
 
     @property
     def attempt(self) -> PassAttempt | None:
@@ -123,7 +123,7 @@ class AuthoritativePassCoordinator:
             self._last_confirmed_pass_source_turn = None
             self._turn_end_observed = False
             self._pending_direct_idle = None
-            self._next_local_scans = 0
+            self._next_local_response_observations = 0
             self.state = PassWaitState.IDLE
 
     def clear_session(self) -> None:
@@ -134,7 +134,7 @@ class AuthoritativePassCoordinator:
         self._last_confirmed_pass_source_turn = None
         self._turn_end_observed = False
         self._pending_direct_idle = None
-        self._next_local_scans = 0
+        self._next_local_response_observations = 0
         self.state = PassWaitState.IDLE
 
     def start(
@@ -208,7 +208,7 @@ class AuthoritativePassCoordinator:
         self._terminal = None
         self._turn_end_observed = False
         self._pending_direct_idle = None
-        self._next_local_scans = 0
+        self._next_local_response_observations = 0
         self.state = PassWaitState.PASS_WAIT
         return attempt
 
@@ -371,7 +371,7 @@ class AuthoritativePassCoordinator:
         current_turn: int | None,
         is_local_turn: bool | None,
         current_local_move_sequence: int | None,
-        scan_complete_for_next_local_turn: bool = False,
+        response_observation_complete_for_next_local_turn: bool = False,
     ) -> PassTerminalResult | None:
         if self.state is not PassWaitState.PASS_WAIT or self._attempt is None:
             return None
@@ -439,9 +439,9 @@ class AuthoritativePassCoordinator:
             and current_turn is not None
             and current_turn > self._attempt.source_turn
         )
-        if next_local and scan_complete_for_next_local_turn:
-            self._next_local_scans += 1
-        if next_local and self._next_local_scans >= 2:
+        if next_local and response_observation_complete_for_next_local_turn:
+            self._next_local_response_observations += 1
+        if next_local and self._next_local_response_observations >= 2:
             return self._finish(
                 PassResultKind.PASS_STATE_UNCONFIRMED,
                 timestamp=timestamp,
@@ -457,7 +457,7 @@ class AuthoritativePassCoordinator:
             self._terminal = None
             self._turn_end_observed = False
             self._pending_direct_idle = None
-            self._next_local_scans = 0
+            self._next_local_response_observations = 0
             self.state = PassWaitState.IDLE
         return terminal
 

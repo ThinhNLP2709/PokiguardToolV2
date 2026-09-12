@@ -5,33 +5,48 @@ The implementation remains read-only and stops before Phase 2C.
 
 ## Production board source
 
-The production GemType/multiplier source is a validated
+The preferred production GemType/multiplier source is a validated
 `WsCombatBatch.board : BoardCellDTO[][]` at `+0x38`. Its ordering value is
-`WsCombatBatch.srvSeq : Int64` at `+0x10`.
+`WsCombatBatch.srvSeq : Int64` at `+0x10`. Pokiguard 1.7.4-b2 can also ACK a
+combat response containing incremental `ops` without a complete replacement
+board DTO. When no DTO exists at the latest ACK, the production fallback is the
+complete current rendered board reached through the exact bounded ownership
+chain `Board.allDots -> GameObject native components -> managed Dot`.
 
-A heap batch is publishable only when its identity was not present in the
-pre-combat lobby baseline and its `srvSeq` is present in the current
-`MatchService._ackedSeqs : HashSet<Int64>` at `+0x180`. Cpp2IL native evidence
-shows:
+A raw heap-scanned `WsCombatBatch` is never publishable by sequence/ACK alone.
+The object has no MatchId and its `srvSeq` can collide after the next combat
+restarts sequence numbering. It becomes eligible only when the exact same
+identity is independently tied to the current Board owner or a current-match
+transport DTO. Current transport/owner snapshots still require their `srvSeq`
+in `MatchService._ackedSeqs : HashSet<Int64>` at b2 offset `+0x1B8`. Cpp2IL and
+the installed native body show:
 
 - `SendAnimAck` ignores non-positive/already-seen sequences, inserts `srvSeq`
-  into `_ackedSeqs`, bounds the set around 64 entries, and sends that exact
-  sequence to the server.
+  into `_ackedSeqs`, and sends that exact sequence to the server. When the
+  count becomes greater than 64, it clears the set and immediately re-adds
+  the current sequence, so the newest ACK remains observable.
 - `ApplyMatchInitFromMessage` clears `_ackedSeqs` while initializing every new
   match.
+- If rendering does not acknowledge a work-bearing batch normally,
+  `AckStuckGuard` waits the server-derived guard interval (or 9 seconds when
+  absent) and calls `SendAnimAck` if the sequence is still missing.
 
-This gives an externally readable, match-reset currentness witness. The heap
-scan is still bounded to readable private writable regions and validates the
-exact `WsCombatBatch` class and full DTO structure; an arbitrary class-pointer
-hit is never accepted.
+This gives an externally readable, match-reset presentation watermark. It does
+not attach a MatchId to an otherwise unbound heap object and does not prove that
+every ACK has a same-sequence full-board DTO. The heap scan remains diagnostic
+and validates the exact `WsCombatBatch` class and full DTO structure; an
+arbitrary class-pointer hit is never accepted. The rendered fallback performs
+no heap scan and accepts only all 64 exact Board-owned Dot components under an
+unchanged ACK set.
 
 Evidence:
 
-- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/MatchService.cs:317`
-- `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/MatchService.txt`,
-  `SendAnimAck` ISIL steps 18-52 and `ApplyMatchInitFromMessage` steps 425-430
-- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/WsCombatBatch.cs:3-10`
-- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/BoardCellDTO.cs`
+- `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/MatchService.cs`
+- installed b2 `GameAssembly.dll`: `SendAnimAck` RVA `0x399300`,
+  `AckStuckGuard.MoveNext` RVA `0x3A2DF0`, and
+  `ApplyMatchInitFromMessage` RVA `0x392F50`
+- `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/WsCombatBatch.cs`
+- `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/BoardCellDTO.cs`
 
 ## Why transient ownership is not the production source
 
@@ -73,13 +88,17 @@ A snapshot is published only when all of these checks pass:
 
 1. `Board.Instance` resolves as an 8x8 board and its `Active` cross-checks hold.
 2. `CurrentMatchId` is non-empty and the `CombatSessionKey` is current.
-3. The candidate is absent from the lobby/session baseline and its sequence is
-   in the current match-reset ACK set.
+3. The candidate is absent from the lobby/session baseline, its sequence is in
+   the current match-reset ACK set, and it is bound to the current match through
+   transport MatchId, exact Board owner, or the current rendered Dot board. A
+   raw `RuntimeSequenceMonitor.WsCombatBatch` cannot satisfy this gate alone.
 4. The candidate is the highest ACKed sequence. Multiple hashes for that
-   sequence are rejected.
-5. Exactly 64 DTO cells decode; all `(row,col)` coordinates are unique and
-   complete in `0..7`; all six tags map exactly; all multipliers are in
-   `{1,2,3,4}`.
+   sequence are rejected unless the complete current rendered Dot board
+   resolves the conflict through exact current-Board ownership.
+5. Exactly 64 cells decode; all `(row,col)` coordinates are unique and complete
+   in `0..7`; all six tags map exactly; all multipliers are in `{1,2,3,4}`.
+   A rendered fallback additionally validates every GameObject/component
+   roundtrip, Dot class, current Board owner, `PoolTag`, and settled flags.
 6. The current BoardWsApplier is uniquely Board/match-owned and idle; its queue
    is empty; `PendingCombat` is null; the selected batch is not queued.
 7. `Board.isReady` is true, `Board.isCascadeRunning` is false, the same Board
@@ -96,16 +115,26 @@ hashes fail closed.
 
 ## Dot classification
 
-Dot is **optional audit telemetry**, not a production GemType dependency.
-`Board.allDots` stores `GameObject` references, not direct `Dot` references, and
-`Dot` has no managed tag/type field. Phase 2B's bounded anchor experiment found
-at most 58/64 components and could not guarantee complete coverage without
-undocumented Unity native traversal or an expensive broader scan.
+The older allocation scan remains optional audit telemetry. It found at most
+58/64 Dot candidates because `Board.allDots` stores GameObject references and
+the scan did not follow Unity component ownership. b2 supplies the previously
+missing exact link: `Dot.PoolTag +0xF8`, with native
+`BoardWsApplier.SpawnDotByTag` (RVA `0x358A30`) writing the incoming server tag
+to that field while also assigning column, row and multiplier.
 
-The final acceptance intentionally did not run Dot anchor scans
-(`dot_anchor_scans=0`, `dot_complete_polls=0`). All 48 states remained complete
-64/64 through DTO. This confirms that making Dot mandatory would add an
-unreliable hidden dependency and is unnecessary for production board decoding.
+The provider now walks each current GameObject's signature-gated native
+component list. It requires exactly one component whose managed wrapper has the
+exact Dot class, roundtrips to that native component, points back to the current
+Board, and remains byte-for-byte stable across a second sample. `_isFalling`,
+`isPredictionSwap`, `_squashing` and `RenderHidden` must all be false. The
+current ACK HashSet is also unchanged before/after the complete 64-Dot walk.
+
+This direct path is used only when b2 has acknowledged an ops-only response and
+no full DTO exists at the latest ACK. Same-sequence DTO remains preferred.
+Offline validation is complete. Live run
+`2f9116700bac4331b5830ab438983229` accepted 5/5 direct Dot-board reads with
+zero rejection and completed all eight local turns without PASS or board
+starvation. Phase 2 closure remains pending user review.
 
 ## Coordinate boundary and shadow solver
 

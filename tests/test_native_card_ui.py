@@ -79,6 +79,14 @@ class NativeFixture:
             self.q(result + offset, pointer)
         return result
 
+    def string(self, value):
+        result = self.alloc()
+        string_class = self.alloc()
+        self.q(result, string_class)
+        self.i(result + 0x10, len(value))
+        self.memory.map(result + 0x14, value.encode("utf-16-le"))
+        return result
+
     def wrapper(self, native, klass):
         managed, handle = self.alloc(), self.alloc()
         self.q(managed, klass)
@@ -123,6 +131,23 @@ class NativeFixture:
     def reader(self):
         return NativeCardUiReader(self.memory, self.ga)
 
+    def dot_board(self):
+        dot_class = self.klass("Dot", "")
+        tags = ("Vang", "XanhDuong", "Do", "Tim", "Xanh", "Trang")
+        nodes, dots = [], []
+        for row in range(8):
+            for column in range(8):
+                node = self.node(None, (-1, -1, 2, 2), (0, 0, 0))
+                dot = self.component(node, dot_class)
+                self.i(dot.managed + 0x20, column)
+                self.i(dot.managed + 0x24, row)
+                self.q(dot.managed + 0x48, self.board)
+                self.i(dot.managed + 0x88, 1 + (row + column) % 4)
+                self.q(dot.managed + 0xF8, self.string(tags[(row * 8 + column) % len(tags)]))
+                nodes.append(node)
+                dots.append(dot)
+        return dot_class, nodes, dots
+
 
 class NativeCardUiTests(unittest.TestCase):
     def setUp(self):
@@ -131,6 +156,51 @@ class NativeCardUiTests(unittest.TestCase):
 
     def hand(self):
         return self.reader.read_hand(self.fixture.board, self.fixture.card_class)
+
+    def test_exact_board_dot_components_are_decoded_without_heap_scan(self):
+        dot_class, nodes, dots = self.fixture.dot_board()
+        result = self.reader.read_dot_board(
+            self.fixture.board,
+            tuple(node.managed for node in nodes),
+            dot_class,
+        )
+        self.assertEqual(len(result.cells), 64)
+        self.assertEqual(
+            {(cell.row, cell.col) for cell in result.cells},
+            {(row, col) for row in range(8) for col in range(8)},
+        )
+        self.assertEqual(set(result.dot_addresses), {dot.managed for dot in dots})
+
+    def test_moving_dot_board_is_rejected(self):
+        dot_class, nodes, dots = self.fixture.dot_board()
+        self.fixture.memory.map(dots[17].managed + 0xB0, b"\1")
+        with self.assertRaisesRegex(NativeGeometryBusyError, "still moving"):
+            self.reader.read_dot_board(
+                self.fixture.board,
+                tuple(node.managed for node in nodes),
+                dot_class,
+            )
+
+    def test_dot_mutation_during_second_sample_is_rejected(self):
+        dot_class, nodes, dots = self.fixture.dot_board()
+        original = self.reader._dot_sample
+        calls = 0
+
+        def mutate_after_first_board(dot):
+            nonlocal calls
+            result = original(dot)
+            calls += 1
+            if calls == 64:
+                self.fixture.i(dots[0].managed + 0x88, 4)
+            return result
+
+        self.reader._dot_sample = mutate_after_first_board
+        with self.assertRaisesRegex(NativeGeometryBusyError, "changed during"):
+            self.reader.read_dot_board(
+                self.fixture.board,
+                tuple(node.managed for node in nodes),
+                dot_class,
+            )
 
     def test_owned_handles_find_new_card_without_any_region_scan(self):
         f = self.fixture

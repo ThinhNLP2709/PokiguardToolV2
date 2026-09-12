@@ -2435,7 +2435,11 @@ def _run_live(
                     chunk_mib=args.chunk_mib,
                     required_confirmations=2,
                     require_lobby_start=True,
-                    allow_ack_heap_scan=True,
+                    # BASIC owns a high-cadence immutable dispatcher tap plus
+                    # a bounded monitor fallback. Keep the provider off the
+                    # competing heap path so callback capture stays live.
+                    allow_ack_heap_scan=False,
+                    enable_dot_audit=False,
                     ack_heap_region_mib=args.ack_heap_region_mib,
                     extended_fusion_ui_region_mib=max(args.max_region_mib, 16),
                     extended_card_ui_region_mib=max(args.max_region_mib, 16),

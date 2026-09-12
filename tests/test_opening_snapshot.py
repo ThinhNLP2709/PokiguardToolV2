@@ -12,9 +12,11 @@ from pokiguard_v2.memory_board_provider import (
 from pokiguard_v2.opening_snapshot import (
     NewtonsoftClasses,
     OpeningBoardSnapshot,
+    is_transport_board_source,
     parse_transport_board_envelope_json,
     read_match_payload_board_snapshot,
     read_match_start_opening_snapshot,
+    read_preparsed_board_snapshot,
 )
 from pokiguard_v2.state import CombatSessionKey
 
@@ -177,8 +179,56 @@ class SnapshotBuilder:
         )
         return payload, board
 
+    def managed_array(self, values: list[int]) -> int:
+        raw = bytearray(0x20 + len(values) * 8)
+        struct.pack_into("<Q", raw, 0, self.array_class)
+        struct.pack_into("<Q", raw, 0x18, len(values))
+        if values:
+            struct.pack_into(f"<{len(values)}Q", raw, 0x20, *values)
+        address = self.alloc(len(raw))
+        self.memory.map(address, raw)
+        return address
+
+    def managed_board(self) -> int:
+        tags = ("vang Dot", "xanhduong Dot", "do Dot", "tim Dot", "xanh Dot", "trang Dot")
+        rows: list[int] = []
+        for row in range(8):
+            cells: list[int] = []
+            for col in range(8):
+                raw = bytearray(0x24)
+                struct.pack_into("<Q", raw, 0, self.box_class)
+                struct.pack_into("<i", raw, 0x10, col)
+                struct.pack_into("<i", raw, 0x14, row)
+                struct.pack_into(
+                    "<Q", raw, 0x18, self.string(tags[(row + col) % len(tags)])
+                )
+                struct.pack_into("<i", raw, 0x20, 1 + (row + col) % 4)
+                cell = self.alloc(len(raw))
+                self.memory.map(cell, raw)
+                cells.append(cell)
+            rows.append(self.managed_array(cells))
+        return self.managed_array(rows)
+
 
 class OpeningSnapshotTests(unittest.TestCase):
+    def test_transport_source_recognizes_b2_preboard_before_and_after_ack(self) -> None:
+        base = (
+            "ChatMessageDTO.MATCH_MOVE_RES."
+            "preBoard+raw.matchPayload.srvSeq"
+        )
+        self.assertTrue(
+            is_transport_board_source(base, event_type="MATCH_MOVE_RES")
+        )
+        self.assertTrue(
+            is_transport_board_source(
+                base + "+MatchService._ackedSeqs",
+                event_type="MATCH_MOVE_RES",
+            )
+        )
+        self.assertFalse(
+            is_transport_board_source(base, event_type="MATCH_CARD_USE_RES")
+        )
+
     @staticmethod
     def raw_board() -> list[list[dict[str, object]]]:
         tags = ("vang Dot", "xanhduong Dot", "do Dot", "tim Dot", "xanh Dot", "trang Dot")
@@ -277,6 +327,59 @@ class OpeningSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot.board_token_address, board)
         self.assertEqual(snapshot.sequence, 9)
         self.assertEqual(len(snapshot.cells), 64)
+
+    def test_b2_preparsed_board_combines_typed_cells_with_raw_sequence(self) -> None:
+        builder = SnapshotBuilder()
+        message_class = builder.alloc(8)
+        event = builder.string("MATCH_MOVE_RES")
+        match_id = builder.string("M_test")
+        board = builder.managed_board()
+        message = builder.alloc(0x3D1)
+        raw = bytearray(0x3D1)
+        struct.pack_into("<Q", raw, 0, message_class)
+        struct.pack_into("<Q", raw, 0x30, event)
+        struct.pack_into("<Q", raw, 0xB0, match_id)
+        struct.pack_into("<Q", raw, 0x3C8, board)
+        raw[0x3D0] = 1
+        builder.memory.map(message, raw)
+
+        snapshot = read_preparsed_board_snapshot(
+            builder.memory,
+            match_id="M_test",
+            message_address=message,
+            expected_message_class=message_class,
+            event_type="MATCH_MOVE_RES",
+            sequence=18,
+        )
+
+        self.assertEqual(snapshot.sequence, 18)
+        self.assertEqual(snapshot.board_token_address, board)
+        self.assertEqual(len(snapshot.cells), 64)
+        self.assertEqual(snapshot.provenance, "preBoard+raw.matchPayload.srvSeq")
+
+    def test_b2_preparsed_board_requires_ready(self) -> None:
+        builder = SnapshotBuilder()
+        message_class = builder.alloc(8)
+        event = builder.string("MATCH_MOVE_RES")
+        match_id = builder.string("M_test")
+        board = builder.managed_board()
+        message = builder.alloc(0x3D1)
+        raw = bytearray(0x3D1)
+        struct.pack_into("<Q", raw, 0, message_class)
+        struct.pack_into("<Q", raw, 0x30, event)
+        struct.pack_into("<Q", raw, 0xB0, match_id)
+        struct.pack_into("<Q", raw, 0x3C8, board)
+        builder.memory.map(message, raw)
+
+        with self.assertRaisesRegex(LayoutValidationError, "not ready"):
+            read_preparsed_board_snapshot(
+                builder.memory,
+                match_id="M_test",
+                message_address=message,
+                expected_message_class=message_class,
+                event_type="MATCH_MOVE_RES",
+                sequence=18,
+            )
 
     def test_exact_match_skill_response_jarray_decodes_64_cells(self) -> None:
         builder = SnapshotBuilder()

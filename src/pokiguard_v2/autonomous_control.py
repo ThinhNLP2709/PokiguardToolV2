@@ -46,13 +46,23 @@ def _critical_state_fingerprint(state: GameState) -> str:
     """Hash gameplay-relevant state while deliberately excluding timer ticks."""
 
     battle = state.battle
+    last_move_sequence = battle.last_move_sequence
+    if (
+        battle.turn_number in (0, 1)
+        and battle.local_move_sequence == 0
+        and last_move_sequence in (None, -1, 0)
+    ):
+        # b2 can expose any of these values while the prior match's optional
+        # LastMove telemetry is being reset. Actionability already treats all
+        # three as the same pristine opening state.
+        last_move_sequence = 0
     critical = (
         state.player,
         state.opponents,
         state.cards,
         state.fusion,
         battle.local_move_sequence,
-        battle.last_move_sequence,
+        last_move_sequence,
         battle.is_board_ready,
         battle.is_cascade_running,
         battle.board_current_state,
@@ -65,6 +75,7 @@ def _critical_state_fingerprint(state: GameState) -> str:
         battle.connection_ready,
         battle.reconnecting,
         battle.match_resyncing,
+        battle.turn_announcer_blocking,
         battle.presentation_busy,
         battle.client_move_allowed,
     )

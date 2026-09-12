@@ -25,6 +25,7 @@ installed build. Exact evidence is in `reverse/reverse_1.7.4-b2/cs` and
 | `Active` | `0x2D96E60` | `board +0x38`; `playerPets +0x310` |
 | `ManagerMatch` | `0x2D947D0` | `active +0x130`; `isBossBattle +0x138` |
 | `MatchService` | `0x2D96548` | Fusion block `+0x60..+0x90`; `Players +0xB8`; `_localSeqNum +0xC0`; turn remaining `+0x138`; pending/acked `+0x1A8/+0x1B8`; QTE arrows/duration/window/challenge ID `+0x220/+0x228/+0x22C/+0x250` |
+| `TurnAnnouncer` | `0x2DDAE68` | static `_blocking +0x80`; static `_blockDeadline +0x84`; `IsBlockingInput` RVA `0x3D3870`; `HARD_BLOCK_SEC=3` |
 | `CardUI` | `0x2DAB7F0` | ordinary head `cardData/button/board/active = +0x20/+0x28/+0x30/+0x38`; `isPlaceholder +0x80`; QTE fields `+0x58..+0x498`, including `_qteArrowsFromServer +0x498`, as detailed in the current compatibility report |
 | `BoardWsApplier` | `0x2DA5B70` | `board +0x20`; pending batches `+0x60`; render running `+0x68` |
 | `Dot` | `0x2DCC268` | core fields used by the provider unchanged |
@@ -37,6 +38,8 @@ installed build. Exact evidence is in `reverse/reverse_1.7.4-b2/cs` and
 | `Queue<UnityMainThreadDispatcher.PendingAction>` | `0x2DE5D48` | `_array +0x10`; `_head +0x18`; `_tail +0x1C`; `_size +0x20`; `_version +0x24` |
 | `List<UnityMainThreadDispatcher.PendingAction>` | `0x2DDB970` | `_items +0x10`; `_size +0x18`; `_version +0x1C` |
 | `ChatService.__c__DisplayClass275_0` | `0x2D97A60` | `__this +0x10`; `json +0x18`; `message +0x20`; callback RVA `0x38EBB0` |
+| `ChatMessageDTO` | `0x2DAD0B0` | `type +0x30`; `matchId +0xB0`; `matchPayload +0xC8`; `preBoard +0x3C8`; `preBoardReady +0x3D0` |
+| `MatchPayloadPreparser` | N/A | `PrepareBoard` RVA `0x3919D0`; `Prepare` RVA `0x392610`; `ShouldPrepare` RVA `0x3926C0` |
 
 Additional current TypeInfo RVAs: `ChatService=0x2DAD230`,
 `ChatMessageDTO=0x2DAD0B0`, `MatchHost=0x2D95F88`,
@@ -50,6 +53,44 @@ at `+0x04` (CurrentRig remains `+0x10`) and the current boss-room shifts
 Confidence: **CONFIRMED** for declarations/offsets and JSON TypeInfo mappings;
 **HIGH** for the native TypeInfo use verified against current runtime method
 bytes. Old values below remain milestone history only.
+
+### Phase 2 b2 turn/transport evidence — 2026-09-11
+
+The installed hash-gated `GameAssembly.dll` body for
+`Board.IsPlayerAllowedToMove` (RVA `0x6AD340`) contains the exact call to
+`TurnAnnouncer.get_IsBlockingInput` at RVA `0x3D3870`. The getter reads the
+static `_blocking` flag and checks `_blockDeadline` against Unity unscaled time;
+`TurnAnnouncer.Runner.Update` clears the flag after expiry. The external
+provider therefore follows TypeInfo `0x2DDAE68 -> Il2CppClass.static_fields
++0x98 -> _blocking +0x80` and blocks conservatively while true. It does not
+call the getter or read/invent an unproved Unity clock pointer.
+
+The same b2 reverse set confirms the transport capture chain used by the Phase
+2 repair: `ChatService.__c__DisplayClass275_0` keeps `json +0x18` and the exact
+deserialized `ChatMessageDTO +0x20`. `ChatMessageDTO` adds typed
+`preBoard +0x3C8` and `preBoardReady +0x3D0`. Read-only native disassembly of
+`ChatService.OnWebSocketMessage` proves calls to
+`MatchPayloadPreparser.ShouldPrepare` RVA `0x3926C0` and `Prepare` RVA
+`0x392610` before `UnityMainThreadDispatcher.TryEnqueue`; `PrepareBoard` is RVA
+`0x3919D0`. This is the primary b2 recovery when raw JSON is not the legacy 8x8
+shape and `matchPayload` no longer exposes `board/srvSeq`. A missing callback
+remains possible, so current-ACK heap recovery is bounded once per exact gap.
+
+Run `c756bbc90fc64366802c7df3ade5f4ba` observed exactly such a missing callback:
+ACK reached 14 while the tap retained only sequence 6 and 10 boards. The b2
+declarations also prove `MatchService._PendingCombat_k__BackingField +0x1A8`
+is `WsCombatBatch`, while `BoardWsApplier._pendingBatches +0x60` is
+`Queue<ValueTuple<List<MatchOpDTO>, WsCombatBatch, IEnumerator>>`. The current
+read-only tap samples both roots at 1 ms, double-checks current MatchId and/or
+owner/queue identity around the strict batch read, and leaves exact ACK gating
+to the provider. These are direct typed-root reads only; no target method is
+called and no memory is written.
+
+Evidence files: `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/TurnAnnouncer.cs`,
+`Board.cs`, `ChatMessageDTO.cs`, `MatchPayloadPreparser.cs`, `WsCombatBatch.cs`,
+`cpp/appdata/il2cpp-types-ptr.h`, plus read-only bytes from the exact installed
+DLL. Confidence: **CONFIRMED** for fields/RVAs and **HIGH** for the native
+control-flow interpretation.
 
 Native `ChatService.OnWebSocketMessage` RVA `0x37C940` stores the deserialized
 DTO at closure `+0x20` (`0x37CA8C`) before calling
@@ -227,10 +268,31 @@ Evidence: `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/Dot.cs:1-204`.
 | Assembly-CSharp | global | Dot | `BoardWidth` | property | no | `System.Int32` (private getter) | N/A | UNKNOWN | CONFIRMED |
 | Assembly-CSharp | global | Dot | `BoardHeight` | property | no | `System.Int32` (private getter) | N/A | UNKNOWN | CONFIRMED |
 
-Không có field `tag` trên `Dot`. Gem tag nằm ở layer `GameObject`/snapshot:
-`BoardCellDTO.tag` là string; `BoardWsApplier` có `FindDotPrefabByTag`, `SpawnDotByTag`, và
-nhận `tag` làm tham số. Việc đọc `GameObject.tag` cụ thể cần Unity object/component access
-và chưa được implement. Kết luận “Dot chứa field tag” là sai.
+Đoạn kết luận cũ của Phase 1 rằng Dot không có tag chỉ đúng với reverse cũ. Bản
+1.7.4-b2 thêm backing field `Dot._PoolTag_k__BackingField : string` tại `+0xF8`.
+Native `BoardWsApplier.SpawnDotByTag` RVA `0x358A30` lấy đúng Dot component của
+GameObject mới tạo, ghi tham số `tag` vào `Dot+0xF8`, rồi ghi `column +0x20`,
+`row +0x24`, `originalPrefab +0xD8` và `multiplier +0x88`. Vì vậy b2 có một
+Gem-tag source trực tiếp trên component render; nó không phải `GameObject.tag`.
+
+Các field ổn định/chuyển động dùng cho production fallback b2:
+
+| Type | Field | Offset | Confidence |
+|---|---|---:|---|
+| `Dot` | `column`, `row` | `+0x20`, `+0x24` | CONFIRMED declaration/native writes |
+| `Dot` | `_board` | `+0x48` | CONFIRMED declaration |
+| `Dot` | `multiplier` | `+0x88` | CONFIRMED declaration/native write |
+| `Dot` | `_isFalling` | `+0xB0` | CONFIRMED declaration |
+| `Dot` | `isPredictionSwap` | `+0xE0` | CONFIRMED declaration |
+| `Dot` | `_squashing` | `+0xF4` | CONFIRMED declaration |
+| `Dot` | `_PoolTag_k__BackingField` | `+0xF8` | CONFIRMED declaration/native write |
+| `Dot` | `_RenderHidden_k__BackingField` | `+0x129` | CONFIRMED declaration |
+
+External reader không ép `GameObject* == Dot*`. Nó đi theo
+`Board.allDots -> managed GameObject +0x10 -> native GameObject component list ->
+native scripting handle -> managed Dot`, kiểm tra exact class và roundtrip ở
+mỗi bước. Unity native offsets chỉ được bật khi tất cả code signatures khớp
+binary hiện hành.
 
 ## BoardCellDTO
 
@@ -559,17 +621,31 @@ proves the concrete `List<PlayerStats>` layout read by Phase 2B: list items
 
 | Assembly | Namespace | Type | Member | Kind | Static | Exact declared type | Field offset | Method RVA | Confidence |
 |---|---|---|---|---|---:|---|---:|---:|---|
-| Assembly-CSharp | global | `MatchService` | `_ackedSeqs` | field | no | `System.Collections.Generic.HashSet<System.Int64>` | `+0x180` | N/A | CONFIRMED |
-| Assembly-CSharp | global | `MatchService` | `SendAnimAck` | method | no | `System.Void (System.Int64 srvSeq)` | N/A | UNKNOWN | HIGH behavior; RVA not recorded |
-| Assembly-CSharp | global | `MatchService` | `ApplyMatchInitFromMessage` | method | no | `System.Void (ChatMessageDTO m)` | N/A | UNKNOWN | HIGH behavior; RVA not recorded |
+| Assembly-CSharp | global | `MatchService` | `_ackedSeqs` | field | no | `System.Collections.Generic.HashSet<System.Int64>` | b2 `+0x1B8` | N/A | CONFIRMED |
+| Assembly-CSharp | global | `MatchService` | `SendAnimAck` | method | no | `System.Void (System.Int64 srvSeq)` | N/A | b2 `0x399300` | CONFIRMED declaration; HIGH native behavior |
+| Assembly-CSharp | global | `MatchService` | `HandleResEnvelope` | method | no | `System.Void (ChatMessageDTO m, System.String kind)` | N/A | b2 `0x396A70` | CONFIRMED declaration; HIGH native behavior |
+| Assembly-CSharp | global | `MatchService` | `ApplyMatchInitFromMessage` | method | no | `System.Void (ChatMessageDTO m)` | N/A | b2 `0x392F50` | CONFIRMED declaration; HIGH native behavior |
+| Assembly-CSharp | global | `MatchService._AckStuckGuard_d__287` | `MoveNext` | method | no | `System.Boolean ()` | N/A | b2 `0x3A2DF0` | CONFIRMED declaration; HIGH native behavior |
 
-`SendAnimAck` reads `_ackedSeqs` at `this+0x180`, calls
+Current b2 `SendAnimAck` reads `_ackedSeqs` at `this+0x1B8`, calls
 `HashSet<Int64>.Contains(srvSeq)`, inserts a positive unseen sequence, clears
 the set when its count exceeds 64, re-adds the current sequence, and passes the
 same `srvSeq` to `WsMatchClient.SendAnimDone`. `ApplyMatchInitFromMessage` reads
 the same field and clears it during every new match initialization. This makes
 membership match-scoped evidence that the client completed rendering that
-server sequence; it is not treated as a pointer to the batch.
+server sequence; it is not treated as a pointer to the batch or proof that a
+same-sequence full-board DTO exists. `HandleResEnvelope` applies incremental
+`ops` and can reach `SendAnimAck` for a response without a replacement 8x8
+board. The provider therefore uses ACK as a presentation watermark and, for
+such a gap, double-samples the complete current Board-owned Dot grid.
+
+For a work-bearing batch, `BeginAnimAck` starts `AckStuckGuard`. Its native
+state machine waits `max(6, ServerAckDeadlineSec - 1.5)` seconds when the server
+deadline is positive, otherwise 9 seconds. If the sequence is still absent, it
+decrements the in-flight count and calls `SendAnimAck`. Thus an ACK may be
+delayed while rendering, but once inserted it is retained until a new-match
+clear or the greater-than-64 rollover; that rollover immediately retains the
+newest sequence.
 
 The runtime-instantiated `HashSet<Int64>` layout used by the read-only decoder
 was validated as: buckets `+0x10`, slots `+0x18`, count `+0x20`, lastIndex
@@ -582,9 +658,9 @@ slot occupancy, uniqueness, and a stable header before returning values.
 
 Evidence:
 
-- `reverse/cpp2il_cs/DiffableCs/Assembly-CSharp/MatchService.cs:317,1022,1385`
-- `reverse/cpp2il_isil/IsilDump/Assembly-CSharp/MatchService.txt`,
-  `SendAnimAck` and `ApplyMatchInitFromMessage`
+- `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/MatchService.cs`
+- read-only disassembly of the installed b2 `GameAssembly.dll` at the RVAs in
+  the table above
 - ``reverse/cpp2il_cs/DiffableCs/System.Core/System/Collections/Generic/HashSet`1.cs``
 - ``reverse/cpp2il_isil/IsilDump/System.Core/System/Collections/Generic/HashSet`1.txt``
 
@@ -779,6 +855,26 @@ one unlocked/interactable closure with `petId=1289`, cached group index 5 and
 pet index 7 (hunt order 8), matching the three read-only PlayerPrefs keys.
 Runtime addresses are deliberately not documented as stable symbols because
 they are process/session allocations and subject to ASLR and Unity lifetime.
+
+### 1.7.4-b2 Legend-card continuation audit addendum (Phase 3C.0)
+
+| Assembly | Type | Member | Kind | Exact declared type | b2 field offset / RVA | Confidence |
+|---|---|---|---|---|---:|---|
+| Assembly-CSharp | `Board` | `isUsingLegendCard` | field | `System.Boolean` | `+0x391` | CONFIRMED declaration and live read layout |
+| Assembly-CSharp | `Board` | `isUsingMega` | field | `System.Boolean` | `+0x398` | CONFIRMED declaration and live read layout |
+| Assembly-CSharp | `Board` | `isMega2PanelOpen` | field | `System.Boolean` | `+0x129` | CONFIRMED declaration and live read layout |
+| Assembly-CSharp | `Board` | `isMega1PanelOpen` | field | `System.Boolean` | `+0x470` | CONFIRMED declaration and live read layout |
+| Assembly-CSharp | `CardUI` | `SetLegendMultiplier(float)` | method | `System.Void (System.Single)` | RVA `0x6D0370` | CONFIRMED declaration/RVA; reset semantics UNKNOWN |
+
+The Cpp2IL b2 C# output declares the fields and method range but does not
+contain a body that proves when the Legend flag returns to false. Phase 3C.0
+therefore records its live value before deciding whether it is a current modal
+signal or a durable match-level state. No reset rule is inferred from the name.
+
+Evidence:
+
+- `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/Board.cs`
+- `reverse/reverse_1.7.4-b2/cs/Assembly-CSharp/CardUI.cs`
 
 ### Redux 1.7.4 skill-response combat envelope addendum (Phase 3B.3)
 
