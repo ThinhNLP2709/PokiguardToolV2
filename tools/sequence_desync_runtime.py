@@ -35,7 +35,7 @@ from tools.lifecycle_idle_watch import _message_identity, _message_sort_key
 
 # The immutable dispatcher callback is the primary transport source. A missed
 # ACK may fall back to lobby-learned allocation regions, but the active combat
-# path must not traverse the full managed heap. The 2026-09-11 b2 run measured
+# path must not traverse the full managed heap. The 2026-09-11 run measured
 # 1.28--1.31 GiB / 7.0--7.2 s for one such escalation; 64 MiB keeps recovery
 # within a short sampling window and rotates on later ACK identities.
 ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES = 64 * 1024 * 1024

@@ -52,7 +52,7 @@ def _critical_state_fingerprint(state: GameState) -> str:
         and battle.local_move_sequence == 0
         and last_move_sequence in (None, -1, 0)
     ):
-        # b2 can expose any of these values while the prior match's optional
+        # The supported build can expose any of these values while the prior match's optional
         # LastMove telemetry is being reset. Actionability already treats all
         # three as the same pristine opening state.
         last_move_sequence = 0
@@ -140,6 +140,8 @@ class AutonomousActionIdentity:
             )
         elif decision.action is PolicyAction.CAST:
             target = (decision.card_object_address,)
+        elif decision.action is PolicyAction.PET_SKILL:
+            target = (decision.skill_session_key, decision.skill_card_id)
         elif decision.action is PolicyAction.EVOLVE:
             fusion = state.fusion
             target = (
@@ -184,7 +186,11 @@ class PendingAutonomousAction:
 
     @property
     def consumes_turn(self) -> bool:
-        return self.identity.action in {PolicyAction.SWAP, PolicyAction.CAST}
+        return self.identity.action in {
+            PolicyAction.SWAP,
+            PolicyAction.CAST,
+            PolicyAction.PET_SKILL,
+        }
 
 
 @dataclass(frozen=True)
@@ -503,7 +509,7 @@ class AutonomousGuard:
 
 
 class ConsumingTurnRegistry:
-    """Allow at most one SWAP/CAST input for a concrete combat turn."""
+    """Allow at most one SWAP/CAST/PET_SKILL input per concrete turn."""
 
     def __init__(self) -> None:
         self._turns: set[tuple[CombatSessionKey, int]] = set()
@@ -535,6 +541,7 @@ class TurnTransitionKind(str, Enum):
         "LOCAL_TURN_RETURNED_BY_AUTHORITATIVE_ADVANCE"
     )
     LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT = "LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT"
+    COMBAT_TERMINAL = "COMBAT_TERMINAL"
 
 
 @dataclass(frozen=True)
@@ -553,8 +560,14 @@ class TurnTransitionTracker:
         self.unconfirmed_local_seen = False
 
     def begin(self, action: AutonomousActionIdentity) -> None:
-        if action.action not in {PolicyAction.SWAP, PolicyAction.CAST}:
-            raise ValueError("turn transition tracking requires SWAP or CAST")
+        if action.action not in {
+            PolicyAction.SWAP,
+            PolicyAction.CAST,
+            PolicyAction.PET_SKILL,
+        }:
+            raise ValueError(
+                "turn transition tracking requires SWAP, CAST, or PET_SKILL"
+            )
         self.action = action
         self.opponent_seen = False
         self.unconfirmed_local_seen = False
@@ -563,6 +576,20 @@ class TurnTransitionTracker:
         self.action = None
         self.opponent_seen = False
         self.unconfirmed_local_seen = False
+
+    def resolve_terminal(self) -> TurnTransitionObservation | None:
+        """Let authoritative terminal ownership close a pending turn wait."""
+
+        action = self.action
+        if action is None:
+            return None
+        observation = TurnTransitionObservation(
+            TurnTransitionKind.COMBAT_TERMINAL,
+            action,
+            None,
+        )
+        self.clear()
+        return observation
 
     def expire_unconfirmed_local(self) -> TurnTransitionObservation | None:
         """Fail closed only after a local-looking transition stayed unresolved."""

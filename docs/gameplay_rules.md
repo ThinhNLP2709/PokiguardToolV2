@@ -18,14 +18,17 @@ Ba trường cấu hình pet hiện hành là:
 - **Thẻ sát thương**: Thẻ chưởng mặc định hoặc Thẻ skill của pet. Thẻ skill chỉ
   cho chọn khi cấu hình có ít nhất một nguồn skill về mặt khái niệm.
 
-Hai profile đang chạy được với BASIC giữ nguyên hành vi cũ:
+Ba profile backend đang chạy được với BASIC:
 
 - `NORMAL / NORMAL / DEFAULT_ATTACK`: có Bước 1 Tiến hóa;
-- `NORMAL / NONE / DEFAULT_ATTACK`: bỏ Bước 1 và dùng thẻ chưởng thường.
+- `NORMAL / NONE / DEFAULT_ATTACK`: bỏ Bước 1 và dùng thẻ chưởng thường;
+- `LEGENDARY / NONE / PET_SKILL`: không tiến hóa, không dùng thẻ chưởng
+  thường, dùng skill pet khi capability runtime hiện tại đủ điều kiện.
 
-Các profile mới khác có thể hợp lệ và lưu được, nhưng Start/Resume bị chặn vì
-policy FarmRunner chưa được triển khai. Pet Skill policy integration đang chờ
-Phase 3C.x; cấu hình này không làm FarmRunner gọi `PetSkillAction`.
+Profile Pet Skill trên chỉ chạy qua backend/CLI có kiểm soát trong Phase 3C.1;
+Desktop Start/Resume vẫn bị chặn đến Phase 3C.2. Các profile khác có thể hợp lệ
+và lưu được nhưng không có FarmRunner policy. Nhiều nguồn skill hoặc capability
+không rõ ràng phải fail-closed, không tự chọn một nguồn.
 
 Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 
@@ -39,6 +42,28 @@ Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 2. **Thẻ chưởng** — tiêu tốn 160 mana để ra chưởng gây sát thương cho boss.
    Khi dùng thẻ chưởng thì **tính là 1 lượt**, nên không thể ra nước đi trên
    bàn cờ.
+3. **Thẻ skill pet (profile 3C.1)** — chi phí lấy từ
+   `PetSkillCapability` hiện tại, không suy từ rarity. Fixture HT7 là 200
+   mana/200 nộ; HT2 là 200 mana/150 nộ. Skill HT7 đã chứng minh kết thúc lượt:
+   sau khi gửi input không được SWAP/CAST/PASS/dùng skill lần nữa trong cùng
+   source turn. Số tài nguyên sau skill có thể được refill bởi hiệu ứng nên
+   không được dùng net delta để suy ngược gross cost.
+
+### 1.1. Nhánh riêng cho `LEGENDARY / NONE / PET_SKILL`
+
+1. Capability skill của đúng session phải duy nhất, current, thuộc family được
+   hỗ trợ, có cost dương đã biết và CardUI hiện tại phải actionable. UNKNOWN,
+   stale, ambiguous hoặc family chưa hỗ trợ thì dừng input fail-closed.
+2. Khi đủ Mana/nộ, chọn `PET_SKILL` ngay tại nhánh damage Bước 1. Không tích
+   thêm tài nguyên, không EVOLVE và không dùng thẻ chưởng thường.
+3. Khi chưa đủ, kiếm vẫn là mục tiêu bàn cờ cao nhất. Nếu không có nước kiếm,
+   chỉ xét nước an toàn có known gain cho phần Mana/nộ đang thiếu. Ưu tiên nước
+   hoàn tất một yêu cầu, rồi tổng phần thiếu được đóng theo công thức
+   `min(known_gain, missing) / required`. Tài nguyên đã đủ và UNKNOWN refill
+   không được cộng điểm readiness.
+4. Sau đó giữ nguyên thứ tự Health, Drain, Shield, PASS và nước bắt buộc của
+   BASIC. PASS đầu trận và PASS thứ ba liên tiếp vẫn bị cấm theo bằng chứng
+   server hiện hành.
 
 ## 3. Rule trong game
 
@@ -267,6 +292,12 @@ runtime (`FusionState.mana_cost`, `CardData.manaCost` / `conditionUse`) và
 fail-closed nếu chưa chứng minh được.
 
 ## 8. Lịch sử thay đổi
+
+- **2026-09-12** — Phase 3C.1 thêm profile backend
+  `LEGENDARY/NONE/PET_SKILL`: Pet Skill là action riêng tiêu thụ lượt, không
+  EVOLVE/ordinary CAST, dùng cost/actionability runtime và planner chỉ nhắm
+  current deficits dưới Sword safety. Desktop Start vẫn chờ Phase 3C.2; live
+  B1/B2 chưa hoàn thành.
 
 - **2026-09-11** — Mở lại Phase 2 để tương thích bản 1.7.4-b2: xác nhận chi
   phí tiến hóa runtime 120; không dùng collapse/support heuristic làm veto nếu

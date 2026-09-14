@@ -80,7 +80,7 @@ class IdleStateWatchTests(unittest.TestCase):
         string_class = 0x20000012000
         event_type = 0x20000013000
         match_id = 0x20000014000
-        raw = bytearray(0x158)
+        raw = bytearray(CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET + 16)
         struct.pack_into("<Q", raw, 0, dto_class)
         struct.pack_into("<Q", raw, CHAT_MESSAGE_TYPE_OFFSET, event_type)
         struct.pack_into("<Q", raw, CHAT_MESSAGE_MATCH_ID_OFFSET, match_id)

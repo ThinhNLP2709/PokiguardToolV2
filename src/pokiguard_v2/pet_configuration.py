@@ -11,27 +11,8 @@ from enum import Enum
 from typing import Any, Mapping
 
 from .basic_policy import Intelligence, ManaPriority, PlayStyle, PolicyConfig
+from .gameplay_profile import AuditionMode, DamageCardMode, EvolutionTarget, MainPetType
 from .win32_input import BoardInputMode
-
-
-class MainPetType(str, Enum):
-    NORMAL = "normal"
-    LEGENDARY = "legendary"
-    EVOLVED = "evolved"
-    MEGA = "mega"
-
-
-class EvolutionTarget(str, Enum):
-    NONE = "none"
-    NORMAL = "normal"
-    LEGENDARY = "legendary"
-    EVOLVED = "evolved"
-    MEGA = "mega"
-
-
-class DamageCardMode(str, Enum):
-    DEFAULT_ATTACK = "default_attack"
-    PET_SKILL = "pet_skill"
 
 
 class SkillSource(str, Enum):
@@ -62,10 +43,18 @@ DAMAGE_LABELS = {
     DamageCardMode.DEFAULT_ATTACK: "Thẻ chưởng mặc định",
     DamageCardMode.PET_SKILL: "Thẻ skill của pet",
 }
+AUDITION_LABELS = {
+    AuditionMode.V3_TWO_DIRECTION: "Audition V3 (2 hướng — mặc định)",
+    AuditionMode.V2_FOUR_DIRECTION: "Audition V2 (4 hướng — tương thích)",
+}
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
     EvolutionTarget.NONE, EvolutionTarget.NORMAL, EvolutionTarget.LEGENDARY,
 })
+# Phase 3C.1 policy/backend and the dual-generation observer are integrated.
+# The current V3 path remains read-only for state and uses only the accepted
+# bounded foreground keyboard/mouse input boundary.
+PET_SKILL_RUNTIME_ENABLED = True
 
 
 class FarmPolicyUnavailable(ValueError):
@@ -87,6 +76,17 @@ class PetLoadoutCapability:
     pet_skill_selectable: bool
     farm_policy_supported: bool
     blocker_reason: str | None
+
+    @property
+    def desktop_policy_supported(self) -> bool:
+        """Desktop and CLI share the same accepted FarmRunner profiles."""
+        return self.farm_policy_supported
+
+    @property
+    def desktop_blocker_reason(self) -> str | None:
+        if self.desktop_policy_supported:
+            return None
+        return self.blocker_reason
 
     @property
     def skill_source_count(self) -> int:
@@ -119,14 +119,27 @@ def loadout_capability(
     )
     selectable = supported and bool(sources)
     valid = supported and (damage_card is DamageCardMode.DEFAULT_ATTACK or selectable)
-    runnable = valid and main_pet is MainPetType.NORMAL and evolution in {
-        EvolutionTarget.NORMAL, EvolutionTarget.NONE,
-    } and damage_card is DamageCardMode.DEFAULT_ATTACK
+    default_runnable = (
+        valid
+        and main_pet is MainPetType.NORMAL
+        and evolution in {EvolutionTarget.NORMAL, EvolutionTarget.NONE}
+        and damage_card is DamageCardMode.DEFAULT_ATTACK
+    )
+    phase3c1_pet_skill_runnable = (
+        PET_SKILL_RUNTIME_ENABLED
+        and valid
+        and main_pet is MainPetType.LEGENDARY
+        and evolution is EvolutionTarget.NONE
+        and damage_card is DamageCardMode.PET_SKILL
+        and sources == (SkillSource.MAIN_PET,)
+    )
+    runnable = default_runnable or phase3c1_pet_skill_runnable
     reason = (
         "PET_OPTION_UNSUPPORTED" if not supported else
         "PET_SKILL_SOURCE_MISSING" if not valid else
         "PET_SKILL_SOURCE_SELECTION_UNDEFINED" if damage_card is DamageCardMode.PET_SKILL and len(sources) > 1 else
-        "PET_SKILL_POLICY_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL else
+        "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL and not PET_SKILL_RUNTIME_ENABLED else
+        "PET_SKILL_POLICY_PROFILE_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL and not runnable else
         "FARM_PROFILE_NOT_IMPLEMENTED" if not runnable else None
     )
     return PetLoadoutCapability(main_pet, evolution, sources, status, supported,
@@ -147,6 +160,7 @@ class GameplayConfig:
     main_pet: MainPetType = MainPetType.NORMAL
     evolution: EvolutionTarget = EvolutionTarget.NORMAL
     damage_card: DamageCardMode = DamageCardMode.DEFAULT_ATTACK
+    audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION
     board_input_mode: BoardInputMode = BoardInputMode.DRAG
     cast_when_boss_hp_below: int = 30_000
     cast_mana_stockpile: int = 480
@@ -155,7 +169,8 @@ class GameplayConfig:
     def __post_init__(self) -> None:
         for name, enum in (("play_style", PlayStyle), ("intelligence", Intelligence),
                            ("main_pet", MainPetType), ("evolution", EvolutionTarget),
-                           ("damage_card", DamageCardMode), ("board_input_mode", BoardInputMode)):
+                           ("damage_card", DamageCardMode), ("audition_mode", AuditionMode),
+                           ("board_input_mode", BoardInputMode)):
             if not isinstance(getattr(self, name), enum):
                 raise ValueError(f"{name} must be {enum.__name__}")
         if self.intelligence is not Intelligence.BASIC:
@@ -193,6 +208,9 @@ class GameplayConfig:
                           "damage_card": DamageCardMode(raw["damage_card"])}
         return cls(**pet_fields, play_style=PlayStyle(raw.get("play_style", "simple")),
                    intelligence=Intelligence(raw.get("intelligence", "basic")),
+                   audition_mode=AuditionMode(
+                       raw.get("audition_mode", AuditionMode.V3_TWO_DIRECTION.value)
+                   ),
                    board_input_mode=BoardInputMode(raw.get("board_input_mode", "drag")),
                    **{name: raw.get(name, getattr(cls(), name)) for name in
                       ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target")})
@@ -205,12 +223,41 @@ def legacy_pet_fields(value: str | ManaPriority) -> dict[str, Any]:
             "damage_card": DamageCardMode.DEFAULT_ATTACK}
 
 
-def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
-    """Temporary Phase 3A.2 adapter; remove when Phase 3C.1 is accepted."""
+def basic_policy_config(config: GameplayConfig) -> PolicyConfig:
+    """Build BASIC policy from the canonical three-field gameplay profile."""
     config.require_farm_policy()
     return PolicyConfig(
         play_style=config.play_style, intelligence=config.intelligence,
-        mana_priority=(ManaPriority.EVOLUTION if config.evolution is EvolutionTarget.NORMAL else ManaPriority.ATTACK),
+        mana_priority=None,
+        main_pet=config.main_pet,
+        evolution=config.evolution,
+        damage_card=config.damage_card,
+        cast_when_boss_hp_below=config.cast_when_boss_hp_below,
+        cast_mana_stockpile_threshold=config.cast_mana_stockpile,
+        rage_target=config.rage_target,
+    )
+
+
+def requires_attack_card_preparation(config: GameplayConfig) -> bool:
+    """Only ordinary-Attack profiles may mutate the pre-entry Attack loadout."""
+
+    return config.damage_card is DamageCardMode.DEFAULT_ATTACK
+
+
+def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
+    """Legacy default-Attack bridge retained for old checkpoint/test callers."""
+
+    config.require_farm_policy()
+    if config.damage_card is DamageCardMode.PET_SKILL:
+        raise FarmPolicyUnavailable("LEGACY_MANA_PRIORITY_CANNOT_EXPRESS_PET_SKILL")
+    return PolicyConfig(
+        play_style=config.play_style,
+        intelligence=config.intelligence,
+        mana_priority=(
+            ManaPriority.EVOLUTION
+            if config.evolution is EvolutionTarget.NORMAL
+            else ManaPriority.ATTACK
+        ),
         cast_when_boss_hp_below=config.cast_when_boss_hp_below,
         cast_mana_stockpile_threshold=config.cast_mana_stockpile,
         rage_target=config.rage_target,
@@ -221,6 +268,11 @@ def add_pet_arguments(parser: Any) -> None:
     parser.add_argument("--main-pet", choices=[v.value for v in MainPetType])
     parser.add_argument("--evolution-target", choices=[v.value for v in EvolutionTarget])
     parser.add_argument("--damage-card", choices=[v.value for v in DamageCardMode])
+    parser.add_argument(
+        "--audition-mode",
+        choices=[v.value for v in AuditionMode],
+        default=AuditionMode.V3_TWO_DIRECTION.value,
+    )
     parser.add_argument("--mana-priority", choices=[v.value for v in ManaPriority],
                         help="deprecated compatibility alias; cannot be combined with Pet flags")
 
@@ -234,7 +286,7 @@ def gameplay_config_from_args(args: Any) -> GameplayConfig:
         raise ValueError("--mana-priority conflicts with canonical Pet flags")
     raw = GameplayConfig().to_dict()
     raw.update({k: v for k, v in new.items() if v is not None})
-    for name in ("play_style", "intelligence", "board_input_mode", "cast_when_boss_hp_below",
+    for name in ("play_style", "intelligence", "audition_mode", "board_input_mode", "cast_when_boss_hp_below",
                  "cast_mana_stockpile", "rage_target"):
         if hasattr(args, name):
             raw[name] = getattr(args, name)

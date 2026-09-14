@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from pokiguard_v2.game_location import (
     GameLocationError,
+    SUPPORTED_GAME_ASSEMBLY_SHA256,
     game_assembly_sha256,
     is_supported_game_executable_name,
     resolve_game_executable,
@@ -94,6 +95,14 @@ class GameLocationTests(unittest.TestCase):
         with self.assertRaises(GameLocationError) as context:
             validate_supported_game_assembly(game_assembly)
         self.assertEqual("GAME_BUILD_INCOMPATIBLE", context.exception.reason)
+
+    def test_only_reverse_verified_b4_layout_hash_is_enabled(self) -> None:
+        self.assertEqual(
+            SUPPORTED_GAME_ASSEMBLY_SHA256,
+            frozenset(
+                {"d55bde20918f65e84700736e0ede33aa8ee50a10956590d28fb8e53d185b28d6"}
+            ),
+        )
 
 
 if __name__ == "__main__":

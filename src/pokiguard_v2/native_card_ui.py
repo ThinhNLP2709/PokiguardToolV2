@@ -1,4 +1,4 @@
-"""Bounded, read-only Unity ownership/geometry for the 1.7.4 card strip.
+"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b4 card strip.
 
 No heap scan and no engine invocation. Offsets below are native-code verified,
 not Cpp2IL managed-field offsets; see docs/phase3b3_native_card_evidence.md.
@@ -21,7 +21,7 @@ from .il2cpp_layout import (
 
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
-_COMPONENT_GO_ICALL = 0x302CEE8
+_COMPONENT_GO_ICALL = 0x355F678
 _COMPONENT_GO_RVA = 0x1067390
 _NATIVE_SIGNATURES = (
     (0x1067396, "488b5928"),  # Component -> GameObject +28
@@ -41,8 +41,8 @@ _NATIVE_SIGNATURES = (
     (0xB5AB4E, "8b4338"),  # Canvas renderMode
 )
 _UNMARSHAL_SIGNATURE = (
-    0xBB7CF4,
-    "33d2488bcbf6c301740ae89dc4ad00488bd8eb08e8530182ff488b18",
+    0x10971EF,
+    "4885db7433f6c301740d488bcbe8bfe416ff488bd8eb03488b1b",
 )
 
 
@@ -146,7 +146,7 @@ class NativeCardUiReader:
         return value
 
     def _managed(self, native: int, *, optional: bool = False) -> int | None:
-        # UnmarshalUnityObject<T> at GA+BB7CF4: even handle is pointer-to-object;
+        # UnmarshalUnityObject<T> at GA+10971EF: even handle is pointer-to-object;
         # odd handle requires an engine GC-handle resolver. Never invoke it.
         # A tagged GC handle can be a small integer, not a user-space address.
         # Inspect its tag BEFORE treating an even handle as a pointer.
@@ -207,11 +207,11 @@ class NativeCardUiReader:
     def _dot_sample(
         self, dot: int
     ) -> tuple[int, int, int, int, int, int, int, int, int, int, int]:
-        """Read only the b2 fields that define one settled Dot identity."""
+        """Read only the b4 fields that define one settled Dot identity."""
 
         # One bounded object read avoids nine extra ReadProcessMemory calls per
         # sample while preserving the same fail-closed field validation.
-        raw = self._read(dot, 0x12A)
+        raw = self._read(dot, 0x132)
         class_pointer = struct.unpack_from("<Q", raw, 0)[0]
         native_component = struct.unpack_from("<Q", raw, 0x10)[0]
         column, row = struct.unpack_from("<ii", raw, 0x20)
@@ -219,9 +219,9 @@ class NativeCardUiReader:
         multiplier = struct.unpack_from("<i", raw, 0x88)[0]
         is_falling = raw[0xB0]
         is_prediction = raw[0xE0]
-        squashing = raw[0xF4]
-        pool_tag = struct.unpack_from("<Q", raw, 0xF8)[0]
-        render_hidden = raw[0x129]
+        squashing = raw[0xFC]
+        pool_tag = struct.unpack_from("<Q", raw, 0x100)[0]
+        render_hidden = raw[0x131]
         for name, value in (
             ("class", class_pointer),
             ("native component", native_component),
@@ -264,7 +264,7 @@ class NativeCardUiReader:
     ) -> NativeDotBoard:
         """Walk ``Board.allDots -> GameObject components -> Dot`` exactly.
 
-        Pokiguard 1.7.4-b2 writes the spawn tag to ``Dot.PoolTag +0xF8`` and
+        Pokiguard 1.7.4-b4 writes the spawn tag to ``Dot.PoolTag +0x100`` and
         keeps column, row, multiplier and Board ownership on that same managed
         component. Every wrapper/native/component relationship and every Dot
         identity field is sampled again after all 64 cells have been decoded.
@@ -328,7 +328,7 @@ class NativeCardUiReader:
                 )
             if multiplier not in (1, 2, 3, 4):
                 raise LayoutValidationError(
-                    "native_card_ui: Dot multiplier is outside the b2 domain"
+                    "native_card_ui: Dot multiplier is outside the supported domain"
                 )
             if is_falling or is_prediction or squashing or render_hidden:
                 raise NativeGeometryBusyError(

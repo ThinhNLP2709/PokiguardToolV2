@@ -9,7 +9,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from pokiguard_v2.pet_configuration import EvolutionTarget
+from pokiguard_v2.pet_configuration import AuditionMode, EvolutionTarget
 from pokiguard_v2.basic_policy import PlayStyle
 from pokiguard_v2.desktop_control_plane import (
     DesktopConfig,
@@ -414,6 +414,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         config = DesktopConfig(
             play_style=PlayStyle.CAREFUL,
             evolution=EvolutionTarget.NONE,
+            audition_mode=AuditionMode.V2_FOUR_DIRECTION,
             boss_id="1289",
             boss_name="Starburst",
             target_completed_matches=4,
@@ -432,6 +433,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertEqual(args.play_style, "careful")
         self.assertIsNone(args.mana_priority)
         self.assertEqual(args.evolution_target, "none")
+        self.assertEqual(args.audition_mode, "audition_v2")
         self.assertEqual(args.board_input_mode, "drag")
         self.assertEqual(args.target_matches, 4)
         # The legacy CLI field remains parse-compatible but the desktop no

@@ -66,6 +66,7 @@ class InputDomain(str, Enum):
     POSTMATCH_UI = "POSTMATCH_UI"
     GAMEPLAY_SWAP = "GAMEPLAY_SWAP"
     GAMEPLAY_CAST = "GAMEPLAY_CAST"
+    GAMEPLAY_PET_SKILL = "GAMEPLAY_PET_SKILL"
     GAMEPLAY_EVOLVE = "GAMEPLAY_EVOLVE"
     GAMEPLAY_PASS = "GAMEPLAY_PASS"
     RECOVERY_UI = "RECOVERY_UI"
@@ -389,6 +390,29 @@ class FarmCycle:
             detail=detail,
         )
         return False
+
+    def abandon_gameplay_preflight(
+        self,
+        permit: GameplayPermit,
+        *,
+        detail: str = "",
+    ) -> bool:
+        """Release a current unsent permit so a fresh policy proposal may run."""
+
+        if permit != self._pending_gameplay:
+            self.safe_stop(
+                FarmCycleStopReason.GAMEPLAY_CAPABILITY_DENIED,
+                detail="unknown gameplay permit",
+            )
+            return False
+        self._pending_gameplay = None
+        self._event(
+            "gameplay_preflight_abandoned",
+            domain=permit.domain.value,
+            session=permit.session,
+            detail=detail,
+        )
+        return True
 
     def combat1_finished(self, *, safe_stop: bool = False, detail: str = "") -> bool:
         if self._state is not FarmCycleState.COMBAT1_ACTIVE:

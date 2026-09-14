@@ -242,6 +242,8 @@ class DispatcherTransportTap:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._match_id: str | None = None
+        self._discover_excluding_match_id: str | None = None
+        self._discover_new_match = False
         self._seen: set[tuple[str, int, int | None, bytes]] = set()
         self._results: dict[tuple[str, int], Any] = {}
         self._messages: dict[tuple[str, int, int | None, bytes], ServerMessage] = {}
@@ -296,6 +298,8 @@ class DispatcherTransportTap:
                 self._last_stable_at = None
                 self._match_service_address = None
             self._match_id = match_id
+            self._discover_excluding_match_id = None
+            self._discover_new_match = False
         # Establish one synchronous health sample before BASIC decides whether
         # it can skip the legacy heap scan. The operation is a bounded set of
         # direct RPM reads and catches an envelope that is already queued.
@@ -311,9 +315,46 @@ class DispatcherTransportTap:
                 self._thread.start()
         self._wake.set()
 
+    def arm_for_new_match(self, excluded_match_id: str | None) -> None:
+        """Retain the next strict raw MATCH_START before its MatchId is known.
+
+        Entry starts this bounded sampler immediately before its one Start
+        click. The accepted candidate must be a complete, schema-valid raw
+        MATCH_START board whose nonempty MatchId differs from the lobby
+        baseline. Normal provider session binding still proves that the
+        retained envelope belongs to the Board that was actually entered.
+        """
+
+        excluded = excluded_match_id or None
+        with self._lock:
+            self._seen.clear()
+            self._results.clear()
+            self._messages.clear()
+            self._raw_boards.clear()
+            self._transport_boards.clear()
+            self._runtime_batches.clear()
+            self._board_rejection_reasons.clear()
+            self._last_stable_at = None
+            self._match_service_address = None
+            self._match_id = None
+            self._discover_excluding_match_id = excluded
+            self._discover_new_match = True
+        self._capture_new_match_once(excluded)
+        with self._lock:
+            if self._thread is None:
+                self._thread = threading.Thread(
+                    target=self._run,
+                    name="phase2-dispatcher-transport-tap",
+                    daemon=True,
+                )
+                self._thread.start()
+        self._wake.set()
+
     def disarm(self) -> None:
         with self._lock:
             self._match_id = None
+            self._discover_excluding_match_id = None
+            self._discover_new_match = False
         self._wake.clear()
 
     def stop(self) -> None:
@@ -410,7 +451,7 @@ class DispatcherTransportTap:
         with self._lock:
             thread_alive = self._thread is not None and self._thread.is_alive()
             healthy = bool(
-                self._match_id
+                (self._match_id or self._discover_new_match)
                 and thread_alive
                 and self._last_stable_at is not None
                 and time.monotonic() - self._last_stable_at <= 0.25
@@ -449,16 +490,151 @@ class DispatcherTransportTap:
                 return
             with self._lock:
                 match_id = self._match_id
-            if match_id is None:
+                discover_new_match = self._discover_new_match
+                excluded_match_id = self._discover_excluding_match_id
+            if discover_new_match:
+                self._capture_new_match_once(excluded_match_id)
+            elif match_id is None:
                 self._wake.clear()
                 continue
-            self._capture_once(match_id)
+            else:
+                self._capture_once(match_id)
             # ``threading.Event.wait(0.002)`` is quantized close to one Windows
             # scheduler tick on this host (~15 ms).  Python's high-resolution
             # sleep uses the waitable-timer path and preserves the intended
             # 2–3 ms cadence.  The tap exists for at most the bounded result
             # wait, so the equally short stop latency is acceptable.
             time.sleep(self._interval)
+
+    def _capture_new_match_once(self, excluded_match_id: str | None) -> None:
+        """Discover one exact raw MATCH_START while its MatchId is unknown."""
+
+        try:
+            roots = self._reader.read()
+            with self._lock:
+                self._poll_count += 1
+                self._stable_root_reads += 1
+                self._candidate_messages += len(roots)
+                self._last_error = None
+                self._last_stable_at = time.monotonic()
+            for root in roots:
+                if root.json_address is None:
+                    continue
+                try:
+                    raw_json = read_il2cpp_string(
+                        self._target.memory,
+                        root.json_address,
+                        max_length=262_144,
+                    )
+                    envelope = json.loads(raw_json)
+                except (
+                    ExternalReadError,
+                    OSError,
+                    TypeError,
+                    json.JSONDecodeError,
+                    LayoutValidationError,
+                    ValueError,
+                ):
+                    continue
+                if not isinstance(envelope, dict) or envelope.get("type") != "MATCH_START":
+                    continue
+                discovered_match_id = envelope.get("matchId")
+                if (
+                    not isinstance(discovered_match_id, str)
+                    or not discovered_match_id
+                    or discovered_match_id == excluded_match_id
+                ):
+                    continue
+                fingerprint = hashlib.sha256(raw_json.encode("utf-8")).digest()
+                identity = (
+                    discovered_match_id,
+                    root.message_address,
+                    root.json_address,
+                    fingerprint,
+                )
+                with self._lock:
+                    if identity in self._seen:
+                        continue
+                try:
+                    message = parse_server_envelope_json(
+                        raw_json,
+                        expected_match_id=discovered_match_id,
+                        message_address=root.message_address,
+                    )
+                except (LayoutValidationError, ValueError):
+                    continue
+                snapshot = None
+                rejection: Exception | None = None
+                try:
+                    snapshot = parse_transport_board_envelope_json(
+                        raw_json,
+                        expected_match_id=discovered_match_id,
+                        expected_event_type="MATCH_START",
+                        message_address=root.message_address,
+                        json_address=root.json_address,
+                    )
+                    with self._lock:
+                        self._decoded_raw_boards += 1
+                except (LayoutValidationError, ValueError) as exc:
+                    rejection = exc
+                if snapshot is None and message.server_sequence is not None:
+                    try:
+                        dto_class = self._dto_class
+                        if dto_class is None:
+                            dto_class = self._target.resolver.resolve_type_info_class(
+                                CHAT_MESSAGE_DTO_TYPE_INFO_RVA
+                            )
+                        if dto_class is None:
+                            raise LayoutValidationError(
+                                "ChatMessageDTO type-info is unavailable"
+                            )
+                        self._dto_class = int(dto_class)
+                        snapshot = read_preparsed_board_snapshot(
+                            self._target.memory,
+                            match_id=discovered_match_id,
+                            message_address=root.message_address,
+                            expected_message_class=int(dto_class),
+                            event_type="MATCH_START",
+                            sequence=int(message.server_sequence),
+                        )
+                        with self._lock:
+                            self._decoded_preparsed_boards += 1
+                    except (
+                        ExternalReadError,
+                        OSError,
+                        LayoutValidationError,
+                        RuntimeError,
+                        ValueError,
+                    ) as exc:
+                        rejection = exc
+                if snapshot is None:
+                    with self._lock:
+                        self._raw_board_rejections += 1
+                        if len(self._board_rejection_reasons) < 16:
+                            self._board_rejection_reasons.append(
+                                "event=MATCH_START; raw/preBoard="
+                                f"{type(rejection).__name__}: {rejection}"
+                            )
+                    continue
+                with self._lock:
+                    self._seen.add(identity)
+                    self._messages[identity] = message
+                    self._transport_boards[
+                        (
+                            discovered_match_id,
+                            root.message_address,
+                            root.json_address,
+                        )
+                    ] = ("MATCH_START", snapshot)
+                    self._match_id = discovered_match_id
+                    self._discover_excluding_match_id = None
+                    self._discover_new_match = False
+                return
+        except (ExternalReadError, OSError, LayoutValidationError) as exc:
+            with self._lock:
+                self._poll_count += 1
+                self._torn_reads += 1
+                self._last_error = f"{type(exc).__name__}: {exc}"
 
     def _capture_once(self, match_id: str) -> None:
         # Typed game-owned roots can outlive or precede the dispatcher callback.

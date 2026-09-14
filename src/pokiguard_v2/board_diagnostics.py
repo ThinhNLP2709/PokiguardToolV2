@@ -20,6 +20,7 @@ from .basic_policy import BasicPolicyEngine, PolicyAction, PolicyDecision
 from .board_simulator import MoveEvaluation, evaluate_all_moves
 from .combat_lifecycle import CombatLifecycleState
 from .live_state import runtime_row_to_screen_row, screen_row_to_runtime_row
+from .pet_skill_shadow import PetSkillCapability
 from .state import (
     BattleState,
     BoardState,
@@ -250,13 +251,17 @@ def analyze_game_state(
     *,
     policy_engine: BasicPolicyEngine | None = None,
     decision_timestamp: str | None = None,
+    pet_skill_capability: PetSkillCapability | None = None,
 ) -> BoardDiagnosticResult:
     if state.phase is not GamePhase.COMBAT or state.board is None:
         raise ValueError("board diagnostics require a stable combat GameState")
     evaluations = evaluate_all_moves(state.board)
     if len(evaluations) > TOTAL_ADJACENT_SWAPS:
         raise AssertionError("legal move count exceeds the 112 adjacent pairs")
-    decision = (policy_engine or BasicPolicyEngine()).decide(state)
+    decision = (policy_engine or BasicPolicyEngine()).decide(
+        state,
+        pet_skill_capability=pet_skill_capability,
+    )
     safe_count = sum(value.sword_risk.safe for value in evaluations)
     dangerous_count = len(evaluations) - safe_count
     observability = {

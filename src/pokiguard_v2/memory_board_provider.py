@@ -2,7 +2,7 @@
 
 Publishable boards must be tied to the current match's persistent render-ACK
 set and current presentation. A complete same-sequence DTO remains preferred;
-when b2 acknowledges an ops-only response, the provider can instead decode all
+when the supported build acknowledges an ops-only response, the provider can instead decode all
 64 exact current Dot components through Board.allDots without a heap scan.
 """
 
@@ -2034,7 +2034,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         return value or None
 
     def _read_turn_announcer_blocking(self) -> bool:
-        """Read the b2 game-owned turn-announcement input block fail-closed."""
+        """Read the game-owned turn-announcement input block fail-closed."""
 
         resolver = self.target.resolver
         turn_announcer_class = resolver.resolve_type_info_class(
@@ -3113,6 +3113,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
     def refresh_pet_skill_cards(
         self,
         expected_session: CombatSessionKey,
+        *,
+        require_fusion_success: bool = True,
     ) -> tuple[CardState, ...]:
         """Refresh the current Pet Skill hand without board/batch discovery.
 
@@ -3146,11 +3148,13 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
             if match_id != expected_session.match_id:
                 raise LayoutValidationError("Pet Skill current match changed")
-            if fusion is None or not fusion.used_successfully:
+            if require_fusion_success and (
+                fusion is None or not fusion.used_successfully
+            ):
                 self._native_card_reason = "pet_skill_not_unlocked_by_fusion"
                 return ()
             # Do not use Board.isUsingLegendCard as a current-QTE busy signal.
-            # In 1.7.4-b2 SetLegendMultiplier writes it true; B4 live evidence
+            # SetLegendMultiplier writes it true; B4 live evidence
             # shows it still true after QTE cleanup and multiple later turns.
             # This read only discovers the current native hand. Input remains
             # gated by proven inactive ActiveDotSkillCard, current CardUI/Button,
@@ -3190,7 +3194,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 )
             skill_data = (
                 int(fusion.skill_card)
-                if fusion.skill_card is not None
+                if fusion is not None
+                and fusion.skill_card is not None
                 and is_canonical_user_pointer(int(fusion.skill_card))
                 else None
             )
@@ -3950,7 +3955,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 self._last_fusion_owner_anchor_reason = (
                     "current_fusion_ui_resolved_by_session_warmup"
                 )
-        # Metadata-110 b2 proves Board.cardsInHand at +0x348. Ordinary card and
+        # Metadata-110 b3 proves Board.cardsInHand at +0x350. Ordinary card and
         # Fusion GameObjects can occupy different allocations, so scan their
         # exact owner envelopes separately instead of combining them into a
         # larger/incorrect region set.
@@ -4481,7 +4486,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 and (not recovery_ack_isolated or identity in current_session_strong)
                 for identity in self._ack_attested
             )
-            # b2 acknowledges every rendered combat response, including
+            # The supported build acknowledges every rendered combat response, including
             # responses whose payload contains only incremental ``ops`` and no
             # replacement 8x8 board DTO.  Therefore the largest durable ACK is
             # a presentation watermark, not proof that a same-sequence DTO

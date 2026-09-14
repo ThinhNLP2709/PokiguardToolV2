@@ -143,7 +143,7 @@ class NativeFixture:
                 self.i(dot.managed + 0x24, row)
                 self.q(dot.managed + 0x48, self.board)
                 self.i(dot.managed + 0x88, 1 + (row + column) % 4)
-                self.q(dot.managed + 0xF8, self.string(tags[(row * 8 + column) % len(tags)]))
+                self.q(dot.managed + 0x100, self.string(tags[(row * 8 + column) % len(tags)]))
                 nodes.append(node)
                 dots.append(dot)
         return dot_class, nodes, dots

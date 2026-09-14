@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-12 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-14 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -25,10 +25,173 @@ decision in `DECISIONS.md`.
 | Item | Current state |
 |---|---|
 | Current accepted gameplay phase | **Phase 2 BASIC/default — reaccepted after clean 5/5 live completion** |
-| Active phase | **None — Phase 3C.0 is closed; Phase 3C.1 has not started** |
-| Phase 3 status | **Phase 3A.2 model and Phase 3C.0 continuation audit complete** |
-| Current controller status | **Phase 3C.0 retry 5 completed and harness stopped normally** |
-| Current live automation | **None** |
+| Active phase | **Phase 3C.1 Audition V3 — PASS STRONG; Git closeout in progress** |
+| Phase 3 status | **Pet Skill policy/FarmRunner/Desktop integrated; V3 is default and V2 four-direction is optional** |
+| Current controller status | **No FarmRunner/PetSkill executor is running** |
+| Current live automation | **None; B1+B2 completed and each returned to BOSS_LOBBY** |
+
+## Pokiguard 1.7.4-b4 — default-mode repair
+
+The current single runtime profile now targets only the exact b4
+`GameAssembly.dll` SHA-256
+`D55BDE20918F65E84700736E0EDE33AA8EE50A10956590D28FB8E53D185B28D6`.
+The former b3 hash and unknown builds fail before the memory provider is
+constructed because this source tree uses one layout profile at a time.
+
+All b4 TypeInfo RVAs are implemented for Board/Active, MatchService
+turn/clock/ACK/desync state, opening-board transport, ChatMessageDTO, player
+stats, ordinary cards, Fusion/evolution, PetUserDTO capability, boss-room
+discovery, and combat lifecycle. Default managed offsets remain stable from
+b3 except the Dot tail: `_squashing +0xFC`, `PoolTag +0x100`, and
+`RenderHidden +0x131`. The b4 `Component.get_gameObject` cache is
+`GameAssembly+0x355F678`; its resolved UnityPlayer function remains
+`UnityPlayer+0x1067390`. All 15 native ownership/geometry signatures match the
+installed UnityPlayer exactly. The managed/native unmarshal signature is now
+at `GameAssembly+0x10971EF`.
+Its b4-unique relative-call bytes are `BF E4 16 FF`; live memory and the
+installed PE agree. The earlier carried-forward b3 displacement caused the
+first b4 combat to reject native board discovery before any gameplay input.
+
+The b4 default repair was accepted before Pet Skill work resumed. Phase 3C.1
+now adds a separate exact V3 `LR` reader and retains V2 four-direction mode as
+an explicit compatibility option. The two default BASIC profiles remain
+authorized and their complete regression stays green.
+
+Live match `M_91a4747a` proved the b4 native mapping: three complete
+`Board.allDots` reads were accepted, 64 Dot objects were cached, native-board
+rejections stayed zero, and evolution mana cost was 120. Entry missed the
+short-lived MATCH_START, so it intentionally sent zero gameplay input and
+stopped after the opening turn advanced. The decoder had three inherited
+Newtonsoft offsets at `+0x58`; b4 declarations put `JArray._values`,
+`JObject._properties`, and `JProperty._content` at `+0x50`. Those offsets and
+the synthetic test fixture are corrected. Boss entry now arms the existing
+read-only 1 ms dispatcher sampler before Start and discovers only a strict
+new-match MATCH_START, then binds it to the actual same-MatchId Board session.
+No opening or gameplay acceptance invariant was relaxed.
+
+Offline verification now passes **1212/1212** tests, `compileall`, and
+`git diff --check`; the installed b4 hash is accepted by the exact gate. A
+zero-input live attach resolved the b4 provider/lobby roots and
+classified `LOBBY_OTHER` with no read errors. The inspector ended only because
+the game was not in a Chinh Phuc room; counters are `entryClicks=0` and
+`gameplayInputs=0`. Artifact:
+`logs/b4_compatibility/20260914_lobby_inspect/entry.jsonl`.
+
+The post-repair bounded run `a6d3f398cd0b4cb4bb009ead46d83601`
+retained a complete 64-cell MATCH_START before Board construction, accepted it
+on local turn 1 with sequence 0 and 14 seconds remaining, and immediately sent
+a safe SWAP that the server acknowledged. It completed Fraxure match
+`M_64611df6` as a strong 1/1 WIN and returned to `BOSS_LOBBY`: 15 SWAP sent,
+14 normally acknowledged, final SWAP closed on terminal lifecycle, one failed
+and one successful 120-mana evolution, 0 PASS, 0 technical abort/recovery, and
+0 safety violation. Native mapping accepted 18/18 board reads with 0 rejection;
+provider read, DTO, stale, ambiguous and sequence-desync errors were all zero.
+Attack CardUI and its 160 cost resolved live, though this match did not meet the
+configured CAST conditions before a Sword move killed the boss. b4 default
+BASIC compatibility is accepted. See
+[pokiguard_1.7.4_b4_compatibility_report.md](pokiguard_1.7.4_b4_compatibility_report.md).
+
+## Phase 3C.1 — PASS STRONG
+
+The first BASIC Pet Skill backend profile is narrowly
+`LEGENDARY / NONE / PET_SKILL`. It uses a distinct turn-consuming
+`PET_SKILL` policy action backed by the accepted Huyền Thoại 7 automatic-dot
+QTE primitive. The policy never proposes EVOLVE or the ordinary Attack card
+for this profile. A current-session capability, current runtime cost,
+unambiguous supported family and live actionability are mandatory.
+
+When the skill is not ready, Sword remains the highest board objective. The
+next resource branch considers only Sword-safe deterministic Mana/Rage gains
+toward the current deficits, ranks completed requirements before normalized
+progress, and assigns no favorable credit to UNKNOWN refill. The established
+Health, Drain, Shield, PASS and mandatory-action branches remain after this
+resource branch.
+
+FarmRunner now dispatches exactly one accepted Pet Skill primitive while
+holding its existing gameplay capability. Physical card, direction and Space
+inputs pass through that same authority. Zero-input rejection releases the
+permit and requires a fresh state; any result after a card click closes the
+source turn and prohibits fallback or blind retry. A successful runtime
+Perfect waits for an authoritative boss turn, terminal state or later local
+turn before gameplay can resume. No pending Pet Skill/QTE state is persisted
+across matches or checkpoints.
+
+Audition V3 now reads the separate b4 `AuditionStage` and
+`AuditionChallenge`, requires exact server layout `LR`, and consumes the
+game-built `Expected` list. Only Left/Right/Space are allowed. Audition V2 is
+retained as the `audition_v2` four-direction option. The selected mode flows
+through Preferences, Desktop Start/Resume, FarmRunner and the embedded action.
+
+Source version is `1.0.46`. Full verification is **1222/1222**, the dedicated
+V3 tests are **7/7**, and `compileall`/`git diff --check` pass. Live B1 reached
+the Huyền Thoại 7 card in run `f740e9c51fb845d7a9fe2c8ea1de5a6b`; the card
+was clicked once, but zero direction/Space inputs were emitted because the
+reader incorrectly rejected the native `ServerQteReverseFrom = -1` no-reverse
+sentinel. Native b4 disassembly and read-only runtime memory agree on `-1`; the
+reader now accepts exactly that sentinel and retains fail-closed rejection for
+other invalid negatives.
+
+The next run `7f8cf5fc45484cb394017fa5900a49a1` proved that repair and exposed a
+second distinct native sentinel: `CardUI._auditionV3ElapsedMs` is exactly `-1`
+until Space is tapped. The former scalar gate rejected it before sending the
+first direction. Native constructor, QTE-start, live-clock and tap callback
+code all prove this lifecycle. The reader now accepts exact `-1` only before
+tap and requires bounded host/stage equality after tap. A clean live retry
+remains pending. See
+[phase3c1_report.md](phase3c1_report.md) and
+[phase3c1_runbook.md](phase3c1_runbook.md).
+
+Run `17e9a8761c6e477ca8fee7436d4b2924` then confirmed the complete direction
+path: seven of seven Left/Right inputs were authoritatively acknowledged with
+zero wrong, skipped or duplicate directions. The action finished directions at
+QTE elapsed `1.217 s` and waited for `3.150 s` inside the Perfect window. At
+`3.054240 s`, the reader incorrectly rejected the coherent pre-tap tuple
+`Tapped=false`, `_wasPerfect=true`, `_grade=null` and therefore sent no Space.
+Native `TickBar` proves `_wasPerfect` is the current in-zone highlight, while
+`ShowResult` writes `_grade` after grading. The false relationship is removed
+and the next live retry proved it.
+
+Run `b77eb786333345418e379777bf78cddd`, match `M_79773863`, clicked the skill
+card once, confirmed the full seven-direction V3 sequence, pressed Space once
+at `3.185 s` inside the Perfect window and received authoritative runtime
+`PERFECT`. The skill killed Starburst immediately. The controller captured a
+strong terminal WIN before cleanup: boss HP `0`, local HP `38134`, UI text
+`Thắng`, and all safety counters zero. This accepts the V3 action itself.
+
+The run stopped at the result screen because FarmRunner's combat-summary
+adapter did not list the Phase 3C.1 success label `FULL_COMBAT_COMPLETED`.
+It accepted only the historical `FULL_MATCH_PASS`/`B5_PASS_STRONG` labels and
+therefore rejected a valid controller summary before result confirmation. The
+adapter now accepts the exact safe classification while preserving terminal,
+session, pending-action, postmatch and safety gates; the safety-finding variant
+remains rejected. Replaying the captured log now routes to
+`POSTMATCH_RESULT_UI_REQUIRED`. Corrected FarmRun
+`6bcf4d8efa9a4e129cc32aa492a17b6a`, MatchId `M_8ba50c47`, then passed B1 end
+to end: `1/1 WIN`, ten SWAPs all acknowledged, one Pet Skill runtime Perfect,
+zero EVOLVE/ordinary CAST/PASS, one result confirmation, consistent memory/UI
+WIN, final exact Starburst `BOSS_LOBBY`, and all safety counters zero. See
+[phase3c1_full_combat_classification_incident.md](phase3c1_full_combat_classification_incident.md).
+
+One direct B2 launch timed out before entry because the game window was never
+foreground. It sent zero entry/gameplay inputs and produced no match attempt;
+it is not B2 evidence.
+
+Fresh B2 FarmRun `360e3ef223fc4f5eba5ca93d1cd2d490`, MatchId `M_031645fd`,
+then completed `1/1 WIN`. It used a new Board/session and QTE generation,
+performed six acknowledged SWAPs, logged three Sword-safe Rage-progress choices
+against current deficits, and proposed HT7 at turn 13 with Mana/Rage `210/230`
+against runtime cost `200/200`. Its fresh seven-direction sequence was fully
+confirmed, Space was sent once at `3.168 s`, and runtime result was `PERFECT`.
+The skill killed the boss; memory/UI WIN agreed, the result was confirmed once,
+and FarmRunner returned to exact `BOSS_LOBBY` with all safety counters zero.
+
+Accepted B1+B2 total two fresh completed MatchIds, two Pet Skill successes, two
+Perfects, `16/16` acknowledged SWAPs, zero EVOLVE, zero ordinary CAST, zero
+PASS, zero stale/duplicate/wrong QTE or gameplay input, zero same-source-turn
+follow-up and consistent `2/2 WIN` accounting. Both skills killed the boss, so
+next-local continuation is `NOT_OBSERVED`; Phase 3C.0 already proves the Legend
+latch boundary. Phase 3C.1 is PASS STRONG. The next safe scope is Phase 3C.2;
+no 3C.2 work has started.
 
 ## Phase 3C.0 — PASS STRONG
 

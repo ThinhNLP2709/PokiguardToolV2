@@ -31,6 +31,7 @@ from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.gameplay_ui import locate_native_pet_skill_control  # noqa: E402
+from pokiguard_v2.gameplay_profile import AuditionMode  # noqa: E402
 from pokiguard_v2.native_card_ui import NativeCardUiReader, NativeGeometryBusyError  # noqa: E402
 from pokiguard_v2.combat_cards import read_combat_card  # noqa: E402
 from pokiguard_v2.il2cpp_external import (  # noqa: E402
@@ -61,6 +62,32 @@ from tools.pet_qte_observer import run as run_observer  # noqa: E402
 from tools.runtime_common import default_log_path  # noqa: E402
 
 
+class _AtomicPetSkillBackend:
+    """Delegate reads while fencing each physical Pet Skill input atomically."""
+
+    def __init__(
+        self,
+        backend: Any,
+        gate: Callable[[Callable[[], Any]], tuple[bool, Any | None]],
+    ) -> None:
+        self._backend = backend
+        self._gate = gate
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._backend, name)
+
+    def click_mouse(self) -> None:
+        authorized, _result = self._gate(self._backend.click_mouse)
+        if not authorized:
+            raise RuntimeError("PET_SKILL_INPUT_AUTHORITY_REVOKED")
+
+    def press_virtual_key(self, virtual_key: int) -> bool:
+        authorized, result = self._gate(
+            lambda: self._backend.press_virtual_key(virtual_key)
+        )
+        return bool(authorized and result)
+
+
 class Phase3b3RuntimeHook:
     """Bridge production read-only evidence to one PetSkillActionExecutor."""
 
@@ -73,11 +100,29 @@ class Phase3b3RuntimeHook:
         qte_generation_timeout_seconds: float,
         result_timeout_seconds: float,
         post_state_timeout_seconds: float,
+        expected_session: Any | None = None,
+        expected_skill_card_id: int | None = None,
+        allow_zero_input_rearm: bool = True,
+        require_fusion_success: bool = True,
+        basic_policy_integration: bool = False,
+        provided_backend: Any | None = None,
+        provided_binding: Any | None = None,
+        atomic_input_gate: Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None = None,
+        audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
     ) -> None:
         self._direction_ack_timeout = direction_ack_timeout_seconds
         self._qte_generation_timeout = qte_generation_timeout_seconds
         self._result_timeout = result_timeout_seconds
         self._post_state_timeout = post_state_timeout_seconds
+        self._expected_session = expected_session
+        self._expected_skill_card_id = expected_skill_card_id
+        self._allow_zero_input_rearm = allow_zero_input_rearm
+        self.require_fusion_success = require_fusion_success
+        self._basic_policy_integration = basic_policy_integration
+        self._provided_backend = provided_backend
+        self._provided_binding = provided_binding
+        self._atomic_input_gate = atomic_input_gate
+        self.audition_mode = AuditionMode(audition_mode)
         self._emit: Callable[..., None] | None = None
         self._target: Any = None
         self._backend: NativeWin32Backend | None = None
@@ -236,8 +281,10 @@ class Phase3b3RuntimeHook:
     def attach(self, target: Any, emit: Callable[..., None]) -> None:
         if "64" not in str(target.architecture):
             raise RuntimeError("Phase 3B.3 requires the accepted x64 game target")
-        backend = NativeWin32Backend()
-        binding = find_window_for_pid(target.pid, backend)
+        backend = self._provided_backend or NativeWin32Backend()
+        if self._atomic_input_gate is not None:
+            backend = _AtomicPetSkillBackend(backend, self._atomic_input_gate)
+        binding = self._provided_binding or find_window_for_pid(target.pid, backend)
         self._target = target
         self._backend = backend
         self._binding = binding
@@ -269,9 +316,14 @@ class Phase3b3RuntimeHook:
             actionLimit=1,
             cardClickLimit=1,
             confirmKey="VK_SPACE",
-            allowedDirectionKeys=["UP", "DOWN", "LEFT", "RIGHT"],
+            allowedDirectionKeys=(
+                ["LEFT", "RIGHT"]
+                if self.audition_mode is AuditionMode.V3_TWO_DIRECTION
+                else ["UP", "DOWN", "LEFT", "RIGHT"]
+            ),
+            auditionMode=self.audition_mode.value,
             inputAuthority="PET_SKILL_ONE_FULL_ACTION",
-            basicPolicyIntegration=False,
+            basicPolicyIntegration=self._basic_policy_integration,
         )
         self._watchdog_thread = threading.Thread(
             target=self._watch_stages,
@@ -281,6 +333,9 @@ class Phase3b3RuntimeHook:
         self._watchdog_thread.start()
 
     def started(self, log_path: Path) -> None:
+        if self._basic_policy_integration:
+            print(f"FarmRunner Pet Skill dispatch; log: {log_path}", flush=True)
+            return
         print(f"Phase 3B.3 one-shot Pet Skill action; log: {log_path}", flush=True)
         print(
             "WAITING: prepare combat and resources; the harness will execute exactly one "
@@ -290,6 +345,22 @@ class Phase3b3RuntimeHook:
 
     def runtime_context(self, **context: Any) -> None:
         self._latest_context = context
+        capability = context.get("capability")
+        if (
+            not self._invocation_consumed
+            and capability is not None
+            and (
+                (
+                    self._expected_session is not None
+                    and context.get("session") != self._expected_session
+                )
+                or (
+                    self._expected_skill_card_id is not None
+                    and capability.skill_card_id != self._expected_skill_card_id
+                )
+            )
+        ):
+            self._fatal_stop_reason = "PET_SKILL_POLICY_PROPOSAL_CHANGED"
 
     def dispatcher_qte_results(self, match_id: str) -> tuple[Any, ...]:
         """Return immutable responses retained from exact dispatcher roots."""
@@ -867,6 +938,8 @@ class Phase3b3RuntimeHook:
         remains terminal.
         """
 
+        if not self._allow_zero_input_rearm:
+            return False
         result = completed_executor.result
         factory = self._executor_factory
         rearmable = {
@@ -1261,6 +1334,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--direction-ack-timeout", type=float, default=1.25)
     parser.add_argument("--qte-generation-timeout", type=float, default=3.0)
     parser.add_argument(
+        "--audition-mode",
+        choices=[value.value for value in AuditionMode],
+        default=AuditionMode.V3_TWO_DIRECTION.value,
+    )
+    parser.add_argument(
         "--result-timeout",
         type=float,
         default=15.0,
@@ -1323,6 +1401,7 @@ def run(args: argparse.Namespace) -> int:
         max_region_mib=args.max_region_mib,
         chunk_mib=args.chunk_mib,
         allow_combat_start=args.allow_combat_start,
+        audition_mode=args.audition_mode,
     )
     hook_type = Phase3b3RuntimeHook
     if b4:
@@ -1336,6 +1415,7 @@ def run(args: argparse.Namespace) -> int:
         qte_generation_timeout_seconds=args.qte_generation_timeout,
         result_timeout_seconds=args.result_timeout,
         post_state_timeout_seconds=args.post_state_timeout,
+        audition_mode=AuditionMode(args.audition_mode),
     )
     if c0:
         hook_kwargs["continuation_timeout_seconds"] = args.continuation_timeout
@@ -1362,6 +1442,67 @@ def run(args: argparse.Namespace) -> int:
         hook.stop("HARNESS_EXIT")
         signal.signal(signal.SIGINT, previous_interrupt)
         signal.signal(signal.SIGTERM, previous_terminate)
+
+
+def run_embedded_policy_action(
+    *,
+    target: Any,
+    provider: Any,
+    log_path: Path,
+    expected_session: Any,
+    expected_skill_card_id: int,
+    audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
+    backend: Any | None = None,
+    binding: Any | None = None,
+    atomic_input_gate: Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None = None,
+    interval: float = 0.025,
+    timeout: float = 20.0,
+) -> Phase3b3RuntimeHook:
+    """Run one accepted primitive under FarmRunner's existing controller lease.
+
+    This call is synchronous: the combat loop yields its sole gameplay owner
+    until the primitive returns, so no parallel controller or same-turn fallback
+    can race the QTE.
+    """
+
+    hook = Phase3b3RuntimeHook(
+        direction_ack_timeout_seconds=1.25,
+        qte_generation_timeout_seconds=3.0,
+        result_timeout_seconds=15.0,
+        post_state_timeout_seconds=15.0,
+        expected_session=expected_session,
+        expected_skill_card_id=expected_skill_card_id,
+        allow_zero_input_rearm=False,
+        require_fusion_success=False,
+        basic_policy_integration=True,
+        provided_backend=backend,
+        provided_binding=binding,
+        atomic_input_gate=atomic_input_gate,
+        audition_mode=audition_mode,
+    )
+    observer_args = argparse.Namespace(
+        watch=True,
+        log=log_path,
+        interval=interval,
+        timeout=timeout,
+        qtes=0,
+        max_region_mib=8,
+        chunk_mib=2,
+        allow_combat_start=True,
+    )
+    try:
+        try:
+            run_observer(
+                observer_args,
+                runtime_hook=hook,
+                shared_target=target,
+                shared_provider=provider,
+            )
+        except Exception as exc:
+            hook.invalidate(f"EMBEDDED_OBSERVER_ERROR:{type(exc).__name__}:{exc}")
+        return hook
+    finally:
+        hook.stop("EMBEDDED_POLICY_ACTION_EXIT")
 
 
 def main() -> int:

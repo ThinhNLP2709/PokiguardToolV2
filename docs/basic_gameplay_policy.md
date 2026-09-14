@@ -34,8 +34,9 @@ fusion-owner scans while the slow board-recovery loop was reproduced.
 
 ## Scope
 
-This phase is proposal-only. `BasicPolicyEngine` produces `EVOLVE`, `CAST`,
-`SWAP`, `PASS`, `EXIT_MATCH`, or `NONE` plus a `DecisionTrace`. It contains no
+The policy layer is proposal-only. `BasicPolicyEngine` produces `EVOLVE`,
+`CAST`, `PET_SKILL`, `SWAP`, `PASS`, `EXIT_MATCH`, or `NONE` plus a
+`DecisionTrace`. It contains no
 mouse input, card click, exit click, game method call, process write, or
 network path.
 
@@ -50,12 +51,11 @@ The current user-facing configuration is:
   exists;
 - `Intelligence`: `BASIC`, `REASONING`.
 
-This document describes the existing `BasicPolicyEngine`, whose internal
-`PolicyConfig` still contains `ManaPriority` until Phase 3C.1. Phase 3A.2 maps
-only `NORMAL/NORMAL/DEFAULT_ATTACK` to `EVOLUTION` and
-`NORMAL/NONE/DEFAULT_ATTACK` to `ATTACK`. Every other product profile is gated
-before FarmRunner. Pet Skill integration is pending; the rules below were not
-changed by the configuration migration.
+Canonical production policy now receives the three Phase 3A.2 profile fields.
+`ManaPriority` remains only as a compatibility bridge for old direct fixtures
+and checkpoints. The two default-Attack profiles retain their Phase 2 behavior.
+Phase 3C.1 additionally maps exactly `LEGENDARY/NONE/PET_SKILL`; other Pet
+Skill profiles remain gated.
 
 The user-authored gameplay rules these steps implement live in
 `docs/gameplay_rules.md`, which is the source of truth for behaviour. Every
@@ -64,6 +64,35 @@ flags.
 
 Only `BASIC` is implemented. Selecting `REASONING` returns `NONE` with
 `REASONING_NOT_IMPLEMENTED`.
+
+## Phase 3C.1 Pet Skill order
+
+For exact profile `LEGENDARY / NONE / PET_SKILL`, every decision first requires
+a unique current-session `PetSkillCapability`, a supported automatic-dot skill
+family, positive effective Mana/Rage requirements and known live CardUI
+actionability. Missing, stale, ambiguous or unsupported evidence returns
+`NONE`; it never becomes ordinary CAST or guessed resource play.
+
+The implemented branch order is:
+
+1. If current Mana/Rage meet the runtime capability cost and the live card is
+   actionable, propose turn-consuming `PET_SKILL` with only session and card ID
+   identity. The executor rediscovers the live CardUI before input.
+2. Otherwise preserve the complete accepted Sword branch and all of its
+   deterministic/UNKNOWN/reply safety rules.
+3. If Mana or Rage is missing, compare only Sword-safe deterministic moves that
+   advance a current deficit. Rank requirements completed after the move,
+   normalized closed deficit, existing danger/cascade/UNKNOWN tie-breaks, then
+   the stable move identity. A sufficient resource and UNKNOWN refill receive
+   zero readiness credit.
+4. Preserve Health, Drain and Shield branches in their existing order. Both
+   low-HP finisher CAST and stockpile CAST are prohibited in this profile.
+5. Preserve authoritative PASS and mandatory consuming-action rules. PET_SKILL
+   itself satisfies turn consumption, but it never synthesizes an idle reset.
+
+The accepted HT7 and HT2 costs remain fixtures at 200/200 and 200/150. Policy
+reads `effective_mana_cost`/`effective_power_cost`; it contains no Legendary
+rarity cost constant. Net post-skill resources never authorize a later action.
 
 ## Runtime gates
 
@@ -198,8 +227,10 @@ general detector rather than a hard-coded coordinate case.
 One distinct local `MatchService.TurnNumber` is counted as one turn and one
 energy for the match. Polling the same server turn repeatedly never increments
 the count. EVOLVE is non-consuming, so EVOLVE followed by SWAP on the same
-local turn costs one; CAST, SWAP, or an authoritative PASS ends that local
-turn. Each completed attempt records `localTurns`/`energyUsed`. The desktop
+local turn costs one; CAST, PET_SKILL, SWAP, or an authoritative PASS ends that
+local turn. After Pet Skill input the source turn is permanently fenced and
+FarmRunner waits for boss turn, terminal, or a fresh later local turn. Each
+completed attempt records `localTurns`/`energyUsed`. The desktop
 Control tab shows completed per-match counts, the current match's live local
 turn/energy count, and `Total energy` on separate lines. Live projection uses
 the already deduplicated TurnNumber observation; it adds no memory scan,

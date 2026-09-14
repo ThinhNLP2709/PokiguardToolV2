@@ -1,5 +1,70 @@
 # Board instance resolution — Phase 1
 
+## Pokiguard 1.7.4-b4 default-board addendum — 2026-09-14
+
+The ownership model is unchanged, but every TypeInfo root moved:
+
+```text
+GameAssembly.base + 0x33558A0 -> Board Il2CppClass -> static_fields +0x10 -> Board*
+GameAssembly.base + 0x3355698 -> Active Il2CppClass -> static_fields +0x00 -> Active* -> board +0x38
+GameAssembly.base + 0x3350170 -> ManagerMatch Il2CppClass -> static_fields +0x00 -> ManagerMatch* -> active +0x130 -> board +0x38
+```
+
+`Board` and the default combat/transport fields retain their b3 offsets. `Dot`
+adds two input fields at `+0xF0/+0xF4`; the stable rendered-board tail is now
+`_squashing +0xFC`, `PoolTag +0x100`, and `RenderHidden +0x131`. The earlier
+motion fields remain `_isFalling +0xB0` and `isPredictionSwap +0xE0`.
+`BoardWsApplier.SpawnDotByTag` RVA `0x00360350` reaches the `PoolTag` setter at
+RVA `0x002B4AF0`, whose exact native store is `[Dot+0x100]`.
+
+The native ownership bridge uses the b4 GameAssembly cache at `+0x355F678`;
+the resolved Unity function remains `UnityPlayer+0x1067390` because the
+UnityPlayer hash did not change. Full evidence is in
+[pokiguard_1.7.4_b4_compatibility_report.md](pokiguard_1.7.4_b4_compatibility_report.md).
+A zero-input lobby probe resolved the b4 Board/Active/Manager/provider class
+roots without read errors. Their instances were correctly null in
+`LOBBY_OTHER`. Live match `M_91a4747a` subsequently accepted three complete
+Board-owned 64-Dot reads, retained 64 cached Dot objects, and recorded zero
+native-board rejection. This confirms the b4 Dot mapping.
+
+That attempt still missed the immutable opening because entry did not start
+the 1 ms dispatcher sampler until gameplay handoff. Entry now arms the sampler
+immediately before Start in a bounded new-match mode. Only a complete raw
+MATCH_START with a nonempty MatchId different from the lobby baseline may be
+retained; a compacted raw board may recover only through the same callback's
+class-checked `ChatMessageDTO.preBoard`. The snapshot is accepted only after
+the real Board session binds to the same MatchId. The first-turn and source
+requirements remain unchanged.
+
+Post-repair match `M_64611df6` retained MATCH_START before Board construction,
+accepted its exact 64 cells at local sequence 0 with 14 seconds remaining, and
+used it for an acknowledged turn-1 SWAP. Across the full winning match, native
+`Board.allDots` fallback accepted 18/18 complete reads with zero rejection.
+The run returned to `BOSS_LOBBY` with no provider read, DTO, stale, ambiguous or
+sequence-desync error. Artifact:
+`logs/b4_compatibility/20260914_011130_basic_live_retest/a6d3f398cd0b4cb4bb009ead46d83601/`.
+
+## Cân Đẩu Vân 1.7.4-b3 state authority — 2026-09-13
+
+The mini game's declared state is `CanDauVanPanel._state +0x188` ->
+`CanDauVanState.player +0x48` -> `CanDauVanPlayer.pos +0x28` and
+`rollSeq +0x2C`. This is a separate declared state model from the match-3
+`Board.allDots` model. Live root resolution and instance lifetime remain
+**UNKNOWN**; no reader or automation adapter was implemented.
+
+The native roll flow sends the current sequence through
+`CanDauVanApi.Roll`, receives `CanDauVanRollResult`, then reads `dice +0x20`,
+`toPos +0x30` and `path +0x38` to render movement. `TryPlay` waits for both
+`_diceDone +0x1B1` and `_pendingRoll +0x1B8`. `CanDauVanState.ApplyRoll`
+copies the returned destination into player position. If the response path is
+missing, the UI builds an animation path between the returned endpoints.
+
+Conclusion: **HIGH confidence that the server supplies the effective roll
+result**. Client animation completion does not select the result. Backend RNG
+and fairness are **UNKNOWN**. Evidence and exact RVAs are recorded in
+[can_dau_van_roll_authority.md](can_dau_van_roll_authority.md) and
+[the native audit](../reference/can_dau_van_1.7.4_b3_native.txt).
+
 ## Current 1.7.4-b2 addendum — 2026-09-07
 
 The ownership strategy is unchanged, but current build anchors must be used:

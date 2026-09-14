@@ -13,8 +13,9 @@ from typing import Any, Callable
 
 from .basic_policy import Intelligence, PlayStyle
 from .pet_configuration import (
-    MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
-    EVOLUTION_LABELS, DAMAGE_LABELS, SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
+    AuditionMode, MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
+    EVOLUTION_LABELS, DAMAGE_LABELS, AUDITION_LABELS,
+    SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
     loadout_capability, normalize_damage,
 )
 from .desktop_control_plane import (
@@ -50,6 +51,7 @@ PREFERENCE_TABLE_ROWS = (
     "Pet của tôi",
     "Tiến hóa",
     "Thẻ sát thương",
+    "Audition",
     "Board input",
 )
 SETTINGS_TABLE_ROWS = ("Game executable",)
@@ -508,6 +510,9 @@ class DesktopViewModel:
         code = reason.split(":", 1)[0]
         messages = {
             "PET_SKILL_POLICY_NOT_IMPLEMENTED": "Thẻ skill của pet: chưa có tích hợp gameplay để tự động farm.",
+            "PET_SKILL_POLICY_PROFILE_NOT_IMPLEMENTED": "Thẻ skill của pet: cấu hình này chưa có tích hợp gameplay để tự động farm.",
+            "PET_SKILL_DESKTOP_INTEGRATION_PENDING": "Thẻ skill của pet: backend đã sẵn sàng, Desktop chưa có tích hợp để tự động farm.",
+            "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED": "Thẻ skill của pet: Audition V3 chưa có tích hợp gameplay an toàn cho bản game hiện tại.",
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
@@ -768,6 +773,7 @@ class DesktopApplication:
         self.main_pet = tk.StringVar(value=config.main_pet.value)
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
+        self.audition_mode = tk.StringVar(value=config.audition_mode.value)
         self._updating_pet_fields = False
         self._pet_option_widgets: dict[tuple[str, str], Any] = {}
         self.profile_notice_var = tk.StringVar()
@@ -847,6 +853,25 @@ class DesktopApplication:
                 self._config_widgets.append((button, state))
         preference_field(
             row=5,
+            label="Audition",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.audition_mode,
+                values=tuple(value.value for value in AuditionMode),
+                state="readonly",
+            ),
+            editable_state="readonly",
+        )
+        ttk.Label(
+            preferences_frame,
+            text=(
+                f"{AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION]}; "
+                f"{AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION]}."
+            ),
+            wraplength=390,
+        ).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        preference_field(
+            row=7,
             label="Board input",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -893,13 +918,13 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=8, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
         )
         ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
-                  wraplength=390).grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=5)
+                  wraplength=390).grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.load_checkpoint_preferences_button = ttk.Button(
             preferences_frame, text="Load Checkpoint Preferences", command=self._load_checkpoint_preferences)
-        self.load_checkpoint_preferences_button.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.load_checkpoint_preferences_button.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
@@ -1248,6 +1273,7 @@ class DesktopApplication:
             "main_pet": self.main_pet.get(),
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
+            "audition_mode": self.audition_mode.get(),
             "intelligence": self.intelligence.get(),
             "board_input_mode": self.board_input_mode.get(),
             "boss_id": self.boss_id.get(),
@@ -1266,7 +1292,7 @@ class DesktopApplication:
     def _display_pet_config(self, config: DesktopConfig) -> None:
         self._updating_pet_fields = True
         try:
-            for name in ("main_pet", "evolution", "damage_card"):
+            for name in ("main_pet", "evolution", "damage_card", "audition_mode"):
                 getattr(self, name).set(getattr(config, name).value)
         finally:
             self._updating_pet_fields = False
@@ -1295,8 +1321,8 @@ class DesktopApplication:
         self._pet_option_widgets["damage_card", "pet_skill"].configure(
             state="normal" if editable and capability.pet_skill_selectable else "disabled")
         self.profile_notice_var.set(
-            self.view_model.reason_text(capability.blocker_reason)
-            if capability.blocker_reason else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
+            self.view_model.reason_text(capability.desktop_blocker_reason)
+            if capability.desktop_blocker_reason else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
 
     def _pet_selection_changed(self, *_args: Any) -> None:
         if self._updating_pet_fields:
@@ -1657,7 +1683,9 @@ class DesktopApplication:
             draft_valid, draft_error = self._draft_validity()
             profile_reason = None
             if draft_valid:
-                profile_reason = DesktopConfig.from_strings(**self._draft_fields()).capability.blocker_reason
+                profile_reason = DesktopConfig.from_strings(
+                    **self._draft_fields()
+                ).capability.desktop_blocker_reason
             config_editable = controls.config_editable and not close_pending
             self._set_config_editable(config_editable)
             start_actionable = bool(

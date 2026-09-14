@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from dataclasses import asdict, is_dataclass, replace
 from datetime import datetime
 from enum import Enum
@@ -21,9 +22,12 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.il2cpp_external import (  # noqa: E402
+    ACTIVE_AUDITION_STAGE,
     ACTIVE_DOT_SKILL_CARD,
     ACTIVE_PLAYER_STATS_TYPE_INFO_RVA,
     ACTIVE_SINGLETON,
+    AUDITION_CHALLENGE_TYPE_INFO_RVA,
+    AUDITION_STAGE_TYPE_INFO_RVA,
     BOARD_SINGLETON,
     CARD_DATA_TYPE_INFO_RVA,
     CARD_UI_TYPE_INFO_RVA,
@@ -32,6 +36,7 @@ from pokiguard_v2.il2cpp_external import (  # noqa: E402
     PET_USER_DTO_TYPE_INFO_RVA,
     ExternalReadError,
 )
+from pokiguard_v2.gameplay_profile import AuditionMode  # noqa: E402
 from pokiguard_v2.il2cpp_layout import LayoutValidationError  # noqa: E402
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
@@ -61,6 +66,7 @@ from pokiguard_v2.pet_qte_observer import (  # noqa: E402
     QteBindingStatus,
     QteSessionTracker,
     correlate_qte_response_envelope,
+    read_audition_v3_qte,
     read_card_ui_qte,
     read_player_pet_skill,
     read_qte_card_data,
@@ -160,7 +166,17 @@ def _poll_provider(provider: Any, runtime_hook: Any) -> tuple[Any, bool]:
         if callable(refresh):
             trace("pet_skill_refresh_begin")
             try:
-                cards = tuple(refresh(watch_session))
+                require_fusion = bool(
+                    getattr(runtime_hook, "require_fusion_success", True)
+                )
+                cards = tuple(
+                    refresh(watch_session)
+                    if require_fusion
+                    else refresh(
+                        watch_session,
+                        require_fusion_success=False,
+                    )
+                )
             finally:
                 trace("pet_skill_refresh_end")
         refresh_elapsed_ms = (time.monotonic() - refresh_started) * 1000
@@ -564,6 +580,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--interval", type=float, default=0.05)
     parser.add_argument("--timeout", type=float, default=0.0)
     parser.add_argument("--qtes", type=int, default=3)
+    parser.add_argument(
+        "--audition-mode",
+        choices=[value.value for value in AuditionMode],
+        default=AuditionMode.V3_TWO_DIRECTION.value,
+    )
     parser.add_argument("--max-region-mib", type=int, default=8)
     parser.add_argument("--chunk-mib", type=int, default=2)
     parser.add_argument(
@@ -574,7 +595,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
+def run(
+    args: argparse.Namespace,
+    *,
+    runtime_hook: Any | None = None,
+    shared_target: Any | None = None,
+    shared_provider: Any | None = None,
+) -> int:
     if not args.watch:
         raise ValueError("start the observer with --watch")
     if not 0.02 <= args.interval <= 1.0:
@@ -586,10 +613,13 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
 
     log_path = (args.log or default_log_path("phase3b1_qte_shadow")).resolve()
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with attach_target() as target, log_path.open(
+    target_context = (
+        nullcontext(shared_target) if shared_target is not None else attach_target()
+    )
+    with target_context as target, log_path.open(
         "a", encoding="utf-8", buffering=1
     ) as log:
-        provider = MemoryBoardStateProvider(
+        provider = shared_provider or MemoryBoardStateProvider(
             target,
             MemoryProviderConfig(
                 max_region_mib=args.max_region_mib,
@@ -598,7 +628,14 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
                 require_lobby_start=not args.allow_combat_start,
             ),
         )
-        tracker = QteSessionTracker()
+        audition_mode = AuditionMode(
+            getattr(
+                runtime_hook,
+                "audition_mode",
+                getattr(args, "audition_mode", AuditionMode.V3_TWO_DIRECTION.value),
+            )
+        )
+        tracker = QteSessionTracker(audition_mode)
         capability_provider = PetSkillCapabilityProvider()
         shadow_observer = QteObserver()
         if runtime_hook is not None:
@@ -636,6 +673,12 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
             CARD_DATA_TYPE_INFO_RVA
         )
         card_ui_class = target.resolver.resolve_type_info_class(CARD_UI_TYPE_INFO_RVA)
+        audition_stage_class = target.resolver.resolve_type_info_class(
+            AUDITION_STAGE_TYPE_INFO_RVA
+        )
+        audition_challenge_class = target.resolver.resolve_type_info_class(
+            AUDITION_CHALLENGE_TYPE_INFO_RVA
+        )
         stats_class = target.resolver.resolve_type_info_class(
             ACTIVE_PLAYER_STATS_TYPE_INFO_RVA
         )
@@ -656,6 +699,7 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
             qteTarget=args.qtes,
             lobbyBaselineRequired=not args.allow_combat_start,
             runtimeHook=(runtime_hook.name if runtime_hook is not None else None),
+            auditionMode=audition_mode.value,
         )
         if runtime_hook is None:
             print(f"Phase 3B.1 production shadow observer READ-ONLY; log: {log_path}", flush=True)
@@ -1686,6 +1730,13 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
             candidates = []
             active_qte_card = None
             qte_sampled_monotonic = time.monotonic()
+            audition_stage_resolution = None
+            if audition_mode is AuditionMode.V3_TWO_DIRECTION:
+                trace_runtime_stage("audition_stage_singleton_begin")
+                audition_stage_resolution = target.resolver.resolve_singleton(
+                    ACTIVE_AUDITION_STAGE
+                )
+                trace_runtime_stage("audition_stage_singleton_end")
             trace_runtime_stage("active_qte_singleton_begin")
             active_qte_resolution = target.resolver.resolve_singleton(
                 ACTIVE_DOT_SKILL_CARD
@@ -1698,15 +1749,54 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
             ):
                 try:
                     trace_runtime_stage("active_qte_read_begin")
-                    qte = read_card_ui_qte(
-                        target.memory,
-                        int(active_qte_resolution.instance),
-                        expected_class=card_ui_class,
-                        expected_board=session.board_instance,
-                        expected_active=int(active_resolution.instance),
-                        expected_card_data=None,
-                        require_button=True,
-                    )
+                    if audition_mode is AuditionMode.V3_TWO_DIRECTION:
+                        if (
+                            audition_stage_resolution is None
+                            or not audition_stage_resolution.resolved
+                            or audition_stage_resolution.instance is None
+                        ):
+                            raise LayoutValidationError(
+                                "Audition V3 stage is not current"
+                            )
+                        if audition_stage_class is None:
+                            audition_stage_class = target.resolver.resolve_type_info_class(
+                                AUDITION_STAGE_TYPE_INFO_RVA
+                            )
+                        if audition_challenge_class is None:
+                            audition_challenge_class = target.resolver.resolve_type_info_class(
+                                AUDITION_CHALLENGE_TYPE_INFO_RVA
+                            )
+                        if audition_stage_class is None or audition_challenge_class is None:
+                            raise LayoutValidationError(
+                                "Audition V3 type information is unavailable"
+                            )
+                        source_challenge = challenge or tracker.bound_challenge
+                        if source_challenge is None:
+                            raise LayoutValidationError(
+                                "Audition V3 server challenge is unavailable"
+                            )
+                        qte, challenge = read_audition_v3_qte(
+                            target.memory,
+                            int(audition_stage_resolution.instance),
+                            server_challenge=source_challenge,
+                            expected_stage_class=audition_stage_class,
+                            expected_challenge_class=audition_challenge_class,
+                            expected_card_ui_class=card_ui_class,
+                            expected_card_ui_address=int(active_qte_resolution.instance),
+                            expected_board=session.board_instance,
+                            expected_active=int(active_resolution.instance),
+                            require_button=True,
+                        )
+                    else:
+                        qte = read_card_ui_qte(
+                            target.memory,
+                            int(active_qte_resolution.instance),
+                            expected_class=card_ui_class,
+                            expected_board=session.board_instance,
+                            expected_active=int(active_resolution.instance),
+                            expected_card_data=None,
+                            require_button=True,
+                        )
                     active_qte_card = read_qte_card_data(
                         target.memory,
                         qte,
@@ -1846,10 +1936,23 @@ def run(args: argparse.Namespace, *, runtime_hook: Any | None = None) -> int:
             if not candidates or active_qte_card is None:
                 # Only a proven null singleton is an inactive edge.  A failed
                 # or torn read must not manufacture freshness mid-QTE.
-                if (
-                    active_qte_resolution.status == "instance_null"
+                v3_inactive = bool(
+                    audition_mode is AuditionMode.V3_TWO_DIRECTION
+                    and audition_stage_resolution is not None
+                    and audition_stage_resolution.instance is None
+                    and audition_stage_resolution.status in {
+                        "instance_null",
+                        "static_fields_null",
+                        "type_info_uninitialized",
+                        "type_info_uninitialized_or_invalid",
+                    }
+                )
+                v2_inactive = bool(
+                    audition_mode is AuditionMode.V2_FOUR_DIRECTION
+                    and active_qte_resolution.status == "instance_null"
                     and active_qte_resolution.instance is None
-                ):
+                )
+                if v3_inactive or v2_inactive:
                     tracker.note_inactive(session)
                     shadow_observer.note_inactive(session)
                     if runtime_hook is not None:

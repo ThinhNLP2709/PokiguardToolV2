@@ -114,14 +114,14 @@ class CombatCardTests(unittest.TestCase):
         skill_card = self.BASE + 0x1000
         drop_reason = self.BASE + 0x2000
         string_class = self.BASE + 0x3000
-        raw = bytearray(0x98)
+        raw = bytearray(0xD0)
         struct.pack_into("<i", raw, 0x40, 19)
-        raw[0x60] = 1
-        struct.pack_into("<ii", raw, 0x64, 25, 30)
-        raw[0x6C] = 1
-        struct.pack_into("<i", raw, 0x70, 19)
-        struct.pack_into("<qqQ", raw, 0x78, 101, 202, skill_card)
-        struct.pack_into("<Q", raw, 0x90, drop_reason)
+        raw[0x98] = 1
+        struct.pack_into("<ii", raw, 0x9C, 25, 30)
+        raw[0xA4] = 1
+        struct.pack_into("<i", raw, 0xA8, 19)
+        struct.pack_into("<qqQ", raw, 0xB0, 101, 202, skill_card)
+        struct.pack_into("<Q", raw, 0xC8, drop_reason)
         memory.map(service, raw)
         memory.map(skill_card, bytearray(0x20))
         memory.map(string_class, bytearray(8))
@@ -150,9 +150,9 @@ class CombatCardTests(unittest.TestCase):
         ui_raw = bytearray(FUSION_CARD_UI_READ_SIZE)
         struct.pack_into("<Q", ui_raw, 0, ui_class)
         struct.pack_into("<Q", ui_raw, 0x10, ui_native)
-        struct.pack_into("<Q", ui_raw, 0x58, button)
-        struct.pack_into("<f", ui_raw, 0x60, 123.5)
-        struct.pack_into("<q", ui_raw, 0x68, 218166)
+        struct.pack_into("<Q", ui_raw, 0x60, button)
+        struct.pack_into("<f", ui_raw, 0x68, 123.5)
+        struct.pack_into("<q", ui_raw, 0x70, 218166)
         memory.map(ui, ui_raw)
 
         state = read_fusion_card_ui(memory, ui, expected_class=ui_class)

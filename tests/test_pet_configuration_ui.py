@@ -66,7 +66,7 @@ class PetConfigurationTkTests(unittest.TestCase):
 
     def test_canonical_fields_defaults_and_disabled_choices_visible(self):
         self.assertNotIn("ManaPriority", PREFERENCE_TABLE_ROWS)
-        for label in ("Pet của tôi", "Tiến hóa", "Thẻ sát thương"):
+        for label in ("Pet của tôi", "Tiến hóa", "Thẻ sát thương", "Audition"):
             self.assertIn(label, PREFERENCE_TABLE_ROWS)
         self.assertEqual((self.app.main_pet.get(), self.app.evolution.get(), self.app.damage_card.get()),
                          ("normal", "normal", "default_attack"))
@@ -100,16 +100,13 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.plane.snapshot().config.capability.skill_source_count, 2)
         self.assertIn("nhiều nguồn", self.app.profile_notice_var.get())
 
-    def test_future_start_disabled_and_callback_backend_rejects(self):
+    def test_exact_pet_skill_profile_enables_start(self):
         self.button("main_pet", "legendary").invoke()
         self.button("evolution", "none").invoke()
         self.button("damage_card", "pet_skill").invoke()
         self.app._render()
-        self.assertTrue(self.app.start_button.instate(["disabled"]))
-        self.assertTrue(self.app.resume_button.instate(["disabled"]))
-        self.assertIn("chưa có tích hợp", self.app.profile_notice_var.get())
-        # Bypass the disabled widget to prove the command boundary still gates.
-        self.app._start_farm()
+        self.assertFalse(self.app.start_button.instate(["disabled"]))
+        self.assertIn("tương thích", self.app.profile_notice_var.get())
         self.assertEqual(self.manager.snapshot().safety.starts, 0)
         self.assertEqual(self.runner.starts, 0)
         self.assertEqual(self.plane.snapshot().safety.nonzero(), {})
@@ -127,8 +124,8 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.runner.starts, 0)
         self.assertEqual(self.app.resume_commands_submitted, 0)
 
-    def test_explicit_load_displays_future_checkpoint_without_auto_resume(self):
-        future = GameplayConfig(
+    def test_explicit_load_displays_pet_skill_checkpoint_without_auto_resume(self):
+        pet_skill = GameplayConfig(
             main_pet=MainPetType.LEGENDARY,
             evolution=EvolutionTarget.NONE,
             damage_card=DamageCardMode.PET_SKILL,
@@ -138,7 +135,7 @@ class PetConfigurationTkTests(unittest.TestCase):
             path,
             replace(
                 FarmRun(FarmTarget("1289", "Starburst")).checkpoint_payload(),
-                gameplay_config=future,
+                gameplay_config=pet_skill,
             ),
         )
         self.plane.refresh()
@@ -150,7 +147,7 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.app.resume_commands_submitted, 0)
         self.assertEqual(self.runner.starts, 0)
         self.app._render()
-        self.assertTrue(self.app.start_button.instate(["disabled"]))
+        self.assertFalse(self.app.start_button.instate(["disabled"]))
 
     def test_explicit_load_displays_legacy_attack_checkpoint_as_new_fields(self):
         path = self.directory / "legacy" / "checkpoint.json"

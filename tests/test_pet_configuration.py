@@ -19,9 +19,10 @@ from pokiguard_v2.farm_checkpoint import (
 from pokiguard_v2.farm_run import FarmRun
 from pokiguard_v2.pet_configuration import (
     MainPetType as Pet, EvolutionTarget as Evo, DamageCardMode as Damage,
-    SkillSource as Source, SkillSourceStatus as Status, GameplayConfig,
+    AuditionMode, SkillSource as Source, SkillSourceStatus as Status, GameplayConfig,
     FarmPolicyUnavailable, loadout_capability, normalize_damage,
-    legacy_pet_fields, legacy_basic_policy, gameplay_config_from_args,
+    basic_policy_config, legacy_pet_fields, legacy_basic_policy,
+    gameplay_config_from_args, requires_attack_card_preparation,
 )
 from tests.test_basic_policy import combat_state, attack_card
 from tests.test_desktop_farm_controller import _Runtime, _BlockingRunner
@@ -29,7 +30,15 @@ from tests.test_farm_checkpoint import _payload as historical_payload_fixture
 from tools import farm_run, farm_cycle
 
 
-FUTURE = GameplayConfig(main_pet=Pet.LEGENDARY, evolution=Evo.NONE, damage_card=Damage.PET_SKILL)
+PET_SKILL_PROFILE = GameplayConfig(
+    main_pet=Pet.LEGENDARY,
+    evolution=Evo.NONE,
+    damage_card=Damage.PET_SKILL,
+)
+UNIMPLEMENTED_PET_SKILL_PROFILE = replace(
+    PET_SKILL_PROFILE,
+    evolution=Evo.NORMAL,
+)
 
 
 def _payload(**kwargs):
@@ -47,6 +56,7 @@ class PetConfigurationTests(unittest.TestCase):
         self.assertEqual([v.value for v in Pet], ["normal", "legendary", "evolved", "mega"])
         self.assertEqual([v.value for v in Evo], ["none", "normal", "legendary", "evolved", "mega"])
         self.assertEqual([v.value for v in Damage], ["default_attack", "pet_skill"])
+        self.assertEqual([v.value for v in AuditionMode], ["audition_v3", "audition_v2"])
 
     def test_default_desktop_has_only_new_product_fields(self):
         config = DesktopConfig()
@@ -95,23 +105,35 @@ class PetConfigurationTests(unittest.TestCase):
             self.assertEqual(normalize_damage(Pet.NORMAL, evolution, Damage.PET_SKILL), Damage.DEFAULT_ATTACK)
         self.assertEqual(normalize_damage(Pet.NORMAL, Evo.LEGENDARY, Damage.PET_SKILL), Damage.PET_SKILL)
 
-    def test_future_profile_validity_does_not_authorize_policy(self):
-        self.assertTrue(FUTURE.capability.option_supported)
-        self.assertTrue(FUTURE.capability.config_valid)
-        self.assertTrue(FUTURE.capability.pet_skill_selectable)
-        self.assertFalse(FUTURE.capability.farm_policy_supported)
-        with self.assertRaisesRegex(FarmPolicyUnavailable, "PET_SKILL_POLICY_NOT_IMPLEMENTED"):
-            legacy_basic_policy(FUTURE)
+    def test_pet_skill_profile_is_runnable_with_v3_default_and_v2_option(self):
+        capability = PET_SKILL_PROFILE.capability
+        self.assertTrue(capability.option_supported)
+        self.assertTrue(capability.config_valid)
+        self.assertTrue(capability.pet_skill_selectable)
+        self.assertTrue(capability.farm_policy_supported)
+        self.assertTrue(capability.desktop_policy_supported)
+        self.assertIsNone(capability.desktop_blocker_reason)
+        self.assertEqual(PET_SKILL_PROFILE.audition_mode, AuditionMode.V3_TWO_DIRECTION)
+        basic_policy_config(PET_SKILL_PROFILE)
+        basic_policy_config(replace(
+            PET_SKILL_PROFILE,
+            audition_mode=AuditionMode.V2_FOUR_DIRECTION,
+        ))
+        with self.assertRaisesRegex(
+            FarmPolicyUnavailable,
+            "LEGACY_MANA_PRIORITY_CANNOT_EXPRESS_PET_SKILL",
+        ):
+            legacy_basic_policy(PET_SKILL_PROFILE)
 
     def test_multiple_sources_remain_unselected(self):
-        profile = replace(FUTURE, evolution=Evo.LEGENDARY)
+        profile = replace(PET_SKILL_PROFILE, evolution=Evo.LEGENDARY)
         self.assertEqual(profile.capability.skill_sources, (Source.MAIN_PET, Source.EVOLUTION_TARGET))
         self.assertTrue(profile.capability.multiple_skill_sources)
         self.assertEqual(profile.capability.blocker_reason, "PET_SKILL_SOURCE_SELECTION_UNDEFINED")
         with self.assertRaises(FarmPolicyUnavailable):
             legacy_basic_policy(profile)
 
-    def test_exactly_two_loadouts_have_legacy_policy_mapping(self):
+    def test_runtime_mapping_is_limited_to_phase2_defaults_and_exact_pet_skill_profile(self):
         runnable = []
         for pet in (Pet.NORMAL, Pet.LEGENDARY):
             for evolution in (Evo.NONE, Evo.NORMAL, Evo.LEGENDARY):
@@ -121,11 +143,15 @@ class PetConfigurationTests(unittest.TestCase):
                     config = GameplayConfig(main_pet=pet, evolution=evolution, damage_card=damage)
                     if config.capability.farm_policy_supported:
                         runnable.append((pet, evolution, damage))
+                        basic_policy_config(config)
+                        if damage is Damage.DEFAULT_ATTACK:
+                            legacy_basic_policy(config)
                     else:
                         with self.assertRaises(FarmPolicyUnavailable):
-                            legacy_basic_policy(config)
+                            basic_policy_config(config)
         self.assertEqual(runnable, [(Pet.NORMAL, Evo.NONE, Damage.DEFAULT_ATTACK),
-                                    (Pet.NORMAL, Evo.NORMAL, Damage.DEFAULT_ATTACK)])
+                                    (Pet.NORMAL, Evo.NORMAL, Damage.DEFAULT_ATTACK),
+                                    (Pet.LEGENDARY, Evo.NONE, Damage.PET_SKILL)])
 
     def test_legacy_policy_configs_and_decisions_match(self):
         states = [combat_state(), combat_state(fusion_used=False),
@@ -141,9 +167,46 @@ class PetConfigurationTests(unittest.TestCase):
                     self.assertEqual(BasicPolicyEngine(before).decide(state),
                                      BasicPolicyEngine(after).decide(state))
 
-    def test_farm_run_rejects_future_before_model_creation(self):
-        with self.assertRaises(FarmPolicyUnavailable):
-            FarmRun(FarmTarget("1289"), gameplay_config=FUTURE)
+    def test_canonical_default_profiles_keep_phase2_decisions(self):
+        states = [combat_state(), combat_state(fusion_used=False),
+                  combat_state(mana=600, cards=(attack_card(),)),
+                  combat_state(boss_hp=100, cards=(attack_card(),)), combat_state(turn=1)]
+        for priority in ManaPriority:
+            for style in PlayStyle:
+                gameplay = GameplayConfig(
+                    play_style=style,
+                    **legacy_pet_fields(priority),
+                )
+                canonical = BasicPolicyEngine(basic_policy_config(gameplay))
+                legacy = BasicPolicyEngine(legacy_basic_policy(gameplay))
+                for state in states:
+                    with self.subTest(priority=priority, style=style, turn=state.battle.turn_number):
+                        current = canonical.decide(state)
+                        previous = legacy.decide(state)
+                        self.assertEqual(current.action, previous.action)
+                        self.assertEqual(current.move, previous.move)
+                        self.assertEqual(
+                            current.card_object_address,
+                            previous.card_object_address,
+                        )
+                        self.assertEqual(current.consumes_turn, previous.consumes_turn)
+                        self.assertEqual(
+                            current.requires_state_reread,
+                            previous.requires_state_reread,
+                        )
+
+    def test_farm_run_accepts_exact_pet_skill_profile_and_rejects_unimplemented_variant(self):
+        run = FarmRun(FarmTarget("1289"), gameplay_config=PET_SKILL_PROFILE)
+        self.assertEqual(run.snapshot().gameplay_config, PET_SKILL_PROFILE)
+        with self.assertRaisesRegex(
+            FarmPolicyUnavailable,
+            "PET_SKILL_POLICY_PROFILE_NOT_IMPLEMENTED",
+        ):
+            FarmRun(FarmTarget("1289"), gameplay_config=UNIMPLEMENTED_PET_SKILL_PROFILE)
+
+    def test_pet_skill_profile_never_auto_prepares_ordinary_attack_card(self):
+        self.assertFalse(requires_attack_card_preparation(PET_SKILL_PROFILE))
+        self.assertTrue(requires_attack_card_preparation(GameplayConfig()))
 
     def test_farm_snapshot_and_checkpoint_keep_immutable_profile(self):
         profile = GameplayConfig(evolution=Evo.NONE, play_style=PlayStyle.CAREFUL)
@@ -186,15 +249,15 @@ class PetPreferenceMigrationTests(unittest.TestCase):
             self.assertEqual(self.store.load(), first)
 
     def test_new_schema_future_profile_wins_over_stale_legacy(self):
-        raw = self.seed(DesktopConfig().with_gameplay_config(FUTURE))
+        raw = self.seed(DesktopConfig().with_gameplay_config(PET_SKILL_PROFILE))
         raw["config"]["mana_priority"] = "evolution"
         self.write(raw)
         loaded = self.store.load()
         self.assertTrue(loaded.loaded)
-        self.assertEqual(loaded.config.gameplay_config, FUTURE)
+        self.assertEqual(loaded.config.gameplay_config, PET_SKILL_PROFILE)
 
     def test_old_schema_cannot_infer_new_skill_intent(self):
-        raw = self.seed(DesktopConfig().with_gameplay_config(FUTURE))
+        raw = self.seed(DesktopConfig().with_gameplay_config(PET_SKILL_PROFILE))
         raw["schema"] = LEGACY_PREFERENCE_SCHEMA
         raw["config"]["mana_priority"] = "attack"
         self.write(raw)
@@ -289,13 +352,15 @@ class PetCheckpointTests(unittest.TestCase):
         self.assertEqual(loaded.wins, 1)
         self.assertEqual(resume(loaded, GameplayConfig()).reason, "CHECKPOINT_PROFILE_UNKNOWN")
 
-    def test_future_checkpoint_roundtrip_cannot_resume_as_default(self):
-        payload = replace(_payload(), gameplay_config=FUTURE)
+    def test_pet_skill_checkpoint_roundtrip_resumes_only_with_exact_profile(self):
+        payload = replace(_payload(), gameplay_config=PET_SKILL_PROFILE)
         write_checkpoint(self.path, payload)
         loaded = load_checkpoint(self.path)
         self.assertEqual(loaded, payload)
         self.assertFalse(resume(loaded, GameplayConfig()).allowed)
-        self.assertFalse(resume(loaded, FUTURE).allowed)
+        decision = resume(loaded, PET_SKILL_PROFILE)
+        self.assertTrue(decision.allowed)
+        self.assertIsNone(decision.reason)
 
     def test_profile_mismatch_cannot_change_historical_behavior(self):
         payload = replace(_payload(), gameplay_config=GameplayConfig(evolution=Evo.NONE))
@@ -318,7 +383,7 @@ class PetCheckpointTests(unittest.TestCase):
 
 
 class PetLaunchGateTests(unittest.TestCase):
-    def test_both_manager_and_control_plane_reject_before_worker_or_focus(self):
+    def test_manager_and_control_plane_reject_unsupported_pet_skill_profiles(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             evidence = root / "reset.json"
@@ -326,8 +391,14 @@ class PetLaunchGateTests(unittest.TestCase):
             runner, focus = Mock(), Mock()
             manager = DesktopFarmControllerManager(root, runner=runner, window_prepare=focus,
                                                    reset_evidence=evidence)
-            for profile in (FUTURE, replace(FUTURE, evolution=Evo.LEGENDARY),
-                            replace(FUTURE, main_pet=Pet.NORMAL, evolution=Evo.LEGENDARY)):
+            for profile in (
+                replace(PET_SKILL_PROFILE, evolution=Evo.LEGENDARY),
+                replace(
+                    PET_SKILL_PROFILE,
+                    main_pet=Pet.NORMAL,
+                    evolution=Evo.LEGENDARY,
+                ),
+            ):
                 config = DesktopConfig(boss_id="1289", boss_name="Starburst").with_gameplay_config(profile)
                 plane = DesktopControlPlane(_Runtime(), controller=manager, config=config)
                 self.assertFalse(plane.refresh().controls.start.actionable)
@@ -346,7 +417,10 @@ class PetLaunchGateTests(unittest.TestCase):
             evidence = root / "reset.json"
             evidence.write_text("{}")
             checkpoint = root / "checkpoint.json"
-            write_checkpoint(checkpoint, replace(_payload(), gameplay_config=FUTURE))
+            write_checkpoint(
+                checkpoint,
+                replace(_payload(), gameplay_config=PET_SKILL_PROFILE),
+            )
             runner = Mock()
             manager = DesktopFarmControllerManager(root, runner=runner, reset_evidence=evidence)
             config = DesktopConfig(boss_id="1289", boss_name="Starburst", target_completed_matches=5, max_match_attempts=8)
@@ -367,9 +441,9 @@ class PetLaunchGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "conflicts"):
                 farm_run._validate_args(args)
 
-    def test_future_cli_refuses_before_live_runner(self):
+    def test_unimplemented_pet_skill_profile_cli_refuses_before_live_runner(self):
         args = farm_run.build_parser().parse_args(["--stage-e2-ui", "--new-run", "--boss-id", "1289",
-            "--main-pet", "legendary", "--evolution-target", "none", "--damage-card", "pet_skill"])
+            "--main-pet", "legendary", "--evolution-target", "normal", "--damage-card", "pet_skill"])
         with patch.object(farm_run, "_run_live") as live:
             with self.assertRaises(FarmPolicyUnavailable):
                 farm_run.run(args)

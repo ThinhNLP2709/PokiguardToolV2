@@ -21,6 +21,7 @@ from .state import CombatSessionKey
 _ACTION_DOMAINS = {
     "SWAP": InputDomain.GAMEPLAY_SWAP,
     "CAST": InputDomain.GAMEPLAY_CAST,
+    "PET_SKILL": InputDomain.GAMEPLAY_PET_SKILL,
     "EVOLVE": InputDomain.GAMEPLAY_EVOLVE,
     "PASS": InputDomain.GAMEPLAY_PASS,
 }
@@ -68,6 +69,14 @@ class FarmGameplayCapability:
 
     def cancel(self, permit: GameplayPermit, *, detail: str = "") -> bool:
         return self._cycle.cancel_gameplay(permit, detail=detail)
+
+    def abandon_gameplay_preflight(
+        self,
+        permit: GameplayPermit,
+        *,
+        detail: str = "",
+    ) -> bool:
+        return self._cycle.abandon_gameplay_preflight(permit, detail=detail)
 
 
 class EntryResultKind(str, Enum):

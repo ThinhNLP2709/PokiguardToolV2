@@ -16,6 +16,12 @@ from .board_simulator import (
     evaluate_all_moves,
     evaluate_sword_hold,
 )
+from .gameplay_profile import DamageCardMode, EvolutionTarget, MainPetType
+from .pet_skill_shadow import (
+    PetSkillCapability,
+    PetSkillCapabilityStatus,
+    PetSkillFamily,
+)
 from .state import CardState, GameOwnedIdleStatus, GamePhase, GameState, GemType
 
 
@@ -37,6 +43,7 @@ class Intelligence(str, Enum):
 class PolicyAction(str, Enum):
     EVOLVE = "evolve"
     CAST = "cast"
+    PET_SKILL = "pet_skill"
     SWAP = "swap"
     PASS = "pass"
     EXIT_MATCH = "exit_match"
@@ -46,8 +53,13 @@ class PolicyAction(str, Enum):
 @dataclass(frozen=True)
 class PolicyConfig:
     play_style: PlayStyle = PlayStyle.SIMPLE
-    mana_priority: ManaPriority = ManaPriority.EVOLUTION
+    # Kept only for old direct PolicyConfig fixtures. Canonical production
+    # configuration sets this to None and uses the three fields below.
+    mana_priority: ManaPriority | None = ManaPriority.EVOLUTION
     intelligence: Intelligence = Intelligence.BASIC
+    main_pet: MainPetType = MainPetType.NORMAL
+    evolution: EvolutionTarget = EvolutionTarget.NORMAL
+    damage_card: DamageCardMode = DamageCardMode.DEFAULT_ATTACK
     minimum_turn_time_seconds: int = 3
     # User policy gives affordable EVOLVE Step-1 priority from the second
     # local turn. This is the same inclusive hard input floor as normal
@@ -72,6 +84,19 @@ class PolicyConfig:
     boss_low_resource: int = 50
 
     def __post_init__(self) -> None:
+        for name, enum_type in (
+            ("play_style", PlayStyle),
+            ("intelligence", Intelligence),
+            ("main_pet", MainPetType),
+            ("evolution", EvolutionTarget),
+            ("damage_card", DamageCardMode),
+        ):
+            if not isinstance(getattr(self, name), enum_type):
+                raise ValueError(f"{name} must be {enum_type.__name__}")
+        if self.mana_priority is not None and not isinstance(
+            self.mana_priority, ManaPriority
+        ):
+            raise ValueError("mana_priority must be ManaPriority or None")
         if not 0 <= self.minimum_turn_time_seconds <= 14:
             raise ValueError("minimum_turn_time_seconds must be between 0 and 14")
         if not 0 <= self.minimum_evolve_time_seconds <= 14:
@@ -100,6 +125,22 @@ class PolicyConfig:
             else self.low_hp_ratio_careful
         )
 
+    @property
+    def pet_skill_profile(self) -> bool:
+        return (
+            self.main_pet is MainPetType.LEGENDARY
+            and self.evolution is EvolutionTarget.NONE
+            and self.damage_card is DamageCardMode.PET_SKILL
+        )
+
+    @property
+    def evolve_enabled(self) -> bool:
+        if self.pet_skill_profile:
+            return False
+        if self.mana_priority is not None:
+            return self.mana_priority is ManaPriority.EVOLUTION
+        return self.evolution is not EvolutionTarget.NONE
+
 
 @dataclass(frozen=True)
 class CandidateTrace:
@@ -127,6 +168,10 @@ class CandidateTrace:
     unknown_sword_effective_max: int
     danger_score: int
     safe: bool
+    known_mana_gain: int
+    known_rage_gain: int
+    requirements_completed_after_move: int
+    readiness_progress: float
 
 
 @dataclass(frozen=True)
@@ -146,6 +191,18 @@ class DecisionTrace:
     turn_number: int | None
     turn_time_remaining_seconds: int | None
     turn_timer_source: str | None
+    profile: tuple[str, str, str]
+    skill_capability_status: str | None
+    skill_family: str | None
+    required_mana: int | None
+    required_rage: int | None
+    current_mana: int | None
+    current_rage: int | None
+    missing_mana: int | None
+    missing_rage: int | None
+    skill_ready: bool | None
+    skill_actionable: bool | None
+    pet_skill_candidate: bool
     blocker: str | None = None
 
 
@@ -155,8 +212,25 @@ class PolicyDecision:
     trace: DecisionTrace
     move: SwapMove | None = None
     card_object_address: int | None = None
+    skill_card_id: int | None = None
+    skill_session_key: object | None = None
     consumes_turn: bool = False
     requires_state_reread: bool = False
+
+
+@dataclass(frozen=True)
+class PetSkillPolicyContext:
+    capability_status: str | None
+    family: str | None
+    required_mana: int | None
+    required_rage: int | None
+    current_mana: int | None
+    current_rage: int | None
+    missing_mana: int | None
+    missing_rage: int | None
+    ready: bool | None
+    actionable: bool | None
+    candidate: bool
 
 
 def _resource_trace(value: MoveEvaluation, attribute: str) -> tuple[tuple[str, int, int], ...]:
@@ -167,9 +241,26 @@ def _resource_trace(value: MoveEvaluation, attribute: str) -> tuple[tuple[str, i
     )
 
 
-def _candidate_trace(value: MoveEvaluation) -> CandidateTrace:
+def _candidate_trace(
+    value: MoveEvaluation,
+    *,
+    required_mana: int | None = None,
+    required_rage: int | None = None,
+    missing_mana: int | None = None,
+    missing_rage: int | None = None,
+) -> CandidateTrace:
     risk = value.sword_risk
     exposure = value.unknown_exposure
+    mana_gain = value.total.effective(GemType.MANA)
+    rage_gain = value.total.effective(GemType.RAGE)
+    completed = 0
+    progress = 0.0
+    if required_mana and missing_mana is not None and missing_mana > 0:
+        completed += int(mana_gain >= missing_mana)
+        progress += min(mana_gain, missing_mana) / required_mana
+    if required_rage and missing_rage is not None and missing_rage > 0:
+        completed += int(rage_gain >= missing_rage)
+        progress += min(rage_gain, missing_rage) / required_rage
     return CandidateTrace(
         move=value.move,
         horizontal=value.horizontal,
@@ -197,6 +288,10 @@ def _candidate_trace(value: MoveEvaluation) -> CandidateTrace:
         unknown_sword_effective_max=exposure.hypothetical_sword_effective_max,
         danger_score=risk.danger_score,
         safe=risk.safe,
+        known_mana_gain=mana_gain,
+        known_rage_gain=rage_gain,
+        requirements_completed_after_move=completed,
+        readiness_progress=progress,
     )
 
 
@@ -228,6 +323,9 @@ class BasicPolicyEngine:
 
     def __init__(self, config: PolicyConfig | None = None) -> None:
         self.config = config or PolicyConfig()
+        self._skill_trace = PetSkillPolicyContext(
+            None, None, None, None, None, None, None, None, None, None, False
+        )
 
     def _decision(
         self,
@@ -240,11 +338,23 @@ class BasicPolicyEngine:
         *,
         selected: MoveEvaluation | None = None,
         card: CardState | None = None,
+        skill: PetSkillCapability | None = None,
         blocker: str | None = None,
         candidate_count: int | None = None,
     ) -> PolicyDecision:
-        candidates = tuple(_candidate_trace(value) for value in evaluations)
-        selected_trace = _candidate_trace(selected) if selected is not None else None
+        skill_trace = self._skill_trace
+        trace_kwargs = dict(
+            required_mana=skill_trace.required_mana,
+            required_rage=skill_trace.required_rage,
+            missing_mana=skill_trace.missing_mana,
+            missing_rage=skill_trace.missing_rage,
+        )
+        candidates = tuple(_candidate_trace(value, **trace_kwargs) for value in evaluations)
+        selected_trace = (
+            _candidate_trace(selected, **trace_kwargs)
+            if selected is not None
+            else None
+        )
         trace = DecisionTrace(
             selected_action=action,
             policy_step=step,
@@ -263,6 +373,22 @@ class BasicPolicyEngine:
             turn_number=state.battle.turn_number,
             turn_time_remaining_seconds=state.battle.turn_time_remaining_seconds,
             turn_timer_source=state.battle.turn_timer_source,
+            profile=(
+                self.config.main_pet.value,
+                self.config.evolution.value,
+                self.config.damage_card.value,
+            ),
+            skill_capability_status=skill_trace.capability_status,
+            skill_family=skill_trace.family,
+            required_mana=skill_trace.required_mana,
+            required_rage=skill_trace.required_rage,
+            current_mana=skill_trace.current_mana,
+            current_rage=skill_trace.current_rage,
+            missing_mana=skill_trace.missing_mana,
+            missing_rage=skill_trace.missing_rage,
+            skill_ready=skill_trace.ready,
+            skill_actionable=skill_trace.actionable,
+            pet_skill_candidate=skill_trace.candidate,
             blocker=blocker,
         )
         return PolicyDecision(
@@ -270,8 +396,11 @@ class BasicPolicyEngine:
             trace=trace,
             move=selected.move if selected is not None else None,
             card_object_address=card.object_address if card is not None else None,
+            skill_card_id=skill.skill_card_id if skill is not None else None,
+            skill_session_key=skill.session_key if skill is not None else None,
             consumes_turn=action in {
                 PolicyAction.CAST,
+                PolicyAction.PET_SKILL,
                 PolicyAction.SWAP,
                 PolicyAction.PASS,
             },
@@ -298,6 +427,26 @@ class BasicPolicyEngine:
     def _resource_rank(value: MoveEvaluation, gem: GemType) -> tuple[object, ...]:
         return (
             -value.total.effective(gem),
+            value.sword_risk.danger_score,
+            -value.cascade_rounds,
+            value.unknown_exposure.cells,
+            not value.horizontal,
+            not value.calculable,
+            value.move,
+        )
+
+    def _pet_skill_resource_rank(self, value: MoveEvaluation) -> tuple[object, ...]:
+        context = self._skill_trace
+        trace = _candidate_trace(
+            value,
+            required_mana=context.required_mana,
+            required_rage=context.required_rage,
+            missing_mana=context.missing_mana,
+            missing_rage=context.missing_rage,
+        )
+        return (
+            -trace.requirements_completed_after_move,
+            -trace.readiness_progress,
             value.sword_risk.danger_score,
             -value.cascade_rounds,
             value.unknown_exposure.cells,
@@ -350,9 +499,48 @@ class BasicPolicyEngine:
             value.move,
         )
 
-    def decide(self, state: GameState) -> PolicyDecision:
+    def decide(
+        self,
+        state: GameState,
+        *,
+        pet_skill_capability: PetSkillCapability | None = None,
+    ) -> PolicyDecision:
         failures: list[str] = []
         no_candidates: tuple[MoveEvaluation, ...] = ()
+        player = state.player
+        player_mana = player.mana if player is not None else None
+        player_rage = player.power if player is not None else None
+        capability = pet_skill_capability
+        required_mana = capability.effective_mana_cost if capability else None
+        required_rage = capability.effective_power_cost if capability else None
+        missing_mana = (
+            max(0, required_mana - player_mana)
+            if required_mana is not None and player_mana is not None
+            else None
+        )
+        missing_rage = (
+            max(0, required_rage - player_rage)
+            if required_rage is not None and player_rage is not None
+            else None
+        )
+        ready = (
+            missing_mana == 0 and missing_rage == 0
+            if missing_mana is not None and missing_rage is not None
+            else None
+        )
+        self._skill_trace = PetSkillPolicyContext(
+            capability.status.value if capability is not None else None,
+            capability.skill_family.value if capability is not None else None,
+            required_mana,
+            required_rage,
+            player_mana,
+            player_rage,
+            missing_mana,
+            missing_rage,
+            ready,
+            capability.live_card_actionable if capability is not None else None,
+            False,
+        )
         if self.config.intelligence is not Intelligence.BASIC:
             return self._decision(
                 state,
@@ -411,8 +599,6 @@ class BasicPolicyEngine:
                 blocker="TURN_TIMER_SAFETY_MARGIN",
             )
 
-        player = state.player
-        player_mana = player.mana if player is not None else None
         boss = _boss(state)
         boss_hp_current = boss.hp if boss is not None else None
         finisher_threshold = self.config.cast_when_boss_hp_below
@@ -444,11 +630,133 @@ class BasicPolicyEngine:
             is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
         )
 
+        if self.config.damage_card is DamageCardMode.PET_SKILL:
+            if not self.config.pet_skill_profile:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Pet Skill is outside the single Phase 3C.1 supported profile",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_PROFILE_UNSUPPORTED",
+                )
+            if capability is None:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Current-session Pet Skill capability is unavailable",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_CAPABILITY_UNAVAILABLE",
+                )
+            if capability.status is PetSkillCapabilityStatus.AMBIGUOUS:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "More than one current Pet Skill source is present",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_CAPABILITY_AMBIGUOUS",
+                )
+            if (
+                not capability.current
+                or capability.session_key != state.battle.session_key
+            ):
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Pet Skill capability is missing, stale, or not owned by this session",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_CAPABILITY_UNAVAILABLE",
+                )
+            if capability.skill_family is not PetSkillFamily.AUTOMATIC_DOT_DESTRUCTION:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Current Pet Skill family is not accepted for automatic execution",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_FAMILY_UNSUPPORTED",
+                )
+            if (
+                required_mana is None
+                or required_mana <= 0
+                or required_rage is None
+                or required_rage <= 0
+            ):
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Current Pet Skill effective Mana/Rage requirements are unknown",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_COST_UNKNOWN",
+                )
+            if player_mana is None or player_rage is None:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Current player Mana/Rage is unknown",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_RESOURCE_STATE_UNKNOWN",
+                )
+            if capability.live_card_actionable is None:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "STEP_1_PET_SKILL",
+                    "Current Pet Skill CardUI actionability is unknown",
+                    failures,
+                    no_candidates,
+                    blocker="PET_SKILL_ACTIONABILITY_UNKNOWN",
+                )
+            if ready and capability.live_card_actionable:
+                self._skill_trace = PetSkillPolicyContext(
+                    **{**self._skill_trace.__dict__, "candidate": True}
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.PET_SKILL,
+                    "STEP_1_PET_SKILL",
+                    (
+                        f"Current skill {capability.skill_card_id} is actionable and "
+                        f"Mana/Rage {player_mana}/{player_rage} satisfy "
+                        f"{required_mana}/{required_rage}"
+                    ),
+                    failures,
+                    no_candidates,
+                    skill=capability,
+                    candidate_count=1,
+                )
+            failures.append(
+                "STEP_1_PET_SKILL: current capability is known but not ready/actionable; "
+                f"missing Mana/Rage={missing_mana}/{missing_rage}, "
+                f"actionable={capability.live_card_actionable}"
+            )
+
         # STEP 1: EVOLVE is non-turn-consuming and requires a fresh GameState.
         # At the authoritative pass limit EVOLVE is deliberately deferred: it
         # does not consume the turn and therefore cannot establish the reset
         # the server requires.  A SWAP/CAST must be selected first.
-        if state.battle.is_first_local_turn is True:
+        if not self.config.evolve_enabled:
+            failures.append(
+                "STEP_1_EVOLVE: disabled for the entire match by "
+                + (
+                    "ManaPriority.ATTACK"
+                    if self.config.mana_priority is ManaPriority.ATTACK
+                    else "canonical Evolution setting"
+                )
+            )
+        elif state.battle.is_first_local_turn is True:
             failures.append(
                 "STEP_1_EVOLVE: deferred until the second local turn; "
                 "the opening turn requires a board action"
@@ -463,8 +771,6 @@ class BasicPolicyEngine:
                 "STEP_1_EVOLVE: disabled while low-boss-HP mode is active "
                 f"({boss_hp_current} <= {finisher_threshold})"
             )
-        elif self.config.mana_priority is ManaPriority.ATTACK:
-            failures.append("STEP_1_EVOLVE: disabled for the entire match by ManaPriority.ATTACK")
         elif (
             state.battle.turn_time_remaining_seconds
             < self.config.minimum_evolve_time_seconds
@@ -575,6 +881,43 @@ class BasicPolicyEngine:
 
         safe_moves = tuple(value for value in evaluations if value.sword_risk.safe)
 
+        if self.config.pet_skill_profile and (missing_mana or missing_rage):
+            progress_moves = tuple(
+                value
+                for value in safe_moves
+                if (
+                    (bool(missing_mana) and value.total.effective(GemType.MANA) > 0)
+                    or (bool(missing_rage) and value.total.effective(GemType.RAGE) > 0)
+                )
+            )
+            if progress_moves:
+                selected = min(progress_moves, key=self._pet_skill_resource_rank)
+                selected_trace = _candidate_trace(
+                    selected,
+                    required_mana=required_mana,
+                    required_rage=required_rage,
+                    missing_mana=missing_mana,
+                    missing_rage=missing_rage,
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "STEP_3_PET_SKILL_RESOURCE",
+                    (
+                        "Selected a Sword-safe deterministic move toward current "
+                        f"skill deficits; completes={selected_trace.requirements_completed_after_move}, "
+                        f"progress={selected_trace.readiness_progress:.6f}"
+                    ),
+                    failures,
+                    progress_moves,
+                    selected=selected,
+                    skill=capability,
+                )
+            failures.append(
+                "STEP_3_PET_SKILL_RESOURCE: no Sword-safe deterministic move advances "
+                "a current missing requirement"
+            )
+
         attack_cards = tuple(
             card
             for card in state.cards
@@ -591,7 +934,9 @@ class BasicPolicyEngine:
         # configured absolute HP casts as soon as one Attack card is
         # affordable.  This deliberately ignores the 480 stockpile rule — the
         # point is to close out the match instead of hoarding mana.
-        if finisher_threshold <= 0:
+        if self.config.pet_skill_profile:
+            failures.append("STEP_3_FINISH_CAST: prohibited by DamageCard.PET_SKILL")
+        elif finisher_threshold <= 0:
             failures.append("STEP_3_FINISH_CAST: finisher disabled by configuration")
         elif boss_hp_current is None:
             failures.append("STEP_3_FINISH_CAST: boss HP UNKNOWN")
@@ -629,7 +974,7 @@ class BasicPolicyEngine:
         mana_moves = tuple(
             value for value in safe_moves if value.total.effective(GemType.MANA) > 0
         )
-        if low_boss_hp_mode:
+        if low_boss_hp_mode and not self.config.pet_skill_profile:
             if mana_moves:
                 selected = min(
                     mana_moves,
@@ -655,7 +1000,9 @@ class BasicPolicyEngine:
         # target remains ahead of safe Mana.  With no low-boss Mana move, Rage
         # is still a legal fallback rather than forcing an unsafe move/PASS.
         rage_target = self.config.rage_target
-        if player is None or player.power is None:
+        if self.config.pet_skill_profile:
+            failures.append("STEP_3_RAGE: replaced by current Pet Skill deficits")
+        elif player is None or player.power is None:
             failures.append("STEP_3_RAGE: player Rage UNKNOWN")
         elif player.power < rage_target:
             rage_moves = tuple(
@@ -676,7 +1023,7 @@ class BasicPolicyEngine:
         else:
             failures.append(f"STEP_3_RAGE: player Rage {player.power} is already >= {rage_target}")
 
-        if mana_moves:
+        if mana_moves and not self.config.pet_skill_profile:
             selected = min(mana_moves, key=lambda value: self._resource_rank(value, GemType.MANA))
             return self._decision(
                 state,
@@ -687,7 +1034,11 @@ class BasicPolicyEngine:
                 mana_moves,
                 selected=selected,
             )
-        failures.append("STEP_3_MANA: no safe Mana move")
+        failures.append(
+            "STEP_3_MANA: replaced by current Pet Skill deficits"
+            if self.config.pet_skill_profile
+            else "STEP_3_MANA: no safe Mana move"
+        )
 
         # STEP 4: health threshold depends on configured play style.
         my_hp = _ratio(player.hp, player.max_hp) if player is not None else None
@@ -720,7 +1071,9 @@ class BasicPolicyEngine:
         # STEP 5: CAST above the stockpile threshold, then exact high/low
         # boss-resource branches.  `attack_cards` was resolved before STEP 3.
         stockpile = self.config.cast_mana_stockpile_threshold
-        if player_mana is not None and player_mana > stockpile:
+        if self.config.pet_skill_profile:
+            failures.append("STEP_5_CAST: prohibited by DamageCard.PET_SKILL")
+        elif player_mana is not None and player_mana > stockpile:
             usable = tuple(card for card in attack_cards if player_mana >= _attack_cost(card))
             if usable:
                 card = min(usable, key=lambda value: (value.card_id, value.object_address))

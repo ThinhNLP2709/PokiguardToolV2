@@ -27,14 +27,14 @@ thư mục game. Release Candidate đã được clean-build và live-validate t
 e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
-The current source compatibility version is `v1.0.44`. The accepted packaged
+The current source compatibility version is `v1.0.46`. The accepted packaged
 Phase 2F.2 artifact above remains `v1.0.0+15`; rebuild packaging before
 distributing the maintenance version.
 
-Pokiguard 1.7.4 uses Unity IL2CPP metadata 110 and a new runtime layout. The
-verified symbols, exact binary hashes, and remaining live-validation boundary
-are recorded in
-[docs/pokiguard_1.7.4_compatibility.md](docs/pokiguard_1.7.4_compatibility.md).
+The current Pokiguard 1.7.4-b4 build uses Unity IL2CPP metadata 110. Its
+verified symbols, exact binary hashes, implemented default paths, and remaining
+live-combat boundary are recorded in
+[docs/pokiguard_1.7.4_b4_compatibility_report.md](docs/pokiguard_1.7.4_b4_compatibility_report.md).
 Unknown future `GameAssembly.dll` hashes fail closed even when their versioned
 launcher path is valid.
 
@@ -80,12 +80,29 @@ See [AGENTS.md](AGENTS.md) for workspace rules, the
 
 ## Current status
 
-Phase 3A.2 is the current source phase at `v1.0.44`. It replaces the Desktop
+The active work is Phase 3C.1 Audition V3 integration at `v1.0.46`.
+The exact b4 hash, all moved TypeInfo roots, GameAssembly native bindings, and
+shifted Dot tail fields are implemented. Managed Board/turn/ACK/card/Fusion/
+pet/lifecycle fields used by default mode remain stable from b3. Offline
+verification and the bounded default live run are complete: the repaired b4
+path finished a strong 1/1 win with 18/18 native board reads and zero PASS.
+
+Audition V3/Pet Skill is integrated offline for the exact
+`LEGENDARY/NONE/PET_SKILL/BASIC` profile. V3 two-direction `LR` is the default,
+and V2 four-direction mode remains an explicit Preferences/CLI compatibility
+option. Desktop, FarmRunner, the embedded Pet Skill action and the observer
+carry the same selected mode. The complete regression is 1222/1222 PASS. Live
+runs `6bcf4d8efa9a4e129cc32aa492a17b6a` and
+`360e3ef223fc4f5eba5ca93d1cd2d490` passed B1+B2 end to end with two fresh
+MatchIds, two runtime Perfects, `2/2 WIN`, all safety counters zero, and final
+`BOSS_LOBBY` after each match. Phase 3C.1 is **PASS STRONG**.
+
+Phase 3A.2 introduced the typed Desktop pet model. It replaced the Desktop
 `ManaPriority` setting with typed **Pet của tôi**, **Tiến hóa**, and **Thẻ sát
 thương** fields. `NORMAL/NORMAL/DEFAULT_ATTACK` and
 `NORMAL/NONE/DEFAULT_ATTACK` retain the two old BASIC behaviors through a
-temporary internal adapter. Future Pet Skill profiles can be configured and
-saved, while Start and Resume remain blocked until gameplay integration exists.
+temporary internal adapter. Other Pet Skill profiles remain fail-closed until
+their source selection and gameplay behavior are implemented.
 See the [Phase 3A.2 report](docs/phase3a2_report.md) and
 [runbook](docs/phase3a2_runbook.md).
 
@@ -131,8 +148,8 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.44`
-source baseline passes **1121 tests** and includes regression coverage
+The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.46`
+source baseline passes **1211 tests** and includes regression coverage
 for the Pet configuration/capability matrix, preference and checkpoint
 migrations, UI visibility/locking, safe future-profile gates, and the unchanged
 Phase 3B.3 Pet Skill primitive. It also retains coverage

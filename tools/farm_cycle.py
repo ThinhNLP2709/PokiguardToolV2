@@ -52,9 +52,10 @@ from pokiguard_v2.postmatch_ui import (  # noqa: E402
     prove_stable_result_confirm,
 )
 from pokiguard_v2.pet_configuration import (  # noqa: E402
+    basic_policy_config,
     gameplay_config_from_args,
-    legacy_basic_policy,
 )
+from pokiguard_v2.gameplay_profile import DamageCardMode  # noqa: E402
 from pokiguard_v2.state import GemType  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     BoardInputMode,
@@ -211,7 +212,10 @@ def _resolve_pass_stage(args: Namespace) -> str:
         return explicit
     if getattr(args, "reset_evidence", None) is None:
         return "DISABLED"
-    if legacy_basic_policy(gameplay_config_from_args(args)).mana_priority.value == "attack":
+    gameplay = gameplay_config_from_args(args)
+    if gameplay.damage_card is DamageCardMode.PET_SKILL:
+        return "B3"
+    if gameplay.evolution.value == "none":
         return "B4"
     if getattr(args, "play_style", "simple") == "simple":
         return "B5"
@@ -219,11 +223,18 @@ def _resolve_pass_stage(args: Namespace) -> str:
 
 
 def _combat_args(args: Namespace, log_path: Path) -> Namespace:
-    policy = legacy_basic_policy(gameplay_config_from_args(args))
+    gameplay = gameplay_config_from_args(args)
+    policy = basic_policy_config(gameplay)
     return Namespace(
         watch=True,
         play_style=getattr(args, "play_style", "simple"),
-        mana_priority=policy.mana_priority.value,
+        mana_priority=(
+            "evolution" if gameplay.evolution.value != "none" else "attack"
+        ),
+        main_pet=gameplay.main_pet.value,
+        evolution_target=gameplay.evolution.value,
+        damage_card=gameplay.damage_card.value,
+        audition_mode=gameplay.audition_mode.value,
         board_input_mode=getattr(
             args, "board_input_mode", BoardInputMode.TWO_CLICK.value
         ),
@@ -521,7 +532,11 @@ def _validate_combat_summary(records: Sequence[dict[str, Any]]) -> tuple[bool, s
         return False, "COMBAT_SUMMARY_MISSING", None
     if summary.get("stopReason") != "COMBAT_LIFECYCLE_ENDED":
         return False, str(summary.get("stopReason") or "COMBAT_STOP_REASON_MISSING"), summary
-    if summary.get("attemptClassification") not in {"FULL_MATCH_PASS", "B5_PASS_STRONG"}:
+    if summary.get("attemptClassification") not in {
+        "FULL_COMBAT_COMPLETED",
+        "FULL_MATCH_PASS",
+        "B5_PASS_STRONG",
+    }:
         return False, f"COMBAT_CLASSIFICATION_{summary.get('attemptClassification')}", summary
     if summary.get("fullCombatResult") == "NOT_COMPLETED":
         return False, "COMBAT_RESULT_NOT_COMPLETED", summary

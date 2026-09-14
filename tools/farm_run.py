@@ -113,7 +113,11 @@ from tools.runtime_common import attach_target, utc_timestamp  # noqa: E402
 from tools.sequence_desync_runtime import RuntimeSequenceMonitor  # noqa: E402
 
 
-from pokiguard_v2.pet_configuration import add_pet_arguments, gameplay_config_from_args
+from pokiguard_v2.pet_configuration import (
+    add_pet_arguments,
+    gameplay_config_from_args,
+    requires_attack_card_preparation,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -588,6 +592,9 @@ def _run_entry(
         backend,
         FarmRunEntryCapability(run, control_hotkeys),
         FarmRunLobbyCardCapability(run, control_hotkeys),
+        require_attack_card=requires_attack_card_preparation(
+            run.snapshot().gameplay_config
+        ),
     )
     boss_entry.run(_entry_args(args, entry_directory), shared_runtime=runtime)
     try:
@@ -2717,6 +2724,11 @@ def _run_live(
                                 ),
                                 dispatcher,
                                 control_hotkeys,
+                                require_attack_card=(
+                                    requires_attack_card_preparation(
+                                        run.snapshot().gameplay_config
+                                    )
+                                ),
                             )
                             _run_recovery(
                                 run=run,
@@ -2769,6 +2781,9 @@ def _run_live(
                             local_turns,
                             boss_turns,
                         )
+                    ),
+                    require_attack_card=requires_attack_card_preparation(
+                        run.snapshot().gameplay_config
                     ),
                 )
 
@@ -2833,6 +2848,9 @@ def _run_live(
                                 local_turns,
                                 boss_turns,
                             )
+                        ),
+                        require_attack_card=requires_attack_card_preparation(
+                            run.snapshot().gameplay_config
                         ),
                     )
                     basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime)

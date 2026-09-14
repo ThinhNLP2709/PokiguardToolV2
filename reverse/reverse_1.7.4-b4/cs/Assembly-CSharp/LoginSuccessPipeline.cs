@@ -1,0 +1,125 @@
+﻿/*
+ * Generated code file by Il2CppInspector - http://www.djkaty.com - https://github.com/djkaty
+ */
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using UnityEngine;
+
+// Image 0: Assembly-CSharp.dll - Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null - Types 0-2943
+
+public static class LoginSuccessPipeline // TypeDefIndex: 1015
+{
+	// Fields
+	private static readonly string[] VOLATILE_PREF_KEYS; // 0x00
+
+	// Nested types
+	[CompilerGenerated]
+	private sealed class __c__DisplayClass1_0 // TypeDefIndex: 1016
+	{
+		// Fields
+		public bool accepted; // 0x10
+
+		// Constructors
+		public __c__DisplayClass1_0(); // 0x000000018028A320-0x000000018028A330
+
+		// Methods
+		internal void _TermsThenLoadGame_b__0(bool ok); // 0x0000000180290F20-0x0000000180290F30
+	}
+
+	[CompilerGenerated]
+	private sealed class _LoadGameSceneAsync_d__2 : IEnumerator<object> // TypeDefIndex: 1017
+	{
+		// Fields
+		private int __1__state; // 0x10
+		private object __2__current; // 0x18
+		private AsyncOperation _op_5__2; // 0x20
+
+		// Properties
+		object IEnumerator<System.Object>.Current { [DebuggerHidden] get; } // 0x000000018028EDE0-0x000000018028EDF0 
+		object IEnumerator.Current { [DebuggerHidden] get; } // 0x000000018028EDE0-0x000000018028EDF0 
+
+		// Constructors
+		[DebuggerHidden]
+		public _LoadGameSceneAsync_d__2(int __1__state); // 0x000000018028E160-0x000000018028E170
+
+		// Methods
+		[DebuggerHidden]
+		void IDisposable.Dispose(); // 0x00000001805EFDE0-0x00000001805EFE50
+		private bool MoveNext(); // 0x000000018060B6E0-0x000000018060B960
+		[DebuggerHidden]
+		void IEnumerator.Reset(); // 0x000000018060B960-0x000000018060B9A0
+	}
+
+	[CompilerGenerated]
+	private sealed class _Run_d__0 : IEnumerator<object> // TypeDefIndex: 1018
+	{
+		// Fields
+		private int __1__state; // 0x10
+		private object __2__current; // 0x18
+		public LoginResponse r; // 0x20
+		public Action<bool> onTermsDecided; // 0x28
+		public string dateHeader; // 0x30
+		public string username; // 0x38
+		public MonoBehaviour host; // 0x40
+
+		// Properties
+		object IEnumerator<System.Object>.Current { [DebuggerHidden] get; } // 0x000000018028EDE0-0x000000018028EDF0 
+		object IEnumerator.Current { [DebuggerHidden] get; } // 0x000000018028EDE0-0x000000018028EDF0 
+
+		// Constructors
+		[DebuggerHidden]
+		public _Run_d__0(int __1__state); // 0x000000018028E160-0x000000018028E170
+
+		// Methods
+		[DebuggerHidden]
+		void IDisposable.Dispose(); // 0x00000001802B6B60-0x00000001802B6B70
+		private bool MoveNext(); // 0x000000018060B9A0-0x000000018060C4F0
+		[DebuggerHidden]
+		void IEnumerator.Reset(); // 0x000000018060C4F0-0x000000018060C580
+	}
+
+	[CompilerGenerated]
+	private sealed class _TermsThenLoadGame_d__1 : IEnumerator<object> // TypeDefIndex: 1019
+	{
+		// Fields
+		private int __1__state; // 0x10
+		private object __2__current; // 0x18
+		public int userId; // 0x20
+		private __c__DisplayClass1_0 __8__1; // 0x28
+		public Action<bool> onTermsDecided; // 0x30
+
+		// Properties
+		object IEnumerator<System.Object>.Current { [DebuggerHidden] get; } // 0x000000018028EDE0-0x000000018028EDF0 
+		object IEnumerator.Current { [DebuggerHidden] get; } // 0x000000018028EDE0-0x000000018028EDF0 
+
+		// Constructors
+		[DebuggerHidden]
+		public _TermsThenLoadGame_d__1(int __1__state); // 0x000000018028E160-0x000000018028E170
+
+		// Methods
+		[DebuggerHidden]
+		void IDisposable.Dispose(); // 0x00000001802B51C0-0x00000001802B5230
+		private bool MoveNext(); // 0x00000001806355B0-0x0000000180635920
+		[DebuggerHidden]
+		void IEnumerator.Reset(); // 0x0000000180635920-0x0000000180635960
+	}
+
+	// Constructors
+	static LoginSuccessPipeline(); // 0x000000018060AE70-0x000000018060B6E0
+
+	// Methods
+	[IteratorStateMachine(typeof(_Run_d__0))]
+	public static IEnumerator Run(MonoBehaviour host, LoginResponse r, string username, Action<bool> onTermsDecided, string dateHeader = null); // 0x000000018060A190-0x000000018060A3B0
+	[IteratorStateMachine(typeof(_TermsThenLoadGame_d__1))]
+	private static IEnumerator TermsThenLoadGame(MonoBehaviour host, int userId, Action<bool> onTermsDecided); // 0x000000018060A3B0-0x000000018060A450
+	[IteratorStateMachine(typeof(_LoadGameSceneAsync_d__2))]
+	public static IEnumerator LoadGameSceneAsync(); // 0x000000018060A450-0x000000018060A490
+	public static void SyncServerTime(long jsonServerTimestamp, string dateHeader); // 0x000000018060A490-0x000000018060A740
+	public static void UpdateUserData(UserDTO user); // 0x000000018060A740-0x000000018060AA00
+	public static bool ForceCleanOldData(); // 0x000000018060AA00-0x000000018060AE70
+}
+

@@ -1652,6 +1652,9 @@ def _run_live(
                 coordinator,
                 getattr(shared_runtime, "farm_control_hotkeys", None),
             ),
+            require_attack_card=getattr(
+                shared_runtime, "require_attack_card", True
+            ),
         )
         boss_entry.run(_entry_args(args, reentry_dir), shared_runtime=runtime)
         try:

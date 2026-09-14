@@ -35,6 +35,14 @@ from pokiguard_v2.pet_qte_observer import (  # noqa: E402
     CARD_UI_TIMING_BONUS_OFFSET,
     CARD_UI_TIMING_TEXT_OFFSET,
     CHAT_MESSAGE_QTE_RESULT_READ_SIZE,
+    CHAT_MESSAGE_TYPE_OFFSET,
+    CHAT_MESSAGE_MATCH_ID_OFFSET,
+    CHAT_MESSAGE_SKILL_CARD_ID_OFFSET,
+    CHAT_MESSAGE_CORRECT_DOT_COUNT_OFFSET,
+    CHAT_MESSAGE_TIMING_RESULT_OFFSET,
+    CHAT_MESSAGE_DOTS_TO_DESTROY_OFFSET,
+    CHAT_MESSAGE_QTE_PRESSES_OFFSET,
+    CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET,
     CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET,
     MATCH_SERVICE_SERVER_QTE_READ_SIZE,
     MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET,
@@ -174,9 +182,9 @@ class Fixture:
         struct.pack_into("<i", pet, 0x20, skill_card_id)
         struct.pack_into("<ii", pet, 0x50, 73, 100)
         struct.pack_into("<i", pet, 0x70, 200)
-        struct.pack_into("<i", pet, 0x74, 3)
+        struct.pack_into("<i", pet, 0x78, 3)
         if skill_card_id:
-            struct.pack_into("<Q", pet, 0x90, self.CARD)
+            struct.pack_into("<Q", pet, 0x98, self.CARD)
         self.memory.map(self.PET, pet)
         if not skill_card_id:
             return
@@ -857,16 +865,22 @@ class PetQteObserverTests(unittest.TestCase):
         fixture.string_list(fixture.QTE_LIST, fixture.QTE_ITEMS, ("nutUp",))
         raw = bytearray(CHAT_MESSAGE_QTE_RESULT_READ_SIZE)
         struct.pack_into("<Q", raw, 0, fixture.RESULT_CLASS)
-        struct.pack_into("<Q", raw, 0x30, fixture.string("MATCH_SKILL_USE_RES"))
-        struct.pack_into("<Q", raw, 0xB0, fixture.string("M_A"))
-        raw[0x108] = raw[0x110] = raw[0x120] = raw[0x140] = 1
-        struct.pack_into("<i", raw, 0x10C, 321)
-        struct.pack_into("<i", raw, 0x114, 7)
-        struct.pack_into("<Q", raw, 0x118, fixture.string("PERFECT!"))
-        struct.pack_into("<i", raw, 0x124, 12)
-        struct.pack_into("<Q", raw, 0x138, fixture.QTE_LIST)
-        struct.pack_into("<i", raw, 0x144, qte.qte_elapsed_ms)
-        raw[CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET] = 1
+        struct.pack_into("<Q", raw, CHAT_MESSAGE_TYPE_OFFSET, fixture.string("MATCH_SKILL_USE_RES"))
+        struct.pack_into("<Q", raw, CHAT_MESSAGE_MATCH_ID_OFFSET, fixture.string("M_A"))
+        for offset in (
+            CHAT_MESSAGE_SKILL_CARD_ID_OFFSET,
+            CHAT_MESSAGE_CORRECT_DOT_COUNT_OFFSET,
+            CHAT_MESSAGE_DOTS_TO_DESTROY_OFFSET,
+            CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET,
+            CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET,
+        ):
+            raw[offset] = 1
+        struct.pack_into("<i", raw, CHAT_MESSAGE_SKILL_CARD_ID_OFFSET + 4, 321)
+        struct.pack_into("<i", raw, CHAT_MESSAGE_CORRECT_DOT_COUNT_OFFSET + 4, 7)
+        struct.pack_into("<Q", raw, CHAT_MESSAGE_TIMING_RESULT_OFFSET, fixture.string("PERFECT!"))
+        struct.pack_into("<i", raw, CHAT_MESSAGE_DOTS_TO_DESTROY_OFFSET + 4, 12)
+        struct.pack_into("<Q", raw, CHAT_MESSAGE_QTE_PRESSES_OFFSET, fixture.QTE_LIST)
+        struct.pack_into("<i", raw, CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET + 4, qte.qte_elapsed_ms)
         struct.pack_into(
             "<q", raw, CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET + 8, 7001
         )

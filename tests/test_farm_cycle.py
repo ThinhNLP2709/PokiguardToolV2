@@ -114,6 +114,7 @@ class FarmCycleTests(unittest.TestCase):
         self.assertEqual(combat.minimum_action_time, 1)
         self.assertEqual(combat.postmatch_observation_timeout, 1.0)
         self.assertEqual(combat.board_input_mode, "two_click")
+        self.assertEqual(combat.audition_mode, "audition_v3")
 
     def test_pass_profile_matches_every_supported_basic_policy_draft(self) -> None:
         reset = object()
@@ -497,6 +498,39 @@ class CombatSummaryTests(unittest.TestCase):
     def test_accepts_only_full_safe_combat_plus_postmatch_proof(self) -> None:
         accepted, reason, _summary = _validate_combat_summary(self.valid_records())
         self.assertTrue(accepted, reason)
+
+    def test_accepts_phase3_full_combat_completed_with_postmatch_proof(self) -> None:
+        records = self.valid_records()
+        records[-1]["attemptClassification"] = "FULL_COMBAT_COMPLETED"
+        records[-1]["terminalCombatSnapshot"] = {
+            "result": "WIN",
+            "confidence": "STRONG",
+            "evidence_sources": [
+                "Active.PlayerStats.local",
+                "Active.PlayerStats.boss",
+                "ACTIVE_TO_POSTMATCH_PRE_CLEANUP",
+                "TERMINAL_HP_PAIR",
+            ],
+            "boss_hp": 0,
+            "captured_before_cleanup": True,
+        }
+
+        accepted, reason, _summary = _validate_combat_summary(records)
+
+        self.assertTrue(accepted, reason)
+        self.assertEqual(reason, "COMBAT_LIFECYCLE_ENDED")
+
+    def test_rejects_phase3_full_combat_completed_with_safety_finding(self) -> None:
+        records = self.valid_records()
+        records[-1]["attemptClassification"] = "FULL_COMBAT_COMPLETED_WITH_SAFETY_FINDING"
+
+        accepted, reason, _summary = _validate_combat_summary(records)
+
+        self.assertFalse(accepted)
+        self.assertEqual(
+            reason,
+            "COMBAT_CLASSIFICATION_FULL_COMBAT_COMPLETED_WITH_SAFETY_FINDING",
+        )
 
     def test_postmatch_ambiguity_is_not_promoted_to_success(self) -> None:
         records = self.valid_records()[1:]

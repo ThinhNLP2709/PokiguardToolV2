@@ -15,7 +15,7 @@ import time
 from typing import Any, Callable
 
 from .basic_policy import Intelligence
-from .pet_configuration import FarmPolicyUnavailable, legacy_basic_policy
+from .pet_configuration import FarmPolicyUnavailable
 from .boss_entry import FarmTarget
 from .controller_lease import AutomationControllerLease
 from .farm_checkpoint import CheckpointError, load_checkpoint, validate_for_resume
@@ -185,7 +185,7 @@ class DesktopFarmControllerManager:
         config = launch.config
         if config.intelligence is not Intelligence.BASIC:
             raise ValueError("REASONING is not implemented")
-        legacy_basic_policy(config.gameplay_config)
+        config.gameplay_config.require_farm_policy()
         BoardInputMode(config.board_input_mode)
         target = FarmTarget(
             config.normalized_boss_id,
@@ -627,6 +627,8 @@ class DesktopFarmControllerManager:
             config.evolution.value,
             "--damage-card",
             config.damage_card.value,
+            "--audition-mode",
+            config.audition_mode.value,
             "--cast-when-boss-hp-below",
             str(config.cast_when_boss_hp_below),
             "--cast-mana-stockpile",

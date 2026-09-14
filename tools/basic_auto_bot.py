@@ -57,6 +57,7 @@ from pokiguard_v2.basic_policy import (  # noqa: E402
     ManaPriority,
     PlayStyle,
     PolicyAction,
+    PolicyDecision,
     PolicyConfig,
 )
 from pokiguard_v2.board_diagnostics import (  # noqa: E402
@@ -149,6 +150,25 @@ from tools.sequence_desync_runtime import (  # noqa: E402
     RuntimeSequenceMonitor,
     RuntimeSequenceObservation,
 )
+from pokiguard_v2.gameplay_profile import (  # noqa: E402
+    AuditionMode,
+    DamageCardMode,
+    EvolutionTarget,
+    MainPetType,
+)
+from pokiguard_v2.pet_configuration import (  # noqa: E402
+    GameplayConfig,
+    basic_policy_config,
+)
+from pokiguard_v2.pet_skill_shadow import (  # noqa: E402
+    PetSkillCapability,
+    PetSkillCapabilityProvider,
+    live_pet_skill_card_from_state,
+)
+from pokiguard_v2.pet_skill_farm import (  # noqa: E402
+    PetSkillDispatchState,
+    PetSkillFarmDispatcher,
+)
 from tools.sequence_recovery import _live_exit_calibration, _locate_temporally  # noqa: E402
 
 
@@ -181,6 +201,39 @@ class SharedCombatRuntime:
     turn_progress_observer: (
         Callable[[str, Any, int, int, int], None] | None
     ) = None
+    require_attack_card: bool = True
+
+
+def _current_pet_skill_capability(
+    provider: MemoryBoardStateProvider,
+    state: GameState,
+    resolver: PetSkillCapabilityProvider,
+) -> PetSkillCapability:
+    """Resolve one current main-Legendary skill without re-reading the board."""
+
+    session = state.battle.session_key
+    cards = (
+        provider.refresh_pet_skill_cards(
+            session,
+            require_fusion_success=False,
+        )
+        if session is not None
+        else ()
+    )
+    return resolver.observe(
+        observed_at=time.monotonic(),
+        current_session=session,
+        source_pet=None,
+        candidates=(
+            live_pet_skill_card_from_state(
+                card,
+                session_key=session,
+                active_instance=None,
+            )
+            for card in cards
+            if session is not None
+        ),
+    )
 
 
 def _reserve_farm_gameplay(
@@ -502,7 +555,7 @@ def _record_transport_board_decode_failure(
     is retained.  A callback/heap object that still lacks ``board/srvSeq`` on
     the second stable controller iteration is retired for this lifecycle;
     retrying it forever cannot recover a newer ACK and was measured 1,247
-    times in one short b2 match.
+    times in one short match.
     """
 
     if maximum_attempts <= 0:
@@ -638,7 +691,7 @@ def _pass_response_observation_complete(
 ) -> bool:
     """Recognize both supported complete PASS-response observation paths.
 
-    The dispatcher callback tap is the primary b2 transport source and samples
+    The dispatcher callback tap is the primary transport source and samples
     its retained messages without a heap scan. Requiring ``scan_performed``
     alone leaves PASS_WAIT locked forever after a missed transient AFK payload,
     even after MatchService has advanced back to the next local turn.
@@ -758,6 +811,13 @@ class Counters:
     cast_sent: int = 0
     cast_accepted: int = 0
     cast_rejected: int = 0
+    pet_skill_proposals: int = 0
+    pet_skill_attempts: int = 0
+    pet_skill_perfect: int = 0
+    pet_skill_zero_input_failures: int = 0
+    pet_skill_after_input_failures: int = 0
+    pet_skill_turn_resolution_unconfirmed: int = 0
+    pet_skill_same_source_followups: int = 0
     duplicate_inputs: int = 0
     duplicate_actions_blocked: int = 0
     misclicks: int = 0
@@ -1529,7 +1589,7 @@ def _fresh_opening_handoff_state(
         turn_time_remaining_seconds=int(runtime.remaining),
         turn_timer_source="MatchService.server_tick",
         local_move_sequence=0,
-        # ``None`` and ``-1`` are equivalent pristine sentinels in the b2
+        # ``None`` and ``-1`` are equivalent pristine sentinels in the
         # opening. Preserve the already proven cached representation so two
         # adjacent direct-root reads cannot invalidate the same opening action.
         last_move_sequence=battle.last_move_sequence,
@@ -1807,6 +1867,10 @@ def _policy_branch(policy_step: str) -> str:
 
     if policy_step == "STEP_5_SAFE_FALLBACK":
         return "SAFE_RESOURCE_FALLBACK"
+    if policy_step == "STEP_1_PET_SKILL":
+        return "PET_SKILL"
+    if policy_step == "STEP_3_PET_SKILL_RESOURCE":
+        return "PET_SKILL_RESOURCE"
     for branch in (
         "EVOLVE",
         "SWORD",
@@ -1842,6 +1906,8 @@ def _record_policy_observation(
         decision.action,
         decision.move,
         decision.card_object_address,
+        decision.skill_session_key,
+        decision.skill_card_id,
     )
     if key in observed:
         return None
@@ -1852,7 +1918,32 @@ def _record_policy_observation(
         counters.evolve_proposals += 1
     elif decision.action is PolicyAction.CAST:
         counters.cast_proposals += 1
+    elif decision.action is PolicyAction.PET_SKILL:
+        counters.pet_skill_proposals += 1
     return branch
+
+
+def _pet_skill_resource_progress_fields(
+    decision: PolicyDecision,
+) -> dict[str, Any]:
+    """Build telemetry for the resource branch from its owning decision."""
+
+    return {
+        "skillCardId": decision.skill_card_id,
+        "requiredMana": decision.trace.required_mana,
+        "requiredRage": decision.trace.required_rage,
+        "currentMana": decision.trace.current_mana,
+        "currentRage": decision.trace.current_rage,
+        "missingMana": decision.trace.missing_mana,
+        "missingRage": decision.trace.missing_rage,
+        "selectedCandidate": decision.trace.selected_candidate,
+        "swordSafe": (
+            decision.trace.selected_candidate.safe
+            if decision.trace.selected_candidate is not None
+            else None
+        ),
+        "reason": decision.trace.why_selected,
+    }
 
 
 def _record_sent_input_safety(counters: Counters, state: GameState) -> None:
@@ -2053,6 +2144,7 @@ def _cancel_unsent(
     if consuming_turns is not None and identity.action in {
         PolicyAction.SWAP,
         PolicyAction.CAST,
+        PolicyAction.PET_SKILL,
     }:
         consuming_turns.cancel(identity.source.session, identity.source.turn)
 
@@ -2644,6 +2736,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--watch", action="store_true", required=True)
     parser.add_argument("--play-style", choices=[value.value for value in PlayStyle], default="simple")
     parser.add_argument("--mana-priority", choices=[value.value for value in ManaPriority], default="evolution")
+    parser.add_argument("--main-pet", choices=[value.value for value in MainPetType])
+    parser.add_argument("--evolution-target", choices=[value.value for value in EvolutionTarget])
+    parser.add_argument("--damage-card", choices=[value.value for value in DamageCardMode])
+    parser.add_argument(
+        "--audition-mode",
+        choices=[value.value for value in AuditionMode],
+        default=AuditionMode.V3_TWO_DIRECTION.value,
+    )
     parser.add_argument("--intelligence", choices=[value.value for value in Intelligence], default="basic")
     parser.add_argument(
         "--board-input-mode",
@@ -2872,21 +2972,45 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     ):
         raise ValueError("Phase 2D.4 B1 bounded handoff requires shared runtime")
 
-    configured_mana_priority = ManaPriority(args.mana_priority)
-    policy = BasicPolicyEngine(
-        PolicyConfig(
+    canonical_profile = all(
+        getattr(args, name, None) is not None
+        for name in ("main_pet", "evolution_target", "damage_card")
+    )
+    if canonical_profile:
+        gameplay = GameplayConfig(
+            play_style=PlayStyle(args.play_style),
+            intelligence=Intelligence.BASIC,
+            main_pet=MainPetType(args.main_pet),
+            evolution=EvolutionTarget(args.evolution_target),
+            damage_card=DamageCardMode(args.damage_card),
+            audition_mode=AuditionMode(
+                getattr(args, "audition_mode", AuditionMode.V3_TWO_DIRECTION.value)
+            ),
+            cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
+            cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
+            rage_target=getattr(args, "rage_target", 100),
+        )
+        policy_config = basic_policy_config(gameplay)
+        configured_mana_priority = (
+            ManaPriority.EVOLUTION
+            if gameplay.evolution is not EvolutionTarget.NONE
+            else ManaPriority.ATTACK
+        )
+    else:
+        configured_mana_priority = ManaPriority(args.mana_priority)
+        policy_config = PolicyConfig(
             play_style=PlayStyle(args.play_style),
             mana_priority=configured_mana_priority,
             intelligence=Intelligence.BASIC,
-            minimum_turn_time_seconds=args.minimum_action_time,
-            # Step 1 is the operator-owned rule: after the opening action, an
-            # affordable selected evolution is tried before board policy.
-            # Retain only the inclusive hard action floor. Authoritative
-            # idle-2 still defers non-consuming EVOLVE to mandatory SWAP/CAST.
-            minimum_evolve_time_seconds=args.minimum_action_time,
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile_threshold=getattr(args, "cast_mana_stockpile", 480),
             rage_target=getattr(args, "rage_target", 100),
+        )
+    policy = BasicPolicyEngine(
+        replace(
+            policy_config,
+            minimum_turn_time_seconds=args.minimum_action_time,
+            minimum_evolve_time_seconds=args.minimum_action_time,
         )
     )
     # Production V2 uses only these accepted normal-input calibration values;
@@ -3088,6 +3212,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         dispatcher_offered_runtime_batches: set[tuple[str, int, int, str]] = set()
         runtime_offered_batches: set[tuple[int, int]] = set()
         fast_transition_deadline: float | None = None
+        pet_skill_resolution_deadline: float | None = None
         stop_reason = "PROCESS_OR_CONTROLLER_STOPPED"
         session_seen = False
         action_baseline_ready = False
@@ -3127,6 +3252,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         optional_card_suppressions: dict[
             tuple[Any, int], set[PolicyAction]
         ] = {}
+        pet_skill_capability_provider = PetSkillCapabilityProvider()
+        pet_skill_dispatcher = PetSkillFarmDispatcher()
+        pet_skill_warmups: dict[tuple[Any, int], float] = {}
         active_progress_watchdog = ActiveCombatProgressWatchdog()
         dispatcher_ready_sessions: set[Any] = set()
 
@@ -4143,6 +4271,22 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             runtime=fast_runtime,
                         )
                         if (
+                            fast_transition.action.action
+                            is PolicyAction.PET_SKILL
+                        ):
+                            _write(
+                                log,
+                                "pet_skill_turn_resolved",
+                                kind=fast_transition.kind,
+                                sourceTurn=fast_transition.action.source.turn,
+                                nextTurn=fast_runtime.turn,
+                                nextPlayer=fast_runtime.current_player,
+                                evidence=(
+                                    "MatchService fast direct-root sample"
+                                ),
+                                gameplayInputSent=False,
+                            )
+                        if (
                             fast_transition.kind
                             is TurnTransitionKind.LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT
                         ):
@@ -4184,6 +4328,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
 
             if (
                 turn_transitions.action is not None
+                and turn_transitions.action.action is not PolicyAction.PET_SKILL
                 and not turn_transitions.opponent_seen
                 and fast_transition_deadline is not None
                 and time.monotonic() >= fast_transition_deadline
@@ -4583,6 +4728,24 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             priorAction=runtime_transition.action,
                             runtime=raw_runtime,
                         )
+                        if (
+                            runtime_transition.action.action
+                            is PolicyAction.PET_SKILL
+                        ):
+                            _write(
+                                log,
+                                "pet_skill_turn_resolved",
+                                kind=runtime_transition.kind,
+                                sourceTurn=(
+                                    runtime_transition.action.source.turn
+                                ),
+                                nextTurn=raw_runtime.turn,
+                                nextPlayer=raw_runtime.current_player,
+                                evidence=(
+                                    "MatchService.CurrentTurnPlayer/TurnNumber"
+                                ),
+                                gameplayInputSent=False,
+                            )
                         if (
                             runtime_transition.kind
                             is TurnTransitionKind.LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT
@@ -5887,9 +6050,25 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 consuming_action_turns.clear()
                 unconfirmed_action_turns.clear()
                 optional_card_suppressions.clear()
-                turn_transitions.clear()
+                terminal_transition = turn_transitions.resolve_terminal()
+                if (
+                    terminal_transition is not None
+                    and terminal_transition.action.action
+                    is PolicyAction.PET_SKILL
+                ):
+                    _write(
+                        log,
+                        "pet_skill_turn_resolved",
+                        kind=terminal_transition.kind,
+                        sourceTurn=terminal_transition.action.source.turn,
+                        nextTurn=None,
+                        nextPlayer=None,
+                        evidence="authoritative combat terminal/lifecycle",
+                        gameplayInputSent=False,
+                    )
                 fusion_attempts_by_turn.clear()
                 fast_transition_deadline = None
+                pet_skill_resolution_deadline = None
                 action_baseline_ready = False
                 session_cleared = True
                 combat_ended = True
@@ -5911,6 +6090,31 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 )
                 time.sleep(args.interval)
                 continue
+
+            # Poll and classify terminal/lifecycle evidence before expiring a
+            # Pet Skill turn wait. A skill that ends combat must take the
+            # terminal path even if its bounded boss-turn deadline expires in
+            # the same controller iteration.
+            if (
+                turn_transitions.action is not None
+                and turn_transitions.action.action is PolicyAction.PET_SKILL
+                and not turn_transitions.opponent_seen
+                and pet_skill_resolution_deadline is not None
+                and time.monotonic() >= pet_skill_resolution_deadline
+            ):
+                counters.pet_skill_turn_resolution_unconfirmed += 1
+                stop_reason = "PET_SKILL_TURN_RESOLUTION_UNCONFIRMED"
+                guard.stop()
+                _write(
+                    log,
+                    "pet_skill_turn_resolution_unconfirmed",
+                    reason=stop_reason,
+                    sourceAction=turn_transitions.action,
+                    noFallbackInput=True,
+                    inputRetried=False,
+                )
+                _beep("pause", not args.no_beep)
+                break
 
             pending = guard.pending
             if pending is not None:
@@ -6401,6 +6605,25 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     priorAction=transition.action,
                     newSource=transition.new_source,
                 )
+                if transition.action.action is PolicyAction.PET_SKILL:
+                    _write(
+                        log,
+                        "pet_skill_turn_resolved",
+                        kind=transition.kind,
+                        sourceTurn=transition.action.source.turn,
+                        nextTurn=(
+                            transition.new_source.turn
+                            if transition.new_source is not None
+                            else None
+                        ),
+                        nextPlayer=(
+                            transition.new_source.current_turn_player
+                            if transition.new_source is not None
+                            else None
+                        ),
+                        evidence="published GameState",
+                        gameplayInputSent=False,
+                    )
                 if (
                     transition.kind
                     is TurnTransitionKind.LOCAL_TURN_WITHOUT_OBSERVED_OPPONENT
@@ -6659,8 +6882,54 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             policy_state = _without_optional_card_actions(
                 state, suppressed_optional_actions
             )
-            analysis = analyze_game_state(policy_state, policy_engine=policy)
-            basic_decision = policy.decide(policy_state)
+            pet_skill_capability = (
+                _current_pet_skill_capability(
+                    provider,
+                    policy_state,
+                    pet_skill_capability_provider,
+                )
+                if policy.config.pet_skill_profile
+                else None
+            )
+            analysis = analyze_game_state(
+                policy_state,
+                policy_engine=policy,
+                pet_skill_capability=pet_skill_capability,
+            )
+            basic_decision = policy.decide(
+                policy_state,
+                pet_skill_capability=pet_skill_capability,
+            )
+            if (
+                policy.config.pet_skill_profile
+                and basic_decision.trace.blocker
+                in {
+                    "PET_SKILL_CAPABILITY_UNAVAILABLE",
+                    "PET_SKILL_ACTIONABILITY_UNKNOWN",
+                }
+                and optional_turn_key is not None
+            ):
+                warmup_started = pet_skill_warmups.setdefault(
+                    optional_turn_key,
+                    time.monotonic(),
+                )
+                warmup_elapsed = time.monotonic() - warmup_started
+                remaining = policy_state.battle.turn_time_remaining_seconds
+                if warmup_elapsed < 2.0 and (
+                    remaining is None
+                    or remaining > args.minimum_action_time + 2
+                ):
+                    _write(
+                        log,
+                        "pet_skill_discovery_warmup",
+                        session=policy_state.battle.session_key,
+                        turn=policy_state.battle.turn_number,
+                        elapsed=round(warmup_elapsed, 3),
+                        blocker=basic_decision.trace.blocker,
+                        inputSent=False,
+                    )
+                    time.sleep(args.interval)
+                    continue
             decision = _acceptance_forced_pass_decision(
                 state,
                 basic_decision,
@@ -6708,6 +6977,30 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     srvSeq=state.battle.srv_seq,
                     boardHash=state.battle.board_hash,
                 )
+                if decision.action is PolicyAction.PET_SKILL:
+                    _write(
+                        log,
+                        "pet_skill_action_proposed",
+                        session=state.battle.session_key,
+                        matchId=state.battle.match_id,
+                        sourceTurn=state.battle.turn_number,
+                        skillCardId=decision.skill_card_id,
+                        requiredMana=decision.trace.required_mana,
+                        requiredRage=decision.trace.required_rage,
+                        currentMana=decision.trace.current_mana,
+                        currentRage=decision.trace.current_rage,
+                        ready=decision.trace.skill_ready,
+                        actionable=decision.trace.skill_actionable,
+                    )
+                elif observed_branch == "PET_SKILL_RESOURCE":
+                    _write(
+                        log,
+                        "pet_skill_resource_progress",
+                        session=state.battle.session_key,
+                        matchId=state.battle.match_id,
+                        sourceTurn=state.battle.turn_number,
+                        **_pet_skill_resource_progress_fields(decision),
+                    )
                 if (
                     pass_stage == "B4"
                     and state.battle.session_key not in attack_priority_skip_logged
@@ -6781,7 +7074,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 continue
             if (
                 p3_mandatory_reset_pending
-                and decision.action not in {PolicyAction.SWAP, PolicyAction.CAST}
+                and decision.action
+                not in {
+                    PolicyAction.SWAP,
+                    PolicyAction.CAST,
+                    PolicyAction.PET_SKILL,
+                }
             ):
                 mandatory_recovery_warning = (
                     _mandatory_reset_recovery_warning_seconds(
@@ -6926,7 +7224,15 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 state.battle.client_move_allowed,
                 tuple(sorted(action.value for action in suppressed_optional_actions)),
             )
-            signature = (decision.action, (decision.move, decision.card_object_address))
+            signature = (
+                decision.action,
+                (
+                    decision.move,
+                    decision.card_object_address,
+                    decision.skill_session_key,
+                    decision.skill_card_id,
+                ),
+            )
             previous = source_decisions.get(decision_key)
             if previous is not None and previous != signature:
                 guard.pause(automatic=True)
@@ -6956,7 +7262,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         legalCandidates=_mandatory_candidate_fields(analysis),
                         selectedReason=decision.trace.why_selected,
                         selectedConsumesTurn=decision.action
-                        in {PolicyAction.SWAP, PolicyAction.CAST},
+                        in {
+                            PolicyAction.SWAP,
+                            PolicyAction.CAST,
+                            PolicyAction.PET_SKILL,
+                        },
                         evolveSatisfiesMandatory=False,
                     )
                     if decision.action is PolicyAction.EVOLVE:
@@ -7071,7 +7381,19 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         allow_authoritative_board_only_stats=True,
                     ),
                 )
-                fresh_basic_decision = policy.decide(fresh_pass)
+                fresh_pass_capability = (
+                    _current_pet_skill_capability(
+                        provider,
+                        fresh_pass,
+                        pet_skill_capability_provider,
+                    )
+                    if policy.config.pet_skill_profile
+                    else None
+                )
+                fresh_basic_decision = policy.decide(
+                    fresh_pass,
+                    pet_skill_capability=fresh_pass_capability,
+                )
                 fresh_pass_decision = _acceptance_forced_pass_decision(
                     fresh_pass,
                     fresh_basic_decision,
@@ -7535,13 +7857,29 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 fresh_suppressed_actions = fresh_suppressed_actions | frozenset(
                     {PolicyAction.EVOLVE, PolicyAction.CAST}
                 )
+            fresh_policy_state = _without_optional_card_actions(
+                fresh,
+                fresh_suppressed_actions,
+            )
+            fresh_pet_skill_capability = (
+                _current_pet_skill_capability(
+                    provider,
+                    fresh_policy_state,
+                    pet_skill_capability_provider,
+                )
+                if policy.config.pet_skill_profile
+                else None
+            )
             fresh_decision = policy.decide(
-                _without_optional_card_actions(fresh, fresh_suppressed_actions)
+                fresh_policy_state,
+                pet_skill_capability=fresh_pet_skill_capability,
             )
             if (
                 fresh_decision.action is not decision.action
                 or fresh_decision.move != decision.move
                 or fresh_decision.card_object_address != decision.card_object_address
+                or fresh_decision.skill_card_id != decision.skill_card_id
+                or fresh_decision.skill_session_key != decision.skill_session_key
             ):
                 counters.expired_actions += 1
                 _cancel_unsent(guard, identity)
@@ -7677,10 +8015,227 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 mandatory_after_idle_2=bool(
                     pass_stage == "B5"
                     and p3_mandatory_reset_pending
-                    and decision.action in {PolicyAction.SWAP, PolicyAction.CAST}
+                    and decision.action
+                    in {
+                        PolicyAction.SWAP,
+                        PolicyAction.CAST,
+                        PolicyAction.PET_SKILL,
+                    }
                 ),
                 response_deadline=sent_at + args.action_timeout,
             )
+            if decision.action is PolicyAction.PET_SKILL:
+                from tools.pet_skill_action import run_embedded_policy_action
+
+                if (
+                    decision.skill_card_id is None
+                    or decision.skill_session_key != fresh.battle.session_key
+                ):
+                    _cancel_unsent(guard, identity)
+                    guard.stop()
+                    stop_reason = "PET_SKILL_PROPOSAL_IDENTITY_INVALID"
+                    _write(
+                        log,
+                        "pet_skill_preflight_rejected",
+                        reason=stop_reason,
+                        decision=decision,
+                        inputSent=False,
+                    )
+                    break
+                turn_key = (
+                    fresh.battle.session_key,
+                    int(fresh.battle.turn_number),
+                )
+                if not consuming_turns.reserve(*turn_key):
+                    counters.wrong_turn_actions_blocked += 1
+                    _cancel_unsent(guard, identity)
+                    guard.stop()
+                    stop_reason = "PET_SKILL_CONSUMING_ACTION_ALREADY_SENT"
+                    _write(
+                        log,
+                        "pet_skill_preflight_rejected",
+                        reason=stop_reason,
+                        inputSent=False,
+                    )
+                    break
+                _write(
+                    log,
+                    "pet_skill_dispatch_started",
+                    identity=identity,
+                    skillCardId=decision.skill_card_id,
+                    requiredMana=decision.trace.required_mana,
+                    requiredRage=decision.trace.required_rage,
+                    currentMana=decision.trace.current_mana,
+                    currentRage=decision.trace.current_rage,
+                    maxSimultaneousLimit=1,
+                )
+                dispatch_context: dict[str, Any] = {}
+
+                def acquire_pet_skill_lease() -> Any | None:
+                    farm_window = executor.window_status(binding)
+                    accepted, permit = _reserve_farm_gameplay(
+                        runtime,
+                        action=PolicyAction.PET_SKILL,
+                        session=fresh.battle.session_key,
+                        foreground=(
+                            farm_window.valid
+                            and farm_window.foreground is True
+                        ),
+                    )
+                    return permit if accepted else None
+
+                def execute_pet_skill_once() -> Any:
+                    hook = run_embedded_policy_action(
+                        target=target,
+                        provider=provider,
+                        log_path=(
+                            log_path.parent
+                            / (
+                                f"pet_skill_{fresh.battle.match_id}_"
+                                f"turn{fresh.battle.turn_number}.jsonl"
+                            )
+                        ),
+                        expected_session=fresh.battle.session_key,
+                        expected_skill_card_id=decision.skill_card_id,
+                        audition_mode=gameplay.audition_mode,
+                        backend=backend,
+                        binding=binding,
+                        atomic_input_gate=(
+                            lambda operation: _execute_farm_gameplay_input(
+                                runtime,
+                                operation,
+                            )
+                        ),
+                        interval=0.025,
+                        timeout=20.0,
+                    )
+                    dispatch_context["hook"] = hook
+                    return hook.result
+
+                outcome = pet_skill_dispatcher.dispatch(
+                    source=turn_key,
+                    acquire=acquire_pet_skill_lease,
+                    primitive=execute_pet_skill_once,
+                    complete=(
+                        lambda permit, sent, detail: _complete_farm_gameplay(
+                            runtime,
+                            permit,
+                            sent=sent,
+                            detail=detail,
+                        )
+                    ),
+                    abandon=(
+                        lambda permit, detail: _abandon_farm_gameplay_preflight(
+                            runtime,
+                            permit,
+                            detail=detail,
+                        )
+                    ),
+                )
+                hook = dispatch_context.get("hook")
+                result = outcome.result
+                input_sent = outcome.input_sent
+                completed = outcome.lease_resolved
+                _write(
+                    log,
+                    "pet_skill_dispatch_result",
+                    identity=identity,
+                    result=result,
+                    summary=(hook.summary if hook is not None else None),
+                    dispatchState=outcome.state,
+                    inputSent=input_sent,
+                    farmPermitResolved=completed,
+                    maxSimultaneous=pet_skill_dispatcher.max_simultaneous,
+                    primitiveCalls=pet_skill_dispatcher.primitive_calls,
+                    sourceTurnClosed=outcome.source_turn_closed,
+                    sameTurnFallback=outcome.allow_same_turn_fallback,
+                    blindRetry=False,
+                )
+                if outcome.state is PetSkillDispatchState.LEASE_DENIED:
+                    _cancel_unsent(
+                        guard,
+                        identity,
+                        consuming_turns=consuming_turns,
+                    )
+                    guard.stop()
+                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                    _write(
+                        log,
+                        "farm_gameplay_capability_denied",
+                        action="PET_SKILL",
+                        session=fresh.battle.session_key,
+                        inputSent=False,
+                    )
+                    break
+                if (
+                    outcome.state
+                    is PetSkillDispatchState.SOURCE_TURN_ALREADY_CLOSED
+                ):
+                    counters.pet_skill_same_source_followups += 1
+                    _cancel_unsent(
+                        guard,
+                        identity,
+                        consuming_turns=consuming_turns,
+                    )
+                    guard.stop()
+                    stop_reason = "PET_SKILL_SOURCE_TURN_ALREADY_CLOSED"
+                    _write(
+                        log,
+                        "pet_skill_same_source_followup_blocked",
+                        identity=identity,
+                        inputSent=False,
+                    )
+                    break
+                if not input_sent:
+                    counters.pet_skill_zero_input_failures += 1
+                    _cancel_unsent(
+                        guard,
+                        identity,
+                        consuming_turns=consuming_turns,
+                    )
+                    if not completed:
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
+                        break
+                    time.sleep(args.interval)
+                    continue
+                guard.begin(pending_action)
+                guard.complete_pending()
+                opening_fast_action_pending = False
+                _record_sent_input_safety(counters, fresh)
+                counters.pet_skill_attempts += 1
+                counters.input_actions_total += 1
+                counters.turn_consuming_actions_total += 1
+                consuming_action_turns.add(turn_key)
+                turn_transitions.begin(identity)
+                fast_transition_deadline = time.monotonic() + max(
+                    args.action_timeout,
+                    15.0,
+                )
+                pet_skill_resolution_deadline = fast_transition_deadline
+                if result is not None and result.success:
+                    counters.pet_skill_perfect += 1
+                    _write(
+                        log,
+                        "pet_skill_resolving",
+                        identity=identity,
+                        result=result.kind,
+                        sourceTurnClosed=True,
+                        waitFor="BOSS_TURN_OR_TERMINAL",
+                        sameSourceTurnInputAllowed=False,
+                    )
+                else:
+                    counters.pet_skill_after_input_failures += 1
+                    _write(
+                        log,
+                        "pet_skill_after_input_uncertain",
+                        identity=identity,
+                        result=result,
+                        sourceTurnInputSuppressed=True,
+                        fallbackInput=False,
+                        inputRetried=False,
+                    )
+                continue
             if decision.action is PolicyAction.SWAP:
                 if decision.move is None or fresh_window.geometry is None:
                     raise CoordinateSafetyError("SWAP decision has no complete coordinate source")
@@ -8271,6 +8826,15 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             sameTurnSwapAfterCast=counters.same_turn_swap_after_cast,
             evolveProposals=counters.evolve_proposals,
             evolveInputs=counters.evolve_sent,
+            petSkillProposals=counters.pet_skill_proposals,
+            petSkillAttempts=counters.pet_skill_attempts,
+            petSkillPerfect=counters.pet_skill_perfect,
+            petSkillZeroInputFailures=counters.pet_skill_zero_input_failures,
+            petSkillAfterInputFailures=counters.pet_skill_after_input_failures,
+            petSkillTurnResolutionUnconfirmed=(
+                counters.pet_skill_turn_resolution_unconfirmed
+            ),
+            petSkillSameSourceFollowups=counters.pet_skill_same_source_followups,
             attackPriorityEvolveViolations=(
                 counters.attack_priority_evolve_violations
             ),

@@ -37,6 +37,49 @@ class DispatcherQteResultTapTests(unittest.TestCase):
         )
         return CombatBatchSnapshot(0x400000, sequence, 0x600000, cells)
 
+    @patch("tools.dispatcher_qte_result_tap.parse_transport_board_envelope_json")
+    @patch("tools.dispatcher_qte_result_tap.read_il2cpp_string")
+    def test_discovers_and_retains_strict_new_match_start_before_id_is_known(
+        self, read_string, parse_board
+    ):
+        target = self.target()
+        tap = DispatcherTransportTap(target)
+        tap._reader = Mock()
+        tap._reader.read.return_value = (
+            DispatcherChatMessageRoot(
+                0x200000,
+                0x210000,
+                0x220000,
+                "execution_queue",
+                0,
+                json_address=0x230000,
+            ),
+        )
+        read_string.return_value = (
+            '{"type":"MATCH_START","matchId":"M_NEW",'
+            '"matchPayload":{"srvSeq":3,"board":[]}}'
+        )
+        snapshot = SimpleNamespace(match_id="M_NEW", sequence=3)
+        parse_board.return_value = snapshot
+
+        tap._discover_new_match = True
+        tap._discover_excluding_match_id = "M_OLD"
+        tap._capture_new_match_once("M_OLD")
+
+        self.assertEqual(
+            tap.transport_board_snapshots("M_NEW"),
+            (("MATCH_START", snapshot),),
+        )
+        self.assertEqual(tap.diagnostics.armed_match_id, "M_NEW")
+        self.assertFalse(tap._discover_new_match)
+        parse_board.assert_called_once_with(
+            read_string.return_value,
+            expected_match_id="M_NEW",
+            expected_event_type="MATCH_START",
+            message_address=0x200000,
+            json_address=0x230000,
+        )
+
     @patch("tools.dispatcher_qte_result_tap.read_server_message")
     def test_retains_only_exact_current_skill_response(self, decode):
         target = self.target()
@@ -327,7 +370,7 @@ class DispatcherQteResultTapTests(unittest.TestCase):
     @patch("tools.dispatcher_qte_result_tap.parse_transport_board_envelope_json")
     @patch("tools.dispatcher_qte_result_tap.read_il2cpp_string")
     @patch("tools.dispatcher_qte_result_tap.read_server_message")
-    def test_b2_preboard_recovers_updated_raw_board_before_payload_fallback(
+    def test_preboard_recovers_updated_raw_board_before_payload_fallback(
         self, decode, read_string, parse_raw_board, read_preboard, read_dto_board
     ):
         target = self.target()

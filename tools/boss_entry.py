@@ -10,7 +10,7 @@ policy/action path.
 from __future__ import annotations
 
 import argparse
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime
 from enum import Enum
@@ -114,6 +114,7 @@ from pokiguard_v2.win32_screenshot import (  # noqa: E402
     write_png_rgb,
 )
 from tools.idle_state_watch import CHAT_MESSAGE_DTO_TYPE_INFO_RVA  # noqa: E402
+from tools.dispatcher_qte_result_tap import DispatcherTransportTap  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
 from tools.runtime_common import attach_target, hex_pointer  # noqa: E402
 from tools.sequence_desync_runtime import (  # noqa: E402
@@ -134,6 +135,7 @@ class SharedEntryRuntime:
     backend: NativeWin32Backend
     entry_capability: Any | None = None
     lobby_card_capability: Any | None = None
+    require_attack_card: bool = True
 
 
 def _retryable_board_messages(
@@ -964,7 +966,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
     }
 
     runtime_owner = attach_target() if shared_runtime is None else nullcontext(shared_runtime.target)
-    with runtime_owner as target, log_path.open("a", encoding="utf-8", buffering=1) as log:
+    with ExitStack() as stack:
+        target = stack.enter_context(runtime_owner)
+        log = stack.enter_context(log_path.open("a", encoding="utf-8", buffering=1))
+        dispatcher_tap = stack.enter_context(DispatcherTransportTap(target))
         runtime = shared_runtime or _create_shared_entry_runtime(target, args)
         provider = runtime.provider
         monitor = runtime.monitor
@@ -1128,14 +1133,24 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             state = _transition(
                 log, state, BossEntryState.ENSURE_REQUIRED_CARDS
             )
-            ensured_loadout = _ensure_required_attack_card(
-                runtime=runtime,
-                lobby=lobby,
-                result=result,
-                log=log,
-                artifact_dir=artifact_dir,
-                interval=args.interval,
-            )
+            if runtime.require_attack_card:
+                ensured_loadout = _ensure_required_attack_card(
+                    runtime=runtime,
+                    lobby=lobby,
+                    result=result,
+                    log=log,
+                    artifact_dir=artifact_dir,
+                    interval=args.interval,
+                )
+            else:
+                ensured_loadout = loadout
+                _write(
+                    log,
+                    "required_attack_card_skipped",
+                    reason="PET_SKILL_PROFILE",
+                    gameplayInput=False,
+                    lobbyInput=False,
+                )
             if ensured_loadout is None:
                 break
             if ensured_loadout.identity != loadout.identity:
@@ -1407,6 +1422,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         if result["entryClicks"] != 0:
             result["duplicateEntryClicks"] += 1
             raise RuntimeError("entry attempt was already sent")
+        dispatcher_tap.arm_for_new_match(ready.baseline.old_match_id)
+        _write(
+            log,
+            "entry_dispatcher_tap_armed_for_new_match",
+            excludedMatchId=ready.baseline.old_match_id,
+            beforeEntryClick=True,
+            diagnostics=dispatcher_tap.diagnostics,
+        )
         entry_permit = None
         if runtime.entry_capability is not None:
             entry_permit = runtime.entry_capability.reserve(
@@ -1500,6 +1523,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         preloaded_transports: dict[int, OpeningBoardSnapshot] = {}
         transport_offered_messages: set[int] = set()
         offered_messages: set[int] = set()
+        dispatcher_seen_boards: set[tuple[str, int, int, int]] = set()
+        dispatcher_offered_boards: set[tuple[str, int, int, int]] = set()
+        dispatcher_armed_match_id: str | None = None
         opening_offer_pending_confirmation = False
         opening_confirmation_skip_logged = False
         last_provider_status = None
@@ -1560,6 +1586,28 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 _write(log, "entry_stopped", reason=result["stopReason"])
                 break
 
+            # MatchService exposes the new MatchId before the Board lifecycle
+            # is fully constructed. Arm the direct dispatcher sampler here,
+            # before provider polling or any heap scan, so the short-lived
+            # MATCH_START callback cannot disappear during entry discovery.
+            try:
+                early_match_id, _early_local_sequence = _read_match_id(target)
+            except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+                early_match_id = None
+            if (
+                early_match_id
+                and early_match_id != ready.baseline.old_match_id
+                and dispatcher_armed_match_id != early_match_id
+            ):
+                dispatcher_tap.arm(early_match_id)
+                dispatcher_armed_match_id = early_match_id
+                _write(
+                    log,
+                    "entry_dispatcher_tap_armed",
+                    matchId=early_match_id,
+                    diagnostics=dispatcher_tap.diagnostics,
+                )
+
             poll = provider.poll()
             provider_status = (
                 poll.reason,
@@ -1606,6 +1654,56 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     pre_session = ("boss-entry-preload", ready.attempt.lobby_epoch, new_match_id)
                     monitor.begin_session(pre_session, new_match_id, clean=True)
                     _write(log, "opening_preload_started", session=pre_session)
+
+            # Consume boards retained by the 1 ms direct callback sampler.
+            # Before the Board session exists they remain immutable preload
+            # evidence; once it binds, offer each exact event only once.
+            if new_match_id is not None:
+                for event_type, snapshot in dispatcher_tap.transport_board_snapshots(
+                    new_match_id
+                ):
+                    if snapshot.match_id != new_match_id:
+                        continue
+                    identity = (
+                        event_type,
+                        snapshot.message_address,
+                        snapshot.board_token_address,
+                        snapshot.sequence,
+                    )
+                    if identity not in dispatcher_seen_boards:
+                        dispatcher_seen_boards.add(identity)
+                        _write(
+                            log,
+                            "entry_dispatcher_board_retained",
+                            eventType=event_type,
+                            messageAddress=hex_pointer(snapshot.message_address),
+                            srvSeq=snapshot.sequence,
+                            boardHash=board_state_hash(snapshot.cells),
+                            completeCells=len(snapshot.cells),
+                            provenance=snapshot.provenance,
+                            diagnostics=dispatcher_tap.diagnostics,
+                        )
+                    if event_type == "MATCH_START":
+                        preloaded_opening = snapshot
+                    if active_session is None or identity in dispatcher_offered_boards:
+                        continue
+                    if event_type == "MATCH_START":
+                        accepted = provider.offer_opening_snapshot(snapshot)
+                        opening_offer_pending_confirmation = bool(accepted)
+                    else:
+                        accepted = provider.offer_transport_board_snapshot(
+                            snapshot,
+                            event_type=event_type,
+                        )
+                    dispatcher_offered_boards.add(identity)
+                    _write(
+                        log,
+                        "entry_dispatcher_board_offered",
+                        eventType=event_type,
+                        messageAddress=hex_pointer(snapshot.message_address),
+                        srvSeq=snapshot.sequence,
+                        accepted=accepted,
+                    )
 
             monitor_session = active_session or pre_session
             if (

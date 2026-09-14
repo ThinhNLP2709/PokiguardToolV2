@@ -75,6 +75,7 @@ class DesktopPreferenceStore:
                 main_pet=gameplay.main_pet.value,
                 evolution=gameplay.evolution.value,
                 damage_card=gameplay.damage_card.value,
+                audition_mode=gameplay.audition_mode.value,
                 intelligence=str(config_raw.get("intelligence", "")),
                 # Target identity is farm-session authority and is never
                 # restored from preferences, including older v1 files.

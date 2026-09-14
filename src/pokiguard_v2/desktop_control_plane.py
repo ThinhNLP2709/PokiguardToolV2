@@ -16,6 +16,7 @@ from typing import Callable, Protocol
 
 from .basic_policy import Intelligence, PlayStyle
 from .pet_configuration import GameplayConfig, MainPetType, EvolutionTarget, DamageCardMode
+from .gameplay_profile import AuditionMode
 from .boss_entry import FarmTarget
 from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
 from .farm_run import FarmRunLimits
@@ -103,6 +104,7 @@ class DesktopConfig(GameplayConfig):
         main_pet: str = MainPetType.NORMAL.value,
         evolution: str = EvolutionTarget.NORMAL.value,
         damage_card: str = DamageCardMode.DEFAULT_ATTACK.value,
+        audition_mode: str = AuditionMode.V3_TWO_DIRECTION.value,
         cast_when_boss_hp_below: str = "30000",
         cast_mana_stockpile: str = "480",
         rage_target: str = "100",
@@ -112,6 +114,7 @@ class DesktopConfig(GameplayConfig):
             main_pet=MainPetType(main_pet),
             evolution=EvolutionTarget(evolution),
             damage_card=DamageCardMode(damage_card),
+            audition_mode=AuditionMode(audition_mode),
             cast_when_boss_hp_below=int(cast_when_boss_hp_below),
             cast_mana_stockpile=int(cast_mana_stockpile),
             rage_target=int(rage_target),
@@ -495,8 +498,8 @@ class DesktopControlPlane:
         return pinned, None
 
     def _start_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
-        if not snapshot.config.capability.farm_policy_supported:
-            return snapshot.config.capability.blocker_reason
+        if not snapshot.config.capability.desktop_policy_supported:
+            return snapshot.config.capability.desktop_blocker_reason
         reason = self._runtime_command_preflight(snapshot)
         if reason is not None:
             return reason
@@ -508,8 +511,8 @@ class DesktopControlPlane:
         return self._controller.launch_rejection_reason(pinned)
 
     def _resume_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
-        if not snapshot.config.capability.farm_policy_supported:
-            return snapshot.config.capability.blocker_reason
+        if not snapshot.config.capability.desktop_policy_supported:
+            return snapshot.config.capability.desktop_blocker_reason
         reason = self._runtime_command_preflight(snapshot)
         if reason is not None:
             return reason

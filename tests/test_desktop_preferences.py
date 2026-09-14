@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from pokiguard_v2.pet_configuration import EvolutionTarget
+from pokiguard_v2.pet_configuration import AuditionMode, EvolutionTarget
 from pokiguard_v2.basic_policy import PlayStyle
 from pokiguard_v2.desktop_control_plane import DesktopConfig
 from pokiguard_v2.desktop_preferences import (
@@ -38,6 +38,7 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
             play_style=PlayStyle.CAREFUL,
             evolution=EvolutionTarget.NONE,
             board_input_mode=BoardInputMode.TWO_CLICK,
+            audition_mode=AuditionMode.V2_FOUR_DIRECTION,
             boss_id="1289",
             boss_name="Starburst",
             target_completed_matches=25,
@@ -51,6 +52,7 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         self.assertEqual(result.config.evolution, config.evolution)
         self.assertEqual(result.config.intelligence, config.intelligence)
         self.assertEqual(result.config.board_input_mode, config.board_input_mode)
+        self.assertEqual(result.config.audition_mode, AuditionMode.V2_FOUR_DIRECTION)
         self.assertEqual(
             result.config.target_completed_matches,
             config.target_completed_matches,
@@ -71,6 +73,7 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
             r"D:\pc\Pokiguard-1.7.4.exe",
         )
         self.assertEqual(raw["config"]["board_input_mode"], "two_click")
+        self.assertEqual(raw["config"]["audition_mode"], "audition_v2")
         encoded = json.dumps(raw)
         for forbidden in (
             "farm_run_id",
@@ -153,6 +156,7 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
                 "damage_card": "default_attack",
                 "intelligence": "basic",
                 "board_input_mode": "drag",
+                "audition_mode": "audition_v3",
                 "boss_id": "1289",
                 "boss_name": "Starburst",
                 "target_completed_matches": 3,

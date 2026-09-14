@@ -33,21 +33,21 @@ from .live_state import dto_rejection_reasons
 
 # Metadata-usage slots referenced as typeof(...) by the local Newtonsoft.Json
 # native bodies.  These are build RVAs, never ASLR-dependent addresses.
-JARRAY_TYPE_INFO_RVA = 0x2E02ED0
-JOBJECT_TYPE_INFO_RVA = 0x2E030F8
-JPROPERTY_TYPE_INFO_RVA = 0x2E03268
-JVALUE_TYPE_INFO_RVA = 0x2E03990
+JARRAY_TYPE_INFO_RVA = 0x33482F0
+JOBJECT_TYPE_INFO_RVA = 0x33482E8
+JPROPERTY_TYPE_INFO_RVA = 0x337AD08
+JVALUE_TYPE_INFO_RVA = 0x33663A0
 
-JARRAY_VALUES_OFFSET = 0x58
+JARRAY_VALUES_OFFSET = 0x50
 LIST_ITEMS_OFFSET = 0x10
 LIST_SIZE_OFFSET = 0x18
 LIST_VERSION_OFFSET = 0x1C
 ARRAY_LENGTH_OFFSET = 0x18
 ARRAY_DATA_OFFSET = 0x20
 
-JOBJECT_PROPERTIES_OFFSET = 0x58
+JOBJECT_PROPERTIES_OFFSET = 0x50
 JPROPERTY_COLLECTION_DICTIONARY_OFFSET = 0x18
-JPROPERTY_CONTENT_OFFSET = 0x58
+JPROPERTY_CONTENT_OFFSET = 0x50
 JPROPERTY_LIST_TOKEN_OFFSET = 0x10
 JVALUE_TYPE_OFFSET = 0x30
 JVALUE_VALUE_OFFSET = 0x38
@@ -64,14 +64,14 @@ JTOKEN_INTEGER = 6
 JTOKEN_STRING = 8
 MAX_SERVER_SEQUENCE = 10_000_000
 
-# Pokiguard 1.7.4-b2 pre-parses board-bearing websocket payloads before their
+# Pokiguard 1.7.4-b4 pre-parses board-bearing websocket payloads before their
 # callback enters UnityMainThreadDispatcher.  The original matchPayload may be
 # compacted/cleared by the time the queued closure is sampled, while these
 # typed fields remain owned by the same exact ChatMessageDTO.
-CHAT_MESSAGE_TYPE_OFFSET = 0x30
-CHAT_MESSAGE_MATCH_ID_OFFSET = 0xB0
-CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x3C8
-CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x3D0
+CHAT_MESSAGE_TYPE_OFFSET = 0x38
+CHAT_MESSAGE_MATCH_ID_OFFSET = 0xB8
+CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x420
+CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x428
 
 # All three response handlers in the supported 1.7.4 build delegate to
 # MatchService.HandleResEnvelope, which in turn calls ParseCombatBatch on the
@@ -153,7 +153,7 @@ def read_preparsed_board_snapshot(
     event_type: str,
     sequence: int,
 ) -> OpeningBoardSnapshot:
-    """Decode b2 ``ChatMessageDTO.preBoard`` with immutable JSON sequence.
+    """Decode b4 ``ChatMessageDTO.preBoard`` with immutable JSON sequence.
 
     ``MatchPayloadPreparser.PrepareBoard`` runs before the callback is queued.
     The raw callback string remains the authority for event, MatchId and

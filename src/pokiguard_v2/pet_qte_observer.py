@@ -14,13 +14,14 @@ import struct
 from typing import Iterable
 
 from .combat_cards import CardDataState, read_card_data
+from .gameplay_profile import AuditionMode
 from .il2cpp_external import ExternalReadError, MemoryReader, is_canonical_user_pointer
 from .il2cpp_layout import LayoutValidationError, read_il2cpp_string
 from .state import CombatSessionKey
 
 
 # Active / PetUserDTO (Assembly-CSharp, Pokiguard 1.7.4).
-ACTIVE_PLAYER_PET_OFFSET = 0x310
+ACTIVE_PLAYER_PET_OFFSET = 0x300
 PET_USER_ID_OFFSET = 0x10
 PET_USER_USER_ID_OFFSET = 0x14
 PET_USER_PET_ID_OFFSET = 0x1C
@@ -31,16 +32,20 @@ PET_USER_ELEMENT_TYPE_OFFSET = 0x40
 PET_USER_LEVEL_OFFSET = 0x50
 PET_USER_MAX_LEVEL_OFFSET = 0x54
 PET_USER_MANA_SKILL_CARD_OFFSET = 0x70
-PET_USER_EVO_STAGE_OFFSET = 0x74
-PET_USER_CARD_DATA_OFFSET = 0x90
-PET_USER_READ_SIZE = 0x98
+PET_USER_EVO_STAGE_OFFSET = 0x78
+PET_USER_CARD_DATA_OFFSET = 0x98
+PET_USER_READ_SIZE = 0xA0
 
-# MatchService server-owned current QTE challenge.
-MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET = 0x220
-MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET = 0x228
-MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET = 0x22C
-MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET = 0x250
-MATCH_SERVICE_SERVER_QTE_READ_SIZE = 0x258
+# MatchService server-owned current QTE challenge (1.7.4-b4).
+MATCH_SERVICE_SERVER_QTE_ARROWS_OFFSET = 0x278
+MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET = 0x280
+MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET = 0x284
+MATCH_SERVICE_SERVER_QTE_LAYOUT_OFFSET = 0x2A8
+MATCH_SERVICE_SERVER_QTE_REVERSE_FROM_OFFSET = 0x2B0
+MATCH_SERVICE_SERVER_QTE_GREAT_MS_OFFSET = 0x2B4
+MATCH_SERVICE_SERVER_QTE_MULTIPLIERS_OFFSET = 0x2B8
+MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET = 0x2C8
+MATCH_SERVICE_SERVER_QTE_READ_SIZE = 0x2D0
 
 # CardUI active Dot/Legend QTE state.
 CARD_UI_CARD_DATA_OFFSET = 0x20
@@ -49,42 +54,66 @@ CARD_UI_BOARD_OFFSET = 0x30
 CARD_UI_ACTIVE_OFFSET = 0x38
 CARD_UI_CURRENT_ACTOR_OFFSET = 0x58
 CARD_UI_DURATION_OFFSET = 0xC0
-CARD_UI_TIMING_TEXT_OFFSET = 0xF8
-CARD_UI_CURRENT_ARROWS_OFFSET = 0x140
-CARD_UI_DIRECTIONS_OFFSET = 0x148
-CARD_UI_CURRENT_INDEX_OFFSET = 0x150
-CARD_UI_CORRECT_COUNT_OFFSET = 0x154
-CARD_UI_ACTIVE_FLAG_OFFSET = 0x158
-CARD_UI_CURRENT_TIME_VALUE_OFFSET = 0x15C
-CARD_UI_DAMAGE_MULTIPLIER_OFFSET = 0x160
-CARD_UI_FINISHED_OFFSET = 0x178
-CARD_UI_PERFECT_START_OFFSET = 0x310
-CARD_UI_PERFECT_END_OFFSET = 0x314
-CARD_UI_GOOD_START_1_OFFSET = 0x318
-CARD_UI_GOOD_END_1_OFFSET = 0x31C
-CARD_UI_GOOD_START_2_OFFSET = 0x320
-CARD_UI_GOOD_END_2_OFFSET = 0x324
-CARD_UI_TIMING_BONUS_OFFSET = 0x328
-CARD_UI_CURRENT_ARROW_SEED_OFFSET = 0x488
-CARD_UI_QTE_PRESSES_OFFSET = 0x490
-CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET = 0x498
-CARD_UI_READ_SIZE = 0x49A
+CARD_UI_AUDITION_V3_OFFSET = 0xE0
+CARD_UI_AUDITION_V3_ELAPSED_MS_OFFSET = 0xE4
+CARD_UI_TIMING_TEXT_OFFSET = 0x100
+CARD_UI_CURRENT_ARROWS_OFFSET = 0x148
+CARD_UI_DIRECTIONS_OFFSET = 0x150
+CARD_UI_CURRENT_INDEX_OFFSET = 0x158
+CARD_UI_CORRECT_COUNT_OFFSET = 0x15C
+CARD_UI_ACTIVE_FLAG_OFFSET = 0x160
+CARD_UI_CURRENT_TIME_VALUE_OFFSET = 0x164
+CARD_UI_DAMAGE_MULTIPLIER_OFFSET = 0x168
+CARD_UI_FINISHED_OFFSET = 0x180
+CARD_UI_PERFECT_START_OFFSET = 0x318
+CARD_UI_PERFECT_END_OFFSET = 0x31C
+CARD_UI_GOOD_START_1_OFFSET = 0x320
+CARD_UI_GOOD_END_1_OFFSET = 0x324
+CARD_UI_GOOD_START_2_OFFSET = 0x328
+CARD_UI_GOOD_END_2_OFFSET = 0x32C
+CARD_UI_TIMING_BONUS_OFFSET = 0x330
+CARD_UI_CURRENT_ARROW_SEED_OFFSET = 0x490
+CARD_UI_QTE_PRESSES_OFFSET = 0x498
+CARD_UI_QTE_ARROWS_FROM_SERVER_OFFSET = 0x4A0
+CARD_UI_READ_SIZE = 0x4A2
+
+# PokiGuard.Audition V3 stage/challenge (1.7.4-b4).
+AUDITION_STAGE_HOST_OFFSET = 0x10
+AUDITION_STAGE_DISPOSED_OFFSET = 0x18
+AUDITION_STAGE_TAPPED_OFFSET = 0x19
+AUDITION_STAGE_TAP_ELAPSED_MS_OFFSET = 0x1C
+AUDITION_STAGE_CORRECT_COUNT_OFFSET = 0x20
+AUDITION_STAGE_CHALLENGE_OFFSET = 0x40
+AUDITION_STAGE_CURSOR_OFFSET = 0x118
+AUDITION_STAGE_QTE_ELAPSED_OFFSET = 0x14C
+AUDITION_STAGE_DURATION_SECONDS_OFFSET = 0x150
+AUDITION_STAGE_DURATION_MS_OFFSET = 0x154
+AUDITION_STAGE_WAS_PERFECT_OFFSET = 0x158
+AUDITION_STAGE_GRADE_OFFSET = 0x168
+AUDITION_STAGE_READ_SIZE = 0x170
+
+AUDITION_CHALLENGE_DISPLAY_OFFSET = 0x10
+AUDITION_CHALLENGE_EXPECTED_OFFSET = 0x18
+AUDITION_CHALLENGE_DURATION_MS_OFFSET = 0x20
+AUDITION_CHALLENGE_PERFECT_START_MS_OFFSET = 0x24
+AUDITION_CHALLENGE_CHALLENGE_ID_OFFSET = 0x50
+AUDITION_CHALLENGE_READ_SIZE = 0x58
 UNITY_OBJECT_CACHED_PTR_OFFSET = 0x10
 UNITY_UI_TEXT_VALUE_OFFSET = 0xE8
 SELECTABLE_INTERACTABLE_OFFSET = 0xD8
 
 # ChatMessageDTO result fields.
-CHAT_MESSAGE_TYPE_OFFSET = 0x30
-CHAT_MESSAGE_TIMESTAMP_OFFSET = 0x28
-CHAT_MESSAGE_MATCH_ID_OFFSET = 0xB0
-CHAT_MESSAGE_SKILL_CARD_ID_OFFSET = 0x108
-CHAT_MESSAGE_CORRECT_DOT_COUNT_OFFSET = 0x110
-CHAT_MESSAGE_TIMING_RESULT_OFFSET = 0x118
-CHAT_MESSAGE_DOTS_TO_DESTROY_OFFSET = 0x120
-CHAT_MESSAGE_QTE_PRESSES_OFFSET = 0x138
-CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET = 0x140
-CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET = 0x148
-CHAT_MESSAGE_QTE_RESULT_READ_SIZE = 0x158
+CHAT_MESSAGE_TYPE_OFFSET = 0x38
+CHAT_MESSAGE_TIMESTAMP_OFFSET = 0x30
+CHAT_MESSAGE_MATCH_ID_OFFSET = 0xB8
+CHAT_MESSAGE_SKILL_CARD_ID_OFFSET = 0x120
+CHAT_MESSAGE_CORRECT_DOT_COUNT_OFFSET = 0x128
+CHAT_MESSAGE_TIMING_RESULT_OFFSET = 0x130
+CHAT_MESSAGE_DOTS_TO_DESTROY_OFFSET = 0x138
+CHAT_MESSAGE_QTE_PRESSES_OFFSET = 0x150
+CHAT_MESSAGE_QTE_ELAPSED_MS_OFFSET = 0x158
+CHAT_MESSAGE_QTE_CHALLENGE_ID_OFFSET = 0x160
+CHAT_MESSAGE_QTE_RESULT_READ_SIZE = 0x170
 
 MANAGED_LIST_ITEMS_OFFSET = 0x10
 MANAGED_LIST_SIZE_OFFSET = 0x18
@@ -368,6 +397,13 @@ class ServerQteChallengeSnapshot:
     normalized_sequence: tuple[str | None, ...]
     window: QteWindowSnapshot
     challenge_id: int | None = None
+    layout: str | None = None
+    reverse_from: int | None = None
+    great_ms: int | None = None
+    mult_perfect: float | None = None
+    mult_good: float | None = None
+    mult_bad: float | None = None
+    display_sequence: tuple[str, ...] = ()
 
     @property
     def sequence_known(self) -> bool:
@@ -402,8 +438,33 @@ def read_server_qte_challenge(
     challenge_id_raw = struct.unpack_from(
         "<q", before, MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET
     )[0]
+    layout = _optional_string(
+        memory,
+        _pointer(before, MATCH_SERVICE_SERVER_QTE_LAYOUT_OFFSET),
+        label="ServerQteLayout",
+        max_length=16,
+    )
+    reverse_from = struct.unpack_from(
+        "<i", before, MATCH_SERVICE_SERVER_QTE_REVERSE_FROM_OFFSET
+    )[0]
+    great_ms = struct.unpack_from(
+        "<i", before, MATCH_SERVICE_SERVER_QTE_GREAT_MS_OFFSET
+    )[0]
+    multipliers = struct.unpack_from(
+        "<3f", before, MATCH_SERVICE_SERVER_QTE_MULTIPLIERS_OFFSET
+    )
     if challenge_id_raw < 0:
         raise LayoutValidationError("server QTE challenge id is invalid")
+    if not (reverse_from == -1 or 0 <= reverse_from <= 64):
+        raise LayoutValidationError(
+            f"server Audition reverseFrom is implausible: {reverse_from}"
+        )
+    if not 0 <= great_ms <= 300_000:
+        raise LayoutValidationError(
+            f"server Audition greatMs is implausible: {great_ms}"
+        )
+    if any(not math.isfinite(value) or value < 0 for value in multipliers):
+        raise LayoutValidationError("server Audition multipliers are invalid")
     if _read_exact(
         memory, match_service, MATCH_SERVICE_SERVER_QTE_READ_SIZE, "MatchService QTE"
     ) != before:
@@ -415,6 +476,13 @@ def read_server_qte_challenge(
         normalized_sequence=tuple(normalize_qte_direction(value) for value in sequence),
         window=QteWindowSnapshot(*window_values),
         challenge_id=challenge_id_raw or None,
+        layout=layout.strip().upper() if layout else None,
+        reverse_from=reverse_from,
+        great_ms=great_ms,
+        mult_perfect=multipliers[0],
+        mult_good=multipliers[1],
+        mult_bad=multipliers[2],
+        display_sequence=sequence,
     )
 
 
@@ -450,13 +518,20 @@ class CardUiQteSnapshot:
     qte_presses_list_address: int | None
     qte_presses: tuple[str, ...]
     arrows_from_server: bool = False
+    audition_mode: str = "audition_v2"
+    runtime_owner_address: int | None = None
+    elapsed_ms_override: int | None = None
 
     @property
     def elapsed_seconds(self) -> float:
+        if self.elapsed_ms_override is not None:
+            return self.elapsed_ms_override / 1000.0
         return self.duration_seconds * (1.0 - self.current_time_value)
 
     @property
     def qte_elapsed_ms(self) -> int:
+        if self.elapsed_ms_override is not None:
+            return self.elapsed_ms_override
         elapsed = round(self.elapsed_seconds * 1000.0)
         maximum = round(self.duration_seconds * 1000.0)
         return max(0, min(elapsed, maximum))
@@ -632,7 +707,318 @@ def read_card_ui_qte(
         qte_presses_list_address=presses_pointer or None,
         qte_presses=presses,
         arrows_from_server=arrows_from_server,
+        audition_mode="audition_v2",
+        runtime_owner_address=address,
     )
+
+
+def _audition_stage_consistency_signature(raw: bytes) -> tuple[bytes, ...]:
+    """Stable V3 ownership/progress signature, excluding its live clock."""
+
+    return (
+        raw[0x00:0x08],
+        raw[AUDITION_STAGE_HOST_OFFSET : AUDITION_STAGE_HOST_OFFSET + 0x18],
+        raw[AUDITION_STAGE_CHALLENGE_OFFSET : AUDITION_STAGE_CHALLENGE_OFFSET + 8],
+        raw[AUDITION_STAGE_CURSOR_OFFSET : AUDITION_STAGE_CURSOR_OFFSET + 4],
+        raw[AUDITION_STAGE_DURATION_SECONDS_OFFSET : AUDITION_STAGE_WAS_PERFECT_OFFSET + 1],
+        raw[AUDITION_STAGE_GRADE_OFFSET : AUDITION_STAGE_GRADE_OFFSET + 8],
+    )
+
+
+def read_audition_v3_qte(
+    memory: MemoryReader,
+    stage_address: int,
+    *,
+    server_challenge: ServerQteChallengeSnapshot,
+    expected_stage_class: int,
+    expected_challenge_class: int,
+    expected_card_ui_class: int,
+    expected_card_ui_address: int,
+    expected_board: int,
+    expected_active: int,
+    require_button: bool = False,
+) -> tuple[CardUiQteSnapshot, ServerQteChallengeSnapshot]:
+    """Read one exact Audition V3 ``LR`` generation as the shared QTE model.
+
+    The returned challenge sequence is the game-built ``Expected`` list.  The
+    server/display list is retained separately and is never used to guess the
+    reversal rule.
+    """
+
+    if server_challenge.layout != "LR":
+        raise LayoutValidationError("Audition V3 requires exact server layout LR")
+    stage_before = _read_exact(
+        memory, stage_address, AUDITION_STAGE_READ_SIZE, "AuditionStage"
+    )
+    if _pointer(stage_before, 0) != expected_stage_class:
+        raise LayoutValidationError("AuditionStage class pointer mismatch")
+    host = _pointer(stage_before, AUDITION_STAGE_HOST_OFFSET)
+    if host != expected_card_ui_address:
+        raise LayoutValidationError("AuditionStage host is not ActiveDotSkillCard")
+    disposed = _bool(
+        stage_before, AUDITION_STAGE_DISPOSED_OFFSET, "AuditionStage.Disposed"
+    )
+    tapped = _bool(stage_before, AUDITION_STAGE_TAPPED_OFFSET, "AuditionStage.Tapped")
+    was_perfect = _bool(
+        stage_before, AUDITION_STAGE_WAS_PERFECT_OFFSET, "AuditionStage._wasPerfect"
+    )
+    if disposed:
+        raise LayoutValidationError("AuditionStage is disposed")
+    challenge_address = _pointer(stage_before, AUDITION_STAGE_CHALLENGE_OFFSET)
+    challenge_raw = _read_exact(
+        memory,
+        challenge_address,
+        AUDITION_CHALLENGE_READ_SIZE,
+        "AuditionChallenge",
+    )
+    if _pointer(challenge_raw, 0) != expected_challenge_class:
+        raise LayoutValidationError("AuditionChallenge class pointer mismatch")
+    display_pointer = _pointer(challenge_raw, AUDITION_CHALLENGE_DISPLAY_OFFSET)
+    expected_pointer = _pointer(challenge_raw, AUDITION_CHALLENGE_EXPECTED_OFFSET)
+    display = _read_stable_string_list(
+        memory, display_pointer, label="AuditionChallenge.Display"
+    )
+    expected = _read_stable_string_list(
+        memory, expected_pointer, label="AuditionChallenge.Expected"
+    )
+    display_normalized = tuple(normalize_qte_direction(value) for value in display)
+    expected_normalized = tuple(normalize_qte_direction(value) for value in expected)
+    lr = {"nutLeft", "nutRight"}
+    if (
+        not display
+        or len(display) != len(expected)
+        or any(value not in lr for value in display_normalized)
+        or any(value not in lr for value in expected_normalized)
+    ):
+        raise LayoutValidationError("Audition V3 directions are not a complete LR challenge")
+    timing = struct.unpack_from(
+        "<9i", challenge_raw, AUDITION_CHALLENGE_DURATION_MS_OFFSET
+    )
+    multipliers = struct.unpack_from("<3f", challenge_raw, 0x44)
+    challenge_id = struct.unpack_from(
+        "<q", challenge_raw, AUDITION_CHALLENGE_CHALLENGE_ID_OFFSET
+    )[0]
+    if (
+        challenge_id <= 0
+        or challenge_id != server_challenge.challenge_id
+        or tuple(timing[:7]) != (
+            server_challenge.window.duration_ms,
+            server_challenge.window.perfect_start_ms,
+            server_challenge.window.perfect_end_ms,
+            server_challenge.window.good_start_1_ms,
+            server_challenge.window.good_end_1_ms,
+            server_challenge.window.good_start_2_ms,
+            server_challenge.window.good_end_2_ms,
+        )
+        or timing[7] != server_challenge.reverse_from
+        or timing[8] != server_challenge.great_ms
+        or any(
+            expected_value is None or abs(actual - expected_value) > 0.0001
+            for actual, expected_value in zip(
+                multipliers,
+                (
+                    server_challenge.mult_perfect,
+                    server_challenge.mult_good,
+                    server_challenge.mult_bad,
+                ),
+            )
+        )
+    ):
+        raise LayoutValidationError("AuditionChallenge does not equal current server challenge")
+    server_display = (
+        server_challenge.display_sequence
+        if server_challenge.display_sequence
+        else server_challenge.raw_sequence
+    )
+    if tuple(display_normalized) != tuple(
+        normalize_qte_direction(value) for value in server_display
+    ):
+        raise LayoutValidationError("Audition Display does not equal server arrow sequence")
+
+    card_raw = _read_exact(memory, host, CARD_UI_READ_SIZE, "Audition host CardUI")
+    if _pointer(card_raw, 0) != expected_card_ui_class:
+        raise LayoutValidationError("Audition host CardUI class pointer mismatch")
+    native_pointer = _pointer(card_raw, UNITY_OBJECT_CACHED_PTR_OFFSET)
+    if not is_canonical_user_pointer(native_pointer) or not memory.is_readable(
+        native_pointer, 1
+    ):
+        raise LayoutValidationError("Audition host native object is invalid")
+    card_data = _pointer(card_raw, CARD_UI_CARD_DATA_OFFSET)
+    button = _pointer(card_raw, CARD_UI_BUTTON_OFFSET)
+    board = _pointer(card_raw, CARD_UI_BOARD_OFFSET)
+    active = _pointer(card_raw, CARD_UI_ACTIVE_OFFSET)
+    if board != expected_board or active != expected_active:
+        raise LayoutValidationError("Audition host does not belong to current Board/Active")
+    if not _bool(card_raw, CARD_UI_AUDITION_V3_OFFSET, "CardUI._auditionV3"):
+        raise LayoutValidationError("Audition host is not marked V3")
+    button_interactable = None
+    button_validated = False
+    if button:
+        button_raw = _read_exact(
+            memory,
+            button + SELECTABLE_INTERACTABLE_OFFSET,
+            1,
+            "Audition host Button.m_Interactable",
+        )
+        if button_raw[0] not in (0, 1):
+            raise LayoutValidationError("Button.m_Interactable is not an IL2CPP bool")
+        button_interactable = bool(button_raw[0])
+        button_validated = True
+    elif require_button:
+        raise LayoutValidationError("Audition host Button is required")
+    presses_pointer = _pointer(card_raw, CARD_UI_QTE_PRESSES_OFFSET)
+    presses = (
+        _read_stable_string_list(memory, presses_pointer, label="CardUI.qtePresses")
+        if presses_pointer
+        else ()
+    )
+    normalized_presses = tuple(normalize_qte_direction(value) for value in presses)
+    if any(value not in lr for value in normalized_presses):
+        raise LayoutValidationError("Audition press history contains a non-LR direction")
+
+    cursor = struct.unpack_from("<i", stage_before, AUDITION_STAGE_CURSOR_OFFSET)[0]
+    correct = struct.unpack_from(
+        "<i", stage_before, AUDITION_STAGE_CORRECT_COUNT_OFFSET
+    )[0]
+    qte_elapsed = struct.unpack_from(
+        "<f", stage_before, AUDITION_STAGE_QTE_ELAPSED_OFFSET
+    )[0]
+    duration_seconds = struct.unpack_from(
+        "<f", stage_before, AUDITION_STAGE_DURATION_SECONDS_OFFSET
+    )[0]
+    duration_ms = struct.unpack_from(
+        "<i", stage_before, AUDITION_STAGE_DURATION_MS_OFFSET
+    )[0]
+    tap_elapsed_ms = struct.unpack_from(
+        "<i", stage_before, AUDITION_STAGE_TAP_ELAPSED_MS_OFFSET
+    )[0]
+    host_tap_elapsed_ms = struct.unpack_from(
+        "<i", card_raw, CARD_UI_AUDITION_V3_ELAPSED_MS_OFFSET
+    )[0]
+    grade = _optional_string(
+        memory,
+        _pointer(stage_before, AUDITION_STAGE_GRADE_OFFSET),
+        label="AuditionStage grade",
+        max_length=64,
+    )
+    # AuditionStage.TickBar updates _wasPerfect as the live in-zone highlight
+    # while the stage is untapped.  ShowResult writes _grade later, after the
+    # tap/timeout is graded, so a true highlight with a null grade is coherent.
+    # b4 deliberately keeps CardUI._auditionV3ElapsedMs at -1 until TapBar
+    # invokes IAuditionHost.OnAuditionTap.  CardUI.CurrentQteElapsedMs treats
+    # that exact value as "derive the elapsed time from the live QTE clock".
+    # AuditionStage._qteElapsed is the authoritative pre-tap clock we already
+    # use below, so -1 is valid only while the stage is still untapped.
+    host_tap_elapsed_valid = (
+        host_tap_elapsed_ms == -1
+        if not tapped
+        else host_tap_elapsed_ms == tap_elapsed_ms
+        and 0 <= host_tap_elapsed_ms <= duration_ms
+    )
+    if (
+        not 0 <= cursor <= len(expected)
+        or not 0 <= correct <= len(expected)
+        or correct > cursor
+        or not math.isfinite(qte_elapsed)
+        or not math.isfinite(duration_seconds)
+        or duration_ms <= 0
+        or duration_ms != timing[0]
+        or abs(duration_seconds - duration_ms / 1000.0) > 0.002
+        or not -0.01 <= qte_elapsed <= duration_seconds + 0.1
+        or not 0 <= tap_elapsed_ms <= duration_ms
+        or not host_tap_elapsed_valid
+    ):
+        raise LayoutValidationError(
+            "AuditionStage scalar/result state is inconsistent: "
+            f"cursor={cursor}/{len(expected)}, correct={correct}, "
+            f"qteElapsed={qte_elapsed:.6f}, durationSeconds={duration_seconds:.6f}, "
+            f"durationMs={duration_ms}, challengeDurationMs={timing[0]}, "
+            f"tapped={tapped}, tapElapsedMs={tap_elapsed_ms}, "
+            f"hostTapElapsedMs={host_tap_elapsed_ms}, wasPerfect={was_perfect}, "
+            f"grade={grade!r}"
+        )
+
+    stage_after = _read_exact(
+        memory, stage_address, AUDITION_STAGE_READ_SIZE, "AuditionStage"
+    )
+    if _audition_stage_consistency_signature(stage_after) != _audition_stage_consistency_signature(
+        stage_before
+    ):
+        raise LayoutValidationError("AuditionStage changed during read")
+    if _read_exact(
+        memory, challenge_address, AUDITION_CHALLENGE_READ_SIZE, "AuditionChallenge"
+    ) != challenge_raw:
+        raise LayoutValidationError("AuditionChallenge changed during read")
+    card_after = _read_exact(memory, host, CARD_UI_READ_SIZE, "Audition host CardUI")
+    if (
+        card_after[0x00:0x40] != card_raw[0x00:0x40]
+        or card_after[CARD_UI_AUDITION_V3_OFFSET : CARD_UI_AUDITION_V3_ELAPSED_MS_OFFSET + 4]
+        != card_raw[CARD_UI_AUDITION_V3_OFFSET : CARD_UI_AUDITION_V3_ELAPSED_MS_OFFSET + 4]
+        or card_after[CARD_UI_QTE_PRESSES_OFFSET : CARD_UI_QTE_PRESSES_OFFSET + 8]
+        != card_raw[CARD_UI_QTE_PRESSES_OFFSET : CARD_UI_QTE_PRESSES_OFFSET + 8]
+    ):
+        raise LayoutValidationError("Audition host changed during read")
+
+    elapsed_ms = tap_elapsed_ms if tapped else max(
+        0, min(round(qte_elapsed * 1000.0), duration_ms)
+    )
+    current_time = 1.0 - elapsed_ms / duration_ms
+    bound_challenge = ServerQteChallengeSnapshot(
+        match_id=server_challenge.match_id,
+        sequence_list_address=expected_pointer,
+        raw_sequence=expected,
+        normalized_sequence=tuple(expected_normalized),
+        window=QteWindowSnapshot(*timing[:7]),
+        challenge_id=challenge_id,
+        layout="LR",
+        reverse_from=timing[7],
+        great_ms=timing[8],
+        mult_perfect=multipliers[0],
+        mult_good=multipliers[1],
+        mult_bad=multipliers[2],
+        display_sequence=display,
+    )
+    return CardUiQteSnapshot(
+        address=host,
+        card_data_address=card_data,
+        button_address=button or None,
+        button_interactable=button_interactable,
+        button_validated=button_validated,
+        board_instance=board,
+        active_instance=active,
+        actor_number=struct.unpack_from("<i", card_raw, CARD_UI_CURRENT_ACTOR_OFFSET)[0],
+        duration_seconds=duration_seconds,
+        current_index=cursor,
+        correct_count=correct,
+        active=True,
+        current_time_value=max(0.0, min(current_time, 1.0)),
+        damage_multiplier=(
+            multipliers[0]
+            if normalize_displayed_timing_result(grade) == "PERFECT!"
+            else multipliers[1]
+            if normalize_displayed_timing_result(grade) == "GOOD!"
+            else multipliers[2]
+        ),
+        finished=tapped,
+        displayed_timing_text=grade,
+        displayed_timing_result=normalize_displayed_timing_result(grade),
+        current_arrows_list_address=expected_pointer,
+        current_arrow_count=len(expected),
+        perfect_start_seconds=timing[1] / 1000.0,
+        perfect_end_seconds=timing[2] / 1000.0,
+        good_start_1_seconds=timing[3] / 1000.0,
+        good_end_1_seconds=timing[4] / 1000.0,
+        good_start_2_seconds=timing[5] / 1000.0,
+        good_end_2_seconds=timing[6] / 1000.0,
+        timing_bonus=0,
+        current_arrow_seed=0,
+        qte_presses_list_address=presses_pointer or None,
+        qte_presses=presses,
+        arrows_from_server=True,
+        audition_mode="audition_v3",
+        runtime_owner_address=stage_address,
+        elapsed_ms_override=elapsed_ms,
+    ), bound_challenge
 
 
 def normalize_displayed_timing_result(value: str | None) -> str | None:
@@ -648,9 +1034,9 @@ def normalize_displayed_timing_result(value: str | None) -> str | None:
     normalized = value.strip().upper().replace(" ", "")
     if "PERFECT" in normalized:
         return "PERFECT!"
-    if "GOOD" in normalized:
+    if "GOOD" in normalized or "GREAT" in normalized or "COOL" in normalized:
         return "GOOD!"
-    if "BAD" in normalized:
+    if "BAD" in normalized or "MISS" in normalized:
         return "BAD"
     return None
 
@@ -694,6 +1080,7 @@ def classify_qte_timing(
     good_end_1_seconds: float,
     good_start_2_seconds: float,
     good_end_2_seconds: float,
+    required_correct_count: int = 7,
 ) -> str | None:
     """Mirror ``CardUI.GetLastTimingResult``; return ``None`` if unprovable."""
 
@@ -708,13 +1095,14 @@ def classify_qte_timing(
     )
     if (
         correct_count < 0
+        or not 1 <= required_correct_count <= 64
         or any(not math.isfinite(value) for value in values)
         or perfect_end_seconds <= perfect_start_seconds
     ):
         return None
     perfect = perfect_start_seconds <= elapsed_seconds <= perfect_end_seconds
     if (element_type or "").upper() == "ATTACK_LEGEND_":
-        if correct_count < 7:
+        if correct_count < required_correct_count:
             return "BAD"
         return "PERFECT!" if perfect else "GOOD!"
     if perfect:
@@ -934,6 +1322,8 @@ class QteGenerationIdentity:
     current_arrow_seed: int
     observer_generation: int
     server_challenge_id: int = 0
+    runtime_owner_address: int = 0
+    audition_mode: str = "audition_v2"
 
 
 @dataclass(frozen=True)
@@ -968,7 +1358,11 @@ def select_single_qte_candidate(
 class QteSessionTracker:
     """Bind only an inactive→active edge inside one exact combat session."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        audition_mode: AuditionMode = AuditionMode.V2_FOUR_DIRECTION,
+    ) -> None:
+        self.audition_mode = AuditionMode(audition_mode)
         self._session_key: CombatSessionKey | None = None
         self._saw_inactive = False
         self._generation = 0
@@ -980,6 +1374,12 @@ class QteSessionTracker:
     @property
     def identity(self) -> QteGenerationIdentity | None:
         return self._identity
+
+    @property
+    def bound_challenge(self) -> ServerQteChallengeSnapshot | None:
+        """Last independently stable challenge, for one bounded torn-read bridge."""
+
+        return self._bound_challenge
 
     def invalidate(self) -> None:
         self._session_key = None
@@ -1214,6 +1614,22 @@ class QteSessionTracker:
                 challenge,
             )
         sequence = tuple(value for value in challenge.normalized_sequence if value)
+        allowed = (
+            {"nutLeft", "nutRight"}
+            if self.audition_mode is AuditionMode.V3_TWO_DIRECTION
+            else set(CANONICAL_DIRECTIONS)
+        )
+        if qte.audition_mode != self.audition_mode.value or any(
+            value not in allowed for value in sequence
+        ):
+            return BoundQteObservation(
+                QteBindingStatus.UNKNOWN_DIRECTION,
+                "QTE generation does not match the selected Audition mode",
+                None,
+                qte,
+                challenge,
+                sequence,
+            )
         if qte.current_arrow_count is None or qte.current_arrow_count != len(sequence):
             return BoundQteObservation(
                 QteBindingStatus.SEQUENCE_UNAVAILABLE,
@@ -1286,6 +1702,8 @@ class QteSessionTracker:
                 current_arrow_seed=qte.current_arrow_seed,
                 observer_generation=self._generation,
                 server_challenge_id=challenge.challenge_id or 0,
+                runtime_owner_address=qte.runtime_owner_address or qte.address,
+                audition_mode=qte.audition_mode,
             )
             self._bound_challenge = challenge
         elif (
@@ -1295,6 +1713,9 @@ class QteSessionTracker:
             or self._identity.current_arrows_list_address
             != (qte.current_arrows_list_address or 0)
             or self._identity.skill_card_id != context.skill_card_id
+            or self._identity.runtime_owner_address
+            != (qte.runtime_owner_address or qte.address)
+            or self._identity.audition_mode != qte.audition_mode
             or (
                 challenge.challenge_id is not None
                 and self._identity.server_challenge_id != challenge.challenge_id
@@ -1325,6 +1746,7 @@ class QteSessionTracker:
             good_end_1_seconds=qte.good_end_1_seconds,
             good_start_2_seconds=qte.good_start_2_seconds,
             good_end_2_seconds=qte.good_end_2_seconds,
+            required_correct_count=len(sequence),
         )
         status = (
             QteBindingStatus.COMPLETED_CURRENT

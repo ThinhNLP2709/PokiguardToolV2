@@ -41,6 +41,47 @@ future task:
 Gameplay input is normal Windows user input only. `PokiguardAuto` is reference
 only, and `pc` is strictly read only, as defined in `AGENTS.md`.
 
+## Phase 3C.1 BASIC Pet Skill policy (approved scope 2026-09-12)
+
+The first runnable backend profile is exactly
+`LEGENDARY / NONE / PET_SKILL / BASIC`. It requires one unambiguous current
+main-pet skill capability and the supported Huyền Thoại 7 automatic-dot QTE
+family. Other skill families, evolution-target skill sources and multiple
+skill sources remain fail-closed.
+
+For this profile:
+
+- EVOLVE is prohibited for the whole match;
+- the ordinary Attack card is neither prepared before entry nor proposed as a
+  fallback, including at low boss HP;
+- when current runtime Mana/Rage requirements and CardUI actionability are
+  ready, policy proposes the distinct `PET_SKILL` action;
+- when requirements are missing, Sword remains the highest board objective;
+  otherwise the resource branch considers only safe deterministic gains toward
+  current missing Mana/Rage;
+- a candidate completing a missing requirement ranks before partial normalized
+  readiness progress; resources already sufficient and UNKNOWN refill receive
+  no readiness credit;
+- existing Health, Drain, Shield, PASS and mandatory-action behavior remains in
+  its accepted order after the resource branch.
+
+The Huyền Thoại 7 fixture is 200 Mana / 200 Rage and Huyền Thoại 2 is
+200 Mana / 150 Rage. These are card fixtures, not rarity rules. Readiness always
+uses the current `PetSkillCapability.effective_*` values. Gross cost is not
+inferred from the net post-skill balance because skill destruction/cascades can
+refill resources.
+
+The currently proven Huyền Thoại 7 action consumes its source local turn.
+After any physical Pet Skill input, FarmRunner closes that source turn and may
+not send SWAP, CAST, PASS or another Pet Skill there. It waits for an
+authoritative boss turn, terminal state or fresh later local turn. Zero-input
+preflight failure may release the input permit but must reread state before a
+new decision. After-input uncertainty never falls back or blindly retries.
+Server-owned PASS/idle state is reread later and is never reset locally.
+
+Phase 3C.1 exposes this through the controlled backend/CLI only. Normal Desktop
+Start/Resume remains gated until Phase 3C.2.
+
 ## Phase 2 b2 compatibility repair (user correction 2026-09-11)
 
 Default settings with a normal pet, normal-pet Evolution and the default Attack

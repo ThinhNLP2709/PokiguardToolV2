@@ -1,5 +1,82 @@
 # IL2CPP symbols — Phase 1
 
+## Pokiguard 1.7.4-b4 default-runtime symbols — 2026-09-14
+
+Exact build gate: `GameAssembly.dll` SHA-256
+`D55BDE20918F65E84700736E0EDE33AA8EE50A10956590D28FB8E53D185B28D6`.
+Preferred image base is `0x180000000`; all values below are RVAs.
+
+| Type | b4 TypeInfo RVA | Key current fields |
+|---|---:|---|
+| `Board` | `0x033558A0` | `allDots +0x150`; `active +0x168`; card container/selection/hand `+0x330/+0x348/+0x350`; ready/legend/mega/resume/Mega1 `+0x398/+0x399/+0x3A0/+0x3B8/+0x478` |
+| `Dot` | `0x03359050` | column/row/Board/multiplier `+0x20/+0x24/+0x48/+0x88`; falling/prediction/squashing `+0xB0/+0xE0/+0xFC`; `PoolTag +0x100`; `RenderHidden +0x131` |
+| `Active` | `0x03355698` | `board +0x38`; `playerPets +0x300` |
+| `Active.PlayerStats` | `0x033415B0` | b3 offsets unchanged |
+| `ManagerMatch` | `0x03350170` | `active +0x130`; `isBossBattle +0x138` |
+| `MatchService` | `0x0334A100` | b3 turn/Fusion/ACK/desync/QTE/terminal offsets unchanged |
+| `ChatService` | `0x03349A90` | fields consumed by V2 unchanged; new `_authProbeRunning +0x2EC` follows them |
+| `ChatMessageDTO` | `0x0335B9A8` | b3 transport, move/card/skill/QTE and pre-board offsets unchanged |
+| `BoardWsApplier` | `0x03349D48` | `board +0x20`; pending queue `+0x60`; render flag `+0x68` |
+| `WsCombatBatch` | `0x0335F580` | sequence/board fields unchanged |
+| `CardUI` | `0x0334A080` | ordinary/default-card fields unchanged |
+| `FusionCardUI` | `0x03386C78` | button/refresh/pet ID `+0x60/+0x68/+0x70` |
+| `CardData` | `0x03386C80` | identity/cost fields unchanged |
+| `PetUserDTO` | `0x0336C5A8` | evolution stage `+0x78`; card data `+0x98` |
+| `TurnAnnouncer` | `0x03349E00` | static blocking/deadline `+0x80/+0x84` |
+| `UnityMainThreadDispatcher` | `0x0335BC08` | pending List/Queue TypeInfo `0x033665E0/0x03366628` |
+| `ChatService.<>c__DisplayClass275_0` | `0x0335BAB8` | raw JSON/message ownership fields unchanged |
+
+Lobby/lifecycle TypeInfo RVAs are `MatchSceneLoader=0x0334B8E8`,
+`MatchHost=0x0334BB28`, `HubSuspendManager=0x03349AD8`,
+`ManagerQuangTruong=0x0334C3A8`, `ManagerRoom=0x0334A068`, and
+`WsRoomService=0x03366060`. Newtonsoft roots are
+`JArray=0x033482F0`, `JObject=0x033482E8`, `JProperty=0x0337AD08`, and
+`JValue=0x033663A0`.
+The corresponding inherited instance fields are confirmed as
+`JArray._values +0x50`, `JObject._properties +0x50`, and
+`JProperty._content +0x50`; the earlier `+0x58` decoder values were invalid.
+
+Native b4 evidence: `Component.get_gameObject` cache
+`GameAssembly+0x355F678`, wrapper RVA `0x027E9DA0`, unchanged resolved
+UnityPlayer function RVA `0x1067390`, and unmarshal branch signature at
+`GameAssembly+0x10971EF`. Declarations and exact installed bytes are
+**CONFIRMED**. A zero-input b4 lobby probe resolved every provider TypeInfo root
+listed above plus lobby/lifecycle singletons without read errors; live Board
+instance fields remain **PENDING** until combat. See the
+[b4 compatibility report](pokiguard_1.7.4_b4_compatibility_report.md).
+
+The exact b4 signature at `+0x10971EF` contains relative-call displacement
+`BF E4 16 FF` (b3 used `0F C9 17 FF`). This was rechecked against both the
+installed PE RVA mapping and read-only live process memory after the first
+combat fail-closed on the stale displacement. A later live attempt accepted
+three complete native 64-Dot boards with the b4 fields and zero rejection.
+
+## Cân Đẩu Vân 1.7.4-b3 audit — 2026-09-13
+
+Build-specific static evidence; this addendum concerns only the mini game.
+The installed DLL hash was rechecked against the b3 reverse provenance.
+
+| Type | Member | b3 field offset / method RVA | Evidence confidence |
+|---|---|---|---|
+| `CanDauVanApi.RollReq` | `rollSeq`, `t`, `s` | `+0x10`, `+0x18`, `+0x20` | CONFIRMED declarations and native request construction |
+| `CanDauVanApi` | `Roll(int, Action<CanDauVanRollResult>, Action<string>)` | RVA `0x3214B0` | HIGH; native JSON POST with typed response |
+| `APIConfig` | `CAN_DAU_VAN_ROLL(int)` | RVA `0x85EFE0` | CONFIRMED; URL format `{0}/api/can-dau-van/{1}/roll` |
+| `CanDauVanPanel` | `OnRollTap`, `OnRollOk`, `TryPlay`, `PlayRoll` | RVAs `0x351740`, `0x351C90`, `0x351C00`, `0x352220` | HIGH; native request, response and rendering flow |
+| `CanDauVanPanel` | `_state`, `_diceDone`, `_pendingRoll`, `_lastDice` | `+0x188`, `+0x1B1`, `+0x1B8`, `+0x1C0` | CONFIRMED declarations and native accesses |
+| `CanDauVanRollResult` | `dice`, `toPos`, `path` | `+0x20`, `+0x30`, `+0x38` | CONFIRMED; native `PlayRoll` reads response fields |
+| `CanDauVanState` | `player`, `ApplyRoll(CanDauVanRollResult)` | `+0x48`, RVA `0x3449E0` | CONFIRMED; native copies result into player state |
+| `CanDauVanPlayer` | `pos`, `rollSeq` | `+0x28`, `+0x2C` | CONFIRMED declarations and native accesses |
+| `CanDauVanFx` | `DiceRoll(...)` | RVA `0x32EDF0` | HIGH; visual effects and completion callback |
+
+The server response supplies the effective dice and destination; the client
+animates that result. Server RNG, seed, weighting and generation timing are
+**UNKNOWN**. This audit does not establish a live memory root or runtime owner
+lifetime for the mini game.
+
+Evidence: [authority report](can_dau_van_roll_authority.md), b3
+`cs/Assembly-CSharp/CanDauVan*.cs`, `APIConfig.cs`, `il2cpp.json`, and
+[annotated native disassembly](../reference/can_dau_van_1.7.4_b3_native.txt).
+
 ## Current 1.7.4-b2 semantic correction — B4, 2026-09-10
 
 `Board.isUsingLegendCard : System.Boolean`, instance +0x391, remains a verified
@@ -901,3 +978,74 @@ Evidence:
 - `reverse/redux_compat/cs/Assembly-CSharp/WsCombatBatch.cs`
 - `D:\pc\GameAssembly.dll`, read-only disassembly at the RVAs above; absolute
   runtime addresses remain ASLR-dependent and are not hard-coded.
+
+### Pokiguard 1.7.4-b4 Audition V3 addendum (Phase 3C.1)
+
+These are b4 module-relative TypeInfo RVAs and declared managed offsets. They
+are read-only ownership/state evidence; none authorizes a managed method call.
+
+| Type/root | b4 TypeInfo RVA | Static field |
+|---|---:|---:|
+| `PokiGuard.Audition.AuditionStage` | `0x0332D328` | `Active +0x00` |
+| `PokiGuard.Audition.AuditionChallenge` | `0x0332CFB8` | N/A |
+
+| Type | Member | Offset |
+|---|---|---:|
+| `AuditionStage` | `Host` | `+0x10` |
+| `AuditionStage` | `Disposed`, `Tapped`, `TapElapsedMs`, `CorrectCount` | `+0x18`, `+0x19`, `+0x1C`, `+0x20` |
+| `AuditionStage` | `_ch` | `+0x40` |
+| `AuditionStage` | `_cursor` | `+0x118` |
+| `AuditionStage` | `_qteElapsed`, `_durSec`, `_durMs` | `+0x14C`, `+0x150`, `+0x154` |
+| `AuditionStage` | `_wasPerfect`, `_grade` | `+0x158`, `+0x168` |
+| `AuditionChallenge` | `Display`, `Expected` | `+0x10`, `+0x18` |
+| `AuditionChallenge` | duration/window integers | `+0x20..+0x38` |
+| `AuditionChallenge` | `ReverseFrom`, `GreatMs` | `+0x3C`, `+0x40` |
+| `AuditionChallenge` | `MultPerfect`, `MultGood`, `MultBad` | `+0x44..+0x4C` |
+| `AuditionChallenge` | `ChallengeId` | `+0x50` |
+| `CardUI` | `_auditionV3`, `_auditionV3ElapsedMs` | `+0xE0`, `+0xE4` |
+| `CardUI` | `qtePresses` | `+0x498` |
+| `MatchService` | server arrows/duration/window | `+0x278`, `+0x280`, `+0x284` |
+| `MatchService` | layout/reverse/Great | `+0x2A8`, `+0x2B0`, `+0x2B4` |
+| `MatchService` | three multipliers/challenge ID | `+0x2B8..+0x2C0`, `+0x2C8` |
+| `ChatMessageDTO` | skill/correct/timing/dots | `+0x120`, `+0x128`, `+0x130`, `+0x138` |
+| `ChatMessageDTO` | QTE presses/elapsed/challenge ID | `+0x150`, `+0x158`, `+0x160` |
+
+`MatchService` declares current `QteUiGeneration = 3` and legacy generation 2.
+The V3 reader requires exact `ServerQteLayout == "LR"`, binds the active stage
+to the current CardUI/Board/Active/session, and uses `AuditionChallenge.Expected`
+as the input sequence. `Display` is retained as server equality evidence; the
+tool does not infer the reversal rule. Any disagreement fails closed.
+
+Live B1 run `f740e9c51fb845d7a9fe2c8ea1de5a6b` proved that
+`MatchService.ServerQteReverseFrom +0x2B0` uses `-1` as the normal no-reverse
+sentinel. Read-only native disassembly of `AuditionChallenge.FromService` at
+RVA `0xBD7EF0` independently shows initialization of `ReverseFrom +0x3C` to
+`0xFFFFFFFF`, copying the server field, clamping an index at or beyond the
+display count back to `-1`, and skipping `Opposite` while the value is
+negative. The production reader accepts exact `-1`; other negative values
+remain invalid.
+
+`CardUI._auditionV3ElapsedMs +0xE4` also has a distinct exact `-1` pre-tap
+sentinel. Native b4 evidence: `CardUI..ctor` RVA `0xABBEC0` and
+`HandleDotSkillSequence.MoveNext` RVA `0xADC090` write `0xFFFFFFFF`;
+`CurrentQteElapsedMs` RVA `0xAA9AA0` derives elapsed time from the live clock
+while the field is negative; `IAuditionHost.OnAuditionTap` RVA `0xA939A0`
+replaces it with the actual tap milliseconds. The V3 reader therefore accepts
+exact `-1` only for an untapped stage, using `AuditionStage._qteElapsed`, and
+requires bounded equality with `AuditionStage.TapElapsedMs` after tap.
+
+`AuditionStage._wasPerfect +0x158` is not a completed-result flag. Native
+`TickBar` RVA `0xBD1E20` compares `_qteElapsed * 1000` with the challenge
+Perfect window, requires the stage to remain untapped, and writes the resulting
+live highlight boolean to `+0x158`. `TapBar` RVA `0xBD0580` separately writes
+`Tapped +0x19` and `TapElapsedMs +0x1C`; `ShowResult` RVA `0xBD3170` writes the
+later grade to `_grade +0x168`. An untapped stage may therefore coherently have
+`_wasPerfect=true` and `_grade=null` while awaiting Space.
+
+Evidence:
+
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/PokiGuard/Audition/AuditionStage.cs`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/PokiGuard/Audition/AuditionChallenge.cs`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/CardUI.cs`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/MatchService.cs`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ChatMessageDTO.cs`
