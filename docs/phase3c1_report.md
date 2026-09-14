@@ -5,6 +5,9 @@ Status: **PASS STRONG**
 Phase 3C.1 base commit:
 `9ba2abd951f0982a4c262578f734e6cddd89ec0e`.
 
+Accepted implementation commit:
+`8c3cde22d8afa9fba094f42380971ebbc90d8fb6`.
+
 ## Scope
 
 The enabled Pet Skill profile is deliberately narrow:

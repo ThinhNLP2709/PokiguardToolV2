@@ -25,7 +25,7 @@ decision in `DECISIONS.md`.
 | Item | Current state |
 |---|---|
 | Current accepted gameplay phase | **Phase 2 BASIC/default — reaccepted after clean 5/5 live completion** |
-| Active phase | **Phase 3C.1 Audition V3 — PASS STRONG; Git closeout in progress** |
+| Active phase | **Phase 3C.1 Audition V3 — PASS STRONG; Git closeout complete** |
 | Phase 3 status | **Pet Skill policy/FarmRunner/Desktop integrated; V3 is default and V2 four-direction is optional** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
 | Current live automation | **None; B1+B2 completed and each returned to BOSS_LOBBY** |
