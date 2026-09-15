@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-14 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-15 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,11 +24,47 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current accepted gameplay phase | **Phase 2 BASIC/default — reaccepted after clean 5/5 live completion** |
-| Active phase | **Phase 3C.1 Audition V3 — PASS STRONG; Git closeout complete** |
-| Phase 3 status | **Pet Skill policy/FarmRunner/Desktop integrated; V3 is default and V2 four-direction is optional** |
+| Current accepted gameplay phase | **Phase 3C.2 Desktop Pet Skill integration — PASS STRONG** |
+| Active phase | **Phase 3C.2 — accepted and closed; Phase 3D.1 has not started** |
+| Phase 3 status | **LEGENDARY/NONE/PET_SKILL/BASIC is supported through Desktop UI; V3 is default and V2 four-direction is optional** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
-| Current live automation | **None; B1+B2 completed and each returned to BOSS_LOBBY** |
+| Current live automation | **None; B1-B6 complete, Desktop UI closed, game remains at BOSS_LOBBY** |
+
+## Phase 3C.2 — PASS STRONG
+
+The normal Desktop path now accepts the exact
+`LEGENDARY / NONE / PET_SKILL / BASIC` profile and freezes it through one
+controller and one FarmRunner into the Phase 3C.1 Pet Skill policy/action.
+Audition V3 remains the default; V2 remains an optional four-direction mode.
+Unsupported, evolved, Mega and ambiguous multi-source profiles stay blocked.
+The default `NORMAL / NORMAL / DEFAULT_ATTACK / BASIC` profile also remains
+fully runnable and does not dispatch PetSkillAction.
+
+User-operated live acceptance passed all B1-B6 gates. The primary run
+`feff9bffa0794632a655cc9dc6bc7b6b` completed exactly 5/5 wins with no sixth
+attempt. Four naturally actionable Pet Skills were all runtime Perfect, using
+28/28 confirmed directions and four in-window Space presses. EVOLVE, ordinary
+Attack, PASS and all QTE/gameplay safety violations were zero. The fifth boss
+died before the Pet Skill became actionable. Final state was proven
+`BOSS_LOBBY / controller STOPPED`.
+
+Graceful-stop run `8c0b3a53985a4e6db04254de6562624b`
+accepted one stop request during match one, completed that win and returned to
+the boss lobby without entering match two. Default regression run
+`15a10dc9bbf34626958b0f4ccec41ebd` completed 1/1 win under the exact default
+profile with PetSkillAction zero. The final Desktop artifact
+`logs/desktop_ui/20260915_172841/summary.json` records zero UI errors, zero
+worker Tk writes, a stopped poller and clean UI process exit while the game
+remained running.
+
+The accepted 5-match run did not exercise detached-room re-entry. Per the
+user's scope decision, any future recurrence belongs to a separate follow-up
+scope. HT2 full live, non-terminal next-local after Pet Skill, recovery during
+Pet Skill farming, other skill families, performance advantage and energy
+saving remain `NOT_OBSERVED`. Source version is `1.0.47`; final verification is
+**1236/1236** plus compileall and diff checks. See
+[phase3c2_report.md](phase3c2_report.md) and
+[phase3c2_runbook.md](phase3c2_runbook.md).
 
 ## Pokiguard 1.7.4-b4 — default-mode repair
 

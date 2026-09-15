@@ -347,6 +347,9 @@ def run(args: argparse.Namespace) -> int:
         "finalController": asdict(final_snapshot.controller),
         "safety": asdict(final_snapshot.safety),
         "phase2e3CommandsAvailable": True,
+        "phase3c2PetSkillUiEnabled": True,
+        "canonicalPetSkillProfile": "legendary/none/pet_skill/basic",
+        "canonicalAuditionDefault": "audition_v3",
         "farmRunnerStarted": final_snapshot.controller.safety.starts > 0,
         "controllerStopped": not final_snapshot.controller.active,
         "preferences": {

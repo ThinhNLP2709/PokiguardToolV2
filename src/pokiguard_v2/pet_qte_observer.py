@@ -713,14 +713,14 @@ def read_card_ui_qte(
 
 
 def _audition_stage_consistency_signature(raw: bytes) -> tuple[bytes, ...]:
-    """Stable V3 ownership/progress signature, excluding its live clock."""
+    """Stable V3 ownership/progress signature, excluding live display state."""
 
     return (
         raw[0x00:0x08],
         raw[AUDITION_STAGE_HOST_OFFSET : AUDITION_STAGE_HOST_OFFSET + 0x18],
         raw[AUDITION_STAGE_CHALLENGE_OFFSET : AUDITION_STAGE_CHALLENGE_OFFSET + 8],
         raw[AUDITION_STAGE_CURSOR_OFFSET : AUDITION_STAGE_CURSOR_OFFSET + 4],
-        raw[AUDITION_STAGE_DURATION_SECONDS_OFFSET : AUDITION_STAGE_WAS_PERFECT_OFFSET + 1],
+        raw[AUDITION_STAGE_DURATION_SECONDS_OFFSET : AUDITION_STAGE_WAS_PERFECT_OFFSET],
         raw[AUDITION_STAGE_GRADE_OFFSET : AUDITION_STAGE_GRADE_OFFSET + 8],
     )
 

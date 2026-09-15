@@ -51,7 +51,7 @@ SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
     EvolutionTarget.NONE, EvolutionTarget.NORMAL, EvolutionTarget.LEGENDARY,
 })
-# Phase 3C.1 policy/backend and the dual-generation observer are integrated.
+# Phase 3C.1 policy/backend and Phase 3C.2 normal Desktop routing are integrated.
 # The current V3 path remains read-only for state and uses only the accepted
 # bounded foreground keyboard/mouse input boundary.
 PET_SKILL_RUNTIME_ENABLED = True
@@ -125,7 +125,7 @@ def loadout_capability(
         and evolution in {EvolutionTarget.NORMAL, EvolutionTarget.NONE}
         and damage_card is DamageCardMode.DEFAULT_ATTACK
     )
-    phase3c1_pet_skill_runnable = (
+    unique_main_pet_skill_runnable = (
         PET_SKILL_RUNTIME_ENABLED
         and valid
         and main_pet is MainPetType.LEGENDARY
@@ -133,7 +133,7 @@ def loadout_capability(
         and damage_card is DamageCardMode.PET_SKILL
         and sources == (SkillSource.MAIN_PET,)
     )
-    runnable = default_runnable or phase3c1_pet_skill_runnable
+    runnable = default_runnable or unique_main_pet_skill_runnable
     reason = (
         "PET_OPTION_UNSUPPORTED" if not supported else
         "PET_SKILL_SOURCE_MISSING" if not valid else

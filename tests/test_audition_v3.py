@@ -74,6 +74,23 @@ class FakeMemory:
         return size > 0 and all(address + index in self.data for index in range(size))
 
 
+class MutatingStageMemory(FakeMemory):
+    def __init__(self, address: int, offset: int, replacement: bytes) -> None:
+        super().__init__()
+        self.address = address
+        self.offset = offset
+        self.replacement = replacement
+        self.stage_reads = 0
+
+    def read(self, address: int, size: int) -> bytes:
+        result = super().read(address, size)
+        if address == self.address and size == AUDITION_STAGE_READ_SIZE:
+            self.stage_reads += 1
+            if self.stage_reads == 1:
+                self.map(self.address + self.offset, self.replacement)
+        return result
+
+
 class AuditionFixture:
     BASE = 0x0000023000000000
     STAGE = BASE + 0x1000
@@ -343,6 +360,70 @@ class AuditionV3Tests(unittest.TestCase):
         self.assertFalse(qte.finished)
         self.assertIsNone(qte.displayed_timing_result)
         self.assertEqual(qte.qte_elapsed_ms, 2800)
+
+    def test_perfect_zone_highlight_transition_during_read_is_coherent(self) -> None:
+        fixture = AuditionFixture()
+        _qte, challenge = fixture.build(
+            presses=("nutLeft", "nutLeft", "nutRight"),
+            cursor=3,
+            correct=3,
+            elapsed_ms=2499,
+            tapped=False,
+            was_perfect=False,
+        )
+        memory = MutatingStageMemory(
+            fixture.STAGE,
+            AUDITION_STAGE_WAS_PERFECT_OFFSET,
+            b"\x01",
+        )
+        memory.data.update(fixture.memory.data)
+
+        qte, _bound_challenge = read_audition_v3_qte(
+            memory,
+            fixture.STAGE,
+            server_challenge=challenge,
+            expected_stage_class=fixture.STAGE_CLASS,
+            expected_challenge_class=fixture.CHALLENGE_CLASS,
+            expected_card_ui_class=fixture.CARD_UI_CLASS,
+            expected_card_ui_address=fixture.CARD_UI,
+            expected_board=fixture.BOARD,
+            expected_active=fixture.ACTIVE,
+            require_button=True,
+        )
+
+        self.assertFalse(qte.finished)
+        self.assertEqual(qte.current_index, 3)
+        self.assertEqual(qte.correct_count, 3)
+
+    def test_tap_transition_during_read_remains_rejected(self) -> None:
+        fixture = AuditionFixture()
+        _qte, challenge = fixture.build(
+            presses=("nutLeft", "nutLeft", "nutRight"),
+            cursor=3,
+            correct=3,
+            elapsed_ms=2499,
+            tapped=False,
+        )
+        memory = MutatingStageMemory(
+            fixture.STAGE,
+            AUDITION_STAGE_TAPPED_OFFSET,
+            b"\x01",
+        )
+        memory.data.update(fixture.memory.data)
+
+        with self.assertRaisesRegex(LayoutValidationError, "changed during read"):
+            read_audition_v3_qte(
+                memory,
+                fixture.STAGE,
+                server_challenge=challenge,
+                expected_stage_class=fixture.STAGE_CLASS,
+                expected_challenge_class=fixture.CHALLENGE_CLASS,
+                expected_card_ui_class=fixture.CARD_UI_CLASS,
+                expected_card_ui_address=fixture.CARD_UI,
+                expected_board=fixture.BOARD,
+                expected_active=fixture.ACTIVE,
+                require_button=True,
+            )
 
     def test_v3_tracker_binds_lr_stage_and_rejects_v2_mode(self) -> None:
         fixture = AuditionFixture()

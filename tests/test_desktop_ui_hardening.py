@@ -233,8 +233,8 @@ class BoundedOperatorLogTests(unittest.TestCase):
 class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
-        self.assertEqual("v1.0.46", APP_VERSION)
-        self.assertEqual("Pokiguard Tool V2 - v1.0.46", APP_TITLE)
+        self.assertEqual("v1.0.47", APP_VERSION)
+        self.assertEqual("Pokiguard Tool V2 - v1.0.47", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(

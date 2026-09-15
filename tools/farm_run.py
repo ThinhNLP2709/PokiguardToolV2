@@ -993,6 +993,65 @@ def _stable_visual_proof(
     )
 
 
+def _same_clean_chinh_phuc_map_target(left: Any, right: Any) -> bool:
+    """Compare the exact runtime identity used by one map-target click."""
+
+    return bool(
+        left is not None
+        and right is not None
+        and getattr(left, "clean", False)
+        and getattr(right, "clean", False)
+        and getattr(left, "pet_id", None) == getattr(right, "pet_id", None)
+        and getattr(left, "group_index", None)
+        == getattr(right, "group_index", None)
+        and getattr(left, "pet_index", None) == getattr(right, "pet_index", None)
+        and getattr(left, "hunt_order", None)
+        == getattr(right, "hunt_order", None)
+        and getattr(left, "button_address", None)
+        == getattr(right, "button_address", None)
+    )
+
+
+def _detached_shell_exit_runtime_proven(
+    lobby: Any,
+    *,
+    pet_id: int,
+    current_session: Any | None,
+    first_map_target: Any | None,
+    current_map_target: Any | None,
+) -> bool:
+    """Authorize only the shell-exit step when map objects are not loaded yet.
+
+    New server room teardown can destroy the map Button closures while Unity
+    still renders the exact stale room shell.  Those map objects are required
+    later for target selection, but cannot be required before the reversible
+    shell exit that makes the map load.  The exit remains bound to the exact
+    stale enemy pet, owner-free lifecycle and current Start control; two stable
+    visual frames are required separately by the caller.
+    """
+
+    if not _is_detached_chinh_phuc_room_candidate(
+        lobby,
+        target_pet_id=pet_id,
+        no_combat_owner=current_session is None,
+    ):
+        return False
+    for target in (first_map_target, current_map_target):
+        if target is not None:
+            if not getattr(target, "clean", False):
+                return False
+            if getattr(target, "pet_id", None) != pet_id:
+                return False
+            prefs = getattr(target, "prefs", None)
+            if getattr(prefs, "selected_pet_id", None) != pet_id:
+                return False
+    if first_map_target is not None and current_map_target is not None:
+        return _same_clean_chinh_phuc_map_target(
+            first_map_target, current_map_target
+        )
+    return True
+
+
 def _postmatch_reentry_source(
     initial: LobbyWaitResult,
     *,
@@ -1062,8 +1121,6 @@ def _settle_detached_room_shell_exit(
     process: Any,
     provider: MemoryBoardStateProvider,
     pet_id: int,
-    hunt_order: int,
-    initial_lobby: Any,
     binding: Any,
     executor: ForegroundClickExecutor,
     interval: float,
@@ -1071,15 +1128,35 @@ def _settle_detached_room_shell_exit(
     control_hotkeys: Any,
     directory: Path,
     event_fields: dict[str, Any],
-) -> str | None:
+    max_region_mib: int = 8,
+    chunk_mib: int = 2,
+) -> tuple[str, Any | None] | None:
     """Prove either direct map navigation or one stable leave confirmation."""
 
     deadline = time.monotonic() + max(1.0, timeout)
+    transition_started = time.monotonic()
     modal_hits = 0
     prior_modal_point: tuple[float, float] | None = None
     prior_map_capture = None
     prior_map_location = None
-    while process.is_running() and time.monotonic() < deadline:
+    resolved_runtime = None
+    next_runtime_probe = 0.0
+    try:
+        process_running_diagnostic: bool | None = bool(process.is_running())
+    except Exception:  # noqa: BLE001 - diagnostic cannot own transition safety
+        process_running_diagnostic = None
+    run._event(  # noqa: SLF001
+        "chinh_phuc_room_shell_settle_started",
+        **event_fields,
+        processRunningDiagnostic=process_running_diagnostic,
+        timeoutSeconds=max(1.0, timeout),
+    )
+    # The exact bound HWND/PID/geometry check below is the authoritative live
+    # guard for this post-click UI transition. Live run 3363 proved that one
+    # GetExitCodeProcess sample can report false immediately after the normal
+    # shell click even though the same game PID and window remain alive. Do not
+    # let that diagnostic sample skip the entire bounded transition loop.
+    while time.monotonic() < deadline:
         if _control_emergency_requested(control_hotkeys):
             run.safe_stop(
                 FarmRunStopReason.EMERGENCY_STOP,
@@ -1094,33 +1171,6 @@ def _settle_detached_room_shell_exit(
             )
             return None
         capture = capture_client_rgb(process.pid)
-        map_location = locate_hunt_order_badge(
-            capture.rgb, capture.width, capture.height, hunt_order
-        )
-        if (
-            prior_map_capture is not None
-            and prior_map_location is not None
-            and _stable_visual_proof(
-                prior_map_capture,
-                prior_map_location,
-                capture,
-                map_location,
-            )
-        ):
-            run._event(  # noqa: SLF001
-                "chinh_phuc_room_shell_direct_map_proven",
-                **event_fields,
-                firstLocation=prior_map_location,
-                secondLocation=map_location,
-            )
-            return "DIRECT_MAP"
-        if map_location.found:
-            prior_map_capture = capture
-            prior_map_location = map_location
-        else:
-            prior_map_capture = None
-            prior_map_location = None
-
         modal = locate_confirm_leave(capture.rgb, capture.width, capture.height)
         if modal.found and modal.normalized_point is not None:
             same_modal = bool(
@@ -1133,73 +1183,134 @@ def _settle_detached_room_shell_exit(
         else:
             modal_hits = 0
             prior_modal_point = None
-        if modal_hits < 3:
+        if 0 < modal_hits < 3:
             time.sleep(max(interval, 0.12))
             continue
+        if modal_hits >= 3:
+            write_png_rgb(
+                directory / "chinh_phuc_room_shell_confirm.png",
+                capture.width,
+                capture.height,
+                capture.rgb,
+            )
+            confirm_poll = provider.poll()
+            if confirm_poll.combat_lifecycle is None:
+                return None
+            confirm_lobby = read_boss_lobby_runtime(
+                process.resolver, confirm_poll.combat_lifecycle
+            )
+            if not _detached_shell_exit_runtime_proven(
+                confirm_lobby,
+                pet_id=pet_id,
+                current_session=provider.current_session_key,
+                first_map_target=None,
+                current_map_target=None,
+            ):
+                run._event(  # noqa: SLF001
+                    "chinh_phuc_room_shell_confirm_rejected",
+                    **event_fields,
+                    confirmLobby=confirm_lobby,
+                    reason="detached-room runtime proof changed before modal confirm",
+                )
+                return None
+            status = executor.window_status(binding)
+            if _control_emergency_requested(control_hotkeys):
+                run.safe_stop(
+                    FarmRunStopReason.EMERGENCY_STOP,
+                    detail="emergency authority revoked before room-shell confirm",
+                )
+                return None
+            permit = run.reserve_room_shell_confirm(
+                foreground=status.valid and status.foreground is True
+            )
+            if permit is None:
+                return None
+            authorized, click = _execute_controlled_input(
+                control_hotkeys,
+                lambda: executor.send_normalized_point(
+                    binding, modal.normalized_point
+                ),
+            )
+            if not authorized or click is None:
+                run.safe_stop(
+                    FarmRunStopReason.EMERGENCY_STOP,
+                    detail="emergency authority revoked before room-shell confirm input",
+                )
+                return None
+            if not run.complete_room_shell_confirm(
+                permit,
+                sent=click.sent,
+                detail=(
+                    f"CHINH_PHUC_ROOM_SHELL_CONFIRM "
+                    f"pet={pet_id}:{click.status.value}"
+                ),
+            ):
+                return None
+            run._event(  # noqa: SLF001
+                "chinh_phuc_room_shell_confirm_sent",
+                **event_fields,
+                locator=modal,
+                confirmLobby=confirm_lobby,
+                clickStatus=click.status.value,
+            )
+            return ("CONFIRMED", None) if click.sent else None
 
-        write_png_rgb(
-            directory / "chinh_phuc_room_shell_confirm.png",
-            capture.width,
-            capture.height,
-            capture.rgb,
-        )
-        confirm_poll = provider.poll()
-        if confirm_poll.combat_lifecycle is None:
-            return None
-        confirm_lobby = read_boss_lobby_runtime(
-            process.resolver, confirm_poll.combat_lifecycle
+        # Give the normal click enough time to expose a leave modal or finish
+        # loading the island map before starting the comparatively expensive
+        # bounded Button-closure scan. This keeps the modal path responsive and
+        # avoids scanning the known object-free room shell.
+        now = time.monotonic()
+        if (
+            resolved_runtime is None
+            and now - transition_started >= max(0.75, interval * 3.0)
+            and now >= next_runtime_probe
+        ):
+            runtime = discover_chinh_phuc_map_target(
+                process,
+                pet_id,
+                max_region_mib=max_region_mib,
+                chunk_mib=chunk_mib,
+            )
+            next_runtime_probe = time.monotonic() + max(0.75, interval)
+            if runtime is not None and runtime.clean:
+                resolved_runtime = runtime
+
+        map_location = (
+            locate_hunt_order_badge(
+                capture.rgb,
+                capture.width,
+                capture.height,
+                resolved_runtime.hunt_order,
+            )
+            if resolved_runtime is not None
+            else None
         )
         if (
-            not _is_detached_chinh_phuc_room_candidate(
-                confirm_lobby,
-                target_pet_id=pet_id,
-                no_combat_owner=provider.current_session_key is None,
+            map_location is not None
+            and prior_map_capture is not None
+            and prior_map_location is not None
+            and _stable_visual_proof(
+                prior_map_capture,
+                prior_map_location,
+                capture,
+                map_location,
             )
-            or provider.current_session_key is not None
         ):
             run._event(  # noqa: SLF001
-                "chinh_phuc_room_shell_confirm_rejected",
+                "chinh_phuc_room_shell_direct_map_proven",
                 **event_fields,
-                confirmLobby=confirm_lobby,
-                reason="detached-room runtime proof changed before modal confirm",
+                runtime=resolved_runtime,
+                firstLocation=prior_map_location,
+                secondLocation=map_location,
             )
-            return None
-        status = executor.window_status(binding)
-        if _control_emergency_requested(control_hotkeys):
-            run.safe_stop(
-                FarmRunStopReason.EMERGENCY_STOP,
-                detail="emergency authority revoked before room-shell confirm",
-            )
-            return None
-        permit = run.reserve_room_shell_confirm(
-            foreground=status.valid and status.foreground is True
-        )
-        if permit is None:
-            return None
-        authorized, click = _execute_controlled_input(
-            control_hotkeys,
-            lambda: executor.send_normalized_point(binding, modal.normalized_point),
-        )
-        if not authorized or click is None:
-            run.safe_stop(
-                FarmRunStopReason.EMERGENCY_STOP,
-                detail="emergency authority revoked before room-shell confirm input",
-            )
-            return None
-        if not run.complete_room_shell_confirm(
-            permit,
-            sent=click.sent,
-            detail=f"CHINH_PHUC_ROOM_SHELL_CONFIRM pet={pet_id}:{click.status.value}",
-        ):
-            return None
-        run._event(  # noqa: SLF001
-            "chinh_phuc_room_shell_confirm_sent",
-            **event_fields,
-            locator=modal,
-            confirmLobby=confirm_lobby,
-            clickStatus=click.status.value,
-        )
-        return "CONFIRMED" if click.sent else None
+            return "DIRECT_MAP", resolved_runtime
+        if map_location is not None and map_location.found:
+            prior_map_capture = capture
+            prior_map_location = map_location
+        else:
+            prior_map_capture = None
+            prior_map_location = None
+        time.sleep(max(interval, 0.12))
 
     run._event(  # noqa: SLF001
         "chinh_phuc_room_shell_transition_rejected",
@@ -1264,11 +1375,20 @@ def _return_from_chinh_phuc_map(
         )
         return LobbyWaitResult(False, lobby.state, None, "GAME_NOT_FOREGROUND", lobby)
 
-    first_runtime = discover_chinh_phuc_map_target(
-        process,
-        pet_id,
-        max_region_mib=max_region_mib,
-        chunk_mib=chunk_mib,
+    # Detached-shell teardown destroys the island-map Button closures before
+    # rendering the stale room shell. Scanning here is both inconclusive and
+    # expensive; close the exactly proven shell first, then discover the map
+    # target. The ordinary WORLD_BOSS_LIST path still requires target proof
+    # before any click.
+    first_runtime = (
+        discover_chinh_phuc_map_target(
+            process,
+            pet_id,
+            max_region_mib=max_region_mib,
+            chunk_mib=chunk_mib,
+        )
+        if reentry_source == "WORLD_BOSS_LIST"
+        else None
     )
     writer_fields = {
         "attemptIndex": run.match_attempts,
@@ -1278,7 +1398,10 @@ def _return_from_chinh_phuc_map(
         "staleRoomPetId": lobby.chinh_phuc.enemy_pet_id,
         "runtime": first_runtime,
     }
-    if first_runtime is None or not first_runtime.clean:
+    if first_runtime is not None and not first_runtime.clean:
+        run._event("chinh_phuc_map_return_rejected", **writer_fields)  # noqa: SLF001
+        return None
+    if reentry_source != "DETACHED_ROOM_SHELL" and first_runtime is None:
         run._event("chinh_phuc_map_return_rejected", **writer_fields)  # noqa: SLF001
         return None
 
@@ -1320,11 +1443,15 @@ def _return_from_chinh_phuc_map(
     proof_deadline = time.monotonic() + max(1.0, timeout)
     time.sleep(max(interval, 0.18))
     first_capture = capture_client_rgb(process.pid)
-    first_location = locate_hunt_order_badge(
-        first_capture.rgb,
-        first_capture.width,
-        first_capture.height,
-        first_runtime.hunt_order,
+    first_location = (
+        locate_hunt_order_badge(
+            first_capture.rgb,
+            first_capture.width,
+            first_capture.height,
+            first_runtime.hunt_order,
+        )
+        if first_runtime is not None
+        else None
     )
     first_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
         first_capture.rgb,
@@ -1357,11 +1484,15 @@ def _return_from_chinh_phuc_map(
             )
         time.sleep(max(interval, 0.18))
         second_capture = capture_client_rgb(process.pid)
-        second_location = locate_hunt_order_badge(
-            second_capture.rgb,
-            second_capture.width,
-            second_capture.height,
-            first_runtime.hunt_order,
+        second_location = (
+            locate_hunt_order_badge(
+                second_capture.rgb,
+                second_capture.width,
+                second_capture.height,
+                first_runtime.hunt_order,
+            )
+            if first_runtime is not None
+            else None
         )
         second_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
             second_capture.rgb,
@@ -1369,11 +1500,15 @@ def _return_from_chinh_phuc_map(
             second_capture.height,
         )
         proof_frames += 1
-        stable_visual = _stable_visual_proof(
-            first_capture,
-            first_location,
-            second_capture,
-            second_location,
+        stable_visual = bool(
+            first_location is not None
+            and second_location is not None
+            and _stable_visual_proof(
+                first_capture,
+                first_location,
+                second_capture,
+                second_location,
+            )
         )
         stable_room_shell = bool(
             not stable_visual
@@ -1421,30 +1556,12 @@ def _return_from_chinh_phuc_map(
         if poll.combat_lifecycle is None:
             return None
         shell_lobby = read_boss_lobby_runtime(process.resolver, poll.combat_lifecycle)
-        shell_runtime = discover_chinh_phuc_map_target(
-            process,
-            pet_id,
-            max_region_mib=max_region_mib,
-            chunk_mib=chunk_mib,
-        )
-        detached_runtime_stable = (
-            _is_detached_chinh_phuc_room_candidate(
-                shell_lobby,
-                target_pet_id=pet_id,
-                no_combat_owner=provider.current_session_key is None,
-            )
-        )
-        shell_runtime_stable = bool(
-            shell_runtime is not None
-            and shell_runtime.clean
-            and shell_runtime.pet_id == first_runtime.pet_id
-            and shell_runtime.group_index == first_runtime.group_index
-            and shell_runtime.pet_index == first_runtime.pet_index
-            and shell_runtime.hunt_order == first_runtime.hunt_order
-            and shell_runtime.button_address == first_runtime.button_address
-            and shell_runtime.prefs.selected_pet_id == pet_id
-            and detached_runtime_stable
-            and provider.current_session_key is None
+        shell_runtime_stable = _detached_shell_exit_runtime_proven(
+            shell_lobby,
+            pet_id=pet_id,
+            current_session=provider.current_session_key,
+            first_map_target=first_runtime,
+            current_map_target=None,
         )
         if not shell_runtime_stable:
             run._event(  # noqa: SLF001
@@ -1452,7 +1569,6 @@ def _return_from_chinh_phuc_map(
                 **writer_fields,
                 firstShellExit=first_shell_exit,
                 secondShellExit=second_shell_exit,
-                shellRuntime=shell_runtime,
                 shellLobby=shell_lobby,
                 reason="atomic detached-room runtime proof changed",
             )
@@ -1496,7 +1612,6 @@ def _return_from_chinh_phuc_map(
             **writer_fields,
             firstShellExit=first_shell_exit,
             secondShellExit=second_shell_exit,
-            shellRuntime=shell_runtime,
             shellLobby=shell_lobby,
             clickStatus=shell_click.status.value,
         )
@@ -1507,13 +1622,11 @@ def _return_from_chinh_phuc_map(
         # directly to the map or shows one leave-confirm modal.  Both paths are
         # bounded and require stable visual plus unchanged exact-pet runtime
         # evidence; no other postmatch click is permitted.
-        shell_transition = _settle_detached_room_shell_exit(
+        shell_transition_result = _settle_detached_room_shell_exit(
             run=run,
             process=process,
             provider=provider,
             pet_id=pet_id,
-            hunt_order=first_runtime.hunt_order,
-            initial_lobby=lobby,
             binding=binding,
             executor=executor,
             interval=interval,
@@ -1521,9 +1634,12 @@ def _return_from_chinh_phuc_map(
             control_hotkeys=control_hotkeys,
             directory=directory,
             event_fields=writer_fields,
+            max_region_mib=max_region_mib,
+            chunk_mib=chunk_mib,
         )
-        if shell_transition is None:
+        if shell_transition_result is None:
             return None
+        shell_transition, transition_runtime = shell_transition_result
 
         # Wait for two stable frames of the runtime-derived map badge.  A
         # loading frame, lingering room shell, or ambiguous map consumes no
@@ -1531,8 +1647,15 @@ def _return_from_chinh_phuc_map(
         map_deadline = time.monotonic() + max(1.0, timeout)
         previous_map_capture = None
         previous_map_location = None
+        map_runtime = transition_runtime
+        last_map_runtime = None
         stable_visual = False
-        while process.is_running() and time.monotonic() < map_deadline:
+        # A direct-map transition may already carry the clean runtime proof.
+        # After a leave confirmation, wait briefly for map construction before
+        # the first bounded discovery scan.
+        if map_runtime is None:
+            time.sleep(max(0.75, interval * 3.0))
+        while time.monotonic() < map_deadline:
             if _control_emergency_requested(control_hotkeys):
                 run.safe_stop(
                     FarmRunStopReason.EMERGENCY_STOP,
@@ -1550,12 +1673,23 @@ def _return_from_chinh_phuc_map(
                 return LobbyWaitResult(
                     False, lobby.state, None, "GAME_NOT_FOREGROUND", lobby
                 )
+            if map_runtime is None:
+                last_map_runtime = discover_chinh_phuc_map_target(
+                    process,
+                    pet_id,
+                    max_region_mib=max_region_mib,
+                    chunk_mib=chunk_mib,
+                )
+                if last_map_runtime is None or not last_map_runtime.clean:
+                    time.sleep(max(interval, 0.18))
+                    continue
+                map_runtime = last_map_runtime
             capture = capture_client_rgb(process.pid)
             location = locate_hunt_order_badge(
                 capture.rgb,
                 capture.width,
                 capture.height,
-                first_runtime.hunt_order,
+                map_runtime.hunt_order,
             )
             if (
                 location.found
@@ -1585,13 +1719,15 @@ def _return_from_chinh_phuc_map(
             previous_map_capture = capture if location.found else None
             previous_map_location = location if location.found else None
             time.sleep(max(interval, 0.18))
-        if not stable_visual:
+        if not stable_visual or map_runtime is None:
             run._event(  # noqa: SLF001
                 "chinh_phuc_room_shell_exit_rejected",
                 **writer_fields,
+                lastMapRuntime=last_map_runtime,
                 reason="runtime-derived map badge absent after one shell exit",
             )
             return None
+        first_runtime = map_runtime
         write_png_rgb(
             directory / "chinh_phuc_map_after_shell_exit.png",
             second_capture.width,
@@ -1612,13 +1748,7 @@ def _return_from_chinh_phuc_map(
         chunk_mib=chunk_mib,
     )
     runtime_stable = bool(
-        second_runtime is not None
-        and second_runtime.clean
-        and second_runtime.pet_id == first_runtime.pet_id
-        and second_runtime.group_index == first_runtime.group_index
-        and second_runtime.pet_index == first_runtime.pet_index
-        and second_runtime.hunt_order == first_runtime.hunt_order
-        and second_runtime.button_address == first_runtime.button_address
+        _same_clean_chinh_phuc_map_target(first_runtime, second_runtime)
         and _owner_free_chinh_phuc_map_snapshot(current_lobby)
         # The room snapshot is stale selection evidence on this map. It must
         # agree with read-only PlayerPrefs, but it need not already equal the

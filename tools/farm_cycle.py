@@ -301,10 +301,12 @@ def _is_detached_chinh_phuc_room_candidate(
     """Recognize the read-only half of a detached Chinh Phuc room shell.
 
     This is deliberately not sufficient to authorize a click.  The farming
-    controller still requires an independently resolved exact pet Button and
-    two stable visual frames before it may close the shell.  Surfacing this
-    state here prevents ``_wait_boss_lobby`` from discarding the runtime
-    snapshot as a generic ``LOBBY_OTHER`` timeout.
+    controller still requires an atomic reread of this exact owner-free pet
+    identity and two stable room-only visual frames before it may close the
+    shell.  Exact map Button proof remains mandatory after closing the shell
+    and before selecting a target.  Surfacing this state here prevents
+    ``_wait_boss_lobby`` from discarding the runtime snapshot as a generic
+    ``LOBBY_OTHER`` timeout.
     """
 
     chinh = getattr(lobby, "chinh_phuc", None)

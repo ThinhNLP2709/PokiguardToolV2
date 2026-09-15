@@ -79,8 +79,9 @@ preflight failure may release the input permit but must reread state before a
 new decision. After-input uncertainty never falls back or blindly retries.
 Server-owned PASS/idle state is reread later and is never reset locally.
 
-Phase 3C.1 exposes this through the controlled backend/CLI only. Normal Desktop
-Start/Resume remains gated until Phase 3C.2.
+Phase 3C.2 exposes this exact profile through normal Desktop Start/Resume using
+the same immutable controller, FarmRunner policy and PetSkillAction ownership.
+Unsupported and ambiguous Pet Skill profiles remain gated.
 
 ## Phase 2 b2 compatibility repair (user correction 2026-09-11)
 
@@ -191,26 +192,34 @@ Tiến hóa / EvolutionTarget:
 
 Thẻ sát thương / DamageCardMode:
 - DEFAULT_ATTACK (Thẻ chưởng mặc định)
-- PET_SKILL (Thẻ skill của pet, only selectable with a conceptual skill source)
+- PET_SKILL (Thẻ skill của pet; current compatibility value for a profile with
+  exactly one unambiguous skill source)
 
 Intelligence:
 - BASIC
 - REASONING
 ```
 
-The default is `NORMAL / NORMAL / DEFAULT_ATTACK`. The second currently
-runnable profile is `NORMAL / NONE / DEFAULT_ATTACK`. These preserve the old
+The default is `NORMAL / NORMAL / DEFAULT_ATTACK`. The second default-Attack
+profile is `NORMAL / NONE / DEFAULT_ATTACK`. These preserve the old
 `EVOLUTION` and `ATTACK` BASIC behavior respectively. `ManaPriority` is no
-longer a product or Desktop setting. A narrow internal adapter still creates
-the old `PolicyConfig.mana_priority` for these two proven profiles; remove that
-adapter in Phase 3C.1.
+longer a product or Desktop setting. `LEGENDARY / NONE / PET_SKILL` is the
+first supported BASIC Pet Skill profile.
 
-`LEGENDARY / NONE / PET_SKILL` is a valid, persistable product choice, but its
-FarmRunner policy is not implemented. Start and Resume must fail closed without
-translating it to ordinary Attack. `NORMAL / LEGENDARY` exposes an evolution
-target skill source. `LEGENDARY / LEGENDARY` exposes both main-pet and
-evolution-target sources; the product has no source-selection rule yet and no
-implementation may choose one implicitly.
+`LEGENDARY / NONE / PET_SKILL` reaches the normal Desktop/FarmRunner Pet Skill
+policy without translating it to ordinary Attack. `NORMAL / LEGENDARY`
+exposes an evolution-target skill source. `LEGENDARY / LEGENDARY` exposes both
+main-pet and evolution-target sources; no implementation may choose one
+implicitly.
+
+User clarification on 2026-09-14 supersedes the assumption that the final
+Damage selector will always contain only two choices. When a future supported
+loadout can expose both skill cards, **Thẻ sát thương** must distinguish the
+main-pet skill card from the evolution-pet skill card in that same field. Do
+not add a separate source field and do not reduce both cards to one ambiguous
+`PET_SKILL` option. Exact source-specific modes and labels belong to the phase
+that adds the two-source profile. Phase 3C.2 remains limited to the unique
+main-pet source `LEGENDARY / NONE`; multi-source gameplay stays blocked.
 
 These fields describe operator intent. They do not equip a pet, choose an
 inventory item, navigate the Pet UI, prove current resources, or replace the

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
@@ -28,6 +29,12 @@ from pokiguard_v2.farm_run import (
     MatchResult,
 )
 from pokiguard_v2.state import CombatSessionKey
+from pokiguard_v2.pet_configuration import (
+    DamageCardMode,
+    EvolutionTarget,
+    GameplayConfig,
+    MainPetType,
+)
 
 
 SOURCE = "ChatMessageDTO.MATCH_START.matchPayload.board"
@@ -623,6 +630,59 @@ class CheckpointRoundTripTests(unittest.TestCase):
 
 
 class AccountingContinuityTests(unittest.TestCase):
+    def test_pet_skill_profile_round_trip_restores_intent_only(self) -> None:
+        profile = GameplayConfig(
+            main_pet=MainPetType.LEGENDARY,
+            evolution=EvolutionTarget.NONE,
+            damage_card=DamageCardMode.PET_SKILL,
+        )
+        payload = replace(
+            _payload(finalized="STOPPED_GRACEFULLY"),
+            gameplay_config=profile,
+            stop_request_state="STOPPED_AT_LOBBY",
+            stop_reason="STOPPED_GRACEFULLY",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "checkpoint.json"
+            write_checkpoint(path, payload)
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            loaded = load_checkpoint(path)
+
+        self.assertEqual(loaded.gameplay_config, profile)
+        self.assertFalse(
+            {
+                "action_id",
+                "card_ui_pointer",
+                "qte_generation",
+                "sequence",
+                "perfect_window",
+                "pending_input_lease",
+            }
+            & set(raw)
+        )
+        decision = validate_for_resume(
+            loaded,
+            target_boss_id="1289",
+            target_boss_name="Starburst",
+            target_completed_matches=5,
+            max_technical_recoveries=1,
+            max_match_attempts=8,
+            gameplay_config=profile,
+        )
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.gameplay_config, profile)
+        self.assertFalse(
+            validate_for_resume(
+                loaded,
+                target_boss_id="1289",
+                target_boss_name="Starburst",
+                target_completed_matches=5,
+                max_technical_recoveries=1,
+                max_match_attempts=8,
+                gameplay_config=GameplayConfig(),
+            ).allowed
+        )
+
     def test_three_plus_two_equals_five_cumulative(self) -> None:
         original = start_run(FarmRunLimits(5, 1, 8), control=True)
         for idx in range(1, 4):

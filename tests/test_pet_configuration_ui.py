@@ -111,6 +111,32 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.runner.starts, 0)
         self.assertEqual(self.plane.snapshot().safety.nonzero(), {})
 
+    def test_desktop_start_freezes_exact_pet_skill_profile(self):
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        self.app._start_farm()
+
+        self.assertTrue(self.runner.entered.wait(1))
+        self.assertEqual(self.runner.starts, 1)
+        launch = self.runner.launches[0].config
+        self.assertEqual(launch.main_pet, MainPetType.LEGENDARY)
+        self.assertEqual(launch.evolution, EvolutionTarget.NONE)
+        self.assertEqual(launch.damage_card, DamageCardMode.PET_SKILL)
+        self.assertEqual(launch.audition_mode.value, "audition_v3")
+        self.assertFalse(self.plane.start_farm().accepted)
+        self.assertEqual(self.runner.starts, 1)
+
+        self.app.main_pet.set("normal")
+        self.app.damage_card.set("default_attack")
+        self.app._render()
+        self.assertEqual(self.app.main_pet.get(), "legendary")
+        self.assertEqual(self.app.damage_card.get(), "pet_skill")
+        self.assertEqual(self.runner.launches[0].config, launch)
+        self.assertEqual(
+            self.manager.snapshot().safety.max_simultaneous_controllers, 1
+        )
+
     def test_future_save_roundtrip_has_no_start_or_resume(self):
         self.button("main_pet", "legendary").invoke()
         self.button("evolution", "none").invoke()

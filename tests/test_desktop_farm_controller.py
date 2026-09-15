@@ -9,7 +9,12 @@ import time
 import unittest
 from unittest.mock import patch
 
-from pokiguard_v2.pet_configuration import AuditionMode, EvolutionTarget
+from pokiguard_v2.pet_configuration import (
+    AuditionMode,
+    DamageCardMode,
+    EvolutionTarget,
+    MainPetType,
+)
 from pokiguard_v2.basic_policy import PlayStyle
 from pokiguard_v2.desktop_control_plane import (
     DesktopConfig,
@@ -441,6 +446,34 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertEqual(args.max_technical_recoveries, 1)
         self.assertEqual(args.max_match_attempts, 7)
         self.assertFalse(args.stop_if_room_ejected)
+
+    def test_production_adapter_preserves_pet_skill_profile_and_v3_default(self) -> None:
+        config = DesktopConfig(
+            main_pet=MainPetType.LEGENDARY,
+            evolution=EvolutionTarget.NONE,
+            damage_card=DamageCardMode.PET_SKILL,
+            boss_id="1289",
+            boss_name="Starburst",
+            target_completed_matches=5,
+            max_match_attempts=8,
+        )
+        with patch("tools.farm_run.run", return_value=0) as run:
+            code = self.manager._run_production(  # noqa: SLF001
+                ControllerLaunch(config, None),
+                FarmControlHotkeyEdges(),
+                lambda _snapshot, _phase: None,
+            )
+
+        self.assertEqual(code, 0)
+        args = run.call_args.args[0]
+        self.assertTrue(args.stage_e2_ui)
+        self.assertEqual(args.main_pet, "legendary")
+        self.assertEqual(args.evolution_target, "none")
+        self.assertEqual(args.damage_card, "pet_skill")
+        self.assertEqual(args.audition_mode, "audition_v3")
+        self.assertIsNone(args.mana_priority)
+        self.assertEqual(args.target_matches, 5)
+        self.assertEqual(args.max_match_attempts, 8)
 
 
 class DesktopControlCommandTests(unittest.TestCase):
