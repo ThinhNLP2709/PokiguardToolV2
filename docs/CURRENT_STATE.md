@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-15 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-16 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,11 +24,48 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current accepted gameplay phase | **Phase 3C.2 Desktop Pet Skill integration — PASS STRONG** |
-| Active phase | **Phase 3C.2 — accepted and closed; Phase 3D.1 has not started** |
-| Phase 3 status | **LEGENDARY/NONE/PET_SKILL/BASIC is supported through Desktop UI; V3 is default and V2 four-direction is optional** |
+| Current accepted gameplay phase | **Phase 3D.1 Performance / Efficiency A-B Comparison — PASS STRONG** |
+| Active phase | **Phase 3D.1 — complete; Phase 3D.2 has not started** |
+| Phase 3 status | **LEGENDARY/NONE/PET_SKILL/BASIC is supported and measured against the default profile; V3 is default and V2 four-direction is optional** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
-| Current live automation | **None; B1-B6 complete, Desktop UI closed, game remains at BOSS_LOBBY** |
+| Current live automation | **None; Phase 3D.1 A/B blocks completed at 10/10 each and the game returned to BOSS_LOBBY** |
+
+## Phase 3D.1 — PASS STRONG
+
+Phase 3D.1 compared the accepted default profile
+`NORMAL / NORMAL / DEFAULT_ATTACK / BASIC` with
+`LEGENDARY / NONE / PET_SKILL / BASIC` on the same source commit, Desktop UI
+path, Starburst `1289`, Two Click input mode, and finite 10-match target. Mode A
+run `f7bb98e3a52b47158b4c20822688d0aa` and Mode B run
+`51d49d61b4a946c4855872f8a605ab2f` each completed exactly 10 attempts, 10 wins,
+zero UNKNOWN, zero technical abort/recovery, and zero critical safety violation.
+
+Mode B reduced mean combat duration from 144.383 to 125.594 seconds
+(18.789 seconds, 13.013%) and mean full-cycle duration from 156.643 to 134.495
+seconds (22.148 seconds, 14.139%). Median combat fell 7.367 seconds (5.470%)
+and median cycle fell 9.887 seconds (6.677%). Mean SWAP count fell from 10.2
+to 9.0 (11.765%), while median SWAP stayed 9.5. Mean major gameplay actions
+fell from 11.9 to 9.6 (19.328%).
+
+Mode A invoked no Pet Skill. Mode B invoked no EVOLVE or ordinary Attack CAST;
+all six accepted Pet Skills were PERFECT with 42/42 directions confirmed and
+six valid Space presses. Both modes used PASS zero times. Memory and result UI
+agreed for all 20 completed matches.
+
+Energy saving remains `NOT_MEASURED` because local-turn counts are not an
+authoritative account-energy balance. Mode B averaged 0.9 fewer local turns,
+but that is reported only as a turn reduction. The result compares complete
+profiles with intentionally different pets/loadouts and natural board RNG; it
+does not isolate the skill card or establish statistical significance.
+
+One preliminary interrupted A setup run is explicitly excluded in the manifest
+because the operator pressed emergency stop while diagnosing Start and it used
+DRAG before the common Two Click setting was pinned. No natural recovery or
+detached-room re-entry occurred. See
+[phase3d1_report.md](phase3d1_report.md),
+[phase3d1_runbook.md](phase3d1_runbook.md), and the compact artifact
+[`phase3d1_matches.json`](artifacts/phase3d1_matches.json). Phase 3D.2's
+25-match soak has not started.
 
 ## Phase 3C.2 — PASS STRONG
 

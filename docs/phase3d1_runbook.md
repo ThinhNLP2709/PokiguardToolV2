@@ -1,5 +1,13 @@
 # Phase 3D.1 Runbook — Controlled Performance / Efficiency A-B Comparison
 
+## Completion record
+
+Phase 3D.1 completed **PASS STRONG** on source commit `292114f4`. The included
+blocks are Mode A FarmRun `f7bb98e3a52b47158b4c20822688d0aa` and Mode B
+FarmRun `51d49d61b4a946c4855872f8a605ab2f`, each with 10/10 wins and zero critical
+safety violations. The final manifest and compact dataset are under
+`docs/artifacts/`; detailed conclusions are in `docs/phase3d1_report.md`.
+
 ## Scope
 
 This runbook compares two already accepted BASIC strategies through the normal
