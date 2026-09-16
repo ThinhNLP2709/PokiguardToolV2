@@ -158,7 +158,7 @@ class PetConfigurationTests(unittest.TestCase):
                   combat_state(mana=600, cards=(attack_card(),)),
                   combat_state(boss_hp=100, cards=(attack_card(),)), combat_state(turn=1)]
         for priority in ManaPriority:
-            for style in PlayStyle:
+            for style in (PlayStyle.SIMPLE, PlayStyle.CAREFUL):
                 config = GameplayConfig(play_style=style, **legacy_pet_fields(priority))
                 before = PolicyConfig(play_style=style, mana_priority=priority)
                 after = legacy_basic_policy(config)
@@ -172,7 +172,7 @@ class PetConfigurationTests(unittest.TestCase):
                   combat_state(mana=600, cards=(attack_card(),)),
                   combat_state(boss_hp=100, cards=(attack_card(),)), combat_state(turn=1)]
         for priority in ManaPriority:
-            for style in PlayStyle:
+            for style in (PlayStyle.SIMPLE, PlayStyle.CAREFUL):
                 gameplay = GameplayConfig(
                     play_style=style,
                     **legacy_pet_fields(priority),

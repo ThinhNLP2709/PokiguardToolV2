@@ -9,6 +9,7 @@ from enum import Enum
 import os
 import threading
 import time
+import random
 from typing import Callable, Protocol
 
 Cell = tuple[int, int]
@@ -154,6 +155,19 @@ def map_swap_to_pixels(
 
     def point(cell: Cell) -> PixelPoint:
         norm_x, norm_y = calibration.normalized_center(cell)
+        # =================================================================
+        # ĐOẠN CODE MỚI: Thêm sai số ngẫu nhiên (jitter) ±20%
+        # calibration.step_x và step_y chính là kích thước chiều ngang/dọc của 1 ô
+        # random từ -0.2 đến 0.2 nghĩa là lệch tối đa 20% từ tâm ra rìa,
+        # đảm bảo luôn nằm gọn vùng an toàn giữa viên đá (30% - 70% của ô)
+        # =================================================================
+        jitter_x = random.uniform(-0.2, 0.2) * calibration.step_x
+        jitter_y = random.uniform(-0.2, 0.2) * calibration.step_y
+
+        norm_x += jitter_x
+        norm_y += jitter_y
+        # =================================================================
+
         if not (0.0 <= norm_x <= 1.0 and 0.0 <= norm_y <= 1.0):
             raise CoordinateSafetyError("cell center is outside the client")
         # This intentionally matches V1's real click path, not overlay rounding.
@@ -512,8 +526,19 @@ class ForegroundClickExecutor:
         remaining_seconds: float | None = None,
     ) -> ClickPairResult:
         pacing = self.swap_pacer.decision(remaining_seconds=remaining_seconds)
+        # ==============================================================
+        # ĐỘ TRỄ PHẢN XẠ: Từ lúc chốt tọa độ đến lúc thực sự di chuyển chuột
+        # ==============================================================
+        reaction_delay = random.uniform(0.0, 1.0)
+        if remaining_seconds is not None:
+            safe_reaction = max(0.0, float(remaining_seconds) - pacing.delay_seconds - 1.25)
+            reaction_delay = min(reaction_delay, safe_reaction)
+
+        self.sleeper(reaction_delay)
+        # ==============================================================
         if self.input_mode is BoardInputMode.DRAG:
             return self._send_drag(binding, plan, pacing)
+
         first = self._send_one(
             binding,
             plan.client_geometry,
@@ -532,7 +557,15 @@ class ForegroundClickExecutor:
                 getattr(self.backend, "mouse_button_hold_seconds", None),
                 BoardInputMode.TWO_CLICK.value,
             )
-        self.sleeper(pacing.delay_seconds)
+        random_jitter = random.uniform(0.0, 1.5)
+        actual_delay = pacing.delay_seconds + random_jitter
+
+        # 2. Rất Quan Trọng: Đảm bảo thời gian chờ không vượt quá thời gian còn lại của lượt (chừa lại 1.25s an toàn)
+        if remaining_seconds is not None:
+            safe_max_delay = max(0.0, float(remaining_seconds) - 1.25)
+            actual_delay = min(actual_delay, safe_max_delay)
+        self.sleeper(actual_delay)
+
         second = self._send_one(
             binding,
             plan.client_geometry,
@@ -543,7 +576,7 @@ class ForegroundClickExecutor:
             return ClickPairResult(
                 ClickStatus.PARTIAL_INPUT,
                 1,
-                pacing.delay_seconds,
+                actual_delay,
                 pacing.mode,
                 pacing.reason,
                 pacing.lag_score,
@@ -551,10 +584,11 @@ class ForegroundClickExecutor:
                 getattr(self.backend, "mouse_button_hold_seconds", None),
                 BoardInputMode.TWO_CLICK.value,
             )
+
         return ClickPairResult(
             ClickStatus.SENT,
             2,
-            pacing.delay_seconds,
+            actual_delay,
             pacing.mode,
             pacing.reason,
             pacing.lag_score,

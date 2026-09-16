@@ -14,7 +14,7 @@ from typing import Any, Callable
 from .basic_policy import Intelligence, PlayStyle
 from .pet_configuration import (
     AuditionMode, MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
-    EVOLUTION_LABELS, DAMAGE_LABELS, AUDITION_LABELS,
+    EVOLUTION_LABELS, DAMAGE_LABELS, AUDITION_LABELS, PLAY_STYLE_LABELS,
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
     loadout_capability, normalize_damage,
 )
@@ -71,6 +71,15 @@ def run_limit_text(config: DesktopConfig) -> tuple[str, str]:
     """Normalize the two immutable per-run limits for their Entry variables."""
 
     return str(config.target_completed_matches), str(config.max_match_attempts)
+
+
+def play_style_from_display(value: str) -> PlayStyle:
+    """Map a visible label back to its stable serialized PlayStyle value."""
+
+    for style, label in PLAY_STYLE_LABELS.items():
+        if value == label:
+            return style
+    return PlayStyle(value)
 
 
 def match_energy_text(controller: DesktopControllerSnapshot) -> str:
@@ -514,6 +523,7 @@ class DesktopViewModel:
             "PET_SKILL_DESKTOP_INTEGRATION_PENDING": "Thẻ skill của pet: backend đã sẵn sàng, Desktop chưa có tích hợp để tự động farm.",
             "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED": "Thẻ skill của pet: Audition V3 chưa có tích hợp gameplay an toàn cho bản game hiện tại.",
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
+            "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi chỉ hỗ trợ Huyền thoại / Không tiến hóa / Thẻ skill của pet / BASIC.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
@@ -769,12 +779,13 @@ class DesktopApplication:
         runtime_frame.columnconfigure(1, weight=1)
 
         config = view_model.control_plane.snapshot().config
-        self.play_style = tk.StringVar(value=config.play_style.value)
+        self.play_style = tk.StringVar(value=PLAY_STYLE_LABELS[config.play_style])
         self.main_pet = tk.StringVar(value=config.main_pet.value)
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
         self.audition_mode = tk.StringVar(value=config.audition_mode.value)
         self._updating_pet_fields = False
+        self._updating_play_style = False
         self._pet_option_widgets: dict[tuple[str, str], Any] = {}
         self.profile_notice_var = tk.StringVar()
         self.intelligence = tk.StringVar(value=Intelligence.BASIC.value)
@@ -819,7 +830,7 @@ class DesktopApplication:
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.play_style,
-                values=tuple(value.value for value in PlayStyle),
+                values=tuple(PLAY_STYLE_LABELS[value] for value in PlayStyle),
                 state="readonly",
             ),
             editable_state="readonly",
@@ -928,6 +939,7 @@ class DesktopApplication:
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
+        self.play_style.trace_add("write", self._play_style_changed)
         self._sync_pet_options()
 
         settings_frame = ttk.LabelFrame(
@@ -1140,6 +1152,15 @@ class DesktopApplication:
         self._locked_run_limits = run_limit_text(config)
         self.target_matches.set(self._locked_run_limits[0])
         self.max_attempts.set(self._locked_run_limits[1])
+        # The production application owns all three variables.  The compact
+        # presentation-contract fixture intentionally supplies only the run
+        # limit and pet fields that it asserts.
+        if hasattr(self, "play_style"):
+            self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
+        if hasattr(self, "intelligence"):
+            self.intelligence.set(config.intelligence.value)
+        if hasattr(self, "board_input_mode"):
+            self.board_input_mode.set(config.board_input_mode.value)
         self._display_pet_config(config)
         self._set_config_editable(False)
         self.start_button.configure(state="disabled")
@@ -1269,7 +1290,7 @@ class DesktopApplication:
 
     def _draft_fields(self) -> dict[str, str]:
         return {
-            "play_style": self.play_style.get(),
+            "play_style": play_style_from_display(self.play_style.get()).value,
             "main_pet": self.main_pet.get(),
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
@@ -1301,7 +1322,7 @@ class DesktopApplication:
         try:
             config = self.view_model.control_plane.load_checkpoint_preferences()
             self._display_pet_config(config)
-            self.play_style.set(config.play_style.value)
+            self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
             self.intelligence.set(config.intelligence.value)
             self.board_input_mode.set(config.board_input_mode.value)
             self.target_matches.set(str(config.target_completed_matches))
@@ -1317,12 +1338,14 @@ class DesktopApplication:
         capability = loadout_capability(MainPetType(self.main_pet.get()),
                                        EvolutionTarget(self.evolution.get()),
                                        DamageCardMode(self.damage_card.get()))
+        profile = DesktopConfig.from_strings(**self._draft_fields())
+        blocker = profile.farm_policy_blocker_reason
         editable = self._config_editable is not False
         self._pet_option_widgets["damage_card", "pet_skill"].configure(
             state="normal" if editable and capability.pet_skill_selectable else "disabled")
         self.profile_notice_var.set(
-            self.view_model.reason_text(capability.desktop_blocker_reason)
-            if capability.desktop_blocker_reason else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
+            self.view_model.reason_text(blocker)
+            if blocker else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
 
     def _pet_selection_changed(self, *_args: Any) -> None:
         if self._updating_pet_fields:
@@ -1343,6 +1366,23 @@ class DesktopApplication:
             self.view_model.apply_draft(**self._draft_fields())
         except (TypeError, ValueError):
             # Other draft fields may be mid-edit. Start parses everything again.
+            return
+
+    def _play_style_changed(self, *_args: Any) -> None:
+        if self._updating_play_style:
+            return
+        snapshot = self.view_model.control_plane.snapshot()
+        if snapshot.controller.active:
+            self._updating_play_style = True
+            try:
+                self.play_style.set(PLAY_STYLE_LABELS[snapshot.config.play_style])
+            finally:
+                self._updating_play_style = False
+            return
+        try:
+            self._sync_pet_options()
+            self.view_model.apply_draft(**self._draft_fields())
+        except (TypeError, ValueError):
             return
 
     def _publish_command(self, command: str, result: Any) -> None:
@@ -1685,7 +1725,7 @@ class DesktopApplication:
             if draft_valid:
                 profile_reason = DesktopConfig.from_strings(
                     **self._draft_fields()
-                ).capability.desktop_blocker_reason
+                ).farm_policy_blocker_reason
             config_editable = controls.config_editable and not close_pending
             self._set_config_editable(config_editable)
             start_actionable = bool(

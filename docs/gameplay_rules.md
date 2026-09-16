@@ -7,7 +7,8 @@ file này. Bản triển khai kỹ thuật (simulator, trace, fail-closed gates)
 
 ## 1. Cấu hình lối chơi
 
-Ta có 2 lựa chọn lối chơi: **Đơn giản**, **Cẩn thận**.
+Ta có 3 lựa chọn lối chơi: **Đơn giản**, **Cẩn thận**, và tùy chọn
+**Chịu đấm ăn xôi**. Mặc định vẫn là **Đơn giản**.
 
 Ba trường cấu hình pet hiện hành là:
 
@@ -25,10 +26,11 @@ Ba profile backend đang chạy được với BASIC:
 - `LEGENDARY / NONE / PET_SKILL`: không tiến hóa, không dùng thẻ chưởng
   thường, dùng skill pet khi capability runtime hiện tại đủ điều kiện.
 
-Profile Pet Skill trên chỉ chạy qua backend/CLI có kiểm soát trong Phase 3C.1;
-Desktop Start/Resume vẫn bị chặn đến Phase 3C.2. Các profile khác có thể hợp lệ
-và lưu được nhưng không có FarmRunner policy. Nhiều nguồn skill hoặc capability
-không rõ ràng phải fail-closed, không tự chọn một nguồn.
+Profile Pet Skill trên chạy qua Desktop/FarmRunner đã được chấp nhận ở Phase
+3C.2. `Chịu đấm ăn xôi` chỉ được Start với đúng profile này. Các profile khác
+có thể hợp lệ và lưu được nhưng không có FarmRunner policy cho lối chơi mới.
+Nhiều nguồn skill hoặc capability không rõ ràng phải fail-closed, không tự chọn
+một nguồn.
 
 Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 
@@ -64,6 +66,54 @@ Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 4. Sau đó giữ nguyên thứ tự Health, Drain, Shield, PASS và nước bắt buộc của
    BASIC. PASS đầu trận và PASS thứ ba liên tiếp vẫn bị cấm theo bằng chứng
    server hiện hành.
+
+### 1.2. PlayStyle `Chịu đấm ăn xôi`
+
+Nhánh này chỉ áp dụng cho `LEGENDARY / NONE / PET_SKILL / BASIC` và family HT7
+đã chứng minh. Policy suy ra bốn giai đoạn từ state hiện tại:
+`EARLY_BOSS_PREP`, `RESOURCE_AND_BOARD_SETUP`, `PET_SKILL` và
+`POST_SKILL_FINISHER`.
+
+- Một nước ăn 3 kiếm thường ở đầu trận thường đủ để chuẩn bị HP boss. Boss dưới
+  50% là đã đạt chuẩn bị; không tiếp tục cố đánh từ 49% xuống 40% hoặc 35% chỉ
+  vì chuẩn bị. Mốc khoảng 35% là biên dưới cần tránh đẩy sâu không cần thiết;
+  vùng boss có thể tiến hóa khoảng 30% là kiến thức gameplay, không ghi thành
+  trigger reverse chính xác.
+- Khi thiếu Mana/nộ, ưu tiên known gain đóng đúng phần thiếu theo
+  `min(known_gain, missing) / required`. Requirement đã đủ và refill UNKNOWN
+  nhận 0 điểm. Các nước tương đương ưu tiên ăn ít kiếm hiện có hơn và giữ nhiều
+  kiếm đã biết hơn.
+- Chỉ đếm `GemType.SWORD` đã biết trên đủ 64 ô. `known_sword_count >= 8` nghĩa
+  là bàn đã đạt mật độ kiếm thực dụng. Khi đủ tài nguyên, dùng skill nếu boss dưới 50%
+  hoặc bàn có ít nhất 8 kiếm. Nếu boss đã ở khoảng 30% trở xuống thì dùng skill
+  ngay, không chờ setup thêm.
+- Nếu đủ tài nguyên nhưng boss còn ít nhất 50% và bàn có dưới 8 kiếm, tiếp
+  tục setup: giữ kiếm hiện có; trước hết chỉ xét direct clear không phải kiếm
+  cách mọi kiếm đã biết ít nhất 2 ô theo Manhattan, rồi ưu tiên hàng/cột có 0
+  hoặc ít kiếm. Nếu không có nước đạt khoảng cách 2 và CardUI skill actionable,
+  bắn skill với lý do `SETUP_BLOCKED`, không clear sát vùng kiếm. Chỉ khi CardUI
+  tạm thời không actionable mới dùng fallback có ít ô clear kề kiếm nhất. Đây
+  chỉ là heuristic thay ô; không dự đoán viên mới sẽ là kiếm.
+- Direct/indirect Sword reply của boss vẫn được ghi là rủi ro chiến thuật, không
+  tự động loại nước trong PlayStyle này. Không áp dụng nới lỏng đó sang
+  SIMPLE/CAREFUL.
+- Sau `SUCCESS_PERFECT` đầu tiên của đúng trận, đóng source turn đó và đọc lại
+  HP boss. Ở lượt local sau, nếu HP boss `< 30.000` hoặc tỉ lệ `< 20%`, có thể
+  chưởng thường nếu thẻ hợp lệ/đủ mana; nếu không thì dùng nước kiếm để kết
+  thúc. Nếu boss còn trên cả hai ngưỡng, chưởng thường vẫn bị cấm và có thể
+  chuẩn bị skill lần hai.
+- Lịch sử skill chỉ thuộc đúng `CombatSessionKey`, không lưu executable state
+  qua checkpoint và không được rò sang trận kế. EVOLVE luôn bị cấm cho profile
+  này.
+
+Nếu không có nước tăng tài nguyên đã biết, chọn fallback hợp lệ deterministic;
+không PASS chỉ vì nước còn lại có rủi ro kiếm. Các cổng lifecycle/timer, chống
+stale/duplicate input, source-turn closure, PASS game-owned và QTE giữ nguyên.
+
+Simulator hiện chưa có mô hình damage-to-HP để chứng minh một reply sẽ gây chết
+ngay; hard-survival trong trace vì thế là `UNKNOWN_NO_LETHALITY_MODEL`, không
+được tự gắn nhãn an toàn. Hai PlayStyle cũ vẫn dùng Sword-first/Sword-safe như
+trước.
 
 ## 3. Rule trong game
 
@@ -132,7 +182,7 @@ server đã báo 2/3, phải ưu tiên một SWAP hoặc CAST có tiêu thụ l�
 
 > Xác định bỏ lượt **theo data game**, không tự count bằng code.
 
-### Bước 2 — Ăn kiếm
+### Bước 2 — Ăn kiếm (Đơn giản/Cẩn thận và Pet Skill chuẩn)
 
 Ưu tiên hàng đầu trên bàn cờ là ăn kiếm. Nếu trên bàn cờ có các nước ăn được
 kiếm thì phải ăn.
@@ -264,10 +314,11 @@ refresh"* thì chúng ta **out game chủ động** để ra boss lobby và bắ
 
 ## 7. Tham số cấu hình được
 
-Mọi con số trong rule đều nằm ở `PolicyConfig`
-(`src/pokiguard_v2/basic_policy.py`). Các tham số đã được duyệt cho operator
-có cờ CLI tương ứng trên `tools/basic_auto_bot.py` và `tools/farm_run.py`; các
-tham số còn ghi `—` mới chỉ cấu hình được qua code, chưa có UI/CLI công khai.
+Các ngưỡng BASIC cũ nằm ở `PolicyConfig`. Các ngưỡng Final `SKILL_RUSH` là hằng
+policy đã đóng băng trong `src/pokiguard_v2/basic_policy.py` cho B1/B2 và không
+được chỉnh giữa run. Các tham số được duyệt cho operator có cờ CLI tương ứng
+trên `tools/basic_auto_bot.py` và `tools/farm_run.py`; các tham số ghi `—` không
+có UI/CLI công khai.
 
 | Rule | Trường `PolicyConfig` | Cờ CLI | Mặc định |
 |------|----------------------|--------|----------|
@@ -285,6 +336,10 @@ tham số còn ghi `—` mới chỉ cấu hình được qua code, chưa có UI
 | Thẻ sát thương | `damage_card` | `--damage-card` | `default_attack` |
 | Độ thông minh | `intelligence` | `--intelligence` | `basic` |
 | Biên đồng hồ lượt tối thiểu, inclusive (giây) | `minimum_turn_time_seconds` | `--minimum-action-time` | `1` |
+| SKILL_RUSH hoàn tất chuẩn bị HP | `SKILL_RUSH_HP_PREP_RATIO` | — | `< 0.50` |
+| SKILL_RUSH mật độ kiếm | `SKILL_RUSH_SWORD_DENSITY_MINIMUM` | — | `>= 8` known Sword |
+| SKILL_RUSH finisher HP tuyệt đối | `SKILL_RUSH_FINISHER_HP` | — | `< 30000` |
+| SKILL_RUSH finisher HP tương đối | `SKILL_RUSH_FINISHER_RATIO` | — | `< 0.20` |
 
 Chi phí tiến hóa (1.7.4-b2 hiện quan sát **120**) và chi phí chưởng (hiện quan
 sát **160**) **không bao giờ được hard-code**: policy đọc chi phí thật từ
@@ -292,6 +347,16 @@ runtime (`FusionState.mana_cost`, `CardData.manaCost` / `conditionUse`) và
 fail-closed nếu chưa chứng minh được.
 
 ## 8. Lịch sử thay đổi
+
+- **2026-09-17** — Phase 3C.3 Final Revision đổi từ bắn skill ngay khi đủ tài
+  nguyên sang setup HT7: chuẩn bị boss dưới 50% hoặc bàn có ít nhất 8 kiếm,
+  giữ kiếm và thay ô cách vùng kiếm ít nhất 2 ô khi có nước hợp lệ. Sau Perfect đầu tiên của đúng trận, boss
+  dưới 30.000 HP hoặc dưới 20% cho phép chưởng thường/kiếm ở lượt local sau;
+  source turn, MatchId và default PlayStyle vẫn được khóa riêng.
+- **2026-09-16** — Phase 3C.3 thêm PlayStyle tùy chọn `skill_rush` với nhãn
+  `Chịu đấm ăn xôi` cho đúng profile `LEGENDARY/NONE/PET_SKILL/BASIC`. Missing
+  Mana/nộ đứng trước Sword; direct/indirect boss Sword reply là rủi ro chiến
+  lược được phép và vẫn được ghi telemetry. SIMPLE/CAREFUL không đổi.
 
 - **2026-09-12** — Phase 3C.1 thêm profile backend
   `LEGENDARY/NONE/PET_SKILL`: Pet Skill là action riêng tiêu thụ lượt, không

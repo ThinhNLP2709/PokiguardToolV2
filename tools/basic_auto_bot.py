@@ -59,6 +59,7 @@ from pokiguard_v2.basic_policy import (  # noqa: E402
     PolicyAction,
     PolicyDecision,
     PolicyConfig,
+    SkillRushMatchContext,
 )
 from pokiguard_v2.board_diagnostics import (  # noqa: E402
     analyze_game_state,
@@ -798,6 +799,23 @@ def _farm_owned_guard_requires_stop(
     }
 
 
+def _current_skill_rush_match_context(
+    state: GameState,
+    successful_turns_by_session: dict[Any, list[int]],
+) -> SkillRushMatchContext | None:
+    """Project non-persistent, exact-session Pet Skill success history."""
+
+    session = state.battle.session_key
+    if session is None:
+        return None
+    turns = successful_turns_by_session.get(session, ())
+    return SkillRushMatchContext(
+        session_key=session,
+        successful_pet_skills=len(turns),
+        latest_success_source_turn=max(turns) if turns else None,
+    )
+
+
 @dataclass
 class Counters:
     sessions_started: int = 0
@@ -818,6 +836,16 @@ class Counters:
     pet_skill_after_input_failures: int = 0
     pet_skill_turn_resolution_unconfirmed: int = 0
     pet_skill_same_source_followups: int = 0
+    pet_skill_immediate_kills: int = 0
+    skill_rush_hp_prep_fires: int = 0
+    skill_rush_sword_density_fires: int = 0
+    skill_rush_both_fires: int = 0
+    skill_rush_very_low_hp_fires: int = 0
+    skill_rush_setup_blocked_fires: int = 0
+    skill_rush_early_boss_prep_sword: int = 0
+    skill_rush_finisher_attack: int = 0
+    skill_rush_finisher_sword: int = 0
+    skill_rush_second_pet_skill: int = 0
     duplicate_inputs: int = 0
     duplicate_actions_blocked: int = 0
     misclicks: int = 0
@@ -877,6 +905,9 @@ class Counters:
     evolve_only_turns_completed: int = 0
     evolve_only_authoritative_idle_events: int = 0
     cast_proposals: int = 0
+    skipped_current_sword_for_resource: int = 0
+    selected_move_left_direct_boss_sword: int = 0
+    selected_move_left_indirect_boss_sword: int = 0
     attack_priority_evolve_violations: int = 0
     same_turn_swap_after_cast: int = 0
     policy_branches: dict[str, int] = field(default_factory=dict)
@@ -1275,15 +1306,15 @@ def _must_pause_for_no_safe_move(
     safe_move_count: int,
     first_local_turn: bool | None,
 ) -> bool:
-    """Keep the terminal safety pause except for the mandatory Sword branch."""
+    """Keep the terminal safety pause except for policy-authorized risk."""
 
     # EVOLVE is non-consuming and must always be attempted before board
     # safety is considered. CAST is itself the consuming safe action and also
-    # does not depend on a board swap. Only an otherwise-unsafe Sword SWAP is
-    # exempt among board actions.
+    # does not depend on a board swap.
     if decision.action in {
         PolicyAction.EVOLVE,
         PolicyAction.CAST,
+        PolicyAction.PET_SKILL,
         PolicyAction.PASS,
     }:
         return False
@@ -1304,10 +1335,29 @@ def _must_pause_for_no_safe_move(
         and decision.trace.blocker == "TURN_TIMER_SAFETY_MARGIN"
     ):
         return False
+    # SKILL_RUSH deliberately evaluates direct/indirect Sword replies as
+    # strategic risk. Its selected board actions therefore remain authorized
+    # when every legal candidate fails the generic SIMPLE/CAREFUL safety
+    # classifier. Keep this exemption tied to the explicit SKILL_RUSH swap
+    # branches so another play style cannot inherit it accidentally.
+    skill_rush_strategic_swap = bool(
+        decision.action is PolicyAction.SWAP
+        and decision.move is not None
+        and decision.trace.play_style == "skill_rush"
+        and decision.trace.policy_step
+        in {
+            "SKILL_RUSH_RESOURCE_PROGRESS",
+            "SKILL_RUSH_LEGAL_FALLBACK",
+            "SKILL_RUSH_BOARD_SETUP",
+            "SKILL_RUSH_EARLY_BOSS_PREP_SWORD",
+            "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
+        }
+    )
     return bool(
         legal_move_count > 0
         and safe_move_count == 0
         and first_local_turn is not True
+        and not skill_rush_strategic_swap
         and not (
             decision.action is PolicyAction.SWAP
             and (
@@ -1871,6 +1921,10 @@ def _policy_branch(policy_step: str) -> str:
         return "PET_SKILL"
     if policy_step == "STEP_3_PET_SKILL_RESOURCE":
         return "PET_SKILL_RESOURCE"
+    if policy_step == "SKILL_RUSH_RESOURCE_PROGRESS":
+        return "SKILL_RUSH_RESOURCE_PROGRESS"
+    if policy_step == "SKILL_RUSH_LEGAL_FALLBACK":
+        return "SKILL_RUSH_LEGAL_FALLBACK"
     for branch in (
         "EVOLVE",
         "SWORD",
@@ -1920,6 +1974,39 @@ def _record_policy_observation(
         counters.cast_proposals += 1
     elif decision.action is PolicyAction.PET_SKILL:
         counters.pet_skill_proposals += 1
+        trigger = decision.trace.skill_fire_trigger
+        if trigger == "HP_PREP":
+            counters.skill_rush_hp_prep_fires += 1
+        elif trigger == "SWORD_DENSITY":
+            counters.skill_rush_sword_density_fires += 1
+        elif trigger == "BOTH":
+            counters.skill_rush_both_fires += 1
+        elif trigger == "VERY_LOW_HP":
+            counters.skill_rush_very_low_hp_fires += 1
+        elif trigger == "SETUP_BLOCKED":
+            counters.skill_rush_setup_blocked_fires += 1
+        if decision.trace.finisher_action == "SECOND_PET_SKILL":
+            counters.skill_rush_second_pet_skill += 1
+    if decision.trace.policy_step == "SKILL_RUSH_EARLY_BOSS_PREP_SWORD":
+        counters.skill_rush_early_boss_prep_sword += 1
+    elif decision.trace.policy_step == "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK":
+        counters.skill_rush_finisher_attack += 1
+    elif decision.trace.policy_step == "SKILL_RUSH_POST_SKILL_FINISHER_SWORD":
+        counters.skill_rush_finisher_sword += 1
+    if decision.trace.skipped_current_sword_for_resource:
+        counters.skipped_current_sword_for_resource += 1
+    if (
+        decision.trace.play_style == PlayStyle.SKILL_RUSH.value
+        and decision.action is PolicyAction.SWAP
+        and decision.trace.selected_move_left_direct_boss_sword
+    ):
+        counters.selected_move_left_direct_boss_sword += 1
+    if (
+        decision.trace.play_style == PlayStyle.SKILL_RUSH.value
+        and decision.action is PolicyAction.SWAP
+        and decision.trace.selected_move_left_indirect_boss_sword
+    ):
+        counters.selected_move_left_indirect_boss_sword += 1
     return branch
 
 
@@ -1929,6 +2016,7 @@ def _pet_skill_resource_progress_fields(
     """Build telemetry for the resource branch from its owning decision."""
 
     return {
+        "playStyle": decision.trace.play_style,
         "skillCardId": decision.skill_card_id,
         "requiredMana": decision.trace.required_mana,
         "requiredRage": decision.trace.required_rage,
@@ -1937,12 +2025,28 @@ def _pet_skill_resource_progress_fields(
         "missingMana": decision.trace.missing_mana,
         "missingRage": decision.trace.missing_rage,
         "selectedCandidate": decision.trace.selected_candidate,
+        "candidates": decision.trace.candidates,
         "swordSafe": (
             decision.trace.selected_candidate.safe
             if decision.trace.selected_candidate is not None
             else None
         ),
         "reason": decision.trace.why_selected,
+        "skippedCurrentSwordForResource": (
+            decision.trace.skipped_current_sword_for_resource
+        ),
+        "selectedMoveLeftDirectBossSword": (
+            decision.trace.selected_move_left_direct_boss_sword
+        ),
+        "selectedMoveLeftIndirectBossSword": (
+            decision.trace.selected_move_left_indirect_boss_sword
+        ),
+        "strategicSwordRisk": (
+            "ALLOWED_STRATEGIC_SWORD_RISK"
+            if decision.trace.selected_move_left_direct_boss_sword
+            or decision.trace.selected_move_left_indirect_boss_sword
+            else "NONE"
+        ),
     }
 
 
@@ -2623,6 +2727,7 @@ def _decision_fields(state: GameState, decision: Any, analysis: Any) -> dict[str
         "player": state.player,
         "boss": boss,
         "policyStep": decision.trace.policy_step,
+        "playStyle": decision.trace.play_style,
         "selectedAction": decision.action,
         "timerRemaining": state.battle.turn_time_remaining_seconds,
         "legalMoveCount": analysis.legal_match_producing_moves,
@@ -2649,6 +2754,33 @@ def _decision_fields(state: GameState, decision: Any, analysis: Any) -> dict[str
         ),
         "indirectSwordReplies": (
             selected.indirect_sword_replies if selected is not None else None
+        ),
+        "hardSurvivalStatus": (
+            selected.hard_survival_status if selected is not None else None
+        ),
+        "setupMinSwordDistance": (
+            selected.cleared_non_sword_min_sword_distance
+            if selected is not None
+            else None
+        ),
+        "setupCellsAdjacentToSword": (
+            selected.cleared_non_sword_adjacent_to_sword
+            if selected is not None
+            else None
+        ),
+        "setupCellsDistanceTwoPlus": (
+            selected.cleared_non_sword_distance_two_plus
+            if selected is not None
+            else None
+        ),
+        "skippedCurrentSwordForResource": (
+            decision.trace.skipped_current_sword_for_resource
+        ),
+        "selectedMoveLeftDirectBossSword": (
+            decision.trace.selected_move_left_direct_boss_sword
+        ),
+        "selectedMoveLeftIndirectBossSword": (
+            decision.trace.selected_move_left_indirect_boss_sword
         ),
     }
 
@@ -3255,6 +3387,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         pet_skill_capability_provider = PetSkillCapabilityProvider()
         pet_skill_dispatcher = PetSkillFarmDispatcher()
         pet_skill_warmups: dict[tuple[Any, int], float] = {}
+        successful_pet_skill_turns_by_session: dict[Any, list[int]] = {}
         active_progress_watchdog = ActiveCombatProgressWatchdog()
         dispatcher_ready_sessions: set[Any] = set()
 
@@ -6056,6 +6189,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     and terminal_transition.action.action
                     is PolicyAction.PET_SKILL
                 ):
+                    if (
+                        terminal_combat_snapshot is not None
+                        and terminal_combat_snapshot.result is TerminalResult.WIN
+                    ):
+                        counters.pet_skill_immediate_kills += 1
                     _write(
                         log,
                         "pet_skill_turn_resolved",
@@ -6065,7 +6203,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         nextPlayer=None,
                         evidence="authoritative combat terminal/lifecycle",
                         gameplayInputSent=False,
+                        immediateSkillKill=(
+                            terminal_combat_snapshot is not None
+                            and terminal_combat_snapshot.result is TerminalResult.WIN
+                        ),
                     )
+                if ended_session is not None:
+                    successful_pet_skill_turns_by_session.pop(ended_session, None)
                 fusion_attempts_by_turn.clear()
                 fast_transition_deadline = None
                 pet_skill_resolution_deadline = None
@@ -6891,14 +7035,20 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 if policy.config.pet_skill_profile
                 else None
             )
+            skill_rush_match_context = _current_skill_rush_match_context(
+                policy_state,
+                successful_pet_skill_turns_by_session,
+            )
             analysis = analyze_game_state(
                 policy_state,
                 policy_engine=policy,
                 pet_skill_capability=pet_skill_capability,
+                skill_rush_match_context=skill_rush_match_context,
             )
             basic_decision = policy.decide(
                 policy_state,
                 pet_skill_capability=pet_skill_capability,
+                skill_rush_match_context=skill_rush_match_context,
             )
             if (
                 policy.config.pet_skill_profile
@@ -6977,6 +7127,29 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     srvSeq=state.battle.srv_seq,
                     boardHash=state.battle.board_hash,
                 )
+                if (
+                    decision.trace.play_style == PlayStyle.SKILL_RUSH.value
+                    and decision.trace.pet_skill_success_count_current_match > 0
+                ):
+                    _write(
+                        log,
+                        "skill_rush_post_skill_state",
+                        session=state.battle.session_key,
+                        matchId=state.battle.match_id,
+                        sourceTurn=state.battle.turn_number,
+                        successfulPetSkillsCurrentMatch=(
+                            decision.trace.pet_skill_success_count_current_match
+                        ),
+                        bossHp=decision.trace.post_skill_boss_hp,
+                        bossMaxHp=decision.trace.boss_max_hp,
+                        bossHpRatio=decision.trace.post_skill_boss_hp_ratio,
+                        finisherReady=decision.trace.post_skill_finisher_ready,
+                        finisherTrigger=decision.trace.finisher_trigger,
+                        finisherAction=decision.trace.finisher_action,
+                        selectedAction=decision.action,
+                        policyStep=decision.trace.policy_step,
+                        freshAuthoritativeState=True,
+                    )
                 if decision.action is PolicyAction.PET_SKILL:
                     _write(
                         log,
@@ -6991,8 +7164,24 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         currentRage=decision.trace.current_rage,
                         ready=decision.trace.skill_ready,
                         actionable=decision.trace.skill_actionable,
+                        bossHp=decision.trace.boss_hp,
+                        bossMaxHp=decision.trace.boss_max_hp,
+                        bossHpRatio=decision.trace.boss_hp_ratio,
+                        knownSwordCount=decision.trace.known_sword_count,
+                        hpPrepReady=decision.trace.hp_prep_ready,
+                        swordDensityReady=decision.trace.sword_density_ready,
+                        fireTrigger=decision.trace.skill_fire_trigger,
+                        successfulPetSkillsCurrentMatch=(
+                            decision.trace.pet_skill_success_count_current_match
+                        ),
+                        secondPetSkill=(
+                            decision.trace.finisher_action == "SECOND_PET_SKILL"
+                        ),
                     )
-                elif observed_branch == "PET_SKILL_RESOURCE":
+                elif observed_branch in {
+                    "PET_SKILL_RESOURCE",
+                    "SKILL_RUSH_RESOURCE_PROGRESS",
+                }:
                     _write(
                         log,
                         "pet_skill_resource_progress",
@@ -7393,6 +7582,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 fresh_basic_decision = policy.decide(
                     fresh_pass,
                     pet_skill_capability=fresh_pass_capability,
+                    skill_rush_match_context=_current_skill_rush_match_context(
+                        fresh_pass,
+                        successful_pet_skill_turns_by_session,
+                    ),
                 )
                 fresh_pass_decision = _acceptance_forced_pass_decision(
                     fresh_pass,
@@ -7873,6 +8066,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             fresh_decision = policy.decide(
                 fresh_policy_state,
                 pet_skill_capability=fresh_pet_skill_capability,
+                skill_rush_match_context=_current_skill_rush_match_context(
+                    fresh_policy_state,
+                    successful_pet_skill_turns_by_session,
+                ),
             )
             if (
                 fresh_decision.action is not decision.action
@@ -8214,6 +8411,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 )
                 pet_skill_resolution_deadline = fast_transition_deadline
                 if result is not None and result.success:
+                    successful_turns = successful_pet_skill_turns_by_session.setdefault(
+                        fresh.battle.session_key,
+                        [],
+                    )
+                    if int(fresh.battle.turn_number) not in successful_turns:
+                        successful_turns.append(int(fresh.battle.turn_number))
                     counters.pet_skill_perfect += 1
                     _write(
                         log,
@@ -8223,6 +8426,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         sourceTurnClosed=True,
                         waitFor="BOSS_TURN_OR_TERMINAL",
                         sameSourceTurnInputAllowed=False,
+                        successfulPetSkillsCurrentMatch=len(successful_turns),
+                        skillFireBossHp=decision.trace.boss_hp,
+                        skillFireBossMaxHp=decision.trace.boss_max_hp,
+                        skillFireBossHpRatio=decision.trace.boss_hp_ratio,
+                        skillFireKnownSwordCount=decision.trace.known_sword_count,
+                        skillFireTrigger=decision.trace.skill_fire_trigger,
                     )
                 else:
                     counters.pet_skill_after_input_failures += 1
@@ -8835,6 +9044,31 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 counters.pet_skill_turn_resolution_unconfirmed
             ),
             petSkillSameSourceFollowups=counters.pet_skill_same_source_followups,
+            petSkillImmediateKills=counters.pet_skill_immediate_kills,
+            skillRushFireReasons={
+                "HP_PREP": counters.skill_rush_hp_prep_fires,
+                "SWORD_DENSITY": counters.skill_rush_sword_density_fires,
+                "BOTH": counters.skill_rush_both_fires,
+                "VERY_LOW_HP": counters.skill_rush_very_low_hp_fires,
+                "SETUP_BLOCKED": counters.skill_rush_setup_blocked_fires,
+            },
+            skillRushEarlyBossPrepSword=(
+                counters.skill_rush_early_boss_prep_sword
+            ),
+            skillRushPostSkillFinisher={
+                "DEFAULT_ATTACK": counters.skill_rush_finisher_attack,
+                "SWORD": counters.skill_rush_finisher_sword,
+                "SECOND_PET_SKILL": counters.skill_rush_second_pet_skill,
+            },
+            skippedCurrentSwordForResource=(
+                counters.skipped_current_sword_for_resource
+            ),
+            selectedMoveLeftDirectBossSword=(
+                counters.selected_move_left_direct_boss_sword
+            ),
+            selectedMoveLeftIndirectBossSword=(
+                counters.selected_move_left_indirect_boss_sword
+            ),
             attackPriorityEvolveViolations=(
                 counters.attack_priority_evolve_violations
             ),

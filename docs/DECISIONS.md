@@ -83,6 +83,63 @@ Phase 3C.2 exposes this exact profile through normal Desktop Start/Resume using
 the same immutable controller, FarmRunner policy and PetSkillAction ownership.
 Unsupported and ambiguous Pet Skill profiles remain gated.
 
+## Phase 3C.3 `Chịu đấm ăn xôi` Pet-Skill rush (approved scope 2026-09-16)
+
+`Chịu đấm ăn xôi` is an optional PlayStyle with stable serialized identity
+`skill_rush`. It is not the default. Its initial FarmRunner scope is exactly
+`LEGENDARY / NONE / PET_SKILL / BASIC` with the already accepted Huyền Thoại 7
+automatic-board-effect family. Other loadouts, skill families and ambiguous
+multi-skill sources remain blocked.
+
+For this PlayStyle only:
+
+- the policy derives four stages from the current authoritative state:
+  `EARLY_BOSS_PREP`, `RESOURCE_AND_BOARD_SETUP`, `PET_SKILL`, and
+  `POST_SKILL_FINISHER`;
+- one ordinary early 3-Sword clear is normally sufficient boss preparation.
+  `boss_hp / boss_max_hp < 0.50` completes HP preparation. About 35% is a lower
+  preparation safety margin, not a target, and the approximately 30% evolution
+  danger is gameplay knowledge rather than an exact reverse-proven boundary;
+- when a resource is missing, current missing Mana/Rage remains primary. Known
+  gains are clamped to the current deficits, a completed requirement ranks
+  before partial normalized progress, and a resource already sufficient
+  receives zero readiness credit. Effective requirements come only from the
+  current `PetSkillCapability`;
+- UNKNOWN refill receives zero favorable credit;
+- count only authoritative known `GemType.SWORD` cells. `known_sword_count >= 8`
+  means the revised practical high-Sword-density condition. A ready/actionable
+  skill fires when boss HP is below 50% or the board has at least 8 known Sword; if the
+  boss is already at or below approximately 30%, fire as soon as resources are
+  ready;
+- after HP preparation, preserve known Sword for HT7 and prefer deterministic
+  turnover of known non-Sword cells in zero/low-Sword rows or columns. Once
+  resources are ready, first restrict setup to direct clears whose known
+  non-Sword cells are at Manhattan distance at least 2 from every known Sword;
+  this avoids clearing directly beside the prepared Sword region. If no such
+  legal clear exists and the skill is actionable, fire with
+  `SETUP_BLOCKED` instead of clearing beside the prepared Sword region. A
+  least-adjacent fallback exists only while current CardUI is not actionable.
+  This assigns no predicted Sword-spawn credit;
+- direct and indirect boss Sword replies are recorded as strategic risk rather
+  than hard rejections. This relaxation does not apply to other PlayStyles;
+- EVOLVE remains prohibited. Ordinary Attack is prohibited before the first
+  successful current-match Pet Skill and outside the narrow low-HP finisher;
+- after a current-match `SUCCESS_PERFECT`, close the source turn and reread
+  fresh authoritative boss HP. On a later local turn, boss HP `< 30,000` or
+  ratio `< 20%` enables ordinary Attack or Sword as a finisher. If the boss is
+  above both thresholds, normal setup resumes and a second Pet Skill remains
+  possible;
+- successful-skill history is owned by the exact `CombatSessionKey`, is not
+  serialized to checkpoints, and cannot unlock the next match;
+- lifecycle, timer, foreground, stale/duplicate-input, source-turn, PASS and
+  QTE safety contracts remain unchanged.
+
+The current board simulator has no authoritative damage-to-HP model that can
+prove an immediate lethal reply. Candidate telemetry therefore records
+`UNKNOWN_NO_LETHALITY_MODEL`; it does not claim that a risky move is non-lethal.
+Existing SIMPLE and CAREFUL policies retain their Sword-first and Sword-safe
+semantics unchanged.
+
 ## Phase 2 b2 compatibility repair (user correction 2026-09-11)
 
 Default settings with a normal pet, normal-pet Evolution and the default Attack

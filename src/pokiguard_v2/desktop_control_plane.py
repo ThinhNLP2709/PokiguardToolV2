@@ -498,8 +498,8 @@ class DesktopControlPlane:
         return pinned, None
 
     def _start_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
-        if not snapshot.config.capability.desktop_policy_supported:
-            return snapshot.config.capability.desktop_blocker_reason
+        if snapshot.config.farm_policy_blocker_reason is not None:
+            return snapshot.config.farm_policy_blocker_reason
         reason = self._runtime_command_preflight(snapshot)
         if reason is not None:
             return reason
@@ -511,8 +511,8 @@ class DesktopControlPlane:
         return self._controller.launch_rejection_reason(pinned)
 
     def _resume_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
-        if not snapshot.config.capability.desktop_policy_supported:
-            return snapshot.config.capability.desktop_blocker_reason
+        if snapshot.config.farm_policy_blocker_reason is not None:
+            return snapshot.config.farm_policy_blocker_reason
         reason = self._runtime_command_preflight(snapshot)
         if reason is not None:
             return reason

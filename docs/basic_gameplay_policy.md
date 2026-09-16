@@ -42,7 +42,8 @@ network path.
 
 The current user-facing configuration is:
 
-- `PlayStyle`: `SIMPLE`, `CAREFUL`;
+- `PlayStyle`: `SIMPLE`, `CAREFUL`, optional `SKILL_RUSH` (UI:
+  `Chịu đấm ăn xôi`);
 - `MainPetType`: `NORMAL`, `LEGENDARY` (`EVOLVED`/`MEGA` are visible but
   disabled);
 - `EvolutionTarget`: `NONE`, `NORMAL`, `LEGENDARY` (`EVOLVED`/`MEGA` are
@@ -93,6 +94,61 @@ The implemented branch order is:
 The accepted HT7 and HT2 costs remain fixtures at 200/200 and 200/150. Policy
 reads `effective_mana_cost`/`effective_power_cost`; it contains no Legendary
 rarity cost constant. Net post-skill resources never authorize a later action.
+
+## Phase 3C.3 `SKILL_RUSH` order
+
+The optional `SKILL_RUSH` branch is accepted only for
+`LEGENDARY / NONE / PET_SKILL / BASIC`; all other combinations are blocked by
+`SKILL_RUSH_PROFILE_NOT_IMPLEMENTED`. The serialized identity is `skill_rush`
+and the Desktop label is `Chịu đấm ăn xôi`. SIMPLE remains the default.
+
+After the unchanged combat/actionability and Pet Skill capability gates:
+
+1. Derive boss HP preparation from fresh boss stats. Below 50% is ready. While
+   boss HP is at least 50%, one ordinary deterministic 3-Sword clear may be
+   used after higher-value resource closure. Do not deliberately keep damaging
+   the boss from 49% toward the old 35% margin.
+2. While Mana or Rage is missing, rank known progress toward only the current
+   deficits. Requirements closed and normalized readiness progress come first;
+   equivalent candidates consume fewer known Sword, preserve more result-board
+   Sword, then use calculability, UNKNOWN exposure, sparse-axis turnover and
+   stable tie-breaks. Full resources and UNKNOWN refill receive zero readiness
+   credit.
+3. Count only known Sword on the 64-cell authoritative board. At least 8
+   known Sword is the revised practical high-density setup condition. A ready,
+   actionable skill fires when boss HP is below 50% or known Sword is at least 8.
+   Boss HP at or below approximately 30% uses the `VERY_LOW_HP` fire reason and
+   does not wait for more setup.
+4. If resources are ready but boss HP is at least 50% and Sword count is below
+   8, continue deterministic setup. Preserve existing Sword and first use
+   direct non-Sword clears whose cells are at Manhattan distance at least 2
+   from every known Sword. Within that pool, prefer zero/low-Sword axes. If the
+   board has no such legal clear and current Pet Skill CardUI is actionable,
+   fire with `SETUP_BLOCKED` rather than clear beside Sword. Only a temporarily
+   non-actionable CardUI permits the least-adjacent deterministic fallback.
+   This is board turnover only; it does not predict refill or award future
+   Sword credit.
+5. Direct and indirect boss Sword replies remain telemetry/strategic risk in
+   this PlayStyle. Hard technical/actionability gates and existing proven
+   mandatory-survival rules remain unchanged.
+6. After the first current-match `SUCCESS_PERFECT`, the exact source turn stays
+   closed. On a later authoritative local turn, fresh boss HP `< 30,000` or
+   fresh ratio `< 20%` enables `POST_SKILL_FINISHER`: affordable ordinary
+   Attack first, otherwise deterministic Sword damage. EVOLVE stays disabled.
+7. If the surviving boss is at least 30,000 HP and at least 20%, ordinary
+   Attack remains blocked and normal setup resumes. A later second Pet Skill is
+   legal when its runtime resources and normal fire condition become ready.
+8. Successful-skill history is held only for the exact `CombatSessionKey`; it
+   is neither global nor checkpoint-persisted. PASS remains authoritative and
+   unchanged.
+
+`CandidateTrace.hard_survival_status` is currently
+`UNKNOWN_NO_LETHALITY_MODEL`: the simulator proves board/Sword outcomes but has
+no authoritative next-hit damage model. The policy therefore does not invent a
+lethality gate. The approximately 35% lower preparation margin and approximately
+30% evolution danger are gameplay guidance, not exact reverse-proven triggers.
+Technical safety gates remain hard. SIMPLE/CAREFUL continue through the Phase
+3C.1 Sword-first branch without any ranking or Attack-rule change.
 
 ## Runtime gates
 

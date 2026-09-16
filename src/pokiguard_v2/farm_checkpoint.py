@@ -291,8 +291,14 @@ def validate_for_resume(
         if payload.match_attempts > 0 or gameplay_config is None:
             return ResumeDecision(False, "CHECKPOINT_PROFILE_UNKNOWN", {}, (), 0)
         historical_config = gameplay_config
-    if not historical_config.capability.farm_policy_supported:
-        return ResumeDecision(False, historical_config.capability.blocker_reason, {}, (), 0)
+    if historical_config.farm_policy_blocker_reason is not None:
+        return ResumeDecision(
+            False,
+            historical_config.farm_policy_blocker_reason,
+            {},
+            (),
+            0,
+        )
     if gameplay_config is not None and gameplay_config != historical_config:
         return ResumeDecision(False, "CHECKPOINT_CONFIG_MISMATCH", {}, (), 0)
     counters = {

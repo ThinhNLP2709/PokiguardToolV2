@@ -118,6 +118,7 @@ from pokiguard_v2.pet_configuration import (
     gameplay_config_from_args,
     requires_attack_card_preparation,
 )
+from pokiguard_v2.basic_policy import PlayStyle
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -199,8 +200,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--play-style",
-        choices=("simple", "careful"),
-        default="simple",
+        choices=tuple(value.value for value in PlayStyle),
+        default=PlayStyle.SIMPLE.value,
     )
     add_pet_arguments(parser)
     parser.add_argument(

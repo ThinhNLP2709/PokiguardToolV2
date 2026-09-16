@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -96,7 +97,9 @@ class CoordinatePipelineTests(unittest.TestCase):
         self.assertEqual(solver, (0, 3))
         self.assertEqual(screen, (0, 3))
 
-    def test_mapping_matches_v1_executor_formula_and_bounds(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform")
+    def test_mapping_matches_v1_executor_formula_and_bounds(self, mock_random_uniform) -> None:
+        mock_random_uniform.return_value = 0.0 # Ép sai số = 0 lúc test
         geometry = ClientGeometry(100, 200, 1280, 720)
         calibration = BoardCalibration()
         plan = map_swap_to_pixels(
@@ -193,7 +196,11 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(backend.clicks, 0)
         self.assertEqual(len(backend.positions), 1)
 
-    def test_exactly_two_clicks_are_sent(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform")
+    def test_exactly_two_clicks_are_sent(self, mock_random_uniform) -> None:
+        # Ép random trả về một số dễ tính toán (ví dụ: 0.1)
+        mock_random_uniform.return_value = 0.1
+
         backend = FakeBackend()
         executor = ForegroundClickExecutor(backend, sleeper=lambda _value: None)
         binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
@@ -207,8 +214,14 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
             (plan.first.screen_x, plan.first.screen_y),
             (plan.second.screen_x, plan.second.screen_y),
         ])
+        # Xác nhận kết quả có cộng thêm random
+        self.assertEqual(result.inter_click_delay_seconds, 0.35 + 0.1)
 
-    def test_drag_flicks_quickly_and_releases_past_second_gem_centre(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_drag_flicks_quickly_and_releases_past_second_gem_centre(
+        self,
+        _mock_random_uniform,
+    ) -> None:
         backend = FakeBackend()
         delays: list[float] = []
         executor = ForegroundClickExecutor(
@@ -242,12 +255,17 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
             backend.positions[-1],
             (plan.second.screen_x + expected_overshoot, plan.second.screen_y),
         )
-        self.assertEqual(delays[0], 0.06)
-        self.assertEqual(len(delays), 4)
-        for delay in delays[1:]:
+        self.assertEqual(delays[0], 0.0)
+        self.assertEqual(delays[1], 0.06)
+        self.assertEqual(len(delays), 5)
+        for delay in delays[2:]:
             self.assertAlmostEqual(delay, 0.03)
 
-    def test_drag_flick_duration_is_not_stretched_by_lag_pacing(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_drag_flick_duration_is_not_stretched_by_lag_pacing(
+        self,
+        _mock_random_uniform,
+    ) -> None:
         backend = FakeBackend()
         delays: list[float] = []
         executor = ForegroundClickExecutor(
@@ -267,9 +285,13 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
 
         self.assertEqual(result.pacing_mode, "SEVERE_LAG")
         self.assertEqual(result.drag_duration_seconds, 0.10)
-        self.assertEqual(delays, [0.06, 0.05, 0.05])
+        self.assertEqual(delays, [0.0, 0.06, 0.05, 0.05])
 
-    def test_drag_overshoot_stays_inside_board_in_all_edge_directions(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_drag_overshoot_stays_inside_board_in_all_edge_directions(
+        self,
+        _mock_random_uniform,
+    ) -> None:
         binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
         for first, second in (
             ((0, 1), (0, 0)),
@@ -319,7 +341,11 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(result.sent_clicks, 1)
         self.assertEqual(backend.button_events, ["down", "up"])
 
-    def test_swap_pacing_is_normal_until_recovery_or_delivery_failure(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform")
+    def test_swap_pacing_is_normal_until_recovery_or_delivery_failure(self, mock_random_uniform) -> None:
+        # Ép random trả về 0.0 để giữ nguyên giá trị delay cũ của pacing
+        mock_random_uniform.return_value = 0.0
+
         backend = FakeBackend()
         delays: list[float] = []
         executor = ForegroundClickExecutor(backend, sleeper=delays.append)
@@ -337,14 +363,17 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(
             delays,
             [
+               0.0,   # <--- Thời gian phản xạ trước click 1 (ép = 0.0)
+                0.06,  # Thời gian chờ trỏ chuột ổn định (Settle 1)
+                0.35,  # Thời gian chờ giữa 2 click
+                0.06,  # Thời gian chờ trỏ chuột ổn định (Settle 2)
+                0.0,   # <--- Thời gian phản xạ trước click 1 (lần swap thứ 2)
                 0.06,
-                0.35,
+                1.0,   # Thời gian chờ giữa 2 click (bị lag)
                 0.06,
+                0.0,   # <--- Thời gian phản xạ trước click 1 (lần swap thứ 3)
                 0.06,
-                1.0,
-                0.06,
-                0.06,
-                1.5,
+                1.5,   # Thời gian chờ giữa 2 click (lag nặng)
                 0.06,
             ],
         )
@@ -377,7 +406,10 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(decision.delay_seconds, 0.75)
         self.assertEqual(decision.mode, "SEVERE_LAG")
 
-    def test_focus_loss_before_second_click_never_clicks_desktop(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform")
+    def test_focus_loss_before_second_click_never_clicks_desktop(self, mock_random_uniform) -> None:
+        mock_random_uniform.return_value = 0.1
+
         backend = FakeBackend()
         # status/foreground + pre-mouse foreground for first, then second status false
         backend.foreground_values = [True, True, False]
@@ -390,6 +422,7 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(result.status, ClickStatus.PARTIAL_INPUT)
         self.assertEqual(result.sent_clicks, 1)
         self.assertEqual(backend.clicks, 1)
+        self.assertEqual(result.inter_click_delay_seconds, 0.35 + 0.1)
 
 
 class FarmControlAuthorityTests(unittest.TestCase):

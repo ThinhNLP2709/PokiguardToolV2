@@ -16,7 +16,12 @@ from pathlib import Path
 import re
 from typing import Any, Callable
 
-from .basic_policy import BasicPolicyEngine, PolicyAction, PolicyDecision
+from .basic_policy import (
+    BasicPolicyEngine,
+    PolicyAction,
+    PolicyDecision,
+    SkillRushMatchContext,
+)
 from .board_simulator import MoveEvaluation, evaluate_all_moves
 from .combat_lifecycle import CombatLifecycleState
 from .live_state import runtime_row_to_screen_row, screen_row_to_runtime_row
@@ -252,6 +257,7 @@ def analyze_game_state(
     policy_engine: BasicPolicyEngine | None = None,
     decision_timestamp: str | None = None,
     pet_skill_capability: PetSkillCapability | None = None,
+    skill_rush_match_context: SkillRushMatchContext | None = None,
 ) -> BoardDiagnosticResult:
     if state.phase is not GamePhase.COMBAT or state.board is None:
         raise ValueError("board diagnostics require a stable combat GameState")
@@ -261,6 +267,7 @@ def analyze_game_state(
     decision = (policy_engine or BasicPolicyEngine()).decide(
         state,
         pet_skill_capability=pet_skill_capability,
+        skill_rush_match_context=skill_rush_match_context,
     )
     safe_count = sum(value.sword_risk.safe for value in evaluations)
     dangerous_count = len(evaluations) - safe_count

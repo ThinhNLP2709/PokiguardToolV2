@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-16 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-17 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,11 +24,102 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current accepted gameplay phase | **Phase 3D.1 Performance / Efficiency A-B Comparison — PASS STRONG** |
-| Active phase | **Phase 3D.1 — complete; Phase 3D.2 has not started** |
-| Phase 3 status | **LEGENDARY/NONE/PET_SKILL/BASIC is supported and measured against the default profile; V3 is default and V2 four-direction is optional** |
+| Current accepted gameplay phase | **Phase 3C.3 Final Revision — PASS STRONG** |
+| Active phase | **None; Phase 3C.3 is complete** |
+| Phase 3 status | **`skill_rush` HT7 HP/board setup and match-scoped post-skill finisher are offline- and live-accepted** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
-| Current live automation | **None; Phase 3D.1 A/B blocks completed at 10/10 each and the game returned to BOSS_LOBBY** |
+| Current live automation | **None; fresh Phase 3C.3 B3 completed 1/1 and the game returned to BOSS_LOBBY** |
+
+## Phase 3C.3 Final Revision — PASS STRONG
+
+Source candidate `v1.0.48` adds the optional `skill_rush` PlayStyle displayed as
+`Chịu đấm ăn xôi`. It is not the default and FarmRunner gates it to exactly
+`LEGENDARY / NONE / PET_SKILL / BASIC` with the supported HT7 automatic-board-
+effect family.
+
+The canonical final policy no longer fires merely because resources are ready.
+One ordinary early 3-Sword clear may prepare boss HP; boss ratio below 50%
+completes that preparation. A ready/actionable HT7 skill fires when boss ratio
+is below 50% or the authoritative board contains at least 8 known Sword.
+Approximately 35% remains a lower preparation margin rather than a target, and
+the approximately 30% evolution danger is not claimed as an exact reverse-
+proven trigger.
+
+While resources are missing, current runtime Mana/Rage deficits stay primary.
+Equivalent moves preserve known Sword. With resources ready but neither fire
+condition met, deterministic setup first uses direct non-Sword clears at
+Manhattan distance at least 2 from all known Sword, then ranks zero/low-Sword
+axes. If no isolated legal clear exists and the skill CardUI is actionable, it
+fires with `SETUP_BLOCKED`; the least-adjacent fallback is retained only for a
+temporarily non-actionable CardUI. UNKNOWN refill receives no credit.
+Direct/indirect boss Sword replies remain strategic risk only in this
+PlayStyle. SIMPLE/CAREFUL behavior remains unchanged.
+
+After a current-match `SUCCESS_PERFECT`, runtime closes that source turn and
+stores success only under the exact `CombatSessionKey`. On a later local turn,
+fresh boss HP `< 30,000` or ratio `< 20%` permits ordinary Attack/Sword as a
+finisher. Above both strict thresholds ordinary Attack remains blocked and a
+second skill may be prepared. The state is not checkpoint-serialized and
+cannot leak to the next match.
+
+The superseded immediate-skill B1/B2 runs
+`efc0570ae51a47c0ad19cf17afd9fe0c` and
+`39b33a81f5bd46269afc2eec0aaa9126` remain historical only. Historical default
+B3 `fc0a4f27662c4772b021687d5bcbb49a` remains accepted evidence. A fresh
+default B3 has now also passed. See
+[phase3c3_report.md](phase3c3_report.md) and
+[phase3c3_runbook.md](phase3c3_runbook.md).
+
+Fresh B1 attempt `ba353e09c60c407abb485ae9086496ac` exposed one shared-guard
+integration defect: turn 7 had a complete current board and eight legal moves,
+but the generic `safeMoveCount=0` guard overrode an authorized
+`SKILL_RUSH_RESOURCE_PROGRESS` Mana SWAP. The guard now exempts only the five
+explicit SKILL_RUSH strategic SWAP branches; SIMPLE/CAREFUL and unrelated
+branches retain the fail-closed rule. The interrupted run is excluded and a
+new B1 is required from a restarted tool process.
+
+The next B1 retry `c722ad0f4f5141839eb697d4f555d860` was manually stopped
+after 14 acknowledged SWAPs. Exact live traces showed that the old setup rank
+cleared next to Sword on turns 13 and 23 despite isolated alternatives, then
+continued setup after resources were ready, including at eight Sword on turn
+13 and ten Sword on turn 27. Distance-two setup filtering below the threshold
+and the revised eight-Sword fire floor now repair both causes. The run remains
+excluded and B1 must restart in a fresh process.
+
+Fresh final-policy B1 FarmRun `b0506f59f05b456abeb50413c7ea2810`, MatchId
+`M_a6efe54f`, is **PASS**: exactly 1/1 STRONG WIN, five acknowledged resource
+SWAPs, then HT7 fired at `59,902 / 84,180` boss HP with `218 / 250` resources,
+authoritative `200 / 200` requirements, and nine known Sword. Fire reason was
+`SWORD_DENSITY`. The QTE was PERFECT with 7/7 confirmed directions and one
+Space; the skill killed immediately. EVOLVE, ordinary Attack, PASS,
+same-source-turn follow-up and all technical safety counters were zero. Final
+lifecycle was `BOSS_LOBBY`; combat controller status was `STOPPED` and the
+session was cleared.
+
+Fresh final-policy B2 FarmRun `6c3be41f56b9450ebd4f8d69b5e3f9a8` is
+**PASS**: exactly five attempts, five STRONG wins, five unique MatchIds and no
+extra entry. HT7 fired five times under `SWORD_DENSITY` at 8–12 known Sword,
+met current `200 / 200` resource requirements every time, completed PERFECT
+5/5 with 35/35 confirmed directions, and killed immediately 5/5. The run had
+28/28 acknowledged SWAPs and zero EVOLVE, ordinary Attack/CAST, PASS,
+same-source-turn follow-up, QTE failure, technical failure or safety violation.
+Final lifecycle was `BOSS_LOBBY`; every combat controller was `STOPPED` and
+cleared its session.
+
+Fresh default B3 FarmRun `b48e5b5a729b43b7b2d18547a643dd94`, MatchId
+`M_9e2fca01`, is **PASS** on
+`SIMPLE / BASIC / NORMAL / NORMAL / DEFAULT_ATTACK`: exactly 1/1 STRONG WIN,
+default branches only (`SWORD=5`, `RAGE=3`, `MANA=1`, safe fallback=2), zero
+Pet Skill, zero `SKILL_RUSH_*` leakage, zero PASS/CAST and zero technical safety
+violation. The final SWAP killed the boss and combat closed authoritatively.
+Final lifecycle was `BOSS_LOBBY`; controller status was `STOPPED`.
+
+Final-policy verification is **31/31 PASS**, the combined autonomous/final-
+policy group is **143/143 PASS**, and complete discovery is **1,281/1,281
+PASS**. Compileall and global diff check pass; `test_win32_input` is **18/18
+PASS** across five consecutive repeats. The user-owned input-randomization
+changes remain present. Phase 3C.3 is complete; no Phase 3D.1 rerun, benchmark,
+soak, package or tag was started.
 
 ## Phase 3D.1 — PASS STRONG
 

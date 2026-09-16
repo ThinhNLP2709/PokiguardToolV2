@@ -10,6 +10,7 @@ import tkinter as tk
 import unittest
 
 from pokiguard_v2.boss_entry import FarmTarget
+from pokiguard_v2.basic_policy import PlayStyle
 from pokiguard_v2.desktop_control_plane import (
     DesktopConfig, DesktopControlPlane, LatestCheckpointSummaryProvider,
     SnapshotPoller,
@@ -21,6 +22,7 @@ from pokiguard_v2.farm_checkpoint import LEGACY_CHECKPOINT_SCHEMA, write_checkpo
 from pokiguard_v2.farm_run import FarmRun
 from pokiguard_v2.pet_configuration import (
     DamageCardMode, EvolutionTarget, GameplayConfig, MainPetType,
+    PLAY_STYLE_LABELS,
 )
 from tests.test_desktop_farm_controller import _BlockingRunner, _Runtime
 
@@ -110,6 +112,44 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.manager.snapshot().safety.starts, 0)
         self.assertEqual(self.runner.starts, 0)
         self.assertEqual(self.plane.snapshot().safety.nonzero(), {})
+
+    def test_skill_rush_label_profile_gate_and_preference_roundtrip(self):
+        label = PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH]
+        self.assertEqual(label, "Chịu đấm ăn xôi")
+        self.app.play_style.set(label)
+        self.app._render()
+        self.assertTrue(self.app.start_button.instate(["disabled"]))
+        self.assertIn("chỉ hỗ trợ", self.app.profile_notice_var.get())
+
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        self.app._render()
+        self.assertFalse(self.app.start_button.instate(["disabled"]))
+        self.app.validate_button.invoke()
+
+        restored = self.store.load()
+        self.assertTrue(restored.loaded)
+        self.assertIs(restored.config.play_style, PlayStyle.SKILL_RUSH)
+        self.assertEqual(self.runner.starts, 0)
+
+    def test_skill_rush_active_run_keeps_accepted_playstyle_immutable(self):
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH])
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        self.app._start_farm()
+
+        self.assertTrue(self.runner.entered.wait(1))
+        launch = self.runner.launches[0].config
+        self.assertIs(launch.play_style, PlayStyle.SKILL_RUSH)
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SIMPLE])
+        self.app._render()
+        self.assertEqual(
+            self.app.play_style.get(),
+            PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH],
+        )
+        self.assertEqual(self.runner.launches[0].config, launch)
 
     def test_desktop_start_freezes_exact_pet_skill_profile(self):
         self.button("main_pet", "legendary").invoke()

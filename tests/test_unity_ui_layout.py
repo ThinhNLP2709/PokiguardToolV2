@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from pokiguard_v2.boss_entry_ui import locate_chinh_phuc_attack_card_toggle
 from pokiguard_v2.gameplay_ui import GameplayControl, locate_gameplay_control
@@ -41,7 +42,11 @@ class UnityUiLayoutTests(unittest.TestCase):
         self.assertAlmostEqual(transform.point((0.5, 0.5))[0], 4 / 9)
         self.assertAlmostEqual(transform.point((0.5, 0.5))[1], 0.5)
 
-    def test_live_174_board_evidence_keeps_rightmost_column_on_board(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_live_174_board_evidence_keeps_rightmost_column_on_board(
+        self,
+        _mock_random_uniform,
+    ) -> None:
         """Regression for the first live 1.7.4 swap (2026-09-01 attempt 001).
 
         The opening screenshot placed column 7 near client x=815.  The old
@@ -60,7 +65,11 @@ class UnityUiLayoutTests(unittest.TestCase):
         self.assertEqual(plan.first.client_x, 814)
         self.assertEqual(plan.first.client_x, plan.second.client_x)
 
-    def test_live_174_lower_board_centres_match_attempt_001_evidence(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_live_174_lower_board_centres_match_attempt_001_evidence(
+        self,
+        _mock_random_uniform,
+    ) -> None:
         """The second live retry selected col 5 across screen rows 6 and 7."""
 
         plan = map_swap_to_pixels(
@@ -153,7 +162,11 @@ class UnityUiLayoutTests(unittest.TestCase):
         )
         self.assertEqual(location.metrics["layoutSpace"], "FULL_VIEWPORT")
 
-    def test_board_mapping_bypasses_narrow_ui_canvas_transform(self) -> None:
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_board_mapping_bypasses_narrow_ui_canvas_transform(
+        self,
+        _mock_random_uniform,
+    ) -> None:
         geometry = ClientGeometry(10, 20, 1280, 640)
         plan = map_swap_to_pixels(
             (0, 0),

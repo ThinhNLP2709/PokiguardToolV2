@@ -47,6 +47,11 @@ AUDITION_LABELS = {
     AuditionMode.V3_TWO_DIRECTION: "Audition V3 (2 hướng — mặc định)",
     AuditionMode.V2_FOUR_DIRECTION: "Audition V2 (4 hướng — tương thích)",
 }
+PLAY_STYLE_LABELS = {
+    PlayStyle.SIMPLE: "simple",
+    PlayStyle.CAREFUL: "careful",
+    PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
+}
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
     EvolutionTarget.NONE, EvolutionTarget.NORMAL, EvolutionTarget.LEGENDARY,
@@ -186,9 +191,27 @@ class GameplayConfig:
     def capability(self) -> PetLoadoutCapability:
         return loadout_capability(self.main_pet, self.evolution, self.damage_card)
 
-    def require_farm_policy(self) -> None:
+    @property
+    def farm_policy_blocker_reason(self) -> str | None:
+        if self.play_style is PlayStyle.SKILL_RUSH and not (
+            self.main_pet is MainPetType.LEGENDARY
+            and self.evolution is EvolutionTarget.NONE
+            and self.damage_card is DamageCardMode.PET_SKILL
+            and self.intelligence is Intelligence.BASIC
+        ):
+            return "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED"
         if not self.capability.farm_policy_supported:
-            raise FarmPolicyUnavailable(self.capability.blocker_reason or "FARM_PROFILE_NOT_IMPLEMENTED")
+            return self.capability.blocker_reason or "FARM_PROFILE_NOT_IMPLEMENTED"
+        return None
+
+    @property
+    def farm_policy_supported(self) -> bool:
+        return self.farm_policy_blocker_reason is None
+
+    def require_farm_policy(self) -> None:
+        reason = self.farm_policy_blocker_reason
+        if reason is not None:
+            raise FarmPolicyUnavailable(reason)
 
     def to_dict(self) -> dict[str, Any]:
         return {f.name: (value.value if isinstance(value, Enum) else value)

@@ -6,7 +6,7 @@ network, or game-method call path.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from .board_simulator import (
@@ -22,12 +22,32 @@ from .pet_skill_shadow import (
     PetSkillCapabilityStatus,
     PetSkillFamily,
 )
-from .state import CardState, GameOwnedIdleStatus, GamePhase, GameState, GemType
+from .state import (
+    BoardState,
+    CardState,
+    CombatSessionKey,
+    GameOwnedIdleStatus,
+    GamePhase,
+    GameState,
+    GemType,
+)
+
+
+SKILL_RUSH_HP_PREP_RATIO = 0.50
+SKILL_RUSH_VERY_LOW_HP_RATIO = 0.30
+# Live B1 showed that waiting above eight known Sword can turn a ready HT7
+# setup into an unbounded churn loop: the only remaining moves may disturb the
+# prepared Sword neighborhood faster than new Sword can accumulate. Eight known
+# Sword is therefore the revised practical fire floor.
+SKILL_RUSH_SWORD_DENSITY_MINIMUM = 8
+SKILL_RUSH_FINISHER_HP = 30_000
+SKILL_RUSH_FINISHER_RATIO = 0.20
 
 
 class PlayStyle(str, Enum):
     SIMPLE = "simple"
     CAREFUL = "careful"
+    SKILL_RUSH = "skill_rush"
 
 
 class ManaPriority(str, Enum):
@@ -48,6 +68,47 @@ class PolicyAction(str, Enum):
     PASS = "pass"
     EXIT_MATCH = "exit_match"
     NONE = "none"
+
+
+class SkillRushFireTrigger(str, Enum):
+    HP_PREP = "HP_PREP"
+    SWORD_DENSITY = "SWORD_DENSITY"
+    BOTH = "BOTH"
+    VERY_LOW_HP = "VERY_LOW_HP"
+    SETUP_BLOCKED = "SETUP_BLOCKED"
+
+
+class SkillRushFinisherTrigger(str, Enum):
+    ABSOLUTE_HP = "ABSOLUTE_HP"
+    RELATIVE_HP = "RELATIVE_HP"
+    BOTH = "BOTH"
+    NONE = "NONE"
+
+
+class SkillRushFinisherAction(str, Enum):
+    SWORD = "SWORD"
+    DEFAULT_ATTACK = "DEFAULT_ATTACK"
+    SECOND_PET_SKILL = "SECOND_PET_SKILL"
+    OTHER_EXISTING_FALLBACK = "OTHER_EXISTING_FALLBACK"
+
+
+@dataclass(frozen=True)
+class SkillRushMatchContext:
+    """Non-persistent proof of accepted Pet Skills in one combat session."""
+
+    session_key: CombatSessionKey
+    successful_pet_skills: int = 0
+    latest_success_source_turn: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.successful_pet_skills < 0:
+            raise ValueError("successful_pet_skills cannot be negative")
+        if self.latest_success_source_turn is not None and self.latest_success_source_turn < 0:
+            raise ValueError("latest_success_source_turn cannot be negative")
+        if self.successful_pet_skills == 0 and self.latest_success_source_turn is not None:
+            raise ValueError("a success source turn requires a successful Pet Skill")
+        if self.successful_pet_skills > 0 and self.latest_success_source_turn is None:
+            raise ValueError("successful Pet Skill history requires its latest source turn")
 
 
 @dataclass(frozen=True)
@@ -120,9 +181,9 @@ class PolicyConfig:
     @property
     def low_hp_ratio(self) -> float:
         return (
-            self.low_hp_ratio_simple
-            if self.play_style is PlayStyle.SIMPLE
-            else self.low_hp_ratio_careful
+            self.low_hp_ratio_careful
+            if self.play_style is PlayStyle.CAREFUL
+            else self.low_hp_ratio_simple
         )
 
     @property
@@ -172,6 +233,16 @@ class CandidateTrace:
     known_rage_gain: int
     requirements_completed_after_move: int
     readiness_progress: float
+    hard_survival_status: str
+    known_sword_consumed: int
+    known_sword_preserved: int
+    cleared_non_sword_zero_sword_axes: int
+    cleared_non_sword_low_sword_axes: int
+    cleared_row_sword_density: tuple[tuple[int, int], ...]
+    cleared_column_sword_density: tuple[tuple[int, int], ...]
+    cleared_non_sword_min_sword_distance: int | None
+    cleared_non_sword_adjacent_to_sword: int
+    cleared_non_sword_distance_two_plus: int
 
 
 @dataclass(frozen=True)
@@ -191,6 +262,7 @@ class DecisionTrace:
     turn_number: int | None
     turn_time_remaining_seconds: int | None
     turn_timer_source: str | None
+    play_style: str
     profile: tuple[str, str, str]
     skill_capability_status: str | None
     skill_family: str | None
@@ -203,6 +275,22 @@ class DecisionTrace:
     skill_ready: bool | None
     skill_actionable: bool | None
     pet_skill_candidate: bool
+    skipped_current_sword_for_resource: bool
+    selected_move_left_direct_boss_sword: bool
+    selected_move_left_indirect_boss_sword: bool
+    boss_hp: int | None
+    boss_max_hp: int | None
+    boss_hp_ratio: float | None
+    known_sword_count: int | None
+    hp_prep_ready: bool | None
+    sword_density_ready: bool | None
+    skill_fire_trigger: str | None
+    pet_skill_success_count_current_match: int
+    post_skill_boss_hp: int | None
+    post_skill_boss_hp_ratio: float | None
+    post_skill_finisher_ready: bool
+    finisher_trigger: str
+    finisher_action: str | None
     blocker: str | None = None
 
 
@@ -233,6 +321,122 @@ class PetSkillPolicyContext:
     candidate: bool
 
 
+@dataclass(frozen=True)
+class SkillRushPolicyContext:
+    boss_hp: int | None = None
+    boss_max_hp: int | None = None
+    boss_hp_ratio: float | None = None
+    known_sword_count: int | None = None
+    hp_prep_ready: bool | None = None
+    sword_density_ready: bool | None = None
+    fire_trigger: SkillRushFireTrigger | None = None
+    successful_pet_skills: int = 0
+    post_skill_finisher_ready: bool = False
+    finisher_trigger: SkillRushFinisherTrigger = SkillRushFinisherTrigger.NONE
+    finisher_action: SkillRushFinisherAction | None = None
+
+
+def _known_sword_count(board: BoardState) -> int:
+    return sum(
+        cell.gem is GemType.SWORD
+        for row in board.cells
+        for cell in row
+    )
+
+
+def _known_result_sword_count(value: MoveEvaluation) -> int:
+    return sum(
+        cell.gem is GemType.SWORD
+        for row in value.result
+        for cell in row
+    )
+
+
+def _skill_rush_board_metrics(
+    board: BoardState | None,
+    value: MoveEvaluation,
+) -> tuple[
+    int,
+    int,
+    int,
+    int,
+    tuple[tuple[int, int], ...],
+    tuple[tuple[int, int], ...],
+    int | None,
+    int,
+    int,
+]:
+    """Measure only known board effects; UNKNOWN refill receives no credit."""
+
+    consumed = value.total.cells(GemType.SWORD)
+    preserved = _known_result_sword_count(value)
+    if board is None or not value.clear_rounds:
+        return consumed, preserved, 0, 0, (), (), None, 0, 0
+
+    row_density = tuple(
+        sum(cell.gem is GemType.SWORD for cell in row)
+        for row in board.cells
+    )
+    column_density = tuple(
+        sum(board.cells[row][col].gem is GemType.SWORD for row in range(8))
+        for col in range(8)
+    )
+
+    # The first clear round is the only one whose cell identities can be tied
+    # exactly to the current authoritative board. Later known cascades occur
+    # after gravity and are already represented in the result/preservation
+    # counts; they are not relabelled using stale pre-collapse coordinates.
+    direct_cells = value.clear_rounds[0]
+    swapped_gems = {
+        value.move.first: board.cells[value.move.second[0]][value.move.second[1]].gem,
+        value.move.second: board.cells[value.move.first[0]][value.move.first[1]].gem,
+    }
+    post_swap_swords = tuple(
+        (row, col)
+        for row in range(8)
+        for col in range(8)
+        if swapped_gems.get((row, col), board.cells[row][col].gem)
+        is GemType.SWORD
+    )
+    non_sword_cells = tuple(
+        (row, col)
+        for row, col in direct_cells
+        if swapped_gems.get((row, col), board.cells[row][col].gem)
+        not in {GemType.SWORD, GemType.UNKNOWN}
+    )
+    zero_axes = sum(
+        int(row_density[row] == 0) + int(column_density[col] == 0)
+        for row, col in non_sword_cells
+    )
+    low_axes = sum(
+        int(row_density[row] <= 1) + int(column_density[col] <= 1)
+        for row, col in non_sword_cells
+    )
+    rows = tuple(sorted({row for row, _col in non_sword_cells}))
+    columns = tuple(sorted({col for _row, col in non_sword_cells}))
+    sword_distances = tuple(
+        min(
+            (
+                abs(row - sword_row) + abs(col - sword_col)
+                for sword_row, sword_col in post_swap_swords
+            ),
+            default=15,
+        )
+        for row, col in non_sword_cells
+    )
+    return (
+        consumed,
+        preserved,
+        zero_axes,
+        low_axes,
+        tuple((row, row_density[row]) for row in rows),
+        tuple((col, column_density[col]) for col in columns),
+        min(sword_distances, default=None),
+        sum(distance < 2 for distance in sword_distances),
+        sum(distance >= 2 for distance in sword_distances),
+    )
+
+
 def _resource_trace(value: MoveEvaluation, attribute: str) -> tuple[tuple[str, int, int], ...]:
     result = getattr(value, attribute)
     return tuple(
@@ -244,6 +448,7 @@ def _resource_trace(value: MoveEvaluation, attribute: str) -> tuple[tuple[str, i
 def _candidate_trace(
     value: MoveEvaluation,
     *,
+    board: BoardState | None = None,
     required_mana: int | None = None,
     required_rage: int | None = None,
     missing_mana: int | None = None,
@@ -261,6 +466,17 @@ def _candidate_trace(
     if required_rage and missing_rage is not None and missing_rage > 0:
         completed += int(rage_gain >= missing_rage)
         progress += min(rage_gain, missing_rage) / required_rage
+    (
+        known_sword_consumed,
+        known_sword_preserved,
+        zero_sword_axes,
+        low_sword_axes,
+        row_sword_density,
+        column_sword_density,
+        min_sword_distance,
+        adjacent_to_sword,
+        distance_two_plus,
+    ) = _skill_rush_board_metrics(board, value)
     return CandidateTrace(
         move=value.move,
         horizontal=value.horizontal,
@@ -292,6 +508,19 @@ def _candidate_trace(
         known_rage_gain=rage_gain,
         requirements_completed_after_move=completed,
         readiness_progress=progress,
+        # The current simulator proves board outcomes and Sword replies, but it
+        # has no authoritative damage-to-HP model.  Preserve that boundary in
+        # every candidate instead of relabeling strategic risk as lethal/safe.
+        hard_survival_status="UNKNOWN_NO_LETHALITY_MODEL",
+        known_sword_consumed=known_sword_consumed,
+        known_sword_preserved=known_sword_preserved,
+        cleared_non_sword_zero_sword_axes=zero_sword_axes,
+        cleared_non_sword_low_sword_axes=low_sword_axes,
+        cleared_row_sword_density=row_sword_density,
+        cleared_column_sword_density=column_sword_density,
+        cleared_non_sword_min_sword_distance=min_sword_distance,
+        cleared_non_sword_adjacent_to_sword=adjacent_to_sword,
+        cleared_non_sword_distance_two_plus=distance_two_plus,
     )
 
 
@@ -318,6 +547,26 @@ def _ratio(current: int | None, maximum: int | None) -> float | None:
     return max(0.0, min(1.0, current / maximum))
 
 
+def _skill_rush_fire_trigger(
+    *,
+    boss_hp_ratio: float | None,
+    hp_prep_ready: bool | None,
+    sword_density_ready: bool,
+) -> SkillRushFireTrigger | None:
+    if (
+        boss_hp_ratio is not None
+        and boss_hp_ratio <= SKILL_RUSH_VERY_LOW_HP_RATIO
+    ):
+        return SkillRushFireTrigger.VERY_LOW_HP
+    if hp_prep_ready is True and sword_density_ready:
+        return SkillRushFireTrigger.BOTH
+    if hp_prep_ready is True:
+        return SkillRushFireTrigger.HP_PREP
+    if sword_density_ready:
+        return SkillRushFireTrigger.SWORD_DENSITY
+    return None
+
+
 class BasicPolicyEngine:
     """Apply the user-specified BASIC rules in their exact priority order."""
 
@@ -326,6 +575,7 @@ class BasicPolicyEngine:
         self._skill_trace = PetSkillPolicyContext(
             None, None, None, None, None, None, None, None, None, None, False
         )
+        self._skill_rush_trace = SkillRushPolicyContext()
 
     def _decision(
         self,
@@ -349,11 +599,24 @@ class BasicPolicyEngine:
             missing_mana=skill_trace.missing_mana,
             missing_rage=skill_trace.missing_rage,
         )
-        candidates = tuple(_candidate_trace(value, **trace_kwargs) for value in evaluations)
+        candidates = tuple(
+            _candidate_trace(value, board=state.board, **trace_kwargs)
+            for value in evaluations
+        )
         selected_trace = (
-            _candidate_trace(selected, **trace_kwargs)
+            _candidate_trace(selected, board=state.board, **trace_kwargs)
             if selected is not None
             else None
+        )
+        rush_trace = self._skill_rush_trace
+        skill_rush_resource = step == "SKILL_RUSH_RESOURCE_PROGRESS"
+        skipped_current_sword = bool(
+            skill_rush_resource
+            and selected is not None
+            and any(
+                value.sword_effective > selected.sword_effective
+                for value in evaluations
+            )
         )
         trace = DecisionTrace(
             selected_action=action,
@@ -373,6 +636,7 @@ class BasicPolicyEngine:
             turn_number=state.battle.turn_number,
             turn_time_remaining_seconds=state.battle.turn_time_remaining_seconds,
             turn_timer_source=state.battle.turn_timer_source,
+            play_style=self.config.play_style.value,
             profile=(
                 self.config.main_pet.value,
                 self.config.evolution.value,
@@ -389,6 +653,46 @@ class BasicPolicyEngine:
             skill_ready=skill_trace.ready,
             skill_actionable=skill_trace.actionable,
             pet_skill_candidate=skill_trace.candidate,
+            skipped_current_sword_for_resource=skipped_current_sword,
+            selected_move_left_direct_boss_sword=bool(
+                selected_trace is not None
+                and selected_trace.opponent_sword_replies > 0
+            ),
+            selected_move_left_indirect_boss_sword=bool(
+                selected_trace is not None
+                and selected_trace.indirect_sword_replies > 0
+            ),
+            boss_hp=rush_trace.boss_hp,
+            boss_max_hp=rush_trace.boss_max_hp,
+            boss_hp_ratio=rush_trace.boss_hp_ratio,
+            known_sword_count=rush_trace.known_sword_count,
+            hp_prep_ready=rush_trace.hp_prep_ready,
+            sword_density_ready=rush_trace.sword_density_ready,
+            skill_fire_trigger=(
+                rush_trace.fire_trigger.value
+                if rush_trace.fire_trigger is not None
+                else None
+            ),
+            pet_skill_success_count_current_match=(
+                rush_trace.successful_pet_skills
+            ),
+            post_skill_boss_hp=(
+                rush_trace.boss_hp
+                if rush_trace.successful_pet_skills > 0
+                else None
+            ),
+            post_skill_boss_hp_ratio=(
+                rush_trace.boss_hp_ratio
+                if rush_trace.successful_pet_skills > 0
+                else None
+            ),
+            post_skill_finisher_ready=rush_trace.post_skill_finisher_ready,
+            finisher_trigger=rush_trace.finisher_trigger.value,
+            finisher_action=(
+                rush_trace.finisher_action.value
+                if rush_trace.finisher_action is not None
+                else None
+            ),
             blocker=blocker,
         )
         return PolicyDecision(
@@ -455,6 +759,97 @@ class BasicPolicyEngine:
             value.move,
         )
 
+    def _skill_rush_resource_rank(
+        self,
+        value: MoveEvaluation,
+        board: BoardState,
+    ) -> tuple[object, ...]:
+        """Rank current deficits first, then preserve known Sword on ties."""
+
+        context = self._skill_trace
+        trace = _candidate_trace(
+            value,
+            board=board,
+            required_mana=context.required_mana,
+            required_rage=context.required_rage,
+            missing_mana=context.missing_mana,
+            missing_rage=context.missing_rage,
+        )
+        return (
+            -trace.requirements_completed_after_move,
+            -trace.readiness_progress,
+            trace.known_sword_consumed,
+            -trace.known_sword_preserved,
+            not value.calculable,
+            value.unknown_exposure.cells,
+            -trace.cleared_non_sword_zero_sword_axes,
+            -trace.cleared_non_sword_low_sword_axes,
+            -value.cascade_rounds,
+            -(value.total.total_effective - value.sword_effective),
+            value.sword_risk.danger_score,
+            not value.horizontal,
+            value.move,
+        )
+
+    @staticmethod
+    def _skill_rush_setup_rank(
+        value: MoveEvaluation,
+        board: BoardState,
+    ) -> tuple[object, ...]:
+        """Preserve Sword and turn over known non-Sword cells in sparse axes."""
+
+        trace = _candidate_trace(value, board=board)
+        return (
+            trace.known_sword_consumed,
+            -trace.known_sword_preserved,
+            trace.cleared_non_sword_adjacent_to_sword,
+            -(
+                trace.cleared_non_sword_min_sword_distance
+                if trace.cleared_non_sword_min_sword_distance is not None
+                else 15
+            ),
+            -trace.cleared_non_sword_distance_two_plus,
+            not value.calculable,
+            value.unknown_exposure.cells,
+            -trace.cleared_non_sword_zero_sword_axes,
+            -trace.cleared_non_sword_low_sword_axes,
+            -value.cascade_rounds,
+            -(value.total.total_effective - value.sword_effective),
+            not value.sword_risk.safe,
+            value.sword_risk.danger_score,
+            not value.horizontal,
+            value.move,
+        )
+
+    @staticmethod
+    def _skill_rush_isolated_setup(
+        value: MoveEvaluation,
+        board: BoardState,
+    ) -> bool:
+        """Keep the direct clear at least two orthogonal cells from Sword."""
+
+        trace = _candidate_trace(value, board=board)
+        return bool(
+            trace.known_sword_consumed == 0
+            and trace.cleared_non_sword_min_sword_distance is not None
+            and trace.cleared_non_sword_min_sword_distance >= 2
+        )
+
+    @staticmethod
+    def _skill_rush_prep_sword_rank(value: MoveEvaluation) -> tuple[object, ...]:
+        """Prefer one cheap ordinary 3-Sword clear while HP prep is incomplete."""
+
+        return (
+            value.total.cells(GemType.SWORD) != 3,
+            value.cascade.cells(GemType.SWORD) != 0,
+            value.direct.cells(GemType.SWORD) != 3,
+            value.unknown_exposure.cells,
+            not value.calculable,
+            value.sword_risk.danger_score,
+            not value.horizontal,
+            value.move,
+        )
+
     @staticmethod
     def _mandatory_rank(value: MoveEvaluation) -> tuple[object, ...]:
         return (
@@ -504,6 +899,7 @@ class BasicPolicyEngine:
         state: GameState,
         *,
         pet_skill_capability: PetSkillCapability | None = None,
+        skill_rush_match_context: SkillRushMatchContext | None = None,
     ) -> PolicyDecision:
         failures: list[str] = []
         no_candidates: tuple[MoveEvaluation, ...] = ()
@@ -541,6 +937,7 @@ class BasicPolicyEngine:
             capability.live_card_actionable if capability is not None else None,
             False,
         )
+        self._skill_rush_trace = SkillRushPolicyContext()
         if self.config.intelligence is not Intelligence.BASIC:
             return self._decision(
                 state,
@@ -550,6 +947,19 @@ class BasicPolicyEngine:
                 failures,
                 no_candidates,
                 blocker="REASONING_NOT_IMPLEMENTED",
+            )
+        if (
+            self.config.play_style is PlayStyle.SKILL_RUSH
+            and not self.config.pet_skill_profile
+        ):
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "CONFIG",
+                "SKILL_RUSH is supported only for LEGENDARY/NONE/PET_SKILL/BASIC",
+                failures,
+                no_candidates,
+                blocker="SKILL_RUSH_PROFILE_NOT_IMPLEMENTED",
             )
         if state.phase is not GamePhase.COMBAT or state.board is None:
             return self._decision(
@@ -601,6 +1011,83 @@ class BasicPolicyEngine:
 
         boss = _boss(state)
         boss_hp_current = boss.hp if boss is not None else None
+        boss_max_hp = boss.max_hp if boss is not None else None
+        boss_hp_ratio = _ratio(boss_hp_current, boss_max_hp)
+        known_sword_count = _known_sword_count(state.board)
+        rush_history_current = bool(
+            self.config.play_style is PlayStyle.SKILL_RUSH
+            and skill_rush_match_context is not None
+            and state.battle.session_key is not None
+            and skill_rush_match_context.session_key == state.battle.session_key
+        )
+        successful_pet_skills = (
+            skill_rush_match_context.successful_pet_skills
+            if rush_history_current and skill_rush_match_context is not None
+            else 0
+        )
+        latest_skill_turn = (
+            skill_rush_match_context.latest_success_source_turn
+            if rush_history_current and skill_rush_match_context is not None
+            else None
+        )
+        hp_prep_ready = (
+            boss_hp_ratio < SKILL_RUSH_HP_PREP_RATIO
+            if boss_hp_ratio is not None
+            else None
+        )
+        sword_density_ready = (
+            known_sword_count >= SKILL_RUSH_SWORD_DENSITY_MINIMUM
+        )
+        absolute_finisher = bool(
+            successful_pet_skills > 0
+            and boss_hp_current is not None
+            and 0 < boss_hp_current < SKILL_RUSH_FINISHER_HP
+        )
+        relative_finisher = bool(
+            successful_pet_skills > 0
+            and boss_hp_current is not None
+            and boss_hp_current > 0
+            and boss_hp_ratio is not None
+            and boss_hp_ratio < SKILL_RUSH_FINISHER_RATIO
+        )
+        finisher_trigger = (
+            SkillRushFinisherTrigger.BOTH
+            if absolute_finisher and relative_finisher
+            else SkillRushFinisherTrigger.ABSOLUTE_HP
+            if absolute_finisher
+            else SkillRushFinisherTrigger.RELATIVE_HP
+            if relative_finisher
+            else SkillRushFinisherTrigger.NONE
+        )
+        self._skill_rush_trace = SkillRushPolicyContext(
+            boss_hp=boss_hp_current,
+            boss_max_hp=boss_max_hp,
+            boss_hp_ratio=boss_hp_ratio,
+            known_sword_count=known_sword_count,
+            hp_prep_ready=hp_prep_ready,
+            sword_density_ready=sword_density_ready,
+            successful_pet_skills=successful_pet_skills,
+            post_skill_finisher_ready=(absolute_finisher or relative_finisher),
+            finisher_trigger=finisher_trigger,
+        )
+        if (
+            self.config.play_style is PlayStyle.SKILL_RUSH
+            and successful_pet_skills > 0
+            and latest_skill_turn is not None
+            and (
+                state.battle.turn_number is None
+                or state.battle.turn_number <= latest_skill_turn
+            )
+        ):
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "SKILL_RUSH_SOURCE_TURN_CLOSED",
+                "A successful current-match Pet Skill closes its source turn; wait for a later authoritative local turn",
+                failures,
+                no_candidates,
+                blocker="PET_SKILL_SOURCE_TURN_UNRESOLVED",
+            )
         finisher_threshold = self.config.cast_when_boss_hp_below
         low_boss_hp_mode = bool(
             finisher_threshold > 0
@@ -630,6 +1117,7 @@ class BasicPolicyEngine:
             is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
         )
 
+        rush_fire_trigger: SkillRushFireTrigger | None = None
         if self.config.damage_card is DamageCardMode.PET_SKILL:
             if not self.config.pet_skill_profile:
                 return self._decision(
@@ -719,7 +1207,11 @@ class BasicPolicyEngine:
                     no_candidates,
                     blocker="PET_SKILL_ACTIONABILITY_UNKNOWN",
                 )
-            if ready and capability.live_card_actionable:
+            if (
+                ready
+                and capability.live_card_actionable
+                and self.config.play_style is not PlayStyle.SKILL_RUSH
+            ):
                 self._skill_trace = PetSkillPolicyContext(
                     **{**self._skill_trace.__dict__, "candidate": True}
                 )
@@ -737,11 +1229,97 @@ class BasicPolicyEngine:
                     skill=capability,
                     candidate_count=1,
                 )
-            failures.append(
-                "STEP_1_PET_SKILL: current capability is known but not ready/actionable; "
-                f"missing Mana/Rage={missing_mana}/{missing_rage}, "
-                f"actionable={capability.live_card_actionable}"
+            if self.config.play_style is PlayStyle.SKILL_RUSH and ready:
+                failures.append(
+                    "STEP_1_PET_SKILL: SKILL_RUSH readiness is known; defer to "
+                    "the HP-prep/Sword-density fire condition"
+                )
+            else:
+                failures.append(
+                    "STEP_1_PET_SKILL: current capability is known but not ready/actionable; "
+                    f"missing Mana/Rage={missing_mana}/{missing_rage}, "
+                    f"actionable={capability.live_card_actionable}"
+                )
+
+        if (
+            self.config.play_style is PlayStyle.SKILL_RUSH
+            and self.config.pet_skill_profile
+        ):
+            rush_fire_trigger = _skill_rush_fire_trigger(
+                boss_hp_ratio=boss_hp_ratio,
+                hp_prep_ready=hp_prep_ready,
+                sword_density_ready=sword_density_ready,
             )
+            if self._skill_rush_trace.post_skill_finisher_ready and player_mana is not None:
+                pre_board_attack_cards = tuple(
+                    card
+                    for card in state.cards
+                    if card.is_attack
+                    and card.interactable
+                    and not card.action_pending
+                    and not card.has_used_this_turn
+                    and card.ui_slot is not None
+                    and card.ui_slot_count is not None
+                    and 0 <= card.ui_slot < card.ui_slot_count
+                    and player_mana >= _attack_cost(card)
+                )
+                if pre_board_attack_cards:
+                    card = min(
+                        pre_board_attack_cards,
+                        key=lambda value: (value.card_id, value.object_address),
+                    )
+                    self._skill_rush_trace = replace(
+                        self._skill_rush_trace,
+                        finisher_action=SkillRushFinisherAction.DEFAULT_ATTACK,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.CAST,
+                        "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK",
+                        (
+                            "A successful Pet Skill belongs to this match and fresh "
+                            f"boss HP {boss_hp_current}/{boss_max_hp} is inside the "
+                            f"{self._skill_rush_trace.finisher_trigger.value} finisher range"
+                        ),
+                        failures,
+                        no_candidates,
+                        card=card,
+                        candidate_count=len(pre_board_attack_cards),
+                    )
+
+            if (
+                not self._skill_rush_trace.post_skill_finisher_ready
+                and ready
+                and capability is not None
+                and capability.live_card_actionable
+                and rush_fire_trigger is not None
+            ):
+                self._skill_trace = replace(self._skill_trace, candidate=True)
+                self._skill_rush_trace = replace(
+                    self._skill_rush_trace,
+                    fire_trigger=rush_fire_trigger,
+                    finisher_action=(
+                        SkillRushFinisherAction.SECOND_PET_SKILL
+                        if successful_pet_skills > 0
+                        else None
+                    ),
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.PET_SKILL,
+                    "STEP_1_PET_SKILL",
+                    (
+                        f"Current skill {capability.skill_card_id} is actionable; "
+                        f"Mana/Rage {player_mana}/{player_rage} satisfy "
+                        f"{required_mana}/{required_rage}; final SKILL_RUSH fire "
+                        f"condition={rush_fire_trigger.value}, bossRatio={boss_hp_ratio}, "
+                        f"knownSword={known_sword_count}"
+                    ),
+                    failures,
+                    no_candidates,
+                    skill=capability,
+                    candidate_count=1,
+                )
 
         # STEP 1: EVOLVE is non-turn-consuming and requires a fresh GameState.
         # At the authoritative pass limit EVOLVE is deliberately deferred: it
@@ -833,6 +1411,30 @@ class BasicPolicyEngine:
 
         evaluations = evaluate_all_moves(state.board)
         if not evaluations:
+            if (
+                self.config.play_style is PlayStyle.SKILL_RUSH
+                and self._skill_rush_trace.post_skill_finisher_ready
+                and ready
+                and capability is not None
+                and capability.live_card_actionable
+                and rush_fire_trigger is not None
+            ):
+                self._skill_trace = replace(self._skill_trace, candidate=True)
+                self._skill_rush_trace = replace(
+                    self._skill_rush_trace,
+                    fire_trigger=rush_fire_trigger,
+                    finisher_action=SkillRushFinisherAction.SECOND_PET_SKILL,
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.PET_SKILL,
+                    "STEP_1_PET_SKILL",
+                    "No ordinary post-skill finisher exists on the dead board; a ready second Pet Skill remains legal",
+                    failures,
+                    evaluations,
+                    skill=capability,
+                    candidate_count=1,
+                )
             return self._decision(
                 state,
                 PolicyAction.EXIT_MATCH,
@@ -841,6 +1443,294 @@ class BasicPolicyEngine:
                 failures,
                 evaluations,
                 blocker="EXIT_IS_PROPOSAL_ONLY",
+            )
+
+        if (
+            self.config.play_style is PlayStyle.SKILL_RUSH
+            and self.config.pet_skill_profile
+        ):
+            rush_attack_cards = tuple(
+                card
+                for card in state.cards
+                if card.is_attack
+                and card.interactable
+                and not card.action_pending
+                and not card.has_used_this_turn
+                and card.ui_slot is not None
+                and card.ui_slot_count is not None
+                and 0 <= card.ui_slot < card.ui_slot_count
+            )
+            finisher_ready = self._skill_rush_trace.post_skill_finisher_ready
+            if finisher_ready and player_mana is not None:
+                usable_attacks = tuple(
+                    card
+                    for card in rush_attack_cards
+                    if player_mana >= _attack_cost(card)
+                )
+                if usable_attacks:
+                    card = min(
+                        usable_attacks,
+                        key=lambda value: (value.card_id, value.object_address),
+                    )
+                    self._skill_rush_trace = replace(
+                        self._skill_rush_trace,
+                        finisher_action=SkillRushFinisherAction.DEFAULT_ATTACK,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.CAST,
+                        "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK",
+                        (
+                            "A successful Pet Skill belongs to this match and fresh "
+                            f"boss HP {boss_hp_current}/{boss_max_hp} is inside the "
+                            f"{self._skill_rush_trace.finisher_trigger.value} finisher range"
+                        ),
+                        failures,
+                        evaluations,
+                        card=card,
+                        candidate_count=len(usable_attacks),
+                    )
+                failures.append(
+                    "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK: no affordable actionable ordinary Attack card"
+                )
+            elif finisher_ready:
+                failures.append(
+                    "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK: player Mana UNKNOWN"
+                )
+
+            if finisher_ready:
+                finisher_sword_moves = tuple(
+                    value for value in evaluations if value.sword_effective > 0
+                )
+                if finisher_sword_moves:
+                    selected = min(finisher_sword_moves, key=self._sword_rank)
+                    self._skill_rush_trace = replace(
+                        self._skill_rush_trace,
+                        finisher_action=SkillRushFinisherAction.SWORD,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.SWAP,
+                        "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
+                        (
+                            "No affordable ordinary Attack is available; selected "
+                            "deterministic Sword damage in the proven post-skill "
+                            f"{self._skill_rush_trace.finisher_trigger.value} range"
+                        ),
+                        failures,
+                        finisher_sword_moves,
+                        selected=selected,
+                        skill=capability,
+                    )
+                failures.append(
+                    "SKILL_RUSH_POST_SKILL_FINISHER_SWORD: no deterministic Sword damage move"
+                )
+
+            if (
+                ready
+                and capability is not None
+                and capability.live_card_actionable
+                and rush_fire_trigger is not None
+            ):
+                self._skill_trace = replace(self._skill_trace, candidate=True)
+                self._skill_rush_trace = replace(
+                    self._skill_rush_trace,
+                    fire_trigger=rush_fire_trigger,
+                    finisher_action=(
+                        SkillRushFinisherAction.SECOND_PET_SKILL
+                        if successful_pet_skills > 0
+                        else None
+                    ),
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.PET_SKILL,
+                    "STEP_1_PET_SKILL",
+                    (
+                        f"Current skill {capability.skill_card_id} is actionable; "
+                        f"Mana/Rage {player_mana}/{player_rage} satisfy "
+                        f"{required_mana}/{required_rage}; final SKILL_RUSH fire "
+                        f"condition={rush_fire_trigger.value}, bossRatio={boss_hp_ratio}, "
+                        f"knownSword={known_sword_count}"
+                    ),
+                    failures,
+                    evaluations,
+                    skill=capability,
+                    candidate_count=1,
+                )
+
+            if missing_mana or missing_rage:
+                progress_moves = tuple(
+                    value
+                    for value in evaluations
+                    if (
+                        (bool(missing_mana) and value.total.effective(GemType.MANA) > 0)
+                        or (bool(missing_rage) and value.total.effective(GemType.RAGE) > 0)
+                    )
+                )
+                if progress_moves:
+                    selected = min(
+                        progress_moves,
+                        key=lambda value: self._skill_rush_resource_rank(
+                            value,
+                            state.board,
+                        ),
+                    )
+                    selected_trace = _candidate_trace(
+                        selected,
+                        board=state.board,
+                        required_mana=required_mana,
+                        required_rage=required_rage,
+                        missing_mana=missing_mana,
+                        missing_rage=missing_rage,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.SWAP,
+                        "SKILL_RUSH_RESOURCE_PROGRESS",
+                        (
+                            "Selected deterministic progress toward current Pet Skill "
+                            "deficits before boss preparation; "
+                            f"closes={selected_trace.requirements_completed_after_move}, "
+                            f"progress={selected_trace.readiness_progress:.6f}, "
+                            f"knownSwordConsumed={selected_trace.known_sword_consumed}"
+                        ),
+                        failures,
+                        evaluations,
+                        selected=selected,
+                        skill=capability,
+                    )
+
+                selected = min(
+                    evaluations,
+                    key=lambda value: self._skill_rush_setup_rank(value, state.board),
+                )
+                failures.append(
+                    "SKILL_RUSH_RESOURCE_PROGRESS: no deterministic legal move "
+                    "advances a current missing requirement"
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "SKILL_RUSH_LEGAL_FALLBACK",
+                    (
+                        "No known Mana/Rage progress exists; preserved known Sword "
+                        "and preferred deterministic sparse-region turnover without "
+                        "assigning credit to UNKNOWN refill"
+                    ),
+                    failures,
+                    evaluations,
+                    selected=selected,
+                    skill=capability,
+                )
+
+            if ready and rush_fire_trigger is None:
+                failures.append(
+                    "STEP_1_PET_SKILL: resources ready but boss HP prep and Sword-density fire conditions are both false"
+                )
+            elif ready and capability is not None and not capability.live_card_actionable:
+                failures.append(
+                    "STEP_1_PET_SKILL: fire condition is ready but current Pet Skill CardUI is not actionable"
+                )
+
+            if (
+                boss_hp_ratio is not None
+                and boss_hp_ratio >= SKILL_RUSH_HP_PREP_RATIO
+            ):
+                prep_sword_moves = tuple(
+                    value
+                    for value in evaluations
+                    if value.direct.cells(GemType.SWORD) == 3
+                    and value.cascade.cells(GemType.SWORD) == 0
+                    and value.total.cells(GemType.SWORD) == 3
+                )
+                if prep_sword_moves:
+                    selected = min(
+                        prep_sword_moves,
+                        key=self._skill_rush_prep_sword_rank,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.SWAP,
+                        "SKILL_RUSH_EARLY_BOSS_PREP_SWORD",
+                        (
+                            f"Boss HP ratio {boss_hp_ratio:.6f} is not below 0.50; "
+                            "selected one ordinary 3-Sword clear after resource "
+                            "requirements were satisfied"
+                        ),
+                        failures,
+                        prep_sword_moves,
+                        selected=selected,
+                        skill=capability,
+                    )
+                failures.append(
+                    "SKILL_RUSH_EARLY_BOSS_PREP_SWORD: no ordinary deterministic 3-Sword clear"
+                )
+
+            isolated_setup_moves = tuple(
+                value
+                for value in evaluations
+                if self._skill_rush_isolated_setup(value, state.board)
+            )
+            setup_moves = isolated_setup_moves or evaluations
+            if not isolated_setup_moves:
+                failures.append(
+                    "SKILL_RUSH_BOARD_SETUP: no legal direct clear is at least "
+                    "two orthogonal cells from every known Sword"
+                )
+                if capability is not None and capability.live_card_actionable:
+                    self._skill_trace = replace(self._skill_trace, candidate=True)
+                    self._skill_rush_trace = replace(
+                        self._skill_rush_trace,
+                        fire_trigger=SkillRushFireTrigger.SETUP_BLOCKED,
+                        finisher_action=(
+                            SkillRushFinisherAction.SECOND_PET_SKILL
+                            if successful_pet_skills > 0
+                            else None
+                        ),
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.PET_SKILL,
+                        "STEP_1_PET_SKILL",
+                        (
+                            f"Current skill {capability.skill_card_id} is actionable "
+                            "and resources are ready, but no legal direct setup clear "
+                            "is distance-two isolated from known Sword; fire instead "
+                            "of disturbing the prepared Sword region"
+                        ),
+                        failures,
+                        evaluations,
+                        skill=capability,
+                        candidate_count=1,
+                    )
+                failures.append(
+                    "STEP_1_PET_SKILL: distance-two setup is blocked but current "
+                    "Pet Skill CardUI is not actionable; use least-adjacent fallback"
+                )
+            selected = min(
+                setup_moves,
+                key=lambda value: self._skill_rush_setup_rank(value, state.board),
+            )
+            if finisher_ready:
+                self._skill_rush_trace = replace(
+                    self._skill_rush_trace,
+                    finisher_action=SkillRushFinisherAction.OTHER_EXISTING_FALLBACK,
+                )
+            return self._decision(
+                state,
+                PolicyAction.SWAP,
+                "SKILL_RUSH_BOARD_SETUP",
+                (
+                    "Selected deterministic setup by known Sword preservation, "
+                    "distance-two Sword isolation, zero/low-Sword-axis turnover, "
+                    "and stable fallback ordering; "
+                    "UNKNOWN refill receives zero Sword credit"
+                ),
+                failures,
+                evaluations,
+                selected=selected,
+                skill=capability,
             )
 
         # STEP 2: deterministic Sword collection includes known cascades.

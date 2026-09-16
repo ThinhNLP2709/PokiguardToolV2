@@ -27,7 +27,7 @@ thư mục game. Release Candidate đã được clean-build và live-validate t
 e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
-The current source compatibility version is `v1.0.47`. The accepted packaged
+The current source compatibility version is `v1.0.48`. The accepted packaged
 Phase 2F.2 artifact above remains `v1.0.0+15`; rebuild packaging before
 distributing the maintenance version.
 
@@ -70,6 +70,8 @@ computer-vision path remains available as a fallback.
 - no HP, damage, reward, or server-authoritative state modification.
 
 See [AGENTS.md](AGENTS.md) for workspace rules, the
+[Phase 3C.3 report](docs/phase3c3_report.md),
+[Phase 3C.3 runbook](docs/phase3c3_runbook.md),
 [Phase 3C.2 report](docs/phase3c2_report.md),
 [Phase 3C.2 runbook](docs/phase3c2_runbook.md),
 [Phase 3A.2 report](docs/phase3a2_report.md),
@@ -82,8 +84,15 @@ See [AGENTS.md](AGENTS.md) for workspace rules, the
 
 ## Current status
 
-Phase 3C.2 Desktop Pet Skill integration is accepted as **PASS STRONG** at
-`v1.0.47`. Phase 3D.1 has not started.
+The active work is the reopened Phase 3C.3 Final Revision at source version
+`v1.0.48`. The optional `Chịu đấm ăn xôi` policy now prepares HT7 with boss HP
+below 50% or at least 8 known Sword, preserves Sword through distance-two
+setup clears, and allows
+a match-scoped post-skill finisher at fresh boss HP below 30,000 or below 20%.
+Implementation, offline regression, and fresh revised B1/B2/B3 are complete;
+Phase 3C.3 is accepted as **PASS STRONG** at `v1.0.48`. Earlier
+Phase 3C.3 B1/B2 and Phase 3D.1 evidence remain historical because they used
+the superseded immediate-skill candidate.
 The exact b4 hash, all moved TypeInfo roots, GameAssembly native bindings, and
 shifted Dot tail fields are implemented. Managed Board/turn/ACK/card/Fusion/
 pet/lifecycle fields used by default mode remain stable from b3. Offline
@@ -154,8 +163,10 @@ From the project root:
 python -m unittest discover -s tests -v
 ```
 
-The accepted Phase 2F.2 RC baseline passes 740 tests. The current `v1.0.47`
-source baseline passes **1236 tests** and includes regression coverage
+The accepted Phase 2F.2 RC baseline passes 740 tests. The `v1.0.47` accepted
+source baseline passes **1236 tests**; the `v1.0.48` Phase 3C.3 Final Revision
+passes **1281 tests** and adds
+focused Pet-Skill-rush coverage and includes regression coverage
 for the Pet configuration/capability matrix, preference and checkpoint
 migrations, UI visibility/locking, safe future-profile gates, and the unchanged
 Phase 3B.3 Pet Skill primitive. It also retains coverage

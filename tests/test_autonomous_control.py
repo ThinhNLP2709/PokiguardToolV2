@@ -2674,6 +2674,7 @@ class AutonomousGuardTests(unittest.TestCase):
         for action, step in (
             (PolicyAction.EVOLVE, "STEP_1_EVOLVE"),
             (PolicyAction.CAST, "STEP_5_CAST"),
+            (PolicyAction.PET_SKILL, "STEP_1_PET_SKILL"),
             (PolicyAction.PASS, "STEP_6_PASS"),
         ):
             with self.subTest(action=action):
@@ -2691,6 +2692,61 @@ class AutonomousGuardTests(unittest.TestCase):
                         first_local_turn=False,
                     )
                 )
+
+    def test_no_safe_move_pause_allows_only_explicit_skill_rush_swaps(self) -> None:
+        base = BasicPolicyEngine().decide(self._state())
+        self.assertIsNotNone(base.move)
+
+        for step in (
+            "SKILL_RUSH_RESOURCE_PROGRESS",
+            "SKILL_RUSH_LEGAL_FALLBACK",
+            "SKILL_RUSH_BOARD_SETUP",
+            "SKILL_RUSH_EARLY_BOSS_PREP_SWORD",
+            "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
+        ):
+            with self.subTest(step=step):
+                rushed = replace(
+                    base,
+                    trace=replace(
+                        base.trace,
+                        play_style="skill_rush",
+                        policy_step=step,
+                    ),
+                )
+                self.assertFalse(
+                    _must_pause_for_no_safe_move(
+                        rushed,
+                        legal_move_count=8,
+                        safe_move_count=0,
+                        first_local_turn=False,
+                    )
+                )
+
+        standard = replace(
+            base,
+            trace=replace(
+                base.trace,
+                play_style="simple",
+                policy_step="SKILL_RUSH_RESOURCE_PROGRESS",
+            ),
+        )
+        unrelated_rush = replace(
+            base,
+            trace=replace(
+                base.trace,
+                play_style="skill_rush",
+                policy_step="STEP_3_RAGE",
+            ),
+        )
+        for decision in (standard, unrelated_rush):
+            self.assertTrue(
+                _must_pause_for_no_safe_move(
+                    decision,
+                    legal_move_count=8,
+                    safe_move_count=0,
+                    first_local_turn=False,
+                )
+            )
 
     def test_exact_direct_runtime_swap_transition_proves_acceptance(self) -> None:
         state = self._state()
