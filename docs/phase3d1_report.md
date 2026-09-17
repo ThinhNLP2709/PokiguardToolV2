@@ -1,138 +1,193 @@
-# Phase 3D.1 — Controlled Performance / Efficiency A-B Comparison
+# Phase 3D.1 — Controlled A/B Performance Comparison
 
 ## Status
 
 **PASS STRONG**
 
-- Accepted Phase 3C.2 base: `345cf9b026ab3c6435db511016c1ee25cad05f47`
-- Benchmark source commit: `292114f4e3adf5fbf8b6cdd0cc0e78816d5dc204`
-- Source version: `v1.0.47`
+- Accepted Phase 3C.3 base and frozen benchmark source:
+  `44fea0cc3e89d670dc273a5fae7c5cf94e8809b0`
+- Source version: `v1.0.48`
 - Runtime instrumentation added: none
-- Live B0: skipped because accepted structured telemetry already supplied the required boundaries
 - Valid sample: 10 Mode A matches and 10 Mode B matches
-- Critical safety violations: 0
-- Energy: `NOT_MEASURED`
+- Critical technical or QTE safety violations: 0
+- Energy saving: `NOT_MEASURED`
 
-Phase 3D.1 compared the two accepted complete profiles. It did not retune gameplay policy, input pacing, Pet Skill readiness, QTE timing, Evolution, Attack, PASS, recovery, or the boss target.
+Phase 3D.1 measured the accepted strategies without changing gameplay policy,
+input timing, QTE behavior, recovery behavior or the target boss between the
+two blocks. The repository's accepted Phase 3C.3 policy is authoritative: its
+Sword-density floor is eight known Sword and it includes the documented
+`SETUP_BLOCKED` fire path.
 
 ## Method
 
 | Field | Value |
 |---|---|
-| Mode A | Normal / Normal / Default Attack / BASIC |
-| Mode B | Legendary / None / Pet Skill / BASIC |
+| Mode A | `simple / BASIC / NORMAL / NORMAL / DEFAULT_ATTACK` |
+| Mode B | `skill_rush / BASIC / LEGENDARY / NONE / PET_SKILL` |
 | Application path | `run_tool.bat` → Desktop UI → bounded FarmRunner |
-| Source/build | Commit `292114f4`, version `v1.0.47` |
+| Source/build | Commit `44fea0cc`, version `v1.0.48` |
 | Boss | Starburst `1289` for both blocks |
-| Run order | A block, then B block |
-| Board input | Two Click for both included blocks |
+| Run order | Mode A, full stop at boss lobby, then Mode B |
+| Board input | Two Click for both blocks |
 | Target / max attempts | 10 / 15 per mode |
 | Manual combat assistance | None |
-| Combat boundary | accepted opening timestamp → FarmRunner terminal accounting timestamp |
+| Combat boundary | accepted match opening → FarmRunner terminal accounting |
 | Farm-cycle boundary | latest proven safe boss lobby before entry → proven safe boss lobby after result |
 | Major-action formula | SWAP sent + EVOLVE attempts + ordinary CAST sent + Pet Skill attempts + PASS |
-| Energy | `NOT_MEASURED`; local turns are not an authoritative game-energy balance |
+| Energy | `NOT_MEASURED`; local turns do not prove account-energy consumption |
 
-The profiles intentionally use different pets and loadouts. The result therefore compares profile B with profile A; it does not isolate the Pet Skill card by itself. Natural board RNG was retained and every valid completed match remained in the primary dataset.
+The profiles intentionally use different pets and loadouts. Results compare the
+complete accepted profiles and do not isolate the Pet Skill card. Natural board
+variation was retained and all 20 valid matches remain in the primary sample.
 
 ## Source runs
 
 | Mode | FarmRunId | Attempts | Completed | W/L/U | Final state |
 |---|---|---:|---:|---:|---|
-| A Default | `f7bb98e3a52b47158b4c20822688d0aa` | 10 | 10 | 10/0/0 | `COMPLETED / FARM_TARGET_COMPLETED` |
-| B Pet Skill | `51d49d61b4a946c4855872f8a605ab2f` | 10 | 10 | 10/0/0 | `COMPLETED / FARM_TARGET_COMPLETED` |
+| A Default | `2876f169879548f790b3920e6894e491` | 10 | 10 | 10/0/0 | `FARM_RUN_COMPLETE / FARM_TARGET_COMPLETED / BOSS_LOBBY` |
+| B Pet Skill | `e8a38744abbb4120b190118063c9a4dd` | 10 | 10 | 10/0/0 | `FARM_RUN_COMPLETE / FARM_TARGET_COMPLETED / BOSS_LOBBY` |
 
-Both runs ended at a proven boss lobby. Neither used a technical recovery, produced an UNKNOWN result, or required more than one attempt per completion.
+Neither run used a technical recovery, produced an UNKNOWN result or required
+more than one attempt per completion. There are no exclusions.
 
-One preliminary A-profile run, `f31cebe0d6aa4afaab8d3261b268832b`, is explicitly excluded. The operator pressed emergency stop while diagnosing an apparent Start delay, and that setup run still used DRAG before Two Click was pinned as the common included setting. It completed no match and is retained in the dataset's `excluded_runs` section with the analyzer parse error caused by its missing terminal timestamp.
+## Comparison
 
-## Results
+Positive reductions mean Mode B used less or was faster.
 
 | Metric | A Default | B Pet Skill | Difference A−B | B reduction |
 |---|---:|---:|---:|---:|
 | Completed matches | 10 | 10 | 0 | — |
 | Attempts | 10 | 10 | 0 | 0.000% |
 | Wins | 10 | 10 | 0 | — |
-| Mean combat duration | 144.383 s | 125.594 s | 18.789 s | 13.013% |
-| Median combat duration | 134.690 s | 127.323 s | 7.367 s | 5.470% |
-| Mean farm-cycle duration | 156.643 s | 134.495 s | 22.148 s | 14.139% |
-| Median farm-cycle duration | 148.070 s | 138.183 s | 9.887 s | 6.677% |
-| Mean SWAP sent | 10.200 | 9.000 | 1.200 | 11.765% |
-| Median SWAP sent | 9.500 | 9.500 | 0.000 | 0.000% |
-| Total SWAP sent | 102 | 90 | 12 | 11.765% |
-| Mean major actions | 11.900 | 9.600 | 2.300 | 19.328% |
-| Total major actions | 119 | 96 | 23 | 19.328% |
-| Mean local turns | 10.500 | 9.600 | 0.900 | 8.571% |
+| Mean combat duration | 223.822 s | 127.056 s | 96.766 s | 43.233% |
+| Median combat duration | 217.256 s | 125.677 s | 91.579 s | 42.153% |
+| Mean farm-cycle duration | 235.905 s | 136.189 s | 99.716 s | 42.270% |
+| Median farm-cycle duration | 228.820 s | 134.346 s | 94.474 s | 41.287% |
+| Mean SWAP sent | 13.300 | 7.900 | 5.400 | 40.602% |
+| Median SWAP sent | 13.500 | 8.000 | 5.500 | 40.741% |
+| Total SWAP sent | 133 | 79 | 54 | 40.602% |
+| Mean major actions | 16.600 | 8.900 | 7.700 | 46.386% |
+| Median major actions | 16.000 | 9.000 | 7.000 | 43.750% |
+| Total major actions | 166 | 89 | 77 | 46.386% |
+| Mean local turns | 15.100 | 8.900 | 6.200 | 41.060% |
 | Attempts per completion | 1.000 | 1.000 | 0.000 | 0.000% |
 
-Combat-duration distributions:
+Duration distributions:
 
-| Mode | Min | Max | Population stddev |
-|---|---:|---:|---:|
-| A Default | 95.264 s | 207.547 s | 32.590 s |
-| B Pet Skill | 86.881 s | 165.562 s | 25.222 s |
+| Metric | A min / max / stddev | B min / max / stddev |
+|---|---:|---:|
+| Combat | 172.185 / 298.766 / 35.460 s | 87.780 / 174.825 / 29.530 s |
+| Farm cycle | 184.336 / 310.277 / 35.096 s | 97.053 / 188.420 / 30.313 s |
 
-Farm-cycle distributions:
+Both mean and median favor Mode B for combat and full-cycle duration. Mode B
+also used fewer SWAPs and fewer major actions in this bounded benchmark.
 
-| Mode | Min | Max | Population stddev |
-|---|---:|---:|---:|
-| A Default | 106.366 s | 219.163 s | 32.411 s |
-| B Pet Skill | 94.608 s | 172.963 s | 24.918 s |
-
-In this bounded benchmark, profile B was faster on both mean and median combat duration. It also reduced mean full-cycle time, mean SWAP count, mean local turns, and mean major gameplay actions. Median SWAP count was identical, so the action advantage was visible in the mean and totals rather than every match.
-
-## Action and QTE audit
+## Action and policy audit
 
 | Counter | A Default | B Pet Skill |
 |---|---:|---:|
-| EVOLVE attempts | 14 | 0 |
-| Ordinary Attack CAST sent | 3 | 0 |
-| Pet Skill attempts/accepted | 0 | 6 |
-| Pet Skill PERFECT | 0 | 6 |
-| Pet Skill GOOD/BAD | 0/0 | 0/0 |
-| PASS | 0 | 0 |
+| EVOLVE attempts | 16 | 0 |
+| Ordinary Attack CAST sent | 7 | 0 |
+| Pet Skill attempts / accepted | 0 / 0 | 10 / 10 |
+| Pet Skill PERFECT | 0 | 10 |
+| Pet Skill GOOD / BAD | 0 / 0 | 0 / 0 |
+| PASS | 10 | 0 |
+| Skill-rush branch leakage in Mode A | 0 | n/a |
 
-Mode A never invoked PetSkillAction. Mode B preserved the no-EVOLVE/no-ordinary-Attack contract. Four Mode B matches killed the boss before Pet Skill became actionable; the remaining six each used one accepted Pet Skill and all six resolved PERFECT.
+Mode B used one accepted Pet Skill in every match. All ten were PERFECT and all
+ten were immediate first-skill kills, giving a measured first-skill kill rate
+of 100%. No boss survived the first skill, so no post-skill finisher or second
+Pet Skill was needed.
 
-Mode B QTE evidence is 42/42 confirmed directions and six in-window Space presses. Wrong, skipped, duplicate, stale, unconfirmed, blind-retry directions, duplicate Space, and outside-window Space are all zero.
+Mode B fire reasons:
 
-## Reliability and safety
+| Reason | Count |
+|---|---:|
+| `HP_PREP` | 1 |
+| `SWORD_DENSITY` | 7 |
+| `BOTH` | 1 |
+| `VERY_LOW_HP` | 0 |
+| `SETUP_BLOCKED` | 1 |
 
-Both modes achieved 100% completion and 100% win rate with 10 attempts for 10 completions. Technical aborts, technical recoveries, result conflicts, UNKNOWN results, PASS, wrong-third-PASS events, misclicks, partial inputs, wrong-turn inputs, stale actions, boss-turn inputs, postmatch inputs, lobby inputs, after-combat inputs, and duplicate inputs are all zero in the included samples.
+At first skill, mean boss HP ratio was 70.8%, median 72.5%, range 40.3–84.6%.
+Mean known Sword count was 8.4, median 8, range 4–13. The setup recorded one
+early boss-preparation Sword action, 18 resource choices that skipped a current
+Sword opportunity, 25 choices leaving a direct boss Sword reply and nine
+choices leaving an indirect reply. Those reply counters are strategic-risk
+telemetry for this aggressive PlayStyle, not technical safety failures.
 
-Memory and result-UI classification agreed for all 20 completed matches. The analyzer reports `critical_safety_violations=0`, consistent result accounting, identical source/build declarations, the same verified boss, and a complete PASS STRONG sample.
+## Four-Sword final match
+
+Mode B match `M_bcf5a8ff`, attempt 10, fired at turn 15 with:
+
+- boss HP `69,276 / 84,180` (`82.295%`);
+- four authoritative known Sword;
+- `270 / 250` current Mana/Rage against `200 / 200` requirements;
+- one legal direct clear, but no direct setup clear at Manhattan distance at
+  least two from every known Sword.
+
+The recorded reason is `SETUP_BLOCKED`, not HP preparation or Sword density.
+The policy trace proves the distance-two setup branch was exhausted and states
+that firing avoids disturbing the prepared Sword region. The analyzer now
+requires that evidence and rejects a bare `SETUP_BLOCKED` label without it.
+The skill resolved PERFECT and killed immediately. The operator visually
+observed a critical hit; structured telemetry proves the immediate kill but
+does not expose a separate critical-hit field.
+
+This action matches the accepted Phase 3C.3 policy and is not a technical or
+policy-contract violation. It does expose a strategic limitation: when isolated
+setup is blocked, the current policy may fire with high boss HP and a low Sword
+count, so one-hit success can depend on damage variance. Phase 3D.1 preserves
+that result and does not retune the strategy mid-benchmark.
+
+## QTE, reliability and safety
+
+Mode B recorded 70/70 confirmed directions and ten in-window Space presses.
+Wrong, skipped, duplicate, stale, unconfirmed and blind-retry directions were
+all zero. Duplicate or outside-window Space was zero.
+
+Both modes achieved 10 wins in 10 attempts. Technical aborts, recoveries,
+result conflicts, UNKNOWN results, misclicks, partial inputs, wrong-turn
+inputs, stale actions, boss-turn inputs, postmatch inputs, lobby gameplay
+inputs, after-combat inputs and duplicate gameplay inputs were all zero.
+Memory and result UI agreed on all 20 matches.
 
 ## Energy conclusion
 
-Authoritative game-energy consumption was not available per match. FarmRunner's historical “energy” display is a local-turn count and cannot prove account energy spent. Phase 3D.1 therefore reports energy saving as `NOT_MEASURED`.
+`ENERGY_SAVING = NOT_MEASURED`.
 
-Profile B used 0.9 fewer local turns per match on average and 23 fewer major gameplay actions across the sample. These are measured turn/action reductions, not proof of energy saving.
+Mode B used fewer local turns and major actions, but FarmRunner's local-turn
+counter is not an authoritative game-owned energy balance. No energy saving is
+inferred from speed or action reduction.
 
-## Artifacts
+## Artifacts and verification
 
 - Manifest: `docs/artifacts/phase3d1_manifest.json`
-- Compact dataset: `docs/artifacts/phase3d1_matches.json`
+- Compact 20-match dataset: `docs/artifacts/phase3d1_matches.json`
 - Deterministic analyzer: `src/pokiguard_v2/phase3d1_benchmark.py`
 - Analyzer CLI: `tools/phase3d1_benchmark.py`
 - Runbook: `docs/phase3d1_runbook.md`
 
-Raw runtime logs remain ignored and are not committed.
+Raw runtime logs remain ignored and are not committed. Final test counts and
+the dataset digest are:
 
-## Offline verification
+- focused policy/controller/QTE/analyzer suites: **245/245 PASS**;
+- full regression: **1,286/1,286 PASS**;
+- analyzer unit suite: **16/16 PASS**;
+- analyzer replay: PASS, A=10 and B=10;
+- `compileall`: PASS;
+- `git diff --check`: PASS;
+- compact dataset SHA-256:
+  `F6E089ED28F63AB43116E2AE0ECD943DA71418AC13AAECD9CBB477BF93B47C3D`.
 
-- Focused Phase 3D.1/policy/controller/QTE/terminal suites: **209/209 PASS**
-- Full regression: **1247/1247 PASS**
-- `compileall`: PASS
-- `git diff --check`: PASS
-- Analyzer replay: PASS, A=10 and B=10
-- Compact dataset SHA-256: `B38C50F689C25051624C768C7412C16595F18BEBBB3B11F47CDCEF9FF89F5717`
+## Scope and conclusion
 
-## Scope and limitations
+This is a 10-versus-10 engineering benchmark on one boss, one version and one
+execution order. It does not establish statistical significance or generalize
+to other bosses, Pet Skill families, evolved/Mega pets or HT2.
 
-This is a 10-versus-10 engineering benchmark on one boss, one application version, one execution order, and naturally different boards. It does not establish statistical significance or generalize to other bosses, Pet Skill families, evolved/Mega pets, or HT2. Pet and loadout differences are intentional, so the observed advantage belongs to the complete accepted B profile.
-
-No natural technical recovery or detached-room re-entry occurred. Energy remains unmeasured. Phase 3D.2's 25-match soak was not started.
-
-## Conclusion
-
-Phase 3D.1 is **PASS STRONG**. The controlled measurement process is complete, both samples meet the preferred size, all safety and profile invariants hold, and the analyzer accepted the complete evidence. In this bounded Starburst benchmark, the accepted Legendary / No Evolution / Pet Skill profile was faster and required fewer mean actions than the accepted default profile, while both retained identical 10/10 completion reliability.
+Phase 3D.1 is **PASS STRONG**. The experiment used the same frozen source,
+boss and measurement definitions, achieved complete 10+10 samples with zero
+critical safety violations, and retained every valid result. In this bounded
+benchmark, Mode B was materially faster and used fewer board and major actions
+than Mode A. Phase 3D.2's 25-match soak was not started.

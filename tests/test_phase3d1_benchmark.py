@@ -10,8 +10,11 @@ from pokiguard_v2.phase3d1_benchmark import (
     BenchmarkDataError,
     MODE_A,
     MODE_B,
+    classify_post_skill_finisher_trigger,
+    classify_skill_fire_reason,
     duration_seconds,
     extract_run,
+    mode_b_attack_is_valid_finisher,
     numeric_stats,
     relative_reduction,
     summarize_mode,
@@ -22,6 +25,8 @@ COUNTER_DEFAULTS = {
     "pet_skill_attempts": 0,
     "pet_skill_perfect": 0,
     "pet_skill_zero_input_failures": 0,
+    "pet_skill_after_input_failures": 0,
+    "pet_skill_turn_resolution_unconfirmed": 0,
     "pet_skill_same_source_followups": 0,
     "swap_sent": 1,
     "swap_acknowledged": 1,
@@ -49,12 +54,14 @@ SAFETY_DEFAULTS = {
 def _profile(mode: str) -> dict[str, str]:
     if mode == MODE_A:
         return {
+            "play_style": "simple",
             "main_pet": "normal",
             "evolution": "normal",
             "damage_card": "default_attack",
             "intelligence": "basic",
         }
     return {
+        "play_style": "skill_rush",
         "main_pet": "legendary",
         "evolution": "none",
         "damage_card": "pet_skill",
@@ -100,12 +107,37 @@ def _make_run(
             counters["local_turns_observed"] = 2
             combat_records.append(
                 {
+                    "event": "policy_decision",
+                    "selectedAction": "pet_skill",
+                    "trace": {
+                        "selected_action": "pet_skill",
+                        "policy_step": "STEP_1_PET_SKILL",
+                        "turn_number": 3,
+                        "boss_hp": 75_000,
+                        "boss_max_hp": 100_000,
+                        "boss_hp_ratio": 0.75,
+                        "known_sword_count": 8,
+                        "current_mana": 200,
+                        "current_rage": 200,
+                        "required_mana": 200,
+                        "required_rage": 200,
+                        "skill_fire_trigger": "SWORD_DENSITY",
+                        "pet_skill_success_count_current_match": 0,
+                        "post_skill_finisher_ready": False,
+                        "finisher_trigger": "NONE",
+                        "finisher_action": None,
+                    },
+                }
+            )
+            combat_records.append(
+                {
                     "event": "pet_skill_dispatch_result",
                     "result": {
                         "kind": "SUCCESS_PERFECT",
                         "state": "COMPLETE",
                         "card_clicks": 1,
                         "space_presses": 1,
+                        "action_id": {"source_turn": 3},
                         "telemetry": {
                             "runtime_result": "PERFECT",
                             "space_send_elapsed": 3.1,
@@ -123,6 +155,14 @@ def _make_run(
                             },
                         },
                     },
+                }
+            )
+            combat_records.append(
+                {
+                    "event": "pet_skill_turn_resolved",
+                    "sourceTurn": 3,
+                    "gameplayInputSent": False,
+                    "immediateSkillKill": True,
                 }
             )
         attempts.append(
@@ -170,6 +210,27 @@ def _make_run(
                 "event": "auto_controller_summary",
                 "counters": counters,
                 "safetyTelemetry": dict(SAFETY_DEFAULTS),
+                "policyBranchCoverage": (
+                    {"PET_SKILL": 1} if mode == MODE_B and completed else {"SWORD": 1}
+                ),
+                "petSkillImmediateKills": int(mode == MODE_B and completed),
+                "skillRushFireReasons": {
+                    "HP_PREP": 0,
+                    "SWORD_DENSITY": int(mode == MODE_B and completed),
+                    "BOTH": 0,
+                    "VERY_LOW_HP": 0,
+                    "SETUP_BLOCKED": 0,
+                },
+                "skillRushEarlyBossPrepSword": 0,
+                "skillRushPostSkillFinisher": {
+                    "DEFAULT_ATTACK": 0,
+                    "SWORD": 0,
+                    "SECOND_PET_SKILL": 0,
+                },
+                "skippedCurrentSwordForResource": 0,
+                "selectedMoveLeftDirectBossSword": 0,
+                "selectedMoveLeftIndirectBossSword": 0,
+                "passExecuted": 0,
             }
         )
         _write_jsonl(directory / "matches" / "attempt_001" / "combat.jsonl", combat_records)
@@ -235,6 +296,27 @@ class Phase3D1BenchmarkTests(unittest.TestCase):
         self.assertEqual(1, row["major_gameplay_actions"])
         self.assertEqual(3.0, row["energy_delta"])
 
+    def test_valid_pass_count_uses_executed_pass_not_safety_counter(self) -> None:
+        directory, _ = _make_run(self.root, run_id="run-pass", mode=MODE_A)
+        raw = json.loads((directory / "run.json").read_text(encoding="utf-8"))
+        raw["snapshot"]["attempts"][0]["pass_count"] = 2
+        (directory / "run.json").write_text(json.dumps(raw), encoding="utf-8")
+
+        combat_path = directory / "matches" / "attempt_001" / "combat.jsonl"
+        combat = [
+            json.loads(line)
+            for line in combat_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        combat[-1]["passExecuted"] = 2
+        combat[-1]["counters"]["pass_gameplay_inputs"] = 0
+        _write_jsonl(combat_path, combat)
+
+        run = extract_run(directory, mode=MODE_A, expected_boss=self.boss)
+        row = run["rows"][0]
+        self.assertEqual(2, row["pass"])
+        self.assertEqual(3, row["major_gameplay_actions"])
+
     def test_technical_abort_row_is_visible_and_not_completed(self) -> None:
         directory, _ = _make_run(
             self.root, run_id="run-abort", mode=MODE_A, result="TECHNICAL_ABORT"
@@ -298,6 +380,144 @@ class Phase3D1BenchmarkTests(unittest.TestCase):
             relative_reduction(0, 2),
         )
 
+    def test_final_skill_fire_reason_classification(self) -> None:
+        common = {
+            "current_mana": 200,
+            "current_rage": 200,
+            "required_mana": 200,
+            "required_rage": 200,
+        }
+        self.assertEqual(
+            "HP_PREP",
+            classify_skill_fire_reason(
+                **common, boss_hp_ratio=0.45, known_sword_count=5
+            ),
+        )
+        self.assertEqual(
+            "SWORD_DENSITY",
+            classify_skill_fire_reason(
+                **common, boss_hp_ratio=0.75, known_sword_count=8
+            ),
+        )
+        self.assertEqual(
+            "BOTH",
+            classify_skill_fire_reason(
+                **common, boss_hp_ratio=0.45, known_sword_count=12
+            ),
+        )
+        self.assertEqual(
+            "VERY_LOW_HP",
+            classify_skill_fire_reason(
+                **common, boss_hp_ratio=0.30, known_sword_count=12
+            ),
+        )
+        self.assertEqual(
+            "SETUP_BLOCKED",
+            classify_skill_fire_reason(
+                **common,
+                boss_hp_ratio=0.75,
+                known_sword_count=7,
+                setup_blocked=True,
+            ),
+        )
+        self.assertIsNone(
+            classify_skill_fire_reason(
+                **{**common, "current_rage": 199},
+                boss_hp_ratio=0.45,
+                known_sword_count=12,
+            )
+        )
+
+    def test_setup_blocked_fire_requires_decision_evidence(self) -> None:
+        directory, _ = _make_run(self.root, run_id="run-setup-blocked", mode=MODE_B)
+        combat_path = directory / "matches" / "attempt_001" / "combat.jsonl"
+        combat = [
+            json.loads(line)
+            for line in combat_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        trace = combat[0]["trace"]
+        trace.update(
+            {
+                "boss_hp": 80_000,
+                "boss_hp_ratio": 0.8,
+                "known_sword_count": 4,
+                "skill_fire_trigger": "SETUP_BLOCKED",
+                "why_selected": (
+                    "Current skill is actionable and resources are ready, but no legal "
+                    "direct setup clear is distance-two isolated from known Sword"
+                ),
+                "failed_higher_priority_branches": [
+                    "SKILL_RUSH_BOARD_SETUP: no legal direct clear is at least two "
+                    "orthogonal cells from every known Sword"
+                ],
+            }
+        )
+        summary = combat[-1]
+        summary["skillRushFireReasons"]["SWORD_DENSITY"] = 0
+        summary["skillRushFireReasons"]["SETUP_BLOCKED"] = 1
+        _write_jsonl(combat_path, combat)
+
+        run = extract_run(directory, mode=MODE_B, expected_boss=self.boss)
+        fire = run["rows"][0]["first_skill_fire"]
+        self.assertEqual("SETUP_BLOCKED", fire["reason"])
+        self.assertTrue(fire["setup_blocked_proven"])
+
+        trace.pop("failed_higher_priority_branches")
+        _write_jsonl(combat_path, combat)
+        with self.assertRaisesRegex(BenchmarkDataError, "setup-block proof"):
+            extract_run(directory, mode=MODE_B, expected_boss=self.boss)
+
+    def test_post_skill_finisher_trigger_strict_boundaries(self) -> None:
+        self.assertEqual("BOTH", classify_post_skill_finisher_trigger(25_000, 200_000))
+        self.assertEqual(
+            "RELATIVE_HP", classify_post_skill_finisher_trigger(40_000, 250_000)
+        )
+        self.assertEqual("NONE", classify_post_skill_finisher_trigger(60_000, 200_000))
+        self.assertEqual("NONE", classify_post_skill_finisher_trigger(30_000, 100_000))
+
+    def test_mode_b_attack_classification(self) -> None:
+        self.assertFalse(
+            mode_b_attack_is_valid_finisher(
+                successful_skill_count=0,
+                boss_hp=25_000,
+                boss_max_hp=200_000,
+                action_turn=19,
+                latest_skill_source_turn=None,
+                recorded_trigger="BOTH",
+            )
+        )
+        self.assertTrue(
+            mode_b_attack_is_valid_finisher(
+                successful_skill_count=1,
+                boss_hp=25_000,
+                boss_max_hp=200_000,
+                action_turn=19,
+                latest_skill_source_turn=17,
+                recorded_trigger="BOTH",
+            )
+        )
+        self.assertFalse(
+            mode_b_attack_is_valid_finisher(
+                successful_skill_count=1,
+                boss_hp=60_000,
+                boss_max_hp=200_000,
+                action_turn=19,
+                latest_skill_source_turn=17,
+                recorded_trigger="NONE",
+            )
+        )
+        self.assertFalse(
+            mode_b_attack_is_valid_finisher(
+                successful_skill_count=1,
+                boss_hp=25_000,
+                boss_max_hp=200_000,
+                action_turn=17,
+                latest_skill_source_turn=17,
+                recorded_trigger="BOTH",
+            )
+        )
+
     def test_attempts_per_completion_and_energy_states(self) -> None:
         a_dir, _ = _make_run(self.root, run_id="run-null", mode=MODE_A)
         b_dir, energy = _make_run(
@@ -313,6 +533,10 @@ class Phase3D1BenchmarkTests(unittest.TestCase):
         self.assertEqual("NOT_MEASURED", a_summary["energy"]["status"])
         self.assertEqual("MEASURED", b_summary["energy"]["status"])
         self.assertEqual(7.0, b_summary["energy"]["mean"])
+        self.assertEqual(1, b_summary["first_pet_skill_uses"])
+        self.assertEqual(1, b_summary["first_pet_skill_kills"])
+        self.assertEqual(100.0, b_summary["first_skill_kill_rate_pct"])
+        self.assertEqual(1, b_summary["skill_fire_reason_counts"]["SWORD_DENSITY"])
 
     def test_corrupt_or_incomplete_attempt_fails_closed(self) -> None:
         directory, _ = _make_run(self.root, run_id="run-bad", mode=MODE_A)

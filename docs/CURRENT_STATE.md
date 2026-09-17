@@ -24,11 +24,11 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current accepted gameplay phase | **Phase 3C.3 Final Revision — PASS STRONG** |
-| Active phase | **None; Phase 3C.3 is complete** |
-| Phase 3 status | **`skill_rush` HT7 HP/board setup and match-scoped post-skill finisher are offline- and live-accepted** |
+| Current accepted phase | **Phase 3D.1 Controlled A/B — PASS STRONG** |
+| Active phase | **None; Phase 3D.1 is complete** |
+| Phase 3 status | **Final `skill_rush` HT7 policy is accepted and outperformed the default profile in the bounded 10-vs-10 benchmark** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
-| Current live automation | **None; fresh Phase 3C.3 B3 completed 1/1 and the game returned to BOSS_LOBBY** |
+| Current live automation | **None; both Phase 3D.1 blocks completed at BOSS_LOBBY** |
 
 ## Phase 3C.3 Final Revision — PASS STRONG
 
@@ -115,44 +115,49 @@ violation. The final SWAP killed the boss and combat closed authoritatively.
 Final lifecycle was `BOSS_LOBBY`; controller status was `STOPPED`.
 
 Final-policy verification is **31/31 PASS**, the combined autonomous/final-
-policy group is **143/143 PASS**, and complete discovery is **1,281/1,281
-PASS**. Compileall and global diff check pass; `test_win32_input` is **18/18
-PASS** across five consecutive repeats. The user-owned input-randomization
-changes remain present. Phase 3C.3 is complete; no Phase 3D.1 rerun, benchmark,
-soak, package or tag was started.
+policy group is **143/143 PASS**, and its acceptance discovery was
+**1,281/1,281 PASS**. The user-owned input-randomization changes remain
+present. Phase 3C.3 is complete and is the frozen gameplay foundation used by
+Phase 3D.1.
 
 ## Phase 3D.1 — PASS STRONG
 
 Phase 3D.1 compared the accepted default profile
-`NORMAL / NORMAL / DEFAULT_ATTACK / BASIC` with
-`LEGENDARY / NONE / PET_SKILL / BASIC` on the same source commit, Desktop UI
-path, Starburst `1289`, Two Click input mode, and finite 10-match target. Mode A
-run `f7bb98e3a52b47158b4c20822688d0aa` and Mode B run
-`51d49d61b4a946c4855872f8a605ab2f` each completed exactly 10 attempts, 10 wins,
-zero UNKNOWN, zero technical abort/recovery, and zero critical safety violation.
+`simple / BASIC / NORMAL / NORMAL / DEFAULT_ATTACK` with
+`skill_rush / BASIC / LEGENDARY / NONE / PET_SKILL` on frozen source commit
+`44fea0cc3e89d670dc273a5fae7c5cf94e8809b0`, Desktop UI/FarmRunner, Starburst
+`1289`, Two Click input and finite 10-match targets. Mode A FarmRun
+`2876f169879548f790b3920e6894e491` and Mode B FarmRun
+`e8a38744abbb4120b190118063c9a4dd` each completed 10 wins in 10 attempts with
+zero UNKNOWN, technical abort/recovery or critical safety violation.
 
-Mode B reduced mean combat duration from 144.383 to 125.594 seconds
-(18.789 seconds, 13.013%) and mean full-cycle duration from 156.643 to 134.495
-seconds (22.148 seconds, 14.139%). Median combat fell 7.367 seconds (5.470%)
-and median cycle fell 9.887 seconds (6.677%). Mean SWAP count fell from 10.2
-to 9.0 (11.765%), while median SWAP stayed 9.5. Mean major gameplay actions
-fell from 11.9 to 9.6 (19.328%).
+Mode B reduced mean combat duration from 223.822 to 127.056 seconds (43.233%)
+and median combat from 217.256 to 125.677 seconds (42.153%). Mean full-cycle
+duration fell from 235.905 to 136.189 seconds (42.270%) and median cycle from
+228.820 to 134.346 seconds (41.287%). Mean SWAP fell from 13.3 to 7.9
+(40.602%); mean major gameplay actions fell from 16.6 to 8.9 (46.386%).
 
-Mode A invoked no Pet Skill. Mode B invoked no EVOLVE or ordinary Attack CAST;
-all six accepted Pet Skills were PERFECT with 42/42 directions confirmed and
-six valid Space presses. Both modes used PASS zero times. Memory and result UI
-agreed for all 20 completed matches.
+Mode A invoked no Pet Skill and leaked no `SKILL_RUSH_*` branch. Mode B invoked
+no EVOLVE or ordinary Attack, used exactly one Pet Skill per match, and all ten
+skills were PERFECT with 70/70 directions confirmed and ten valid Space
+presses. Every first skill killed immediately; no finisher or second skill was
+needed. Fire reasons were HP_PREP=1, SWORD_DENSITY=7, BOTH=1,
+SETUP_BLOCKED=1 and VERY_LOW_HP=0.
 
-Energy saving remains `NOT_MEASURED` because local-turn counts are not an
-authoritative account-energy balance. Mode B averaged 0.9 fewer local turns,
-but that is reported only as a turn reduction. The result compares complete
-profiles with intentionally different pets/loadouts and natural board RNG; it
-does not isolate the skill card or establish statistical significance.
+The final match's `SETUP_BLOCKED` fire was valid under the accepted Phase 3C.3
+policy: boss HP was 69,276/84,180, four known Sword and resources 270/250, but
+there was no legal direct setup clear at distance at least two from every known
+Sword. This is a measured strategic limitation because one-hit success at high
+HP/low Sword can depend on damage variance; it is not a technical violation and
+was not retuned during the benchmark.
 
-One preliminary interrupted A setup run is explicitly excluded in the manifest
-because the operator pressed emergency stop while diagnosing Start and it used
-DRAG before the common Two Click setting was pinned. No natural recovery or
-detached-room re-entry occurred. See
+Energy saving remains `NOT_MEASURED`; fewer turns/actions do not prove a
+game-owned energy delta. The result compares complete profiles with different
+pets/loadouts and natural board RNG on one boss, so it does not isolate the
+skill card or establish statistical significance. There are no exclusions.
+Focused verification is **245/245 PASS**, full discovery is **1,286/1,286
+PASS**, analyzer replay is A=10/B=10, and compileall/diff checks pass.
+See
 [phase3d1_report.md](phase3d1_report.md),
 [phase3d1_runbook.md](phase3d1_runbook.md), and the compact artifact
 [`phase3d1_matches.json`](artifacts/phase3d1_matches.json). Phase 3D.2's

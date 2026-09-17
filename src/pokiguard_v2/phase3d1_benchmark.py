@@ -15,22 +15,37 @@ from statistics import median, pstdev
 from typing import Any, Iterable, Mapping, Sequence
 
 
-MANIFEST_SCHEMA = "pokiguard.phase3d1.manifest.v1"
-DATASET_SCHEMA = "pokiguard.phase3d1.dataset.v1"
+MANIFEST_SCHEMA = "pokiguard.phase3d1.manifest.v2"
+DATASET_SCHEMA = "pokiguard.phase3d1.dataset.v2"
+ANALYZER_VERSION = "2"
 MODE_A = "A_DEFAULT"
 MODE_B = "B_PET_SKILL"
 MODES = (MODE_A, MODE_B)
 COMPLETED_RESULTS = frozenset({"WIN", "LOSS", "UNKNOWN"})
 ALL_RESULTS = COMPLETED_RESULTS | {"TECHNICAL_ABORT", "SAFE_STOP"}
+SKILL_RUSH_HP_PREP_RATIO = 0.50
+SKILL_RUSH_VERY_LOW_HP_RATIO = 0.30
+SKILL_RUSH_SWORD_DENSITY_MINIMUM = 8
+POST_SKILL_FINISHER_HP = 30_000
+POST_SKILL_FINISHER_RATIO = 0.20
+SKILL_FIRE_REASONS = (
+    "HP_PREP",
+    "SWORD_DENSITY",
+    "BOTH",
+    "VERY_LOW_HP",
+    "SETUP_BLOCKED",
+)
 
 EXPECTED_PROFILES: dict[str, dict[str, str]] = {
     MODE_A: {
+        "play_style": "simple",
         "main_pet": "normal",
         "evolution": "normal",
         "damage_card": "default_attack",
         "intelligence": "basic",
     },
     MODE_B: {
+        "play_style": "skill_rush",
         "main_pet": "legendary",
         "evolution": "none",
         "damage_card": "pet_skill",
@@ -135,6 +150,91 @@ def relative_reduction(a_value: int | float | None, b_value: int | float | None)
     difference = round(a_number - b_number, 3)
     percentage = None if a_number == 0 else round(difference / a_number * 100.0, 3)
     return {"difference_a_minus_b": difference, "reduction_pct": percentage}
+
+
+def classify_skill_fire_reason(
+    *,
+    current_mana: int,
+    current_rage: int,
+    required_mana: int,
+    required_rage: int,
+    boss_hp_ratio: float,
+    known_sword_count: int,
+    setup_blocked: bool = False,
+) -> str | None:
+    """Recompute the accepted v1.0.48 fire reason from recorded state.
+
+    Phase 3C.3 was explicitly finalized at eight known Sword.  This helper
+    mirrors that accepted repository state; it does not use the superseded
+    eleven-Sword threshold found in older benchmark prose.
+    """
+
+    values = (
+        current_mana,
+        current_rage,
+        required_mana,
+        required_rage,
+        known_sword_count,
+    )
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in values):
+        raise BenchmarkDataError("skill-fire resources/counts must be non-negative integers")
+    if isinstance(boss_hp_ratio, bool) or not isinstance(boss_hp_ratio, (int, float)):
+        raise BenchmarkDataError("skill-fire boss ratio must be numeric")
+    ratio = float(boss_hp_ratio)
+    if not math.isfinite(ratio) or not 0.0 <= ratio <= 1.0:
+        raise BenchmarkDataError("skill-fire boss ratio must be in [0, 1]")
+    if current_mana < required_mana or current_rage < required_rage:
+        return None
+    if ratio <= SKILL_RUSH_VERY_LOW_HP_RATIO:
+        return "VERY_LOW_HP"
+    hp_ready = ratio < SKILL_RUSH_HP_PREP_RATIO
+    sword_ready = known_sword_count >= SKILL_RUSH_SWORD_DENSITY_MINIMUM
+    if hp_ready and sword_ready:
+        return "BOTH"
+    if hp_ready:
+        return "HP_PREP"
+    if sword_ready:
+        return "SWORD_DENSITY"
+    if setup_blocked:
+        return "SETUP_BLOCKED"
+    return None
+
+
+def classify_post_skill_finisher_trigger(
+    boss_hp: int,
+    boss_max_hp: int,
+) -> str:
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in (boss_hp, boss_max_hp)
+    ) or boss_max_hp <= 0:
+        raise BenchmarkDataError("finisher HP values must be non-negative with max HP > 0")
+    absolute = boss_hp < POST_SKILL_FINISHER_HP
+    relative = boss_hp / boss_max_hp < POST_SKILL_FINISHER_RATIO
+    if absolute and relative:
+        return "BOTH"
+    if absolute:
+        return "ABSOLUTE_HP"
+    if relative:
+        return "RELATIVE_HP"
+    return "NONE"
+
+
+def mode_b_attack_is_valid_finisher(
+    *,
+    successful_skill_count: int,
+    boss_hp: int,
+    boss_max_hp: int,
+    action_turn: int,
+    latest_skill_source_turn: int | None,
+    recorded_trigger: str | None,
+) -> bool:
+    if successful_skill_count <= 0 or latest_skill_source_turn is None:
+        return False
+    if action_turn <= latest_skill_source_turn:
+        return False
+    trigger = classify_post_skill_finisher_trigger(boss_hp, boss_max_hp)
+    return trigger != "NONE" and recorded_trigger == trigger
 
 
 def _read_json(path: Path) -> Mapping[str, Any]:
@@ -311,6 +411,251 @@ def _policy_audit(records: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
+def _skill_rush_metrics(
+    records: Sequence[Mapping[str, Any]],
+    summary: Mapping[str, Any],
+    pet: Mapping[str, int],
+    label: str,
+) -> dict[str, Any]:
+    decisions: list[Mapping[str, Any]] = []
+    fire_records: list[dict[str, Any]] = []
+    for index, record in enumerate(records, 1):
+        if record.get("event") != "policy_decision":
+            continue
+        trace = _mapping(record.get("trace"), f"{label}.policy_decision[{index}].trace")
+        decisions.append(trace)
+        if trace.get("selected_action") != "pet_skill":
+            continue
+        current_mana = _nonnegative_int(
+            trace.get("current_mana"), f"{label}.skill_fire.current_mana"
+        )
+        current_rage = _nonnegative_int(
+            trace.get("current_rage"), f"{label}.skill_fire.current_rage"
+        )
+        required_mana = _nonnegative_int(
+            trace.get("required_mana"), f"{label}.skill_fire.required_mana"
+        )
+        required_rage = _nonnegative_int(
+            trace.get("required_rage"), f"{label}.skill_fire.required_rage"
+        )
+        known_sword = _nonnegative_int(
+            trace.get("known_sword_count"), f"{label}.skill_fire.known_sword_count"
+        )
+        boss_hp = _nonnegative_int(trace.get("boss_hp"), f"{label}.skill_fire.boss_hp")
+        boss_max_hp = _nonnegative_int(
+            trace.get("boss_max_hp"), f"{label}.skill_fire.boss_max_hp"
+        )
+        ratio = _optional_nonnegative_number(
+            trace.get("boss_hp_ratio"), f"{label}.skill_fire.boss_hp_ratio"
+        )
+        if ratio is None or ratio > 1.0 or boss_max_hp <= 0:
+            raise BenchmarkDataError(f"{label} skill fire lacks valid boss HP/ratio")
+        recorded = trace.get("skill_fire_trigger")
+        if recorded not in SKILL_FIRE_REASONS:
+            raise BenchmarkDataError(f"{label} has unsupported skill-fire reason {recorded!r}")
+        setup_blocked_proven = False
+        if recorded == "SETUP_BLOCKED":
+            raw_failures = trace.get("failed_higher_priority_branches")
+            failures = raw_failures if isinstance(raw_failures, list) else []
+            setup_blocked_proven = any(
+                isinstance(item, str)
+                and "no legal direct clear is at least two orthogonal cells" in item
+                for item in failures
+            )
+            why_selected = trace.get("why_selected")
+            setup_blocked_proven = setup_blocked_proven and (
+                isinstance(why_selected, str)
+                and "no legal direct setup clear" in why_selected
+                and "distance-two isolated" in why_selected
+            )
+            if not setup_blocked_proven:
+                raise BenchmarkDataError(
+                    f"{label} SETUP_BLOCKED fire lacks deterministic setup-block proof"
+                )
+        expected = classify_skill_fire_reason(
+            current_mana=current_mana,
+            current_rage=current_rage,
+            required_mana=required_mana,
+            required_rage=required_rage,
+            boss_hp_ratio=ratio,
+            known_sword_count=known_sword,
+            setup_blocked=setup_blocked_proven,
+        )
+        fire_records.append(
+            {
+                "turn": _nonnegative_int(
+                    trace.get("turn_number"), f"{label}.skill_fire.turn_number"
+                ),
+                "boss_hp": boss_hp,
+                "boss_max_hp": boss_max_hp,
+                "boss_hp_ratio": round(ratio, 6),
+                "known_sword_count": known_sword,
+                "current_mana": current_mana,
+                "current_rage": current_rage,
+                "required_mana": required_mana,
+                "required_rage": required_rage,
+                "reason": recorded,
+                "expected_reason": expected,
+                "valid": recorded == expected,
+                "setup_blocked_proven": setup_blocked_proven,
+                "successful_skills_before": _nonnegative_int(
+                    trace.get("pet_skill_success_count_current_match", 0),
+                    f"{label}.skill_fire.successful_skills_before",
+                ),
+            }
+        )
+
+    accepted_source_turns: list[int] = []
+    for index, record in enumerate(records, 1):
+        if record.get("event") != "pet_skill_dispatch_result":
+            continue
+        result = _mapping(record.get("result") or record.get("summary"), f"{label}.pet_dispatch[{index}]")
+        if result.get("state") != "COMPLETE":
+            continue
+        action_id = _mapping(result.get("action_id"), f"{label}.pet_dispatch[{index}].action_id")
+        accepted_source_turns.append(
+            _nonnegative_int(
+                action_id.get("source_turn"), f"{label}.pet_dispatch[{index}].source_turn"
+            )
+        )
+
+    resolution_records = [
+        record for record in records if record.get("event") == "pet_skill_turn_resolved"
+    ]
+    immediate_kills = sum(record.get("immediateSkillKill") is True for record in resolution_records)
+    first_skill_use = int(pet["accepted"] > 0)
+    first_skill_kill = int(bool(resolution_records) and resolution_records[0].get("immediateSkillKill") is True)
+
+    fire_summary = _mapping(summary.get("skillRushFireReasons"), f"{label}.skillRushFireReasons")
+    fire_counts = {
+        reason: _nonnegative_int(fire_summary.get(reason), f"{label}.skillRushFireReasons.{reason}")
+        for reason in SKILL_FIRE_REASONS
+    }
+    observed_fire_counts = {
+        reason: sum(record["reason"] == reason for record in fire_records)
+        for reason in SKILL_FIRE_REASONS
+    }
+    if fire_counts != observed_fire_counts:
+        raise BenchmarkDataError(f"{label} skill-fire summary disagrees with decisions")
+
+    finisher_summary = _mapping(
+        summary.get("skillRushPostSkillFinisher"), f"{label}.skillRushPostSkillFinisher"
+    )
+    finisher_counts = {
+        key: _nonnegative_int(finisher_summary.get(key), f"{label}.finisher.{key}")
+        for key in ("DEFAULT_ATTACK", "SWORD", "SECOND_PET_SKILL")
+    }
+
+    valid_finisher_attacks = 0
+    invalid_attacks = 0
+    pre_first_skill_attacks = 0
+    valid_finisher_swords = 0
+    first_post_skill_state: dict[str, Any] | None = None
+    for trace in decisions:
+        action = trace.get("selected_action")
+        turn = trace.get("turn_number")
+        if isinstance(turn, bool) or not isinstance(turn, int) or turn < 0:
+            raise BenchmarkDataError(f"{label} policy decision lacks a valid turn")
+        success_count = _nonnegative_int(
+            trace.get("pet_skill_success_count_current_match", 0),
+            f"{label}.policy.successful_skills",
+        )
+        if success_count > 0 and first_post_skill_state is None:
+            first_post_skill_state = {
+                "boss_hp": trace.get("boss_hp"),
+                "boss_max_hp": trace.get("boss_max_hp"),
+                "boss_hp_ratio": trace.get("boss_hp_ratio"),
+                "finisher_trigger": trace.get("finisher_trigger"),
+                "next_action": trace.get("finisher_action") or trace.get("policy_step"),
+            }
+        if action == "cast":
+            prior_turns = [source for source in accepted_source_turns if source < turn]
+            latest_source = max(prior_turns) if prior_turns else None
+            boss_hp = trace.get("boss_hp")
+            boss_max_hp = trace.get("boss_max_hp")
+            valid = (
+                isinstance(boss_hp, int)
+                and not isinstance(boss_hp, bool)
+                and isinstance(boss_max_hp, int)
+                and not isinstance(boss_max_hp, bool)
+                and trace.get("policy_step") == "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK"
+                and trace.get("finisher_action") == "DEFAULT_ATTACK"
+                and trace.get("post_skill_finisher_ready") is True
+                and mode_b_attack_is_valid_finisher(
+                    successful_skill_count=success_count,
+                    boss_hp=boss_hp,
+                    boss_max_hp=boss_max_hp,
+                    action_turn=turn,
+                    latest_skill_source_turn=latest_source,
+                    recorded_trigger=trace.get("finisher_trigger"),
+                )
+            )
+            valid_finisher_attacks += int(valid)
+            invalid_attacks += int(not valid)
+            pre_first_skill_attacks += int(success_count == 0)
+        if (
+            action == "swap"
+            and trace.get("policy_step") == "SKILL_RUSH_POST_SKILL_FINISHER_SWORD"
+            and trace.get("finisher_action") == "SWORD"
+            and trace.get("post_skill_finisher_ready") is True
+        ):
+            valid_finisher_swords += 1
+
+    if valid_finisher_attacks != finisher_counts["DEFAULT_ATTACK"]:
+        raise BenchmarkDataError(f"{label} finisher-Attack summary disagrees with decisions")
+    if valid_finisher_swords != finisher_counts["SWORD"]:
+        raise BenchmarkDataError(f"{label} finisher-Sword summary disagrees with decisions")
+    if immediate_kills != _nonnegative_int(
+        summary.get("petSkillImmediateKills"), f"{label}.petSkillImmediateKills"
+    ):
+        raise BenchmarkDataError(f"{label} immediate-kill summary disagrees with resolutions")
+
+    branches = _mapping(summary.get("policyBranchCoverage"), f"{label}.policyBranchCoverage")
+    branch_counts = {
+        str(key): _nonnegative_int(value, f"{label}.policyBranchCoverage.{key}")
+        for key, value in branches.items()
+    }
+    skill_rush_leakage = sum(
+        count
+        for branch, count in branch_counts.items()
+        if branch.startswith("SKILL_RUSH_") or branch == "PET_SKILL"
+    )
+    first_fire = fire_records[0] if fire_records else None
+    return {
+        "fire_records": fire_records,
+        "fire_reason_counts": fire_counts,
+        "invalid_fire_reasons": sum(not record["valid"] for record in fire_records),
+        "first_skill_use": first_skill_use,
+        "first_skill_kill": first_skill_kill,
+        "survived_first_skill": int(first_skill_use and not first_skill_kill),
+        "first_skill_fire": first_fire,
+        "immediate_kills": immediate_kills,
+        "valid_finisher_attacks": valid_finisher_attacks,
+        "invalid_attacks": invalid_attacks,
+        "pre_first_skill_attacks": pre_first_skill_attacks,
+        "valid_finisher_swords": valid_finisher_swords,
+        "second_pet_skill": finisher_counts["SECOND_PET_SKILL"],
+        "first_post_skill_state": first_post_skill_state,
+        "early_boss_prep_sword": _nonnegative_int(
+            summary.get("skillRushEarlyBossPrepSword"), f"{label}.skillRushEarlyBossPrepSword"
+        ),
+        "skipped_current_sword_for_resource": _nonnegative_int(
+            summary.get("skippedCurrentSwordForResource"),
+            f"{label}.skippedCurrentSwordForResource",
+        ),
+        "left_direct_boss_sword": _nonnegative_int(
+            summary.get("selectedMoveLeftDirectBossSword"),
+            f"{label}.selectedMoveLeftDirectBossSword",
+        ),
+        "left_indirect_boss_sword": _nonnegative_int(
+            summary.get("selectedMoveLeftIndirectBossSword"),
+            f"{label}.selectedMoveLeftIndirectBossSword",
+        ),
+        "branch_counts": branch_counts,
+        "skill_rush_branch_leakage": skill_rush_leakage,
+    }
+
+
 def _profile_for_mode(snapshot: Mapping[str, Any], mode: str, label: str) -> Mapping[str, Any]:
     profile = _mapping(snapshot.get("gameplay_config"), f"{label}.gameplay_config")
     expected = EXPECTED_PROFILES[mode]
@@ -367,6 +712,7 @@ def _extract_attempt(
     summary = _combat_summary(combat_records, label)
     counters = _mapping(summary.get("counters"), f"{label}.counters")
     pet = _pet_skill_metrics(combat_records)
+    rush = _skill_rush_metrics(combat_records, summary, pet, label)
     policy = _policy_audit(combat_records)
     swap_sent = _nonnegative_int(attempt.get("swap_sent"), f"{label}.swap_sent")
     swap_ack = _nonnegative_int(attempt.get("swap_acknowledged"), f"{label}.swap_acknowledged")
@@ -386,7 +732,6 @@ def _extract_attempt(
         ("swap_rejected", "swap_rejected", swap_reject),
         ("cast_sent", "cast_sent", ordinary_cast),
         ("evolve_attempts", "evolve_attempts", evolve),
-        ("pass_count", "pass_gameplay_inputs", pass_count),
         ("local_turns", "local_turns_observed", local_turns),
     ):
         counter_value = _counter(counters, counter_key, f"{label}.counters")
@@ -394,6 +739,14 @@ def _extract_attempt(
             raise BenchmarkDataError(
                 f"{label} {attempt_key}={observed} disagrees with summary {counter_key}={counter_value}"
             )
+    pass_executed = _nonnegative_int(
+        summary.get("passExecuted"), f"{label}.passExecuted"
+    )
+    if pass_executed != pass_count:
+        raise BenchmarkDataError(
+            f"{label} pass_count={pass_count} disagrees with summary "
+            f"passExecuted={pass_executed}"
+        )
 
     safety = _mapping(summary.get("safetyTelemetry"), f"{label}.safetyTelemetry")
     safety_counts = {
@@ -413,11 +766,15 @@ def _extract_attempt(
     contract_violations = 0
     if mode == MODE_A:
         contract_violations += pet_attempts + pet["accepted"]
+        contract_violations += rush["skill_rush_branch_leakage"]
     else:
-        contract_violations += evolve + ordinary_cast
-        contract_violations += pet["good"] + pet["bad"]
+        if ordinary_cast != rush["valid_finisher_attacks"] + rush["invalid_attacks"]:
+            raise BenchmarkDataError(f"{label} ordinary CAST count disagrees with policy decisions")
+        contract_violations += evolve + rush["invalid_attacks"]
+        contract_violations += max(0, pet["accepted"] - pet["perfect"])
         contract_violations += (
             pet["wrong_directions"]
+            + pet["skipped_directions"]
             + pet["duplicate_directions"]
             + pet["stale_directions"]
             + pet["unconfirmed_directions"]
@@ -428,6 +785,16 @@ def _extract_attempt(
         contract_violations += _counter(
             counters, "pet_skill_same_source_followups", f"{label}.counters"
         )
+        contract_violations += _counter(
+            counters, "pet_skill_zero_input_failures", f"{label}.counters"
+        )
+        contract_violations += _counter(
+            counters, "pet_skill_after_input_failures", f"{label}.counters"
+        )
+        contract_violations += _counter(
+            counters, "pet_skill_turn_resolution_unconfirmed", f"{label}.counters"
+        )
+        contract_violations += rush["invalid_fire_reasons"]
     contract_violations += sum(safety_counts.values())
     contract_violations += _counter(
         counters, "attack_priority_evolve_violations", f"{label}.counters"
@@ -462,6 +829,38 @@ def _extract_attempt(
         "pet_skill_perfect": pet["perfect"],
         "pet_skill_good": pet["good"],
         "pet_skill_bad": pet["bad"],
+        "first_pet_skill_use": rush["first_skill_use"],
+        "first_pet_skill_kill": rush["first_skill_kill"],
+        "survived_first_pet_skill": rush["survived_first_skill"],
+        "first_skill_fire": rush["first_skill_fire"],
+        "skill_fire_records": rush["fire_records"],
+        "skill_fire_reason_counts": rush["fire_reason_counts"],
+        "post_skill_finisher": bool(
+            rush["valid_finisher_attacks"] or rush["valid_finisher_swords"]
+        ),
+        "finisher_type": (
+            "DEFAULT_ATTACK"
+            if rush["valid_finisher_attacks"]
+            else "SWORD" if rush["valid_finisher_swords"] else None
+        ),
+        "valid_post_skill_finisher_attack": rush["valid_finisher_attacks"],
+        "invalid_mode_b_attack": rush["invalid_attacks"] if mode == MODE_B else 0,
+        "ordinary_attack_before_first_skill": (
+            rush["pre_first_skill_attacks"] if mode == MODE_B else 0
+        ),
+        "finisher_sword": rush["valid_finisher_swords"],
+        "second_pet_skill": rush["second_pet_skill"],
+        "first_post_skill_state": rush["first_post_skill_state"],
+        "early_boss_prep_sword": rush["early_boss_prep_sword"],
+        "skipped_current_sword_for_resource": rush[
+            "skipped_current_sword_for_resource"
+        ],
+        "selected_move_left_direct_boss_sword": rush["left_direct_boss_sword"],
+        "selected_move_left_indirect_boss_sword": rush[
+            "left_indirect_boss_sword"
+        ],
+        "policy_branch_counts": rush["branch_counts"],
+        "skill_rush_branch_leakage": rush["skill_rush_branch_leakage"],
         "pet_skill_zero_input_failures": _counter(
             counters, "pet_skill_zero_input_failures", f"{label}.counters"
         ),
@@ -644,6 +1043,19 @@ def summarize_mode(mode: str, runs: Sequence[Mapping[str, Any]]) -> dict[str, An
     cycle_values = [row["farm_cycle_duration_s"] for row in completed if row["farm_cycle_duration_s"] is not None]
     pet_accepted = sum(row["pet_skill_accepted"] for row in completed)
     pet_perfect = sum(row["pet_skill_perfect"] for row in completed)
+    first_skill_uses = sum(row["first_pet_skill_use"] for row in completed)
+    first_skill_kills = sum(row["first_pet_skill_kill"] for row in completed)
+    first_fires = [
+        row["first_skill_fire"] for row in completed if row["first_skill_fire"] is not None
+    ]
+    fire_reason_counts = {
+        reason: sum(row["skill_fire_reason_counts"][reason] for row in completed)
+        for reason in SKILL_FIRE_REASONS
+    }
+    branch_counts: dict[str, int] = {}
+    for row in completed:
+        for branch, count in row["policy_branch_counts"].items():
+            branch_counts[branch] = branch_counts.get(branch, 0) + count
     return {
         "mode": mode,
         "farm_run_ids": [run["farm_run_id"] for run in included],
@@ -683,6 +1095,56 @@ def summarize_mode(mode: str, runs: Sequence[Mapping[str, Any]]) -> dict[str, An
         "pet_skill_bad": sum(row["pet_skill_bad"] for row in completed),
         "pet_skill_perfect_rate_pct": (
             round(pet_perfect / pet_accepted * 100.0, 3) if pet_accepted else None
+        ),
+        "first_pet_skill_uses": first_skill_uses,
+        "first_pet_skill_kills": first_skill_kills,
+        "first_skill_kill_rate_pct": (
+            round(first_skill_kills / first_skill_uses * 100.0, 3)
+            if first_skill_uses
+            else None
+        ),
+        "survived_first_pet_skill": sum(
+            row["survived_first_pet_skill"] for row in completed
+        ),
+        "post_skill_finisher_count": sum(
+            row["post_skill_finisher"] for row in completed
+        ),
+        "finisher_attack_count": sum(
+            row["valid_post_skill_finisher_attack"] for row in completed
+        ),
+        "finisher_sword_count": sum(row["finisher_sword"] for row in completed),
+        "second_pet_skill_count": sum(row["second_pet_skill"] for row in completed),
+        "ordinary_attack_before_first_skill": sum(
+            row["ordinary_attack_before_first_skill"] for row in completed
+        ),
+        "invalid_mode_b_attack": sum(row["invalid_mode_b_attack"] for row in completed),
+        "skill_fire_reason_counts": fire_reason_counts,
+        "first_skill_boss_hp_ratio": numeric_stats(
+            fire["boss_hp_ratio"] for fire in first_fires
+        ),
+        "first_skill_known_sword_count": numeric_stats(
+            fire["known_sword_count"] for fire in first_fires
+        ),
+        "hp_prep_reached_at_first_skill": sum(
+            fire["boss_hp_ratio"] < SKILL_RUSH_HP_PREP_RATIO for fire in first_fires
+        ),
+        "sword_density_reached_at_first_skill": sum(
+            fire["known_sword_count"] >= SKILL_RUSH_SWORD_DENSITY_MINIMUM
+            for fire in first_fires
+        ),
+        "early_boss_prep_sword": sum(row["early_boss_prep_sword"] for row in completed),
+        "skipped_current_sword_for_resource": sum(
+            row["skipped_current_sword_for_resource"] for row in completed
+        ),
+        "selected_move_left_direct_boss_sword": sum(
+            row["selected_move_left_direct_boss_sword"] for row in completed
+        ),
+        "selected_move_left_indirect_boss_sword": sum(
+            row["selected_move_left_indirect_boss_sword"] for row in completed
+        ),
+        "policy_branch_counts": branch_counts,
+        "skill_rush_branch_leakage": sum(
+            row["skill_rush_branch_leakage"] for row in completed
         ),
         "pass": numeric_stats(row["pass"] for row in completed),
         "qte": {
@@ -838,6 +1300,7 @@ def analyze_manifest(manifest_path: Path, logs_root: Path) -> dict[str, Any]:
     ]
     return {
         "schema": DATASET_SCHEMA,
+        "analyzer_version": ANALYZER_VERSION,
         "benchmark_source_commit": source_commit,
         "app_version": app_version,
         "boss": dict(expected_boss),
@@ -847,6 +1310,13 @@ def analyze_manifest(manifest_path: Path, logs_root: Path) -> dict[str, Any]:
             "farm_cycle_duration": "latest proven safe boss lobby before entry to proven safe boss lobby after result",
             "major_gameplay_actions_formula": "SWAP_sent + EVOLVE_attempts + ordinary_CAST_sent + PET_SKILL_attempts + PASS",
             "energy": dict(energy_metric),
+            "frozen_mode_b_policy": {
+                "hp_prep_ratio_strictly_below": SKILL_RUSH_HP_PREP_RATIO,
+                "known_sword_minimum": SKILL_RUSH_SWORD_DENSITY_MINIMUM,
+                "very_low_hp_ratio_at_or_below": SKILL_RUSH_VERY_LOW_HP_RATIO,
+                "post_skill_finisher_hp_strictly_below": POST_SKILL_FINISHER_HP,
+                "post_skill_finisher_ratio_strictly_below": POST_SKILL_FINISHER_RATIO,
+            },
         },
         "runs": runs,
         "matches": rows,
@@ -950,6 +1420,9 @@ def render_markdown_summary(analysis: Mapping[str, Any]) -> str:
         ("EVOLVE total", a["evolve"]["total"], b["evolve"]["total"], None, None),
         ("Ordinary Attack total", a["ordinary_cast"]["total"], b["ordinary_cast"]["total"], None, None),
         ("Pet Skill accepted", a["pet_skill_accepted"], b["pet_skill_accepted"], None, None),
+        ("First Pet Skill kills / uses", f"{a['first_pet_skill_kills']}/{a['first_pet_skill_uses']}", f"{b['first_pet_skill_kills']}/{b['first_pet_skill_uses']}", None, None),
+        ("Post-skill finishers", a["post_skill_finisher_count"], b["post_skill_finisher_count"], None, None),
+        ("Second Pet Skill", a["second_pet_skill_count"], b["second_pet_skill_count"], None, None),
         ("PASS total", a["pass"]["total"], b["pass"]["total"], None, None),
         ("Technical aborts", a["technical_aborts"], b["technical_aborts"], None, None),
         ("Recoveries", a["technical_recoveries"], b["technical_recoveries"], None, None),
@@ -967,12 +1440,16 @@ def render_markdown_summary(analysis: Mapping[str, Any]) -> str:
 
 
 __all__ = [
+    "ANALYZER_VERSION",
     "BenchmarkDataError",
     "DATASET_SCHEMA",
     "EXPECTED_PROFILES",
     "MANIFEST_SCHEMA",
     "MODE_A",
     "MODE_B",
+    "classify_post_skill_finisher_trigger",
+    "classify_skill_fire_reason",
+    "mode_b_attack_is_valid_finisher",
     "analyze_manifest",
     "duration_seconds",
     "extract_run",
