@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from pokiguard_v2.pet_configuration import AuditionMode, EvolutionTarget
+from pokiguard_v2.gameplay_profile import PetSkillFireCondition
 from pokiguard_v2.basic_policy import PlayStyle
 from pokiguard_v2.desktop_control_plane import DesktopConfig
 from pokiguard_v2.desktop_preferences import (
@@ -44,6 +45,8 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
             target_completed_matches=25,
             max_technical_recoveries=3,
             max_match_attempts=32,
+            pet_skill_fire_condition=PetSkillFireCondition.RAGE_GEM_COUNT,
+            pet_skill_fire_value=17,
         )
         self.store.save(config, game_location=r"D:\pc\Pokiguard-1.7.4.exe")
         result = self.store.load()
@@ -59,6 +62,11 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         )
         self.assertEqual(result.config.max_match_attempts, config.max_match_attempts)
         self.assertEqual(result.config.max_technical_recoveries, 1)
+        self.assertEqual(result.config.pet_skill_fire_value, 17)
+        self.assertEqual(
+            result.config.pet_skill_fire_condition,
+            PetSkillFireCondition.RAGE_GEM_COUNT,
+        )
         self.assertEqual(
             result.game_location,
             r"D:\pc\Pokiguard-1.7.4.exe",
@@ -74,6 +82,8 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         )
         self.assertEqual(raw["config"]["board_input_mode"], "two_click")
         self.assertEqual(raw["config"]["audition_mode"], "audition_v2")
+        self.assertEqual(raw["config"]["pet_skill_fire_value"], 17)
+        self.assertEqual(raw["config"]["pet_skill_fire_condition"], "rage_gem_count")
         encoded = json.dumps(raw)
         for forbidden in (
             "farm_run_id",
@@ -112,6 +122,62 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         self.assertTrue(result.loaded)
         self.assertEqual(3, result.config.target_completed_matches)
         self.assertEqual((), result.warnings)
+
+    def test_missing_threshold_uses_default_and_invalid_threshold_falls_back(self) -> None:
+        raw = self._valid_payload()
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+        loaded = self.store.load()
+        self.assertTrue(loaded.loaded)
+        self.assertEqual(loaded.config.pet_skill_fire_value, 10)
+
+        raw["config"]["pet_skill_fire_value"] = 257
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+        rejected = self.store.load()
+        self.assertFalse(rejected.loaded)
+        self.assertEqual(rejected.config.pet_skill_fire_value, 10)
+
+    def test_legacy_sword_threshold_migrates_to_generic_condition(self) -> None:
+        raw = self._valid_payload()
+        raw["config"]["skill_rush_sword_threshold"] = 17
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+
+        loaded = self.store.load()
+
+        self.assertTrue(loaded.loaded)
+        self.assertEqual(
+            loaded.config.pet_skill_fire_condition,
+            PetSkillFireCondition.SWORD_COUNT,
+        )
+        self.assertEqual(loaded.config.pet_skill_fire_value, 17)
+
+    def test_skill_cost_condition_ignores_stale_numeric_value(self) -> None:
+        raw = self._valid_payload()
+        raw["config"].update(
+            {
+                "pet_skill_fire_condition": "skill_cost_ready",
+                "pet_skill_fire_value": 256,
+            }
+        )
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+
+        loaded = self.store.load()
+
+        self.assertTrue(loaded.loaded)
+        self.assertEqual(
+            loaded.config.pet_skill_fire_condition,
+            PetSkillFireCondition.SKILL_COST_READY,
+        )
+        self.assertIsNone(loaded.config.pet_skill_fire_value)
+
+    def test_invalid_fire_condition_falls_back_safely(self) -> None:
+        raw = self._valid_payload()
+        raw["config"]["pet_skill_fire_condition"] = "future_condition"
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+
+        rejected = self.store.load()
+
+        self.assertFalse(rejected.loaded)
+        self.assertEqual(rejected.config, DesktopConfig())
 
     def test_invalid_finite_limit_falls_back(self) -> None:
         raw = self._valid_payload()

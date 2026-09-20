@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-17 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-21 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,13 +24,154 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current accepted phase | **Phase 3D.1 Controlled A/B — PASS STRONG** |
-| Active phase | **None; Phase 3D.1 is complete** |
-| Phase 3 status | **Final `skill_rush` HT7 policy is accepted and outperformed the default profile in the bounded 10-vs-10 benchmark** |
+| Current accepted phase | **Phase 3D.1-R1 detailed three-stage Skill Rush + refreshed A/B — PASS STRONG** |
+| Active phase | **None; Phase 3D.1-R1 is complete** |
+| Phase 3 status | **Generic Pet-Skill fire condition is implemented at v1.0.49; `Kiếm đủ / 10` means multiplier-weighted known Sword value `>= 10`** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
-| Current live automation | **None; both Phase 3D.1 blocks completed at BOSS_LOBBY** |
+| Current live automation | **Final Mode B FarmRun completed 10/10 and returned to Starburst 1289 BOSS_LOBBY** |
 
-## Phase 3C.3 Final Revision — PASS STRONG
+## Phase 3D.1-R1 — PASS STRONG
+
+Source version `v1.0.49` exposes `Điều kiện ra skill` with stable generic keys
+`pet_skill_fire_condition` and `pet_skill_fire_value`. Choices are `Đủ mana
+skill`, `Kiếm đủ`, `Mana Đủ`, `Nộ đủ`, `Hút đủ`, and `Khiên đủ`. The first uses
+authoritative current skill resources with no numeric value. The five board
+conditions use inclusive multiplier-weighted known GemType value `>= value`,
+where x1/x2/x3/x4 contribute 1/2/3/4; range `0..256`.
+Actual runtime skill resources remain mandatory in every case. Default and old
+Sword-only migration are `Kiếm đủ / 10`.
+
+The condition row, Audition and its help are shown only for `PET_SKILL` and are
+hidden with zero gameplay effect for `DEFAULT_ATTACK`. Preferences and
+checkpoints preserve the exact condition/value; Start/Resume freezes it into
+the active FarmRun. UNKNOWN cells contribute no favorable count.
+
+Boss HP no longer authorizes a normal first skill at any HP value. There is no
+active HP-preparation or early Sword-damage route. Before the first successful
+skill, every selected SWAP must preserve all known Sword, regardless of current
+Rage. Mana/Rage progress is first. Safe progress wins when available; if none
+exists and player HP is above 30%, the policy still takes the best
+Sword-preserving missing-resource move before Drain, Shield or turnover, even
+when that move may leave Sword for the boss. At or below 30% HP, or when HP is
+unknown, safe protection/survival may precede unsafe resource progress. PASS
+remains the last option. A prohibited third PASS forces the
+lowest-risk non-Sword action. If every move consumes Sword, the policy fails
+closed with `SKILL_RUSH_ONLY_SWORD_MOVES`.
+
+`skill_cost_ready` skips board setup. Every count-based setup preserves both
+Sword and the selected condition GemType, favors Sword-safe direct clears at
+Manhattan distance at least two, and may PASS only when no safe preserving move
+exists. The accepted later-turn post-skill finisher now uses fresh boss HP
+ratio `<=30%`; above 30% a second skill uses the same selected condition. Hard
+actionability, lifecycle, timer, source-turn, QTE, dead-board and mandatory
+gates are unchanged. SIMPLE/CAREFUL remain unchanged.
+
+After the detailed three-stage correction, multiplier-weighted setup fix and
+healthy-player resource-priority fix, the Skill Rush suite is **63/63 PASS**,
+the phase-focused suite is **94/94 PASS**, and full regression is
+**1,354/1,354 PASS**. The user-owned randomized-input suite remains
+**18/18 PASS** in five consecutive runs. The historical R1 block remains
+accepted as five completed combats while preserving its raw four WIN + one
+UNKNOWN accounting and explicit operator acceptance.
+
+Refreshed Mode A FarmRun `fb3fddffb1f14442b31f92c473edc56e` passed 10/10 WIN
+in 10 attempts with zero Pet Skill and zero active `SKILL_RUSH_*` branch.
+Refreshed Mode B FarmRun `ee83bac8f35241c7a08afdff048632e2` passed 10/10 WIN
+in 10 attempts with 10/10 PERFECT Pet Skills and 10/10 immediate first-skill
+kills. It recorded 69/69 acknowledged SWAPs, zero PASS/EVOLVE/pre-skill Attack,
+zero forced or intentional Sword consumption and zero critical safety
+violation. Its first-skill effective Sword values were
+`10, 10, 13, 10, 11, 12, 10, 14, 10, 16`; physical counts fell as low as seven,
+proving multiplier-weighted inclusive readiness. Compared with refreshed Mode
+A, Mode B reduced mean combat duration by 36.129%, mean full-cycle duration by
+35.885% and mean primary actions by 41.045%.
+
+Canonical inputs and generated results are
+[phase3d1_r1_manifest.json](artifacts/phase3d1_r1_manifest.json),
+[phase3d1_r1_analysis.json](artifacts/phase3d1_r1_analysis.json), and
+[phase3d1_r1_analysis.md](artifacts/phase3d1_r1_analysis.md). See
+[phase3d1_r1_report.md](phase3d1_r1_report.md) and
+[phase3d1_r1_runbook.md](phase3d1_r1_runbook.md).
+
+The first refreshed Mode B attempt
+`26fbc39c62ca469e89c779ee5d2e7f2b` is rejected: the user stopped it during its
+first match, so it contributes `0/10`. Its trace contains the policy regression
+used for remediation: setup turns 13/15 selected `safe=false` distance-two
+moves with 3/2 deterministic boss Sword replies despite safe legal candidates.
+The new exact-board regressions require safe selection in those states and also
+  cover Mana/Rage > Drain > Shield ordering inside the safe pool. The accepted
+  final Mode B block above supersedes this stopped sample for validation.
+
+Smoke FarmRun `b9a40538eda54da595b0d4b76fae1f41` completed 1/1 WIN with
+17 local turns, zero PASS and one `SUCCESS_PERFECT` Pet Skill. The old running
+process saw exactly ten known Sword on local turn 13 and did not fire because
+it still used `> 10`; it fired later at 11 and killed the boss. That same turn
+had zero safe moves and exposed a separate pool bug. The current policy
+supersedes every earlier forced-Sword fallback: exact-board tests now require
+an immediate Pet Skill at ten when resources are ready and never permit a
+pre-skill SWAP that consumes known Sword.
+
+The latest diagnostic FarmRun `e4dbca0f44ea46cca5afac3984766dda` was visibly
+won but the controller ended `SAFE_STOP / COMBAT_TERMINAL_UNPROVEN`, so it counts
+as `0/10`. It logged zero formal PASS. The skill was proposed immediately on
+local turn 29, the first state with both runtime resources and exactly ten known
+Sword. Earlier turns 13 and 17 consumed respectively three and four known Sword,
+delaying that fire state. With player HP above 30%, exact turn-13 and turn-17
+regressions now prove a non-Sword Mana/Rage-priority move before PASS. Separate
+fixtures prove low-HP Shield/Health priority, PASS as the last resort and the
+mandatory non-Sword action when a third PASS is forbidden. The Desktop tool is
+closed; the game process remains open for the next operator-run live test.
+
+FarmRun `03ceea93d6254ed1a4f4dac54562e85a` completed 1/1 WIN but used 9
+energy instead of the expected 8. At local turn 15, runtime resources were
+`270/250` against cost `200/200`, the Pet Skill was actionable, and the board
+had 9 physical Sword cells worth 12 effective Sword because of x3/x2. The old
+cell-count comparison read 9 and selected Shield; it fired at turn 17 only
+after reaching 10 cells worth 16 effective Sword. Current source compares the
+effective value, records physical/effective counts separately, and contains the
+exact turn-15 board as a regression requiring immediate `PET_SKILL`. A fresh
+one-match smoke was required because the completed run used the old code.
+
+That corrected smoke is now **PASS**. FarmRun
+`b55706d7afd54b48a2fc9ec3167b92e4` completed 1/1 WIN using 6 energy, with
+zero PASS and zero pre-skill Sword consumption. On local turn 11 the runtime
+skill cost was ready at Mana/Rage `270/210` versus `200/200`; telemetry recorded
+9 physical Sword cells and 12 effective Sword, so `Kiếm đủ / 10` selected
+`PET_SKILL` immediately. Audition V3 returned `SUCCESS_PERFECT` and the skill
+killed the boss at 59,414/84,180 HP. The one abandoned Pet Skill preflight sent
+zero Windows input, requested fresh state and retried successfully on the same
+  source turn. This smoke validates the multiplier correction and remains
+  separate from the accepted continuous refreshed Mode B10 benchmark block.
+
+The following Mode B10 attempt, FarmRun
+`420227ce72734e28a0fa4a89e0827f7f`, was stopped after two completed wins; its
+third attempt exposed a resource-order defect. At local turn 15 the player had
+75.2% HP and Mana/Rage `90/250`. A Sword-preserving Mana x3 move existed but
+carried refill Sword risk, while a safe Shield move also existed. The old
+safe-pool ordering chose Shield. Current source now selects the Mana move first
+while HP is above 30%, still requires `knownSwordConsumed=0`, and leaves the
+safe Shield/survival preference intact for low or unknown HP. The exact turn-15
+board is an offline regression. This stopped run is not part of the accepted
+Mode B10 block.
+
+The corrected resource-priority smoke is now **PASS**. FarmRun
+`ae7bca6157f242689e4ad863c52416b5` completed 1/1 WIN using 7 energy, zero
+PASS, zero pre-skill Sword consumption and one Perfect immediate skill kill.
+It exercised the revised branch on local turn 7: HP was 61.1%, no safe
+Mana/Rage progress existed, and the only missing-resource move was an unsafe
+Rage x3 clear leaving three direct boss Sword replies. Policy selected that
+Rage move before protection, recorded `SKILL_RUSH_RESOURCE_RISK_ACCEPTED`, and
+kept `knownSwordConsumed=0`. Resources became ready, setup stayed Sword-safe,
+  and the skill fired on turn 13 at 10 physical / 15 effective Sword. This
+  one-match proof is supplemented by the accepted continuous Mode B10 block
+  summarized above.
+
+## Phase 3C.3 Final Revision — PASS STRONG (historical policy foundation)
+
+The details in this section describe the accepted `v1.0.48` policy and its live
+evidence. Phase 3D.1-R1 above supersedes its eight-Sword and `SETUP_BLOCKED`
+fire rules for the current source; the historical records remain unchanged for
+traceability.
 
 Source candidate `v1.0.48` adds the optional `skill_rush` PlayStyle displayed as
 `Chịu đấm ăn xôi`. It is not the default and FarmRunner gates it to exactly

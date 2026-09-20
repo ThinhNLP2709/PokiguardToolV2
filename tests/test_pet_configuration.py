@@ -20,6 +20,7 @@ from pokiguard_v2.farm_run import FarmRun
 from pokiguard_v2.pet_configuration import (
     MainPetType as Pet, EvolutionTarget as Evo, DamageCardMode as Damage,
     AuditionMode, SkillSource as Source, SkillSourceStatus as Status, GameplayConfig,
+    PetSkillFireCondition,
     FarmPolicyUnavailable, loadout_capability, normalize_damage,
     basic_policy_config, legacy_pet_fields, legacy_basic_policy,
     gameplay_config_from_args, requires_attack_card_preparation,
@@ -52,11 +53,72 @@ def resume(payload, config=None):
 
 
 class PetConfigurationTests(unittest.TestCase):
+    def test_skill_rush_threshold_default_range_and_mapping(self):
+        self.assertIs(
+            GameplayConfig().pet_skill_fire_condition,
+            PetSkillFireCondition.SWORD_COUNT,
+        )
+        self.assertEqual(GameplayConfig().pet_skill_fire_value, 10)
+        self.assertEqual(
+            GameplayConfig.from_dict(GameplayConfig().to_dict()).pet_skill_fire_value,
+            10,
+        )
+        raw = GameplayConfig().to_dict()
+        del raw["pet_skill_fire_value"]
+        self.assertEqual(GameplayConfig.from_dict(raw).pet_skill_fire_value, 10)
+        configured = replace(PET_SKILL_PROFILE, pet_skill_fire_value=17)
+        self.assertEqual(basic_policy_config(configured).pet_skill_fire_value, 17)
+        for invalid in (-1, 257, True, 10.0, "10"):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(ValueError, "between 0 and 256"):
+                    GameplayConfig(pet_skill_fire_value=invalid)
+
+    def test_generic_fire_condition_migrates_old_sword_only_config(self):
+        raw = PET_SKILL_PROFILE.to_dict()
+        raw.pop("pet_skill_fire_condition")
+        raw.pop("pet_skill_fire_value")
+        raw["skill_rush_sword_threshold"] = 17
+        migrated = GameplayConfig.from_dict(raw)
+        self.assertIs(
+            migrated.pet_skill_fire_condition,
+            PetSkillFireCondition.SWORD_COUNT,
+        )
+        self.assertEqual(migrated.pet_skill_fire_value, 17)
+        self.assertNotIn("skill_rush_sword_threshold", migrated.to_dict())
+
+    def test_skill_cost_ready_has_no_numeric_value(self):
+        config = replace(
+            PET_SKILL_PROFILE,
+            pet_skill_fire_condition=PetSkillFireCondition.SKILL_COST_READY,
+            pet_skill_fire_value=None,
+        )
+        restored = GameplayConfig.from_dict(
+            {**config.to_dict(), "pet_skill_fire_value": 42}
+        )
+        self.assertIs(
+            restored.pet_skill_fire_condition,
+            PetSkillFireCondition.SKILL_COST_READY,
+        )
+        self.assertIsNone(restored.pet_skill_fire_value)
+        with self.assertRaisesRegex(ValueError, "must be None"):
+            replace(config, pet_skill_fire_value=10)
+
     def test_stable_enum_values(self):
         self.assertEqual([v.value for v in Pet], ["normal", "legendary", "evolved", "mega"])
         self.assertEqual([v.value for v in Evo], ["none", "normal", "legendary", "evolved", "mega"])
         self.assertEqual([v.value for v in Damage], ["default_attack", "pet_skill"])
         self.assertEqual([v.value for v in AuditionMode], ["audition_v3", "audition_v2"])
+        self.assertEqual(
+            [v.value for v in PetSkillFireCondition],
+            [
+                "skill_cost_ready",
+                "sword_count",
+                "mana_gem_count",
+                "rage_gem_count",
+                "drain_gem_count",
+                "shield_gem_count",
+            ],
+        )
 
     def test_default_desktop_has_only_new_product_fields(self):
         config = DesktopConfig()
@@ -256,6 +318,14 @@ class PetPreferenceMigrationTests(unittest.TestCase):
         self.assertTrue(loaded.loaded)
         self.assertEqual(loaded.config.gameplay_config, PET_SKILL_PROFILE)
 
+    def test_current_preferences_missing_threshold_migrate_to_default(self):
+        raw = self.seed(replace(DesktopConfig(), pet_skill_fire_value=17))
+        del raw["config"]["pet_skill_fire_value"]
+        self.write(raw)
+        loaded = self.store.load()
+        self.assertTrue(loaded.loaded)
+        self.assertEqual(loaded.config.pet_skill_fire_value, 10)
+
     def test_old_schema_cannot_infer_new_skill_intent(self):
         raw = self.seed(DesktopConfig().with_gameplay_config(PET_SKILL_PROFILE))
         raw["schema"] = LEGACY_PREFERENCE_SCHEMA
@@ -353,14 +423,71 @@ class PetCheckpointTests(unittest.TestCase):
         self.assertEqual(resume(loaded, GameplayConfig()).reason, "CHECKPOINT_PROFILE_UNKNOWN")
 
     def test_pet_skill_checkpoint_roundtrip_resumes_only_with_exact_profile(self):
-        payload = replace(_payload(), gameplay_config=PET_SKILL_PROFILE)
+        profile = replace(
+            PET_SKILL_PROFILE,
+            pet_skill_fire_condition=PetSkillFireCondition.MANA_GEM_COUNT,
+            pet_skill_fire_value=8,
+        )
+        payload = replace(_payload(), gameplay_config=profile)
         write_checkpoint(self.path, payload)
         loaded = load_checkpoint(self.path)
         self.assertEqual(loaded, payload)
         self.assertFalse(resume(loaded, GameplayConfig()).allowed)
-        decision = resume(loaded, PET_SKILL_PROFILE)
+        self.assertFalse(resume(loaded, PET_SKILL_PROFILE).allowed)
+        decision = resume(loaded, profile)
         self.assertTrue(decision.allowed)
         self.assertIsNone(decision.reason)
+
+    def test_skill_cost_checkpoint_roundtrip_has_no_numeric_value(self):
+        profile = replace(
+            PET_SKILL_PROFILE,
+            pet_skill_fire_condition=PetSkillFireCondition.SKILL_COST_READY,
+            pet_skill_fire_value=None,
+        )
+        payload = replace(_payload(), gameplay_config=profile)
+        write_checkpoint(self.path, payload)
+
+        loaded = load_checkpoint(self.path)
+
+        self.assertEqual(loaded.gameplay_config, profile)
+        self.assertIsNone(loaded.gameplay_config.pet_skill_fire_value)
+        self.assertTrue(resume(loaded, profile).allowed)
+
+    def test_current_checkpoint_missing_threshold_migrates_to_default(self):
+        raw = asdict(replace(_payload(), gameplay_config=PET_SKILL_PROFILE))
+        del raw["gameplay_config"]["pet_skill_fire_value"]
+        self.write_raw(raw)
+        loaded = load_checkpoint(self.path)
+        self.assertEqual(loaded.gameplay_config.pet_skill_fire_value, 10)
+
+    def test_sword_only_checkpoint_key_migrates_to_generic_fields(self):
+        raw = asdict(replace(_payload(), gameplay_config=PET_SKILL_PROFILE))
+        raw["gameplay_config"].pop("pet_skill_fire_condition")
+        raw["gameplay_config"].pop("pet_skill_fire_value")
+        raw["gameplay_config"]["skill_rush_sword_threshold"] = 15
+        self.write_raw(raw)
+
+        loaded = load_checkpoint(self.path)
+
+        self.assertIs(
+            loaded.gameplay_config.pet_skill_fire_condition,
+            PetSkillFireCondition.SWORD_COUNT,
+        )
+        self.assertEqual(loaded.gameplay_config.pet_skill_fire_value, 15)
+
+    def test_invalid_generic_checkpoint_condition_or_value_is_rejected(self):
+        for field, value in (
+            ("pet_skill_fire_condition", "future_condition"),
+            ("pet_skill_fire_value", 257),
+        ):
+            with self.subTest(field=field):
+                raw = asdict(
+                    replace(_payload(), gameplay_config=PET_SKILL_PROFILE)
+                )
+                raw["gameplay_config"][field] = value
+                self.write_raw(raw)
+                with self.assertRaises(CheckpointError):
+                    load_checkpoint(self.path)
 
     def test_profile_mismatch_cannot_change_historical_behavior(self):
         payload = replace(_payload(), gameplay_config=GameplayConfig(evolution=Evo.NONE))

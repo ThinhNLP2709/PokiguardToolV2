@@ -50,6 +50,12 @@ The current user-facing configuration is:
   visible but disabled);
 - `DamageCardMode`: `DEFAULT_ATTACK`, `PET_SKILL` where a conceptual source
   exists;
+- `PetSkillFireCondition`: runtime-cost readiness or current known effective
+  board value, including x1/x2/x3/x4, for `SWORD`, `MANA`, `RAGE`, `DRAIN`, or
+  `SHIELD`;
+- `pet_skill_fire_value`: optional integer `0..256`; unused for runtime-cost
+  readiness. The Desktop row is `Điều kiện ra skill`, and count readiness uses
+  inclusive `>=`; default is `sword_count / 10`;
 - `Intelligence`: `BASIC`, `REASONING`.
 
 Canonical production policy now receives the three Phase 3A.2 profile fields.
@@ -95,7 +101,7 @@ The accepted HT7 and HT2 costs remain fixtures at 200/200 and 200/150. Policy
 reads `effective_mana_cost`/`effective_power_cost`; it contains no Legendary
 rarity cost constant. Net post-skill resources never authorize a later action.
 
-## Phase 3C.3 `SKILL_RUSH` order
+## Current `SKILL_RUSH` order (Phase 3D.1-R1)
 
 The optional `SKILL_RUSH` branch is accepted only for
 `LEGENDARY / NONE / PET_SKILL / BASIC`; all other combinations are blocked by
@@ -104,50 +110,61 @@ and the Desktop label is `Chịu đấm ăn xôi`. SIMPLE remains the default.
 
 After the unchanged combat/actionability and Pet Skill capability gates:
 
-1. Derive boss HP preparation from fresh boss stats. Below 50% is ready. While
-   boss HP is at least 50%, one ordinary deterministic 3-Sword clear may be
-   used after higher-value resource closure. Do not deliberately keep damaging
-   the boss from 49% toward the old 35% margin.
-2. While Mana or Rage is missing, rank known progress toward only the current
-   deficits. Requirements closed and normalized readiness progress come first;
-   equivalent candidates consume fewer known Sword, preserve more result-board
-   Sword, then use calculability, UNKNOWN exposure, sparse-axis turnover and
-   stable tie-breaks. Full resources and UNKNOWN refill receive zero readiness
-   credit.
-3. Count only known Sword on the 64-cell authoritative board. At least 8
-   known Sword is the revised practical high-density setup condition. A ready,
-   actionable skill fires when boss HP is below 50% or known Sword is at least 8.
-   Boss HP at or below approximately 30% uses the `VERY_LOW_HP` fire reason and
-   does not wait for more setup.
-4. If resources are ready but boss HP is at least 50% and Sword count is below
-   8, continue deterministic setup. Preserve existing Sword and first use
-   direct non-Sword clears whose cells are at Manhattan distance at least 2
-   from every known Sword. Within that pool, prefer zero/low-Sword axes. If the
-   board has no such legal clear and current Pet Skill CardUI is actionable,
-   fire with `SETUP_BLOCKED` rather than clear beside Sword. Only a temporarily
-   non-actionable CardUI permits the least-adjacent deterministic fallback.
-   This is board turnover only; it does not predict refill or award future
-   Sword credit.
-5. Direct and indirect boss Sword replies remain telemetry/strategic risk in
-   this PlayStyle. Hard technical/actionability gates and existing proven
-   mandatory-survival rules remain unchanged.
+1. While Mana or Rage is missing, rank known progress toward only the current
+   deficits. A Sword-safe progress move is preferred when one exists. If none
+   exists and player HP is known above 30%, take the best Sword-preserving
+   Mana/Rage progress even when it may leave Sword for the boss; resource
+   completion precedes Drain, Shield and turnover. At or below 30% HP, or when
+   HP is unknown, safe protection/survival remains ahead of an unsafe resource
+   move. Full resources and UNKNOWN refill receive zero readiness credit.
+2. Evaluate the selected normal Pet Skill condition. `skill_cost_ready` uses
+   authoritative current skill-resource readiness and no number. Count choices
+   use only the current accepted known `SWORD`, `MANA`, `RAGE`, `DRAIN`, or
+   `SHIELD` cells and sum their proven multipliers with inclusive
+   `known_effective_count >= pet_skill_fire_value`. UNKNOWN adds zero. Range is
+   `0..256`; default/migration is `sword_count / 10`. A skill
+   fires only when actual current runtime resources, the selected condition and
+   all technical/actionability gates pass. Boss HP does not authorize a normal
+   first skill.
+3. Every pre-first-skill SWAP has `known_sword_consumed == 0`, regardless of
+   current Rage. During resource collection, direct, indirect and UNKNOWN boss
+   Sword replies rank safe Mana/Rage progress first but do not let Drain or
+   Shield displace missing-resource progress while HP is above 30%. During
+   setup they remain hard candidate filters whenever a safe preserving action
+   exists.
+4. When no missing-resource move exists and player HP is known above 30%,
+   choose the lowest-risk non-Sword action in this order: Drain, Shield, then
+   other turnover. At or below 30% HP, or when HP is unknown, prefer a
+   non-Sword Shield then Health action. Only after those survival choices may
+   the policy use an authoritative PASS. When PASS is prohibited, choose the
+   lowest-risk non-Sword mandatory action to reset the idle streak. If every
+   legal move consumes Sword, fail closed with `SKILL_RUSH_ONLY_SWORD_MOVES`.
+5. `skill_cost_ready` skips board setup. For a count condition, setup preserves
+   both known Sword and the selected condition GemType. Within the safe pool,
+   direct clears at Manhattan distance at least 2 from every known Sword are
+   preferred; distance never substitutes for direct, indirect and UNKNOWN
+   Sword-reply checks. If no safe preserving setup exists, use an authoritative
+   `SKILL_RUSH_SETUP_PASS` while allowed. When PASS is prohibited, choose the
+   lowest-risk preserving non-Sword action. If every legal move consumes Sword
+   or the selected setup GemType, fail closed with
+   `SKILL_RUSH_ONLY_SETUP_CONSUMING_MOVES`.
 6. After the first current-match `SUCCESS_PERFECT`, the exact source turn stays
-   closed. On a later authoritative local turn, fresh boss HP `< 30,000` or
-   fresh ratio `< 20%` enables `POST_SKILL_FINISHER`: affordable ordinary
-   Attack first, otherwise deterministic Sword damage. EVOLVE stays disabled.
-7. If the surviving boss is at least 30,000 HP and at least 20%, ordinary
-   Attack remains blocked and normal setup resumes. A later second Pet Skill is
-   legal when its runtime resources and normal fire condition become ready.
+   closed. On a later authoritative local turn, fresh boss HP ratio `<= 30%`
+   enables `POST_SKILL_FINISHER`: affordable ordinary Attack first, otherwise
+   deterministic Sword damage. EVOLVE stays disabled.
+7. If the surviving boss is above 30%, ordinary Attack and Sword remain blocked
+   and resource/setup play resumes. A later second Pet Skill is legal only when
+   runtime resources and the same selected generic fire condition become ready.
 8. Successful-skill history is held only for the exact `CombatSessionKey`; it
    is neither global nor checkpoint-persisted. PASS remains authoritative and
    unchanged.
 
-`CandidateTrace.hard_survival_status` is currently
+Boss HP remains diagnostic before the first skill and authoritative for
+terminal/result truth, separately proven hard survival, and the post-skill
+finisher only. `CandidateTrace.hard_survival_status` is currently
 `UNKNOWN_NO_LETHALITY_MODEL`: the simulator proves board/Sword outcomes but has
 no authoritative next-hit damage model. The policy therefore does not invent a
-lethality gate. The approximately 35% lower preparation margin and approximately
-30% evolution danger are gameplay guidance, not exact reverse-proven triggers.
-Technical safety gates remain hard. SIMPLE/CAREFUL continue through the Phase
+lethality gate. Technical safety gates remain hard. SIMPLE/CAREFUL continue through the Phase
 3C.1 Sword-first branch without any ranking or Attack-rule change.
 
 ## Runtime gates

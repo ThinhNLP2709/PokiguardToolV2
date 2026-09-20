@@ -59,6 +59,7 @@ from pokiguard_v2.basic_policy import (  # noqa: E402
     PolicyAction,
     PolicyDecision,
     PolicyConfig,
+    PET_SKILL_FIRE_VALUE_DEFAULT,
     SkillRushMatchContext,
 )
 from pokiguard_v2.board_diagnostics import (  # noqa: E402
@@ -156,6 +157,7 @@ from pokiguard_v2.gameplay_profile import (  # noqa: E402
     DamageCardMode,
     EvolutionTarget,
     MainPetType,
+    PetSkillFireCondition,
 )
 from pokiguard_v2.pet_configuration import (  # noqa: E402
     GameplayConfig,
@@ -837,12 +839,18 @@ class Counters:
     pet_skill_turn_resolution_unconfirmed: int = 0
     pet_skill_same_source_followups: int = 0
     pet_skill_immediate_kills: int = 0
-    skill_rush_hp_prep_fires: int = 0
-    skill_rush_sword_density_fires: int = 0
-    skill_rush_both_fires: int = 0
-    skill_rush_very_low_hp_fires: int = 0
+    skill_rush_sword_threshold_fires: int = 0
+    skill_rush_fire_condition_fires: int = 0
     skill_rush_setup_blocked_fires: int = 0
-    skill_rush_early_boss_prep_sword: int = 0
+    skill_rush_setup_blocked_states: int = 0
+    skill_rush_setup_relaxed_actions: int = 0
+    skill_rush_premature_blocked_skills: int = 0
+    skill_rush_relaxed_distance_fallbacks: int = 0
+    skill_rush_board_turnover_fallbacks: int = 0
+    skill_rush_forced_pre_skill_sword_fallbacks: int = 0
+    skill_rush_mandatory_fallbacks: int = 0
+    skill_rush_forced_pre_skill_sword_consumptions: int = 0
+    skill_rush_intentional_pre_skill_sword_consumptions: int = 0
     skill_rush_finisher_attack: int = 0
     skill_rush_finisher_sword: int = 0
     skill_rush_second_pet_skill: int = 0
@@ -1335,21 +1343,23 @@ def _must_pause_for_no_safe_move(
         and decision.trace.blocker == "TURN_TIMER_SAFETY_MARGIN"
     ):
         return False
-    # SKILL_RUSH deliberately evaluates direct/indirect Sword replies as
-    # strategic risk. Its selected board actions therefore remain authorized
-    # when every legal candidate fails the generic SIMPLE/CAREFUL safety
-    # classifier. Keep this exemption tied to the explicit SKILL_RUSH swap
-    # branches so another play style cannot inherit it accidentally.
-    skill_rush_strategic_swap = bool(
+    # SKILL_RUSH may use its explicit least-risk fallback only when the shared
+    # simulator proves that no legal Sword-safe move exists. Keep this narrow
+    # executor exemption tied to named SKILL_RUSH swap branches; policy itself
+    # now hard-filters to the safe pool whenever that pool is non-empty.
+    skill_rush_no_safe_fallback = bool(
         decision.action is PolicyAction.SWAP
         and decision.move is not None
         and decision.trace.play_style == "skill_rush"
         and decision.trace.policy_step
         in {
             "SKILL_RUSH_RESOURCE_PROGRESS",
+            "SKILL_RUSH_RESOURCE_RISK_ACCEPTED",
+            "SKILL_RUSH_SURVIVAL_RISK_ACCEPTED",
+            "SKILL_RUSH_RESOURCE_MANDATORY",
             "SKILL_RUSH_LEGAL_FALLBACK",
             "SKILL_RUSH_BOARD_SETUP",
-            "SKILL_RUSH_EARLY_BOSS_PREP_SWORD",
+            "SKILL_RUSH_SETUP_RELAXED",
             "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
         }
     )
@@ -1357,7 +1367,7 @@ def _must_pause_for_no_safe_move(
         legal_move_count > 0
         and safe_move_count == 0
         and first_local_turn is not True
-        and not skill_rush_strategic_swap
+        and not skill_rush_no_safe_fallback
         and not (
             decision.action is PolicyAction.SWAP
             and (
@@ -1975,21 +1985,44 @@ def _record_policy_observation(
     elif decision.action is PolicyAction.PET_SKILL:
         counters.pet_skill_proposals += 1
         trigger = decision.trace.skill_fire_trigger
-        if trigger == "HP_PREP":
-            counters.skill_rush_hp_prep_fires += 1
-        elif trigger == "SWORD_DENSITY":
-            counters.skill_rush_sword_density_fires += 1
-        elif trigger == "BOTH":
-            counters.skill_rush_both_fires += 1
-        elif trigger == "VERY_LOW_HP":
-            counters.skill_rush_very_low_hp_fires += 1
+        if trigger == "SKILL_RUSH_FIRE_CONDITION_READY":
+            counters.skill_rush_fire_condition_fires += 1
+            if decision.trace.pet_skill_fire_condition == PetSkillFireCondition.SWORD_COUNT.value:
+                counters.skill_rush_sword_threshold_fires += 1
         elif trigger == "SETUP_BLOCKED":
             counters.skill_rush_setup_blocked_fires += 1
         if decision.trace.finisher_action == "SECOND_PET_SKILL":
             counters.skill_rush_second_pet_skill += 1
-    if decision.trace.policy_step == "SKILL_RUSH_EARLY_BOSS_PREP_SWORD":
-        counters.skill_rush_early_boss_prep_sword += 1
-    elif decision.trace.policy_step == "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK":
+    if decision.trace.setup_blocked:
+        counters.skill_rush_setup_blocked_states += 1
+        if decision.action is PolicyAction.PET_SKILL and not decision.trace.skill_fire_trigger:
+            counters.skill_rush_premature_blocked_skills += 1
+    if decision.trace.policy_step == "SKILL_RUSH_SETUP_RELAXED":
+        counters.skill_rush_setup_relaxed_actions += 1
+        fallback = decision.trace.setup_fallback_type
+        if fallback == "RELAXED_DISTANCE":
+            counters.skill_rush_relaxed_distance_fallbacks += 1
+        elif fallback == "BOARD_TURNOVER":
+            counters.skill_rush_board_turnover_fallbacks += 1
+        elif fallback == "FORCED_PRE_SKILL_SWORD_CONSUMPTION":
+            counters.skill_rush_forced_pre_skill_sword_fallbacks += 1
+        elif fallback == "MANDATORY_FALLBACK":
+            counters.skill_rush_mandatory_fallbacks += 1
+    if (
+        decision.trace.play_style == PlayStyle.SKILL_RUSH.value
+        and decision.trace.pet_skill_success_count_current_match == 0
+        and decision.action is PolicyAction.SWAP
+        and decision.trace.selected_candidate is not None
+        and decision.trace.selected_candidate.known_sword_consumed > 0
+    ):
+        if (
+            decision.trace.setup_fallback_type
+            == "FORCED_PRE_SKILL_SWORD_CONSUMPTION"
+        ):
+            counters.skill_rush_forced_pre_skill_sword_consumptions += 1
+        else:
+            counters.skill_rush_intentional_pre_skill_sword_consumptions += 1
+    if decision.trace.policy_step == "SKILL_RUSH_POST_SKILL_FINISHER_ATTACK":
         counters.skill_rush_finisher_attack += 1
     elif decision.trace.policy_step == "SKILL_RUSH_POST_SKILL_FINISHER_SWORD":
         counters.skill_rush_finisher_sword += 1
@@ -2032,6 +2065,38 @@ def _pet_skill_resource_progress_fields(
             else None
         ),
         "reason": decision.trace.why_selected,
+        "configuredSwordThreshold": decision.trace.configured_sword_threshold,
+        "knownSwordCount": decision.trace.known_sword_count,
+        "knownSwordEffectiveCount": decision.trace.known_sword_effective_count,
+        "knownSwordCellCount": decision.trace.known_sword_count,
+        "swordThresholdReady": decision.trace.sword_threshold_ready,
+        "petSkillFireCondition": decision.trace.pet_skill_fire_condition,
+        "petSkillFireValue": decision.trace.pet_skill_fire_value,
+        "selectedFireGemType": decision.trace.selected_fire_gem_type,
+        "selectedKnownGemCount": decision.trace.selected_known_gem_count,
+        "selectedKnownGemEffectiveCount": (
+            decision.trace.selected_known_gem_effective_count
+        ),
+        "selectedKnownGemCellCount": (
+            decision.trace.selected_known_gem_count
+        ),
+        "selectedFireConditionReady": (
+            decision.trace.selected_fire_condition_ready
+        ),
+        "resourcesReady": decision.trace.skill_ready,
+        "firstSkillUsedThisMatch": (
+            decision.trace.pet_skill_success_count_current_match > 0
+        ),
+        "knownSwordConsumed": (
+            decision.trace.selected_candidate.known_sword_consumed
+            if decision.trace.selected_candidate is not None
+            else None
+        ),
+        "knownSwordPreserved": (
+            decision.trace.selected_candidate.known_sword_preserved
+            if decision.trace.selected_candidate is not None
+            else None
+        ),
         "skippedCurrentSwordForResource": (
             decision.trace.skipped_current_sword_for_resource
         ),
@@ -2773,6 +2838,20 @@ def _decision_fields(state: GameState, decision: Any, analysis: Any) -> dict[str
             if selected is not None
             else None
         ),
+        "setupBlocked": decision.trace.setup_blocked,
+        "preferredSetupCandidateCount": (
+            decision.trace.preferred_setup_candidate_count
+        ),
+        "relaxedSetupCandidateCount": (
+            decision.trace.relaxed_setup_candidate_count
+        ),
+        "minimumAvailableSwordDistance": (
+            decision.trace.minimum_available_sword_distance
+        ),
+        "swordConsumedByRelaxedMove": (
+            decision.trace.sword_consumed_by_relaxed_move
+        ),
+        "setupFallbackType": decision.trace.setup_fallback_type,
         "skippedCurrentSwordForResource": (
             decision.trace.skipped_current_sword_for_resource
         ),
@@ -2905,6 +2984,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=100,
         help="Step 3 Rage floor to reach before switching to Mana.",
+    )
+    parser.add_argument(
+        "--pet-skill-fire-condition",
+        choices=[value.value for value in PetSkillFireCondition],
+        default=PetSkillFireCondition.SWORD_COUNT.value,
+    )
+    parser.add_argument(
+        "--pet-skill-fire-value",
+        type=int,
+        default=PET_SKILL_FIRE_VALUE_DEFAULT,
+        help="inclusive board-gem count threshold; ignored for skill_cost_ready",
     )
     parser.add_argument("--interval", type=float, default=0.10)
     parser.add_argument("--action-timeout", type=float, default=9.0)
@@ -3121,6 +3211,27 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
             rage_target=getattr(args, "rage_target", 100),
+            pet_skill_fire_condition=PetSkillFireCondition(
+                getattr(
+                    args,
+                    "pet_skill_fire_condition",
+                    PetSkillFireCondition.SWORD_COUNT.value,
+                )
+            ),
+            pet_skill_fire_value=(
+                None
+                if getattr(
+                    args,
+                    "pet_skill_fire_condition",
+                    PetSkillFireCondition.SWORD_COUNT.value,
+                )
+                == PetSkillFireCondition.SKILL_COST_READY.value
+                else getattr(
+                    args,
+                    "pet_skill_fire_value",
+                    PET_SKILL_FIRE_VALUE_DEFAULT,
+                )
+            ),
         )
         policy_config = basic_policy_config(gameplay)
         configured_mana_priority = (
@@ -3137,6 +3248,27 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile_threshold=getattr(args, "cast_mana_stockpile", 480),
             rage_target=getattr(args, "rage_target", 100),
+            pet_skill_fire_condition=PetSkillFireCondition(
+                getattr(
+                    args,
+                    "pet_skill_fire_condition",
+                    PetSkillFireCondition.SWORD_COUNT.value,
+                )
+            ),
+            pet_skill_fire_value=(
+                None
+                if getattr(
+                    args,
+                    "pet_skill_fire_condition",
+                    PetSkillFireCondition.SWORD_COUNT.value,
+                )
+                == PetSkillFireCondition.SKILL_COST_READY.value
+                else getattr(
+                    args,
+                    "pet_skill_fire_value",
+                    PET_SKILL_FIRE_VALUE_DEFAULT,
+                )
+            ),
         )
     policy = BasicPolicyEngine(
         replace(
@@ -7150,6 +7282,102 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         policyStep=decision.trace.policy_step,
                         freshAuthoritativeState=True,
                     )
+                if decision.trace.setup_blocked:
+                    _write(
+                        log,
+                        (
+                            "skill_rush_setup_relaxed"
+                            if decision.trace.policy_step
+                            == "SKILL_RUSH_SETUP_RELAXED"
+                            else "skill_rush_setup_blocked"
+                        ),
+                        session=state.battle.session_key,
+                        matchId=state.battle.match_id,
+                        sourceTurn=state.battle.turn_number,
+                        bossHp=decision.trace.boss_hp,
+                        bossMaxHp=decision.trace.boss_max_hp,
+                        bossHpRatio=decision.trace.boss_hp_ratio,
+                        knownSwordCount=decision.trace.known_sword_count,
+                        knownSwordEffectiveCount=(
+                            decision.trace.known_sword_effective_count
+                        ),
+                        knownSwordCellCount=(
+                            decision.trace.known_sword_count
+                        ),
+                        configuredSwordThreshold=(
+                            decision.trace.configured_sword_threshold
+                        ),
+                        swordThresholdReady=decision.trace.sword_threshold_ready,
+                        petSkillFireCondition=(
+                            decision.trace.pet_skill_fire_condition
+                        ),
+                        petSkillFireValue=decision.trace.pet_skill_fire_value,
+                        selectedFireGemType=(
+                            decision.trace.selected_fire_gem_type
+                        ),
+                        selectedKnownGemCount=(
+                            decision.trace.selected_known_gem_count
+                        ),
+                        selectedKnownGemEffectiveCount=(
+                            decision.trace.selected_known_gem_effective_count
+                        ),
+                        selectedKnownGemCellCount=(
+                            decision.trace.selected_known_gem_count
+                        ),
+                        selectedFireConditionReady=(
+                            decision.trace.selected_fire_condition_ready
+                        ),
+                        resourcesReady=decision.trace.skill_ready,
+                        firstSkillUsedThisMatch=(
+                            decision.trace.pet_skill_success_count_current_match > 0
+                        ),
+                        currentMana=decision.trace.current_mana,
+                        currentRage=decision.trace.current_rage,
+                        requiredMana=decision.trace.required_mana,
+                        requiredRage=decision.trace.required_rage,
+                        preferredCandidateCount=(
+                            decision.trace.preferred_setup_candidate_count
+                        ),
+                        relaxedCandidateCount=(
+                            decision.trace.relaxed_setup_candidate_count
+                        ),
+                        minimumAvailableSwordDistance=(
+                            decision.trace.minimum_available_sword_distance
+                        ),
+                        swordConsumedByRelaxedMove=(
+                            decision.trace.sword_consumed_by_relaxed_move
+                        ),
+                        knownSwordConsumed=(
+                            decision.trace.selected_candidate.known_sword_consumed
+                            if decision.trace.selected_candidate is not None
+                            else None
+                        ),
+                        knownSwordPreserved=(
+                            decision.trace.selected_candidate.known_sword_preserved
+                            if decision.trace.selected_candidate is not None
+                            else None
+                        ),
+                        sparseTurnoverReason=decision.trace.setup_fallback_type,
+                        sparseTurnoverScore=(
+                            {
+                                "zeroSwordAxes": (
+                                    decision.trace.selected_candidate.cleared_non_sword_zero_sword_axes
+                                ),
+                                "lowSwordAxes": (
+                                    decision.trace.selected_candidate.cleared_non_sword_low_sword_axes
+                                ),
+                                "distanceTwoPlusCells": (
+                                    decision.trace.selected_candidate.cleared_non_sword_distance_two_plus
+                                ),
+                            }
+                            if decision.trace.selected_candidate is not None
+                            else None
+                        ),
+                        setupFallbackType=decision.trace.setup_fallback_type,
+                        selectedAction=decision.action,
+                        selectedMove=decision.move,
+                        fireTrigger=decision.trace.skill_fire_trigger,
+                    )
                 if decision.action is PolicyAction.PET_SKILL:
                     _write(
                         log,
@@ -7168,8 +7396,39 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         bossMaxHp=decision.trace.boss_max_hp,
                         bossHpRatio=decision.trace.boss_hp_ratio,
                         knownSwordCount=decision.trace.known_sword_count,
-                        hpPrepReady=decision.trace.hp_prep_ready,
-                        swordDensityReady=decision.trace.sword_density_ready,
+                        knownSwordEffectiveCount=(
+                            decision.trace.known_sword_effective_count
+                        ),
+                        knownSwordCellCount=(
+                            decision.trace.known_sword_count
+                        ),
+                        configuredSwordThreshold=(
+                            decision.trace.configured_sword_threshold
+                        ),
+                        swordThresholdReady=decision.trace.sword_threshold_ready,
+                        petSkillFireCondition=(
+                            decision.trace.pet_skill_fire_condition
+                        ),
+                        petSkillFireValue=decision.trace.pet_skill_fire_value,
+                        selectedFireGemType=(
+                            decision.trace.selected_fire_gem_type
+                        ),
+                        selectedKnownGemCount=(
+                            decision.trace.selected_known_gem_count
+                        ),
+                        selectedKnownGemEffectiveCount=(
+                            decision.trace.selected_known_gem_effective_count
+                        ),
+                        selectedKnownGemCellCount=(
+                            decision.trace.selected_known_gem_count
+                        ),
+                        selectedFireConditionReady=(
+                            decision.trace.selected_fire_condition_ready
+                        ),
+                        resourcesReady=decision.trace.skill_ready,
+                        firstSkillUsedThisMatch=(
+                            decision.trace.pet_skill_success_count_current_match > 0
+                        ),
                         fireTrigger=decision.trace.skill_fire_trigger,
                         successfulPetSkillsCurrentMatch=(
                             decision.trace.pet_skill_success_count_current_match
@@ -8431,6 +8690,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         skillFireBossMaxHp=decision.trace.boss_max_hp,
                         skillFireBossHpRatio=decision.trace.boss_hp_ratio,
                         skillFireKnownSwordCount=decision.trace.known_sword_count,
+                        skillFireKnownSwordEffectiveCount=(
+                            decision.trace.known_sword_effective_count
+                        ),
+                        skillFireKnownSwordCellCount=(
+                            decision.trace.known_sword_count
+                        ),
                         skillFireTrigger=decision.trace.skill_fire_trigger,
                     )
                 else:
@@ -9045,15 +9310,47 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             ),
             petSkillSameSourceFollowups=counters.pet_skill_same_source_followups,
             petSkillImmediateKills=counters.pet_skill_immediate_kills,
+            petSkillFireCondition=policy.config.pet_skill_fire_condition.value,
+            petSkillFireValue=policy.config.pet_skill_fire_value,
+            skillRushSwordThreshold=(
+                policy.config.pet_skill_fire_value
+                if policy.config.pet_skill_fire_condition
+                is PetSkillFireCondition.SWORD_COUNT
+                else None
+            ),
             skillRushFireReasons={
-                "HP_PREP": counters.skill_rush_hp_prep_fires,
-                "SWORD_DENSITY": counters.skill_rush_sword_density_fires,
-                "BOTH": counters.skill_rush_both_fires,
-                "VERY_LOW_HP": counters.skill_rush_very_low_hp_fires,
+                "SKILL_RUSH_FIRE_CONDITION_READY": (
+                    counters.skill_rush_fire_condition_fires
+                ),
+                "SKILL_RUSH_SWORD_THRESHOLD_READY": (
+                    counters.skill_rush_sword_threshold_fires
+                ),
                 "SETUP_BLOCKED": counters.skill_rush_setup_blocked_fires,
             },
-            skillRushEarlyBossPrepSword=(
-                counters.skill_rush_early_boss_prep_sword
+            skillRushSetupBlockedStates=(
+                counters.skill_rush_setup_blocked_states
+            ),
+            skillRushSetupRelaxedActions=(
+                counters.skill_rush_setup_relaxed_actions
+            ),
+            skillRushPrematureBlockedSkills=(
+                counters.skill_rush_premature_blocked_skills
+            ),
+            skillRushSetupFallbacks={
+                "RELAXED_DISTANCE": (
+                    counters.skill_rush_relaxed_distance_fallbacks
+                ),
+                "BOARD_TURNOVER": counters.skill_rush_board_turnover_fallbacks,
+                "FORCED_PRE_SKILL_SWORD_CONSUMPTION": (
+                    counters.skill_rush_forced_pre_skill_sword_fallbacks
+                ),
+                "MANDATORY_FALLBACK": counters.skill_rush_mandatory_fallbacks,
+            },
+            skillRushForcedPreSkillSwordConsumptions=(
+                counters.skill_rush_forced_pre_skill_sword_consumptions
+            ),
+            skillRushIntentionalPreSkillSwordConsumptions=(
+                counters.skill_rush_intentional_pre_skill_sword_consumptions
             ),
             skillRushPostSkillFinisher={
                 "DEFAULT_ATTACK": counters.skill_rush_finisher_attack,

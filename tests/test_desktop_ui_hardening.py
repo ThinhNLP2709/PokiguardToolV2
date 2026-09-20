@@ -37,6 +37,7 @@ from pokiguard_v2.desktop_ui import (
     SETTINGS_TABLE_ROWS,
     VISIBLE_RUNTIME_ROWS,
     background_click_clears_entry_focus,
+    decimal_digits_or_empty,
     graceful_button_text,
     match_energy_text,
     run_limit_text,
@@ -233,8 +234,8 @@ class BoundedOperatorLogTests(unittest.TestCase):
 class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
-        self.assertEqual("v1.0.48", APP_VERSION)
-        self.assertEqual("Pokiguard Tool V2 - v1.0.48", APP_TITLE)
+        self.assertEqual("v1.0.49", APP_VERSION)
+        self.assertEqual("Pokiguard Tool V2 - v1.0.49", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(
@@ -271,7 +272,9 @@ class CompactPresentationContractTests(unittest.TestCase):
         self.assertEqual(
             (
                 "PlayStyle", "Intelligence", "Pet của tôi", "Tiến hóa",
-                "Thẻ sát thương", "Audition", "Board input",
+                "Thẻ sát thương",
+                "Điều kiện ra skill",
+                "Audition", "Board input",
             ),
             PREFERENCE_TABLE_ROWS,
         )
@@ -283,6 +286,12 @@ class CompactPresentationContractTests(unittest.TestCase):
             self.assertTrue(background_click_clears_entry_focus(widget_class))
         for widget_class in ("TEntry", "TCombobox", "TButton", "Text", "TNotebook"):
             self.assertFalse(background_click_clears_entry_focus(widget_class))
+
+    def test_sword_threshold_entry_accepts_ascii_digits_and_temporary_empty_only(self) -> None:
+        for value in ("", "0", "10", "256"):
+            self.assertTrue(decimal_digits_or_empty(value))
+        for value in ("-1", "+10", "10.0", " 10", "10 ", "abc", "１０"):
+            self.assertFalse(decimal_digits_or_empty(value))
 
     def test_run_limit_text_uses_validated_canonical_values(self) -> None:
         config = DesktopConfig(target_completed_matches=25, max_match_attempts=32)

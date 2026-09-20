@@ -30,6 +30,21 @@ class DamageCardMode(str, Enum):
     PET_SKILL = "pet_skill"
 
 
+class PetSkillFireCondition(str, Enum):
+    """Stable machine identity for the normal Pet Skill fire condition."""
+
+    SKILL_COST_READY = "skill_cost_ready"
+    SWORD_COUNT = "sword_count"
+    MANA_GEM_COUNT = "mana_gem_count"
+    RAGE_GEM_COUNT = "rage_gem_count"
+    DRAIN_GEM_COUNT = "drain_gem_count"
+    SHIELD_GEM_COUNT = "shield_gem_count"
+
+    @property
+    def uses_board_count(self) -> bool:
+        return self is not PetSkillFireCondition.SKILL_COST_READY
+
+
 class AuditionMode(str, Enum):
     """Operator-selected Pet Skill QTE generation.
 
@@ -42,4 +57,10 @@ class AuditionMode(str, Enum):
     V2_FOUR_DIRECTION = "audition_v2"
 
 
-__all__ = ["AuditionMode", "DamageCardMode", "EvolutionTarget", "MainPetType"]
+__all__ = [
+    "AuditionMode",
+    "DamageCardMode",
+    "EvolutionTarget",
+    "MainPetType",
+    "PetSkillFireCondition",
+]

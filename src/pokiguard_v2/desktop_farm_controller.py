@@ -635,6 +635,8 @@ class DesktopFarmControllerManager:
             str(config.cast_mana_stockpile),
             "--rage-target",
             str(config.rage_target),
+            "--pet-skill-fire-condition",
+            config.pet_skill_fire_condition.value,
             "--board-input-mode",
             config.board_input_mode.value,
             "--reset-evidence",
@@ -642,6 +644,10 @@ class DesktopFarmControllerManager:
             "--artifacts",
             str(self.artifacts_root),
         ]
+        if config.pet_skill_fire_value is not None:
+            argv.extend(
+                ["--pet-skill-fire-value", str(config.pet_skill_fire_value)]
+            )
         if config.normalized_boss_id is None:
             argv[1:3] = ["--boss-name", config.normalized_boss_name or ""]
         argv.extend(

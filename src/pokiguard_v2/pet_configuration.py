@@ -10,8 +10,22 @@ from dataclasses import dataclass, fields
 from enum import Enum
 from typing import Any, Mapping
 
-from .basic_policy import Intelligence, ManaPriority, PlayStyle, PolicyConfig
-from .gameplay_profile import AuditionMode, DamageCardMode, EvolutionTarget, MainPetType
+from .basic_policy import (
+    Intelligence,
+    ManaPriority,
+    PET_SKILL_FIRE_VALUE_DEFAULT,
+    PET_SKILL_FIRE_VALUE_MAXIMUM,
+    PET_SKILL_FIRE_VALUE_MINIMUM,
+    PlayStyle,
+    PolicyConfig,
+)
+from .gameplay_profile import (
+    AuditionMode,
+    DamageCardMode,
+    EvolutionTarget,
+    MainPetType,
+    PetSkillFireCondition,
+)
 from .win32_input import BoardInputMode
 
 
@@ -46,6 +60,14 @@ DAMAGE_LABELS = {
 AUDITION_LABELS = {
     AuditionMode.V3_TWO_DIRECTION: "Audition V3 (2 hướng — mặc định)",
     AuditionMode.V2_FOUR_DIRECTION: "Audition V2 (4 hướng — tương thích)",
+}
+PET_SKILL_FIRE_CONDITION_LABELS = {
+    PetSkillFireCondition.SKILL_COST_READY: "Đủ mana skill",
+    PetSkillFireCondition.SWORD_COUNT: "Kiếm đủ",
+    PetSkillFireCondition.MANA_GEM_COUNT: "Mana Đủ",
+    PetSkillFireCondition.RAGE_GEM_COUNT: "Nộ đủ",
+    PetSkillFireCondition.DRAIN_GEM_COUNT: "Hút đủ",
+    PetSkillFireCondition.SHIELD_GEM_COUNT: "Khiên đủ",
 }
 PLAY_STYLE_LABELS = {
     PlayStyle.SIMPLE: "simple",
@@ -170,11 +192,14 @@ class GameplayConfig:
     cast_when_boss_hp_below: int = 30_000
     cast_mana_stockpile: int = 480
     rage_target: int = 100
+    pet_skill_fire_condition: PetSkillFireCondition = PetSkillFireCondition.SWORD_COUNT
+    pet_skill_fire_value: int | None = PET_SKILL_FIRE_VALUE_DEFAULT
 
     def __post_init__(self) -> None:
         for name, enum in (("play_style", PlayStyle), ("intelligence", Intelligence),
                            ("main_pet", MainPetType), ("evolution", EvolutionTarget),
                            ("damage_card", DamageCardMode), ("audition_mode", AuditionMode),
+                           ("pet_skill_fire_condition", PetSkillFireCondition),
                            ("board_input_mode", BoardInputMode)):
             if not isinstance(getattr(self, name), enum):
                 raise ValueError(f"{name} must be {enum.__name__}")
@@ -186,6 +211,21 @@ class GameplayConfig:
             value = getattr(self, name)
             if type(value) is not int or value < 0:
                 raise ValueError(f"{name} must be a nonnegative integer")
+        if self.pet_skill_fire_condition.uses_board_count:
+            if (
+                type(self.pet_skill_fire_value) is not int
+                or not PET_SKILL_FIRE_VALUE_MINIMUM
+                <= self.pet_skill_fire_value
+                <= PET_SKILL_FIRE_VALUE_MAXIMUM
+            ):
+                raise ValueError(
+                    "pet_skill_fire_value must be an integer between 0 and 256 "
+                    "for a board-count condition"
+                )
+        elif self.pet_skill_fire_value is not None:
+            raise ValueError(
+                "pet_skill_fire_value must be None for skill_cost_ready"
+            )
 
     @property
     def capability(self) -> PetLoadoutCapability:
@@ -229,14 +269,34 @@ class GameplayConfig:
             pet_fields = {"main_pet": MainPetType(raw["main_pet"]),
                           "evolution": EvolutionTarget(raw["evolution"]),
                           "damage_card": DamageCardMode(raw["damage_card"])}
+        condition = PetSkillFireCondition(
+            raw.get(
+                "pet_skill_fire_condition",
+                PetSkillFireCondition.SWORD_COUNT.value,
+            )
+        )
+        if condition.uses_board_count:
+            fire_value = raw.get(
+                "pet_skill_fire_value",
+                raw.get(
+                    "skill_rush_sword_threshold",
+                    PET_SKILL_FIRE_VALUE_DEFAULT,
+                ),
+            )
+        else:
+            # A stale legacy/count value has no active meaning for resource-ready.
+            fire_value = None
         return cls(**pet_fields, play_style=PlayStyle(raw.get("play_style", "simple")),
                    intelligence=Intelligence(raw.get("intelligence", "basic")),
                    audition_mode=AuditionMode(
                        raw.get("audition_mode", AuditionMode.V3_TWO_DIRECTION.value)
-                   ),
-                   board_input_mode=BoardInputMode(raw.get("board_input_mode", "drag")),
-                   **{name: raw.get(name, getattr(cls(), name)) for name in
-                      ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target")})
+                    ),
+                    board_input_mode=BoardInputMode(raw.get("board_input_mode", "drag")),
+                    pet_skill_fire_condition=condition,
+                    pet_skill_fire_value=fire_value,
+                    **{name: raw.get(name, getattr(cls(), name)) for name in
+                       ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target",
+                       )})
 
 
 def legacy_pet_fields(value: str | ManaPriority) -> dict[str, Any]:
@@ -258,6 +318,8 @@ def basic_policy_config(config: GameplayConfig) -> PolicyConfig:
         cast_when_boss_hp_below=config.cast_when_boss_hp_below,
         cast_mana_stockpile_threshold=config.cast_mana_stockpile,
         rage_target=config.rage_target,
+        pet_skill_fire_condition=config.pet_skill_fire_condition,
+        pet_skill_fire_value=config.pet_skill_fire_value,
     )
 
 
@@ -284,6 +346,8 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
         cast_when_boss_hp_below=config.cast_when_boss_hp_below,
         cast_mana_stockpile_threshold=config.cast_mana_stockpile,
         rage_target=config.rage_target,
+        pet_skill_fire_condition=config.pet_skill_fire_condition,
+        pet_skill_fire_value=config.pet_skill_fire_value,
     )
 
 
@@ -291,6 +355,17 @@ def add_pet_arguments(parser: Any) -> None:
     parser.add_argument("--main-pet", choices=[v.value for v in MainPetType])
     parser.add_argument("--evolution-target", choices=[v.value for v in EvolutionTarget])
     parser.add_argument("--damage-card", choices=[v.value for v in DamageCardMode])
+    parser.add_argument(
+        "--pet-skill-fire-condition",
+        choices=[value.value for value in PetSkillFireCondition],
+        default=PetSkillFireCondition.SWORD_COUNT.value,
+    )
+    parser.add_argument(
+        "--pet-skill-fire-value",
+        type=int,
+        default=PET_SKILL_FIRE_VALUE_DEFAULT,
+        help="inclusive board-gem count threshold; ignored for skill_cost_ready",
+    )
     parser.add_argument(
         "--audition-mode",
         choices=[v.value for v in AuditionMode],
@@ -310,9 +385,12 @@ def gameplay_config_from_args(args: Any) -> GameplayConfig:
     raw = GameplayConfig().to_dict()
     raw.update({k: v for k, v in new.items() if v is not None})
     for name in ("play_style", "intelligence", "audition_mode", "board_input_mode", "cast_when_boss_hp_below",
-                 "cast_mana_stockpile", "rage_target"):
+                 "cast_mana_stockpile", "rage_target", "pet_skill_fire_condition",
+                 "pet_skill_fire_value"):
         if hasattr(args, name):
             raw[name] = getattr(args, name)
+    if raw.get("pet_skill_fire_condition") == PetSkillFireCondition.SKILL_COST_READY.value:
+        raw["pet_skill_fire_value"] = None
     if legacy is not None:
         raw["mana_priority"] = legacy
     return GameplayConfig.from_dict(raw, legacy=legacy is not None)

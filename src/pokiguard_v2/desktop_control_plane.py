@@ -14,9 +14,15 @@ import threading
 import time
 from typing import Callable, Protocol
 
-from .basic_policy import Intelligence, PlayStyle
+from .basic_policy import (
+    Intelligence,
+    PET_SKILL_FIRE_VALUE_DEFAULT,
+    PET_SKILL_FIRE_VALUE_MAXIMUM,
+    PET_SKILL_FIRE_VALUE_MINIMUM,
+    PlayStyle,
+)
 from .pet_configuration import GameplayConfig, MainPetType, EvolutionTarget, DamageCardMode
-from .gameplay_profile import AuditionMode
+from .gameplay_profile import AuditionMode, PetSkillFireCondition
 from .boss_entry import FarmTarget
 from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
 from .farm_run import FarmRunLimits
@@ -108,16 +114,46 @@ class DesktopConfig(GameplayConfig):
         cast_when_boss_hp_below: str = "30000",
         cast_mana_stockpile: str = "480",
         rage_target: str = "100",
+        pet_skill_fire_condition: str = PetSkillFireCondition.SWORD_COUNT.value,
+        pet_skill_fire_value: str | None = "10",
     ) -> "DesktopConfig":
+        damage = DamageCardMode(damage_card)
+        condition = PetSkillFireCondition(pet_skill_fire_condition)
+        if condition.uses_board_count:
+            syntactically_valid = bool(
+                isinstance(pet_skill_fire_value, str)
+                and pet_skill_fire_value.isascii()
+                and pet_skill_fire_value.isdigit()
+            )
+            valid_fire_value = bool(
+                syntactically_valid
+                and PET_SKILL_FIRE_VALUE_MINIMUM
+                <= int(pet_skill_fire_value)
+                <= PET_SKILL_FIRE_VALUE_MAXIMUM
+            )
+            if not valid_fire_value and damage is DamageCardMode.PET_SKILL:
+                raise ValueError(
+                    "pet_skill_fire_value must contain ASCII decimal digits "
+                    "between 0 and 256"
+                )
+            fire_value = (
+                int(pet_skill_fire_value)
+                if valid_fire_value
+                else PET_SKILL_FIRE_VALUE_DEFAULT
+            )
+        else:
+            fire_value = None
         return cls(
             play_style=PlayStyle(play_style),
             main_pet=MainPetType(main_pet),
             evolution=EvolutionTarget(evolution),
-            damage_card=DamageCardMode(damage_card),
+            damage_card=damage,
             audition_mode=AuditionMode(audition_mode),
             cast_when_boss_hp_below=int(cast_when_boss_hp_below),
             cast_mana_stockpile=int(cast_mana_stockpile),
             rage_target=int(rage_target),
+            pet_skill_fire_condition=condition,
+            pet_skill_fire_value=fire_value,
             intelligence=Intelligence(intelligence),
             board_input_mode=BoardInputMode(board_input_mode),
             boss_id=boss_id,

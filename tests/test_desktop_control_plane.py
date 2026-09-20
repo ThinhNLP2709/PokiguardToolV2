@@ -146,8 +146,10 @@ class DesktopConfigTests(unittest.TestCase):
             target_completed_matches="3",
             max_technical_recoveries="1",
             max_match_attempts="5",
+            pet_skill_fire_value="17",
         )
         self.assertIs(config.play_style, PlayStyle.SIMPLE)
+        self.assertEqual(config.pet_skill_fire_value, 17)
         with self.assertRaises(ValueError):
             DesktopConfig.from_strings(
                 play_style="invented",
@@ -159,6 +161,22 @@ class DesktopConfigTests(unittest.TestCase):
                 max_technical_recoveries="1",
                 max_match_attempts="5",
             )
+        for invalid in ("", "-1", "257", "abc"):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    DesktopConfig.from_strings(
+                        play_style="simple",
+                        main_pet="legendary",
+                        evolution="normal",
+                        damage_card="pet_skill",
+                        intelligence="basic",
+                        boss_id="1289",
+                        boss_name="Starburst",
+                        target_completed_matches="3",
+                        max_technical_recoveries="1",
+                        max_match_attempts="5",
+                        pet_skill_fire_value=invalid,
+                    )
 
 
 class ControlPlaneSnapshotTests(unittest.TestCase):

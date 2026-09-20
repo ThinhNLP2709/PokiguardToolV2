@@ -244,6 +244,8 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
         cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
         rage_target=getattr(args, "rage_target", 100),
+        pet_skill_fire_condition=gameplay.pet_skill_fire_condition.value,
+        pet_skill_fire_value=gameplay.pet_skill_fire_value,
         interval=args.interval,
         action_timeout=9.0,
         matches=1,

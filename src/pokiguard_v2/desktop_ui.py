@@ -11,10 +11,17 @@ import threading
 import time
 from typing import Any, Callable
 
-from .basic_policy import Intelligence, PlayStyle
+from .basic_policy import (
+    Intelligence,
+    PET_SKILL_FIRE_VALUE_DEFAULT,
+    PET_SKILL_FIRE_VALUE_MAXIMUM,
+    PET_SKILL_FIRE_VALUE_MINIMUM,
+    PlayStyle,
+)
 from .pet_configuration import (
     AuditionMode, MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
     EVOLUTION_LABELS, DAMAGE_LABELS, AUDITION_LABELS, PLAY_STYLE_LABELS,
+    PET_SKILL_FIRE_CONDITION_LABELS, PetSkillFireCondition,
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
     loadout_capability, normalize_damage,
 )
@@ -51,6 +58,7 @@ PREFERENCE_TABLE_ROWS = (
     "Pet của tôi",
     "Tiến hóa",
     "Thẻ sát thương",
+    "Điều kiện ra skill",
     "Audition",
     "Board input",
 )
@@ -67,6 +75,12 @@ def background_click_clears_entry_focus(widget_class: str) -> bool:
     return widget_class in BACKGROUND_UNFOCUS_WIDGET_CLASSES
 
 
+def decimal_digits_or_empty(value: str) -> bool:
+    """Allow temporary empty edits and ASCII decimal digits only."""
+
+    return value == "" or (value.isascii() and value.isdigit())
+
+
 def run_limit_text(config: DesktopConfig) -> tuple[str, str]:
     """Normalize the two immutable per-run limits for their Entry variables."""
 
@@ -80,6 +94,15 @@ def play_style_from_display(value: str) -> PlayStyle:
         if value == label:
             return style
     return PlayStyle(value)
+
+
+def pet_skill_fire_condition_from_display(value: str) -> PetSkillFireCondition:
+    """Map the exact Vietnamese dropdown label to its stable machine value."""
+
+    for condition, label in PET_SKILL_FIRE_CONDITION_LABELS.items():
+        if value == label:
+            return condition
+    return PetSkillFireCondition(value)
 
 
 def match_energy_text(controller: DesktopControllerSnapshot) -> str:
@@ -271,6 +294,7 @@ class DesktopEventLog:
             controller.completed_matches,
             controller.match_attempts,
             controller.last_stop_reason,
+            controller.last_error,
         )
         with self._lock:
             operator_visible = signature != self._last_poll_signature
@@ -291,7 +315,14 @@ class DesktopEventLog:
             safety=asdict(snapshot.safety),
             controller=asdict(snapshot.controller),
             operatorMessage=(
-                f"{runtime.lifecycle}; controller={controller.state.value}; "
+                # Put the cause first so the bounded operator log cannot hide
+                # a startup failure behind a healthy read-only runtime summary.
+                (
+                    f"controllerError={controller.last_error}; "
+                    if controller.last_error else ""
+                )
+                + (f"error={snapshot.last_error}; " if snapshot.last_error else "")
+                + f"{runtime.lifecycle}; controller={controller.state.value}; "
                 f"completed={controller.completed_matches}; "
                 f"attempts={controller.match_attempts}"
             ),
@@ -634,6 +665,11 @@ class DesktopViewModel:
             else:
                 operator_status = "RUNNING"
                 operator_guidance = "Bounded FarmRunner is active. Configuration is locked."
+        elif controller.state is DesktopControllerState.ERROR:
+            operator_status = "CONTROLLER_ERROR"
+            operator_guidance = controller.last_error or (
+                "FarmRunner stopped with an error; check Diagnostics / Log."
+            )
         elif stale:
             operator_status = "STALE_RUNTIME_SNAPSHOT"
             operator_guidance = "Runtime snapshot is stale; all launch actions are disabled."
@@ -656,7 +692,7 @@ class DesktopViewModel:
             runtime_target=runtime_target,
             checkpoint=checkpoint_text,
             health=health,
-            error=snapshot.last_error or "NONE",
+            error=controller.last_error or snapshot.last_error or "NONE",
             refreshed=f"{snapshot.timestamp} (age {age:.1f}s, version {snapshot.version})",
             read_only_notice=(
                 "PHASE 3A.2 — READ-ONLY game memory; all actions use the "
@@ -784,7 +820,25 @@ class DesktopApplication:
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
         self.audition_mode = tk.StringVar(value=config.audition_mode.value)
+        self.pet_skill_fire_condition = tk.StringVar(
+            value=PET_SKILL_FIRE_CONDITION_LABELS[
+                config.pet_skill_fire_condition
+            ]
+        )
+        self.pet_skill_fire_value = tk.StringVar(
+            value=(
+                ""
+                if config.pet_skill_fire_value is None
+                else str(config.pet_skill_fire_value)
+            )
+        )
+        self._last_valid_pet_skill_fire_value = (
+            config.pet_skill_fire_value
+            if config.pet_skill_fire_value is not None
+            else PET_SKILL_FIRE_VALUE_DEFAULT
+        )
         self._updating_pet_fields = False
+        self._updating_fire_fields = False
         self._updating_play_style = False
         self._pet_option_widgets: dict[tuple[str, str], Any] = {}
         self.profile_notice_var = tk.StringVar()
@@ -813,8 +867,9 @@ class DesktopApplication:
             label: str,
             widget: Any,
             editable_state: str,
-        ) -> None:
-            ttk.Label(preferences_frame, text=f"{label}:").grid(
+        ) -> tuple[Any, Any]:
+            label_widget = ttk.Label(preferences_frame, text=f"{label}:")
+            label_widget.grid(
                 row=row,
                 column=0,
                 sticky=tk.W,
@@ -823,6 +878,7 @@ class DesktopApplication:
             )
             widget.grid(row=row, column=1, sticky=tk.EW, pady=5)
             self._config_widgets.append((widget, editable_state))
+            return label_widget, widget
 
         preference_field(
             row=0,
@@ -862,8 +918,42 @@ class DesktopApplication:
                 button.pack(anchor=tk.W)
                 self._pet_option_widgets[name, value.value] = button
                 self._config_widgets.append((button, state))
-        preference_field(
-            row=5,
+        self.pet_skill_fire_label = ttk.Label(
+            preferences_frame, text="Điều kiện ra skill:"
+        )
+        self.pet_skill_fire_label.grid(
+            row=5, column=0, sticky=tk.W, padx=(0, 12), pady=5
+        )
+        self.pet_skill_fire_cell = ttk.Frame(preferences_frame)
+        self.pet_skill_fire_cell.grid(row=5, column=1, sticky=tk.EW, pady=5)
+        self.pet_skill_fire_cell.columnconfigure(0, weight=3)
+        self.pet_skill_fire_cell.columnconfigure(1, weight=1)
+        self.pet_skill_fire_condition_widget = ttk.Combobox(
+            self.pet_skill_fire_cell,
+            textvariable=self.pet_skill_fire_condition,
+            values=tuple(PET_SKILL_FIRE_CONDITION_LABELS.values()),
+            state="readonly",
+        )
+        self.pet_skill_fire_condition_widget.grid(
+            row=0, column=0, sticky=tk.EW, padx=(0, 6)
+        )
+        self.pet_skill_fire_value_widget = ttk.Entry(
+            self.pet_skill_fire_cell,
+            textvariable=self.pet_skill_fire_value,
+            validate="key",
+            validatecommand=(root.register(decimal_digits_or_empty), "%P"),
+        )
+        self.pet_skill_fire_value_widget.grid(
+            row=0, column=1, sticky=tk.EW, padx=(6, 0)
+        )
+        self._config_widgets.extend(
+            (
+                (self.pet_skill_fire_condition_widget, "readonly"),
+                (self.pet_skill_fire_value_widget, "normal"),
+            )
+        )
+        self.audition_label, self.audition_widget = preference_field(
+            row=6,
             label="Audition",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -873,16 +963,19 @@ class DesktopApplication:
             ),
             editable_state="readonly",
         )
-        ttk.Label(
+        self.audition_help = ttk.Label(
             preferences_frame,
             text=(
                 f"{AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION]}; "
                 f"{AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION]}."
             ),
             wraplength=390,
-        ).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        )
+        self.audition_help.grid(
+            row=7, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+        )
         preference_field(
-            row=7,
+            row=8,
             label="Board input",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -929,16 +1022,22 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=8, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=9, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
         )
         ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
-                  wraplength=390).grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=5)
+                  wraplength=390).grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.load_checkpoint_preferences_button = ttk.Button(
             preferences_frame, text="Load Checkpoint Preferences", command=self._load_checkpoint_preferences)
-        self.load_checkpoint_preferences_button.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.load_checkpoint_preferences_button.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=5)
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
+        self.pet_skill_fire_condition.trace_add(
+            "write", self._pet_skill_fire_condition_changed
+        )
+        self.pet_skill_fire_value.trace_add(
+            "write", self._pet_skill_fire_value_changed
+        )
         self.play_style.trace_add("write", self._play_style_changed)
         self._sync_pet_options()
 
@@ -1295,6 +1394,12 @@ class DesktopApplication:
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
             "audition_mode": self.audition_mode.get(),
+            "pet_skill_fire_condition": (
+                pet_skill_fire_condition_from_display(
+                    self.pet_skill_fire_condition.get()
+                ).value
+            ),
+            "pet_skill_fire_value": self.pet_skill_fire_value.get(),
             "intelligence": self.intelligence.get(),
             "board_input_mode": self.board_input_mode.get(),
             "boss_id": self.boss_id.get(),
@@ -1312,11 +1417,24 @@ class DesktopApplication:
 
     def _display_pet_config(self, config: DesktopConfig) -> None:
         self._updating_pet_fields = True
+        self._updating_fire_fields = True
         try:
             for name in ("main_pet", "evolution", "damage_card", "audition_mode"):
                 getattr(self, name).set(getattr(config, name).value)
+            self.pet_skill_fire_condition.set(
+                PET_SKILL_FIRE_CONDITION_LABELS[
+                    config.pet_skill_fire_condition
+                ]
+            )
+            if config.pet_skill_fire_value is not None:
+                self._last_valid_pet_skill_fire_value = config.pet_skill_fire_value
+                self.pet_skill_fire_value.set(str(config.pet_skill_fire_value))
+            else:
+                self.pet_skill_fire_value.set("")
         finally:
             self._updating_pet_fields = False
+            self._updating_fire_fields = False
+        self._sync_pet_skill_fields()
 
     def _load_checkpoint_preferences(self) -> None:
         try:
@@ -1335,6 +1453,11 @@ class DesktopApplication:
             self.event_log.write("checkpoint_preferences_rejected", error=str(exc))
 
     def _sync_pet_options(self) -> None:
+        # Restore/disable the condition value and publish row visibility before
+        # parsing the full draft.  A count condition may have an empty Entry
+        # while the Pet Skill row is hidden; selecting Pet Skill must restore
+        # its last valid value before canonical validation runs.
+        self._sync_pet_skill_fields()
         capability = loadout_capability(MainPetType(self.main_pet.get()),
                                        EvolutionTarget(self.evolution.get()),
                                        DamageCardMode(self.damage_card.get()))
@@ -1346,6 +1469,83 @@ class DesktopApplication:
         self.profile_notice_var.set(
             self.view_model.reason_text(blocker)
             if blocker else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
+        self._sync_pet_skill_fields()
+
+    def _sync_pet_skill_fields(self) -> None:
+        """Apply Pet-Skill-only visibility and condition-dependent value state."""
+
+        if not hasattr(self, "pet_skill_fire_cell"):
+            return
+        visible = self.damage_card.get() == DamageCardMode.PET_SKILL.value
+        for widget in (
+            self.pet_skill_fire_label,
+            self.pet_skill_fire_cell,
+            self.audition_label,
+            self.audition_widget,
+            self.audition_help,
+        ):
+            if visible:
+                widget.grid()
+            else:
+                widget.grid_remove()
+
+        try:
+            condition = pet_skill_fire_condition_from_display(
+                self.pet_skill_fire_condition.get()
+            )
+        except ValueError:
+            condition = PetSkillFireCondition.SWORD_COUNT
+        if condition is PetSkillFireCondition.SKILL_COST_READY:
+            raw = self.pet_skill_fire_value.get()
+            if raw.isascii() and raw.isdigit():
+                numeric = int(raw)
+                if (
+                    PET_SKILL_FIRE_VALUE_MINIMUM
+                    <= numeric
+                    <= PET_SKILL_FIRE_VALUE_MAXIMUM
+                ):
+                    self._last_valid_pet_skill_fire_value = numeric
+            if raw:
+                self.pet_skill_fire_value.set("")
+            self.pet_skill_fire_value_widget.configure(state="disabled")
+        else:
+            if not self.pet_skill_fire_value.get():
+                self.pet_skill_fire_value.set(
+                    str(self._last_valid_pet_skill_fire_value)
+                )
+            self.pet_skill_fire_value_widget.configure(
+                state=(
+                    "normal"
+                    if self._config_editable is not False
+                    else "disabled"
+                )
+            )
+
+    def _pet_skill_fire_condition_changed(self, *_args: Any) -> None:
+        if self._updating_fire_fields:
+            return
+        snapshot = self.view_model.control_plane.snapshot()
+        if snapshot.controller.active:
+            self._display_pet_config(snapshot.config)
+            return
+        self._sync_pet_skill_fields()
+        try:
+            self.view_model.apply_draft(**self._draft_fields())
+        except (TypeError, ValueError):
+            return
+
+    def _pet_skill_fire_value_changed(self, *_args: Any) -> None:
+        if self._updating_fire_fields:
+            return
+        raw = self.pet_skill_fire_value.get()
+        if raw.isascii() and raw.isdigit():
+            numeric = int(raw)
+            if (
+                PET_SKILL_FIRE_VALUE_MINIMUM
+                <= numeric
+                <= PET_SKILL_FIRE_VALUE_MAXIMUM
+            ):
+                self._last_valid_pet_skill_fire_value = numeric
 
     def _pet_selection_changed(self, *_args: Any) -> None:
         if self._updating_pet_fields:
@@ -1888,5 +2088,6 @@ __all__ = [
     "DesktopViewModel",
     "OperatorLogEntry",
     "ShutdownResult",
+    "decimal_digits_or_empty",
     "create_root",
 ]

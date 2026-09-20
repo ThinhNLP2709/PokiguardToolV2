@@ -134,7 +134,7 @@ class _EvidenceSink:
                 self.attached_refreshes += 1
             else:
                 self.detached_refreshes += 1
-            if snapshot.last_error:
+            if snapshot.last_error or snapshot.controller.last_error:
                 self.error_refreshes += 1
             lifecycle = snapshot.runtime.lifecycle
             if not self.lifecycles or self.lifecycles[-1] != lifecycle:

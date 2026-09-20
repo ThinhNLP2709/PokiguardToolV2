@@ -468,6 +468,39 @@ class Phase3D1BenchmarkTests(unittest.TestCase):
         with self.assertRaisesRegex(BenchmarkDataError, "setup-block proof"):
             extract_run(directory, mode=MODE_B, expected_boss=self.boss)
 
+    def test_final_r1_fire_uses_effective_count_and_inclusive_threshold(self) -> None:
+        directory, _ = _make_run(self.root, run_id="run-r1-effective", mode=MODE_B)
+        combat_path = directory / "matches" / "attempt_001" / "combat.jsonl"
+        combat = [
+            json.loads(line)
+            for line in combat_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        trace = combat[0]["trace"]
+        trace.update(
+            {
+                "known_sword_count": 9,
+                "known_sword_effective_count": 12,
+                "selected_known_gem_count": 9,
+                "selected_known_gem_effective_count": 12,
+                "pet_skill_fire_value": 12,
+                "selected_fire_condition_ready": True,
+                "skill_fire_trigger": "SKILL_RUSH_FIRE_CONDITION_READY",
+            }
+        )
+        summary = combat[-1]
+        summary["skillRushFireReasons"] = {
+            "SKILL_RUSH_FIRE_CONDITION_READY": 1,
+            "SETUP_BLOCKED": 0,
+        }
+        _write_jsonl(combat_path, combat)
+
+        run = extract_run(directory, mode=MODE_B, expected_boss=self.boss)
+        fire = run["rows"][0]["first_skill_fire"]
+        self.assertTrue(fire["valid"])
+        self.assertEqual(9, fire["selected_known_gem_cell_count"])
+        self.assertEqual(12, fire["selected_known_gem_effective_count"])
+
     def test_post_skill_finisher_trigger_strict_boundaries(self) -> None:
         self.assertEqual("BOTH", classify_post_skill_finisher_trigger(25_000, 200_000))
         self.assertEqual(

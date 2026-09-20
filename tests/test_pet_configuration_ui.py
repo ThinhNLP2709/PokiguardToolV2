@@ -22,7 +22,8 @@ from pokiguard_v2.farm_checkpoint import LEGACY_CHECKPOINT_SCHEMA, write_checkpo
 from pokiguard_v2.farm_run import FarmRun
 from pokiguard_v2.pet_configuration import (
     DamageCardMode, EvolutionTarget, GameplayConfig, MainPetType,
-    PLAY_STYLE_LABELS,
+    PET_SKILL_FIRE_CONDITION_LABELS, PLAY_STYLE_LABELS,
+    PetSkillFireCondition,
 )
 from tests.test_desktop_farm_controller import _BlockingRunner, _Runtime
 
@@ -68,7 +69,13 @@ class PetConfigurationTkTests(unittest.TestCase):
 
     def test_canonical_fields_defaults_and_disabled_choices_visible(self):
         self.assertNotIn("ManaPriority", PREFERENCE_TABLE_ROWS)
-        for label in ("Pet của tôi", "Tiến hóa", "Thẻ sát thương", "Audition"):
+        for label in (
+            "Pet của tôi",
+            "Tiến hóa",
+            "Thẻ sát thương",
+            "Điều kiện ra skill",
+            "Audition",
+        ):
             self.assertIn(label, PREFERENCE_TABLE_ROWS)
         self.assertEqual((self.app.main_pet.get(), self.app.evolution.get(), self.app.damage_card.get()),
                          ("normal", "normal", "default_attack"))
@@ -92,6 +99,94 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.app.damage_card.get(), "default_attack")
         self.assertEqual(self.plane.snapshot().config.damage_card, DamageCardMode.DEFAULT_ATTACK)
 
+    def test_pet_skill_only_rows_hide_show_and_preserve_values(self):
+        hidden = (
+            self.app.pet_skill_fire_label,
+            self.app.pet_skill_fire_cell,
+            self.app.audition_label,
+            self.app.audition_widget,
+            self.app.audition_help,
+        )
+        self.assertTrue(all(widget.winfo_manager() == "" for widget in hidden))
+
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        self.root.update_idletasks()
+        self.assertTrue(all(widget.winfo_manager() == "grid" for widget in hidden))
+        self.app.pet_skill_fire_condition.set("Khiên đủ")
+        self.app.pet_skill_fire_value.set("12")
+        self.app.audition_mode.set("audition_v2")
+
+        self.button("damage_card", "default_attack").invoke()
+        self.root.update_idletasks()
+        self.assertTrue(all(widget.winfo_manager() == "" for widget in hidden))
+        self.app.pet_skill_fire_value.set("")
+        valid, reason = self.app._draft_validity()
+        self.assertTrue(valid, reason)
+
+        self.button("damage_card", "pet_skill").invoke()
+        self.root.update_idletasks()
+        self.assertTrue(all(widget.winfo_manager() == "grid" for widget in hidden))
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Khiên đủ")
+        self.assertEqual(self.app.pet_skill_fire_value.get(), "12")
+        self.assertEqual(self.app.audition_mode.get(), "audition_v2")
+
+    def test_fire_condition_cell_keeps_one_outer_grid_cell_and_exact_choices(self):
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        self.root.update_idletasks()
+        self.assertIs(
+            self.app.pet_skill_fire_condition_widget.master,
+            self.app.pet_skill_fire_cell,
+        )
+        self.assertIs(
+            self.app.pet_skill_fire_value_widget.master,
+            self.app.pet_skill_fire_cell,
+        )
+        outer_grid = self.app.pet_skill_fire_cell.grid_info()
+        self.assertEqual((int(outer_grid["row"]), int(outer_grid["column"])), (5, 1))
+        self.assertEqual(
+            tuple(self.app.pet_skill_fire_condition_widget.cget("values")),
+            (
+                "Đủ mana skill",
+                "Kiếm đủ",
+                "Mana Đủ",
+                "Nộ đủ",
+                "Hút đủ",
+                "Khiên đủ",
+            ),
+        )
+
+    def test_skill_cost_ready_disables_value_and_count_conditions_enable_it(self):
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        self.app.pet_skill_fire_condition.set("Mana Đủ")
+        self.app.pet_skill_fire_value.set("17")
+        self.app.pet_skill_fire_condition.set("Đủ mana skill")
+        self.root.update_idletasks()
+        self.assertTrue(self.app.pet_skill_fire_value_widget.instate(["disabled"]))
+        self.assertEqual(self.app.pet_skill_fire_value.get(), "")
+        config = DesktopConfig.from_strings(**self.app._draft_fields())
+        self.assertIs(
+            config.pet_skill_fire_condition,
+            PetSkillFireCondition.SKILL_COST_READY,
+        )
+        self.assertIsNone(config.pet_skill_fire_value)
+
+        for condition, label in PET_SKILL_FIRE_CONDITION_LABELS.items():
+            if condition is PetSkillFireCondition.SKILL_COST_READY:
+                continue
+            with self.subTest(condition=condition):
+                self.app.pet_skill_fire_condition.set(label)
+                self.root.update_idletasks()
+                self.assertFalse(
+                    self.app.pet_skill_fire_value_widget.instate(["disabled"])
+                )
+                self.assertEqual(self.app.pet_skill_fire_value.get(), "17")
+
     def test_evolution_only_skill_and_multiple_source_notice(self):
         self.button("evolution", "legendary").invoke()
         skill = self.button("damage_card", "pet_skill")
@@ -113,6 +208,23 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.runner.starts, 0)
         self.assertEqual(self.plane.snapshot().safety.nonzero(), {})
 
+    def test_sword_threshold_invalid_active_values_block_start(self):
+        self.button("main_pet", "legendary").invoke()
+        self.button("evolution", "none").invoke()
+        self.button("damage_card", "pet_skill").invoke()
+        for value in ("", "-1", "+5", "10.5", "1e1", "257"):
+            with self.subTest(value=value):
+                self.app.pet_skill_fire_value.set(value)
+                valid, _reason = self.app._draft_validity()
+                self.assertFalse(valid)
+                self.app._render()
+                self.assertTrue(self.app.start_button.instate(["disabled"]))
+        for value in ("0", "10", "256"):
+            with self.subTest(value=value):
+                self.app.pet_skill_fire_value.set(value)
+                valid, reason = self.app._draft_validity()
+                self.assertTrue(valid, reason)
+
     def test_skill_rush_label_profile_gate_and_preference_roundtrip(self):
         label = PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH]
         self.assertEqual(label, "Chịu đấm ăn xôi")
@@ -124,6 +236,8 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.button("main_pet", "legendary").invoke()
         self.button("evolution", "none").invoke()
         self.button("damage_card", "pet_skill").invoke()
+        self.app.pet_skill_fire_condition.set("Mana Đủ")
+        self.app.pet_skill_fire_value.set("17")
         self.app._render()
         self.assertFalse(self.app.start_button.instate(["disabled"]))
         self.app.validate_button.invoke()
@@ -131,6 +245,11 @@ class PetConfigurationTkTests(unittest.TestCase):
         restored = self.store.load()
         self.assertTrue(restored.loaded)
         self.assertIs(restored.config.play_style, PlayStyle.SKILL_RUSH)
+        self.assertIs(
+            restored.config.pet_skill_fire_condition,
+            PetSkillFireCondition.MANA_GEM_COUNT,
+        )
+        self.assertEqual(restored.config.pet_skill_fire_value, 17)
         self.assertEqual(self.runner.starts, 0)
 
     def test_skill_rush_active_run_keeps_accepted_playstyle_immutable(self):
@@ -138,18 +257,29 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.button("main_pet", "legendary").invoke()
         self.button("evolution", "none").invoke()
         self.button("damage_card", "pet_skill").invoke()
+        self.app.pet_skill_fire_condition.set("Hút đủ")
+        self.app.pet_skill_fire_value.set("17")
         self.app._start_farm()
 
         self.assertTrue(self.runner.entered.wait(1))
         launch = self.runner.launches[0].config
         self.assertIs(launch.play_style, PlayStyle.SKILL_RUSH)
+        self.assertIs(
+            launch.pet_skill_fire_condition,
+            PetSkillFireCondition.DRAIN_GEM_COUNT,
+        )
+        self.assertEqual(launch.pet_skill_fire_value, 17)
         self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SIMPLE])
+        self.app.pet_skill_fire_condition.set("Khiên đủ")
+        self.app.pet_skill_fire_value.set("20")
         self.app._render()
         self.assertEqual(
             self.app.play_style.get(),
             PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH],
         )
         self.assertEqual(self.runner.launches[0].config, launch)
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Hút đủ")
+        self.assertEqual(self.app.pet_skill_fire_value.get(), "17")
 
     def test_desktop_start_freezes_exact_pet_skill_profile(self):
         self.button("main_pet", "legendary").invoke()
@@ -195,6 +325,8 @@ class PetConfigurationTkTests(unittest.TestCase):
             main_pet=MainPetType.LEGENDARY,
             evolution=EvolutionTarget.NONE,
             damage_card=DamageCardMode.PET_SKILL,
+            pet_skill_fire_condition=PetSkillFireCondition.RAGE_GEM_COUNT,
+            pet_skill_fire_value=17,
         )
         path = self.directory / "future" / "checkpoint.json"
         write_checkpoint(
@@ -211,6 +343,8 @@ class PetConfigurationTkTests(unittest.TestCase):
             ("legendary", "none", "pet_skill"),
         )
         self.assertEqual(self.app.resume_commands_submitted, 0)
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Nộ đủ")
+        self.assertEqual(self.app.pet_skill_fire_value.get(), "17")
         self.assertEqual(self.runner.starts, 0)
         self.app._render()
         self.assertFalse(self.app.start_button.instate(["disabled"]))

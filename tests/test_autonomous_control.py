@@ -2701,7 +2701,7 @@ class AutonomousGuardTests(unittest.TestCase):
             "SKILL_RUSH_RESOURCE_PROGRESS",
             "SKILL_RUSH_LEGAL_FALLBACK",
             "SKILL_RUSH_BOARD_SETUP",
-            "SKILL_RUSH_EARLY_BOSS_PREP_SWORD",
+            "SKILL_RUSH_SETUP_RELAXED",
             "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
         ):
             with self.subTest(step=step):

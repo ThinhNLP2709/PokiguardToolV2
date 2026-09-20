@@ -106,20 +106,21 @@ For this PlayStyle only:
   receives zero readiness credit. Effective requirements come only from the
   current `PetSkillCapability`;
 - UNKNOWN refill receives zero favorable credit;
-- count only authoritative known `GemType.SWORD` cells. `known_sword_count >= 8`
-  means the revised practical high-Sword-density condition. A ready/actionable
-  skill fires when boss HP is below 50% or the board has at least 8 known Sword; if the
-  boss is already at or below approximately 30%, fire as soon as resources are
-  ready;
+- count only authoritative known `GemType.SWORD` cells. The accepted
+  high-Sword-density condition is `known_sword_count > 10`, meaning at least 11
+  known Sword. A ready/actionable skill fires when boss HP is below 50% or that
+  density condition is true; if the boss is already at or below approximately
+  30%, fire as soon as resources are ready;
 - after HP preparation, preserve known Sword for HT7 and prefer deterministic
   turnover of known non-Sword cells in zero/low-Sword rows or columns. Once
   resources are ready, first restrict setup to direct clears whose known
   non-Sword cells are at Manhattan distance at least 2 from every known Sword;
-  this avoids clearing directly beside the prepared Sword region. If no such
-  legal clear exists and the skill is actionable, fire with
-  `SETUP_BLOCKED` instead of clearing beside the prepared Sword region. A
-  least-adjacent fallback exists only while current CardUI is not actionable.
-  This assigns no predicted Sword-spawn credit;
+  this avoids clearing directly beside the prepared Sword region. These are
+  soft setup preferences. If no such legal clear exists, `SETUP_BLOCKED`
+  records that fact but does not authorize Pet Skill. Policy progressively
+  considers a useful ordinary 3-Sword HP-preparation move, distance-one setup,
+  minimum Sword consumption, then deterministic board turnover before reading
+  a fresh state. This assigns no predicted Sword-spawn credit;
 - direct and indirect boss Sword replies are recorded as strategic risk rather
   than hard rejections. This relaxation does not apply to other PlayStyles;
 - EVOLVE remains prohibited. Ordinary Attack is prohibited before the first
@@ -139,6 +140,184 @@ prove an immediate lethal reply. Candidate telemetry therefore records
 `UNKNOWN_NO_LETHALITY_MODEL`; it does not claim that a risky move is non-lethal.
 Existing SIMPLE and CAREFUL policies retain their Sword-first and Sword-safe
 semantics unchanged.
+
+### Phase 3D.1-R1 Sword-only clarification (historical, approved 2026-09-17)
+
+Before the first successful current-match Pet Skill, `skill_rush` has only two
+objectives: obtain the current runtime Mana/Rage requirements and preserve/setup
+the current board until known Sword is strictly greater than the user setting.
+Normal Pet Skill authorization is exactly resources ready **and**
+`known_sword_count > skill_rush_sword_threshold`, plus the existing technical
+gates. The setting is shown as `Số lượng kiếm cần để ra skill`, accepts ASCII
+decimal digits, has range `0..63`, defaults/migrates to `10`, persists through
+Preferences/checkpoint, and is immutable for an active FarmRun.
+
+Boss HP is not a normal first-skill condition or shortcut. Active policy has no
+HP-preparation, very-low-HP first-skill reason, or strategic pre-first-skill
+Sword attack. `SETUP_BLOCKED` is diagnostic setup state only and may relax soft
+spacing/shape preferences toward a legal non-Sword turnover. If any legal
+non-Sword action exists, it is chosen over intentional Sword consumption.
+Sword may be consumed only when every legal action consumes Sword, with the
+explicit reason `FORCED_PRE_SKILL_SWORD_CONSUMPTION`; it never authorizes the
+skill. UNKNOWN contributes zero Sword and no predicted refill credit.
+
+The exact historical `69,276 / 84,180` boss HP and four-Sword state chooses its
+legal relaxed non-Sword SWAP. After a successful current-match skill, the
+accepted later-turn finisher at boss HP `<30,000` or ratio `<20%` remains. A
+second Pet Skill uses the same strict configured Sword threshold. Lifecycle,
+actionability, timer, source-turn, input, QTE, dead-board and mandatory-action
+gates remain unchanged.
+
+### Phase 3D.1-R1 generic fire condition (approved 2026-09-19)
+
+The current UI and immutable config use `Điều kiện ra skill`, machine enum
+`PetSkillFireCondition`, `pet_skill_fire_condition`, and optional
+`pet_skill_fire_value`. The exact display choices are `Đủ mana skill`, `Kiếm
+đủ`, `Mana Đủ`, `Nộ đủ`, `Hút đủ`, and `Khiên đủ`. Display strings are never
+machine identities.
+
+`Đủ mana skill` uses authoritative current Pet Skill resource readiness and no
+numeric value. The other choices count current known `SWORD`, `MANA`, `RAGE`,
+`DRAIN`, or `SHIELD` cells on the accepted board and use one common inclusive
+comparison: `known_count >= configured_value`. UNKNOWN contributes zero. The
+label `Kiếm đủ / 10` therefore fires at exactly ten known Sword.
+Regardless of condition, actual runtime skill costs and all normal actionability
+and safety gates remain mandatory. The setting changes fire timing only; it
+does not create a different move-scoring strategy per GemType.
+
+Default is `Kiếm đủ / 10`. Old `skill_rush_sword_threshold = N` migrates to
+`sword_count / N`; older configs migrate to `sword_count / 10`. Count values
+accept ASCII digits in `0..63`. Preferences, checkpoint/resume and active-run
+immutability preserve the pair; `skill_cost_ready` stores no active number.
+
+If no Sword-safe move exists during resource collection or board setup, rank
+the complete legal move set by deterministic boss Sword-reply risk. Do not
+exclude a move merely because it consumes known Sword ourselves. If that move
+best removes the boss opportunity, select it and record
+`FORCED_PRE_SKILL_SWORD_CONSUMPTION`; otherwise record `MANDATORY_FALLBACK`.
+
+The condition row, Audition and its help appear only for `PET_SKILL`; hidden
+values have zero effect for `DEFAULT_ATTACK`. This revision does not change the
+R1 prohibition on boss-HP first-skill shortcuts, `SETUP_BLOCKED` skill fire or
+pre-skill strategic Sword damage. The post-skill finisher and second-skill
+behavior remain, with a later normal skill using the selected generic condition.
+
+### Skill Rush Sword-safety correction (approved 2026-09-19)
+
+The stopped Mode B run `26fbc39c62ca469e89c779ee5d2e7f2b` proved that the
+older strategic-risk relaxation was wrong. On turns 13 and 15 the selected
+distance-two setup left respectively three and two deterministic boss Sword
+replies. The following rules supersede the conflicting historical statements
+above:
+
+- `SwordRisk.safe` is a hard candidate boundary for both Mana/Rage progress and
+  board setup whenever at least one safe action exists. Manhattan distance two
+  is a setup preference inside the safe pool; it is never safety proof by
+  itself.
+- Missing Mana/Rage progress is the first objective inside that safe pool. If
+  neither missing resource has safe progress, prefer safe Drain, then safe
+  Shield, then deterministic safe turnover. Drain is retained because it can
+  remove opponent Mana/Rage and must not be left as free value for the boss;
+  Shield preserves the player's resources.
+- If no safe non-Sword action exists but a safe Sword-consuming action does,
+  consume the minimum Sword ourselves and record
+  `FORCED_PRE_SKILL_SWORD_CONSUMPTION`. This is preferable to handing a proven
+  Sword reply to the boss and never authorizes Pet Skill.
+- A move with a direct, indirect or UNKNOWN Sword reply may be selected only
+  when no Sword-safe action exists. The fallback minimizes proven reply value
+  and count, then recomputes from fresh authoritative state.
+
+### Skill Rush tactical-Rage Sword lock (approved 2026-09-21)
+
+FarmRun `e4dbca0f44ea46cca5afac3984766dda` supersedes the preceding forced-Sword
+fallback whenever current Rage is at least 100. The inclusive fire comparison
+was correct: the skill fired on the first state that had both runtime resources
+and exactly ten known Sword. The delay came from two earlier moves that consumed
+known Sword while the board was being prepared.
+
+Before the first successful Pet Skill, current Rage `>= 100` imposes an absolute
+`known_sword_consumed == 0` filter in both resource collection and board setup.
+The current-board fire condition remains mandatory, so having resources ready
+does not permit a premature skill and having enough board gems does not bypass
+missing Mana/Rage.
+
+Selection order is safe missing Mana/Rage progress, safe Drain, safe Shield,
+then safe non-Sword turnover. If no safe non-Sword action exists, use PASS only
+when the authoritative game-owned idle state allows it. When PASS is forbidden
+after the allowed budget, select the lowest-risk non-Sword move inside the same
+resource order; this is the narrow mandatory-turn relaxation of Sword-reply
+safety. If every legal move consumes known Sword, fail closed with
+`SKILL_RUSH_ONLY_SWORD_MOVES` rather than destroy the prepared threshold.
+
+This keeps the shared SIMPLE invariant whenever a non-Sword SWAP can satisfy
+it: a normal selected move may not leave a known direct, indirect or disallowed
+UNKNOWN Sword completion for the boss. If no such SWAP exists, an allowed PASS
+preserves our Sword/Rage but does not claim to remove the unavoidable board
+conflict. Only the game-required consuming action after the PASS budget is
+exhausted may relax that reply rule, and it still may not consume our known
+Sword. Below 100 Rage, the prior minimum-Sword forced fallback remains
+available.
+
+### Canonical three-stage Skill Rush strategy (approved 2026-09-21)
+
+This decision supersedes the tactical-Rage Sword lock and every earlier
+pre-skill forced-Sword fallback. `Chịu đấm ăn xôi` is a farm strategy whose
+goal is to acquire the live Pet Skill costs, preserve/setup the configured
+board gems and end the match with a Perfect skill before boss evolution.
+
+Before the first successful skill, known Sword consumption is forbidden at
+every Rage value. Resource collection ranks safe missing Mana/Rage, safe Drain,
+safe Shield and safe non-Sword turnover. If no safe move exists and player HP
+is above 30%, the policy accepts the lowest-risk non-Sword resource move before
+PASS. At or below 30% HP, or with unknown HP, it prefers non-Sword Shield then
+Health. PASS is last, remains game-authoritative and cannot occur three times
+consecutively. A mandatory consuming turn still cannot consume known Sword.
+
+`skill_cost_ready` skips board setup. A gem-count condition uses inclusive
+`known_count >= configured_value` and setup preserves both Sword and the
+selected condition GemType. Safe clears at Manhattan distance at least two
+from known Sword are preferred only after direct, indirect and UNKNOWN boss
+Sword-reply safety. No safe preserving setup uses an allowed PASS; a mandatory
+turn uses the lowest-risk preserving non-Sword move. If every legal move
+consumes Sword or the selected setup gem, policy fails closed.
+
+Normal skill authorization requires current runtime resources, the selected
+fire condition and every existing actionability/session/QTE gate. After a
+current-match `SUCCESS_PERFECT`, boss HP ratio `> 30%` restarts the same
+resource/setup cycle for a second skill. Ratio `<= 30%` enables a later-turn
+finisher: affordable ordinary Attack first, otherwise Sword. Mega remains a
+future profile until its runtime capability is verified; the proven active
+profile remains `LEGENDARY / NONE / PET_SKILL / BASIC` with Audition V3.
+
+### Multiplier-weighted generic fire value (approved 2026-09-21)
+
+Every board-gem fire condition uses the sum of proven cell multipliers, not the
+number of physical cells. A known x1/x2/x3/x4 cell contributes 1/2/3/4. UNKNOWN
+contributes zero. `Kiếm đủ / 10` therefore accepts 9 Sword cells worth 12 and
+must fire immediately when runtime resources and all actionability gates are
+also ready. This rule applies equally to Mana, Nộ, Hút and Khiên conditions.
+
+Telemetry records physical cell count and effective value separately. The
+configuration range is `0..256`, matching the maximum 64 known cells at x4.
+FarmRun `03ceea93d6254ed1a4f4dac54562e85a` is the canonical regression: turn
+15 had 9 Sword cells worth 12, but the old physical count selected Shield and
+spent one extra energy before firing at turn 17.
+
+### Healthy resource collection precedes protection (approved 2026-09-21)
+
+FarmRun `420227ce72734e28a0fa4a89e0827f7f` showed that the safe-pool ordering
+could choose Shield while Mana was still missing, despite the player having
+more than 30% HP and a Sword-preserving Mana move being available. This did not
+match the farm strategy's first stage and supersedes only the resource-order
+part of the canonical three-stage decision above.
+
+During resource collection, safe missing Mana/Rage progress remains best. If
+none is safe and player HP is known above 30%, any Sword-preserving move that
+advances the missing runtime resource ranks before Drain, Shield and turnover,
+even when it may leave a Sword reply for the boss. The move must still satisfy
+`known_sword_consumed == 0`. At or below 30% HP, or when HP is unknown, the
+survival/protection ordering remains in force. The hard Sword-safe boundary for
+count-based board setup is unchanged.
 
 ## Phase 2 b2 compatibility repair (user correction 2026-09-11)
 

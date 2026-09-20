@@ -35,6 +35,12 @@ SKILL_FIRE_REASONS = (
     "VERY_LOW_HP",
     "SETUP_BLOCKED",
 )
+FINAL_R1_SKILL_FIRE_REASON = "SKILL_RUSH_FIRE_CONDITION_READY"
+LEGACY_R1_SKILL_FIRE_REASON = "SKILL_RUSH_SWORD_THRESHOLD_READY"
+FINAL_R1_SKILL_FIRE_REASONS = (
+    FINAL_R1_SKILL_FIRE_REASON,
+    LEGACY_R1_SKILL_FIRE_REASON,
+)
 
 EXPECTED_PROFILES: dict[str, dict[str, str]] = {
     MODE_A: {
@@ -441,6 +447,10 @@ def _skill_rush_metrics(
         known_sword = _nonnegative_int(
             trace.get("known_sword_count"), f"{label}.skill_fire.known_sword_count"
         )
+        known_sword_effective = _nonnegative_int(
+            trace.get("known_sword_effective_count", known_sword),
+            f"{label}.skill_fire.known_sword_effective_count",
+        )
         boss_hp = _nonnegative_int(trace.get("boss_hp"), f"{label}.skill_fire.boss_hp")
         boss_max_hp = _nonnegative_int(
             trace.get("boss_max_hp"), f"{label}.skill_fire.boss_max_hp"
@@ -451,7 +461,7 @@ def _skill_rush_metrics(
         if ratio is None or ratio > 1.0 or boss_max_hp <= 0:
             raise BenchmarkDataError(f"{label} skill fire lacks valid boss HP/ratio")
         recorded = trace.get("skill_fire_trigger")
-        if recorded not in SKILL_FIRE_REASONS:
+        if recorded not in (*SKILL_FIRE_REASONS, *FINAL_R1_SKILL_FIRE_REASONS):
             raise BenchmarkDataError(f"{label} has unsupported skill-fire reason {recorded!r}")
         setup_blocked_proven = False
         if recorded == "SETUP_BLOCKED":
@@ -472,15 +482,47 @@ def _skill_rush_metrics(
                 raise BenchmarkDataError(
                     f"{label} SETUP_BLOCKED fire lacks deterministic setup-block proof"
                 )
-        expected = classify_skill_fire_reason(
-            current_mana=current_mana,
-            current_rage=current_rage,
-            required_mana=required_mana,
-            required_rage=required_rage,
-            boss_hp_ratio=ratio,
-            known_sword_count=known_sword,
-            setup_blocked=setup_blocked_proven,
-        )
+        if recorded in FINAL_R1_SKILL_FIRE_REASONS:
+            threshold = _nonnegative_int(
+                trace.get(
+                    "pet_skill_fire_value",
+                    trace.get("configured_sword_threshold"),
+                ),
+                f"{label}.skill_fire.pet_skill_fire_value",
+            )
+            selected_cell_count = _nonnegative_int(
+                trace.get("selected_known_gem_count", known_sword),
+                f"{label}.skill_fire.selected_known_gem_count",
+            )
+            selected_effective_count = _nonnegative_int(
+                trace.get(
+                    "selected_known_gem_effective_count",
+                    trace.get("known_sword_effective_count", selected_cell_count),
+                ),
+                f"{label}.skill_fire.selected_known_gem_effective_count",
+            )
+            selected_ready = trace.get(
+                "selected_fire_condition_ready",
+                trace.get("sword_threshold_ready"),
+            )
+            expected = (
+                recorded
+                if current_mana >= required_mana
+                and current_rage >= required_rage
+                and selected_effective_count >= threshold
+                and selected_ready is True
+                else None
+            )
+        else:
+            expected = classify_skill_fire_reason(
+                current_mana=current_mana,
+                current_rage=current_rage,
+                required_mana=required_mana,
+                required_rage=required_rage,
+                boss_hp_ratio=ratio,
+                known_sword_count=known_sword,
+                setup_blocked=setup_blocked_proven,
+            )
         fire_records.append(
             {
                 "turn": _nonnegative_int(
@@ -490,6 +532,18 @@ def _skill_rush_metrics(
                 "boss_max_hp": boss_max_hp,
                 "boss_hp_ratio": round(ratio, 6),
                 "known_sword_count": known_sword,
+                "known_sword_cell_count": known_sword,
+                "known_sword_effective_count": known_sword_effective,
+                "selected_known_gem_cell_count": (
+                    selected_cell_count
+                    if recorded in FINAL_R1_SKILL_FIRE_REASONS
+                    else known_sword
+                ),
+                "selected_known_gem_effective_count": (
+                    selected_effective_count
+                    if recorded in FINAL_R1_SKILL_FIRE_REASONS
+                    else known_sword_effective
+                ),
                 "current_mana": current_mana,
                 "current_rage": current_rage,
                 "required_mana": required_mana,
@@ -527,13 +581,22 @@ def _skill_rush_metrics(
     first_skill_kill = int(bool(resolution_records) and resolution_records[0].get("immediateSkillKill") is True)
 
     fire_summary = _mapping(summary.get("skillRushFireReasons"), f"{label}.skillRushFireReasons")
+    final_reason = next(
+        (reason for reason in FINAL_R1_SKILL_FIRE_REASONS if reason in fire_summary),
+        None,
+    )
+    active_fire_reasons = (
+        (final_reason, "SETUP_BLOCKED")
+        if final_reason is not None
+        else SKILL_FIRE_REASONS
+    )
     fire_counts = {
         reason: _nonnegative_int(fire_summary.get(reason), f"{label}.skillRushFireReasons.{reason}")
-        for reason in SKILL_FIRE_REASONS
+        for reason in active_fire_reasons
     }
     observed_fire_counts = {
         reason: sum(record["reason"] == reason for record in fire_records)
-        for reason in SKILL_FIRE_REASONS
+        for reason in active_fire_reasons
     }
     if fire_counts != observed_fire_counts:
         raise BenchmarkDataError(f"{label} skill-fire summary disagrees with decisions")
@@ -637,7 +700,7 @@ def _skill_rush_metrics(
         "second_pet_skill": finisher_counts["SECOND_PET_SKILL"],
         "first_post_skill_state": first_post_skill_state,
         "early_boss_prep_sword": _nonnegative_int(
-            summary.get("skillRushEarlyBossPrepSword"), f"{label}.skillRushEarlyBossPrepSword"
+            summary.get("skillRushEarlyBossPrepSword", 0), f"{label}.skillRushEarlyBossPrepSword"
         ),
         "skipped_current_sword_for_resource": _nonnegative_int(
             summary.get("skippedCurrentSwordForResource"),
@@ -702,14 +765,40 @@ def _extract_attempt(
     calculated_duration = duration_seconds(start_timestamp, end_timestamp)
     if abs(calculated_duration - recorded_duration) > 0.002:
         raise BenchmarkDataError(f"{label} duration does not match its timestamps")
-    if completed:
-        if attempt.get("normal_postmatch") is not True:
-            raise BenchmarkDataError(f"{label} completed without normal postmatch proof")
-        terminal = _mapping(attempt.get("terminal_snapshot"), f"{label}.terminal_snapshot")
-        if terminal.get("match_id") != match_id or terminal.get("result") != result:
-            raise BenchmarkDataError(f"{label} terminal snapshot disagrees with result")
-
     summary = _combat_summary(combat_records, label)
+    operator_accepted_completion = (
+        attempt.get("_operator_accepted_completion") is True
+    )
+    if completed:
+        if operator_accepted_completion:
+            if (
+                result != "UNKNOWN"
+                or attempt.get("_operator_accepted_original_result") != "SAFE_STOP"
+                or summary.get("attemptClassification") != "FULL_COMBAT_COMPLETED"
+                or summary.get("stopReason") != "COMBAT_LIFECYCLE_ENDED"
+                or summary.get("fullCombatResult") != "UNKNOWN"
+                or summary.get("timestamp") != end_timestamp
+                or not any(
+                    record.get("event") == "lifecycle_observed"
+                    and record.get("state") == "lobby"
+                    for record in combat_records
+                )
+            ):
+                raise BenchmarkDataError(
+                    f"{label} lacks evidence for operator-accepted completion"
+                )
+        else:
+            if attempt.get("normal_postmatch") is not True:
+                raise BenchmarkDataError(
+                    f"{label} completed without normal postmatch proof"
+                )
+            terminal = _mapping(
+                attempt.get("terminal_snapshot"), f"{label}.terminal_snapshot"
+            )
+            if terminal.get("match_id") != match_id or terminal.get("result") != result:
+                raise BenchmarkDataError(
+                    f"{label} terminal snapshot disagrees with result"
+                )
     counters = _mapping(summary.get("counters"), f"{label}.counters")
     pet = _pet_skill_metrics(combat_records)
     rush = _skill_rush_metrics(combat_records, summary, pet, label)
@@ -802,7 +891,11 @@ def _extract_attempt(
     contract_violations += sum(policy.values())
     contract_violations += int(attempt.get("result_consistency") == "RESULT_CONFLICT")
 
-    farm_cycle = _cycle_duration(events, attempt_index, start_timestamp) if completed else None
+    farm_cycle = (
+        _cycle_duration(events, attempt_index, start_timestamp)
+        if completed and not operator_accepted_completion
+        else None
+    )
     return {
         "mode": mode,
         "farm_run_id": farm_run_id,
@@ -810,6 +903,7 @@ def _extract_attempt(
         "match_id": match_id,
         "result": result,
         "completed": completed,
+        "operator_accepted_completion": operator_accepted_completion,
         "combat_start_at": start_timestamp,
         "terminal_at": end_timestamp,
         "combat_duration_s": calculated_duration,
@@ -894,6 +988,7 @@ def extract_run(
     excluded: bool = False,
     exclusion_reason: str | None = None,
     energy_deltas: Mapping[str, Any] | None = None,
+    operator_accepted_attempts: Mapping[int, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Extract one FarmRunner run without changing any source artifact."""
 
@@ -930,6 +1025,12 @@ def extract_run(
     energy_map = energy_deltas or {}
     if not isinstance(energy_map, Mapping):
         raise BenchmarkDataError(f"{farm_run_id}.energy_deltas_by_match_id must be an object")
+    accepted_overrides = operator_accepted_attempts or {}
+    if not isinstance(accepted_overrides, Mapping):
+        raise BenchmarkDataError(
+            f"{farm_run_id}.operator_accepted_attempts must be an object"
+        )
+    used_accepted_overrides: set[int] = set()
     rows: list[dict[str, Any]] = []
     for attempt in attempts:
         attempt_map = _mapping(attempt, f"{farm_run_id}.attempt")
@@ -938,6 +1039,42 @@ def extract_run(
         )
         if attempt_index <= 0:
             raise BenchmarkDataError(f"{farm_run_id}.attempt_index must be positive")
+        accepted_spec = accepted_overrides.get(attempt_index)
+        if accepted_spec is not None:
+            accepted_spec = _mapping(
+                accepted_spec,
+                f"{farm_run_id}.operator_accepted_attempts[{attempt_index}]",
+            )
+            if attempt_map.get("result") != "SAFE_STOP":
+                raise BenchmarkDataError(
+                    f"{farm_run_id} operator acceptance requires SAFE_STOP source"
+                )
+            accepted_end = _required_text(
+                accepted_spec,
+                "end_timestamp",
+                f"{farm_run_id}.operator_accepted_attempts[{attempt_index}]",
+            )
+            _required_text(
+                accepted_spec,
+                "reason",
+                f"{farm_run_id}.operator_accepted_attempts[{attempt_index}]",
+            )
+            attempt_map = {
+                **attempt_map,
+                "result": "UNKNOWN",
+                "end_timestamp": accepted_end,
+                "duration_seconds": duration_seconds(
+                    _required_text(
+                        attempt_map,
+                        "start_timestamp",
+                        f"{farm_run_id}.attempt",
+                    ),
+                    accepted_end,
+                ),
+                "_operator_accepted_completion": True,
+                "_operator_accepted_original_result": "SAFE_STOP",
+            }
+            used_accepted_overrides.add(attempt_index)
         match_id = attempt_map.get("match_id")
         delta = _optional_nonnegative_number(
             energy_map.get(match_id), f"{farm_run_id}.energy_delta[{match_id}]"
@@ -955,10 +1092,15 @@ def extract_run(
                 exclusion_reason=exclusion_reason.strip() if exclusion_reason else None,
             )
         )
+    if used_accepted_overrides != set(accepted_overrides):
+        raise BenchmarkDataError(
+            f"{farm_run_id} operator acceptance references an unknown attempt"
+        )
     completed_rows = [row for row in rows if row["completed"]]
-    completed_matches = _nonnegative_int(
+    recorded_completed_matches = _nonnegative_int(
         snapshot.get("completed_matches"), f"{farm_run_id}.completed_matches"
     )
+    completed_matches = recorded_completed_matches + len(accepted_overrides)
     if len(completed_rows) != completed_matches:
         raise BenchmarkDataError(f"{farm_run_id} completed-match accounting is inconsistent")
     if len({row["attempt_index"] for row in rows}) != len(rows):
@@ -967,7 +1109,7 @@ def extract_run(
     losses = _nonnegative_int(snapshot.get("losses"), f"{farm_run_id}.losses")
     unknown = _nonnegative_int(
         snapshot.get("unknown_results"), f"{farm_run_id}.unknown_results"
-    )
+    ) + len(accepted_overrides)
     if wins + losses + unknown != completed_matches:
         raise BenchmarkDataError(f"{farm_run_id} W/L/U accounting is inconsistent")
     technical_aborts = _nonnegative_int(
@@ -1002,8 +1144,30 @@ def extract_run(
             if not excluded
             else snapshot.get("end_timestamp")
         ),
-        "state": snapshot.get("state"),
-        "stop_reason": snapshot.get("stop_reason"),
+        "state": (
+            "FARM_RUN_COMPLETE"
+            if len(accepted_overrides)
+            and completed_matches
+            == _nonnegative_int(
+                _mapping(snapshot.get("limits"), f"{farm_run_id}.limits").get(
+                    "target_completed_matches"
+                ),
+                f"{farm_run_id}.target_completed_matches",
+            )
+            else snapshot.get("state")
+        ),
+        "stop_reason": (
+            "FARM_TARGET_COMPLETED"
+            if len(accepted_overrides)
+            and completed_matches
+            == _nonnegative_int(
+                _mapping(snapshot.get("limits"), f"{farm_run_id}.limits").get(
+                    "target_completed_matches"
+                ),
+                f"{farm_run_id}.target_completed_matches",
+            )
+            else snapshot.get("stop_reason")
+        ),
         "target_completed_matches": _nonnegative_int(
             _mapping(snapshot.get("limits"), f"{farm_run_id}.limits").get(
                 "target_completed_matches"
@@ -1021,6 +1185,7 @@ def extract_run(
         "wins": wins,
         "losses": losses,
         "unknown": unknown,
+        "operator_accepted_completions": len(accepted_overrides),
         "technical_aborts": technical_aborts,
         "technical_recoveries": _nonnegative_int(
             snapshot.get("technical_recoveries"), f"{farm_run_id}.technical_recoveries"
@@ -1048,9 +1213,18 @@ def summarize_mode(mode: str, runs: Sequence[Mapping[str, Any]]) -> dict[str, An
     first_fires = [
         row["first_skill_fire"] for row in completed if row["first_skill_fire"] is not None
     ]
+    fire_reason_keys = tuple(
+        dict.fromkeys(
+            reason
+            for row in completed
+            for reason in row["skill_fire_reason_counts"]
+        )
+    )
     fire_reason_counts = {
-        reason: sum(row["skill_fire_reason_counts"][reason] for row in completed)
-        for reason in SKILL_FIRE_REASONS
+        reason: sum(
+            row["skill_fire_reason_counts"].get(reason, 0) for row in completed
+        )
+        for reason in fire_reason_keys
     }
     branch_counts: dict[str, int] = {}
     for row in completed:

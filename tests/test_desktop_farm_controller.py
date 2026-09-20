@@ -456,6 +456,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
             boss_name="Starburst",
             target_completed_matches=5,
             max_match_attempts=8,
+            pet_skill_fire_value=17,
         )
         with patch("tools.farm_run.run", return_value=0) as run:
             code = self.manager._run_production(  # noqa: SLF001
@@ -474,6 +475,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertIsNone(args.mana_priority)
         self.assertEqual(args.target_matches, 5)
         self.assertEqual(args.max_match_attempts, 8)
+        self.assertEqual(args.pet_skill_fire_value, 17)
 
 
 class DesktopControlCommandTests(unittest.TestCase):
