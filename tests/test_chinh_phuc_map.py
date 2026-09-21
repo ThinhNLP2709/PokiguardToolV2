@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import struct
 import unittest
 
 from pokiguard_v2.chinh_phuc_map import (
@@ -7,9 +8,18 @@ from pokiguard_v2.chinh_phuc_map import (
     ChinhPhucPlayerPrefs,
     _DIGIT_8_1280X720_ROWS,
     _DIGIT_ROWS,
+    PET_CLICK_CLOSURE_SIZE,
+    PET_CLICK_LOCKED_OFFSET,
+    PET_CLICK_LOCKED_ORDER_OFFSET,
+    PET_CLICK_MANAGER_OFFSET,
+    PET_CLICK_PET_ID_OFFSET,
+    PET_CLICK_REQUIRED_ATTACK_OFFSET,
+    PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET,
+    _decode_pet_click_closure,
     _prefixed_dword,
     locate_hunt_order_badge,
 )
+from tests.test_combat_cards import FakeMemory
 
 
 class ChinhPhucMapTests(unittest.TestCase):
@@ -52,6 +62,31 @@ class ChinhPhucMapTests(unittest.TestCase):
         self.assertTrue(different.clean)
         self.assertTrue(different.selection_required)
         self.assertFalse(selected.selection_required)
+
+    def test_b4_pet_click_closure_uses_shifted_post_island_message_fields(self) -> None:
+        memory = FakeMemory()
+        closure = 0x20000001000
+        manager = 0x20000002000
+        raw = bytearray(PET_CLICK_CLOSURE_SIZE)
+        raw[PET_CLICK_LOCKED_OFFSET] = 0
+        struct.pack_into("<i", raw, PET_CLICK_LOCKED_ORDER_OFFSET, 17)
+        struct.pack_into("<i", raw, PET_CLICK_REQUIRED_ATTACK_OFFSET, 50_000)
+        struct.pack_into("<i", raw, PET_CLICK_PET_ID_OFFSET, 1289)
+        struct.pack_into("<Q", raw, PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET, 0)
+        struct.pack_into("<Q", raw, PET_CLICK_MANAGER_OFFSET, manager)
+        # A legacy-layout decoy at +0x1C must not become the b4 pet ID.
+        struct.pack_into("<i", raw, 0x1C, 9999)
+        memory.map(closure, bytes(raw))
+        memory.map(manager, bytes(0xC0))
+
+        resolver = type("Resolver", (), {"memory": memory})()
+        decoded = _decode_pet_click_closure(resolver, closure)
+
+        self.assertEqual(decoded, (False, 17, 50_000, None, manager))
+        self.assertEqual(
+            struct.unpack_from("<i", memory.read(closure, PET_CLICK_CLOSURE_SIZE), PET_CLICK_PET_ID_OFFSET)[0],
+            1289,
+        )
 
     def test_prefixed_dword_accepts_unity_hashed_key_and_rejects_ambiguity(self) -> None:
         self.assertEqual(

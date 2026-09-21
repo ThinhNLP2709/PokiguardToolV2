@@ -46,13 +46,17 @@ INVOKABLE_RUNTIME_CALLS_OFFSET = 0x18
 INVOKABLE_DELEGATE_OFFSET = 0x10
 DELEGATE_TARGET_OFFSET = 0x20
 
-# ManagerChinhPhuc.<>c__DisplayClass38_0, proven by DiffableCs/ISIL.
+# ManagerChinhPhuc.<>c__DisplayClass41_0, verified in the 1.7.4-b4
+# Il2CppInspector output.  b4 inserted ``islandLockMsg`` between the leading
+# bool and the numeric click payload, shifting every field after it.  The old
+# 1.7.4 layout must not be used against the b4 build.
 PET_CLICK_LOCKED_OFFSET = 0x10
-PET_CLICK_LOCKED_ORDER_OFFSET = 0x14
-PET_CLICK_REQUIRED_ATTACK_OFFSET = 0x18
-PET_CLICK_PET_ID_OFFSET = 0x1C
-PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET = 0x20
-PET_CLICK_MANAGER_OFFSET = 0x28
+PET_CLICK_LOCKED_ORDER_OFFSET = 0x20
+PET_CLICK_REQUIRED_ATTACK_OFFSET = 0x24
+PET_CLICK_PET_ID_OFFSET = 0x28
+PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET = 0x30
+PET_CLICK_MANAGER_OFFSET = 0x38
+PET_CLICK_CLOSURE_SIZE = 0x40
 
 PLAYER_PREFS_PATH = r"Software\Pokiguard\PokiguardOnlines"
 
@@ -132,6 +136,41 @@ def _read_string_pointer(resolver: object, address: int) -> str | None:
         return None
     value = read_il2cpp_string(resolver.memory, pointer, max_length=256)
     return value or None
+
+
+def _decode_pet_click_closure(
+    resolver: object,
+    closure: int,
+) -> tuple[bool, int, int, str | None, int] | None:
+    """Decode one b4 pet-button closure after validating its exact range."""
+
+    if not resolver.memory.is_readable(closure, PET_CLICK_CLOSURE_SIZE):
+        return None
+    raw = resolver.memory.read(closure, PET_CLICK_CLOSURE_SIZE)
+    locked = raw[PET_CLICK_LOCKED_OFFSET]
+    locked_order = struct.unpack_from(
+        "<i", raw, PET_CLICK_LOCKED_ORDER_OFFSET
+    )[0]
+    required_attack = struct.unpack_from(
+        "<i", raw, PET_CLICK_REQUIRED_ATTACK_OFFSET
+    )[0]
+    pet_id = struct.unpack_from("<i", raw, PET_CLICK_PET_ID_OFFSET)[0]
+    text_pointer = struct.unpack_from(
+        "<Q", raw, PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET
+    )[0]
+    manager = struct.unpack_from("<Q", raw, PET_CLICK_MANAGER_OFFSET)[0]
+    if (
+        locked not in (0, 1)
+        or not is_canonical_user_pointer(manager)
+        or not resolver.memory.is_readable(manager, 0xC0)
+    ):
+        return None
+    required_text = None
+    if text_pointer and is_canonical_user_pointer(text_pointer):
+        required_text = read_il2cpp_string(
+            resolver.memory, text_pointer, max_length=64
+        ) or None
+    return bool(locked), locked_order, required_attack, required_text, manager
 
 
 def _prefixed_dword(values: Iterable[tuple[str, object]], prefix: str) -> int | None:
@@ -282,26 +321,20 @@ def discover_chinh_phuc_map_target(
                     if delegate is not None
                     else None
                 )
-                if closure is None or not resolver.memory.is_readable(closure, 0x30):
+                if closure is None:
                     continue
-                raw = resolver.memory.read(closure, 0x30)
-                pet_id = struct.unpack_from("<i", raw, PET_CLICK_PET_ID_OFFSET)[0]
+                decoded = _decode_pet_click_closure(resolver, closure)
+                if decoded is None:
+                    continue
+                (
+                    locked,
+                    locked_order,
+                    required_attack,
+                    required_text,
+                    manager,
+                ) = decoded
+                pet_id = resolver.read_i32(closure + PET_CLICK_PET_ID_OFFSET)
                 if pet_id != target_pet_id:
-                    continue
-                locked = raw[PET_CLICK_LOCKED_OFFSET]
-                locked_order = struct.unpack_from("<i", raw, PET_CLICK_LOCKED_ORDER_OFFSET)[0]
-                required_attack = struct.unpack_from(
-                    "<i", raw, PET_CLICK_REQUIRED_ATTACK_OFFSET
-                )[0]
-                text_pointer = struct.unpack_from(
-                    "<Q", raw, PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET
-                )[0]
-                manager = struct.unpack_from("<Q", raw, PET_CLICK_MANAGER_OFFSET)[0]
-                if (
-                    locked not in (0, 1)
-                    or not is_canonical_user_pointer(manager)
-                    or not resolver.memory.is_readable(manager, 0xC0)
-                ):
                     continue
                 native = _read_pointer(resolver, button + UNITY_OBJECT_CACHED_PTR_OFFSET)
                 if native is None or not resolver.memory.is_readable(native, 1):
@@ -312,11 +345,6 @@ def discover_chinh_phuc_map_target(
                 )
                 if not interactable or not groups_allow:
                     continue
-                required_text = None
-                if text_pointer and is_canonical_user_pointer(text_pointer):
-                    required_text = read_il2cpp_string(
-                        resolver.memory, text_pointer, max_length=64
-                    ) or None
                 exact.append(
                     (
                         button,
@@ -325,7 +353,7 @@ def discover_chinh_phuc_map_target(
                         locked_order,
                         required_attack,
                         required_text,
-                        locked,
+                        int(locked),
                     )
                 )
         except (ExternalReadError, LayoutValidationError, OSError, ValueError):

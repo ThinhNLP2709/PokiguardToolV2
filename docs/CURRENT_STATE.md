@@ -3986,3 +3986,41 @@ preflight trước click vẫn giữ nguyên. Focused regression **111/111 PASS*
 bốn suite liên quan **206/206 PASS**; full regression **1172/1172 PASS**.
 Phase 2 vẫn chưa chốt; cần live soak để xác nhận post-EVOLVE finisher CAST. Xem
 [báo cáo sự cố](phase2_b2_post_fusion_attack_card_slot_incident.md).
+
+## Detached empty-room → general hub recovery — offline PASS (2026-09-21)
+
+Run `de3987ec515c4f7db3993990f0a5bc77` completed 44/50 wins, then the normal
+close of a proven owner-free Chinh Phuc room shell returned to the general game
+lobby instead of the island map. Attempt 45 never started; the old route timed
+out because it recognized only the map and leave-confirm outcomes.
+
+FarmRunner now recognizes the general hub only from two stable exact
+`ManagerQuangTruong`/Button/native-geometry samples, sends one normal Chinh
+Phuc click, then reuses the existing cached group/pet, PlayerPrefs panel and
+hunt-order proof to select the immutable session target. The new capability is
+single-use and requires the prior shell exit; generic `LOBBY_OTHER` cannot
+authorize it. Focused verification is **102/102 PASS** and full regression is
+**1363/1363 PASS**. Live recurrence remains pending. See
+[general hub re-entry report](general_hub_chinh_phuc_reentry_report.md).
+
+## Empty-room run 48 — b4 hub/map repair (2026-09-21)
+
+Run `81fa84f56c7a45a7b6d2c0e7721309d7` completed 48/50, with 48 wins and no
+loss/unknown/technical abort. Attempt 48 then reached a detached empty-room
+shell; FarmRunner sent its one allowed `X`, landed in the owner-free general
+hub, but stopped `RETURN_LOBBY_TIMEOUT` before opening Chinh Phuc.
+
+Read-only live probing proved that the exact `ManagerQuangTruong.btnChinhPhuc`
+was present and valid. Its idle bob changed only native TRS translation by
+about 0.29 px during each ownership walk, which the byte-exact geometry fence
+misclassified as a busy layout. The hub-only reader now permits at most 1 px of
+translation jitter while ownership, active state, rotation, scale, Canvas and
+two-sample rectangle agreement stay strict.
+
+The b4 reverse also proved that `ManagerChinhPhuc.<>c__DisplayClass41_0`
+inserted `islandLockMsg`, shifting `petId` to `+0x28` and manager ownership to
+`+0x38`. The exact map resolver now uses the complete b4 `0x40`-byte closure.
+Island selection remains session-target driven: cached `GroupDTO/PetEnemyDTO`
+maps the pinned `pet_id` to its own group/index/name. No Dragon-Island constant
+or fixed Starburst group is used. Focused regression is **110/110 PASS** and
+full regression is **1366/1366 PASS**. Live recurrence follows.

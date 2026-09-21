@@ -933,6 +933,45 @@ pet index 7 (hunt order 8), matching the three read-only PlayerPrefs keys.
 Runtime addresses are deliberately not documented as stable symbols because
 they are process/session allocations and subject to ASLR and Unity lifetime.
 
+### 1.7.4-b4 general-hub Chinh Phuc return addendum
+
+These b4 members identify the normal hub control used only after a proven
+detached Chinh Phuc room shell has lost all server room ownership. The tool
+reads their live Unity ownership and geometry; it does not call
+`OpenChinhPhucPanel`.
+
+| Assembly | Type | Member | Kind | Exact declared type | b4 field offset / RVA | Confidence |
+|---|---|---|---|---|---:|---|
+| Assembly-CSharp | `ManagerQuangTruong` | `Instance` | field | `ManagerQuangTruong` | static | CONFIRMED |
+| Assembly-CSharp | `ManagerQuangTruong` | `panelChinhPhuc` | field | `UnityEngine.GameObject` | `+0x2C0` | CONFIRMED |
+| Assembly-CSharp | `ManagerQuangTruong` | `btnChinhPhuc` | field | `UnityEngine.UI.Button` | `+0x2C8` | CONFIRMED |
+| Assembly-CSharp | `ManagerQuangTruong` | `OpenChinhPhucPanel()` | method | `System.Void` | `0x9BE480` | CONFIRMED declaration/RVA; never invoked by the tool |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `lockedForClick` | field | `System.Boolean` | `+0x10` | CONFIRMED |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `islandLockMsg` | field | `System.String` | `+0x18` | CONFIRMED |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `lockedOrderForClick` | field | `System.Int32` | `+0x20` | CONFIRMED |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `requiredAttack` | field | `System.Int32` | `+0x24` | CONFIRMED |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `petId` | field | `System.Int32` | `+0x28` | CONFIRMED |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `reA` | field | `System.String` | `+0x30` | CONFIRMED |
+| Assembly-CSharp | `ManagerChinhPhuc.<>c__DisplayClass41_0` | `<>4__this` | field | `ManagerChinhPhuc` | `+0x38` | CONFIRMED |
+
+Evidence:
+
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ManagerQuangTruong.cs:123-131`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ManagerQuangTruong.cs:1463-1469`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ManagerChinhPhuc.cs:181-205`
+
+The normal-input point is derived from the manager-owned Button's managed to
+native roundtrip, owning GameObject, active cache, first RectTransform
+component and stable root Canvas path. `panelChinhPhuc` must be inactive while
+the Button is active, interactable and allowed by its CanvasGroup. Two stable
+samples and a captured-region sanity check are required before the click.
+The Chinh Phuc button's b4 idle animation changes only native TRS translation;
+live run-48 evidence measured about 0.29 px during one ownership walk. The
+reader therefore allows at most 1 px translation movement for this hub control
+while rotation, scale, ownership and active state remain exact. The older
+Phase 2D.6 `<>c__DisplayClass38_0` offsets above are historical pre-b4 evidence
+and are not used for the verified b4 executable.
+
 ### 1.7.4-b2 Legend-card continuation audit addendum (Phase 3C.0)
 
 | Assembly | Type | Member | Kind | Exact declared type | b2 field offset / RVA | Confidence |

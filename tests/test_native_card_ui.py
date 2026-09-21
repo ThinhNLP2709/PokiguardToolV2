@@ -440,6 +440,66 @@ class NativeCardUiTests(unittest.TestCase):
         mismatch = locate_native_pet_skill_control(rgb, width, height, (.7, .75, .76, .9), root_aspect=1.6)
         self.assertFalse(mismatch.found)
 
+    def test_generic_button_geometry_reuses_exact_native_ownership(self):
+        hand = self.hand()
+        expected = hand.entry_for_card(self.fixture.cards[2].card.managed)
+        self.assertIsNotNone(expected)
+
+        observed = self.fixture.reader().read_button_geometry(
+            self.fixture.cards[2].button.managed
+        )
+
+        self.assertTrue(observed.active)
+        self.assertEqual(observed.button, self.fixture.cards[2].button.managed)
+        self.assertEqual(observed.native_button, self.fixture.cards[2].button.native)
+        self.assertEqual(observed.game_object, self.fixture.cards[2].managed)
+        self.assertEqual(observed.viewport_rect, expected.viewport_rect)
+        self.assertEqual(observed.root_aspect, expected.root_aspect)
+
+    def test_button_geometry_can_allow_only_bounded_idle_translation(self):
+        f = self.fixture
+        reader = f.reader()
+        original = reader._viewport_rect
+
+        def idle_bob(transform):
+            result = original(transform)
+            values = list(struct.unpack("<12f", f.memory.read(f.cards[2].trs, 48)))
+            values[1] += 0.25
+            f.memory.map(f.cards[2].trs, struct.pack("<12f", *values))
+            return result
+
+        reader._viewport_rect = idle_bob
+        observed = reader.read_button_geometry(
+            f.cards[2].button.managed,
+            max_translation_jitter=1.0,
+        )
+        self.assertTrue(observed.active)
+
+    def test_button_geometry_idle_allowance_rejects_scale_change(self):
+        f = self.fixture
+        reader = f.reader()
+        original = reader._viewport_rect
+
+        def scaling(transform):
+            result = original(transform)
+            values = list(struct.unpack("<12f", f.memory.read(f.cards[2].trs, 48)))
+            values[8] += 0.01
+            f.memory.map(f.cards[2].trs, struct.pack("<12f", *values))
+            return result
+
+        reader._viewport_rect = scaling
+        with self.assertRaisesRegex(NativeGeometryBusyError, "changed during"):
+            reader.read_button_geometry(
+                f.cards[2].button.managed,
+                max_translation_jitter=1.0,
+            )
+
+    def test_managed_game_object_active_cache_is_roundtrip_validated(self):
+        reader = self.fixture.reader()
+        self.assertTrue(reader.read_game_object_active(self.fixture.root.managed))
+        self.fixture.memory.map(self.fixture.root.native + 0x4F, b"\0")
+        self.assertFalse(reader.read_game_object_active(self.fixture.root.managed))
+
     def test_layout_change_after_first_card_invalidates_whole_hand(self):
         f = self.fixture
         original = self.reader._viewport_rect

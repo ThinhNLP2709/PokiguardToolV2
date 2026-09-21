@@ -99,6 +99,21 @@ class NativeDotBoard:
     cells: tuple[BoardCellSnapshot, ...]
 
 
+@dataclass(frozen=True)
+class NativeButtonGeometry:
+    """Exact live Unity ``Button`` ownership and screen-space geometry."""
+
+    button: int
+    native_button: int
+    game_object: int
+    native_game_object: int
+    transform: int
+    active: bool
+    viewport_rect: tuple[float, float, float, float] | None
+    root_transform: int | None
+    root_aspect: float | None
+
+
 class NativeCardUiReader:
     """Direct ownership walk, limited to <=16 cards, <=64 components/node."""
 
@@ -552,6 +567,106 @@ class NativeCardUiReader:
             if self._read(address, size) != value:
                 raise NativeGeometryBusyError("native_card_ui: geometry changed during walk")
         return hand
+
+    def read_game_object_active(self, game_object: int) -> bool:
+        """Validate one managed ``GameObject`` and read its active cache."""
+
+        if self._class_identity(game_object) != ("GameObject", "UnityEngine"):
+            raise LayoutValidationError("native_card_ui: object is not a GameObject")
+        native = self._pointer(game_object + 0x10)
+        if self._managed(native) != game_object:
+            raise LayoutValidationError(
+                "native_card_ui: GameObject managed/native roundtrip mismatch"
+            )
+        return self._active(native)
+
+    def read_button_geometry(
+        self,
+        button: int,
+        *,
+        max_translation_jitter: float = 0.0,
+    ) -> NativeButtonGeometry:
+        """Resolve one managed Unity UI Button to its live clickable rectangle.
+
+        The walk uses the same native signatures, ownership roundtrips, active
+        cache, RectTransform hierarchy and geometry fences as card controls.
+        It is intentionally generic so lobby navigation can click an exact
+        manager-owned Button without a resolution-specific coordinate.
+        """
+
+        self._nodes.clear()
+        self._canvas_paths.clear()
+        self._geometry_chunks.clear()
+        if self._class_identity(button) != ("Button", "UnityEngine.UI"):
+            raise LayoutValidationError("native_card_ui: object is not a Button")
+        native_button = self._pointer(button + 0x10)
+        if self._managed(native_button) != button:
+            raise LayoutValidationError(
+                "native_card_ui: Button managed/native roundtrip mismatch"
+            )
+        native_game_object = self._pointer(native_button + 0x28)
+        game_object = self._managed(native_game_object)
+        if self._class_identity(game_object) != ("GameObject", "UnityEngine"):
+            raise LayoutValidationError("native_card_ui: Button owner is not a GameObject")
+        components = self._components(native_game_object)
+        if native_button not in components:
+            raise LayoutValidationError("native_card_ui: Button owner mismatch")
+        transform = components[0]
+        active = self._active(native_game_object)
+        rect, root, aspect = (
+            self._viewport_rect(transform) if active else (None, None, None)
+        )
+        if (
+            self._pointer(button + 0x10) != native_button
+            or self._managed(native_button) != button
+            or self._pointer(native_button + 0x28) != native_game_object
+            or self._managed(native_game_object) != game_object
+            or self._components(native_game_object) != components
+            or self._active(native_game_object) != active
+        ):
+            raise NativeGeometryBusyError(
+                "native_card_ui: Button ownership changed during read"
+            )
+        for (address, size), value in self._geometry_chunks.items():
+            current = self._read(address, size)
+            if current == value:
+                continue
+            # Some hub buttons have a permanent sub-pixel idle bob.  Their
+            # native 48-byte TRS translation can therefore advance between
+            # the ownership walk and its final fence even though the owner,
+            # rotation, scale and clickable rectangle remain valid.  Callers
+            # must opt in with a small bound; card/gameplay geometry stays
+            # byte-for-byte strict by default.
+            bounded_translation = False
+            if max_translation_jitter > 0.0 and size == 48:
+                before_trs = struct.unpack("<12f", value)
+                after_trs = struct.unpack("<12f", current)
+                bounded_translation = bool(
+                    all(
+                        abs(before_trs[index] - after_trs[index])
+                        <= max_translation_jitter
+                        for index in (0, 1, 2)
+                    )
+                    and all(
+                        before_trs[index] == after_trs[index]
+                        for index in range(3, 12)
+                    )
+                )
+            if not bounded_translation:
+                raise NativeGeometryBusyError(
+                    "native_card_ui: Button geometry changed during read"
+                )
+        return NativeButtonGeometry(
+            button,
+            native_button,
+            game_object,
+            native_game_object,
+            transform,
+            active,
+            rect,
+            root,
+            aspect,
+        )
 
     def validate_button_owner(self, card_ui: int, button: int, entry: NativeCardEntry) -> None:
         for managed in (card_ui, button):

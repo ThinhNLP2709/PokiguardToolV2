@@ -663,7 +663,7 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertEqual(second.stop_reason, "P2_TWO_AUTONOMOUS_PASSES_CONFIRMED")
         self.assertTrue(failed.stop)
 
-    def test_b3_confirmed_passes_continue_and_second_requires_reset(self) -> None:
+    def test_b3_production_passes_continue_and_require_reset(self) -> None:
         first = _pass_terminal_disposition(
             "B3",
             PassResultKind.PASS_CONFIRMED_IDLE_1,
@@ -685,7 +685,9 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertTrue(second.confirmed)
         self.assertFalse(second.stop)
         self.assertTrue(second.begin_p3_mandatory_reset)
-        self.assertTrue(failed.stop)
+        self.assertFalse(failed.confirmed)
+        self.assertFalse(failed.stop)
+        self.assertTrue(failed.begin_p3_mandatory_reset)
 
     def test_b4_reuses_production_pass_disposition(self) -> None:
         first = _pass_terminal_disposition(
@@ -698,10 +700,18 @@ class AutonomousGuardTests(unittest.TestCase):
             PassResultKind.PASS_CONFIRMED_IDLE_2,
             p3_reset_validation_pending=False,
         )
+        unconfirmed = _pass_terminal_disposition(
+            "B4",
+            PassResultKind.PASS_STATE_UNCONFIRMED,
+            p3_reset_validation_pending=False,
+        )
         self.assertFalse(first.stop)
         self.assertFalse(first.begin_p3_mandatory_reset)
         self.assertFalse(second.stop)
         self.assertTrue(second.begin_p3_mandatory_reset)
+        self.assertFalse(unconfirmed.confirmed)
+        self.assertFalse(unconfirmed.stop)
+        self.assertTrue(unconfirmed.begin_p3_mandatory_reset)
 
     def test_b5_second_pass_requires_action_and_later_idle_one_completes_cycle(self) -> None:
         second = _pass_terminal_disposition(

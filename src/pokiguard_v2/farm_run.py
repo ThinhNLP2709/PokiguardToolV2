@@ -136,6 +136,7 @@ class MatchResult(str, Enum):
 class FarmInputDomain(str, Enum):
     BOSS_ROOM_SHELL_EXIT = "BOSS_ROOM_SHELL_EXIT"
     BOSS_ROOM_SHELL_CONFIRM = "BOSS_ROOM_SHELL_CONFIRM"
+    BOSS_HUB_CHINH_PHUC_OPEN = "BOSS_HUB_CHINH_PHUC_OPEN"
     BOSS_TARGET_SELECT = "BOSS_TARGET_SELECT"
     BOSS_CARD_SELECT = "BOSS_CARD_SELECT"
     BOSS_ENTRY = "BOSS_ENTRY"
@@ -663,6 +664,7 @@ class FarmRun:
             in {
                 FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
                 FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
+                FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
                 FarmInputDomain.BOSS_TARGET_SELECT,
                 FarmInputDomain.BOSS_CARD_SELECT,
                 FarmInputDomain.BOSS_ENTRY,
@@ -1647,6 +1649,77 @@ class FarmRun:
             self.safe_stop(
                 FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
                 detail="target selection capability mismatch",
+            )
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail=detail)
+            return False
+        return True
+
+    def reserve_hub_chinh_phuc_open(
+        self, *, foreground: bool
+    ) -> FarmInputPermit | None:
+        """Reserve one exact ManagerQuangTruong Chinh Phuc Button click.
+
+        This is available only after the current completed match lost its room
+        and the single detached-shell close was already sent.  Runtime and UI
+        geometry proof remain the caller's responsibility.
+        """
+
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if self.state is not FarmRunState.WAIT_BOSS_LOBBY or self._pending is not None:
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="hub Chinh Phuc open reserved outside return-to-lobby state",
+            )
+            return None
+        shell_exits = [
+            record
+            for record in self.input_records
+            if record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+            and record.attempt_index == self.match_attempts
+            and record.sent
+        ]
+        if len(shell_exits) != 1 or any(
+            record.domain is FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="hub Chinh Phuc open missing shell exit or duplicated",
+            )
+            return None
+        if not foreground:
+            self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
+            None,
+            self.match_attempts,
+        )
+        self._pending = permit
+        self._event("boss_hub_chinh_phuc_open_reserved", attemptIndex=self.match_attempts)
+        return permit
+
+    def complete_hub_chinh_phuc_open(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="hub Chinh Phuc open capability mismatch",
             )
             return False
         self._pending = None

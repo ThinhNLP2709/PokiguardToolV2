@@ -38,6 +38,12 @@ from pokiguard_v2.boss_entry_ui import (  # noqa: E402
     locate_detached_chinh_phuc_room_shell_exit,
 )
 from pokiguard_v2.boss_lobby_runtime import read_boss_lobby_runtime  # noqa: E402
+from pokiguard_v2.hub_navigation import (  # noqa: E402
+    HubChinhPhucControl,
+    locate_hub_chinh_phuc_control,
+    read_hub_chinh_phuc_control,
+    same_clean_hub_chinh_phuc_control,
+)
 from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.farm_cycle import OpeningEvidence  # noqa: E402
 from pokiguard_v2.farm_checkpoint import (  # noqa: E402
@@ -1116,6 +1122,39 @@ def _owner_free_chinh_phuc_map_snapshot(lobby: Any) -> bool:
     )
 
 
+def _owner_free_general_hub_snapshot(
+    lobby: Any,
+    control: HubChinhPhucControl | None,
+    *,
+    current_session: Any | None,
+) -> bool:
+    """Prove the exact no-room QuangTruong shape before opening Chinh Phuc."""
+
+    chinh_phuc = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(lobby, "combat_lifecycle", None)
+    if (
+        chinh_phuc is None
+        or lifecycle is None
+        or control is None
+        or not control.clean
+        or current_session is not None
+    ):
+        return False
+    return bool(
+        getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
+        and getattr(lobby, "branch", None) is None
+        and getattr(lifecycle, "state", None) is CombatLifecycleState.LOBBY
+        and getattr(chinh_phuc, "current_room_id", None) is None
+        and getattr(chinh_phuc, "current_room_type", None) is None
+        and getattr(chinh_phuc, "owner_username", None) is None
+        and getattr(chinh_phuc, "is_host", None) is False
+        and control.panel_active is False
+        and control.button_active is True
+        and control.button_interactable is True
+        and control.button_groups_allow is True
+    )
+
+
 def _settle_detached_room_shell_exit(
     *,
     run: FarmRun,
@@ -1142,6 +1181,8 @@ def _settle_detached_room_shell_exit(
     prior_map_location = None
     resolved_runtime = None
     next_runtime_probe = 0.0
+    prior_hub_control: HubChinhPhucControl | None = None
+    next_hub_probe = 0.0
     try:
         process_running_diagnostic: bool | None = bool(process.is_running())
     except Exception:  # noqa: BLE001 - diagnostic cannot own transition safety
@@ -1311,14 +1352,154 @@ def _settle_detached_room_shell_exit(
         else:
             prior_map_capture = None
             prior_map_location = None
+
+        # A server-side empty-room failure can make the normal shell close
+        # return all the way to QuangTruong instead of the island map.  Prove
+        # that exact hub state from ManagerQuangTruong and the live Unity
+        # Button; generic LOBBY_OTHER alone never authorizes this route.
+        now = time.monotonic()
+        if now >= next_hub_probe:
+            next_hub_probe = now + max(0.25, interval)
+            current_hub = None
+            try:
+                hub_poll = provider.poll()
+                if hub_poll.combat_lifecycle is not None:
+                    hub_lobby = read_boss_lobby_runtime(
+                        process.resolver, hub_poll.combat_lifecycle
+                    )
+                    current_hub = read_hub_chinh_phuc_control(process)
+                    if not _owner_free_general_hub_snapshot(
+                        hub_lobby,
+                        current_hub,
+                        current_session=provider.current_session_key,
+                    ):
+                        current_hub = None
+            except (AttributeError, OSError, ValueError):
+                current_hub = None
+            if same_clean_hub_chinh_phuc_control(
+                prior_hub_control, current_hub
+            ):
+                run._event(  # noqa: SLF001
+                    "chinh_phuc_room_shell_general_hub_proven",
+                    **event_fields,
+                    firstHubControl=prior_hub_control,
+                    secondHubControl=current_hub,
+                )
+                return "HUB_LOBBY", current_hub
+            prior_hub_control = current_hub
         time.sleep(max(interval, 0.12))
 
     run._event(  # noqa: SLF001
         "chinh_phuc_room_shell_transition_rejected",
         **event_fields,
-        reason="neither stable leave modal nor runtime-derived map badge appeared",
+        reason=(
+            "neither stable leave modal, runtime-derived map badge, nor exact "
+            "general-hub Chinh Phuc control appeared"
+        ),
     )
     return None
+
+
+def _open_chinh_phuc_from_general_hub(
+    *,
+    run: FarmRun,
+    process: Any,
+    provider: MemoryBoardStateProvider,
+    first_control: HubChinhPhucControl,
+    binding: Any,
+    executor: ForegroundClickExecutor,
+    control_hotkeys: Any,
+    directory: Path,
+    event_fields: dict[str, Any],
+) -> bool:
+    """Click the exact hub-owned Chinh Phuc Button after an atomic reread."""
+
+    poll = provider.poll()
+    if poll.combat_lifecycle is None:
+        return False
+    lobby = read_boss_lobby_runtime(process.resolver, poll.combat_lifecycle)
+    second_control = read_hub_chinh_phuc_control(process)
+    if not (
+        same_clean_hub_chinh_phuc_control(first_control, second_control)
+        and _owner_free_general_hub_snapshot(
+            lobby,
+            second_control,
+            current_session=provider.current_session_key,
+        )
+    ):
+        run._event(  # noqa: SLF001
+            "general_hub_chinh_phuc_open_rejected",
+            **event_fields,
+            firstControl=first_control,
+            secondControl=second_control,
+            currentLobby=lobby,
+            reason="atomic general-hub runtime proof changed",
+        )
+        return False
+    capture = capture_client_rgb(process.pid)
+    location = locate_hub_chinh_phuc_control(
+        capture.rgb,
+        capture.width,
+        capture.height,
+        second_control,
+    )
+    write_png_rgb(
+        directory / "general_hub_chinh_phuc_before.png",
+        capture.width,
+        capture.height,
+        capture.rgb,
+    )
+    if not location.found or location.normalized_point is None:
+        run._event(  # noqa: SLF001
+            "general_hub_chinh_phuc_open_rejected",
+            **event_fields,
+            secondControl=second_control,
+            location=location,
+            reason="exact hub Button visual sanity failed",
+        )
+        return False
+    status = executor.window_status(binding)
+    if _control_emergency_requested(control_hotkeys):
+        run.safe_stop(
+            FarmRunStopReason.EMERGENCY_STOP,
+            detail="emergency authority revoked before hub Chinh Phuc input",
+        )
+        return False
+    permit = run.reserve_hub_chinh_phuc_open(
+        foreground=status.valid and status.foreground is True
+    )
+    if permit is None:
+        return False
+    authorized, click = _execute_controlled_input(
+        control_hotkeys,
+        lambda: executor.send_normalized_point(
+            binding, location.normalized_point
+        ),
+    )
+    if not authorized or click is None:
+        run.safe_stop(
+            FarmRunStopReason.EMERGENCY_STOP,
+            detail="emergency authority revoked before hub Chinh Phuc click",
+        )
+        return False
+    if not run.complete_hub_chinh_phuc_open(
+        permit,
+        sent=click.sent,
+        detail=f"GENERAL_HUB_CHINH_PHUC:{click.status.value}",
+    ):
+        return False
+    run._event(  # noqa: SLF001
+        "general_hub_chinh_phuc_open_sent",
+        **event_fields,
+        control=second_control,
+        location=location,
+        clickStatus=click.status.value,
+        association=(
+            "ManagerQuangTruong.btnChinhPhuc + inactive panelChinhPhuc + "
+            "live Button/RectTransform ownership"
+        ),
+    )
+    return click.sent
 
 
 def _return_from_chinh_phuc_map(
@@ -1642,6 +1823,25 @@ def _return_from_chinh_phuc_map(
             return None
         shell_transition, transition_runtime = shell_transition_result
 
+        hub_navigation_used = False
+        if shell_transition == "HUB_LOBBY":
+            if not isinstance(transition_runtime, HubChinhPhucControl) or not (
+                _open_chinh_phuc_from_general_hub(
+                    run=run,
+                    process=process,
+                    provider=provider,
+                    first_control=transition_runtime,
+                    binding=binding,
+                    executor=executor,
+                    control_hotkeys=control_hotkeys,
+                    directory=directory,
+                    event_fields=writer_fields,
+                )
+            ):
+                return None
+            hub_navigation_used = True
+            transition_runtime = None
+
         # Wait for two stable frames of the runtime-derived map badge.  A
         # loading frame, lingering room shell, or ambiguous map consumes no
         # target-select capability and fails closed at the caller timeout.
@@ -1650,6 +1850,7 @@ def _return_from_chinh_phuc_map(
         previous_map_location = None
         map_runtime = transition_runtime
         last_map_runtime = None
+        prior_hub_control = None
         stable_visual = False
         # A direct-map transition may already carry the clean runtime proof.
         # After a leave confirmation, wait briefly for map construction before
@@ -1682,6 +1883,50 @@ def _return_from_chinh_phuc_map(
                     chunk_mib=chunk_mib,
                 )
                 if last_map_runtime is None or not last_map_runtime.clean:
+                    # A leave-confirm path may finish in the same general hub
+                    # as the direct X path.  Detect it only through two stable
+                    # exact ManagerQuangTruong Button samples, then open Chinh
+                    # Phuc once and continue the existing exact-pet map proof.
+                    if not hub_navigation_used:
+                        try:
+                            hub_poll = provider.poll()
+                            hub_lobby = (
+                                read_boss_lobby_runtime(
+                                    process.resolver,
+                                    hub_poll.combat_lifecycle,
+                                )
+                                if hub_poll.combat_lifecycle is not None
+                                else None
+                            )
+                            current_hub = read_hub_chinh_phuc_control(process)
+                            if not _owner_free_general_hub_snapshot(
+                                hub_lobby,
+                                current_hub,
+                                current_session=provider.current_session_key,
+                            ):
+                                current_hub = None
+                        except (AttributeError, OSError, ValueError):
+                            current_hub = None
+                        if same_clean_hub_chinh_phuc_control(
+                            prior_hub_control, current_hub
+                        ):
+                            if not _open_chinh_phuc_from_general_hub(
+                                run=run,
+                                process=process,
+                                provider=provider,
+                                first_control=current_hub,
+                                binding=binding,
+                                executor=executor,
+                                control_hotkeys=control_hotkeys,
+                                directory=directory,
+                                event_fields=writer_fields,
+                            ):
+                                return None
+                            hub_navigation_used = True
+                            prior_hub_control = None
+                            time.sleep(max(0.75, interval * 3.0))
+                            continue
+                        prior_hub_control = current_hub
                     time.sleep(max(interval, 0.18))
                     continue
                 map_runtime = last_map_runtime
@@ -1780,7 +2025,8 @@ def _return_from_chinh_phuc_map(
     permit = run.reserve_target_select(
         foreground=status.valid and status.foreground is True,
         direct_map_after_shell_exit=(
-            stable_room_shell and shell_transition == "DIRECT_MAP"
+            stable_room_shell
+            and shell_transition in {"DIRECT_MAP", "HUB_LOBBY"}
         ),
     )
     if permit is None or second_location.normalized_point is None:

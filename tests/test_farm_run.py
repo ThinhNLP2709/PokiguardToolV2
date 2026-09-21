@@ -22,6 +22,10 @@ from pokiguard_v2.farm_run import (
     FarmRunStopReason,
     MatchResult,
 )
+from pokiguard_v2.hub_navigation import (
+    HubChinhPhucControl,
+    HubControlLocation,
+)
 from pokiguard_v2.state import CombatSessionKey
 from pokiguard_v2.postmatch_ui import PostmatchControl, PostmatchUiLocation
 from pokiguard_v2.win32_input import (
@@ -48,6 +52,8 @@ from tools.farm_run import (
     _farm_room_ejection_sources,
     _outside_current_boss_room,
     _owner_free_chinh_phuc_map_snapshot,
+    _owner_free_general_hub_snapshot,
+    _open_chinh_phuc_from_general_hub,
     _postmatch_reentry_source,
     _return_from_chinh_phuc_map,
     _restore_bound_game_foreground,
@@ -196,6 +202,44 @@ class ChinhPhucMapSnapshotTests(unittest.TestCase):
         for case in cases:
             with self.subTest(case=case):
                 self.assertFalse(_owner_free_chinh_phuc_map_snapshot(case))
+
+    def test_general_hub_requires_exact_closed_panel_and_button(self) -> None:
+        lobby = self.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+        )
+        control = HubChinhPhucControl(
+            0x20000001000,
+            0x20000002000,
+            0x10000002000,
+            False,
+            0x20000003000,
+            0x10000003000,
+            True,
+            True,
+            True,
+            (0.65, 0.70, 0.76, 0.86),
+            0x10000004000,
+            2.0,
+            True,
+            (),
+        )
+        self.assertTrue(
+            _owner_free_general_hub_snapshot(
+                lobby, control, current_session=None
+            )
+        )
+        self.assertFalse(
+            _owner_free_general_hub_snapshot(
+                lobby, replace(control, panel_active=True, clean=False),
+                current_session=None,
+            )
+        )
+        self.assertFalse(
+            _owner_free_general_hub_snapshot(
+                lobby, control, current_session=object()
+            )
+        )
 
 
 class DetachedShellExitRuntimeTests(unittest.TestCase):
@@ -369,6 +413,297 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         self.assertEqual(result, ("DIRECT_MAP", runtime))
         self.assertEqual(liveness_calls, 1)
         run.safe_stop.assert_not_called()
+
+    def test_post_click_settle_recognizes_two_stable_general_hub_samples(self) -> None:
+        capture = SimpleNamespace(width=1280, height=640, rgb=b"")
+        no_modal = SimpleNamespace(found=False, normalized_point=None)
+        no_badge = SimpleNamespace(found=False, normalized_point=None)
+        lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+        )
+        hub = HubChinhPhucControl(
+            0x20000001000,
+            0x20000002000,
+            0x10000002000,
+            False,
+            0x20000003000,
+            0x10000003000,
+            True,
+            True,
+            True,
+            (0.65, 0.70, 0.76, 0.86),
+            0x10000004000,
+            2.0,
+            True,
+            (),
+        )
+        clock = 0.0
+
+        def monotonic() -> float:
+            nonlocal clock
+            clock += 0.3
+            return clock
+
+        process = SimpleNamespace(
+            pid=123,
+            resolver=object(),
+            is_running=lambda: True,
+        )
+        provider = SimpleNamespace(
+            current_session_key=None,
+            poll=lambda: SimpleNamespace(
+                combat_lifecycle=lobby.combat_lifecycle
+            ),
+        )
+        executor = SimpleNamespace(
+            window_status=lambda _binding: SimpleNamespace(
+                valid=True, foreground=True
+            )
+        )
+        run = MagicMock()
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "tools.farm_run.time.monotonic", side_effect=monotonic
+        ), patch("tools.farm_run.time.sleep"), patch(
+            "tools.farm_run.capture_client_rgb", return_value=capture
+        ), patch(
+            "tools.farm_run.locate_confirm_leave", return_value=no_modal
+        ), patch(
+            "tools.farm_run.discover_chinh_phuc_map_target", return_value=None
+        ), patch(
+            "tools.farm_run.locate_hunt_order_badge", return_value=no_badge
+        ), patch(
+            "tools.farm_run.read_boss_lobby_runtime", return_value=lobby
+        ), patch(
+            "tools.farm_run.read_hub_chinh_phuc_control", return_value=hub
+        ):
+            result = _settle_detached_room_shell_exit(
+                run=run,
+                process=process,
+                provider=provider,
+                pet_id=1289,
+                binding=object(),
+                executor=executor,
+                interval=0.0,
+                timeout=5.0,
+                control_hotkeys=None,
+                directory=Path(directory),
+                event_fields={"attemptIndex": 44},
+            )
+
+        self.assertEqual(result, ("HUB_LOBBY", hub))
+        run.safe_stop.assert_not_called()
+
+    def test_exact_hub_button_click_is_recorded_once(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        shell = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(shell)
+        self.assertTrue(run.complete_room_shell_exit(shell, sent=True))
+        hub = HubChinhPhucControl(
+            0x20000001000,
+            0x20000002000,
+            0x10000002000,
+            False,
+            0x20000003000,
+            0x10000003000,
+            True,
+            True,
+            True,
+            (0.65, 0.70, 0.76, 0.86),
+            0x10000004000,
+            2.0,
+            True,
+            (),
+        )
+        lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+        )
+        capture = SimpleNamespace(width=1280, height=640, rgb=b"")
+        location = HubControlLocation(
+            True,
+            (0.705, 0.78),
+            (0.65, 0.70, 0.76, 0.86),
+            "exact_manager_button_native_geometry",
+            {},
+        )
+        process = SimpleNamespace(pid=123, resolver=object())
+        provider = SimpleNamespace(
+            current_session_key=None,
+            poll=lambda: SimpleNamespace(
+                combat_lifecycle=lobby.combat_lifecycle
+            ),
+        )
+        executor = SimpleNamespace(
+            window_status=lambda _binding: SimpleNamespace(
+                valid=True, foreground=True
+            ),
+            send_normalized_point=lambda _binding, _point: ClickPointResult(
+                ClickStatus.SENT
+            ),
+        )
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "tools.farm_run.read_boss_lobby_runtime", return_value=lobby
+        ), patch(
+            "tools.farm_run.read_hub_chinh_phuc_control", return_value=hub
+        ), patch(
+            "tools.farm_run.capture_client_rgb", return_value=capture
+        ), patch(
+            "tools.farm_run.locate_hub_chinh_phuc_control", return_value=location
+        ), patch("tools.farm_run.write_png_rgb"):
+            sent = _open_chinh_phuc_from_general_hub(
+                run=run,
+                process=process,
+                provider=provider,
+                first_control=hub,
+                binding=object(),
+                executor=executor,
+                control_hotkeys=None,
+                directory=Path(directory),
+                event_fields={"attemptIndex": 1},
+            )
+
+        self.assertTrue(sent)
+        records = [
+            item
+            for item in run.input_records
+            if item.domain is FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN
+        ]
+        self.assertEqual(len(records), 1)
+        self.assertTrue(records[0].sent)
+        self.assertIsNone(run.reserve_hub_chinh_phuc_open(foreground=True))
+
+    def test_detached_shell_hub_map_target_route_preserves_exact_pet(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        detached_lobby = self.lobby()
+        hub_lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+        )
+        map_lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+        )
+        map_lobby.chinh_phuc.enemy_pet_id = 1289
+        initial = LobbyWaitResult(
+            False,
+            BossLobbyState.LOBBY_OTHER,
+            None,
+            "DETACHED_ROOM_SHELL_CANDIDATE",
+            detached_lobby,
+            2,
+        )
+        hub = HubChinhPhucControl(
+            0x20000001000,
+            0x20000002000,
+            0x10000002000,
+            False,
+            0x20000003000,
+            0x10000003000,
+            True,
+            True,
+            True,
+            (0.65, 0.70, 0.76, 0.86),
+            0x10000004000,
+            2.0,
+            True,
+            (),
+        )
+        runtime = self.target()
+        capture = SimpleNamespace(width=1280, height=640, rgb=b"")
+        shell = SimpleNamespace(found=True, normalized_point=(0.08, 0.08))
+        badge = SimpleNamespace(found=True, normalized_point=(0.30, 0.40))
+        hub_location = HubControlLocation(
+            True,
+            (0.705, 0.78),
+            (0.65, 0.70, 0.76, 0.86),
+            "exact_manager_button_native_geometry",
+            {},
+        )
+        process = SimpleNamespace(
+            pid=123, resolver=object(), is_running=lambda: True
+        )
+        provider = SimpleNamespace(
+            current_session_key=None,
+            poll=lambda: SimpleNamespace(
+                combat_lifecycle=detached_lobby.combat_lifecycle
+            ),
+        )
+        executor = SimpleNamespace(
+            window_status=lambda _binding: SimpleNamespace(
+                valid=True, foreground=True
+            ),
+            move_normalized_point=lambda _binding, _point: ClickStatus.SENT,
+            send_normalized_point=lambda _binding, _point: ClickPointResult(
+                ClickStatus.SENT
+            ),
+        )
+        hotkeys = SimpleNamespace(poll=lambda: (False, False))
+        expected = LobbyWaitResult(
+            True,
+            BossLobbyState.BOSS_LOBBY,
+            object(),
+            "READY",
+            detached_lobby,
+            2,
+        )
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "tools.farm_run._restore_bound_game_foreground", return_value=True
+        ), patch("tools.farm_run.time.sleep"), patch(
+            "tools.farm_run.capture_client_rgb", return_value=capture
+        ), patch(
+            "tools.farm_run.locate_detached_chinh_phuc_room_shell_exit",
+            return_value=shell,
+        ), patch(
+            "tools.farm_run.read_boss_lobby_runtime",
+            side_effect=[detached_lobby, hub_lobby, map_lobby],
+        ), patch(
+            "tools.farm_run._settle_detached_room_shell_exit",
+            return_value=("HUB_LOBBY", hub),
+        ), patch(
+            "tools.farm_run.read_hub_chinh_phuc_control", return_value=hub
+        ), patch(
+            "tools.farm_run.locate_hub_chinh_phuc_control",
+            return_value=hub_location,
+        ), patch(
+            "tools.farm_run.discover_chinh_phuc_map_target",
+            side_effect=[runtime, runtime],
+        ), patch(
+            "tools.farm_run.locate_hunt_order_badge", return_value=badge
+        ), patch(
+            "tools.farm_run._wait_boss_lobby", return_value=expected
+        ), patch("tools.farm_run.write_png_rgb"):
+            observed = _return_from_chinh_phuc_map(
+                run=run,
+                process=process,
+                provider=provider,
+                target=FarmTarget(boss_id="1289", boss_name="Starburst"),
+                initial=initial,
+                binding=object(),
+                executor=executor,
+                directory=Path(directory),
+                interval=0.0,
+                timeout=5.0,
+                hotkeys=hotkeys,
+                control_hotkeys=None,
+            )
+
+        self.assertIs(observed, expected)
+        domains = [record.domain for record in run.input_records if record.sent]
+        self.assertEqual(
+            domains[-3:],
+            [
+                FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
+                FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
+                FarmInputDomain.BOSS_TARGET_SELECT,
+            ],
+        )
 
     def test_detached_shell_closes_before_any_map_runtime_scan(self) -> None:
         run = start_run()

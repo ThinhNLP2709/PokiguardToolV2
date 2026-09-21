@@ -2430,15 +2430,16 @@ def _pass_terminal_disposition(
     }
     if (
         not confirmed
-        and pass_stage == "B5"
+        and pass_stage in {"B3", "B4", "B5"}
         and result is PassResultKind.PASS_STATE_UNCONFIRMED
     ):
         # MatchService has already completed the zero-input source turn and
         # returned ownership to the local player. The AFK payload may have been
         # too short-lived for the read-only observer, so its numeric count is
-        # unknown. A consuming SWAP/CAST is safe for every possible count and
-        # immediately breaks the idle chain; keeping PASS_WAIT locked would
-        # silently sacrifice this and every later local turn.
+        # unknown. Every production profile must consume the next local turn:
+        # a SWAP/CAST/PET_SKILL is safe for every possible count and immediately
+        # breaks the idle chain.  Restricting this recovery to B5 left B3/B4
+        # FarmRunner matches stopped in active combat after their first PASS.
         return PassTerminalDisposition(
             False,
             False,

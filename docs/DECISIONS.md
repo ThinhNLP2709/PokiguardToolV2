@@ -805,8 +805,16 @@ When the target count, graceful stop, emergency stop, safety stop, or error ends
 the farm session, the live Desktop config clears the pinned pet ID/name. The
 completed artifact/checkpoint may retain it only as immutable audit history.
 A later Start/Resume again requires the user to be inside an exact boss room and
-pins the ID afresh. Automation still does not navigate from the general game
-lobby through Chinh Phuc islands to find a boss.
+pins the ID afresh. One narrow exception now exists during that already-running
+farm session: after a proven detached empty-room shell is closed and the game
+returns to the general QuangTruong lobby, two stable read-only samples must
+prove the exact `ManagerQuangTruong.btnChinhPhuc`, inactive Chinh Phuc panel,
+live/interactable Button and native RectTransform geometry before one normal
+foreground click may reopen Chinh Phuc. The existing cached Group/Pet DTO,
+PlayerPrefs group/panel and hunt-order proof must then resolve the same pinned
+pet before one target click. This does not permit starting a farm from the
+general lobby, fuzzy target search, arbitrary island clicks, or reuse in a
+later farm session.
 
 Technical recovery is distinct from map re-entry. While the farm controller
 still owns the exact ACTIVE combat session, a proven technical failure may use
@@ -1142,3 +1150,20 @@ Legend flag remains available to the dedicated Pet Skill/QTE path and logs.
 
 Phase 3C.0 does not authorize Pet Skill selection in BASIC or FarmRunner. That
 policy/resource integration is a separate Phase 3C.1 change.
+
+### Empty-room return is pet-derived across islands (2026-09-21)
+
+The route after a detached empty Chinh Phuc room must accept both observed
+server/UI outcomes: return directly to the current island map, or return to the
+owner-free general hub. The hub outcome may send one exact normal click on
+`ManagerQuangTruong.btnChinhPhuc`, after two stable runtime samples and visual
+sanity. b4's permanent hub-button idle bob may move only TRS translation by at
+most 1 px during a read; any owner, rotation, scale, active-state or larger
+geometry change still fails closed.
+
+The farm session's immutable `pet_id` selects the route. Resolve its
+`GroupDTO.group_index/group_name` and `PetEnemyDTO` entry from current cached
+data, require the saved active/selected panel to match that group, then locate
+the exact pet Button closure and hunt-order badge. Never encode an island name
+or Starburst/Dragon group as navigation authority. A panel mismatch remains a
+safe stop until a separately proven island-switch route exists.
