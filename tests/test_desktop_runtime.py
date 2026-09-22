@@ -125,10 +125,11 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         self.assertIsNone(observation.error)
         self.assertIn("active_session_key", observation.provider_reason)
 
+    @patch.object(desktop_runtime_module, "read_chinh_phuc_target_metadata")
     @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
     @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
     def test_lobby_uses_canonical_boss_lobby_reader(
-        self, provider_class: Mock, read_lobby: Mock
+        self, provider_class: Mock, read_lobby: Mock, read_metadata: Mock
     ) -> None:
         target = _Target()
         provider_class.return_value.poll.return_value = ProviderPoll(
@@ -148,18 +149,28 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
             reasons=(),
             candidates=(candidate,),
         )
+        read_metadata.return_value = SimpleNamespace(
+            pet_id=1289,
+            pet_name="Starburst",
+            boss_display_level=73,
+            island_name="Đảo rồng",
+        )
         runtime = ReadOnlyGameStatusProvider(lambda: target)
         observation = runtime.read()
         self.assertEqual(observation.lifecycle, "BOSS_LOBBY")
         self.assertEqual(observation.target_id, "1289")
         self.assertEqual(observation.target_name, "Starburst")
+        self.assertEqual(observation.target_level, 73)
+        self.assertEqual(observation.target_island, "Đảo rồng")
         self.assertEqual(observation.lobby_branch, "CHINH_PHUC_ROOM")
         self.assertEqual(observation.current_room_id, "room-1289")
+        read_metadata.assert_called_once_with(target.resolver, 1289)
 
+    @patch.object(desktop_runtime_module, "read_chinh_phuc_target_metadata")
     @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
     @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
     def test_unknown_lifecycle_still_checks_exact_room_graph(
-        self, provider_class: Mock, read_lobby: Mock
+        self, provider_class: Mock, read_lobby: Mock, read_metadata: Mock
     ) -> None:
         target = _Target()
         provider_class.return_value.poll.return_value = ProviderPoll(
@@ -179,6 +190,7 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
             reasons=("exact room proven",),
             candidates=(candidate,),
         )
+        read_metadata.return_value = None
 
         observation = ReadOnlyGameStatusProvider(lambda: target).read()
 

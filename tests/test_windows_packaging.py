@@ -116,7 +116,7 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertIn("from pokiguard_v2.version import APP_VERSION", script)
         self.assertNotIn(f"APP_BUILD = {APP_BUILD}", script)
         self.assertEqual(APP_VERSION, "v1.1.0")
-        self.assertEqual(APP_TITLE, "Công cụ Pokiguard V2 - v1.1.0")
+        self.assertEqual(APP_TITLE, "Tool PokiguardV2 - v1.1.0")
 
 
 if __name__ == "__main__":

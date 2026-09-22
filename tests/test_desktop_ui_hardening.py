@@ -43,6 +43,7 @@ from pokiguard_v2.desktop_ui import (
     decimal_digits_or_empty,
     graceful_button_text,
     match_energy_text,
+    runtime_target_text,
     run_limit_text,
     visible_runtime_values,
 )
@@ -244,7 +245,7 @@ class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
         self.assertEqual("v1.1.0", APP_VERSION)
-        self.assertEqual("Công cụ Pokiguard V2 - v1.1.0", APP_TITLE)
+        self.assertEqual("Tool PokiguardV2 - v1.1.0", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(
@@ -253,11 +254,27 @@ class CompactPresentationContractTests(unittest.TestCase):
             total_energy_used=38,
         )
         self.assertEqual(
-            "Lượt / năng lượng các trận đã xong: #1: 11, #2: 14, #3: 9\n"
             "Lượt / năng lượng trận hiện tại: 4\n"
-            "Tổng năng lượng: 38",
+            "Tổng năng lượng tiêu hao: 38",
             match_energy_text(controller),
         )
+
+    def test_runtime_target_hides_internal_id_and_uses_display_metadata(self) -> None:
+        runtime = RuntimeObservation(
+            True,
+            True,
+            target_id="1289",
+            target_name="Starburst",
+            target_level=73,
+            target_island="Đảo rồng",
+            lobby_branch="CHINH_PHUC_ROOM",
+        )
+
+        rendered = runtime_target_text(runtime)
+
+        self.assertEqual("Starburst LV73 - Đảo rồng", rendered)
+        self.assertNotIn("1289", rendered)
+        self.assertNotIn("PHÒNG CHINH PHỤC", rendered)
 
     def test_graceful_button_clears_pending_text_after_controller_stops(self) -> None:
         stopping = DesktopControllerSnapshot(

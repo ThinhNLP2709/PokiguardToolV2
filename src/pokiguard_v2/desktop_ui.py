@@ -29,6 +29,7 @@ from .desktop_control_plane import (
     ControlPlaneSnapshot,
     DesktopConfig,
     DesktopControlPlane,
+    RuntimeObservation,
     SnapshotPoller,
     utc_timestamp,
 )
@@ -84,10 +85,6 @@ LIFECYCLE_LABELS = {
     "ACTIVE_COMBAT": "ĐANG CHIẾN ĐẤU",
     "POSTMATCH": "SAU TRẬN",
     "LOBBY_OTHER": "SẢNH KHÁC",
-}
-
-LOBBY_BRANCH_LABELS = {
-    "CHINH_PHUC_ROOM": "PHÒNG CHINH PHỤC",
 }
 
 CONTROLLER_STATE_LABELS = {
@@ -190,27 +187,30 @@ def controller_state_text(value: str) -> str:
 
 
 def match_energy_text(controller: DesktopControllerSnapshot) -> str:
-    """Compact per-match local-turn/energy accounting for the Control tab."""
+    """Show only the current match and total energy needed by the operator."""
 
-    values = controller.completed_match_turns
-    if values:
-        visible = values[-8:]
-        prefix = "… " if len(values) > len(visible) else ""
-        per_match = ", ".join(
-            f"#{attempt_index}: {turns}" for attempt_index, turns in visible
-        )
-        completed = f"Lượt / năng lượng các trận đã xong: {prefix}{per_match}"
-    else:
-        completed = "Lượt / năng lượng các trận đã xong: chưa có trận hoàn tất"
     current = (
         f"Lượt / năng lượng trận hiện tại: {controller.current_match_turns}"
         if controller.current_match_turns > 0
         else "Lượt / năng lượng trận hiện tại: —"
     )
-    return (
-        f"{completed}\n{current}\n"
-        f"Tổng năng lượng: {controller.total_energy_used}"
+    return f"{current}\nTổng năng lượng tiêu hao: {controller.total_energy_used}"
+
+
+def runtime_target_text(runtime: RuntimeObservation) -> str:
+    """Format target metadata for people while retaining the ID internally."""
+
+    name = (runtime.target_name or "").strip()
+    if not name:
+        return "CHƯA XÁC ĐỊNH"
+    level = (
+        f" LV{runtime.target_level}"
+        if runtime.target_level is not None and runtime.target_level > 0
+        else ""
     )
+    island = (runtime.target_island or "").strip()
+    suffix = f" - {island}" if island else ""
+    return f"{name}{level}{suffix}"
 
 
 def graceful_button_text(controller: DesktopControllerSnapshot) -> str:
@@ -377,6 +377,10 @@ class DesktopEventLog:
             runtime.attached,
             runtime.pid,
             runtime.lifecycle,
+            runtime.target_id,
+            runtime.target_name,
+            runtime.target_level,
+            runtime.target_island,
             snapshot.health,
             snapshot.last_error,
             controller.generation,
@@ -401,6 +405,10 @@ class DesktopEventLog:
             pid=runtime.pid,
             lifecycle=runtime.lifecycle,
             matchId=runtime.match_id,
+            targetId=runtime.target_id,
+            targetName=runtime.target_name,
+            targetLevel=runtime.target_level,
+            targetIsland=runtime.target_island,
             providerReason=runtime.provider_reason,
             error=snapshot.last_error,
             safety=asdict(snapshot.safety),
@@ -710,17 +718,7 @@ class DesktopViewModel:
         lifecycle = lifecycle_text(runtime.lifecycle)
         if stale:
             lifecycle = f"{lifecycle} (DỮ LIỆU CŨ / KHÔNG THỂ THAO TÁC)"
-        runtime_target = (
-            " / ".join(
-                value
-                for value in (runtime.target_name, runtime.target_id)
-                if value
-            )
-            or "CHƯA XÁC ĐỊNH"
-        )
-        if runtime.lobby_branch:
-            branch = LOBBY_BRANCH_LABELS.get(runtime.lobby_branch, runtime.lobby_branch)
-            runtime_target = f"{runtime_target} [{branch}]"
+        runtime_target = runtime_target_text(runtime)
         checkpoint = snapshot.checkpoint
         if checkpoint.available:
             final_status = (

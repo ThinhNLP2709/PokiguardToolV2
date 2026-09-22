@@ -972,6 +972,40 @@ while rotation, scale, ownership and active state remain exact. The older
 Phase 2D.6 `<>c__DisplayClass38_0` offsets above are historical pre-b4 evidence
 and are not used for the verified b4 executable.
 
+### 1.7.4-b4 Chinh Phuc target display metadata
+
+The desktop UI reads target metadata from the persistent service below. This
+path is read-only and does not perform the native `Button` scan used by the
+re-entry executor.
+
+| Assembly | Type | Member | Kind | Exact declared type | b4 field offset / RVA | Confidence |
+|---|---|---|---|---|---:|---|
+| Assembly-CSharp | `ChinhPhucDataService` | `Instance` | field | `ChinhPhucDataService` | TypeInfo RVA `0x333DF98`, static field `+0x00` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `ChinhPhucDataService` | `Data` | field | `List<GroupDTO>` | `+0x20` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `PetEnemyDTO` | `lever` | field | `System.Int32` | `+0x20` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `PetEnemyDTO` | `leverDisplay` | field | `System.Int32` | `+0x24` | CONFIRMED reverse and live read |
+
+The live Starburst row resolved `petId=1289`, internal `lever=10`, displayed
+`leverDisplay=73`, group ID 6 and group name `Tam giới Tinh`. The UI therefore
+uses `leverDisplay`; it never exposes the pet ID in its target label.
+
+The b4 `level2` scene serializes island controls as `btnIsland{id}`. Their child
+Text labels establish the display-only group-ID mapping: 1 `Mộc tinh`, 2
+`Hỏa tinh`, 3 `Thủy tinh`, 4 `Thổ tinh`, 5 `Kim tinh`, 6 `Đảo rồng`, 7
+`Thập nhị tinh`, 8 `Hộ vệ`, 9 `Bóng đêm`, 10 `Thánh thú`, 11 `Titan`, 12
+`12 con giáp`, 13 `Thần thoại`, 14 `Thời gian`, 15 `Băng giá`, 16 `Thần Giới`,
+17 `Khế Ước`, and 18 `Đảo Liên Minh`. Unknown group IDs omit the island label.
+This mapping is presentation data only; target selection and navigation remain
+derived from the exact live `GroupDTO`/`PetEnemyDTO` association.
+
+Evidence:
+
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ChinhPhucDataService.cs:18-30`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/PetEnemyDTO.cs:16-20`
+- read-only serialized scene inspection of
+  `Pokiguard-1.7.4_Data/level2`, `btnIsland1` through `btnIsland18`
+- read-only live probe of `ChinhPhucDataService.Data` for pet 1289
+
 ### 1.7.4-b2 Legend-card continuation audit addendum (Phase 3C.0)
 
 | Assembly | Type | Member | Kind | Exact declared type | b2 field offset / RVA | Confidence |

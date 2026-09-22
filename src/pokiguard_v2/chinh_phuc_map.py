@@ -32,11 +32,41 @@ from .memory_scan import bounded_private_writable_regions, scan_aligned_qwords
 
 # ManagerChinhPhuc / GroupDTO / PetEnemyDTO, verified in DiffableCs.
 MANAGER_CHINH_PHUC_CACHED_DATA_OFFSET = 0x98
+# ChinhPhucDataService is a persistent singleton that owns the same server data
+# even when the island panel is not visible.  Reading it avoids the bounded
+# native Button scan used by the re-entry executor.
+CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x333DF98
+CHINH_PHUC_DATA_SERVICE_DATA_OFFSET = 0x20
+# Display-only mapping verified from the b4 ``level2`` scene: each server
+# ``GroupDTO.id`` matches the serialized ``btnIsland{id}`` label.  This map is
+# never navigation authority; unknown IDs simply omit the island label.
+CHINH_PHUC_ISLAND_DISPLAY_NAMES = {
+    1: "Mộc tinh",
+    2: "Hỏa tinh",
+    3: "Thủy tinh",
+    4: "Thổ tinh",
+    5: "Kim tinh",
+    6: "Đảo rồng",
+    7: "Thập nhị tinh",
+    8: "Hộ vệ",
+    9: "Bóng đêm",
+    10: "Thánh thú",
+    11: "Titan",
+    12: "12 con giáp",
+    13: "Thần thoại",
+    14: "Thời gian",
+    15: "Băng giá",
+    16: "Thần Giới",
+    17: "Khế Ước",
+    18: "Đảo Liên Minh",
+}
 GROUP_ID_OFFSET = 0x10
 GROUP_NAME_OFFSET = 0x18
 GROUP_PETS_OFFSET = 0x20
 PET_ID_OFFSET = 0x10
 PET_NAME_OFFSET = 0x18
+PET_LEVEL_OFFSET = 0x20
+PET_DISPLAY_LEVEL_OFFSET = 0x24
 PET_LOCKED_OFFSET = 0x35
 
 # UnityEngine.UI.Button -> ButtonClickedEvent -> runtime UnityAction closure.
@@ -93,6 +123,8 @@ class ChinhPhucMapTarget:
     scan_regions: int
     scan_bytes: int
     button_class_hits: int
+    boss_level: int | None = None
+    boss_display_level: int | None = None
 
     @property
     def selection_required(self) -> bool:
@@ -109,6 +141,22 @@ class HuntBadgeCandidate:
     digit_margin: int
     radial_score: int
     confidence: float
+
+
+@dataclass(frozen=True)
+class ChinhPhucTargetMetadata:
+    """Display metadata tied to one exact server-provided conquest pet ID."""
+
+    pet_id: int
+    pet_name: str
+    boss_level: int
+    boss_display_level: int
+    group_id: int
+    group_name: str
+    group_index: int
+    pet_index: int
+    locked: bool
+    island_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -233,16 +281,13 @@ def read_chinh_phuc_player_prefs() -> ChinhPhucPlayerPrefs:
     )
 
 
-def _find_pet_in_cached_groups(
+def _find_pet_in_groups(
     resolver: object,
-    manager: int,
+    groups_address: int,
     target_pet_id: int,
-) -> tuple[int, int, int, str, str, bool] | None:
-    cached = _read_pointer(resolver, manager + MANAGER_CHINH_PHUC_CACHED_DATA_OFFSET)
-    if cached is None:
-        return None
-    groups = _read_managed_list(resolver, cached, max_items=64)
-    matches: list[tuple[int, int, int, str, str, bool]] = []
+) -> ChinhPhucTargetMetadata | None:
+    groups = _read_managed_list(resolver, groups_address, max_items=64)
+    matches: list[ChinhPhucTargetMetadata] = []
     for group_index, group in enumerate(groups):
         if not group or not resolver.memory.is_readable(group, 0x28):
             continue
@@ -258,11 +303,69 @@ def _find_pet_in_cached_groups(
             if resolver.read_i32(pet + PET_ID_OFFSET) != target_pet_id:
                 continue
             pet_name = _read_string_pointer(resolver, pet + PET_NAME_OFFSET) or ""
+            boss_level = resolver.read_i32(pet + PET_LEVEL_OFFSET)
+            boss_display_level = resolver.read_i32(pet + PET_DISPLAY_LEVEL_OFFSET)
             locked = resolver.read_bool(pet + PET_LOCKED_OFFSET)
+            if (
+                not pet_name
+                or boss_level < 0
+                or boss_display_level <= 0
+                or boss_display_level > 100_000
+            ):
+                continue
             matches.append(
-                (group_index, pet_index, group_id, group_name, pet_name, locked)
+                ChinhPhucTargetMetadata(
+                    pet_id=target_pet_id,
+                    pet_name=pet_name,
+                    boss_level=boss_level,
+                    boss_display_level=boss_display_level,
+                    group_id=group_id,
+                    group_name=group_name,
+                    group_index=group_index,
+                    pet_index=pet_index,
+                    locked=locked,
+                    island_name=CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id),
+                )
             )
     return matches[0] if len(matches) == 1 else None
+
+
+def read_chinh_phuc_target_metadata(
+    resolver: object,
+    target_pet_id: int,
+) -> ChinhPhucTargetMetadata | None:
+    """Read one exact boss metadata row without scanning memory or sending input."""
+
+    if target_pet_id <= 0:
+        raise ValueError("target_pet_id must be positive")
+    try:
+        service = _static_instance(
+            resolver,
+            CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA,
+            size=0x40,
+        )
+        if service is None:
+            return None
+        groups = _read_pointer(
+            resolver,
+            service + CHINH_PHUC_DATA_SERVICE_DATA_OFFSET,
+        )
+        if groups is None:
+            return None
+        return _find_pet_in_groups(resolver, groups, target_pet_id)
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+        return None
+
+
+def _find_pet_in_cached_groups(
+    resolver: object,
+    manager: int,
+    target_pet_id: int,
+) -> ChinhPhucTargetMetadata | None:
+    cached = _read_pointer(resolver, manager + MANAGER_CHINH_PHUC_CACHED_DATA_OFFSET)
+    if cached is None:
+        return None
+    return _find_pet_in_groups(resolver, cached, target_pet_id)
 
 
 def discover_chinh_phuc_map_target(
@@ -370,7 +473,12 @@ def discover_chinh_phuc_map_target(
         return None
     if pet is None:
         return None
-    group_index, pet_index, group_id, group_name, pet_name, dto_locked = pet
+    group_index = pet.group_index
+    pet_index = pet.pet_index
+    group_id = pet.group_id
+    group_name = pet.group_name
+    pet_name = pet.pet_name
+    dto_locked = pet.locked
     prefs = read_chinh_phuc_player_prefs()
     reasons = list(prefs.reasons)
     # A different SelectedPetId is the normal reason this exact target button
@@ -408,6 +516,8 @@ def discover_chinh_phuc_map_target(
         scan.regions_visited,
         scan.bytes_read,
         len(scan.matches["button_class"]),
+        pet.boss_level,
+        pet.boss_display_level,
     )
 
 
@@ -674,11 +784,14 @@ def locate_hunt_order_badge(
 
 
 __all__ = [
+    "CHINH_PHUC_ISLAND_DISPLAY_NAMES",
     "ChinhPhucMapTarget",
     "ChinhPhucPlayerPrefs",
+    "ChinhPhucTargetMetadata",
     "HuntBadgeCandidate",
     "HuntBadgeLocation",
     "discover_chinh_phuc_map_target",
     "locate_hunt_order_badge",
     "read_chinh_phuc_player_prefs",
+    "read_chinh_phuc_target_metadata",
 ]

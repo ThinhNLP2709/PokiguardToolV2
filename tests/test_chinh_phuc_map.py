@@ -4,6 +4,7 @@ import struct
 import unittest
 
 from pokiguard_v2.chinh_phuc_map import (
+    CHINH_PHUC_ISLAND_DISPLAY_NAMES,
     ChinhPhucMapTarget,
     ChinhPhucPlayerPrefs,
     _DIGIT_8_1280X720_ROWS,
@@ -16,13 +17,30 @@ from pokiguard_v2.chinh_phuc_map import (
     PET_CLICK_REQUIRED_ATTACK_OFFSET,
     PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET,
     _decode_pet_click_closure,
+    _find_pet_in_groups,
     _prefixed_dword,
     locate_hunt_order_badge,
 )
-from tests.test_combat_cards import FakeMemory
+from tests.test_combat_cards import FakeMemory, map_string
+
+
+class _Resolver:
+    def __init__(self, memory: FakeMemory) -> None:
+        self.memory = memory
+
+    def read_pointer(self, address: int) -> int:
+        return struct.unpack("<Q", self.memory.read(address, 8))[0]
+
+    def read_i32(self, address: int) -> int:
+        return struct.unpack("<i", self.memory.read(address, 4))[0]
+
+    def read_bool(self, address: int) -> bool:
+        return bool(self.memory.read(address, 1)[0])
 
 
 class ChinhPhucMapTests(unittest.TestCase):
+    BASE = 0x0000020000000000
+
     @staticmethod
     def _target(selected_pet_id: int | None) -> ChinhPhucMapTarget:
         prefs = ChinhPhucPlayerPrefs(
@@ -102,6 +120,61 @@ class ChinhPhucMapTests(unittest.TestCase):
                 "SelectedPetId",
             )
         )
+
+    def test_server_group_id_resolves_verified_display_level_and_island(self) -> None:
+        memory = FakeMemory()
+        groups = self.BASE + 0x1000
+        group_items = self.BASE + 0x2000
+        group = self.BASE + 0x3000
+        pets = self.BASE + 0x4000
+        pet = self.BASE + 0x5000
+        group_name = self.BASE + 0x6000
+        pet_name = self.BASE + 0x7000
+        array_class = self.BASE + 0x8000
+        string_class = self.BASE + 0x9000
+        memory.map(array_class, bytes(8))
+        memory.map(string_class, bytes(8))
+
+        list_raw = bytearray(0x20)
+        struct.pack_into("<Qii", list_raw, 0x10, group_items, 1, 4)
+        memory.map(groups, list_raw)
+        group_items_raw = bytearray(0x28)
+        struct.pack_into("<Q", group_items_raw, 0, array_class)
+        struct.pack_into("<Q", group_items_raw, 0x18, 1)
+        struct.pack_into("<Q", group_items_raw, 0x20, group)
+        memory.map(group_items, group_items_raw)
+
+        group_raw = bytearray(0x38)
+        struct.pack_into("<i", group_raw, 0x10, 6)
+        struct.pack_into("<Q", group_raw, 0x18, group_name)
+        struct.pack_into("<Q", group_raw, 0x20, pets)
+        memory.map(group, group_raw)
+        map_string(memory, group_name, "Tam giới Tinh", string_class)
+
+        pets_raw = bytearray(0x28)
+        struct.pack_into("<Q", pets_raw, 0, array_class)
+        struct.pack_into("<Q", pets_raw, 0x18, 1)
+        struct.pack_into("<Q", pets_raw, 0x20, pet)
+        memory.map(pets, pets_raw)
+        pet_raw = bytearray(0x50)
+        struct.pack_into("<i", pet_raw, 0x10, 1289)
+        struct.pack_into("<Q", pet_raw, 0x18, pet_name)
+        struct.pack_into("<i", pet_raw, 0x20, 10)
+        struct.pack_into("<i", pet_raw, 0x24, 73)
+        pet_raw[0x35] = 0
+        memory.map(pet, pet_raw)
+        map_string(memory, pet_name, "Starburst", string_class)
+
+        metadata = _find_pet_in_groups(_Resolver(memory), groups, 1289)
+
+        self.assertIsNotNone(metadata)
+        assert metadata is not None
+        self.assertEqual(metadata.boss_level, 10)
+        self.assertEqual(metadata.boss_display_level, 73)
+        self.assertEqual(metadata.group_id, 6)
+        self.assertEqual(metadata.group_name, "Tam giới Tinh")
+        self.assertEqual(metadata.island_name, "Đảo rồng")
+        self.assertEqual(CHINH_PHUC_ISLAND_DISPLAY_NAMES[18], "Đảo Liên Minh")
 
     def test_badge_locator_fails_closed_for_invalid_or_unsupported_capture(self) -> None:
         invalid = locate_hunt_order_badge(b"", 1280, 710, 8)

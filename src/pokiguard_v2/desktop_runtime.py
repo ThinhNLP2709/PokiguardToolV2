@@ -12,6 +12,10 @@ from typing import Any, Callable
 
 from .boss_entry import BossLobbyState
 from .boss_lobby_runtime import read_boss_lobby_runtime
+from .chinh_phuc_map import (
+    ChinhPhucTargetMetadata,
+    read_chinh_phuc_target_metadata,
+)
 from .combat_lifecycle import CombatLifecycleState
 from .desktop_control_plane import RuntimeObservation
 from .memory_board_provider import MemoryBoardStateProvider, MemoryProviderConfig
@@ -43,11 +47,13 @@ class ReadOnlyGameStatusProvider:
         )
         self._target: Any | None = None
         self._provider: MemoryBoardStateProvider | None = None
+        self._target_metadata: dict[int, ChinhPhucTargetMetadata] = {}
         self._lock = threading.RLock()
 
     def _detach(self) -> None:
         target, self._target = self._target, None
         self._provider = None
+        self._target_metadata.clear()
         if target is not None:
             try:
                 target.close()
@@ -156,7 +162,8 @@ class ReadOnlyGameStatusProvider:
         lifecycle_observation = poll.combat_lifecycle
         lifecycle = "UNKNOWN"
         match_id = None
-        target_id = target_name = None
+        target_id = target_name = target_island = None
+        target_level = None
         target_candidates: tuple[tuple[str | None, str | None], ...] = ()
         lobby_branch = None
         current_room_id = None
@@ -197,6 +204,35 @@ class ReadOnlyGameStatusProvider:
                     if selected is not None:
                         target_id = selected.identity.boss_id
                         target_name = selected.identity.boss_name
+                        if lobby.branch == "CHINH_PHUC_ROOM" and target_id:
+                            try:
+                                pet_id = int(target_id)
+                            except ValueError:
+                                pet_id = 0
+                            metadata = self._target_metadata.get(pet_id)
+                            if metadata is None and pet_id > 0:
+                                metadata = read_chinh_phuc_target_metadata(
+                                    self._target.resolver,
+                                    pet_id,
+                                )
+                                if metadata is not None:
+                                    self._target_metadata[pet_id] = metadata
+                            if (
+                                metadata is not None
+                                and metadata.pet_id == pet_id
+                                and metadata.pet_name.casefold()
+                                == (target_name or "").casefold()
+                            ):
+                                target_level = metadata.boss_display_level
+                                target_island = metadata.island_name
+                            else:
+                                room_level = getattr(
+                                    lobby.chinh_phuc,
+                                    "enemy_pet_level",
+                                    None,
+                                )
+                                if room_level is not None and room_level > 0:
+                                    target_level = room_level
                 except Exception as exc:  # noqa: BLE001 - lifecycle stays safe
                     lifecycle = (
                         BossLobbyState.UNKNOWN.value
@@ -246,6 +282,8 @@ class ReadOnlyGameStatusProvider:
             session_key=session_text,
             target_id=target_id,
             target_name=target_name,
+            target_level=target_level,
+            target_island=target_island,
             provider_reason=reason,
             error=error,
             target_candidates=target_candidates,

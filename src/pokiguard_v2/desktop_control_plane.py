@@ -177,6 +177,8 @@ class RuntimeObservation:
     session_key: str | None = None
     target_id: str | None = None
     target_name: str | None = None
+    target_level: int | None = None
+    target_island: str | None = None
     provider_reason: str | None = None
     error: str | None = None
     target_candidates: tuple[tuple[str | None, str | None], ...] = ()
