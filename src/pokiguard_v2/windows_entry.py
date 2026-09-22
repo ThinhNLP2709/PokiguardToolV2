@@ -121,8 +121,8 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
     )
     if exit_code != 0:
         _show_error(
-            "Pokiguard Tool V2 stopped because of a startup/runtime error.\n\n"
-            f"Diagnostic log: {resolved.startup_log}"
+            "Công cụ Pokiguard V2 đã dừng do lỗi khởi động hoặc vận hành.\n\n"
+            f"Nhật ký chẩn đoán: {resolved.startup_log}"
         )
     return exit_code
 
@@ -135,7 +135,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         startup_log = paths.startup_log
         return run_packaged(sys.argv[1:] if argv is None else argv, paths=paths)
     except ControllerLeaseError:
-        message = "Pokiguard Tool V2 is already open. Close the existing window first."
+        message = "Công cụ Pokiguard V2 đang mở. Hãy đóng cửa sổ hiện tại trước."
         path = startup_log or _fallback_startup_log()
         try:
             _append_startup_event(path, "packaged_app_duplicate_rejected")
@@ -158,8 +158,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         except OSError:
             pass
         _show_error(
-            "Pokiguard Tool V2 could not start safely.\n\n"
-            f"{detail}\n\nDiagnostic log: {path}"
+            "Công cụ Pokiguard V2 không thể khởi động an toàn.\n\n"
+            f"{detail}\n\nNhật ký chẩn đoán: {path}"
         )
         return 1
 

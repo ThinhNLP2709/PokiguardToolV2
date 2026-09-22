@@ -61,7 +61,7 @@ class DesktopErrorReportingTests(unittest.TestCase):
         view = DesktopViewModel(plane, Mock(), stale_after_seconds=6.0)
         presentation = view.presentation()
         self.assertEqual(error, presentation.error)
-        self.assertEqual("CONTROLLER_ERROR", presentation.operator_status)
+        self.assertEqual("LỖI BỘ ĐIỀU KHIỂN", presentation.operator_status)
         self.assertIn(error, presentation.operator_guidance)
         self.assertTrue(presentation.snapshot_actionable)
 
@@ -121,8 +121,8 @@ class DesktopErrorReportingTests(unittest.TestCase):
                 generation=2, state=DesktopControllerState.STARTING, active=True
             ),
         )
-        self.assertEqual("NONE", view.presentation().error)
-        self.assertEqual("RUNNING", view.presentation().operator_status)
+        self.assertEqual("KHÔNG CÓ", view.presentation().error)
+        self.assertEqual("ĐANG CHẠY", view.presentation().operator_status)
         plane.snapshot.return_value = replace(
             snapshot,
             controller=DesktopControllerSnapshot(),
@@ -130,7 +130,7 @@ class DesktopErrorReportingTests(unittest.TestCase):
             last_error="RuntimeError: process detached",
         )
         self.assertEqual("RuntimeError: process detached", view.presentation().error)
-        self.assertEqual("STALE_RUNTIME_SNAPSHOT", view.presentation().operator_status)
+        self.assertEqual("DỮ LIỆU TRẠNG THÁI ĐÃ CŨ", view.presentation().operator_status)
 
 
 if __name__ == "__main__":

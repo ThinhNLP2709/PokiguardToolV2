@@ -8,6 +8,7 @@ import time
 import unittest
 from unittest.mock import Mock
 
+from pokiguard_v2.basic_policy import Intelligence, PlayStyle
 from pokiguard_v2.desktop_control_plane import (
     CheckpointSummary,
     ControlPlaneSnapshot,
@@ -24,6 +25,7 @@ from pokiguard_v2.desktop_ui import (
     APP_BUILD,
     APP_TITLE,
     APP_VERSION,
+    BOARD_INPUT_LABELS,
     CloseChoice,
     CloseIntent,
     CloseTransition,
@@ -33,6 +35,7 @@ from pokiguard_v2.desktop_ui import (
     DesktopShutdownWorker,
     DESKTOP_TAB_TITLES,
     INITIAL_FOCUS_TARGET,
+    INTELLIGENCE_LABELS,
     PREFERENCE_TABLE_ROWS,
     SETTINGS_TABLE_ROWS,
     VISIBLE_RUNTIME_ROWS,
@@ -43,6 +46,12 @@ from pokiguard_v2.desktop_ui import (
     run_limit_text,
     visible_runtime_values,
 )
+from pokiguard_v2.pet_configuration import (
+    AUDITION_LABELS,
+    AuditionMode,
+    PLAY_STYLE_LABELS,
+)
+from pokiguard_v2.win32_input import BoardInputMode
 
 
 def _snapshot(
@@ -234,8 +243,8 @@ class BoundedOperatorLogTests(unittest.TestCase):
 class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
-        self.assertEqual("v1.0.49", APP_VERSION)
-        self.assertEqual("Pokiguard Tool V2 - v1.0.49", APP_TITLE)
+        self.assertEqual("v1.1.0", APP_VERSION)
+        self.assertEqual("Công cụ Pokiguard V2 - v1.1.0", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(
@@ -244,9 +253,9 @@ class CompactPresentationContractTests(unittest.TestCase):
             total_energy_used=38,
         )
         self.assertEqual(
-            "Completed turns / energy: #1: 11, #2: 14, #3: 9\n"
-            "Current match turn / energy: 4\n"
-            "Total energy: 38",
+            "Lượt / năng lượng các trận đã xong: #1: 11, #2: 14, #3: 9\n"
+            "Lượt / năng lượng trận hiện tại: 4\n"
+            "Tổng năng lượng: 38",
             match_energy_text(controller),
         )
 
@@ -261,25 +270,36 @@ class CompactPresentationContractTests(unittest.TestCase):
             state=DesktopControllerState.STOPPED,
             active=False,
         )
-        self.assertEqual("Stopping after current match...", graceful_button_text(stopping))
-        self.assertEqual("Stop After Current Match", graceful_button_text(stopped))
+        self.assertEqual("Đang chờ dừng sau trận hiện tại...", graceful_button_text(stopping))
+        self.assertEqual("Dừng sau trận hiện tại", graceful_button_text(stopped))
 
     def test_control_preferences_and_diagnostics_tab_order(self) -> None:
         self.assertEqual(
-            ("Control", "Preferences", "Settings", "Diagnostics / Log"),
+            ("Điều khiển", "Tùy chọn", "Cài đặt", "Chẩn đoán / Nhật ký"),
             DESKTOP_TAB_TITLES,
         )
         self.assertEqual(
             (
-                "PlayStyle", "Intelligence", "Pet của tôi", "Tiến hóa",
+                "Lối chơi", "Độ thông minh", "Pet của tôi", "Tiến hóa",
                 "Thẻ sát thương",
                 "Điều kiện ra skill",
-                "Audition", "Board input",
+                "Kiểu thử thách", "Cách đi bàn cờ",
             ),
             PREFERENCE_TABLE_ROWS,
         )
-        self.assertEqual(("Game executable",), SETTINGS_TABLE_ROWS)
+        self.assertEqual(("Tệp chạy trò chơi",), SETTINGS_TABLE_ROWS)
         self.assertEqual("notebook", INITIAL_FOCUS_TARGET)
+
+    def test_operator_choice_labels_are_vietnamese_while_values_stay_stable(self) -> None:
+        self.assertEqual("Đơn giản", PLAY_STYLE_LABELS[PlayStyle.SIMPLE])
+        self.assertEqual("Cẩn trọng", PLAY_STYLE_LABELS[PlayStyle.CAREFUL])
+        self.assertEqual("Cơ bản", INTELLIGENCE_LABELS[Intelligence.BASIC])
+        self.assertEqual(
+            "V3 (2 hướng — mặc định)",
+            AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION],
+        )
+        self.assertEqual("Hai lần nhấp", BOARD_INPUT_LABELS[BoardInputMode.TWO_CLICK])
+        self.assertEqual("Kéo thả", BOARD_INPUT_LABELS[BoardInputMode.DRAG])
 
     def test_blank_surface_clears_focus_but_controls_keep_their_click(self) -> None:
         for widget_class in ("Tk", "TFrame", "TLabelframe", "TLabel"):
@@ -322,9 +342,9 @@ class CompactPresentationContractTests(unittest.TestCase):
     def test_control_tab_hides_low_value_runtime_identity_rows(self) -> None:
         self.assertEqual(
             (
-                ("Game", "connection"),
-                ("Lifecycle", "lifecycle"),
-                ("Runtime target", "runtime_target"),
+                ("Trò chơi", "connection"),
+                ("Trạng thái", "lifecycle"),
+                ("Mục tiêu hiện tại", "runtime_target"),
             ),
             VISIBLE_RUNTIME_ROWS,
         )

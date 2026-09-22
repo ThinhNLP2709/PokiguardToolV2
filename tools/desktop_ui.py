@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch the current source bounded FarmRunner desktop UI."""
+"""Mở giao diện Desktop FarmRunner có giới hạn từ mã nguồn hiện tại."""
 
 from __future__ import annotations
 
@@ -68,49 +68,49 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--offline",
         action="store_true",
-        help="use an explicit unavailable fake; performs no game-process operation",
+        help="dùng trạng thái giả không khả dụng; không thao tác với tiến trình trò chơi",
     )
     parser.add_argument(
         "--poll-interval",
         type=float,
         default=2.0,
-        help="seconds between read-only backend polls (default: 2.0)",
+        help="số giây giữa các lần đọc hệ thống nền chỉ đọc (mặc định: 2.0)",
     )
     parser.add_argument(
         "--smoke-seconds",
         type=float,
         default=0.0,
-        help="auto-close after a bounded smoke duration; zero means manual close",
+        help="tự đóng sau thời gian smoke có giới hạn; 0 nghĩa là đóng thủ công",
     )
     parser.add_argument("--max-region-mib", type=int, default=8)
     parser.add_argument("--chunk-mib", type=int, default=2)
     parser.add_argument(
         "--artifacts",
         type=Path,
-        help="new artifact directory (default: logs/desktop_ui/<timestamp>)",
+        help="thư mục artifact mới (mặc định: logs/desktop_ui/<thời gian>)",
     )
     parser.add_argument(
         "--reset-evidence",
         type=Path,
-        help="accepted reset capability evidence used by FarmRunner",
+        help="bằng chứng khả năng reset đã chấp nhận dùng bởi FarmRunner",
     )
     parser.add_argument(
         "--preferences",
         type=Path,
-        help="versioned operator-preference JSON (never a farm checkpoint)",
+        help="JSON tùy chọn vận hành có phiên bản (không phải checkpoint farm)",
     )
     return parser
 
 
 def _validate_args(args: argparse.Namespace) -> None:
     if not 0.25 <= args.poll_interval <= 60.0:
-        raise ValueError("--poll-interval must be between 0.25 and 60 seconds")
+        raise ValueError("--poll-interval phải nằm trong khoảng 0.25 đến 60 giây")
     if not 0.0 <= args.smoke_seconds <= 86_400.0:
-        raise ValueError("--smoke-seconds must be between 0 and 86400")
+        raise ValueError("--smoke-seconds phải nằm trong khoảng 0 đến 86400")
     if not 1 <= args.max_region_mib <= 32:
-        raise ValueError("--max-region-mib must be between 1 and 32")
+        raise ValueError("--max-region-mib phải nằm trong khoảng 1 đến 32")
     if not 1 <= args.chunk_mib <= 16:
-        raise ValueError("--chunk-mib must be between 1 and 16")
+        raise ValueError("--chunk-mib phải nằm trong khoảng 1 đến 16")
 
 
 class _EvidenceSink:
@@ -273,8 +273,8 @@ def run(args: argparse.Namespace) -> int:
             reason="GAME_LOCATION_INVALID",
             error=game_location_error,
             operatorMessage=(
-                "Saved game location is invalid; choose the current game folder "
-                "in Settings."
+                "Vị trí trò chơi đã lưu không hợp lệ; hãy chọn lại tệp trò chơi "
+                "trong tab Cài đặt."
             ),
         )
     try:
@@ -396,12 +396,12 @@ def run(args: argparse.Namespace) -> int:
     )
     event_log.write("desktop_ui_process_finished", summary=str(summary_path))
     event_log.close()
-    print(f"Phase 2E.3 desktop UI artifacts: {artifact_dir}", flush=True)
+    print(f"Artifact giao diện Desktop: {artifact_dir}", flush=True)
     print(
-        "Controller safety: "
-        f"FarmRunner starts={final_snapshot.controller.safety.starts}; "
-        f"active={final_snapshot.controller.active}; "
-        f"pollerAliveAfterClose={summary['pollerAliveAfterClose']}",
+        "An toàn bộ điều khiển: "
+        f"số lần FarmRunner khởi động={final_snapshot.controller.safety.starts}; "
+        f"đang hoạt động={final_snapshot.controller.active}; "
+        f"bộ đọc còn chạy sau khi đóng={summary['pollerAliveAfterClose']}",
         flush=True,
     )
     return exit_code

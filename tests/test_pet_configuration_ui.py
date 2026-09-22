@@ -21,8 +21,9 @@ from pokiguard_v2.desktop_ui import DesktopApplication, DesktopEventLog, Desktop
 from pokiguard_v2.farm_checkpoint import LEGACY_CHECKPOINT_SCHEMA, write_checkpoint
 from pokiguard_v2.farm_run import FarmRun
 from pokiguard_v2.pet_configuration import (
-    DamageCardMode, EvolutionTarget, GameplayConfig, MainPetType,
-    PET_SKILL_FIRE_CONDITION_LABELS, PLAY_STYLE_LABELS,
+    AUDITION_LABELS, AuditionMode, DamageCardMode, EvolutionTarget,
+    GameplayConfig, MainPetType, PET_SKILL_FIRE_CONDITION_LABELS,
+    PLAY_STYLE_LABELS,
     PetSkillFireCondition,
 )
 from tests.test_desktop_farm_controller import _BlockingRunner, _Runtime
@@ -74,7 +75,7 @@ class PetConfigurationTkTests(unittest.TestCase):
             "Tiến hóa",
             "Thẻ sát thương",
             "Điều kiện ra skill",
-            "Audition",
+            "Kiểu thử thách",
         ):
             self.assertIn(label, PREFERENCE_TABLE_ROWS)
         self.assertEqual((self.app.main_pet.get(), self.app.evolution.get(), self.app.damage_card.get()),
@@ -116,7 +117,7 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertTrue(all(widget.winfo_manager() == "grid" for widget in hidden))
         self.app.pet_skill_fire_condition.set("Khiên đủ")
         self.app.pet_skill_fire_value.set("12")
-        self.app.audition_mode.set("audition_v2")
+        self.app.audition_mode.set(AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION])
 
         self.button("damage_card", "default_attack").invoke()
         self.root.update_idletasks()
@@ -130,7 +131,10 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertTrue(all(widget.winfo_manager() == "grid" for widget in hidden))
         self.assertEqual(self.app.pet_skill_fire_condition.get(), "Khiên đủ")
         self.assertEqual(self.app.pet_skill_fire_value.get(), "12")
-        self.assertEqual(self.app.audition_mode.get(), "audition_v2")
+        self.assertEqual(
+            self.app.audition_mode.get(),
+            AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION],
+        )
 
     def test_fire_condition_cell_keeps_one_outer_grid_cell_and_exact_choices(self):
         self.button("main_pet", "legendary").invoke()

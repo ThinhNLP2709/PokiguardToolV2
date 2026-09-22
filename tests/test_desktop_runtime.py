@@ -264,10 +264,10 @@ class DesktopViewModelTests(unittest.TestCase):
         presentation = view_model.presentation(
             now_monotonic=snapshot.sampled_monotonic + 3.0
         )
-        self.assertIn("STALE / NON-ACTIONABLE", presentation.lifecycle)
-        self.assertIn("READ-ONLY", presentation.read_only_notice)
+        self.assertIn("DỮ LIỆU CŨ / KHÔNG THỂ THAO TÁC", presentation.lifecycle)
+        self.assertIn("CHỈ ĐỌC", presentation.read_only_notice)
         self.assertFalse(presentation.snapshot_actionable)
-        self.assertEqual("STALE_RUNTIME_SNAPSHOT", presentation.operator_status)
+        self.assertEqual("DỮ LIỆU TRẠNG THÁI ĐÃ CŨ", presentation.operator_status)
 
     def test_editing_draft_does_not_poll_or_dispatch(self) -> None:
         runtime = Mock(spec=["read", "close"])

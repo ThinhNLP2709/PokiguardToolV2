@@ -58,8 +58,8 @@ DAMAGE_LABELS = {
     DamageCardMode.PET_SKILL: "Thẻ skill của pet",
 }
 AUDITION_LABELS = {
-    AuditionMode.V3_TWO_DIRECTION: "Audition V3 (2 hướng — mặc định)",
-    AuditionMode.V2_FOUR_DIRECTION: "Audition V2 (4 hướng — tương thích)",
+    AuditionMode.V3_TWO_DIRECTION: "V3 (2 hướng — mặc định)",
+    AuditionMode.V2_FOUR_DIRECTION: "V2 (4 hướng — tương thích)",
 }
 PET_SKILL_FIRE_CONDITION_LABELS = {
     PetSkillFireCondition.SKILL_COST_READY: "Đủ mana skill",
@@ -70,8 +70,8 @@ PET_SKILL_FIRE_CONDITION_LABELS = {
     PetSkillFireCondition.SHIELD_GEM_COUNT: "Khiên đủ",
 }
 PLAY_STYLE_LABELS = {
-    PlayStyle.SIMPLE: "simple",
-    PlayStyle.CAREFUL: "careful",
+    PlayStyle.SIMPLE: "Đơn giản",
+    PlayStyle.CAREFUL: "Cẩn trọng",
     PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
 }
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})

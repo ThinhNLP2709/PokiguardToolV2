@@ -46,27 +46,71 @@ from .win32_input import BoardInputMode
 
 
 VISIBLE_RUNTIME_ROWS = (
-    ("Game", "connection"),
-    ("Lifecycle", "lifecycle"),
-    ("Runtime target", "runtime_target"),
+    ("Trò chơi", "connection"),
+    ("Trạng thái", "lifecycle"),
+    ("Mục tiêu hiện tại", "runtime_target"),
 )
 
-DESKTOP_TAB_TITLES = ("Control", "Preferences", "Settings", "Diagnostics / Log")
+DESKTOP_TAB_TITLES = ("Điều khiển", "Tùy chọn", "Cài đặt", "Chẩn đoán / Nhật ký")
 PREFERENCE_TABLE_ROWS = (
-    "PlayStyle",
-    "Intelligence",
+    "Lối chơi",
+    "Độ thông minh",
     "Pet của tôi",
     "Tiến hóa",
     "Thẻ sát thương",
     "Điều kiện ra skill",
-    "Audition",
-    "Board input",
+    "Kiểu thử thách",
+    "Cách đi bàn cờ",
 )
-SETTINGS_TABLE_ROWS = ("Game executable",)
+SETTINGS_TABLE_ROWS = ("Tệp chạy trò chơi",)
 INITIAL_FOCUS_TARGET = "notebook"
 BACKGROUND_UNFOCUS_WIDGET_CLASSES = frozenset(
     {"Tk", "TFrame", "TLabelframe", "TLabel", "Frame", "Label"}
 )
+
+INTELLIGENCE_LABELS = {
+    Intelligence.BASIC: "Cơ bản",
+    Intelligence.REASONING: "Suy luận",
+}
+BOARD_INPUT_LABELS = {
+    BoardInputMode.TWO_CLICK: "Hai lần nhấp",
+    BoardInputMode.DRAG: "Kéo thả",
+}
+
+LIFECYCLE_LABELS = {
+    "UNAVAILABLE": "KHÔNG KHẢ DỤNG",
+    "UNKNOWN": "CHƯA XÁC ĐỊNH",
+    "BOSS_LOBBY": "PHÒNG CHỜ BOSS",
+    "ACTIVE_COMBAT": "ĐANG CHIẾN ĐẤU",
+    "POSTMATCH": "SAU TRẬN",
+    "LOBBY_OTHER": "SẢNH KHÁC",
+}
+
+LOBBY_BRANCH_LABELS = {
+    "CHINH_PHUC_ROOM": "PHÒNG CHINH PHỤC",
+}
+
+CONTROLLER_STATE_LABELS = {
+    "IDLE": "ĐANG RẢNH",
+    "STARTING": "ĐANG KHỞI ĐỘNG",
+    "RUNNING": "ĐANG CHẠY",
+    "GRACEFUL_STOP_REQUESTED": "CHỜ DỪNG SAU TRẬN",
+    "EMERGENCY_STOPPING": "ĐANG DỪNG KHẨN CẤP",
+    "STOPPED": "ĐÃ DỪNG",
+    "ERROR": "LỖI",
+}
+
+FINAL_STATUS_LABELS = {
+    "COMPLETED": "HOÀN TẤT",
+    "STOPPED_GRACEFULLY": "ĐÃ DỪNG AN TOÀN",
+    "SAFE_STOP": "DỪNG AN TOÀN",
+}
+
+CLOSE_INTENT_LABELS = {
+    "NONE": "KHÔNG CÓ",
+    "AFTER_GRACEFUL_STOP": "ĐÓNG SAU KHI DỪNG AN TOÀN",
+    "AFTER_EMERGENCY_STOP": "ĐÓNG SAU KHI DỪNG KHẨN CẤP",
+}
 
 
 def background_click_clears_entry_focus(widget_class: str) -> bool:
@@ -105,6 +149,46 @@ def pet_skill_fire_condition_from_display(value: str) -> PetSkillFireCondition:
     return PetSkillFireCondition(value)
 
 
+def audition_mode_from_display(value: str) -> AuditionMode:
+    """Map the Vietnamese Audition label to its stable serialized value."""
+
+    for mode, label in AUDITION_LABELS.items():
+        if value == label:
+            return mode
+    return AuditionMode(value)
+
+
+def intelligence_from_display(value: str) -> Intelligence:
+    """Map the Vietnamese intelligence label to its stable serialized value."""
+
+    for intelligence, label in INTELLIGENCE_LABELS.items():
+        if value == label:
+            return intelligence
+    return Intelligence(value)
+
+
+def board_input_mode_from_display(value: str) -> BoardInputMode:
+    """Map the Vietnamese board-input label to its stable serialized value."""
+
+    for mode, label in BOARD_INPUT_LABELS.items():
+        if value == label:
+            return mode
+    return BoardInputMode(value)
+
+
+def lifecycle_text(value: str | None) -> str:
+    """Translate a runtime lifecycle for display without changing telemetry."""
+
+    raw = value or "UNKNOWN"
+    return LIFECYCLE_LABELS.get(raw, raw)
+
+
+def controller_state_text(value: str) -> str:
+    """Translate a controller state for display without changing its enum."""
+
+    return CONTROLLER_STATE_LABELS.get(value, value)
+
+
 def match_energy_text(controller: DesktopControllerSnapshot) -> str:
     """Compact per-match local-turn/energy accounting for the Control tab."""
 
@@ -115,17 +199,17 @@ def match_energy_text(controller: DesktopControllerSnapshot) -> str:
         per_match = ", ".join(
             f"#{attempt_index}: {turns}" for attempt_index, turns in visible
         )
-        completed = f"Completed turns / energy: {prefix}{per_match}"
+        completed = f"Lượt / năng lượng các trận đã xong: {prefix}{per_match}"
     else:
-        completed = "Completed turns / energy: no completed match yet"
+        completed = "Lượt / năng lượng các trận đã xong: chưa có trận hoàn tất"
     current = (
-        f"Current match turn / energy: {controller.current_match_turns}"
+        f"Lượt / năng lượng trận hiện tại: {controller.current_match_turns}"
         if controller.current_match_turns > 0
-        else "Current match turn / energy: —"
+        else "Lượt / năng lượng trận hiện tại: —"
     )
     return (
         f"{completed}\n{current}\n"
-        f"Total energy: {controller.total_energy_used}"
+        f"Tổng năng lượng: {controller.total_energy_used}"
     )
 
 
@@ -138,8 +222,8 @@ def graceful_button_text(controller: DesktopControllerSnapshot) -> str:
     """
 
     if controller.active and controller.graceful_stop_requested:
-        return "Stopping after current match..."
-    return "Stop After Current Match"
+        return "Đang chờ dừng sau trận hiện tại..."
+    return "Dừng sau trận hiện tại"
 
 
 @dataclass(frozen=True)
@@ -222,10 +306,17 @@ class DesktopEventLog:
         if explicit:
             return str(explicit)[:400]
         parts: list[str] = []
+        labels = {
+            "reason": "lý do",
+            "lifecycle": "trạng thái",
+            "error": "lỗi",
+            "farmRunId": "mã lượt chạy",
+            "summary": "tóm tắt",
+        }
         for key in ("reason", "lifecycle", "error", "farmRunId", "summary"):
             value = fields.get(key)
             if value not in (None, ""):
-                parts.append(f"{key}={value}")
+                parts.append(f"{labels[key]}={value}")
         return ("; ".join(parts) or event)[:400]
 
     def write(self, event: str, **fields: Any) -> None:
@@ -318,13 +409,14 @@ class DesktopEventLog:
                 # Put the cause first so the bounded operator log cannot hide
                 # a startup failure behind a healthy read-only runtime summary.
                 (
-                    f"controllerError={controller.last_error}; "
+                    f"lỗiBộĐiềuKhiển={controller.last_error}; "
                     if controller.last_error else ""
                 )
-                + (f"error={snapshot.last_error}; " if snapshot.last_error else "")
-                + f"{runtime.lifecycle}; controller={controller.state.value}; "
-                f"completed={controller.completed_matches}; "
-                f"attempts={controller.match_attempts}"
+                + (f"lỗi={snapshot.last_error}; " if snapshot.last_error else "")
+                + f"{lifecycle_text(runtime.lifecycle)}; "
+                f"bộ điều khiển={controller_state_text(controller.state.value)}; "
+                f"hoàn thành={controller.completed_matches}; "
+                f"lần thử={controller.match_attempts}"
             ),
         )
 
@@ -554,41 +646,45 @@ class DesktopViewModel:
             "PET_SKILL_DESKTOP_INTEGRATION_PENDING": "Thẻ skill của pet: backend đã sẵn sàng, Desktop chưa có tích hợp để tự động farm.",
             "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED": "Thẻ skill của pet: Audition V3 chưa có tích hợp gameplay an toàn cho bản game hiện tại.",
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
-            "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi chỉ hỗ trợ Huyền thoại / Không tiến hóa / Thẻ skill của pet / BASIC.",
+            "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi chỉ hỗ trợ Huyền thoại / Không tiến hóa / Thẻ skill của pet / Cơ bản.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
-            "AVAILABLE": "Ready.",
-            "INITIALIZING": "Initializing runtime status.",
-            "CONTROL_PLANE_CLOSED": "The desktop controller is closing.",
-            "CONTROLLER_UNAVAILABLE": "Farm controller is unavailable.",
-            "CONTROLLER_ALREADY_ACTIVE": "A bounded farm run is already active.",
-            "STALE_RUNTIME_SNAPSHOT": "Runtime snapshot is stale; waiting for a fresh read.",
-            "GAME_NOT_DETECTED": "Pokiguard is not running.",
-            "GAME_NOT_ATTACHED": "Waiting for read-only game attachment.",
-            "UNSUPPORTED_ARCHITECTURE": "The detected game architecture is unsupported.",
-            "BACKEND_NOT_HEALTHY": "Backend health is not actionable.",
-            "START_REQUIRES_BOSS_LOBBY": "Waiting for the exact BOSS_LOBBY.",
+            "AVAILABLE": "Sẵn sàng.",
+            "INITIALIZING": "Đang khởi tạo trạng thái hệ thống.",
+            "CONTROL_PLANE_CLOSED": "Bộ điều khiển Desktop đang đóng.",
+            "CONTROLLER_UNAVAILABLE": "Bộ điều khiển farm không khả dụng.",
+            "CONTROLLER_ALREADY_ACTIVE": "Một lượt farm có giới hạn đang chạy.",
+            "STALE_RUNTIME_SNAPSHOT": "Ảnh trạng thái đã cũ; đang chờ dữ liệu mới.",
+            "GAME_NOT_DETECTED": "Pokiguard chưa chạy.",
+            "GAME_NOT_ATTACHED": "Đang chờ kết nối chỉ đọc với trò chơi.",
+            "UNSUPPORTED_ARCHITECTURE": "Kiến trúc của trò chơi không được hỗ trợ.",
+            "BACKEND_NOT_HEALTHY": "Hệ thống nền chưa ở trạng thái có thể thao tác.",
+            "START_REQUIRES_BOSS_LOBBY": "Đang chờ đúng phòng chờ boss.",
             "CURRENT_BOSS_ROOM_NOT_PROVEN": (
-                "Open the exact pet boss room first; the world boss map is not actionable."
+                "Hãy mở đúng phòng boss của pet; bản đồ boss chưa thể thao tác."
             ),
             "CURRENT_ROOM_TARGET_NOT_PROVEN": (
-                "Waiting for the selected room's exact pet identity."
+                "Đang chờ xác định chính xác pet của phòng đã chọn."
             ),
             "CURRENT_ROOM_TARGET_AMBIGUOUS": (
-                "Current room target evidence is ambiguous; Start remains blocked."
+                "Dữ liệu mục tiêu của phòng hiện tại chưa rõ; chưa thể bắt đầu."
             ),
             "CURRENT_ROOM_TARGET_INVALID": (
-                "Current room target identity is invalid; Start remains blocked."
+                "Danh tính mục tiêu của phòng hiện tại không hợp lệ; chưa thể bắt đầu."
             ),
-            "NO_RESUMABLE_CHECKPOINT": "No resumable checkpoint is available.",
-            "NO_ACTIVE_CONTROLLER": "No active FarmRunner owns automation.",
-            "GRACEFUL_STOP_PENDING": "Stopping after the current match.",
-            "EMERGENCY_STOP_ACKNOWLEDGED": "Emergency Stop is already acknowledged.",
-            "EMERGENCY_STOP_ALREADY_ACKNOWLEDGED": "Emergency Stop is already acknowledged.",
+            "NO_RESUMABLE_CHECKPOINT": "Không có checkpoint hợp lệ để tiếp tục.",
+            "NO_ACTIVE_CONTROLLER": "Không có FarmRunner đang nắm quyền tự động.",
+            "GRACEFUL_STOP_PENDING": "Sẽ dừng sau trận hiện tại.",
+            "EMERGENCY_STOP_ACKNOWLEDGED": "Lệnh dừng khẩn cấp đã được xác nhận.",
+            "EMERGENCY_STOP_ALREADY_ACKNOWLEDGED": "Lệnh dừng khẩn cấp đã được xác nhận.",
+            "START_ACCEPTED": "Đã chấp nhận bắt đầu lượt farm.",
+            "RESUME_ACCEPTED": "Đã chấp nhận tiếp tục từ checkpoint.",
+            "GRACEFUL_STOP_ACCEPTED": "Đã chấp nhận dừng sau trận hiện tại.",
+            "EMERGENCY_STOP_ACCEPTED": "Đã chấp nhận dừng khẩn cấp.",
         }
         if code == "INVALID_LAUNCH":
-            return "Configuration/checkpoint is not valid for this run."
+            return "Cấu hình hoặc checkpoint không hợp lệ cho lượt chạy này."
         return messages.get(code, reason)
 
     def presentation(self, *, now_monotonic: float | None = None) -> DesktopPresentation:
@@ -599,37 +695,46 @@ class DesktopViewModel:
         stale = snapshot.stale or age > self.stale_after_seconds
 
         detected = (
-            "DETECTED"
+            "ĐÃ PHÁT HIỆN"
             if runtime.game_detected is True
-            else "NOT DETECTED"
+            else "CHƯA PHÁT HIỆN"
             if runtime.game_detected is False
-            else "UNKNOWN"
+            else "CHƯA XÁC ĐỊNH"
         )
-        attachment = "ATTACHED (READ-ONLY)" if runtime.attached else "NOT ATTACHED"
+        attachment = "ĐÃ KẾT NỐI (CHỈ ĐỌC)" if runtime.attached else "CHƯA KẾT NỐI"
         process = (
-            f"PID {runtime.pid} / {runtime.architecture or 'UNKNOWN'}"
+            f"PID {runtime.pid} / {runtime.architecture or 'CHƯA XÁC ĐỊNH'}"
             if runtime.pid is not None
-            else "UNAVAILABLE"
+            else "KHÔNG KHẢ DỤNG"
         )
-        lifecycle = runtime.lifecycle or "UNKNOWN"
+        lifecycle = lifecycle_text(runtime.lifecycle)
         if stale:
-            lifecycle = f"{lifecycle} (STALE / NON-ACTIONABLE)"
+            lifecycle = f"{lifecycle} (DỮ LIỆU CŨ / KHÔNG THỂ THAO TÁC)"
         runtime_target = (
             " / ".join(
                 value
                 for value in (runtime.target_name, runtime.target_id)
                 if value
             )
-            or "UNKNOWN"
+            or "CHƯA XÁC ĐỊNH"
         )
         if runtime.lobby_branch:
-            runtime_target = f"{runtime_target} [{runtime.lobby_branch}]"
+            branch = LOBBY_BRANCH_LABELS.get(runtime.lobby_branch, runtime.lobby_branch)
+            runtime_target = f"{runtime_target} [{branch}]"
         checkpoint = snapshot.checkpoint
         if checkpoint.available:
+            final_status = (
+                FINAL_STATUS_LABELS.get(
+                    checkpoint.finalized_status,
+                    checkpoint.finalized_status,
+                )
+                if checkpoint.finalized_status
+                else "CHƯA HOÀN TẤT"
+            )
             checkpoint_text = (
-                f"{checkpoint.finalized_status or 'UNFINALIZED'} — "
+                f"{final_status} — "
                 f"{checkpoint.completed_matches}/{checkpoint.target_completed_matches} "
-                f"(W/L/U {checkpoint.wins}/{checkpoint.losses}/"
+                f"(Thắng/Thua/Chưa rõ {checkpoint.wins}/{checkpoint.losses}/"
                 f"{checkpoint.unknown_results}) — {checkpoint.farm_run_id}"
             )
             if checkpoint.gameplay_config is not None:
@@ -639,64 +744,70 @@ class DesktopViewModel:
                     f" / {DAMAGE_LABELS[saved.damage_card]}"
                 )
             else:
-                checkpoint_text += "\nCấu hình lịch sử: UNKNOWN"
+                checkpoint_text += "\nCấu hình lịch sử: CHƯA XÁC ĐỊNH"
         elif checkpoint.error:
-            checkpoint_text = f"UNAVAILABLE — {checkpoint.error}"
+            checkpoint_text = f"KHÔNG KHẢ DỤNG — {checkpoint.error}"
         else:
-            checkpoint_text = "NONE"
-        health = "STALE" if stale and snapshot.health == "OK" else snapshot.health
+            checkpoint_text = "KHÔNG CÓ"
+        health = (
+            "DỮ LIỆU CŨ"
+            if stale and snapshot.health == "OK"
+            else "TỐT"
+            if snapshot.health == "OK"
+            else snapshot.health
+        )
         controller = snapshot.controller
         controller_text = (
-            f"{controller.state.value} — Completed "
+            f"{controller_state_text(controller.state.value)} — Hoàn thành "
             f"{controller.completed_matches}/{controller.target_completed_matches} — "
-            f"Attempts {controller.match_attempts}\n"
-            f"W/L/U {controller.wins}/{controller.losses}/{controller.unknown_results} — "
-            f"Run {controller.farm_run_id or 'PENDING'}\n"
+            f"Lần thử {controller.match_attempts}\n"
+            f"Thắng/Thua/Chưa rõ {controller.wins}/{controller.losses}/{controller.unknown_results} — "
+            f"Lượt chạy {controller.farm_run_id or 'ĐANG CHỜ'}\n"
             f"{match_energy_text(controller)}"
         )
         controls = snapshot.controls
         if controller.active:
             if controller.state is DesktopControllerState.EMERGENCY_STOPPING:
-                operator_status = "EMERGENCY STOPPING"
-                operator_guidance = "Automation authority has been revoked; waiting for STOPPED."
+                operator_status = "ĐANG DỪNG KHẨN CẤP"
+                operator_guidance = "Quyền tự động đã bị thu hồi; đang chờ bộ điều khiển dừng hẳn."
             elif controller.graceful_stop_requested:
-                operator_status = "GRACEFUL STOP PENDING"
-                operator_guidance = "The current match will finish; no next match will start."
+                operator_status = "CHỜ DỪNG SAU TRẬN"
+                operator_guidance = "Trận hiện tại sẽ hoàn tất; không bắt đầu trận kế tiếp."
             else:
-                operator_status = "RUNNING"
-                operator_guidance = "Bounded FarmRunner is active. Configuration is locked."
+                operator_status = "ĐANG CHẠY"
+                operator_guidance = "FarmRunner có giới hạn đang hoạt động. Cấu hình đã được khóa."
         elif controller.state is DesktopControllerState.ERROR:
-            operator_status = "CONTROLLER_ERROR"
+            operator_status = "LỖI BỘ ĐIỀU KHIỂN"
             operator_guidance = controller.last_error or (
-                "FarmRunner stopped with an error; check Diagnostics / Log."
+                "FarmRunner đã dừng do lỗi; hãy xem Chẩn đoán / Nhật ký."
             )
         elif stale:
-            operator_status = "STALE_RUNTIME_SNAPSHOT"
-            operator_guidance = "Runtime snapshot is stale; all launch actions are disabled."
+            operator_status = "DỮ LIỆU TRẠNG THÁI ĐÃ CŨ"
+            operator_guidance = "Dữ liệu trạng thái đã cũ; mọi thao tác khởi chạy đều bị khóa."
         elif controls.start.actionable:
-            operator_status = "READY"
+            operator_status = "SẴN SÀNG"
             operator_guidance = (
-                "Exact current pet room and valid bounded configuration are ready; "
-                "Start will pin this room target."
+                "Đúng phòng pet hiện tại và cấu hình có giới hạn đã sẵn sàng; "
+                "Bắt đầu sẽ ghim mục tiêu của phòng này."
             )
         else:
-            operator_status = controls.start.reason.split(":", 1)[0]
+            operator_status = "CHƯA SẴN SÀNG"
             operator_guidance = self.reason_text(controls.start.reason)
         return DesktopPresentation(
             connection=detected,
             attachment=attachment,
             process=process,
             lifecycle=lifecycle,
-            match_id=runtime.match_id or "UNKNOWN",
-            session=runtime.session_key or "UNAVAILABLE",
+            match_id=runtime.match_id or "CHƯA XÁC ĐỊNH",
+            session=runtime.session_key or "KHÔNG KHẢ DỤNG",
             runtime_target=runtime_target,
             checkpoint=checkpoint_text,
             health=health,
-            error=controller.last_error or snapshot.last_error or "NONE",
-            refreshed=f"{snapshot.timestamp} (age {age:.1f}s, version {snapshot.version})",
+            error=controller.last_error or snapshot.last_error or "KHÔNG CÓ",
+            refreshed=f"{snapshot.timestamp} (cách đây {age:.1f} giây, phiên bản {snapshot.version})",
             read_only_notice=(
-                "PHASE 3A.2 — READ-ONLY game memory; all actions use the "
-                "accepted bounded FarmRunner and normal foreground input"
+                "CHỈ ĐỌC bộ nhớ trò chơi; mọi thao tác dùng FarmRunner có giới hạn "
+                "đã được chấp nhận và input cửa sổ nền trước thông thường"
             ),
             controller=controller_text,
             operator_status=operator_status,
@@ -783,11 +894,11 @@ class DesktopApplication:
             wraplength=470,
         ).pack(anchor=tk.W, pady=(0, 10))
 
-        self.operator_status_var = tk.StringVar(value="INITIALIZING")
+        self.operator_status_var = tk.StringVar(value="ĐANG KHỞI TẠO")
         self.operator_guidance_var = tk.StringVar(
-            value="Waiting for backend snapshot."
+            value="Đang chờ dữ liệu trạng thái từ hệ thống nền."
         )
-        operator_frame = ttk.LabelFrame(outer, text="Operator State", padding=10)
+        operator_frame = ttk.LabelFrame(outer, text="Trạng thái vận hành", padding=10)
         operator_frame.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(
             operator_frame,
@@ -800,14 +911,14 @@ class DesktopApplication:
             wraplength=410,
         ).pack(anchor=tk.W)
 
-        runtime_frame = ttk.LabelFrame(outer, text="Connection / Runtime Status", padding=10)
+        runtime_frame = ttk.LabelFrame(outer, text="Kết nối / Trạng thái hiện tại", padding=10)
         runtime_frame.pack(fill=tk.X, pady=(0, 10))
         self.status_vars: dict[str, Any] = {}
         for row, (label, key) in enumerate(VISIBLE_RUNTIME_ROWS):
             ttk.Label(runtime_frame, text=f"{label}:").grid(
                 row=row, column=0, sticky=tk.NW, padx=(0, 8), pady=2
             )
-            variable = tk.StringVar(value="UNKNOWN")
+            variable = tk.StringVar(value="CHƯA XÁC ĐỊNH")
             self.status_vars[key] = variable
             ttk.Label(runtime_frame, textvariable=variable, wraplength=350).grid(
                 row=row, column=1, sticky=tk.NW, pady=2
@@ -819,7 +930,7 @@ class DesktopApplication:
         self.main_pet = tk.StringVar(value=config.main_pet.value)
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
-        self.audition_mode = tk.StringVar(value=config.audition_mode.value)
+        self.audition_mode = tk.StringVar(value=AUDITION_LABELS[config.audition_mode])
         self.pet_skill_fire_condition = tk.StringVar(
             value=PET_SKILL_FIRE_CONDITION_LABELS[
                 config.pet_skill_fire_condition
@@ -842,20 +953,20 @@ class DesktopApplication:
         self._updating_play_style = False
         self._pet_option_widgets: dict[tuple[str, str], Any] = {}
         self.profile_notice_var = tk.StringVar()
-        self.intelligence = tk.StringVar(value=Intelligence.BASIC.value)
-        self.board_input_mode = tk.StringVar(value=config.board_input_mode.value)
+        self.intelligence = tk.StringVar(value=INTELLIGENCE_LABELS[Intelligence.BASIC])
+        self.board_input_mode = tk.StringVar(value=BOARD_INPUT_LABELS[config.board_input_mode])
         self.boss_id = tk.StringVar(value=config.normalized_boss_id or "")
         self.boss_name = tk.StringVar(value=config.normalized_boss_name or "")
         self.target_matches = tk.StringVar(value=str(config.target_completed_matches))
         self.max_attempts = tk.StringVar(value=str(config.max_match_attempts))
         self.game_location = tk.StringVar(value=game_location)
         self.game_executable_var = tk.StringVar(
-            value=game_executable or "NOT RESOLVED"
+            value=game_executable or "CHƯA XÁC ĐỊNH"
         )
         self._config_widgets: list[tuple[Any, str]] = []
 
         preferences_frame = ttk.LabelFrame(
-            preferences_outer, text="Gameplay Preferences", padding=12
+            preferences_outer, text="Tùy chọn cách chơi", padding=12
         )
         preferences_frame.pack(fill=tk.X)
         preferences_frame.columnconfigure(0, weight=3)
@@ -882,7 +993,7 @@ class DesktopApplication:
 
         preference_field(
             row=0,
-            label="PlayStyle",
+            label="Lối chơi",
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.play_style,
@@ -893,11 +1004,11 @@ class DesktopApplication:
         )
         preference_field(
             row=1,
-            label="Intelligence",
+            label="Độ thông minh",
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.intelligence,
-                values=(Intelligence.BASIC.value,),
+                values=(INTELLIGENCE_LABELS[Intelligence.BASIC],),
                 state="disabled",
             ),
             editable_state="disabled",
@@ -954,11 +1065,11 @@ class DesktopApplication:
         )
         self.audition_label, self.audition_widget = preference_field(
             row=6,
-            label="Audition",
+            label="Kiểu thử thách",
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.audition_mode,
-                values=tuple(value.value for value in AuditionMode),
+                values=tuple(AUDITION_LABELS[value] for value in AuditionMode),
                 state="readonly",
             ),
             editable_state="readonly",
@@ -976,11 +1087,11 @@ class DesktopApplication:
         )
         preference_field(
             row=8,
-            label="Board input",
+            label="Cách đi bàn cờ",
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.board_input_mode,
-                values=tuple(value.value for value in BoardInputMode),
+                values=tuple(BOARD_INPUT_LABELS[value] for value in BoardInputMode),
                 state="readonly",
             ),
             editable_state="readonly",
@@ -1018,7 +1129,7 @@ class DesktopApplication:
 
         self.validate_button = ttk.Button(
             preferences_frame,
-            text="Validate & Save Preferences",
+            text="Kiểm tra và lưu tùy chọn",
             command=self._validate_draft,
         )
         self.validate_button.grid(
@@ -1027,7 +1138,7 @@ class DesktopApplication:
         ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
                   wraplength=390).grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.load_checkpoint_preferences_button = ttk.Button(
-            preferences_frame, text="Load Checkpoint Preferences", command=self._load_checkpoint_preferences)
+            preferences_frame, text="Nạp tùy chọn từ checkpoint", command=self._load_checkpoint_preferences)
         self.load_checkpoint_preferences_button.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=5)
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
@@ -1042,11 +1153,11 @@ class DesktopApplication:
         self._sync_pet_options()
 
         settings_frame = ttk.LabelFrame(
-            settings_outer, text="Game Installation", padding=12
+            settings_outer, text="Cài đặt trò chơi", padding=12
         )
         settings_frame.pack(fill=tk.X)
         settings_frame.columnconfigure(1, weight=1)
-        ttk.Label(settings_frame, text="Game executable:").grid(
+        ttk.Label(settings_frame, text="Tệp chạy trò chơi:").grid(
             row=0, column=0, sticky=tk.W, padx=(0, 12), pady=5
         )
         self.game_location_entry = ttk.Entry(
@@ -1055,7 +1166,7 @@ class DesktopApplication:
         self.game_location_entry.grid(row=0, column=1, sticky=tk.EW, pady=5)
         self.game_location_folder_button = ttk.Button(
             settings_frame,
-            text="File...",
+            text="Chọn tệp...",
             command=self._choose_game_executable,
         )
         self.game_location_folder_button.grid(
@@ -1063,13 +1174,13 @@ class DesktopApplication:
         )
         self.game_location_apply_button = ttk.Button(
             settings_frame,
-            text="Apply & Save",
+            text="Áp dụng và lưu",
             command=self._save_game_location,
         )
         self.game_location_apply_button.grid(
             row=1, column=1, sticky=tk.W, pady=(8, 4)
         )
-        ttk.Label(settings_frame, text="Selected:").grid(
+        ttk.Label(settings_frame, text="Đã chọn:").grid(
             row=2, column=0, sticky=tk.NW, padx=(0, 12), pady=5
         )
         ttk.Label(
@@ -1086,7 +1197,7 @@ class DesktopApplication:
         )
 
         control_frame = ttk.LabelFrame(
-            outer, text="Bounded FarmRunner Control", padding=10
+            outer, text="Điều khiển FarmRunner có giới hạn", padding=10
         )
         control_frame.pack(fill=tk.X, pady=(0, 10))
         control_frame.columnconfigure(0, weight=1, uniform="control")
@@ -1100,7 +1211,7 @@ class DesktopApplication:
             limits_row,
             row=0,
             column=0,
-            label="Target matches",
+            label="Số trận mục tiêu",
             widget_factory=lambda cell: ttk.Entry(
                 cell, textvariable=self.target_matches
             ),
@@ -1111,7 +1222,7 @@ class DesktopApplication:
             limits_row,
             row=0,
             column=1,
-            label="Max attempts",
+            label="Số lần thử tối đa",
             widget_factory=lambda cell: ttk.Entry(
                 cell, textvariable=self.max_attempts
             ),
@@ -1119,25 +1230,25 @@ class DesktopApplication:
             padx=(5, 0),
         )
 
-        self.controller_var = tk.StringVar(value="IDLE")
-        self.command_feedback = tk.StringVar(value="No command submitted.")
-        self.control_reason_var = tk.StringVar(value="Waiting for backend state.")
+        self.controller_var = tk.StringVar(value="ĐANG RẢNH")
+        self.command_feedback = tk.StringVar(value="Chưa gửi lệnh nào.")
+        self.control_reason_var = tk.StringVar(value="Đang chờ trạng thái hệ thống nền.")
         self.start_button = ttk.Button(
-            control_frame, text="Start", command=self._start_farm
+            control_frame, text="Bắt đầu", command=self._start_farm
         )
         self.graceful_button = ttk.Button(
             control_frame,
-            text="Stop After Current Match",
+            text="Dừng sau trận hiện tại",
             command=self._graceful_stop,
         )
         self.emergency_button = ttk.Button(
             control_frame,
-            text="Emergency Stop — Immediate",
+            text="Dừng khẩn cấp — Ngay lập tức",
             command=self._emergency_stop,
         )
         self.resume_button = ttk.Button(
             control_frame,
-            text="Resume Checkpoint",
+            text="Tiếp tục từ checkpoint",
             command=self._resume_checkpoint,
         )
         for row, column, button in (
@@ -1148,7 +1259,7 @@ class DesktopApplication:
         ):
             button.grid(row=row, column=column, padx=(0, 6), pady=2, sticky=tk.W)
 
-        run_status_frame = ttk.LabelFrame(control_frame, text="Run Status", padding=8)
+        run_status_frame = ttk.LabelFrame(control_frame, text="Trạng thái lượt chạy", padding=8)
         run_status_frame.grid(
             row=3, column=0, columnspan=2, sticky=tk.EW, pady=(8, 0)
         )
@@ -1171,10 +1282,10 @@ class DesktopApplication:
         ).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
 
         checkpoint_frame = ttk.LabelFrame(
-            outer, text="Run / Checkpoint", padding=10
+            outer, text="Lượt chạy / Checkpoint", padding=10
         )
         checkpoint_frame.pack(fill=tk.X, pady=(0, 10))
-        self.checkpoint_var = tk.StringVar(value="NONE")
+        self.checkpoint_var = tk.StringVar(value="KHÔNG CÓ")
         ttk.Label(
             checkpoint_frame,
             textvariable=self.checkpoint_var,
@@ -1182,16 +1293,16 @@ class DesktopApplication:
         ).pack(anchor=tk.W)
 
         health_frame = ttk.LabelFrame(
-            diagnostics_outer, text="Backend Health", padding=10
+            diagnostics_outer, text="Tình trạng hệ thống nền", padding=10
         )
         health_frame.pack(fill=tk.X, pady=(0, 10))
-        self.health_var = tk.StringVar(value="INITIALIZING")
-        self.error_var = tk.StringVar(value="NONE")
-        self.refreshed_var = tk.StringVar(value="NOT POLLED")
+        self.health_var = tk.StringVar(value="ĐANG KHỞI TẠO")
+        self.error_var = tk.StringVar(value="KHÔNG CÓ")
+        self.refreshed_var = tk.StringVar(value="CHƯA ĐỌC")
         for label, variable in (
-            ("Health", self.health_var),
-            ("Latest error", self.error_var),
-            ("Snapshot", self.refreshed_var),
+            ("Tình trạng", self.health_var),
+            ("Lỗi gần nhất", self.error_var),
+            ("Ảnh trạng thái", self.refreshed_var),
         ):
             ttk.Label(health_frame, text=f"{label}:").pack(anchor=tk.W)
             ttk.Label(health_frame, textvariable=variable, wraplength=410).pack(
@@ -1201,8 +1312,8 @@ class DesktopApplication:
         log_frame = ttk.LabelFrame(
             diagnostics_outer,
             text=(
-                "Operator Log "
-                f"(newest {event_log.max_display_entries}, diagnostic only)"
+                "Nhật ký vận hành "
+                f"({event_log.max_display_entries} mục mới nhất, chỉ dùng chẩn đoán)"
             ),
             padding=8,
         )
@@ -1228,7 +1339,7 @@ class DesktopApplication:
                 "preference_load_warning",
                 reason=warning.reason,
                 error=warning.message,
-                operatorMessage=f"Preferences fallback: {warning.reason}",
+                operatorMessage=f"Đã dùng tùy chọn dự phòng: {warning.reason}",
             )
 
         # Keep initial activation neutral. Entry widgets remain mouse-editable,
@@ -1257,9 +1368,9 @@ class DesktopApplication:
         if hasattr(self, "play_style"):
             self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
         if hasattr(self, "intelligence"):
-            self.intelligence.set(config.intelligence.value)
+            self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])
         if hasattr(self, "board_input_mode"):
-            self.board_input_mode.set(config.board_input_mode.value)
+            self.board_input_mode.set(BOARD_INPUT_LABELS[config.board_input_mode])
         self._display_pet_config(config)
         self._set_config_editable(False)
         self.start_button.configure(state="disabled")
@@ -1270,7 +1381,7 @@ class DesktopApplication:
             targetCompletedMatches=config.target_completed_matches,
             maxMatchAttempts=config.max_match_attempts,
             operatorMessage=(
-                "Accepted run limits locked until the controller stops."
+                "Giới hạn lượt chạy đã được khóa cho tới khi bộ điều khiển dừng."
             ),
         )
 
@@ -1285,7 +1396,7 @@ class DesktopApplication:
             self.event_log.write(
                 "preferences_saved",
                 path=str(self.preference_store.path),
-                operatorMessage="Supported operator preferences saved.",
+                operatorMessage="Đã lưu các tùy chọn vận hành được hỗ trợ.",
             )
             return None
         except (PreferenceError, OSError, TypeError, ValueError) as exc:
@@ -1294,7 +1405,7 @@ class DesktopApplication:
                 "preference_save_warning",
                 reason=reason,
                 error=f"{type(exc).__name__}: {exc}",
-                operatorMessage=f"Preferences were not saved: {reason}",
+                operatorMessage=f"Không lưu được tùy chọn: {reason}",
             )
             return str(reason)
 
@@ -1302,7 +1413,7 @@ class DesktopApplication:
         raw = self.game_location.get().strip()
         if self.game_location_changed is None:
             if not raw:
-                raise ValueError("game location is required")
+                raise ValueError("cần chọn vị trí trò chơi")
             resolved: Any = raw
         else:
             resolved = self.game_location_changed(raw)
@@ -1319,21 +1430,21 @@ class DesktopApplication:
             "game_location_applied",
             location=str(location),
             executable=str(executable),
-            operatorMessage=f"Game executable selected: {executable}",
+            operatorMessage=f"Đã chọn tệp chạy trò chơi: {executable}",
         )
         if warning:
-            raise PreferenceError(warning, "game location could not be saved")
+            raise PreferenceError(warning, "không lưu được vị trí trò chơi")
         return resolved
 
     def _save_game_location(self) -> None:
         try:
             resolved = self._apply_game_location(persist=True)
             self.command_feedback.set(
-                f"Game location saved — {getattr(resolved, 'executable', resolved)}"
+                f"Đã lưu vị trí trò chơi — {getattr(resolved, 'executable', resolved)}"
             )
         except Exception as exc:
             reason = getattr(exc, "reason", "GAME_LOCATION_INVALID")
-            self.command_feedback.set(f"Game location invalid — {exc}")
+            self.command_feedback.set(f"Vị trí trò chơi không hợp lệ — {exc}")
             self.event_log.write(
                 "game_location_rejected",
                 reason=reason,
@@ -1355,12 +1466,12 @@ class DesktopApplication:
                 initial_directory = str(current_path)
         selected = filedialog.askopenfilename(
             parent=self.root,
-            title="Select Pokiguard game executable",
+            title="Chọn tệp chạy trò chơi Pokiguard",
             initialdir=initial_directory,
             initialfile=initial_file,
             filetypes=(
-                ("Pokiguard executable", "Pokiguard-*.exe"),
-                ("Executable files", "*.exe"),
+                ("Tệp chạy Pokiguard", "Pokiguard-*.exe"),
+                ("Tệp thực thi", "*.exe"),
             ),
         )
         if not selected:
@@ -1373,16 +1484,16 @@ class DesktopApplication:
             config = self.view_model.apply_draft(**self._draft_fields())
             warning = self._persist_preferences(config)
             self.command_feedback.set(
-                f"Preferences saved — matches={config.target_completed_matches}."
-                + (f" Warning: {warning}." if warning else "")
+                f"Đã lưu tùy chọn — số trận={config.target_completed_matches}."
+                + (f" Cảnh báo: {warning}." if warning else "")
             )
             self.event_log.write(
                 "draft_config_validated",
                 config=asdict(config),
-                operatorMessage="Configuration validated through canonical models.",
+                operatorMessage="Cấu hình đã được kiểm tra bằng mô hình chuẩn.",
             )
         except Exception as exc:  # expected validation feedback, not UI failure
-            self.command_feedback.set(f"Preferences invalid — {exc}")
+            self.command_feedback.set(f"Tùy chọn không hợp lệ — {exc}")
             self.event_log.write(
                 "draft_config_rejected", error=f"{type(exc).__name__}: {exc}"
             )
@@ -1393,15 +1504,21 @@ class DesktopApplication:
             "main_pet": self.main_pet.get(),
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
-            "audition_mode": self.audition_mode.get(),
+            "audition_mode": audition_mode_from_display(
+                self.audition_mode.get()
+            ).value,
             "pet_skill_fire_condition": (
                 pet_skill_fire_condition_from_display(
                     self.pet_skill_fire_condition.get()
                 ).value
             ),
             "pet_skill_fire_value": self.pet_skill_fire_value.get(),
-            "intelligence": self.intelligence.get(),
-            "board_input_mode": self.board_input_mode.get(),
+            "intelligence": intelligence_from_display(
+                self.intelligence.get()
+            ).value,
+            "board_input_mode": board_input_mode_from_display(
+                self.board_input_mode.get()
+            ).value,
             "boss_id": self.boss_id.get(),
             "boss_name": self.boss_name.get(),
             "target_completed_matches": self.target_matches.get(),
@@ -1419,8 +1536,9 @@ class DesktopApplication:
         self._updating_pet_fields = True
         self._updating_fire_fields = True
         try:
-            for name in ("main_pet", "evolution", "damage_card", "audition_mode"):
+            for name in ("main_pet", "evolution", "damage_card"):
                 getattr(self, name).set(getattr(config, name).value)
+            self.audition_mode.set(AUDITION_LABELS[config.audition_mode])
             self.pet_skill_fire_condition.set(
                 PET_SKILL_FIRE_CONDITION_LABELS[
                     config.pet_skill_fire_condition
@@ -1441,15 +1559,15 @@ class DesktopApplication:
             config = self.view_model.control_plane.load_checkpoint_preferences()
             self._display_pet_config(config)
             self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
-            self.intelligence.set(config.intelligence.value)
-            self.board_input_mode.set(config.board_input_mode.value)
+            self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])
+            self.board_input_mode.set(BOARD_INPUT_LABELS[config.board_input_mode])
             self.target_matches.set(str(config.target_completed_matches))
             self.max_attempts.set(str(config.max_match_attempts))
             self._sync_pet_options()
-            self.command_feedback.set("Checkpoint preferences loaded; Resume requires a separate command.")
+            self.command_feedback.set("Đã nạp tùy chọn từ checkpoint; cần bấm Tiếp tục bằng một lệnh riêng.")
             self.event_log.write("checkpoint_preferences_loaded", config=asdict(config))
         except Exception as exc:
-            self.command_feedback.set(f"Checkpoint preferences unavailable — {exc}")
+            self.command_feedback.set(f"Không thể nạp tùy chọn từ checkpoint — {exc}")
             self.event_log.write("checkpoint_preferences_rejected", error=str(exc))
 
     def _sync_pet_options(self) -> None:
@@ -1468,7 +1586,7 @@ class DesktopApplication:
             state="normal" if editable and capability.pet_skill_selectable else "disabled")
         self.profile_notice_var.set(
             self.view_model.reason_text(blocker)
-            if blocker else "Cấu hình tương thích với lối chơi BASIC hiện tại.")
+            if blocker else "Cấu hình tương thích với lối chơi Cơ bản hiện tại.")
         self._sync_pet_skill_fields()
 
     def _sync_pet_skill_fields(self) -> None:
@@ -1586,16 +1704,25 @@ class DesktopApplication:
             return
 
     def _publish_command(self, command: str, result: Any) -> None:
+        command_label = {
+            "start_farm": "Bắt đầu farm",
+            "resume_from_checkpoint": "Tiếp tục từ checkpoint",
+            "request_graceful_stop": "Dừng sau trận hiện tại",
+            "emergency_stop": "Dừng khẩn cấp",
+            "close_after_graceful_stop": "Dừng sau trận rồi đóng",
+            "close_after_emergency_stop": "Dừng khẩn cấp rồi đóng",
+        }.get(command, command)
+        reason_label = self.view_model.reason_text(result.reason)
         self.command_feedback.set(
-            f"{command}: {'ACCEPTED' if result.accepted else 'REJECTED'} — "
-            f"{result.reason} — generation {result.generation}"
+            f"{command_label}: {'ĐÃ CHẤP NHẬN' if result.accepted else 'BỊ TỪ CHỐI'} — "
+            f"{reason_label} — thế hệ {result.generation}"
         )
         self.event_log.write(
             command,
             result=asdict(result),
             reason=result.reason,
             operatorMessage=(
-                f"{command}: {'accepted' if result.accepted else 'rejected'} "
+                f"{command_label}: {'đã chấp nhận' if result.accepted else 'bị từ chối'} "
                 f"({result.reason})"
             ),
         )
@@ -1615,7 +1742,7 @@ class DesktopApplication:
                 self.boss_name.set(pinned.normalized_boss_name or "")
                 self._persist_preferences(pinned)
         except Exception as exc:
-            self.command_feedback.set(f"Start rejected — {exc}")
+            self.command_feedback.set(f"Không thể bắt đầu — {exc}")
             self.event_log.write("start_farm_rejected", error=str(exc))
 
     def _resume_checkpoint(self) -> None:
@@ -1636,7 +1763,7 @@ class DesktopApplication:
                 self.boss_name.set(pinned.normalized_boss_name or "")
                 self._persist_preferences(pinned)
         except Exception as exc:
-            self.command_feedback.set(f"Resume rejected — {exc}")
+            self.command_feedback.set(f"Không thể tiếp tục — {exc}")
             self.event_log.write("resume_checkpoint_rejected", error=str(exc))
 
     def _graceful_stop(self) -> None:
@@ -1720,7 +1847,7 @@ class DesktopApplication:
             return
         dialog = tk.Toplevel(self.root)
         self._close_dialog = dialog
-        dialog.title("FarmRunner is active")
+        dialog.title("FarmRunner đang hoạt động")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.protocol(
@@ -1730,30 +1857,30 @@ class DesktopApplication:
         frame.pack(fill=tk.BOTH, expand=True)
         ttk.Label(
             frame,
-            text="Automation is still active. Choose an explicit safe close action.",
+            text="Tự động vẫn đang chạy. Hãy chọn cách đóng an toàn.",
             wraplength=390,
             font=("Segoe UI", 10, "bold"),
         ).pack(anchor=tk.W, pady=(0, 12))
         ttk.Button(
             frame,
-            text="Cancel / Keep Running",
+            text="Hủy / Tiếp tục chạy",
             command=lambda: self._choose_close(CloseChoice.CANCEL),
         ).pack(fill=tk.X, pady=3)
         ttk.Button(
             frame,
-            text="Stop After Current Match & Close",
+            text="Dừng sau trận hiện tại rồi đóng",
             command=lambda: self._choose_close(CloseChoice.GRACEFUL),
         ).pack(fill=tk.X, pady=3)
         ttk.Button(
             frame,
-            text="Emergency Stop & Close — Immediate",
+            text="Dừng khẩn cấp và đóng — Ngay lập tức",
             command=lambda: self._choose_close(CloseChoice.EMERGENCY),
         ).pack(fill=tk.X, pady=3)
         ttk.Label(
             frame,
             text=(
-                "Emergency Stop revokes tool input immediately; it does not exit "
-                "the game or guarantee BOSS_LOBBY."
+                "Dừng khẩn cấp thu hồi quyền input của công cụ ngay lập tức; "
+                "lệnh này không thoát trận và không bảo đảm trở về phòng chờ boss."
             ),
             foreground="#a00000",
             wraplength=390,
@@ -1779,9 +1906,9 @@ class DesktopApplication:
             reason=result.reason,
             generation=snapshot.controller.generation,
             operatorMessage=(
-                "Close chooser is visible; game focus restored while awaiting choice."
+                "Hộp chọn cách đóng đang hiển thị; đã trả tiêu điểm về trò chơi trong khi chờ lựa chọn."
                 if result.accepted
-                else "Close chooser is visible; game focus could not be restored."
+                else "Hộp chọn cách đóng đang hiển thị; không thể trả tiêu điểm về trò chơi."
             ),
         )
 
@@ -1790,11 +1917,11 @@ class DesktopApplication:
         if choice is CloseChoice.CANCEL:
             request = self._close_coordinator.request(choice, snapshot)
             self._destroy_close_dialog()
-            self.command_feedback.set("Close cancelled; FarmRunner keeps running.")
+            self.command_feedback.set("Đã hủy đóng; FarmRunner tiếp tục chạy.")
             self.event_log.write(
                 "ui_close_cancelled",
                 reason=request.reason,
-                operatorMessage="Close cancelled; active FarmRunner retained.",
+                operatorMessage="Đã hủy đóng; giữ nguyên FarmRunner đang hoạt động.",
             )
             return
         if choice is CloseChoice.GRACEFUL:
@@ -1809,29 +1936,30 @@ class DesktopApplication:
             self._publish_command(command_name, request.command_result)
         if request.accepted:
             self.command_feedback.set(
-                f"{request.intent.value}: waiting asynchronously for controller STOPPED."
+                f"{CLOSE_INTENT_LABELS[request.intent.value]}: "
+                "đang chờ bộ điều khiển dừng bất đồng bộ."
             )
             self.event_log.write(
                 "deferred_close_accepted",
                 reason=request.reason,
                 generation=self._close_coordinator.generation,
                 intent=request.intent.value,
-                operatorMessage=f"Deferred close accepted: {request.intent.value}.",
+                operatorMessage=f"Đã chấp nhận yêu cầu đóng trì hoãn: {request.intent.value}.",
             )
         else:
-            self.command_feedback.set(f"Close action rejected — {request.reason}")
+            self.command_feedback.set(f"Thao tác đóng bị từ chối — {request.reason}")
 
     def _begin_shutdown(self, reason: str) -> None:
         if self._shutdown_started or self._closed:
             return
         self._shutdown_started = True
         self._destroy_close_dialog()
-        self.command_feedback.set("Closing UI resources asynchronously...")
+        self.command_feedback.set("Đang đóng tài nguyên giao diện bất đồng bộ...")
         self.event_log.write(
             "ui_shutdown_started",
             reason=reason,
             closeIntent=self._close_coordinator.intent.value,
-            operatorMessage=f"UI shutdown started: {reason}.",
+            operatorMessage=f"Đã bắt đầu đóng giao diện: {reason}.",
         )
         if self._auto_close_after is not None:
             try:
@@ -1842,7 +1970,7 @@ class DesktopApplication:
         if not self._shutdown_worker.start():
             self.event_log.write(
                 "ui_shutdown_duplicate_ignored",
-                operatorMessage="Duplicate shutdown request ignored.",
+                operatorMessage="Đã bỏ qua yêu cầu đóng bị lặp.",
             )
         self._shutdown_after = self.root.after(50, self._check_shutdown)
 
@@ -1856,12 +1984,12 @@ class DesktopApplication:
             self._shutdown_started = False
             self._shutdown_worker = DesktopShutdownWorker(self.view_model)
             self.command_feedback.set(
-                f"Shutdown failed safely; UI remains open — {result.error}"
+                f"Đóng an toàn không thành công; giao diện vẫn mở — {result.error}"
             )
             self.event_log.write(
                 "ui_shutdown_failed",
                 error=result.error,
-                operatorMessage="UI shutdown failed safely; window retained.",
+                operatorMessage="Đóng giao diện an toàn không thành công; cửa sổ được giữ lại.",
             )
             self._render_after = self.root.after(0, self._render)
             return
@@ -1873,7 +2001,7 @@ class DesktopApplication:
             renderTicks=self.render_ticks,
             handledUiErrors=self.handled_ui_errors,
             safety=asdict(self.view_model.control_plane.snapshot().safety),
-            operatorMessage="Desktop UI closed cleanly; game process untouched.",
+            operatorMessage="Giao diện Desktop đã đóng sạch; tiến trình trò chơi không bị tác động.",
         )
         self.root.destroy()
 
@@ -1961,17 +2089,20 @@ class DesktopApplication:
                 state="normal" if controls.emergency_stop.actionable else "disabled"
             )
             if close_pending:
-                reason_text = f"Deferred close pending: {self._close_coordinator.intent.value}"
+                reason_text = (
+                    "Đang chờ đóng trì hoãn: "
+                    f"{CLOSE_INTENT_LABELS[self._close_coordinator.intent.value]}"
+                )
             elif not presentation.snapshot_actionable:
-                reason_text = "Runtime snapshot is stale; controls are non-actionable."
+                reason_text = "Dữ liệu trạng thái đã cũ; các nút điều khiển bị khóa."
             elif not draft_valid:
-                reason_text = f"Invalid configuration: {draft_error}"
+                reason_text = f"Cấu hình không hợp lệ: {draft_error}"
             elif profile_reason:
                 reason_text = self.view_model.reason_text(profile_reason)
             elif start_actionable:
                 reason_text = (
-                    "Start available: exact current pet room will be pinned; "
-                    "bounded recovery may re-enter only this pet if ejected."
+                    "Có thể bắt đầu: phòng pet hiện tại sẽ được ghim; "
+                    "khôi phục có giới hạn chỉ được vào lại đúng pet này nếu bị đẩy ra."
                 )
             else:
                 reason_text = self.view_model.reason_text(controls.start.reason)
@@ -1986,19 +2117,19 @@ class DesktopApplication:
                 CloseTransition.FAILED,
             }:
                 self.command_feedback.set(
-                    f"Deferred close cancelled safely — {close_observation.reason}"
+                    f"Đã hủy đóng trì hoãn một cách an toàn — {close_observation.reason}"
                 )
                 self.event_log.write(
                     "deferred_close_cancelled_safely",
                     reason=close_observation.reason,
                     operatorMessage=(
-                        "Deferred close cancelled because controller ownership/state changed."
+                        "Đã hủy đóng trì hoãn vì quyền sở hữu hoặc trạng thái bộ điều khiển thay đổi."
                     ),
                 )
             self.render_ticks += 1
         except Exception as exc:  # keep Tk event loop alive and visibly safe
             self.handled_ui_errors += 1
-            self.health_var.set("UI RENDER ERROR — NON-ACTIONABLE")
+            self.health_var.set("LỖI HIỂN THỊ GIAO DIỆN — KHÔNG THỂ THAO TÁC")
             self.error_var.set(f"{type(exc).__name__}: {exc}")
             self.event_log.write(
                 "ui_render_error", error=f"{type(exc).__name__}: {exc}"
@@ -2014,10 +2145,10 @@ class DesktopApplication:
             farmRunnerCommandsAvailable=True,
             automaticStart=False,
             automaticResume=False,
-            operatorMessage="Desktop UI launched; no farm command was dispatched.",
+            operatorMessage="Giao diện Desktop đã mở; chưa gửi lệnh farm nào.",
         )
         if not self.view_model.poller.start():
-            raise RuntimeError("desktop poller refused its single start")
+            raise RuntimeError("bộ đọc trạng thái Desktop từ chối lần khởi động duy nhất")
         self.event_log.write("control_plane_initialized", pollerStarts=1)
         self._render_after = self.root.after(0, self._render)
         if self.auto_close_seconds > 0:
@@ -2046,23 +2177,24 @@ class DesktopApplication:
         if controller.active:
             if self._close_coordinator.intent is not CloseIntent.NONE:
                 self.command_feedback.set(
-                    f"Deferred close already pending: {self._close_coordinator.intent.value}"
+                    "Đã có yêu cầu đóng trì hoãn: "
+                    f"{CLOSE_INTENT_LABELS[self._close_coordinator.intent.value]}"
                 )
                 return
             self.command_feedback.set(
-                "FarmRunner is active; choose an explicit safe close action."
+                "FarmRunner đang hoạt động; hãy chọn cách đóng an toàn."
             )
             self.event_log.write(
                 "ui_close_choice_requested",
                 generation=controller.generation,
                 state=controller.state.value,
-                operatorMessage="Close requested while FarmRunner is active.",
+                operatorMessage="Đã yêu cầu đóng khi FarmRunner đang hoạt động.",
             )
             self._show_close_dialog()
             return
         self.event_log.write(
             "ui_idle_close_requested",
-            operatorMessage="Idle UI close requested; game process will remain untouched.",
+            operatorMessage="Đã yêu cầu đóng giao diện đang rảnh; tiến trình trò chơi được giữ nguyên.",
         )
         self._begin_shutdown("IDLE_CLOSE")
 
