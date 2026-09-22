@@ -1,6 +1,6 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-21 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-09-22 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
@@ -24,11 +24,42 @@ decision in `DECISIONS.md`.
 
 | Item | Current state |
 |---|---|
-| Current accepted phase | **Phase 3D.1-R1 detailed three-stage Skill Rush + refreshed A/B — PASS STRONG** |
-| Active phase | **None; Phase 3D.1-R1 is complete** |
-| Phase 3 status | **Generic Pet-Skill fire condition is implemented at v1.0.49; `Kiếm đủ / 10` means multiplier-weighted known Sword value `>= 10`** |
+| Current accepted phase | **Phase 3D.2 25-match Pet-Skill reliability soak — PASS STRONG** |
+| Active phase | **None; Phase 3D.2 is complete** |
+| Phase 3 status | **The accepted v1.0.49 Skill Rush profile passed one continuous 25/25 soak; `Kiếm đủ / 10` remains multiplier-weighted known Sword value `>= 10`** |
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
-| Current live automation | **Final Mode B FarmRun completed 10/10 and returned to Starburst 1289 BOSS_LOBBY** |
+| Current live automation | **FarmRun `cdc37e234ec54b8f9c54bc718b92c636` completed 25/25 WIN and stopped in Starburst 1289 BOSS_LOBBY** |
+
+## Phase 3D.2 — PASS STRONG
+
+The accepted Skill Rush profile completed one immutable 25-match reliability
+soak on source `5b620987320b4132c33ab7d1acc269901e7431b3`, application
+`v1.0.49`. FarmRun `cdc37e234ec54b8f9c54bc718b92c636` finished 25/25 WIN
+in exactly 25 attempts, with zero UNKNOWN, technical abort, technical recovery
+or extra attempt. Final stop reason was `FARM_TARGET_COMPLETED`; lifecycle was
+`BOSS_LOBBY` and the controller/FarmRunner stopped.
+
+The frozen profile was Starburst `1289`, `skill_rush / BASIC / LEGENDARY /
+NONE / PET_SKILL`, `sword_count / 10` with inclusive multiplier-weighted
+`>= 10`, Audition V3 and Two Click. It recorded 180/180 acknowledged SWAPs,
+zero reject, PASS, EVOLVE, pre-skill Attack, forced/intentional pre-skill Sword
+consumption or premature `SETUP_BLOCKED` fire.
+
+All 25 accepted Pet Skills had current MatchId/session/card/QTE ownership,
+runtime PERFECT, seven authoritatively confirmed directions and one Space.
+The totals are 175/175 confirmed directions, 25 PERFECT, zero GOOD/BAD and
+25 immediate first-skill kills. Every stale, duplicate, wrong-direction,
+wrong-turn, boss-turn, misclick, partial-input and postmatch-input counter is
+zero. Match 16 had one expected fail-closed card-capability preflight rejection
+with zero input; it reread current state and then completed PERFECT.
+
+Natural technical recovery and the new empty-room/general-hub re-entry path
+were `NOT_OBSERVED`. Final verification is focused 694/694, randomized input
+18/18 in five consecutive runs and full regression 1,366/1,366; compileall and
+diff check pass. See [phase3d2_report.md](phase3d2_report.md),
+[phase3d2_runbook.md](phase3d2_runbook.md),
+[phase3d2_soak_analysis.json](artifacts/phase3d2_soak_analysis.json), and
+[phase3d2_soak_analysis.md](artifacts/phase3d2_soak_analysis.md).
 
 ## Phase 3D.1-R1 — PASS STRONG
 

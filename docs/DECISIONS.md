@@ -319,6 +319,25 @@ even when it may leave a Sword reply for the boss. The move must still satisfy
 survival/protection ordering remains in force. The hard Sword-safe boundary for
 count-based board setup is unchanged.
 
+### Phase 3D.2 reliability acceptance (validated 2026-09-22)
+
+Phase 3D.2 changes no gameplay policy. The canonical production soak remains
+Starburst `1289`, `skill_rush / BASIC / LEGENDARY / NONE / PET_SKILL`,
+`sword_count / 10` with multiplier-weighted inclusive `>= 10`, Audition V3 and
+Two Click.
+
+FarmRun `cdc37e234ec54b8f9c54bc718b92c636` is the accepted long-run evidence:
+25/25 authoritative WIN in 25 attempts, 180/180 SWAP ACK, 25/25 runtime
+PERFECT Pet Skills and 25/25 immediate first-skill kills. PASS, EVOLVE,
+pre-skill Attack, intentional/forced pre-skill Sword consumption, stale
+QTE/card use and every critical input-safety violation were zero. The run
+stopped exactly at target with no attempt 26.
+
+Server timing echo and natural technical recovery were `NOT_OBSERVED`; this
+does not replace the authoritative runtime PERFECT evidence or deterministic
+recovery tests. The empty-room/general-hub re-entry route also did not occur,
+so Phase 3D.2 does not claim live coverage for that separate repair.
+
 ## Phase 2 b2 compatibility repair (user correction 2026-09-11)
 
 Default settings with a normal pet, normal-pet Evolution and the default Attack
