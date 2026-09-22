@@ -175,6 +175,71 @@ def without_skill_resources(state) -> BoardState:
 
 
 class Phase3c1PetSkillPolicyTests(unittest.TestCase):
+    def test_affordable_evolution_precedes_ready_main_pet_skill(self) -> None:
+        engine = BasicPolicyEngine(
+            PolicyConfig(
+                mana_priority=None,
+                main_pet=MainPetType.LEGENDARY,
+                evolution=EvolutionTarget.NORMAL,
+                damage_card=DamageCardMode.PET_SKILL,
+            )
+        )
+        state = session_state(mana=250, rage=250)
+        state = replace(
+            state,
+            fusion=replace(
+                state.fusion,
+                available=True,
+                used=False,
+                mana_cost=120,
+            ),
+        )
+
+        decision = engine.decide(state, pet_skill_capability=capability())
+
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
+        self.assertTrue(decision.requires_state_reread)
+
+    def test_legendary_evolution_skill_waits_for_fusion_then_keeps_skill_rule(self) -> None:
+        engine = BasicPolicyEngine(
+            PolicyConfig(
+                mana_priority=None,
+                main_pet=MainPetType.NORMAL,
+                evolution=EvolutionTarget.LEGENDARY,
+                damage_card=DamageCardMode.PET_SKILL,
+            )
+        )
+        before = session_state(mana=0, rage=0)
+        before = replace(before, board=no_sword_board(before))
+        before_decision = engine.decide(before, pet_skill_capability=None)
+        self.assertEqual(before_decision.action, PolicyAction.SWAP)
+        self.assertEqual(
+            before_decision.trace.required_mana,
+            before.fusion.mana_cost,
+        )
+        self.assertEqual(before_decision.trace.missing_mana, before.fusion.mana_cost)
+        self.assertEqual(before_decision.trace.required_rage, 0)
+        self.assertEqual(before_decision.trace.missing_rage, 0)
+        self.assertTrue(
+            any(
+                "accumulate resources and evolve" in reason
+                for reason in before_decision.trace.failed_higher_priority_branches
+            )
+        )
+
+        after = session_state(mana=250, rage=250)
+        after = replace(
+            after,
+            fusion=replace(after.fusion, used=True, available=False),
+        )
+        after_decision = engine.decide(
+            after,
+            pet_skill_capability=capability(),
+        )
+        self.assertEqual(after_decision.action, PolicyAction.PET_SKILL)
+        self.assertEqual(after_decision.trace.policy_step, "STEP_1_PET_SKILL")
+
     def test_live_resource_telemetry_uses_policy_decision_identity(self) -> None:
         from tools.basic_auto_bot import _pet_skill_resource_progress_fields
 

@@ -1,0 +1,853 @@
+
+ChatService.SendWebSocketMessage RVA 0x3ABAB0..0x3ABE60
+003ABB1C lea      rcx, [rip + 0x2fafe65] ; STRING "[ChatService] BỎ tin '"
+003ABB2F lea      rcx, [rip + 0x2fad312] ; STRING 'null'
+003ABB42 lea      rcx, [rip + 0x2fafe2f] ; STRING '(socket={0}, đang bắt tay={1}).'
+003ABB55 lea      rcx, [rip + 0x2fafe14] ; STRING "' — WS chưa sẵn sàng "
+003ABBA5 call     0x39e370 ; Assembly-CSharp.dll/ChatService :: Boolean IsSocketOpen(WebSocket)
+003ABC3D call     0x1cdfba0 ; Newtonsoft.Json.dll/Newtonsoft/Json/JsonSerializer :: JsonSerializer CreateDefault()
+003ABC53 call     0x1cdfcf0 ; Newtonsoft.Json.dll/Newtonsoft/Json/JsonSerializer :: Void ApplySerializerSettings(JsonSerializer, JsonSerializerSettings)
+003ABC78 call     0x1cd87e0 ; Newtonsoft.Json.dll/Newtonsoft/Json/JsonConvert :: String SerializeObjectInternal(Object, Type, JsonSerializer)
+003ABCB4 call     0x41c6b0 ; Assembly-CSharp.dll/WsDebugOverlay :: Boolean IsEnabled()
+003ABCBF call     0x41c4d0 ; Assembly-CSharp.dll/WsDebugOverlay :: Void EnsureInstance()
+003ABCEB call     0x41cab0 ; Assembly-CSharp.dll/WsDebugOverlay :: Void Push(Boolean, String, String)
+003ABD06 call     0x3abe60 ; Assembly-CSharp.dll/ChatService :: Void EnqueueSend(WebSocket, String, String)
+003ABD30 mov      rbp, qword ptr [rip + 0x2fafc51] ; STRING "[ChatService] BỎ tin '"
+003ABD47 mov      r14, qword ptr [rip + 0x2fafc2a] ; STRING '(socket={0}, đang bắt tay={1}).'
+003ABD4E mov      r15, qword ptr [rip + 0x2fafc1b] ; STRING "' — WS chưa sẵn sàng "
+003ABD5B mov      r12, qword ptr [rip + 0x2fad0e6] ; STRING 'null'
+003ABD9D call     0x1c69bc0 ; mscorlib.dll/System/Enum :: String ToString()
+003ABDE6 call     0x1c402b0 ; mscorlib.dll/System/ParamsArray :: ParamsArray(Object, Object)
+003ABE0C call     0x1a58ba0 ; mscorlib.dll/System/String :: String FormatHelper(IFormatProvider, String, ParamsArray)
+003ABE22 call     0x1a58480 ; mscorlib.dll/System/String :: String Concat(String, String, String, String)
+003ABE43 call     0x278eda0 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogWarning(Object)
+
+ChatService.SendMatchSkillUse RVA 0x3B21A0..0x3B2570
+003B21DE lea      rcx, [rip + 0x2fa93bb] ; STRING 'MATCH_SKILL_USE_REQ'
+003B229F mov      rax, qword ptr [rip + 0x2fa92fa] ; STRING 'MATCH_SKILL_USE_REQ'
+003B254D call     0x3abab0 ; Assembly-CSharp.dll/ChatService :: Void SendWebSocketMessage(ChatMessageDTO)
+
+ChatService.SendMatchQteStart RVA 0x3B2570..0x3B27C0
+003B25AE lea      rcx, [rip + 0x2fa8fe3] ; STRING 'MATCH_QTE_START'
+003B266F mov      rax, qword ptr [rip + 0x2fa8f22] ; STRING 'MATCH_QTE_START'
+003B2792 call     0x3abab0 ; Assembly-CSharp.dll/ChatService :: Void SendWebSocketMessage(ChatMessageDTO)
+
+ChatService.SendMatchQteTap RVA 0x3B27C0..0x3B29E0
+003B27FE lea      rcx, [rip + 0x2fa8d8b] ; STRING 'MATCH_QTE_TAP'
+003B28CF mov      rax, qword ptr [rip + 0x2fa8cba] ; STRING 'MATCH_QTE_TAP'
+003B29BD call     0x3abab0 ; Assembly-CSharp.dll/ChatService :: Void SendWebSocketMessage(ChatMessageDTO)
+
+ChatService.SendMatchQteEvent RVA 0x3B2C00..0x3B2E20
+003B2C36 lea      rcx, [rip + 0x2fa8943] ; STRING 'MATCH_QTE_EVENT'
+003B2CEF mov      rax, qword ptr [rip + 0x2fa888a] ; STRING 'MATCH_QTE_EVENT'
+003B2E02 call     0x3abab0 ; Assembly-CSharp.dll/ChatService :: Void SendWebSocketMessage(ChatMessageDTO)
+
+MatchService.SendSkillUse RVA 0x3D1390..0x3D1500
+003D1449 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+003D14C9 call     0x3b21a0 ; Assembly-CSharp.dll/ChatService :: Void SendMatchSkillUse(String, Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+003D14DB call     0x3d1930 ; Assembly-CSharp.dll/MatchService :: Void ClearQteChallenge()
+
+MatchService.RequestQteChallenge RVA 0x3D1A20..0x3D1C30
+003D1A3A lea      rcx, [rip + 0x2f79c07] ; METHODINFO Void Add(String, Object)
+003D1A4D lea      rcx, [rip + 0x2f79bec] ; METHODINFO Dictionary`2[System.String,System.Object]()
+003D1A73 lea      rcx, [rip + 0x2f8d73e] ; STRING 'qteUi'
+003D1AA7 call     0x3d1930 ; Assembly-CSharp.dll/MatchService :: Void ClearQteChallenge()
+003D1AF0 call     0x86ea40 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_AuditionV3()
+003D1B04 mov      rdx, qword ptr [rip + 0x2f79b35] ; METHODINFO Dictionary`2[System.String,System.Object]()
+003D1B11 call     0x15dd640 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[UnityEngine/ResourceManagement/ResourceProviders/SceneInstance]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[UnityEngine.ResourceManagement.ResourceProviders.SceneInstance]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[System/__Canon]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[System.__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/ValueTuple`2[__Canon,__Canon]] :: Dictionary`2[System.__Canon,System.ValueTuple`2[__Canon,__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle]()
+003D1B37 mov      rcx, qword ptr [rip + 0x2f79b0a] ; METHODINFO Void Add(String, Object)
+003D1B4F mov      rdx, qword ptr [rip + 0x2f8d662] ; STRING 'qteUi'
+003D1B5E call     0x1606a10 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: Boolean TryInsert(__Canon, __Canon, InsertionBehavior)
+003D1BD8 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+003D1BF7 call     0x3b2570 ; Assembly-CSharp.dll/ChatService :: Void SendMatchQteStart(String, Int32, Dictionary`2[System.String,System.Object])
+
+MatchService.SendQteTap RVA 0x3D1C30..0x3D1D20
+003D1CE5 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+003D1D04 call     0x3b27c0 ; Assembly-CSharp.dll/ChatService :: Void SendMatchQteTap(String, Int32, Int64)
+
+MatchService.HandleQteChallenge RVA 0x3D1DF0..0x3D23D0
+003D1E29 lea      rcx, [rip + 0x2f776f8] ; METHODINFO Boolean TryGetValue(String, Object ByRef)
+003D1E4F lea      rcx, [rip + 0x2f8d34a] ; METHODINFO List`1[System.String] ToObject[List`1[System.String]]()
+003D1E75 lea      rcx, [rip + 0x2f8d314] ; STRING 'goodEnd1Ms'
+003D1E88 lea      rcx, [rip + 0x2f8d2f9] ; STRING 'challengeId'
+003D1E9B lea      rcx, [rip + 0x2f8d2d6] ; STRING 'perfectEndMs'
+003D1EAE lea      rcx, [rip + 0x2f8d2bb] ; STRING 'layout'
+003D1EC1 lea      rcx, [rip + 0x2f8d298] ; STRING 'multGood'
+003D1ED4 lea      rcx, [rip + 0x2f8d27d] ; STRING 'multPerfect'
+003D1EE7 lea      rcx, [rip + 0x2f8d25a] ; STRING 'greatMs'
+003D1EFA lea      rcx, [rip + 0x2f8d23f] ; STRING 'multBad'
+003D1F0D lea      rcx, [rip + 0x2f8d21c] ; STRING 'goodStart2Ms'
+003D1F20 lea      rcx, [rip + 0x2f8d201] ; STRING 'arrows'
+003D1F33 lea      rcx, [rip + 0x2f8d1de] ; STRING 'goodStart1Ms'
+003D1F46 lea      rcx, [rip + 0x2f8d1c3] ; STRING 'perfectStartMs'
+003D1F59 lea      rcx, [rip + 0x2f8d1a0] ; STRING 'reverseFrom'
+003D1F6C lea      rcx, [rip + 0x2f8d185] ; STRING 'goodEnd2Ms'
+003D1F7F lea      rcx, [rip + 0x2f8d162] ; STRING 'durationMs'
+003D1FF7 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+003D2028 mov      rdx, qword ptr [rip + 0x2f8d0b9] ; STRING 'durationMs'
+003D2032 call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D2043 mov      rdx, qword ptr [rip + 0x2f8d13e] ; STRING 'challengeId'
+003D2051 call     0x3d8350 ; Assembly-CSharp.dll/MatchService :: Int64 ReadLong(Dictionary`2[System.String,System.Object], String, Int64)
+003D206D mov      rdx, qword ptr [rip + 0x2f8d09c] ; STRING 'perfectStartMs'
+003D207B call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D208A mov      rdx, qword ptr [rip + 0x2f8d0e7] ; STRING 'perfectEndMs'
+003D2098 call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D20A7 mov      rdx, qword ptr [rip + 0x2f8d06a] ; STRING 'goodStart1Ms'
+003D20B5 call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D20C4 mov      rdx, qword ptr [rip + 0x2f8d0c5] ; STRING 'goodEnd1Ms'
+003D20D2 call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D20E1 mov      rdx, qword ptr [rip + 0x2f8d048] ; STRING 'goodStart2Ms'
+003D20EF call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D20FE mov      rdx, qword ptr [rip + 0x2f8cff3] ; STRING 'goodEnd2Ms'
+003D210C call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D2141 mov      r9, qword ptr [rip + 0x2f773e0] ; METHODINFO Boolean TryGetValue(String, Object ByRef)
+003D2150 mov      rdx, qword ptr [rip + 0x2f8cfd1] ; STRING 'arrows'
+003D2157 call     0x1607a30 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: Boolean TryGetValue(__Canon, __Canon ByRef)
+003D21A5 call     0x1d46cd0 ; Newtonsoft.Json.dll/Newtonsoft/Json/Linq/JArray :: JArray FromObject(Object)
+003D21B3 mov      rdx, qword ptr [rip + 0x2f8cfe6] ; METHODINFO List`1[System.String] ToObject[List`1[System.String]]()
+003D21BD call     0xf71610 ; Newtonsoft.Json.dll/Newtonsoft/Json/Linq/JToken :: __Canon ToObject[__Canon]()
+003D21C8 call     0x3d1510 ; Assembly-CSharp.dll/MatchService :: Void set_ServerQteArrows(List`1[System.String]) | UnityEngine.UIElementsModule.dll/UnityEngine/UIElements/TextElement :: Void UnityEngine.UIElements.ITextEdition.set_GetDefaultValueType(Func`1[String]) | UnityEngine.UIElementsModule.dll/UnityEngine/UIElements/BaseSlider`1[System/Single] :: Void set_clampedDragger(ClampedDragger)
+003D21F6 lea      rcx, [rip + 0x2f8cedb] ; STRING '[MatchService] QTE challenge parse: '
+003D220B call     0x1a58050 ; mscorlib.dll/System/String :: String Concat(String, String)
+003D2237 call     0x278eda0 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogWarning(Object)
+003D2254 mov      rdx, qword ptr [rip + 0x2f8cf15] ; STRING 'layout'
+003D2262 call     0x3d7e10 ; Assembly-CSharp.dll/MatchService :: String ReadString(Dictionary`2[System.String,System.Object], String, String)
+003D226D call     0x3d1800 ; Assembly-CSharp.dll/MatchService :: Void set_ServerQteLayout(String) | Microsoft.Web.WebView2.Core.dll/Microsoft/Web/WebView2/Core/CoreWebView2 :: Void set__nativeICoreWebView2_4(ICoreWebView2_4)
+003D227B mov      rdx, qword ptr [rip + 0x2f8ce7e] ; STRING 'reverseFrom'
+003D2289 call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D229D mov      rdx, qword ptr [rip + 0x2f8cea4] ; STRING 'greatMs'
+003D22AB call     0x3d80d0 ; Assembly-CSharp.dll/MatchService :: Int32 ReadInt(Dictionary`2[System.String,System.Object], String, Int32)
+003D22C9 movss    xmm2, dword ptr [rip + 0x2c3649f] ; METHODINFO EmbeddedAttribute()
+003D22D1 mov      rdx, qword ptr [rip + 0x2f8ce80] ; STRING 'multPerfect'
+003D22DF call     0x3d85f0 ; Assembly-CSharp.dll/MatchService :: Single ReadFloat(Dictionary`2[System.String,System.Object], String, Single)
+003D231B mov      rdx, qword ptr [rip + 0x2f8ce3e] ; STRING 'multGood'
+003D2329 call     0x3d85f0 ; Assembly-CSharp.dll/MatchService :: Single ReadFloat(Dictionary`2[System.String,System.Object], String, Single)
+003D2355 mov      rdx, qword ptr [rip + 0x2f8cde4] ; STRING 'multBad'
+003D2363 call     0x3d85f0 ; Assembly-CSharp.dll/MatchService :: Single ReadFloat(Dictionary`2[System.String,System.Object], String, Single)
+
+WsMatchClient.SendSkillUse RVA 0x424060..0x424160
+004240B2 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+0042413E call     0x3b21a0 ; Assembly-CSharp.dll/ChatService :: Void SendMatchSkillUse(String, Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+
+WsMatchClient.SendQteTap RVA 0x4241F0..0x424280
+00424242 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+00424261 call     0x3b27c0 ; Assembly-CSharp.dll/ChatService :: Void SendMatchQteTap(String, Int32, Int64)
+
+CardUIPVP.OnAuditionPress RVA 0x958EF0..0x958FA0
+00958F0B lea      rcx, [rip + 0x29efa8e] ; METHODINFO Void Add(String)
+00958F35 mov      r8, qword ptr [rip + 0x29efa64] ; METHODINFO Void Add(String)
+00958F60 call     0x1117180 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: Void AddWithResize(__Canon)
+
+CardUIPVP.OnAuditionTap RVA 0x958FA0..0x959000
+
+CardUIPVP.OnEnterButtonPress RVA 0x972050..0x9720C0
+0097206D call     0x972100 ; Assembly-CSharp.dll/CardUIPVP :: Void ShowTimingResult()
+00972090 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+
+CardUIPVP.OnDirectionButtonPress RVA 0x9720C0..0x972100
+009720E6 jmp      0x972a20 ; Assembly-CSharp.dll/CardUIPVP :: Void CheckDotArrow(String)
+
+CardUIPVP.ShowTimingResult RVA 0x972100..0x972650
+00972148 lea      rcx, [rip + 0x29d7d89] ; STRING 'ATTACK_LEGEND_'
+0097215B lea      rcx, [rip + 0x29d7b8e] ; STRING 'BAD'
+0097216E lea      rcx, [rip + 0x29ce2e3] ; STRING 'GOOD!'
+00972181 lea      rcx, [rip + 0x29ce2c8] ; STRING 'PERFECT!'
+009721D5 call     0x1a5c520 ; mscorlib.dll/System/String :: String ToUpper()
+009721DA mov      rdx, qword ptr [rip + 0x29d7cf7] ; STRING 'ATTACK_LEGEND_'
+0097220A call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00972276 mov      rdi, qword ptr [rip + 0x29ce1db] ; STRING 'GOOD!'
+0097229D mov      rdi, qword ptr [rip + 0x29ce1b4] ; STRING 'GOOD!'
+009722BB mov      rdi, qword ptr [rip + 0x29ce18e] ; STRING 'PERFECT!'
+009722EE mov      rdi, qword ptr [rip + 0x29d79fb] ; STRING 'BAD'
+009723C3 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00972473 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+009724DD call     0x2dfdf0 ; Assembly-CSharp.dll/LeanTween :: Void cancel(GameObject, Boolean, TweenAction)
+009724F4 call     0x27e9cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: Transform get_transform()
+00972572 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+009725D5 call     0x2e8c40 ; Assembly-CSharp.dll/LeanTween :: LTDescr scale(GameObject, Vector3, Single)
+009725E4 call     0xd9f3b0 ; Assembly-CSharp.dll/LTDescr :: LTDescr setEaseOutBack()
+00972637 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)
+00972648 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)
+
+CardUIPVP.Update RVA 0x9727C0..0x972A20
+009727F1 call     0x975170 ; Assembly-CSharp.dll/CardUIPVP :: Void UpdateCardVisual()
+00972808 call     0x96de90 ; Assembly-CSharp.dll/CardUIPVP :: Boolean IsDotSkillCard()
+00972846 call     0x28a7cd0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean get_anyKeyDown()
+00972871 lea      rcx, [rip + 0x29cdcc8] ; STRING 'nutLeft'
+00972884 lea      rcx, [rip + 0x29cdcbd] ; STRING 'nutUp'
+00972897 lea      rcx, [rip + 0x29cdc92] ; STRING 'nutDown'
+009728AA lea      rcx, [rip + 0x29cdc87] ; STRING 'nutRight'
+009728DE call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+009728F2 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00972902 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00972912 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00972922 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00972932 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00972942 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00972952 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+0097295B mov      rdx, qword ptr [rip + 0x29cdbe6] ; STRING 'nutUp'
+00972964 mov      rdx, qword ptr [rip + 0x29cdbcd] ; STRING 'nutRight'
+0097296D mov      rdx, qword ptr [rip + 0x29cdbcc] ; STRING 'nutLeft'
+00972976 mov      rdx, qword ptr [rip + 0x29cdbb3] ; STRING 'nutDown'
+00972988 call     0x972a20 ; Assembly-CSharp.dll/CardUIPVP :: Void CheckDotArrow(String)
+00972994 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+009729A4 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+009729C4 call     0x972100 ; Assembly-CSharp.dll/CardUIPVP :: Void ShowTimingResult()
+009729E7 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+
+CardUIPVP.CheckDotArrow RVA 0x972A20..0x973220
+00972A51 lea      rcx, [rip + 0x29c4448] ; METHODINFO Boolean ContainsKey(String)
+00972A64 lea      rcx, [rip + 0x29cd9ad] ; METHODINFO Sprite get_Item(String)
+00972A8A lea      rcx, [rip + 0x29d5f0f] ; METHODINFO Void Add(String)
+00972AB0 lea      rcx, [rip + 0x29cd8e9] ; METHODINFO Void <CheckDotArrow>b__0()
+00972B18 mov      r8, qword ptr [rip + 0x29d5e81] ; METHODINFO Void Add(String)
+00972B49 call     0x1117180 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: Void AddWithResize(__Canon)
+00972C1A call     0x27f8960 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: String GetName()
+00972C4C call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00972C71 lea      rcx, [rip + 0x29c4228] ; METHODINFO Boolean ContainsKey(String)
+00972C84 lea      rcx, [rip + 0x29cd78d] ; METHODINFO Sprite get_Item(String)
+00972D00 call     0x27f8960 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: String GetName()
+00972D18 mov      rdx, qword ptr [rip + 0x29c4181] ; METHODINFO Boolean ContainsKey(String)
+00972D2D call     0x15e8420 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Boolean] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/Color32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Int32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Single] :: Int32 FindEntry(__Canon)
+00972D46 mov      r8, qword ptr [rip + 0x29cd6cb] ; METHODINFO Sprite get_Item(String)
+00972D50 call     0x1606140 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: __Canon get_Item(__Canon)
+00972D5E call     0x298d360 ; UnityEngine.UI.dll/UnityEngine/UI/Image :: Void set_sprite(Sprite)
+00972E46 call     0x2c45840 ; UnityEngine.UI.dll/UnityEngine/UI/Selectable :: Void set_interactable(Boolean)
+00972E62 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+00972E83 call     0x96ff60 ; Assembly-CSharp.dll/CardUIPVP :: Void RefreshArrowCue()
+00972E92 call     0x970d80 ; Assembly-CSharp.dll/CardUIPVP :: Void ShakeArrowWrong(Image)
+00972EC8 mov      rax, qword ptr [rip + 0x29c3fd1] ; METHODINFO Boolean ContainsKey(String)
+00972EDD call     0x15e8420 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Boolean] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/Color32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Int32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Single] :: Int32 FindEntry(__Canon)
+00972EFA mov      r8, qword ptr [rip + 0x29cd517] ; METHODINFO Sprite get_Item(String)
+00972F04 call     0x1606140 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: __Canon get_Item(__Canon)
+00972F1B call     0x298d360 ; UnityEngine.UI.dll/UnityEngine/UI/Image :: Void set_sprite(Sprite)
+00972F31 call     0x96ff60 ; Assembly-CSharp.dll/CardUIPVP :: Void RefreshArrowCue()
+00972F55 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00972FD3 call     0x2e8c40 ; Assembly-CSharp.dll/LeanTween :: LTDescr scale(GameObject, Vector3, Single)
+00972FF6 call     0xd9f3b0 ; Assembly-CSharp.dll/LTDescr :: LTDescr setEaseOutBack()
+0097300A mov      r8, qword ptr [rip + 0x29cd38f] ; METHODINFO Void <CheckDotArrow>b__0()
+0097301D call     0x2d8910 ; Assembly-CSharp.dll/LTDescr+ActionMethodDelegate :: LTDescr+ActionMethodDelegate(Object, IntPtr) | mscorlib.dll/System/Action :: Action(Object, IntPtr) | mscorlib.dll/System/Threading/ThreadStart :: ThreadStart(Object, IntPtr) | UnityEngine.UIElementsModule.dll/UnityEngine/UIElements/ProfilerUIToolkit+RecordProfilerPanelMetadataForCaptureDelegate :: ProfilerUIToolkit+RecordProfilerPanelMetadataForCaptureDelegate(Object, IntPtr)
+00973034 call     0xda2740 ; Assembly-CSharp.dll/LTDescr :: LTDescr setOnComplete(Action)
+00973048 call     0x2985a80 ; UnityEngine.UI.dll/UnityEngine/UI/Graphic :: RectTransform get_rectTransform()
+00973056 call     0x9705a0 ; Assembly-CSharp.dll/CardUIPVP :: Void SpawnArrowHitBurst(RectTransform)
+0097312B call     0x2c45840 ; UnityEngine.UI.dll/UnityEngine/UI/Selectable :: Void set_interactable(Boolean)
+00973147 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+009731E4 call     0x27f1430 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Coroutine StartCoroutine(IEnumerator)
+00973201 call     0x963e50 ; Assembly-CSharp.dll/CardUIPVP :: Void PulseAuditionFrameGlow()
+0097320D call     0x1c546e0 ; mscorlib.dll/System/ThrowHelper :: Void ThrowArgumentOutOfRange_IndexException()
+
+CardUI.OnAuditionPress RVA 0xA938F0..0xA939A0
+00A9390B lea      rcx, [rip + 0x28b508e] ; METHODINFO Void Add(String)
+00A93935 mov      r8, qword ptr [rip + 0x28b5064] ; METHODINFO Void Add(String)
+00A93960 call     0x1117180 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: Void AddWithResize(__Canon)
+
+CardUI.OnAuditionTap RVA 0xA939A0..0xA93A00
+
+CardUI.CurrentQteElapsedMs RVA 0xAA9AA0..0xAA9B30
+
+CardUI.OnEnterButtonPress RVA 0xAAD9A0..0xAADA10
+00AAD9BD call     0xaada50 ; Assembly-CSharp.dll/CardUI :: Void ShowTimingResult()
+00AAD9E0 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+
+CardUI.OnDirectionButtonPress RVA 0xAADA10..0xAADA50
+00AADA36 jmp      0xaae200 ; Assembly-CSharp.dll/CardUI :: Void CheckDotArrow(String)
+
+CardUI.ShowTimingResult RVA 0xAADA50..0xAADFA0
+00AADA98 lea      rcx, [rip + 0x289c439] ; STRING 'ATTACK_LEGEND_'
+00AADAAB lea      rcx, [rip + 0x289c23e] ; STRING 'BAD'
+00AADABE lea      rcx, [rip + 0x2892993] ; STRING 'GOOD!'
+00AADAD1 lea      rcx, [rip + 0x2892978] ; STRING 'PERFECT!'
+00AADB25 call     0x1a5c520 ; mscorlib.dll/System/String :: String ToUpper()
+00AADB2A mov      rdx, qword ptr [rip + 0x289c3a7] ; STRING 'ATTACK_LEGEND_'
+00AADB5A call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00AADBC6 mov      rdi, qword ptr [rip + 0x289288b] ; STRING 'GOOD!'
+00AADBED mov      rdi, qword ptr [rip + 0x2892864] ; STRING 'GOOD!'
+00AADC0B mov      rdi, qword ptr [rip + 0x289283e] ; STRING 'PERFECT!'
+00AADC3E mov      rdi, qword ptr [rip + 0x289c0ab] ; STRING 'BAD'
+00AADD13 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00AADDC3 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00AADE2D call     0x2dfdf0 ; Assembly-CSharp.dll/LeanTween :: Void cancel(GameObject, Boolean, TweenAction)
+00AADE44 call     0x27e9cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: Transform get_transform()
+00AADEC2 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00AADF25 call     0x2e8c40 ; Assembly-CSharp.dll/LeanTween :: LTDescr scale(GameObject, Vector3, Single)
+00AADF34 call     0xd9f3b0 ; Assembly-CSharp.dll/LTDescr :: LTDescr setEaseOutBack()
+00AADF87 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)
+00AADF98 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)
+
+CardUI.Update RVA 0xAADFA0..0xAAE200
+00AADFD1 call     0xab1070 ; Assembly-CSharp.dll/CardUI :: Void UpdateCardVisual()
+00AADFE8 call     0xaa9480 ; Assembly-CSharp.dll/CardUI :: Boolean IsDotSkillCard()
+00AAE026 call     0x28a7cd0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean get_anyKeyDown()
+00AAE051 lea      rcx, [rip + 0x28924e8] ; STRING 'nutLeft'
+00AAE064 lea      rcx, [rip + 0x28924dd] ; STRING 'nutUp'
+00AAE077 lea      rcx, [rip + 0x28924b2] ; STRING 'nutDown'
+00AAE08A lea      rcx, [rip + 0x28924a7] ; STRING 'nutRight'
+00AAE0BE call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE0D2 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE0E2 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE0F2 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE102 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE112 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE122 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE132 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE13B mov      rdx, qword ptr [rip + 0x2892406] ; STRING 'nutUp'
+00AAE144 mov      rdx, qword ptr [rip + 0x28923ed] ; STRING 'nutRight'
+00AAE14D mov      rdx, qword ptr [rip + 0x28923ec] ; STRING 'nutLeft'
+00AAE156 mov      rdx, qword ptr [rip + 0x28923d3] ; STRING 'nutDown'
+00AAE168 call     0xaae200 ; Assembly-CSharp.dll/CardUI :: Void CheckDotArrow(String)
+00AAE174 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE184 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00AAE1A4 call     0xaada50 ; Assembly-CSharp.dll/CardUI :: Void ShowTimingResult()
+00AAE1C7 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+
+CardUI.CheckDotArrow RVA 0xAAE200..0xAAEA00
+00AAE231 lea      rcx, [rip + 0x2888c68] ; METHODINFO Boolean ContainsKey(String)
+00AAE244 lea      rcx, [rip + 0x28921cd] ; METHODINFO Sprite get_Item(String)
+00AAE26A lea      rcx, [rip + 0x289a72f] ; METHODINFO Void Add(String)
+00AAE290 lea      rcx, [rip + 0x287c179] ; METHODINFO Void <CheckDotArrow>b__0()
+00AAE2F8 mov      r8, qword ptr [rip + 0x289a6a1] ; METHODINFO Void Add(String)
+00AAE329 call     0x1117180 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: Void AddWithResize(__Canon)
+00AAE3FA call     0x27f8960 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: String GetName()
+00AAE42C call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00AAE451 lea      rcx, [rip + 0x2888a48] ; METHODINFO Boolean ContainsKey(String)
+00AAE464 lea      rcx, [rip + 0x2891fad] ; METHODINFO Sprite get_Item(String)
+00AAE4E0 call     0x27f8960 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: String GetName()
+00AAE4F8 mov      rdx, qword ptr [rip + 0x28889a1] ; METHODINFO Boolean ContainsKey(String)
+00AAE50D call     0x15e8420 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Boolean] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/Color32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Int32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Single] :: Int32 FindEntry(__Canon)
+00AAE526 mov      r8, qword ptr [rip + 0x2891eeb] ; METHODINFO Sprite get_Item(String)
+00AAE530 call     0x1606140 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: __Canon get_Item(__Canon)
+00AAE53E call     0x298d360 ; UnityEngine.UI.dll/UnityEngine/UI/Image :: Void set_sprite(Sprite)
+00AAE626 call     0x2c45840 ; UnityEngine.UI.dll/UnityEngine/UI/Selectable :: Void set_interactable(Boolean)
+00AAE642 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+00AAE663 call     0xaab8b0 ; Assembly-CSharp.dll/CardUI :: Void RefreshArrowCue()
+00AAE672 call     0xaac6d0 ; Assembly-CSharp.dll/CardUI :: Void ShakeArrowWrong(Image)
+00AAE6A8 mov      rax, qword ptr [rip + 0x28887f1] ; METHODINFO Boolean ContainsKey(String)
+00AAE6BD call     0x15e8420 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Boolean] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/Color32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Int32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Single] :: Int32 FindEntry(__Canon)
+00AAE6DA mov      r8, qword ptr [rip + 0x2891d37] ; METHODINFO Sprite get_Item(String)
+00AAE6E4 call     0x1606140 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: __Canon get_Item(__Canon)
+00AAE6FB call     0x298d360 ; UnityEngine.UI.dll/UnityEngine/UI/Image :: Void set_sprite(Sprite)
+00AAE711 call     0xaab8b0 ; Assembly-CSharp.dll/CardUI :: Void RefreshArrowCue()
+00AAE735 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00AAE7B3 call     0x2e8c40 ; Assembly-CSharp.dll/LeanTween :: LTDescr scale(GameObject, Vector3, Single)
+00AAE7D6 call     0xd9f3b0 ; Assembly-CSharp.dll/LTDescr :: LTDescr setEaseOutBack()
+00AAE7EA mov      r8, qword ptr [rip + 0x287bc1f] ; METHODINFO Void <CheckDotArrow>b__0()
+00AAE7FD call     0x2d8910 ; Assembly-CSharp.dll/LTDescr+ActionMethodDelegate :: LTDescr+ActionMethodDelegate(Object, IntPtr) | mscorlib.dll/System/Action :: Action(Object, IntPtr) | mscorlib.dll/System/Threading/ThreadStart :: ThreadStart(Object, IntPtr) | UnityEngine.UIElementsModule.dll/UnityEngine/UIElements/ProfilerUIToolkit+RecordProfilerPanelMetadataForCaptureDelegate :: ProfilerUIToolkit+RecordProfilerPanelMetadataForCaptureDelegate(Object, IntPtr)
+00AAE814 call     0xda2740 ; Assembly-CSharp.dll/LTDescr :: LTDescr setOnComplete(Action)
+00AAE828 call     0x2985a80 ; UnityEngine.UI.dll/UnityEngine/UI/Graphic :: RectTransform get_rectTransform()
+00AAE836 call     0xaabef0 ; Assembly-CSharp.dll/CardUI :: Void SpawnArrowHitBurst(RectTransform)
+00AAE90B call     0x2c45840 ; UnityEngine.UI.dll/UnityEngine/UI/Selectable :: Void set_interactable(Boolean)
+00AAE927 call     0x27f16b0 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Void StopCoroutine(Coroutine)
+00AAE9C4 call     0x27f1430 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Coroutine StartCoroutine(IEnumerator)
+00AAE9E1 call     0xa9f1d0 ; Assembly-CSharp.dll/CardUI :: Void PulseAuditionFrameGlow()
+00AAE9ED call     0x1c546e0 ; mscorlib.dll/System/ThrowHelper :: Void ThrowArgumentOutOfRange_IndexException()
+
+CardUI.ResetDotCombo RVA 0xAAEAA0..0xAAEC10
+00AAEAB8 lea      rcx, [rip + 0x28883e1] ; METHODINFO Boolean ContainsKey(String)
+00AAEACB lea      rcx, [rip + 0x2891946] ; METHODINFO Sprite get_Item(String)
+00AAEB5A call     0x27f8960 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: String GetName()
+00AAEB72 mov      rdx, qword ptr [rip + 0x2888327] ; METHODINFO Boolean ContainsKey(String)
+00AAEB87 call     0x15e8420 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Boolean] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/Color32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Int32] :: Int32 FindEntry(__Canon) | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/Single] :: Int32 FindEntry(__Canon)
+00AAEB9C mov      r8, qword ptr [rip + 0x2891875] ; METHODINFO Sprite get_Item(String)
+00AAEBA6 call     0x1606140 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: __Canon get_Item(__Canon)
+00AAEBB4 call     0x298d360 ; UnityEngine.UI.dll/UnityEngine/UI/Image :: Void set_sprite(Sprite)
+00AAEC05 call     0x1c546e0 ; mscorlib.dll/System/ThrowHelper :: Void ThrowArgumentOutOfRange_IndexException()
+
+CardUI.SendQteEventSafe RVA 0xAB48C0..0xAB4A80
+00AB4A46 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+00AB4A5D call     0x3b2c00 ; Assembly-CSharp.dll/ChatService :: Void SendMatchQteEvent(String, Dictionary`2[System.String,System.Object])
+
+Assembly-CSharp.dll/CardUI+<HandleDotSkillSequence>d__292 :: MoveNext RVA 0xADC090..0xADE0C0
+00ADC0CC lea      rcx, [rip + 0x2890915] ; METHODINFO Active+PlayerStats GetValueOrDefault[Int32,Active+PlayerStats](IReadOnlyDictionary`2[System.Int32,Active+PlayerStats], Int32)
+00ADC0DF lea      rcx, [rip + 0x286cc32] ; METHODINFO Image GetComponent[Image]()
+00ADC0F2 lea      rcx, [rip + 0x286cc0f] ; METHODINFO Text GetComponent[Text]()
+00ADC118 lea      rcx, [rip + 0x286f529] ; METHODINFO Void Add(String, Object)
+00ADC12B lea      rcx, [rip + 0x286f50e] ; METHODINFO Dictionary`2[System.String,System.Object]()
+00ADC151 lea      rcx, [rip + 0x286c840] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00ADC1E9 lea      rcx, [rip + 0x286dd30] ; STRING 'ATTACK_LEGEND'
+00ADC1FC lea      rcx, [rip + 0x284eadd] ; STRING '[DotSkill] Challenge tới MUỘN → dựng lại mũi tên theo dãy SERVER, thanh chạy lại từ đầu.'
+00ADC20F lea      rcx, [rip + 0x284eaaa] ; STRING 'END'
+00ADC222 lea      rcx, [rip + 0x284ea8f] ; STRING '[CardUI] Cannot start Dot Skill - missing components!'
+00ADC235 lea      rcx, [rip + 0x2878f54] ; STRING 'phase'
+00ADC248 lea      rcx, [rip + 0x2879e79] ; STRING 'START'
+00ADC25B lea      rcx, [rip + 0x284ea6e] ; STRING 'GOOD'
+00ADC26E lea      rcx, [rip + 0x284ea53] ; STRING '[CardUI] Cannot handle Dot Skill - missing dependencies'
+00ADC281 lea      rcx, [rip + 0x286dc50] ; STRING 'ATTACK_LEGEND_'
+00ADC294 lea      rcx, [rip + 0x284d0cd] ; STRING 'txtdame'
+00ADC2A7 lea      rcx, [rip + 0x284e9f2] ; STRING '— mini-game chạy dãy LOCAL, server sẽ chấm theo dãy của nó.'
+00ADC2BA lea      rcx, [rip + 0x284e9d7] ; STRING '[DotSkill] Chưa nhận được challenge sau {0:0.0}s '
+00ADC2CD lea      rcx, [rip + 0x284e9dc] ; STRING 'skillCardId'
+00ADC2E0 lea      rcx, [rip + 0x2869d29] ; STRING ''
+00ADC2F3 lea      rcx, [rip + 0x289005e] ; STRING 'key'
+00ADC306 lea      rcx, [rip + 0x284e99b] ; STRING 'PERFECT'
+00ADC3B8 call     0x27f7be0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Equality(Object, Object)
+00ADC3CA call     0xaa87e0 ; Assembly-CSharp.dll/CardUI :: Boolean ValidateDotSkillComponents()
+00ADC3F3 call     0x1a5c520 ; mscorlib.dll/System/String :: String ToUpper()
+00ADC409 mov      rdx, qword ptr [rip + 0x286db10] ; STRING 'ATTACK_LEGEND'
+00ADC439 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00ADC446 mov      rdx, qword ptr [rip + 0x286da8b] ; STRING 'ATTACK_LEGEND_'
+00ADC476 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00ADC493 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADC4B4 call     0xabf8f0 ; Assembly-CSharp.dll/AudioManager :: Void PlaySfx(AudioClip)
+00ADC4BB call     0x86e8e0 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_QteTimelineV2()
+00ADC4C9 call     0x86e990 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_QteButtonLayoutV2()
+00ADC4D7 call     0x86ea40 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_AuditionV3()
+00ADC4E4 call     0xbc7120 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: Boolean ServerSupportsV3()
+00ADC504 call     0xa9f660 ; Assembly-CSharp.dll/CardUI :: Void ApplyQteModalLayout()
+00ADC52E call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADC584 call     0x3d1d20 ; Assembly-CSharp.dll/MatchService :: Void EnsureQteChallenge(Int32)
+00ADC5A7 mov      rcx, qword ptr [rip + 0x284e70a] ; STRING '[CardUI] Cannot start Dot Skill - missing components!'
+00ADC5B0 call     0x278ea40 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogError(Object)
+00ADC608 mov      rcx, qword ptr [rip + 0x284e6b9] ; STRING '[CardUI] Cannot handle Dot Skill - missing dependencies'
+00ADC66A call     0xaaa200 ; Assembly-CSharp.dll/CardUI :: Single get_QteChallengeWaitSec()
+00ADC67C call     0x25b48d0 ; UnityEngine.CoreModule.dll/UnityEngine/Time :: Single get_deltaTime() | Unity.RenderPipelines.Universal.Runtime.dll/UnityEngine/Rendering/Universal/ShaderUtils :: Single get_PersistentDeltaTime() | UnityEngine.AdaptivePerformanceModule.dll/UnityEngine/AdaptivePerformance/AdaptivePerformanceIndexer :: Single DeltaTime()
+00ADC6E3 call     0xaaa200 ; Assembly-CSharp.dll/CardUI :: Single get_QteChallengeWaitSec()
+00ADC6FD mov      rcx, qword ptr [rip + 0x284e594] ; STRING '[DotSkill] Chưa nhận được challenge sau {0:0.0}s '
+00ADC70A call     0x1a58940 ; mscorlib.dll/System/String :: String Format(String, Object)
+00ADC70F mov      rdx, qword ptr [rip + 0x284e58a] ; STRING '— mini-game chạy dãy LOCAL, server sẽ chấm theo dãy của nó.'
+00ADC71C call     0x1a58050 ; mscorlib.dll/System/String :: String Concat(String, String)
+00ADC746 call     0x278eda0 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogWarning(Object)
+00ADC759 call     0xaa9810 ; Assembly-CSharp.dll/CardUI :: Void ApplyServerQteWindow()
+00ADC76C call     0xa98f20 ; Assembly-CSharp.dll/CardUI :: Void RebuildQteZones()
+00ADC7CF call     0x1c596e0 ; mscorlib.dll/System/Array :: Void Clear(Array, Int32, Int32)
+00ADC7D6 call     0x86e830 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_QteForgivingInput()
+00ADC7F4 call     0xaaa5c0 ; Assembly-CSharp.dll/CardUI :: Void GenerateDotArrows()
+00ADC7FE call     0xa962d0 ; Assembly-CSharp.dll/CardUI :: Void ShowDotSkillUI()
+00ADC844 mov      rdx, qword ptr [rip + 0x286edf5] ; METHODINFO Dictionary`2[System.String,System.Object]()
+00ADC852 call     0x15dd640 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[UnityEngine/ResourceManagement/ResourceProviders/SceneInstance]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[UnityEngine.ResourceManagement.ResourceProviders.SceneInstance]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[System/__Canon]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[System.__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/ValueTuple`2[__Canon,__Canon]] :: Dictionary`2[System.__Canon,System.ValueTuple`2[__Canon,__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle]()
+00ADC864 mov      r8, qword ptr [rip + 0x287985d] ; STRING 'START'
+00ADC86E mov      rdx, qword ptr [rip + 0x287891b] ; STRING 'phase'
+00ADC89D mov      rdx, qword ptr [rip + 0x284e40c] ; STRING 'skillCardId'
+00ADC8B6 call     0xab48c0 ; Assembly-CSharp.dll/CardUI :: Void SendQteEventSafe(Dictionary`2[System.String,System.Object])
+00ADC8CF call     0x3d2490 ; Assembly-CSharp.dll/MatchService :: Void SendDragPause()
+00ADC91C call     0x27f7be0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Equality(Object, Object)
+00ADC92A call     0xaa5730 ; Assembly-CSharp.dll/CardUI :: Void CreateAnimationCanvas()
+00ADC972 call     0xbc7550 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: IEnumerator Run(IAuditionHost, MonoBehaviour)
+00ADC9BF call     0xa95c20 ; Assembly-CSharp.dll/CardUI :: Void HideDotSkillUI()
+00ADCA7B call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00ADCA91 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00ADCAB7 call     0xaaccd0 ; Assembly-CSharp.dll/CardUI :: Void ClearDotArrows()
+00ADCADE call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADCB14 mov      rdx, qword ptr [rip + 0x286d3bd] ; STRING 'ATTACK_LEGEND_'
+00ADCB44 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00ADCB60 call     0xa89150 ; Assembly-CSharp.dll/Board :: Void ShowItems()
+00ADCB8E call     0xaaa050 ; Assembly-CSharp.dll/CardUI :: String GetLastTimingResult()
+00ADCBA1 call     0xaa9ca0 ; Assembly-CSharp.dll/CardUI :: Int32 CalculateDotsToDestroy()
+00ADCBC1 mov      r8, qword ptr [rip + 0x286bdd0] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00ADCBD2 call     0x1116eb0 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: List`1[System.__Canon](IEnumerable`1[System.__Canon])
+00ADCBE0 call     0xaa9aa0 ; Assembly-CSharp.dll/CardUI :: Int32 CurrentQteElapsedMs()
+00ADCBF6 call     0xaa9b30 ; Assembly-CSharp.dll/CardUI :: Nullable`1[Int64] CurrentQteChallengeId()
+00ADCC48 call     0x3d1390 ; Assembly-CSharp.dll/MatchService :: Void SendSkillUse(Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+00ADCC5F call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADCC85 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADCC9B mov      rdx, qword ptr [rip + 0x288f6b6] ; STRING 'key'
+00ADCCB2 call     0xac09f0 ; Assembly-CSharp.dll/AnimatorPetSfxExt :: Void SetIntegerWithSfx(Animator, String, Int32)
+00ADCCCF call     0xa31d60 ; Assembly-CSharp.dll/Active :: Void ScheduleAutoResetPetAnimations(Single)
+00ADCD2A call     0xab5270 ; Assembly-CSharp.dll/CardUI :: IEnumerator WaitForWsSkillResolution(Single, Single)
+00ADCE0B call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADCE63 mov      rcx, qword ptr [rip + 0x284de76] ; STRING '[DotSkill] Challenge tới MUỘN → dựng lại mũi tên theo dãy SERVER, thanh chạy lại từ đầu.'
+00ADCE6C call     0x278eda0 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogWarning(Object)
+00ADCE76 call     0xaaa5c0 ; Assembly-CSharp.dll/CardUI :: Void GenerateDotArrows()
+00ADCE80 call     0xaa9810 ; Assembly-CSharp.dll/CardUI :: Void ApplyServerQteWindow()
+00ADCE8A call     0xa98f20 ; Assembly-CSharp.dll/CardUI :: Void RebuildQteZones()
+00ADCEBC call     0x25b48d0 ; UnityEngine.CoreModule.dll/UnityEngine/Time :: Single get_deltaTime() | Unity.RenderPipelines.Universal.Runtime.dll/UnityEngine/Rendering/Universal/ShaderUtils :: Single get_PersistentDeltaTime() | UnityEngine.AdaptivePerformanceModule.dll/UnityEngine/AdaptivePerformance/AdaptivePerformanceIndexer :: Single DeltaTime()
+00ADCF3C call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADCF9B call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADCFC4 mov      rdx, qword ptr [rip + 0x286bd4d] ; METHODINFO Image GetComponent[Image]()
+00ADCFCB call     0xf0e250 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: __Canon GetComponent[__Canon]()
+00ADCFFB call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD0D9 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD101 call     0x28086c0 ; UnityEngine.CoreModule.dll/UnityEngine/RectTransform :: Void set_anchorMin(Vector2)
+00ADD125 call     0x2808840 ; UnityEngine.CoreModule.dll/UnityEngine/RectTransform :: Void set_anchorMax(Vector2)
+00ADD154 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD183 call     0x2808840 ; UnityEngine.CoreModule.dll/UnityEngine/RectTransform :: Void set_anchorMax(Vector2)
+00ADD1B2 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD228 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD296 call     0xabef30 ; Assembly-CSharp.dll/AudioManager :: Void PlaySwordClickSound()
+00ADD2A3 call     0xa9cf40 ; Assembly-CSharp.dll/CardUI :: Void PulseAuditionStar(Boolean)
+00ADD2D2 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD33D call     0x280e750 ; UnityEngine.CoreModule.dll/UnityEngine/Transform :: Void set_localScale(Vector3)
+00ADD380 call     0xa9cf40 ; Assembly-CSharp.dll/CardUI :: Void PulseAuditionStar(Boolean)
+00ADD3AF call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD441 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD47C mov      r8, qword ptr [rip + 0x2868b8d] ; STRING ''
+00ADD4EB mov      r8, qword ptr [rip + 0x284d7de] ; STRING 'GOOD'
+00ADD55D mov      r8, qword ptr [rip + 0x284d744] ; STRING 'PERFECT'
+00ADD5C1 call     0x3d2500 ; Assembly-CSharp.dll/MatchService :: Void SendDragResume()
+00ADD5D6 mov      rdx, qword ptr [rip + 0x286e063] ; METHODINFO Dictionary`2[System.String,System.Object]()
+00ADD5E3 call     0x15dd640 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[UnityEngine/ResourceManagement/ResourceProviders/SceneInstance]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[UnityEngine.ResourceManagement.ResourceProviders.SceneInstance]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[System/__Canon]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[System.__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/ValueTuple`2[__Canon,__Canon]] :: Dictionary`2[System.__Canon,System.ValueTuple`2[__Canon,__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle]()
+00ADD5F1 mov      rcx, qword ptr [rip + 0x286e050] ; METHODINFO Void Add(String, Object)
+00ADD5FB mov      r8, qword ptr [rip + 0x284d6be] ; STRING 'END'
+00ADD60D mov      rdx, qword ptr [rip + 0x2877b7c] ; STRING 'phase'
+00ADD61C call     0x1606a10 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: Boolean TryInsert(__Canon, __Canon, InsertionBehavior)
+00ADD640 call     0xab48c0 ; Assembly-CSharp.dll/CardUI :: Void SendQteEventSafe(Dictionary`2[System.String,System.Object])
+00ADD675 call     0xb61530 ; Assembly-CSharp.dll/ScreenInvertFx :: Void End()
+00ADD688 call     0xaada50 ; Assembly-CSharp.dll/CardUI :: Void ShowTimingResult()
+00ADD6D9 call     0xa95c20 ; Assembly-CSharp.dll/CardUI :: Void HideDotSkillUI()
+00ADD723 call     0xaa63a0 ; Assembly-CSharp.dll/CardUI :: IEnumerator HideCenterCard()
+00ADD731 call     0x27f1430 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Coroutine StartCoroutine(IEnumerator)
+00ADD75E mov      rdx, qword ptr [rip + 0x286c773] ; STRING 'ATTACK_LEGEND_'
+00ADD792 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00ADD7AD call     0xa95c20 ; Assembly-CSharp.dll/CardUI :: Void HideDotSkillUI()
+00ADD7D6 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD7F1 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00ADD807 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00ADD82E call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD888 call     0xaaa050 ; Assembly-CSharp.dll/CardUI :: String GetLastTimingResult()
+00ADD8A4 mov      r8, qword ptr [rip + 0x286b0ed] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00ADD8B4 call     0x1116eb0 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: List`1[System.__Canon](IEnumerable`1[System.__Canon])
+00ADD8C2 call     0xaa9aa0 ; Assembly-CSharp.dll/CardUI :: Int32 CurrentQteElapsedMs()
+00ADD8D8 call     0xaa9b30 ; Assembly-CSharp.dll/CardUI :: Nullable`1[Int64] CurrentQteChallengeId()
+00ADD926 call     0x3d1390 ; Assembly-CSharp.dll/MatchService :: Void SendSkillUse(Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+00ADD944 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADD95A mov      rdx, qword ptr [rip + 0x288e9f7] ; STRING 'key'
+00ADD971 call     0xac09f0 ; Assembly-CSharp.dll/AnimatorPetSfxExt :: Void SetIntegerWithSfx(Animator, String, Int32)
+00ADD98E call     0xa31d60 ; Assembly-CSharp.dll/Active :: Void ScheduleAutoResetPetAnimations(Single)
+00ADD998 call     0xaaccd0 ; Assembly-CSharp.dll/CardUI :: Void ClearDotArrows()
+00ADD9F5 mov      r8, qword ptr [rip + 0x288efec] ; METHODINFO Active+PlayerStats GetValueOrDefault[Int32,Active+PlayerStats](IReadOnlyDictionary`2[System.Int32,Active+PlayerStats], Int32)
+00ADDA04 call     0xf08630 ; mscorlib.dll/System/Collections/Generic/CollectionExtensions :: __Canon GetValueOrDefault[Int32,__Canon](IReadOnlyDictionary`2[System.Int32,System.__Canon], Int32)
+00ADDA19 mov      r8, qword ptr [rip + 0x288efc8] ; METHODINFO Active+PlayerStats GetValueOrDefault[Int32,Active+PlayerStats](IReadOnlyDictionary`2[System.Int32,Active+PlayerStats], Int32)
+00ADDA2A call     0xf08630 ; mscorlib.dll/System/Collections/Generic/CollectionExtensions :: __Canon GetValueOrDefault[Int32,__Canon](IReadOnlyDictionary`2[System.Int32,System.__Canon], Int32)
+00ADDA78 call     0x6d1e50 ; Assembly-CSharp.dll/ObfuscatedInt :: Int32 op_Implicit(ObfuscatedInt)
+00ADDAE9 call     0x6d1e50 ; Assembly-CSharp.dll/ObfuscatedInt :: Int32 op_Implicit(ObfuscatedInt)
+00ADDB01 call     0x6d1eb0 ; Assembly-CSharp.dll/ObfuscatedInt :: ObfuscatedInt op_Implicit(Int32)
+00ADDB26 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADDB3C mov      rdx, qword ptr [rip + 0x288e815] ; STRING 'key'
+00ADDB53 call     0xac09f0 ; Assembly-CSharp.dll/AnimatorPetSfxExt :: Void SetIntegerWithSfx(Animator, String, Int32)
+00ADDB65 movss    xmm1, dword ptr [rip + 0x252ac03] ; METHODINFO EmbeddedAttribute()
+00ADDB70 call     0xa31d60 ; Assembly-CSharp.dll/Active :: Void ScheduleAutoResetPetAnimations(Single)
+00ADDBB2 call     0xaa9ca0 ; Assembly-CSharp.dll/CardUI :: Int32 CalculateDotsToDestroy()
+00ADDBBF call     0xaaa050 ; Assembly-CSharp.dll/CardUI :: String GetLastTimingResult()
+00ADDBCD call     0xa95c20 ; Assembly-CSharp.dll/CardUI :: Void HideDotSkillUI()
+00ADDBF6 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADDC11 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00ADDC27 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00ADDC53 call     0xa89150 ; Assembly-CSharp.dll/Board :: Void ShowItems()
+00ADDC7A call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADDCE2 mov      r8, qword ptr [rip + 0x286acaf] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00ADDCF2 call     0x1116eb0 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: List`1[System.__Canon](IEnumerable`1[System.__Canon])
+00ADDD00 call     0xaa9aa0 ; Assembly-CSharp.dll/CardUI :: Int32 CurrentQteElapsedMs()
+00ADDD19 call     0xaa9b30 ; Assembly-CSharp.dll/CardUI :: Nullable`1[Int64] CurrentQteChallengeId()
+00ADDD69 call     0x3d1390 ; Assembly-CSharp.dll/MatchService :: Void SendSkillUse(Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+00ADDD73 call     0xaaccd0 ; Assembly-CSharp.dll/CardUI :: Void ClearDotArrows()
+00ADDD8E call     0xab5270 ; Assembly-CSharp.dll/CardUI :: IEnumerator WaitForWsSkillResolution(Single, Single)
+00ADDDB4 call     0xaaccd0 ; Assembly-CSharp.dll/CardUI :: Void ClearDotArrows()
+00ADDDE5 call     0xab5270 ; Assembly-CSharp.dll/CardUI :: IEnumerator WaitForWsSkillResolution(Single, Single)
+00ADDEF3 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00ADDF17 call     0x27ed360 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Transform get_transform()
+00ADDF25 mov      rdx, qword ptr [rip + 0x284b43c] ; STRING 'txtdame'
+00ADDF32 call     0x2812800 ; UnityEngine.CoreModule.dll/UnityEngine/Transform :: Transform Find(String) | UnityEngine.CoreModule.dll/UnityEngine/Transform :: Transform FindChild(String)
+00ADDF3C mov      rdx, qword ptr [rip + 0x286adc5] ; METHODINFO Text GetComponent[Text]()
+00ADDF46 call     0xf0e250 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: __Canon GetComponent[__Canon]()
+00ADDF56 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00ADDF65 call     0x1c2bd80 ; mscorlib.dll/System/Int32 :: String ToString()
+00ADDFE5 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00ADDFFF call     0x47b6c0 ; Assembly-CSharp.dll/UIUpdateManager :: Void UpdateDisplaySliders(MatchStatMask)
+00ADE019 call     0x479e60 ; Assembly-CSharp.dll/UIUpdateManager :: Void UpdateBossHPSlider(MatchStatMask)
+00ADE023 call     0xaaccd0 ; Assembly-CSharp.dll/CardUI :: Void ClearDotArrows()
+
+Assembly-CSharp.dll/CardUIPVP+<HandleDotSkillSequence>d__252 :: MoveNext RVA 0xB07990..0xB095C0
+00B079CC lea      rcx, [rip + 0x2841345] ; METHODINFO Image GetComponent[Image]()
+00B079F2 lea      rcx, [rip + 0x2840f9f] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00B07A64 lea      rcx, [rip + 0x28424b5] ; STRING 'ATTACK_LEGEND'
+00B07A77 lea      rcx, [rip + 0x282323a] ; STRING '[CardUI] Cannot start Dot Skill - missing components!'
+00B07A8A lea      rcx, [rip + 0x282323f] ; STRING 'GOOD'
+00B07A9D lea      rcx, [rip + 0x2823224] ; STRING '[CardUI] Cannot handle Dot Skill - missing dependencies'
+00B07AB0 lea      rcx, [rip + 0x2823349] ; STRING '[DotSkillPVP] Challenge tới MUỘN → dựng lại mũi tên theo dãy SERVER, thanh chạy lại từ đầu.'
+00B07AC3 lea      rcx, [rip + 0x284240e] ; STRING 'ATTACK_LEGEND_'
+00B07AD6 lea      rcx, [rip + 0x28231c3] ; STRING '— mini-game chạy dãy LOCAL, server sẽ chấm theo dãy của nó.'
+00B07AE9 lea      rcx, [rip + 0x2823308] ; STRING '[DotSkillPVP] Chưa nhận được challenge sau {0:0.0}s '
+00B07AFC lea      rcx, [rip + 0x283e50d] ; STRING ''
+00B07B0F lea      rcx, [rip + 0x2864842] ; STRING 'key'
+00B07B22 lea      rcx, [rip + 0x282317f] ; STRING 'PERFECT'
+00B07C62 call     0x96d350 ; Assembly-CSharp.dll/CardUIPVP :: Boolean ValidateDotSkillComponents()
+00B07C8B call     0x1a5c520 ; mscorlib.dll/System/String :: String ToUpper()
+00B07CA1 mov      rdx, qword ptr [rip + 0x2842278] ; STRING 'ATTACK_LEGEND'
+00B07CD1 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00B07CDE mov      rdx, qword ptr [rip + 0x28421f3] ; STRING 'ATTACK_LEGEND_'
+00B07D0E call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00B07D20 call     0x86e8e0 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_QteTimelineV2()
+00B07D2E call     0x86e990 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_QteButtonLayoutV2()
+00B07D3C call     0x86ea40 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_AuditionV3()
+00B07D49 call     0xbc7120 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: Boolean ServerSupportsV3()
+00B07D69 call     0x9642e0 ; Assembly-CSharp.dll/CardUIPVP :: Void ApplyQteModalLayout()
+00B07D93 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B07DE9 call     0x3d1d20 ; Assembly-CSharp.dll/MatchService :: Void EnsureQteChallenge(Int32)
+00B07E09 mov      rcx, qword ptr [rip + 0x2822ea8] ; STRING '[CardUI] Cannot start Dot Skill - missing components!'
+00B07E12 call     0x278ea40 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogError(Object)
+00B07E31 mov      rcx, qword ptr [rip + 0x2822e90] ; STRING '[CardUI] Cannot handle Dot Skill - missing dependencies'
+00B07E3A call     0x278ea40 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogError(Object)
+00B07E9B call     0x959000 ; Assembly-CSharp.dll/CardUIPVP :: Single get_QteChallengeWaitSec()
+00B07EAD call     0x25b48d0 ; UnityEngine.CoreModule.dll/UnityEngine/Time :: Single get_deltaTime() | Unity.RenderPipelines.Universal.Runtime.dll/UnityEngine/Rendering/Universal/ShaderUtils :: Single get_PersistentDeltaTime() | UnityEngine.AdaptivePerformanceModule.dll/UnityEngine/AdaptivePerformance/AdaptivePerformanceIndexer :: Single DeltaTime()
+00B07F14 call     0x959000 ; Assembly-CSharp.dll/CardUIPVP :: Single get_QteChallengeWaitSec()
+00B07F2E mov      rcx, qword ptr [rip + 0x2822ec3] ; STRING '[DotSkillPVP] Chưa nhận được challenge sau {0:0.0}s '
+00B07F3B call     0x1a58940 ; mscorlib.dll/System/String :: String Format(String, Object)
+00B07F40 mov      rdx, qword ptr [rip + 0x2822d59] ; STRING '— mini-game chạy dãy LOCAL, server sẽ chấm theo dãy của nó.'
+00B07F4D call     0x1a58050 ; mscorlib.dll/System/String :: String Concat(String, String)
+00B07F77 call     0x278eda0 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogWarning(Object)
+00B07F8A call     0x96e170 ; Assembly-CSharp.dll/CardUIPVP :: Void ApplyServerQteWindow()
+00B07F9D call     0x95dba0 ; Assembly-CSharp.dll/CardUIPVP :: Void RebuildQteZones()
+00B07FD2 call     0x1c596e0 ; mscorlib.dll/System/Array :: Void Clear(Array, Int32, Int32)
+00B08007 call     0x86e830 ; Assembly-CSharp.dll/MatchFeatureFlags :: Boolean get_QteForgivingInput()
+00B08025 call     0x96ec70 ; Assembly-CSharp.dll/CardUIPVP :: Void GenerateDotArrows()
+00B0802F call     0x95af90 ; Assembly-CSharp.dll/CardUIPVP :: Void ShowDotSkillUI()
+00B0807D call     0x3d2490 ; Assembly-CSharp.dll/MatchService :: Void SendDragPause()
+00B08150 call     0x96a3b0 ; Assembly-CSharp.dll/CardUIPVP :: Void CreateAnimationCanvas()
+00B08198 call     0xbc7550 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: IEnumerator Run(IAuditionHost, MonoBehaviour)
+00B081E5 call     0x95a8e0 ; Assembly-CSharp.dll/CardUIPVP :: Void HideDotSkillUI()
+00B082A1 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00B082B7 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00B082DD call     0x971380 ; Assembly-CSharp.dll/CardUIPVP :: Void ClearDotArrows()
+00B083B2 mov      rdx, qword ptr [rip + 0x2841b1f] ; STRING 'ATTACK_LEGEND_'
+00B083E2 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00B083FE call     0x627090 ; Assembly-CSharp.dll/BoardPVP :: Void ShowItems()
+00B0842C call     0x96e750 ; Assembly-CSharp.dll/CardUIPVP :: String GetLastTimingResult()
+00B0843F call     0x96e600 ; Assembly-CSharp.dll/CardUIPVP :: Int32 CalculateDotsToDestroy()
+00B0845F mov      r8, qword ptr [rip + 0x2840532] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00B08470 call     0x1116eb0 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: List`1[System.__Canon](IEnumerable`1[System.__Canon])
+00B0847E call     0x96e400 ; Assembly-CSharp.dll/CardUIPVP :: Int32 CurrentQteElapsedMs()
+00B08494 call     0x96e490 ; Assembly-CSharp.dll/CardUIPVP :: Nullable`1[Int64] CurrentQteChallengeId()
+00B084E6 call     0x3d1390 ; Assembly-CSharp.dll/MatchService :: Void SendSkillUse(Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+00B084FD call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B0851E call     0x4866c0 ; Assembly-CSharp.dll/ActivePVP :: Animator GetPetAnimatorForActor(Int32)
+00B0852E call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08537 mov      rdx, qword ptr [rip + 0x2863e1a] ; STRING 'key'
+00B0854A call     0xac09f0 ; Assembly-CSharp.dll/AnimatorPetSfxExt :: Void SetIntegerWithSfx(Animator, String, Int32)
+00B08567 call     0x488460 ; Assembly-CSharp.dll/ActivePVP :: Void ScheduleAutoResetPetAnimations(Single)
+00B085C2 call     0x976e50 ; Assembly-CSharp.dll/CardUIPVP :: IEnumerator WaitForWsSkillResolution(Single, Single)
+00B08696 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B086EE mov      rcx, qword ptr [rip + 0x282270b] ; STRING '[DotSkillPVP] Challenge tới MUỘN → dựng lại mũi tên theo dãy SERVER, thanh chạy lại từ đầu.'
+00B086F7 call     0x278eda0 ; UnityEngine.CoreModule.dll/UnityEngine/Debug :: Void LogWarning(Object)
+00B08701 call     0x96ec70 ; Assembly-CSharp.dll/CardUIPVP :: Void GenerateDotArrows()
+00B0870B call     0x96e170 ; Assembly-CSharp.dll/CardUIPVP :: Void ApplyServerQteWindow()
+00B08715 call     0x95dba0 ; Assembly-CSharp.dll/CardUIPVP :: Void RebuildQteZones()
+00B08747 call     0x25b48d0 ; UnityEngine.CoreModule.dll/UnityEngine/Time :: Single get_deltaTime() | Unity.RenderPipelines.Universal.Runtime.dll/UnityEngine/Rendering/Universal/ShaderUtils :: Single get_PersistentDeltaTime() | UnityEngine.AdaptivePerformanceModule.dll/UnityEngine/AdaptivePerformance/AdaptivePerformanceIndexer :: Single DeltaTime()
+00B087C7 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08826 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B0884F mov      rdx, qword ptr [rip + 0x28404c2] ; METHODINFO Image GetComponent[Image]()
+00B08856 call     0xf0e250 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: __Canon GetComponent[__Canon]()
+00B08886 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08954 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B0897C call     0x28086c0 ; UnityEngine.CoreModule.dll/UnityEngine/RectTransform :: Void set_anchorMin(Vector2)
+00B089A0 call     0x2808840 ; UnityEngine.CoreModule.dll/UnityEngine/RectTransform :: Void set_anchorMax(Vector2)
+00B089CF call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B089FE call     0x2808840 ; UnityEngine.CoreModule.dll/UnityEngine/RectTransform :: Void set_anchorMax(Vector2)
+00B08A2D call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08AA3 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08B11 call     0xabef30 ; Assembly-CSharp.dll/AudioManager :: Void PlaySwordClickSound()
+00B08B1E call     0x961bc0 ; Assembly-CSharp.dll/CardUIPVP :: Void PulseAuditionStar(Boolean)
+00B08B4D call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08BB8 call     0x280e750 ; UnityEngine.CoreModule.dll/UnityEngine/Transform :: Void set_localScale(Vector3)
+00B08BFB call     0x961bc0 ; Assembly-CSharp.dll/CardUIPVP :: Void PulseAuditionStar(Boolean)
+00B08C2A call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08CBC call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B08CF7 mov      r8, qword ptr [rip + 0x283d312] ; STRING ''
+00B08D6F mov      r8, qword ptr [rip + 0x2821f5a] ; STRING 'GOOD'
+00B08DE1 mov      r8, qword ptr [rip + 0x2821ec0] ; STRING 'PERFECT'
+00B08E45 call     0x3d2500 ; Assembly-CSharp.dll/MatchService :: Void SendDragResume()
+00B08E7E call     0xb61530 ; Assembly-CSharp.dll/ScreenInvertFx :: Void End()
+00B08E91 call     0x972100 ; Assembly-CSharp.dll/CardUIPVP :: Void ShowTimingResult()
+00B08EE2 call     0x95a8e0 ; Assembly-CSharp.dll/CardUIPVP :: Void HideDotSkillUI()
+00B08F2C call     0x96b020 ; Assembly-CSharp.dll/CardUIPVP :: IEnumerator HideCenterCard()
+00B08F3A call     0x27f1430 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Coroutine StartCoroutine(IEnumerator)
+00B08F67 mov      rdx, qword ptr [rip + 0x2840f6a] ; STRING 'ATTACK_LEGEND_'
+00B08F9B call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00B08FB6 call     0x95a8e0 ; Assembly-CSharp.dll/CardUIPVP :: Void HideDotSkillUI()
+00B09072 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00B09088 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00B090AF call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B09109 call     0x96e750 ; Assembly-CSharp.dll/CardUIPVP :: String GetLastTimingResult()
+00B09125 mov      r8, qword ptr [rip + 0x283f86c] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00B09135 call     0x1116eb0 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: List`1[System.__Canon](IEnumerable`1[System.__Canon])
+00B09143 call     0x96e400 ; Assembly-CSharp.dll/CardUIPVP :: Int32 CurrentQteElapsedMs()
+00B09159 call     0x96e490 ; Assembly-CSharp.dll/CardUIPVP :: Nullable`1[Int64] CurrentQteChallengeId()
+00B091A7 call     0x3d1390 ; Assembly-CSharp.dll/MatchService :: Void SendSkillUse(Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+00B091C0 call     0x4866c0 ; Assembly-CSharp.dll/ActivePVP :: Animator GetPetAnimatorForActor(Int32)
+00B091D0 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B091D9 mov      rdx, qword ptr [rip + 0x2863178] ; STRING 'key'
+00B091EC call     0xac09f0 ; Assembly-CSharp.dll/AnimatorPetSfxExt :: Void SetIntegerWithSfx(Animator, String, Int32)
+00B09209 call     0x488460 ; Assembly-CSharp.dll/ActivePVP :: Void ScheduleAutoResetPetAnimations(Single)
+00B09213 call     0x971380 ; Assembly-CSharp.dll/CardUIPVP :: Void ClearDotArrows()
+00B09271 call     0x96e600 ; Assembly-CSharp.dll/CardUIPVP :: Int32 CalculateDotsToDestroy()
+00B0927E call     0x96e750 ; Assembly-CSharp.dll/CardUIPVP :: String GetLastTimingResult()
+00B0928C call     0x95a8e0 ; Assembly-CSharp.dll/CardUIPVP :: Void HideDotSkillUI()
+00B09348 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00B0935E call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00B093A1 call     0x27f7cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Boolean op_Inequality(Object, Object)
+00B093DE call     0x627090 ; Assembly-CSharp.dll/BoardPVP :: Void ShowItems()
+00B09419 mov      r8, qword ptr [rip + 0x283f578] ; METHODINFO List`1[System.String](IEnumerable`1[System.String])
+00B09429 call     0x1116eb0 ; mscorlib.dll/System/Collections/Generic/List`1[System/__Canon] :: List`1[System.__Canon](IEnumerable`1[System.__Canon])
+00B09437 call     0x96e400 ; Assembly-CSharp.dll/CardUIPVP :: Int32 CurrentQteElapsedMs()
+00B09450 call     0x96e490 ; Assembly-CSharp.dll/CardUIPVP :: Nullable`1[Int64] CurrentQteChallengeId()
+00B094A0 call     0x3d1390 ; Assembly-CSharp.dll/MatchService :: Void SendSkillUse(Int32, Int32, String, Int32, List`1[System.Int32], List`1[List`1[System.Int32]], List`1[System.String], Nullable`1[Int32], Nullable`1[Int64])
+00B094AA call     0x971380 ; Assembly-CSharp.dll/CardUIPVP :: Void ClearDotArrows()
+00B094C5 call     0x976e50 ; Assembly-CSharp.dll/CardUIPVP :: IEnumerator WaitForWsSkillResolution(Single, Single)
+00B0950A call     0x976e50 ; Assembly-CSharp.dll/CardUIPVP :: IEnumerator WaitForWsSkillResolution(Single, Single)
+
+AuditionInput.Poll RVA 0xBC6F10..0xBC7030
+00BC6F37 lea      rcx, [rip + 0x2779602] ; STRING 'nutLeft'
+00BC6F4A lea      rcx, [rip + 0x27795e7] ; STRING 'nutRight'
+00BC6F91 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC6FA1 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC6FAA mov      rdx, qword ptr [rip + 0x277958f] ; STRING 'nutLeft'
+00BC6FB7 call     0xbd0080 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void PressDir(String)
+00BC6FC3 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC6FD3 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC6FDC mov      rdx, qword ptr [rip + 0x2779555] ; STRING 'nutRight'
+00BC6FE9 call     0xbd0080 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void PressDir(String)
+00BC6FF5 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC7005 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC7015 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC7023 call     0xbd0580 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void TapBar()
+
+AuditionRunner.Grade RVA 0xBC7720..0xBC7870
+00BC774B lea      rcx, [rip + 0x276548e] ; STRING 'MISS'
+00BC775E lea      rcx, [rip + 0x276548b] ; STRING 'GREAT'
+00BC7771 lea      rcx, [rip + 0x2765450] ; STRING 'COOL'
+00BC7784 lea      rcx, [rip + 0x2782565] ; STRING 'BAD'
+00BC7797 lea      rcx, [rip + 0x276350a] ; STRING 'PERFECT'
+00BC77DC mov      rax, qword ptr [rip + 0x27634c5] ; STRING 'PERFECT'
+00BC782E mov      rax, qword ptr [rip + 0x27653bb] ; STRING 'GREAT'
+00BC7837 mov      rax, qword ptr [rip + 0x276538a] ; STRING 'COOL'
+00BC784A mov      rax, qword ptr [rip + 0x278249f] ; STRING 'BAD'
+00BC7853 mov      rax, qword ptr [rip + 0x2765386] ; STRING 'MISS'
+
+AuditionRunner.RelayQte RVA 0xBC79D0..0xBC7D60
+00BC7A0D lea      rcx, [rip + 0x2783c34] ; METHODINFO Void Add(String, Object)
+00BC7A20 lea      rcx, [rip + 0x2783c19] ; METHODINFO Dictionary`2[System.String,System.Object]()
+00BC7A33 lea      rcx, [rip + 0x277a046] ; METHODINFO Void set_Item(String, Object)
+00BC7A92 lea      rcx, [rip + 0x278d6f7] ; STRING 'phase'
+00BC7AA5 lea      rcx, [rip + 0x278e61c] ; STRING 'START'
+00BC7AB8 lea      rcx, [rip + 0x27631f1] ; STRING 'skillCardId'
+00BC7C08 mov      rdx, qword ptr [rip + 0x2783a31] ; METHODINFO Dictionary`2[System.String,System.Object]()
+00BC7C12 call     0x15dd640 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[UnityEngine/ResourceManagement/ResourceProviders/SceneInstance]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[UnityEngine.ResourceManagement.ResourceProviders.SceneInstance]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle`1[System/__Canon]] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle`1[System.__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/ValueTuple`2[__Canon,__Canon]] :: Dictionary`2[System.__Canon,System.ValueTuple`2[__Canon,__Canon]]() | mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,UnityEngine/ResourceManagement/AsyncOperations/AsyncOperationHandle] :: Dictionary`2[System.__Canon,UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationHandle]()
+00BC7C20 mov      rcx, qword ptr [rip + 0x2783a21] ; METHODINFO Void Add(String, Object)
+00BC7C3D mov      rdx, qword ptr [rip + 0x278d54c] ; STRING 'phase'
+00BC7C47 call     0x1606a10 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: Boolean TryInsert(__Canon, __Canon, InsertionBehavior)
+00BC7C4C mov      rdx, qword ptr [rip + 0x278e475] ; STRING 'START'
+00BC7C88 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00BC7CCC mov      rcx, qword ptr [rip + 0x2779dad] ; METHODINFO Void set_Item(String, Object)
+00BC7CE9 mov      rdx, qword ptr [rip + 0x2762fc0] ; STRING 'skillCardId'
+00BC7CF3 call     0x1606a10 ; mscorlib.dll/System/Collections/Generic/Dictionary`2[System/__Canon,System/__Canon] :: Boolean TryInsert(__Canon, __Canon, InsertionBehavior)
+00BC7D0F call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+00BC7D26 call     0x3b2c00 ; Assembly-CSharp.dll/ChatService :: Void SendMatchQteEvent(String, Dictionary`2[System.String,System.Object])
+
+AuditionRunner._Run_b__0 RVA 0xBC7D60..0xBC7FD0
+00BC7F91 call     0x39e020 ; Assembly-CSharp.dll/ChatService :: ChatService get_Instance()
+00BC7FB0 call     0x3b27c0 ; Assembly-CSharp.dll/ChatService :: Void SendMatchQteTap(String, Int32, Int64)
+
+Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner+<Run>d__12 :: MoveNext RVA 0xBC8130..0xBC90A0
+00BC81CF lea      rcx, [rip + 0x2765132] ; METHODINFO Void <Run>b__0(Int32)
+00BC81F5 lea      rcx, [rip + 0x2762ac4] ; STRING 'END'
+00BC8208 lea      rcx, [rip + 0x278deb9] ; STRING 'START'
+00BC8383 call     0xbd7ef0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionChallenge :: AuditionChallenge FromService()
+00BC83A8 call     0xbd5c80 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStyle :: AuditionStyle Load()
+00BC8554 call     0xbc93c0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Boolean Build(IAuditionHost, AuditionStyle, AuditionChallenge)
+00BC85A8 call     0x10d5310 ; mscorlib.dll/System/AsyncCallback :: AsyncCallback(Object, IntPtr) | mscorlib.dll/System/Threading/ParameterizedThreadStart :: ParameterizedThreadStart(Object, IntPtr) | mscorlib.dll/System/Threading/SendOrPostCallback :: SendOrPostCallback(Object, IntPtr) | mscorlib.dll/System/Threading/ContextCallback :: ContextCallback(Object, IntPtr)
+00BC85D7 mov      r8, qword ptr [rip + 0x2764d2a] ; METHODINFO Void <Run>b__0(Int32)
+00BC85EA call     0x8b0db0 ; Assembly-CSharp.dll/SlotColumn+SlotEvents :: SlotColumn+SlotEvents(Object, IntPtr) | UnityEngine.UIElementsModule.dll/UnityEngine/UIElements/ProfilerUIToolkit+SetActiveCaptureModeDelegate :: ProfilerUIToolkit+SetActiveCaptureModeDelegate(Object, IntPtr) | UnityEngine.CoreModule.dll/UnityEngine/Windows/Speech/PhraseRecognitionSystem+ErrorDelegate :: PhraseRecognitionSystem+ErrorDelegate(Object, IntPtr) | UnityEngine.CoreModule.dll/UnityEngine/Windows/Speech/PhraseRecognitionSystem+StatusDelegate :: PhraseRecognitionSystem+StatusDelegate(Object, IntPtr)
+00BC86D4 call     0x3d2490 ; Assembly-CSharp.dll/MatchService :: Void SendDragPause()
+00BC86FE mov      rcx, qword ptr [rip + 0x278d9c3] ; STRING 'START'
+00BC8705 call     0xbc79d0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: Void RelayQte(String, Int64, IAuditionHost)
+00BC874C call     0xbd4940 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void Dispose()
+00BC87F6 call     0x25b48d0 ; UnityEngine.CoreModule.dll/UnityEngine/Time :: Single get_deltaTime() | Unity.RenderPipelines.Universal.Runtime.dll/UnityEngine/Rendering/Universal/ShaderUtils :: Single get_PersistentDeltaTime() | UnityEngine.AdaptivePerformanceModule.dll/UnityEngine/AdaptivePerformance/AdaptivePerformanceIndexer :: Single DeltaTime()
+00BC880D call     0x2801ad0 ; UnityEngine.CoreModule.dll/UnityEngine/Time :: Single get_unscaledDeltaTime()
+00BC8827 call     0xbd0840 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void Tick(Single, Single)
+00BC884E lea      rcx, [rip + 0x2777ceb] ; STRING 'nutLeft'
+00BC8861 lea      rcx, [rip + 0x2777cd0] ; STRING 'nutRight'
+00BC88A8 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC88B8 call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC88C1 mov      rdx, qword ptr [rip + 0x2777c78] ; STRING 'nutLeft'
+00BC88CE call     0xbd0080 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void PressDir(String)
+00BC88DA call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC88EA call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC88F3 mov      rdx, qword ptr [rip + 0x2777c3e] ; STRING 'nutRight'
+00BC8900 call     0xbd0080 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void PressDir(String)
+00BC890C call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC891C call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC892C call     0x28a7bf0 ; UnityEngine.InputLegacyModule.dll/UnityEngine/Input :: Boolean GetKeyDown(KeyCode)
+00BC893A call     0xbd0580 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void TapBar()
+00BC8ABE call     0x3d2500 ; Assembly-CSharp.dll/MatchService :: Void SendDragResume()
+00BC8AE8 mov      rcx, qword ptr [rip + 0x27621d1] ; STRING 'END'
+00BC8AEF call     0xbc79d0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: Void RelayQte(String, Int64, IAuditionHost)
+00BC8B0B call     0xb61530 ; Assembly-CSharp.dll/ScreenInvertFx :: Void End()
+00BC8B2F lea      rcx, [rip + 0x27640aa] ; STRING 'MISS'
+00BC8B42 lea      rcx, [rip + 0x27640a7] ; STRING 'GREAT'
+00BC8B55 lea      rcx, [rip + 0x276406c] ; STRING 'COOL'
+00BC8B68 lea      rcx, [rip + 0x2781181] ; STRING 'BAD'
+00BC8B7B lea      rcx, [rip + 0x2762126] ; STRING 'PERFECT'
+00BC8BBC mov      rbx, qword ptr [rip + 0x27620e5] ; STRING 'PERFECT'
+00BC8BFB mov      rbx, qword ptr [rip + 0x2763fee] ; STRING 'GREAT'
+00BC8C04 mov      rbx, qword ptr [rip + 0x2763fbd] ; STRING 'COOL'
+00BC8C15 mov      rbx, qword ptr [rip + 0x27810d4] ; STRING 'BAD'
+00BC8C1E mov      rbx, qword ptr [rip + 0x2763fbb] ; STRING 'MISS'
+00BC8C6F lea      rcx, [rip + 0x2763f7a] ; STRING 'GREAT'
+00BC8C82 lea      rcx, [rip + 0x2763f3f] ; STRING 'COOL'
+00BC8C95 lea      rcx, [rip + 0x276200c] ; STRING 'PERFECT'
+00BC8CAD mov      rdx, qword ptr [rip + 0x2761ff4] ; STRING 'PERFECT'
+00BC8CE1 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00BC8CEE mov      rdx, qword ptr [rip + 0x2763efb] ; STRING 'GREAT'
+00BC8D1E call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00BC8D27 mov      rdx, qword ptr [rip + 0x2763e9a] ; STRING 'COOL'
+00BC8D57 call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00BC8DA1 call     0xbd3170 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void ShowResult(String, Int32, Int32, Single, Single)
+00BC8DC8 call     0xbc7660 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: IEnumerator TickFor(AuditionStage, Single, Single, IAuditionHost)
+00BC8EE4 call     0x3d2500 ; Assembly-CSharp.dll/MatchService :: Void SendDragResume()
+00BC8F0E mov      rcx, qword ptr [rip + 0x2761dab] ; STRING 'END'
+00BC8F15 call     0xbc79d0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: Void RelayQte(String, Int64, IAuditionHost)
+00BC8F1C call     0xbc7470 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: Void AbortAll()
+00BC8F69 call     0xbc7660 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: IEnumerator TickFor(AuditionStage, Single, Single, IAuditionHost)
+00BC8FE7 call     0x27f1430 ; UnityEngine.CoreModule.dll/UnityEngine/MonoBehaviour :: Coroutine StartCoroutine(IEnumerator)
+00BC901C call     0xbc7660 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionRunner :: IEnumerator TickFor(AuditionStage, Single, Single, IAuditionHost)
+
+AuditionStage.Build RVA 0xBC93C0..0xBC9B40
+00BC9487 lea      rcx, [rip + 0x2763e5a] ; STRING 'AuditionV3Root_dead'
+00BC949A lea      rcx, [rip + 0x2763e3f] ; STRING 'AuditionV3Root'
+00BC95AA call     0x2d8ab0 ; Assembly-CSharp.dll/ManagerMatchPVP+<>c__DisplayClass84_0 :: Void <LoadSceneAfterDelay>b__1(String) | Assembly-CSharp.dll/LTDescrOptional :: Void set_toTrans(Transform) | Assembly-CSharp.dll/BossSweepPopup+<>c__DisplayClass146_0 :: Void <SweepRoutine>b__0(BossSweepUseDTO) | Assembly-CSharp.dll/WsRoomService :: Void set_CurrentRoomId(String)
+00BC960F call     0x921330 ; Assembly-CSharp.dll/DeviceTier :: DeviceTierLevel get_Current()
+00BC9686 call     0xbd4940 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void Dispose()
+00BC968B mov      rdx, qword ptr [rip + 0x2763c4e] ; STRING 'AuditionV3Root'
+00BC96A4 call     0x2812610 ; UnityEngine.CoreModule.dll/UnityEngine/Transform :: Transform FindRelativeTransformWithPath(String, Boolean)
+00BC974A call     0x277a240 ; UnityEngine.CoreModule.dll/UnityEngine/Application :: Boolean get_isPlaying()
+00BC9758 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00BC9762 call     0x27f6c30 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Void DestroyImmediate(Object)
+00BC9769 mov      rdx, qword ptr [rip + 0x2763b78] ; STRING 'AuditionV3Root_dead'
+00BC9773 call     0x27f8b60 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Void SetName(String)
+00BC977D call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00BC9793 call     0x27ed590 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Void SetActive(Boolean)
+00BC979D call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00BC97A7 call     0x27f6b30 ; UnityEngine.CoreModule.dll/UnityEngine/Object :: Void Destroy(Object)
+00BC97DE call     0x1c4d980 ; mscorlib.dll/System/Type :: Type GetTypeFromHandle(RuntimeTypeHandle)
+00BC9825 mov      rdx, qword ptr [rip + 0x2763ab4] ; STRING 'AuditionV3Root'
+00BC9838 call     0x27ee450 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: GameObject(String, Type[])
+00BC984B call     0x27ed360 ; UnityEngine.CoreModule.dll/UnityEngine/GameObject :: Transform get_transform()
+00BC98F6 call     0x79bbb0 ; Assembly-CSharp.dll/TooltipScrollRig :: Void Stretch(RectTransform) | Assembly-CSharp.dll/DotAffixHudView :: Void Stretch(RectTransform) | Assembly-CSharp.dll/DotAffixTooltip :: Void Stretch(RectTransform) | Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void Stretch(RectTransform)
+00BC990A call     0x2812410 ; UnityEngine.CoreModule.dll/UnityEngine/Transform :: Void SetAsLastSibling()
+00BC9940 lea      rcx, [rip + 0x2763989] ; STRING 'Scrim'
+00BC9971 mov      rcx, qword ptr [rip + 0x2763958] ; STRING 'Scrim'
+00BC9994 call     0xbd4df0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Image NewImage(String, Transform, Sprite, Color, Image+Type)
+00BC99F2 call     0x27e9cf0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: Transform get_transform()
+00BC9A18 call     0x79bbb0 ; Assembly-CSharp.dll/TooltipScrollRig :: Void Stretch(RectTransform) | Assembly-CSharp.dll/DotAffixHudView :: Void Stretch(RectTransform) | Assembly-CSharp.dll/DotAffixTooltip :: Void Stretch(RectTransform) | Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void Stretch(RectTransform)
+00BC9A44 call     0xbc9ca0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void BuildPill()
+00BC9A4E call     0xbcb330 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void BuildTouchBar()
+00BC9A58 call     0xbcc450 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void BuildButtons()
+00BC9A62 call     0xbcdfc0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void BuildResult()
+00BC9A72 call     0xbcf5d0 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void BuildFxLayers()
+00BC9AD1 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)
+00BC9AFD lea      rcx, [rip + 0x275b8c4] ; STRING 'Name cannot be null'
+00BC9B15 call     0x1b9de10 ; mscorlib.dll/System/ArgumentNullException :: ArgumentNullException(String)
+00BC9B1A lea      rcx, [rip + 0x278c537] ; METHODINFO Transform Find(String)
+
+AuditionStage.PressDir RVA 0xBD0080..0xBD0310
+00BD015E call     0x1c454d0 ; mscorlib.dll/System/SpanHelpers :: Boolean SequenceEqual(Byte ByRef, Byte ByRef, UInt64)
+00BD0214 call     0xbd0310 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void ApplyDoneVisual(Int32)
+00BD02F4 jmp      0xabef30 ; Assembly-CSharp.dll/AudioManager :: Void PlaySwordClickSound()
+
+AuditionStage.TapBar RVA 0xBD0580..0xBD0840
+00BD07A9 call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00BD0830 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)
+
+AuditionStage._BuildOneButton_b__0 RVA 0xBD5800..0xBD5A30
+00BD586F call     0xbd4330 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void SetPressed(Image, Boolean, Sprite, Sprite)
+00BD598D call     0x27e9da0 ; UnityEngine.CoreModule.dll/UnityEngine/Component :: GameObject get_gameObject()
+00BD59EF jmp      0xbd0080 ; Assembly-CSharp.dll/PokiGuard/Audition/AuditionStage :: Void PressDir(String)
+00BD5A16 call     0x2829ea0 ; UnityEngine.CoreModule.dll/UnityEngine/Bindings/ThrowHelper :: Void ThrowNullReferenceException(Object)

@@ -132,10 +132,9 @@ class PolicyConfig:
     evolution: EvolutionTarget = EvolutionTarget.NORMAL
     damage_card: DamageCardMode = DamageCardMode.DEFAULT_ATTACK
     minimum_turn_time_seconds: int = 3
-    # User policy gives affordable EVOLVE Step-1 priority from the second
-    # local turn. This is the same inclusive hard input floor as normal
-    # gameplay; authoritative idle 2/3 is handled separately because EVOLVE
-    # cannot satisfy its mandatory consuming action.
+    # Affordable EVOLVE is the shared Step-1 branch on every local turn. This
+    # is the same inclusive hard input floor as normal gameplay; after its
+    # mandatory reread the selected play style still ends the local turn.
     minimum_evolve_time_seconds: int = 1
     # Step 3 finisher: once the boss is at or below this absolute current HP,
     # a Sword-free board casts as soon as one Attack card is affordable.
@@ -218,16 +217,24 @@ class PolicyConfig:
 
     @property
     def pet_skill_profile(self) -> bool:
-        return (
-            self.main_pet is MainPetType.LEGENDARY
-            and self.evolution is EvolutionTarget.NONE
-            and self.damage_card is DamageCardMode.PET_SKILL
+        skill_sources = int(self.main_pet is MainPetType.LEGENDARY) + int(
+            self.evolution is EvolutionTarget.LEGENDARY
+        )
+        return bool(
+            self.damage_card is DamageCardMode.PET_SKILL
+            and skill_sources == 1
+        )
+
+    @property
+    def pet_skill_waits_for_evolution(self) -> bool:
+        return bool(
+            self.damage_card is DamageCardMode.PET_SKILL
+            and self.main_pet is not MainPetType.LEGENDARY
+            and self.evolution is EvolutionTarget.LEGENDARY
         )
 
     @property
     def evolve_enabled(self) -> bool:
-        if self.pet_skill_profile:
-            return False
         if self.mana_priority is not None:
             return self.mana_priority is ManaPriority.EVOLUTION
         return self.evolution is not EvolutionTarget.NONE
@@ -257,6 +264,8 @@ class CandidateTrace:
     unknown_max_column_depth: int
     unknown_sword_completions: int
     unknown_sword_effective_max: int
+    refill_sword_auto_match_completions: int
+    refill_sword_auto_match_effective_max: int
     danger_score: int
     safe: bool
     known_mana_gain: int
@@ -612,6 +621,12 @@ def _candidate_trace(
         unknown_max_column_depth=exposure.max_column_depth,
         unknown_sword_completions=exposure.hypothetical_sword_completions,
         unknown_sword_effective_max=exposure.hypothetical_sword_effective_max,
+        refill_sword_auto_match_completions=(
+            exposure.refill_sword_auto_match_completions
+        ),
+        refill_sword_auto_match_effective_max=(
+            exposure.refill_sword_auto_match_effective_max
+        ),
         danger_score=risk.danger_score,
         safe=risk.safe,
         known_mana_gain=mana_gain,
@@ -933,9 +948,23 @@ class BasicPolicyEngine:
         """Preserve Sword and turn over known non-Sword cells in sparse axes."""
 
         trace = _candidate_trace(value, board=board)
+        drain = value.total.effective(GemType.DRAIN)
+        shield = value.total.effective(GemType.SHIELD)
         return (
             trace.known_sword_consumed,
             -trace.known_sword_preserved,
+            trace.refill_sword_auto_match_effective_max,
+            trace.refill_sword_auto_match_completions,
+            value.sword_risk.opponent_sword_reply_effective_max,
+            value.sword_risk.opponent_sword_replies,
+            value.sword_risk.potential_effective_max,
+            value.sword_risk.potentials_left,
+            value.sword_risk.danger_regions_left,
+            value.sword_risk.collapse_support_hazard,
+            drain <= 0,
+            -drain,
+            shield <= 0,
+            -shield,
             trace.cleared_non_sword_adjacent_to_sword,
             -(
                 trace.cleared_non_sword_min_sword_distance
@@ -990,7 +1019,7 @@ class BasicPolicyEngine:
                 if fire_gem_type is not None
                 else 0
             ),
-            *cls._skill_rush_support_rank(value, board),
+            *cls._skill_rush_setup_rank(value, board),
         )
 
     @classmethod
@@ -1006,6 +1035,8 @@ class BasicPolicyEngine:
             risk.opponent_sword_reply_effective_max,
             risk.indirect_sword_effective_max,
             risk.opponent_sword_replies + risk.indirect_sword_replies,
+            value.unknown_exposure.refill_sword_auto_match_effective_max,
+            value.unknown_exposure.refill_sword_auto_match_completions,
             risk.unknown_sword_effective_max,
             risk.unknown_sword_completions,
             risk.danger_score,
@@ -1056,6 +1087,104 @@ class BasicPolicyEngine:
             value.move,
         )
 
+    def _evolution_priority_decision(
+        self,
+        state: GameState,
+        failures: list[str],
+        no_candidates: tuple[MoveEvaluation, ...],
+        player_mana: int | None,
+    ) -> PolicyDecision | None:
+        """Apply the shared non-consuming Evolution branch before play style.
+
+        A successful EVOLVE forces a fresh state read, after which the same
+        local turn continues through the configured play style.  Therefore
+        first-turn, low-boss-HP and pass-limit states do not outrank an
+        affordable selected Evolution card.
+        """
+
+        if not self.config.evolve_enabled:
+            failures.append(
+                "STEP_1_EVOLVE: disabled for the entire match by "
+                + (
+                    "ManaPriority.ATTACK"
+                    if self.config.mana_priority is ManaPriority.ATTACK
+                    else "canonical Evolution setting"
+                )
+            )
+            return None
+        if (
+            state.battle.turn_time_remaining_seconds
+            < self.config.minimum_evolve_time_seconds
+        ):
+            failures.append(
+                "STEP_1_EVOLVE: deferred because timer "
+                f"{state.battle.turn_time_remaining_seconds}s is below the "
+                f"{self.config.minimum_evolve_time_seconds}s same-turn "
+                "response/follow-up floor"
+            )
+            return None
+        fusion = state.fusion
+        if fusion is None:
+            failures.append("STEP_1_EVOLVE: FusionState UNKNOWN")
+            return None
+        if not (
+            (fusion.selected_user_pet_id or 0) > 0
+            or (fusion.selected_pet_id or 0) > 0
+        ):
+            failures.append(
+                "STEP_1_EVOLVE: no evolution pet is selected; continue in "
+                "board-only mode"
+            )
+            return None
+        if fusion.used:
+            failures.append("STEP_1_EVOLVE: fusion already succeeded")
+            return None
+        if not fusion.interaction_authorized:
+            failures.append(
+                "STEP_1_EVOLVE: neither live FusionCardUI nor the exact "
+                "MatchService/Board card strip authorizes a visual-gated click"
+            )
+            return None
+        if (
+            fusion.ui_slot is None
+            or fusion.ui_slot_count is None
+            or not 0 <= fusion.ui_slot < fusion.ui_slot_count
+        ):
+            failures.append(
+                "STEP_1_EVOLVE: runtime Fusion card slot is not proven; "
+                "continue with board play"
+            )
+            return None
+        if not fusion.enabled or not fusion.available or fusion.locked_this_turn:
+            failures.append("STEP_1_EVOLVE: fusion is not currently available")
+            return None
+        if player_mana is None:
+            failures.append("STEP_1_EVOLVE: player mana UNKNOWN")
+            return None
+        if fusion.mana_cost is None or fusion.mana_cost <= 0:
+            failures.append(
+                "STEP_1_EVOLVE: actual positive evolution cost UNKNOWN"
+            )
+            return None
+        if player_mana < fusion.mana_cost:
+            failures.append(
+                f"STEP_1_EVOLVE: mana {player_mana} below evolution cost "
+                f"{fusion.mana_cost}"
+            )
+            return None
+        return self._decision(
+            state,
+            PolicyAction.EVOLVE,
+            "STEP_1_EVOLVE",
+            (
+                "Evolution priority, not fused, and mana "
+                f"{player_mana} >= {fusion.mana_cost}; re-read after proposal"
+            ),
+            failures,
+            no_candidates,
+            candidate_count=1,
+        )
+
     def decide(
         self,
         state: GameState,
@@ -1068,9 +1197,32 @@ class BasicPolicyEngine:
         player = state.player
         player_mana = player.mana if player is not None else None
         player_rage = player.power if player is not None else None
-        capability = pet_skill_capability
-        required_mana = capability.effective_mana_cost if capability else None
-        required_rage = capability.effective_power_cost if capability else None
+        skill_source_pending_evolution = bool(
+            self.config.pet_skill_waits_for_evolution
+            and (state.fusion is None or not state.fusion.used)
+        )
+        # A Legendary evolution does not expose its Pet Skill card until the
+        # non-consuming Evolution action succeeds.  Before that transition,
+        # use only the proven runtime Fusion cost as the current Mana deficit;
+        # do not require or accidentally execute an unrelated/stale skill card.
+        capability = (
+            None if skill_source_pending_evolution else pet_skill_capability
+        )
+        required_mana = (
+            state.fusion.mana_cost
+            if (
+                skill_source_pending_evolution
+                and state.fusion is not None
+                and state.fusion.mana_cost is not None
+                and state.fusion.mana_cost > 0
+            )
+            else capability.effective_mana_cost if capability else None
+        )
+        required_rage = (
+            0
+            if skill_source_pending_evolution and required_mana is not None
+            else capability.effective_power_cost if capability else None
+        )
         missing_mana = (
             max(0, required_mana - player_mana)
             if required_mana is not None and player_mana is not None
@@ -1118,7 +1270,7 @@ class BasicPolicyEngine:
                 state,
                 PolicyAction.NONE,
                 "CONFIG",
-                "SKILL_RUSH is supported only for LEGENDARY/NONE/PET_SKILL/BASIC",
+                "SKILL_RUSH requires BASIC with exactly one Pet Skill source",
                 failures,
                 no_candidates,
                 blocker="SKILL_RUSH_PROFILE_NOT_IMPLEMENTED",
@@ -1170,6 +1322,15 @@ class BasicPolicyEngine:
                 no_candidates,
                 blocker="TURN_TIMER_SAFETY_MARGIN",
             )
+
+        evolution_decision = self._evolution_priority_decision(
+            state,
+            failures,
+            no_candidates,
+            player_mana,
+        )
+        if evolution_decision is not None:
+            return evolution_decision
 
         boss = _boss(state)
         boss_hp_current = boss.hp if boss is not None else None
@@ -1316,13 +1477,22 @@ class BasicPolicyEngine:
         )
 
         rush_fire_trigger: SkillRushFireTrigger | None = None
-        if self.config.damage_card is DamageCardMode.PET_SKILL:
+        skill_waiting_for_evolution = skill_source_pending_evolution
+        if (
+            self.config.damage_card is DamageCardMode.PET_SKILL
+            and skill_waiting_for_evolution
+        ):
+            failures.append(
+                "STEP_1_PET_SKILL: configured skill source is the Evolution "
+                "target; accumulate resources and evolve before requiring its card"
+            )
+        elif self.config.damage_card is DamageCardMode.PET_SKILL:
             if not self.config.pet_skill_profile:
                 return self._decision(
                     state,
                     PolicyAction.NONE,
                     "STEP_1_PET_SKILL",
-                    "Pet Skill is outside the single Phase 3C.1 supported profile",
+                    "Pet Skill configuration does not resolve exactly one source",
                     failures,
                     no_candidates,
                     blocker="PET_SKILL_PROFILE_UNSUPPORTED",
@@ -1519,94 +1689,6 @@ class BasicPolicyEngine:
                     skill=capability,
                     candidate_count=1,
                 )
-
-        # STEP 1: EVOLVE is non-turn-consuming and requires a fresh GameState.
-        # At the authoritative pass limit EVOLVE is deliberately deferred: it
-        # does not consume the turn and therefore cannot establish the reset
-        # the server requires.  A SWAP/CAST must be selected first.
-        if not self.config.evolve_enabled:
-            failures.append(
-                "STEP_1_EVOLVE: disabled for the entire match by "
-                + (
-                    "ManaPriority.ATTACK"
-                    if self.config.mana_priority is ManaPriority.ATTACK
-                    else "canonical Evolution setting"
-                )
-            )
-        elif state.battle.is_first_local_turn is True:
-            failures.append(
-                "STEP_1_EVOLVE: deferred until the second local turn; "
-                "the opening turn requires a board action"
-            )
-        elif idle_status is GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION:
-            failures.append(
-                "STEP_1_EVOLVE: deferred because the authoritative idle state "
-                "requires a turn-consuming SWAP or CAST"
-            )
-        elif low_boss_hp_mode:
-            failures.append(
-                "STEP_1_EVOLVE: disabled while low-boss-HP mode is active "
-                f"({boss_hp_current} <= {finisher_threshold})"
-            )
-        elif (
-            state.battle.turn_time_remaining_seconds
-            < self.config.minimum_evolve_time_seconds
-        ):
-            failures.append(
-                "STEP_1_EVOLVE: deferred because timer "
-                f"{state.battle.turn_time_remaining_seconds}s is below the "
-                f"{self.config.minimum_evolve_time_seconds}s same-turn "
-                "response/follow-up floor"
-            )
-        elif state.fusion is None:
-            failures.append("STEP_1_EVOLVE: FusionState UNKNOWN")
-        elif not (
-            (state.fusion.selected_user_pet_id or 0) > 0
-            or (state.fusion.selected_pet_id or 0) > 0
-        ):
-            failures.append(
-                "STEP_1_EVOLVE: no evolution pet is selected; continue in "
-                "board-only mode"
-            )
-        elif state.fusion.used:
-            failures.append("STEP_1_EVOLVE: fusion already succeeded")
-        elif not state.fusion.interaction_authorized:
-            failures.append(
-                "STEP_1_EVOLVE: neither live FusionCardUI nor the exact "
-                "MatchService/Board card strip authorizes a visual-gated click"
-            )
-        elif (
-            state.fusion.ui_slot is None
-            or state.fusion.ui_slot_count is None
-            or not 0 <= state.fusion.ui_slot < state.fusion.ui_slot_count
-        ):
-            failures.append(
-                "STEP_1_EVOLVE: runtime Fusion card slot is not proven; "
-                "continue with board play"
-            )
-        elif not state.fusion.enabled or not state.fusion.available or state.fusion.locked_this_turn:
-            failures.append("STEP_1_EVOLVE: fusion is not currently available")
-        elif player_mana is None:
-            failures.append("STEP_1_EVOLVE: player mana UNKNOWN")
-        elif state.fusion.mana_cost is None or state.fusion.mana_cost <= 0:
-            # The current MatchService-owned Fusion state is authoritative.
-            # Never infer the commonly observed 160 cost for live input.
-            failures.append("STEP_1_EVOLVE: actual positive evolution cost UNKNOWN")
-        else:
-            evolution_cost = state.fusion.mana_cost
-            if player_mana >= evolution_cost:
-                return self._decision(
-                    state,
-                    PolicyAction.EVOLVE,
-                    "STEP_1_EVOLVE",
-                    f"Evolution priority, not fused, and mana {player_mana} >= {evolution_cost}; re-read after proposal",
-                    failures,
-                    no_candidates,
-                    candidate_count=1,
-                )
-            failures.append(
-                f"STEP_1_EVOLVE: mana {player_mana} below evolution cost {evolution_cost}"
-            )
 
         evaluations = evaluate_all_moves(state.board)
         if not evaluations:
@@ -2049,6 +2131,7 @@ class BasicPolicyEngine:
                 value
                 for value, trace in condition_preserving_setup
                 if value.sword_risk.safe
+                and trace.refill_sword_auto_match_completions == 0
                 and trace.cleared_non_sword_min_sword_distance is not None
                 and trace.cleared_non_sword_min_sword_distance >= 2
             )
@@ -2075,8 +2158,8 @@ class BasicPolicyEngine:
                 )
                 failures.append(
                     "SKILL_RUSH_SETUP_BLOCKED: no Sword-safe direct clear preserves "
-                    "all known Sword and the configured condition gem at distance "
-                    "two or greater"
+                    "all known Sword and the configured condition gem without a "
+                    "refill Sword auto-match at distance two or greater"
                 )
             else:
                 self._skill_rush_trace = replace(
@@ -2106,13 +2189,15 @@ class BasicPolicyEngine:
                     value
                     for value, trace in condition_preserving_setup
                     if value.sword_risk.safe
+                    and trace.refill_sword_auto_match_completions == 0
                     and trace.cleared_non_sword_min_sword_distance is not None
                     and trace.cleared_non_sword_min_sword_distance >= 1
                 )
                 safe_board_turnover_moves = tuple(
                     value
-                    for value, _trace in condition_preserving_setup
+                    for value, trace in condition_preserving_setup
                     if value.sword_risk.safe
+                    and trace.refill_sword_auto_match_completions == 0
                     and value not in safe_distance_relaxed_moves
                 )
                 if safe_distance_relaxed_moves:

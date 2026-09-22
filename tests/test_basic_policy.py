@@ -13,6 +13,11 @@ from pokiguard_v2.basic_policy import (
     PolicyConfig,
 )
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
+from pokiguard_v2.gameplay_profile import (
+    DamageCardMode,
+    EvolutionTarget,
+    MainPetType,
+)
 from pokiguard_v2.board_simulator import (
     ResourceResult,
     ResourceTally,
@@ -372,7 +377,7 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertTrue(decision.requires_state_reread)
         self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
 
-    def test_evolution_starts_on_second_local_turn_not_opening_turn(self) -> None:
+    def test_affordable_evolution_has_priority_even_on_opening_turn(self) -> None:
         opening = combat_state(
             fusion_used=False,
             fusion_available=True,
@@ -382,13 +387,8 @@ class BasicPolicyTests(unittest.TestCase):
         opening_decision = BasicPolicyEngine(
             PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
         ).decide(opening)
-        self.assertIsNot(opening_decision.action, PolicyAction.EVOLVE)
-        self.assertTrue(
-            any(
-                "deferred until the second local turn" in reason
-                for reason in opening_decision.trace.failed_higher_priority_branches
-            )
-        )
+        self.assertEqual(opening_decision.action, PolicyAction.EVOLVE)
+        self.assertTrue(opening_decision.requires_state_reread)
 
         second_turn = replace(
             opening,
@@ -398,6 +398,29 @@ class BasicPolicyTests(unittest.TestCase):
             PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
         ).decide(second_turn)
         self.assertEqual(second_decision.action, PolicyAction.EVOLVE)
+
+    def test_affordable_evolution_precedes_every_play_style(self) -> None:
+        state = combat_state(
+            fusion_used=False,
+            fusion_available=True,
+            mana=250,
+            rage=250,
+            turn=5,
+        )
+        for play_style in PlayStyle:
+            with self.subTest(play_style=play_style):
+                decision = BasicPolicyEngine(
+                    PolicyConfig(
+                        play_style=play_style,
+                        mana_priority=None,
+                        main_pet=MainPetType.LEGENDARY,
+                        evolution=EvolutionTarget.NORMAL,
+                        damage_card=DamageCardMode.PET_SKILL,
+                    )
+                ).decide(state)
+                self.assertEqual(decision.action, PolicyAction.EVOLVE)
+                self.assertFalse(decision.consumes_turn)
+                self.assertTrue(decision.requires_state_reread)
 
     def test_evolution_is_deferred_when_same_turn_follow_up_window_is_too_short(self) -> None:
         original = combat_state(fusion_used=False)
@@ -455,7 +478,7 @@ class BasicPolicyTests(unittest.TestCase):
         ).decide(state)
         self.assertEqual(decision.action, PolicyAction.EVOLVE)
 
-    def test_low_boss_hp_mode_skips_evolution_at_inclusive_threshold(self) -> None:
+    def test_affordable_evolution_precedes_low_boss_hp_finisher(self) -> None:
         decision = BasicPolicyEngine().decide(
             combat_state(
                 boss_hp=30_000,
@@ -465,14 +488,8 @@ class BasicPolicyTests(unittest.TestCase):
             )
         )
 
-        self.assertIsNot(decision.action, PolicyAction.EVOLVE)
-        self.assertEqual(decision.trace.policy_step, "STEP_2_SWORD")
-        self.assertTrue(
-            any(
-                "low-boss-HP mode is active" in reason
-                for reason in decision.trace.failed_higher_priority_branches
-            )
-        )
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertEqual(decision.trace.policy_step, "STEP_1_EVOLVE")
 
     def test_evolution_requires_ui_or_direct_owner_authority(self) -> None:
         state = combat_state(fusion_used=False)
@@ -1221,7 +1238,7 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertEqual(decision.action, PolicyAction.SWAP)
         self.assertEqual(decision.trace.policy_step, "STEP_7_MANDATORY")
 
-    def test_two_game_owned_passes_defer_evolution_for_consuming_action(self) -> None:
+    def test_two_game_owned_passes_still_evolve_then_require_fresh_follow_up(self) -> None:
         state = combat_state(
             rage=100,
             mana=480,
@@ -1245,15 +1262,9 @@ class BasicPolicyTests(unittest.TestCase):
             PolicyConfig(mana_priority=ManaPriority.EVOLUTION)
         ).decide(state)
 
-        self.assertIn(decision.action, {PolicyAction.SWAP, PolicyAction.CAST})
-        self.assertNotEqual(decision.action, PolicyAction.EVOLVE)
-        self.assertTrue(decision.consumes_turn)
-        self.assertTrue(
-            any(
-                "authoritative idle state" in reason
-                for reason in decision.trace.failed_higher_priority_branches
-            )
-        )
+        self.assertEqual(decision.action, PolicyAction.EVOLVE)
+        self.assertFalse(decision.consumes_turn)
+        self.assertTrue(decision.requires_state_reread)
 
     def test_first_turn_comes_from_runtime_turn_number(self) -> None:
         state = combat_state(rage=100, turn=1)

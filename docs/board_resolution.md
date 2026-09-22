@@ -1,5 +1,37 @@
 # Board instance resolution — Phase 1
 
+## B4 board-cell coordinates versus card click pixels — 2026-09-22
+
+`MATCH_MOVE_REQ` carries integer board-cell coordinates (`fromCol/fromRow`,
+`toCol/toRow`); it is not evidence of screen-pixel click logging. Ordinary
+card-use transport carries `cardId` and optional `cardTarget`. Skill target
+hints may contain `row`, `col`, `isOn`, and final skill requests may contain
+`selectedRows`/`selectedDots`; these describe gameplay targets. No screen-pixel
+click payload was found in the inspected card handlers/builders. Backend
+retention and other collection paths remain **UNKNOWN**.
+
+Evidence: [card input/transport audit](card_click_b4_transport.md). This finding
+does not alter board ownership, reader behavior, or input execution.
+
+## QTE / Audition V3 b4 input-state boundary — 2026-09-22
+
+Static native audit confirms that direction progress is evaluated in the client
+while accepted direction strings are accumulated in the host's `qtePresses`
+(`CardUI +0x498`, `CardUIPVP +0x158`, recording cap 64). AuditionStage's
+`PressCallback +0x28` is bound to that host recording method. The skill
+coroutine later copies the list into `MATCH_SKILL_USE_REQ`; local progress
+must therefore not be interpreted as evidence that the server receives no
+direction data.
+
+For V3, `TapCallback +0x30` records host timing and conditionally emits a
+separate `MATCH_QTE_TAP`. Local grade/progress alone does not prove server
+acceptance or the resulting combat state. The reverse proves the outgoing
+data path, while backend validation remains **UNKNOWN**. This audit adds no
+memory provider, input automation, or new runtime ownership assumption.
+
+Evidence: [QTE input transport report](audition_qte_b4_input_transport.md),
+b4 declarations, `il2cpp.h` interface slots, and hash-matched native bodies.
+
 ## Pokiguard 1.7.4-b4 default-board addendum — 2026-09-14
 
 The ownership model is unchanged, but every TypeInfo root moved:

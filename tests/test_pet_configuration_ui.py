@@ -68,25 +68,26 @@ class PetConfigurationTkTests(unittest.TestCase):
     def button(self, name, value):
         return self.app._pet_option_widgets[name, value]
 
-    def test_canonical_fields_defaults_and_disabled_choices_visible(self):
+    def test_canonical_fields_remove_redundant_evolved_choices(self):
         self.assertNotIn("ManaPriority", PREFERENCE_TABLE_ROWS)
         for label in (
             "Pet của tôi",
             "Tiến hóa",
             "Thẻ sát thương",
             "Điều kiện ra skill",
-            "Kiểu thử thách",
+            "Hành động skill",
         ):
             self.assertIn(label, PREFERENCE_TABLE_ROWS)
         self.assertEqual((self.app.main_pet.get(), self.app.evolution.get(), self.app.damage_card.get()),
                          ("normal", "normal", "default_attack"))
+        self.assertNotIn(("main_pet", "evolved"), self.app._pet_option_widgets)
+        self.assertNotIn(("evolution", "evolved"), self.app._pet_option_widgets)
         for name in ("main_pet", "evolution"):
-            for value in ("evolved", "mega"):
-                button = self.button(name, value)
-                self.assertEqual(button.winfo_manager(), "pack")
-                self.assertTrue(button.instate(["disabled"]))
-                button.invoke()
-                self.assertEqual(getattr(self.app, name).get(), "normal")
+            button = self.button(name, "mega")
+            self.assertEqual(button.winfo_manager(), "pack")
+            self.assertTrue(button.instate(["disabled"]))
+            button.invoke()
+            self.assertEqual(getattr(self.app, name).get(), "normal")
 
     def test_pet_skill_updates_and_invalid_selection_normalizes(self):
         skill = self.button("damage_card", "pet_skill")
@@ -191,15 +192,21 @@ class PetConfigurationTkTests(unittest.TestCase):
                 )
                 self.assertEqual(self.app.pet_skill_fire_value.get(), "17")
 
-    def test_evolution_only_skill_and_multiple_source_notice(self):
+    def test_legendary_main_disables_legendary_evolution_and_normalizes_to_none(self):
         self.button("evolution", "legendary").invoke()
         skill = self.button("damage_card", "pet_skill")
         self.assertFalse(skill.instate(["disabled"]))
         skill.invoke()
         self.assertEqual(self.plane.snapshot().config.capability.skill_source_count, 1)
         self.button("main_pet", "legendary").invoke()
-        self.assertEqual(self.plane.snapshot().config.capability.skill_source_count, 2)
-        self.assertIn("nhiều nguồn", self.app.profile_notice_var.get())
+        self.assertEqual(self.app.evolution.get(), "none")
+        self.assertTrue(self.button("evolution", "legendary").instate(["disabled"]))
+        self.assertEqual(self.plane.snapshot().config.capability.skill_source_count, 1)
+        self.assertNotIn("nhiều nguồn", self.app.profile_notice_var.get())
+        self.button("evolution", "legendary").invoke()
+        self.assertEqual(self.app.evolution.get(), "none")
+        self.button("main_pet", "normal").invoke()
+        self.assertFalse(self.button("evolution", "legendary").instate(["disabled"]))
 
     def test_exact_pet_skill_profile_enables_start(self):
         self.button("main_pet", "legendary").invoke()
@@ -235,7 +242,7 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.app.play_style.set(label)
         self.app._render()
         self.assertTrue(self.app.start_button.instate(["disabled"]))
-        self.assertIn("chỉ hỗ trợ", self.app.profile_notice_var.get())
+        self.assertIn("yêu cầu", self.app.profile_notice_var.get())
 
         self.button("main_pet", "legendary").invoke()
         self.button("evolution", "none").invoke()

@@ -16,6 +16,7 @@ if str(SRC_ROOT) not in sys.path:
 from pokiguard_v2.boss_lobby_runtime import (  # noqa: E402
     MANAGER_ROOM_SELECTED_CARDS_OFFSET,
     ROOM_CARDS_OFFSET,
+    _hub_surface_flags,
     _read_lobby_card_loadout,
     read_boss_lobby_runtime,
 )
@@ -165,6 +166,121 @@ class BossLobbyCardTests(unittest.TestCase):
         self.assertEqual(stale.manager_attack_card_count, 0)
         self.assertEqual(stale.room_attack_card_count, 1)
         self.assertFalse(stale.sources_agree)
+
+
+class HubSurfaceClassificationTests(unittest.TestCase):
+    def test_closed_world_boss_layer_is_general_game_lobby(self) -> None:
+        world, chinh, home = _hub_surface_flags(
+            master_lobby_active=True,
+            panel_boss_active=False,
+            panel_world_boss_active=False,
+            panel_chinh_phuc_active=False,
+            other_blockers=(False, False, False, False, False),
+            extra_blockers=(),
+            dynamic_panel_count=0,
+        )
+
+        self.assertFalse(world)
+        self.assertFalse(chinh)
+        self.assertTrue(home)
+
+    def test_visible_world_boss_layer_is_not_general_game_lobby(self) -> None:
+        world, chinh, home = _hub_surface_flags(
+            master_lobby_active=True,
+            panel_boss_active=True,
+            panel_world_boss_active=True,
+            panel_chinh_phuc_active=False,
+            other_blockers=(False, False, False, False, False),
+            extra_blockers=(),
+            dynamic_panel_count=0,
+        )
+
+        self.assertTrue(world)
+        self.assertFalse(chinh)
+        self.assertFalse(home)
+
+    def test_dynamic_or_known_overlay_prevents_false_home_status(self) -> None:
+        for other, extra, count in (
+            ((True, False, False, False, False), (), 0),
+            ((False, False, False, False, False), (True,), 0),
+            ((False, False, False, False, False), (), 1),
+        ):
+            with self.subTest(other=other, extra=extra, count=count):
+                world, chinh, home = _hub_surface_flags(
+                    master_lobby_active=True,
+                    panel_boss_active=False,
+                    panel_world_boss_active=False,
+                    panel_chinh_phuc_active=False,
+                    other_blockers=other,
+                    extra_blockers=extra,
+                    dynamic_panel_count=count,
+                )
+                self.assertFalse(world)
+                self.assertFalse(chinh)
+                self.assertFalse(home)
+
+    @patch.object(lobby_runtime_module, "read_world_boss_list")
+    @patch.object(lobby_runtime_module, "read_chinh_phuc_room")
+    def test_runtime_names_proven_home_and_map_surfaces(
+        self, read_chinh: object, read_world: object
+    ) -> None:
+        read_chinh.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(clean=False, reasons=("not an exact room",)),
+            (),
+        )
+        lifecycle = CombatLifecycleObservation(
+            CombatLifecycleState.LOBBY,
+            CombatLifecycleSignals(),
+            "lobby",
+        )
+        for branch, home, chinh_map in (
+            ("GAME_LOBBY", True, False),
+            ("CHINH_PHUC_MAP", False, True),
+        ):
+            with self.subTest(branch=branch):
+                read_world.return_value = (  # type: ignore[attr-defined]
+                    SimpleNamespace(
+                        clean_for_discovery=False,
+                        clean_for_game_lobby=home,
+                        clean_for_chinh_phuc_map=chinh_map,
+                        reasons=(),
+                    ),
+                    (),
+                )
+                snapshot = read_boss_lobby_runtime(object(), lifecycle)
+                self.assertEqual(snapshot.state, BossLobbyState.LOBBY_OTHER)
+                self.assertEqual(snapshot.branch, branch)
+
+    @patch.object(lobby_runtime_module, "read_world_boss_list")
+    @patch.object(lobby_runtime_module, "read_chinh_phuc_room")
+    def test_runtime_names_exact_active_conquest_island_panel(
+        self, read_chinh: object, read_world: object
+    ) -> None:
+        read_chinh.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(clean=False, reasons=("not an exact room",)),
+            (),
+        )
+        read_world.return_value = (  # type: ignore[attr-defined]
+            SimpleNamespace(
+                clean_for_discovery=False,
+                clean_for_game_lobby=False,
+                clean_for_chinh_phuc_map=True,
+                chinh_phuc_active_panel_index=5,
+                reasons=(),
+            ),
+            (),
+        )
+        lifecycle = CombatLifecycleObservation(
+            CombatLifecycleState.LOBBY,
+            CombatLifecycleSignals(),
+            "lobby",
+        )
+
+        snapshot = read_boss_lobby_runtime(object(), lifecycle)
+
+        self.assertEqual(snapshot.state, BossLobbyState.LOBBY_OTHER)
+        self.assertEqual(snapshot.branch, "CHINH_PHUC_ISLAND")
+        self.assertEqual(snapshot.candidates, ())
 
 
 class UnknownLifecycleRoomGateTests(unittest.TestCase):

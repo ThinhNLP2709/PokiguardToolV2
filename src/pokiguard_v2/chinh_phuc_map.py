@@ -160,6 +160,16 @@ class ChinhPhucTargetMetadata:
 
 
 @dataclass(frozen=True)
+class ChinhPhucIslandMetadata:
+    """Display identity for one exact server-provided conquest group."""
+
+    group_id: int
+    group_name: str
+    group_index: int
+    island_name: str | None = None
+
+
+@dataclass(frozen=True)
 class HuntBadgeLocation:
     found: bool
     hunt_order: int
@@ -353,6 +363,48 @@ def read_chinh_phuc_target_metadata(
         if groups is None:
             return None
         return _find_pet_in_groups(resolver, groups, target_pet_id)
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+        return None
+
+
+def read_chinh_phuc_island_metadata(
+    resolver: object,
+    group_index: int,
+) -> ChinhPhucIslandMetadata | None:
+    """Read the island identity for an exact active conquest panel index."""
+
+    if group_index < 0 or group_index >= 64:
+        raise ValueError("group_index must be between 0 and 63")
+    try:
+        service = _static_instance(
+            resolver,
+            CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA,
+            size=0x40,
+        )
+        if service is None:
+            return None
+        groups_address = _read_pointer(
+            resolver,
+            service + CHINH_PHUC_DATA_SERVICE_DATA_OFFSET,
+        )
+        if groups_address is None:
+            return None
+        groups = _read_managed_list(resolver, groups_address, max_items=64)
+        if group_index >= len(groups):
+            return None
+        group = groups[group_index]
+        if not group or not resolver.memory.is_readable(group, 0x28):
+            return None
+        group_id = resolver.read_i32(group + GROUP_ID_OFFSET)
+        group_name = _read_string_pointer(resolver, group + GROUP_NAME_OFFSET) or ""
+        if group_id <= 0 or not group_name:
+            return None
+        return ChinhPhucIslandMetadata(
+            group_id=group_id,
+            group_name=group_name,
+            group_index=group_index,
+            island_name=CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id),
+        )
     except (ExternalReadError, LayoutValidationError, OSError, ValueError):
         return None
 
@@ -785,6 +837,7 @@ def locate_hunt_order_badge(
 
 __all__ = [
     "CHINH_PHUC_ISLAND_DISPLAY_NAMES",
+    "ChinhPhucIslandMetadata",
     "ChinhPhucMapTarget",
     "ChinhPhucPlayerPrefs",
     "ChinhPhucTargetMetadata",
@@ -792,6 +845,7 @@ __all__ = [
     "HuntBadgeLocation",
     "discover_chinh_phuc_map_target",
     "locate_hunt_order_badge",
+    "read_chinh_phuc_island_metadata",
     "read_chinh_phuc_player_prefs",
     "read_chinh_phuc_target_metadata",
 ]

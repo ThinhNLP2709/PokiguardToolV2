@@ -10,6 +10,11 @@ from pokiguard_v2.combat_lifecycle import (
     CombatLifecycleSignals,
     CombatLifecycleState,
 )
+from pokiguard_v2.boss_entry import (
+    BossCandidate,
+    BossTargetIdentity,
+    TargetSelectionState,
+)
 from pokiguard_v2.desktop_control_plane import DesktopControlPlane, RuntimeObservation, SnapshotPoller
 from pokiguard_v2.desktop_runtime import ReadOnlyGameStatusProvider
 from pokiguard_v2.desktop_ui import DesktopViewModel
@@ -165,6 +170,83 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         self.assertEqual(observation.lobby_branch, "CHINH_PHUC_ROOM")
         self.assertEqual(observation.current_room_id, "room-1289")
         read_metadata.assert_called_once_with(target.resolver, 1289)
+
+    @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
+    @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
+    def test_world_boss_list_uses_only_the_unique_available_boss(
+        self, provider_class: Mock, read_lobby: Mock
+    ) -> None:
+        target = _Target()
+        provider_class.return_value.poll.return_value = ProviderPoll(
+            None,
+            False,
+            "lobby",
+            combat_lifecycle=_lifecycle(CombatLifecycleState.LOBBY),
+        )
+        kassadin = BossCandidate(
+            0,
+            BossTargetIdentity("1", "Kassadin", pet_id=1678),
+            TargetSelectionState.DIRECT_ENTRY_OWNER,
+            False,
+            False,
+        )
+        active = BossCandidate(
+            6,
+            BossTargetIdentity("7", "Alacclipse", pet_id=2035),
+            TargetSelectionState.DIRECT_ENTRY_OWNER,
+            True,
+            True,
+        )
+        read_lobby.return_value = SimpleNamespace(
+            state=SimpleNamespace(value="BOSS_LOBBY"),
+            branch="WORLD_BOSS_LIST",
+            chinh_phuc=SimpleNamespace(current_room_id=None),
+            reasons=("visible World Boss panel proven",),
+            candidates=(kassadin, active),
+        )
+
+        observation = ReadOnlyGameStatusProvider(lambda: target).read()
+
+        self.assertEqual(observation.lifecycle, "BOSS_LOBBY")
+        self.assertEqual(observation.lobby_branch, "WORLD_BOSS_LIST")
+        self.assertEqual(observation.target_id, "7")
+        self.assertEqual(observation.target_name, "Alacclipse")
+
+    @patch.object(desktop_runtime_module, "read_chinh_phuc_island_metadata")
+    @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
+    @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
+    def test_visible_conquest_island_resolves_server_group_display_name(
+        self, provider_class: Mock, read_lobby: Mock, read_island: Mock
+    ) -> None:
+        target = _Target()
+        provider_class.return_value.poll.return_value = ProviderPoll(
+            None,
+            False,
+            "lobby",
+            combat_lifecycle=_lifecycle(CombatLifecycleState.LOBBY),
+        )
+        read_lobby.return_value = SimpleNamespace(
+            state=SimpleNamespace(value="LOBBY_OTHER"),
+            branch="CHINH_PHUC_ISLAND",
+            chinh_phuc=SimpleNamespace(current_room_id=None),
+            world_boss=SimpleNamespace(chinh_phuc_active_panel_index=5),
+            reasons=("visible Chinh Phuc island panel proven",),
+            candidates=(),
+        )
+        read_island.return_value = SimpleNamespace(
+            group_id=6,
+            group_name="Tam giới Tinh",
+            group_index=5,
+            island_name="Đảo rồng",
+        )
+
+        observation = ReadOnlyGameStatusProvider(lambda: target).read()
+
+        self.assertEqual(observation.lifecycle, "LOBBY_OTHER")
+        self.assertEqual(observation.lobby_branch, "CHINH_PHUC_ISLAND")
+        self.assertEqual(observation.target_island, "Đảo rồng")
+        self.assertIsNone(observation.target_name)
+        read_island.assert_called_once_with(target.resolver, 5)
 
     @patch.object(desktop_runtime_module, "read_chinh_phuc_target_metadata")
     @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")

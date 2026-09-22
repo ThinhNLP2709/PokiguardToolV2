@@ -12,12 +12,14 @@ Ta có 3 lựa chọn lối chơi: **Đơn giản**, **Cẩn thận**, và tùy 
 
 Ba trường cấu hình pet hiện hành là:
 
-- **Pet của tôi**: Pet thường, Huyền thoại; Pet tiến hóa và Mega được hiển thị
-  nhưng chưa cho chọn.
+- **Pet của tôi**: Pet thường, Huyền thoại; Mega được hiển thị nhưng chưa cho
+  chọn. Lựa chọn Pet tiến hóa đã bị bỏ vì trùng nghĩa với Huyền thoại trong
+  cơ chế skill/Audition hiện tại.
 - **Tiến hóa**: Không tiến hóa, Tiến hóa pet thường, Tiến hóa pet huyền thoại;
-  mục tiêu Pet tiến hóa và Mega được hiển thị nhưng chưa cho chọn.
+  Mega được hiển thị nhưng chưa cho chọn. Lựa chọn Tiến hóa pet tiến hóa đã bị
+  bỏ vì trùng nghĩa với Tiến hóa pet huyền thoại.
 - **Thẻ sát thương**: Thẻ chưởng mặc định hoặc Thẻ skill của pet. Thẻ skill chỉ
-  cho chọn khi cấu hình có ít nhất một nguồn skill về mặt khái niệm.
+  cho chọn khi cấu hình có đúng một nguồn skill về mặt khái niệm.
 - **Điều kiện ra skill**: chỉ hiện cùng Audition khi dùng **Thẻ skill của pet**.
   Sáu lựa chọn là Đủ mana skill, Kiếm đủ, Mana Đủ, Nộ đủ, Hút đủ, Khiên đủ.
   Đủ mana skill dùng chi phí runtime hiện tại và không có số; năm lựa chọn gem
@@ -25,18 +27,19 @@ Ba trường cấu hình pet hiện hành là:
   góp `1/2/3/4`; ASCII `0..256`. Mặc định là Kiếm đủ / 10.
   Preferences/checkpoint lưu cấu hình, còn Start/Resume khóa nó cho FarmRun.
 
-Ba profile backend đang chạy được với BASIC:
+Ma trận cấu hình được phép là:
 
-- `NORMAL / NORMAL / DEFAULT_ATTACK`: có Bước 1 Tiến hóa;
-- `NORMAL / NONE / DEFAULT_ATTACK`: bỏ Bước 1 và dùng thẻ chưởng thường;
-- `LEGENDARY / NONE / PET_SKILL`: không tiến hóa, không dùng thẻ chưởng
-  thường, dùng skill pet khi capability runtime hiện tại đủ điều kiện.
+- Pet thường có thể chọn Không tiến hóa, Tiến hóa pet thường hoặc Tiến hóa pet
+  huyền thoại. Thẻ skill chỉ mở ở cấu hình Tiến hóa pet huyền thoại.
+- Pet huyền thoại chỉ có thể chọn Không tiến hóa hoặc Tiến hóa pet thường.
+  Cả hai đều có thể dùng Thẻ skill của pet chính.
+- `LEGENDARY / LEGENDARY` bị chặn vì tạo hai thẻ skill nhưng trường Thẻ sát
+  thương hiện chưa phân biệt nguồn. Không được tự chọn một trong hai thẻ.
+- Cấu hình không có nguồn skill chỉ được dùng Thẻ chưởng mặc định.
 
-Profile Pet Skill trên chạy qua Desktop/FarmRunner đã được chấp nhận ở Phase
-3C.2. `Chịu đấm ăn xôi` chỉ được Start với đúng profile này. Các profile khác
-có thể hợp lệ và lưu được nhưng không có FarmRunner policy cho lối chơi mới.
-Nhiều nguồn skill hoặc capability không rõ ràng phải fail-closed, không tự chọn
-một nguồn.
+Ba lối chơi BASIC dùng chung ma trận trên. `Chịu đấm ăn xôi` yêu cầu Thẻ skill
+và đúng một nguồn skill; nguồn đó có thể đến từ pet chính hoặc từ pet huyền
+thoại sau tiến hóa. Capability không rõ ràng phải fail-closed.
 
 Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
 
@@ -57,13 +60,34 @@ Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
    source turn. Số tài nguyên sau skill có thể được refill bởi hiệu ứng nên
    không được dùng net delta để suy ngược gross cost.
 
-### 1.1. Nhánh riêng cho `LEGENDARY / NONE / PET_SKILL`
+### 1.1. Nhánh tiến hóa chung cho mọi lối chơi
 
-1. Capability skill của đúng session phải duy nhất, current, thuộc family được
-   hỗ trợ, có cost dương đã biết và CardUI hiện tại phải actionable. UNKNOWN,
-   stale, ambiguous hoặc family chưa hỗ trợ thì dừng input fail-closed.
+1. Khi mục **Tiến hóa** khác **Không tiến hóa**, thẻ Fusion chưa dùng, đủ Mana
+   theo cost runtime và mọi cổng actionability đạt, `EVOLVE` là nhánh đầu tiên
+   trước Đơn giản, Cẩn trọng và Chịu đấm ăn xôi. Lượt mở màn, HP boss thấp và
+   trạng thái không được PASS không được hạ ưu tiên của hành động này.
+2. EVOLVE là hành động chức năng không tiêu thụ lượt. Sau kết quả terminal phải
+   đọc lại toàn bộ state rồi tiếp tục chính lối chơi đã chọn trong cùng lượt;
+   lượt vẫn cần một SWAP/CAST/PET_SKILL/PASS hợp lệ để kết thúc.
+3. Nếu chưa đủ Mana hoặc Fusion chưa được chứng minh actionable, không đoán hay
+   spam click; policy tiếp tục đi bàn theo lối chơi. Với `NORMAL / LEGENDARY /
+   PET_SKILL`, trước khi tiến hóa chưa có thẻ skill để đọc, nên chỉ dùng cost
+   Fusion runtime làm mục tiêu Mana tạm thời. Sau tiến hóa mới chuyển sang cost
+   và capability của thẻ skill thật.
+4. Tiến hóa pet huyền thoại tạo thẻ skill như pet huyền thoại chính. Lựa chọn
+   Thẻ sát thương, Điều kiện ra skill và Audition vẫn được giữ sau khi tiến hóa;
+   không đổi ngầm sang thẻ chưởng thường.
+
+### 1.2. Nhánh Pet Skill có đúng một nguồn
+
+1. Sau khi nguồn skill hiện hữu, capability của đúng session phải duy nhất,
+   current, thuộc family được hỗ trợ, có cost dương đã biết và CardUI hiện tại
+   phải actionable. UNKNOWN, stale, ambiguous hoặc family chưa hỗ trợ thì dừng
+   input fail-closed. Riêng nguồn từ tiến hóa huyền thoại được phép tiếp tục
+   tích Mana/đi bàn trước EVOLVE mà chưa đòi CardUI chưa tồn tại.
 2. Khi đủ Mana/nộ, chọn `PET_SKILL` ngay tại nhánh damage Bước 1. Không tích
-   thêm tài nguyên, không EVOLVE và không dùng thẻ chưởng thường.
+   thêm tài nguyên và không dùng thẻ chưởng thường. Nhánh EVOLVE chung đã được
+   xét trước đó.
 3. Khi chưa đủ, kiếm vẫn là mục tiêu bàn cờ cao nhất. Nếu không có nước kiếm,
    chỉ xét nước an toàn có known gain cho phần Mana/nộ đang thiếu. Ưu tiên nước
    hoàn tất một yêu cầu, rồi tổng phần thiếu được đóng theo công thức
@@ -73,10 +97,12 @@ Ta có 2 lựa chọn độ thông minh: **cơ bản**, **suy luận**.
    BASIC. PASS đầu trận và PASS thứ ba liên tiếp vẫn bị cấm theo bằng chứng
    server hiện hành.
 
-### 1.2. PlayStyle `Chịu đấm ăn xôi`
+### 1.3. PlayStyle `Chịu đấm ăn xôi`
 
-Nhánh này chỉ áp dụng cho `LEGENDARY / NONE / PET_SKILL / BASIC` và family HT7
-đã chứng minh. Đây là chiến thuật farm ba giai đoạn. Mục tiêu là tích đủ tài
+Nhánh này áp dụng cho cấu hình BASIC có đúng một nguồn Pet Skill và family đã
+được chứng minh. Nguồn có thể là pet huyền thoại chính hoặc pet huyền thoại sau
+tiến hóa; trường hợp thứ hai phải hoàn tất nhánh EVOLVE chung trước khi yêu cầu
+CardUI skill. Đây là chiến thuật farm ba giai đoạn. Mục tiêu là tích đủ tài
 nguyên, chuẩn bị đủ số gem đã cấu hình rồi dùng một Pet Skill Perfect để kết
 thúc trận trước khi boss tiến hóa. Mega là mục tiêu tương lai; chưa được mở khi
 chưa có capability runtime đã xác minh.
@@ -118,6 +144,11 @@ chưa có capability runtime đã xác minh.
    gem mục tiêu; sau đó chọn nước an toàn có direct clear cách mọi Kiếm đã biết
    ít nhất 2 ô theo Manhattan. Khoảng cách là tiêu chí xếp hạng sau kiểm tra
    direct/indirect/UNKNOWN Sword reply, không tự chứng minh một nước là an toàn.
+   Nếu phần refill UNKNOWN có thể lập tức nối thành match Kiếm với cặp Kiếm đã
+   biết, xem đó là rủi ro bảo toàn/setup dù nó chưa phải nước reply của boss.
+   Đây là ưu tiên mềm: ưu tiên phá thế Kiếm còn lại rồi Hút/Khiên ở vùng khác;
+   nếu không tránh được thì dùng PASS khi còn hợp lệ, còn lượt bắt buộc vẫn đi
+   nước non-Sword bảo toàn có rủi ro thấp nhất.
 4. Nếu không có nước setup an toàn mà game còn cho PASS, dùng
    `SKILL_RUSH_SETUP_PASS`. Khi PASS bị cấm, chọn nước non-Sword bảo toàn gem
    điều kiện và có rủi ro thấp nhất. Nếu mọi nước đều ăn Kiếm hoặc gem điều
@@ -133,7 +164,8 @@ chưa có capability runtime đã xác minh.
    Nếu boss còn `> 30%`, quay lại Giai đoạn 1 và phải đạt lại cùng điều kiện để
    dùng skill lần hai.
 3. Nếu boss còn `<= 30%`, ưu tiên thẻ chưởng thường khi thẻ hợp lệ và đủ Mana;
-   nếu không thì được phép ăn Kiếm để kết thúc sớm. EVOLVE luôn bị cấm.
+   nếu không thì được phép ăn Kiếm để kết thúc sớm. Nhánh tiến hóa cấu hình đã
+   được giải quyết trước Pet Skill và không được chạy lại sau khi Fusion used.
 4. Lịch sử skill chỉ thuộc đúng `CombatSessionKey`, không lưu executable state
    qua checkpoint và không được rò sang trận kế.
 
@@ -376,6 +408,13 @@ runtime (`FusionState.mana_cost`, `CardData.manaCost` / `conditionUse`) và
 fail-closed nếu chưa chứng minh được.
 
 ## 8. Lịch sử thay đổi
+
+- **2026-09-22** — Bỏ hai lựa chọn trùng nghĩa `EVOLVED` khỏi Desktop; khóa
+  `LEGENDARY / LEGENDARY` vì có hai nguồn skill chưa phân biệt. Mọi lối chơi
+  dùng EVOLVE như nhánh chức năng đầu tiên khi đủ cost runtime, đọc lại state
+  rồi đi tiếp cùng lượt. `NORMAL / LEGENDARY / PET_SKILL` giữ nguyên lựa chọn
+  thẻ/điều kiện/Audition sau tiến hóa và dùng cost Fusion làm mục tiêu Mana tạm
+  thời trước khi CardUI skill xuất hiện.
 
 - **2026-09-21** — Sửa điều kiện count dùng tổng multiplier x1–x4. FarmRun
   `03ceea93d6254ed1a4f4dac54562e85a` có turn 15 đủ tài nguyên và thẻ actionable,

@@ -43,6 +43,7 @@ from pokiguard_v2.desktop_ui import (
     decimal_digits_or_empty,
     graceful_button_text,
     match_energy_text,
+    runtime_lifecycle_text,
     runtime_target_text,
     run_limit_text,
     visible_runtime_values,
@@ -276,6 +277,50 @@ class CompactPresentationContractTests(unittest.TestCase):
         self.assertNotIn("1289", rendered)
         self.assertNotIn("PHÒNG CHINH PHỤC", rendered)
 
+    def test_runtime_lifecycle_uses_proven_visible_hub_surface(self) -> None:
+        self.assertEqual(
+            "SẢNH TRÒ CHƠI",
+            runtime_lifecycle_text(
+                RuntimeObservation(
+                    True,
+                    True,
+                    lifecycle="LOBBY_OTHER",
+                    lobby_branch="GAME_LOBBY",
+                )
+            ),
+        )
+        self.assertEqual(
+            "DANH SÁCH BOSS THẾ GIỚI",
+            runtime_lifecycle_text(
+                RuntimeObservation(
+                    True,
+                    True,
+                    lifecycle="BOSS_LOBBY",
+                    lobby_branch="WORLD_BOSS_LIST",
+                )
+            ),
+        )
+        self.assertEqual(
+            "BẢN ĐỒ CHINH PHỤC",
+            runtime_lifecycle_text(
+                RuntimeObservation(
+                    True,
+                    True,
+                    lifecycle="LOBBY_OTHER",
+                    lobby_branch="CHINH_PHUC_MAP",
+                )
+            ),
+        )
+        island = RuntimeObservation(
+            True,
+            True,
+            lifecycle="LOBBY_OTHER",
+            lobby_branch="CHINH_PHUC_ISLAND",
+            target_island="Đảo rồng",
+        )
+        self.assertEqual("ĐẢO RỒNG", runtime_lifecycle_text(island))
+        self.assertEqual("CHƯA CHỌN BOSS", runtime_target_text(island))
+
     def test_graceful_button_clears_pending_text_after_controller_stops(self) -> None:
         stopping = DesktopControllerSnapshot(
             state=DesktopControllerState.GRACEFUL_STOP_REQUESTED,
@@ -300,7 +345,7 @@ class CompactPresentationContractTests(unittest.TestCase):
                 "Lối chơi", "Độ thông minh", "Pet của tôi", "Tiến hóa",
                 "Thẻ sát thương",
                 "Điều kiện ra skill",
-                "Kiểu thử thách", "Cách đi bàn cờ",
+                "Hành động skill", "Cách đi bàn cờ",
             ),
             PREFERENCE_TABLE_ROWS,
         )

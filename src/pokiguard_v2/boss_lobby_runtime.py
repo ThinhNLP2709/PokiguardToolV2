@@ -30,6 +30,7 @@ from .il2cpp_external import (
     is_canonical_user_pointer,
 )
 from .il2cpp_layout import LayoutValidationError, read_il2cpp_string, read_reference_array
+from .native_card_ui import NativeCardUiReader
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
@@ -39,8 +40,29 @@ WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x3366060
 
 # ManagerQuangTruong (Assembly-CSharp).
 MQT_PANEL_BOSS_OFFSET = 0x108
+MQT_PANEL_PVP_OFFSET = 0x110
+MQT_PANEL_GIFT_BOX_OFFSET = 0x170
+MQT_PANEL_GIFT_RESULT_OFFSET = 0x178
 MQT_PANEL_CHINH_PHUC_OFFSET = 0x2C0
+MQT_LOADING_PANEL_OFFSET = 0x2D0
+MQT_LOADING_ROOM_OFFSET = 0x2D8
+MQT_HUB_ONLY_BLOCKERS_OFFSET = 0x388
+MQT_PANEL_MASTER_LOBBY_OFFSET = 0x390
 MQT_MANAGER_BOSS_OFFSET = 0x3E0
+
+# ManagerChinhPhuc (Assembly-CSharp). The component is resolved from the
+# already-owned panelChinhPhuc GameObject, so no heap scan is required.
+MANAGER_CHINH_PHUC_PANELS_OFFSET = 0x28
+MANAGER_CHINH_PHUC_PANEL_MAIN_OFFSET = 0x38
+
+# ManagerBoss (Assembly-CSharp).
+MANAGER_BOSS_PANEL_BOSS_OFFSET = 0x28
+MANAGER_BOSS_PANEL_WORLD_OFFSET = 0x30
+
+# UIPanelManager (Assembly-CSharp).  The managed open-order count is the
+# read-only counterpart of the final AnyPanelOpen check in IsHubViewActive.
+UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x334C508
+UI_PANEL_MANAGER_OPEN_ORDER_OFFSET = 0x30
 
 # ManagerRoom (Assembly-CSharp).
 MANAGER_ROOM_ROOM_PANEL_OFFSET = 0x20
@@ -176,6 +198,19 @@ class WorldBossListSnapshot:
     item_count: int
     clean_for_discovery: bool
     reasons: tuple[str, ...]
+    panel_boss_active: bool | None = None
+    panel_world_boss: int | None = None
+    panel_world_boss_active: bool | None = None
+    panel_chinh_phuc_active: bool | None = None
+    panel_master_lobby: int | None = None
+    panel_master_lobby_active: bool | None = None
+    dynamic_panel_count: int | None = None
+    clean_for_game_lobby: bool = False
+    clean_for_chinh_phuc_map: bool = False
+    manager_chinh_phuc: int | None = None
+    chinh_phuc_panel_main_active: bool | None = None
+    chinh_phuc_panel_count: int | None = None
+    chinh_phuc_active_panel_index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -483,21 +518,192 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
     return snapshot, candidates
 
 
+def _hub_surface_flags(
+    *,
+    master_lobby_active: bool | None,
+    panel_boss_active: bool | None,
+    panel_world_boss_active: bool | None,
+    panel_chinh_phuc_active: bool | None,
+    other_blockers: tuple[bool, ...],
+    extra_blockers: tuple[bool, ...],
+    dynamic_panel_count: int | None,
+) -> tuple[bool, bool, bool]:
+    """Classify the three evidenced hub surfaces without guessing a target."""
+
+    no_dynamic_panel = dynamic_panel_count == 0
+    ordinary_blockers_clear = all(value is False for value in other_blockers)
+    extra_blockers_clear = all(value is False for value in extra_blockers)
+    world_boss_visible = bool(
+        master_lobby_active is True
+        and panel_boss_active is True
+        and panel_world_boss_active is True
+        and panel_chinh_phuc_active is False
+    )
+    chinh_phuc_map_visible = bool(
+        master_lobby_active is True
+        and panel_chinh_phuc_active is True
+        and panel_boss_active is False
+        and ordinary_blockers_clear
+        and extra_blockers_clear
+        and no_dynamic_panel
+    )
+    game_lobby_visible = bool(
+        master_lobby_active is True
+        and panel_boss_active is False
+        and panel_chinh_phuc_active is False
+        and ordinary_blockers_clear
+        and extra_blockers_clear
+        and no_dynamic_panel
+    )
+    return world_boss_visible, chinh_phuc_map_visible, game_lobby_visible
+
+
 def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple[BossCandidate, ...]]:
     reasons: list[str] = []
     manager_qt = panel_boss = panel_chinh = manager_boss = manager_native = None
+    panel_world = panel_master = None
+    panel_boss_active = panel_world_active = panel_chinh_active = None
+    panel_master_active = None
+    manager_chinh = None
+    chinh_panel_main_active = None
+    chinh_panel_count: int | None = None
+    chinh_active_panel_index: int | None = None
+    dynamic_panel_count: int | None = None
+    world_surface = chinh_surface = game_lobby_surface = False
     candidates: list[BossCandidate] = []
     try:
         manager_qt = _static_instance(
-            resolver, MANAGER_QUANG_TRUONG_TYPE_INFO_RVA, size=0x3E8
+            resolver, MANAGER_QUANG_TRUONG_TYPE_INFO_RVA, size=0x410
         )
         if manager_qt is None:
             reasons.append("ManagerQuangTruong.Instance unavailable")
         else:
+            reader = NativeCardUiReader(
+                resolver.memory,
+                resolver.game_assembly_base,
+            )
             panel_boss = _read_pointer(resolver, manager_qt, MQT_PANEL_BOSS_OFFSET)
             panel_chinh = _read_pointer(
                 resolver, manager_qt, MQT_PANEL_CHINH_PHUC_OFFSET
             )
+            panel_master = _read_pointer(
+                resolver, manager_qt, MQT_PANEL_MASTER_LOBBY_OFFSET
+            )
+            if panel_boss is None or panel_chinh is None or panel_master is None:
+                reasons.append("ManagerQuangTruong hub panels are incomplete")
+            panel_boss_active = (
+                reader.read_game_object_active(panel_boss)
+                if panel_boss is not None
+                else None
+            )
+            panel_chinh_active = (
+                reader.read_game_object_active(panel_chinh)
+                if panel_chinh is not None
+                else None
+            )
+            panel_master_active = (
+                reader.read_game_object_active(panel_master)
+                if panel_master is not None
+                else None
+            )
+
+            if panel_chinh is not None and panel_chinh_active is True:
+                try:
+                    manager_chinh = reader.read_game_object_component(
+                        panel_chinh,
+                        "ManagerChinhPhuc",
+                    )
+                    panel_main = _read_pointer(
+                        resolver,
+                        manager_chinh,
+                        MANAGER_CHINH_PHUC_PANEL_MAIN_OFFSET,
+                    )
+                    panels_address = _read_pointer(
+                        resolver,
+                        manager_chinh,
+                        MANAGER_CHINH_PHUC_PANELS_OFFSET,
+                    )
+                    if panel_main is None or panels_address is None:
+                        reasons.append("ManagerChinhPhuc panel graph is incomplete")
+                    else:
+                        chinh_panel_main_active = reader.read_game_object_active(
+                            panel_main
+                        )
+                        panels = read_reference_array(
+                            resolver.memory,
+                            panels_address,
+                            max_length=64,
+                        )
+                        chinh_panel_count = len(panels)
+                        active_panels = tuple(
+                            index
+                            for index, panel in enumerate(panels)
+                            if panel and reader.read_game_object_active(panel)
+                        )
+                        if len(active_panels) == 1:
+                            chinh_active_panel_index = active_panels[0]
+                        elif len(active_panels) > 1:
+                            reasons.append(
+                                "ManagerChinhPhuc has multiple active island panels"
+                            )
+                except (
+                    ExternalReadError,
+                    LayoutValidationError,
+                    OSError,
+                    ValueError,
+                ) as exc:
+                    reasons.append(f"ManagerChinhPhuc panel read error: {exc}")
+
+            other_blockers: list[bool] = []
+            for offset in (
+                MQT_PANEL_PVP_OFFSET,
+                MQT_PANEL_GIFT_BOX_OFFSET,
+                MQT_PANEL_GIFT_RESULT_OFFSET,
+                MQT_LOADING_PANEL_OFFSET,
+                MQT_LOADING_ROOM_OFFSET,
+            ):
+                blocker = _read_pointer(resolver, manager_qt, offset)
+                other_blockers.append(
+                    reader.read_game_object_active(blocker)
+                    if blocker is not None
+                    else False
+                )
+
+            extra_blockers: list[bool] = []
+            blocker_array = _read_pointer(
+                resolver,
+                manager_qt,
+                MQT_HUB_ONLY_BLOCKERS_OFFSET,
+            )
+            if blocker_array is not None:
+                for blocker in read_reference_array(
+                    resolver.memory,
+                    blocker_array,
+                    max_length=64,
+                ):
+                    extra_blockers.append(
+                        reader.read_game_object_active(blocker)
+                        if blocker
+                        else False
+                    )
+
+            panel_manager = _static_instance(
+                resolver,
+                UI_PANEL_MANAGER_TYPE_INFO_RVA,
+                size=0x50,
+            )
+            dynamic_panel_count = 0
+            if panel_manager is not None:
+                open_order = _read_pointer(
+                    resolver,
+                    panel_manager,
+                    UI_PANEL_MANAGER_OPEN_ORDER_OFFSET,
+                )
+                if open_order is not None:
+                    dynamic_panel_count = len(
+                        _read_managed_list(resolver, open_order, max_items=64)
+                    )
+
             manager_boss = _read_pointer(resolver, manager_qt, MQT_MANAGER_BOSS_OFFSET)
             if manager_boss is None:
                 reasons.append("ManagerQuangTruong._managerBoss is null")
@@ -507,6 +713,26 @@ def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple
                 manager_native = _native_pointer(resolver, manager_boss)
                 if manager_native is None:
                     reasons.append("ManagerBoss native object is not alive")
+                manager_panel_boss = _read_pointer(
+                    resolver,
+                    manager_boss,
+                    MANAGER_BOSS_PANEL_BOSS_OFFSET,
+                )
+                panel_world = _read_pointer(
+                    resolver,
+                    manager_boss,
+                    MANAGER_BOSS_PANEL_WORLD_OFFSET,
+                )
+                if manager_panel_boss != panel_boss:
+                    reasons.append(
+                        "ManagerBoss.panelBoss disagrees with ManagerQuangTruong.panelBoss"
+                    )
+                    panel_boss_active = None
+                panel_world_active = (
+                    reader.read_game_object_active(panel_world)
+                    if panel_world is not None
+                    else None
+                )
                 boss_items = _read_pointer(resolver, manager_boss, MANAGER_BOSS_ITEMS_OFFSET)
                 if boss_items is None:
                     reasons.append("ManagerBoss.bossItems is null")
@@ -570,17 +796,49 @@ def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple
                         )
                     if not candidates:
                         reasons.append("ManagerBoss has no valid BossItem candidates")
+
+            (
+                world_surface,
+                chinh_surface,
+                game_lobby_surface,
+            ) = _hub_surface_flags(
+                master_lobby_active=panel_master_active,
+                panel_boss_active=panel_boss_active,
+                panel_world_boss_active=panel_world_active,
+                panel_chinh_phuc_active=panel_chinh_active,
+                other_blockers=tuple(other_blockers),
+                extra_blockers=tuple(extra_blockers),
+                dynamic_panel_count=dynamic_panel_count,
+            )
     except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
         reasons.append(f"WorldBoss read error: {exc}")
     snapshot = WorldBossListSnapshot(
-        manager_qt,
-        panel_boss,
-        panel_chinh,
-        manager_boss,
-        manager_native,
-        len(candidates),
-        bool(manager_boss and manager_native and candidates),
-        tuple(reasons),
+        manager_quang_truong=manager_qt,
+        panel_boss=panel_boss,
+        panel_chinh_phuc=panel_chinh,
+        manager_boss=manager_boss,
+        manager_boss_native=manager_native,
+        item_count=len(candidates),
+        clean_for_discovery=bool(
+            manager_boss
+            and manager_native
+            and candidates
+            and world_surface
+        ),
+        reasons=tuple(reasons),
+        panel_boss_active=panel_boss_active,
+        panel_world_boss=panel_world,
+        panel_world_boss_active=panel_world_active,
+        panel_chinh_phuc_active=panel_chinh_active,
+        panel_master_lobby=panel_master,
+        panel_master_lobby_active=panel_master_active,
+        dynamic_panel_count=dynamic_panel_count,
+        clean_for_game_lobby=game_lobby_surface,
+        clean_for_chinh_phuc_map=chinh_surface,
+        manager_chinh_phuc=manager_chinh,
+        chinh_phuc_panel_main_active=chinh_panel_main_active,
+        chinh_phuc_panel_count=chinh_panel_count,
+        chinh_phuc_active_panel_index=chinh_active_panel_index,
     )
     return snapshot, tuple(candidates)
 
@@ -612,7 +870,22 @@ def read_boss_lobby_runtime(
         elif world.clean_for_discovery:
             state = BossLobbyState.BOSS_LOBBY
             branch = "WORLD_BOSS_LIST"
-            reasons.append("WorldBoss discovery proven; visual entry control still required")
+            reasons.append(
+                "visible World Boss panel and discovery graph proven; "
+                "visual entry control still required"
+            )
+        elif getattr(world, "clean_for_chinh_phuc_map", False):
+            state = BossLobbyState.LOBBY_OTHER
+            if getattr(world, "chinh_phuc_active_panel_index", None) is not None:
+                branch = "CHINH_PHUC_ISLAND"
+                reasons.append("visible Chinh Phuc island panel proven")
+            else:
+                branch = "CHINH_PHUC_MAP"
+                reasons.append("visible Chinh Phuc island map proven")
+        elif getattr(world, "clean_for_game_lobby", False):
+            state = BossLobbyState.LOBBY_OTHER
+            branch = "GAME_LOBBY"
+            reasons.append("general game lobby proven")
         else:
             state = BossLobbyState.LOBBY_OTHER
             reasons.extend(chinh.reasons)
@@ -638,7 +911,12 @@ def read_boss_lobby_runtime(
         reasons.append(f"base lifecycle is {lifecycle.value}")
         if lifecycle is CombatLifecycleState.UNKNOWN:
             reasons.extend(chinh.reasons)
-    candidates = chinh_candidates if branch == "CHINH_PHUC_ROOM" else world_candidates
+    if branch == "CHINH_PHUC_ROOM":
+        candidates = chinh_candidates
+    elif branch == "WORLD_BOSS_LIST":
+        candidates = world_candidates
+    else:
+        candidates = ()
     return BossLobbyRuntimeSnapshot(
         state,
         branch,

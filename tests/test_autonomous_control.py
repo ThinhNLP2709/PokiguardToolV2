@@ -334,7 +334,7 @@ class AutonomousGuardTests(unittest.TestCase):
             stale_unknown,
             mandatory_reset_pending=True,
         )
-        mandatory = BasicPolicyEngine(PolicyConfig()).decide(retained)
+        evolution = BasicPolicyEngine(PolicyConfig()).decide(retained)
 
         self.assertEqual(
             retained.battle.consecutive_pass_status,
@@ -345,6 +345,15 @@ class AutonomousGuardTests(unittest.TestCase):
             "retained_exact_idle_2_pending_reset",
         )
         self.assertIsNone(retained.battle.consecutive_passes)
+        self.assertEqual(evolution.action, PolicyAction.EVOLVE)
+        self.assertFalse(evolution.consumes_turn)
+        self.assertTrue(evolution.requires_state_reread)
+
+        after_evolution = replace(
+            retained,
+            fusion=replace(retained.fusion, used=True, available=False),
+        )
+        mandatory = BasicPolicyEngine(PolicyConfig()).decide(after_evolution)
         self.assertIn(mandatory.action, {PolicyAction.SWAP, PolicyAction.CAST})
         self.assertNotEqual(mandatory.action, PolicyAction.EVOLVE)
 

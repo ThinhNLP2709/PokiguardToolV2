@@ -364,6 +364,65 @@ class QteDirectionAssistTests(unittest.TestCase):
         observe(assist, snapshot(index=1), 0.20)
         self.assertEqual(backend.virtual_keys, [0x26, 0x28])
 
+    @patch("pokiguard_v2.qte_direction_assist.random.uniform", return_value=0.20)
+    def test_configured_delay_starts_after_ack_before_next_direction(
+        self, _uniform: object
+    ) -> None:
+        backend = FakeKeyboardBackend()
+        assist = QteDirectionAssist(
+            QteDirectionInputExecutor(backend),
+            response_timeout_seconds=0.75,
+            inter_direction_delay_seconds=0.20,
+            timestamp=Timestamp(),
+        )
+        assist.arm(
+            session_key=SESSION_A,
+            window_binding=BINDING,
+            inactive_baseline_proven=True,
+        )
+
+        observe(assist, snapshot(), 0.00)
+        observe(assist, snapshot(), 0.05)
+        self.assertEqual(backend.virtual_keys, [0x26])
+
+        ack_events = observe(assist, snapshot(index=1), 0.10)
+        self.assertEqual(
+            ack_events[0].sampled_inter_direction_delay_seconds,
+            0.20,
+        )
+        self.assertEqual(ack_events[0].delay_started_monotonic, 0.10)
+        self.assertAlmostEqual(
+            ack_events[0].next_direction_not_before_monotonic,
+            0.30,
+        )
+        observe(assist, snapshot(index=1), 0.29)
+        self.assertEqual(backend.virtual_keys, [0x26])
+
+        send_events = observe(assist, snapshot(index=1), 0.31)
+        self.assertEqual(backend.virtual_keys, [0x26, 0x28])
+        self.assertEqual(
+            send_events[0].sampled_inter_direction_delay_seconds,
+            0.20,
+        )
+        self.assertAlmostEqual(
+            send_events[0].actual_inter_direction_wait_seconds,
+            0.21,
+        )
+        _uniform.assert_called_once_with(0.05, 0.20)
+
+    def test_inter_direction_delay_bounds_are_validated(self) -> None:
+        backend = FakeKeyboardBackend()
+        with self.assertRaises(ValueError):
+            QteDirectionAssist(
+                QteDirectionInputExecutor(backend),
+                inter_direction_delay_seconds=-0.01,
+            )
+        with self.assertRaises(ValueError):
+            QteDirectionAssist(
+                QteDirectionInputExecutor(backend),
+                inter_direction_delay_seconds=1.01,
+            )
+
     def test_no_progress_times_out_without_retry(self) -> None:
         assist, backend = armed_assist(response_timeout=0.20)
         observe(assist, snapshot(), 0.0)

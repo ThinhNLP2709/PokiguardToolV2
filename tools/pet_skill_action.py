@@ -62,6 +62,9 @@ from tools.pet_qte_observer import run as run_observer  # noqa: E402
 from tools.runtime_common import default_log_path  # noqa: E402
 
 
+PET_SKILL_INTER_DIRECTION_DELAY_SECONDS = 0.20
+
+
 class _AtomicPetSkillBackend:
     """Delegate reads while fencing each physical Pet Skill input atomically."""
 
@@ -294,6 +297,7 @@ class Phase3b3RuntimeHook:
             directions = QteDirectionAssist(
                 QteDirectionInputExecutor(backend),
                 response_timeout_seconds=self._direction_ack_timeout,
+                inter_direction_delay_seconds=PET_SKILL_INTER_DIRECTION_DELAY_SECONDS,
                 timestamp=time.monotonic,
             )
             return PetSkillActionExecutor(
@@ -322,6 +326,11 @@ class Phase3b3RuntimeHook:
                 else ["UP", "DOWN", "LEFT", "RIGHT"]
             ),
             auditionMode=self.audition_mode.value,
+            interDirectionDelayMs=round(PET_SKILL_INTER_DIRECTION_DELAY_SECONDS * 1000),
+            interDirectionDelayRangeMs=[
+                50,
+                round(PET_SKILL_INTER_DIRECTION_DELAY_SECONDS * 1000),
+            ],
             inputAuthority="PET_SKILL_ONE_FULL_ACTION",
             basicPolicyIntegration=self._basic_policy_integration,
         )

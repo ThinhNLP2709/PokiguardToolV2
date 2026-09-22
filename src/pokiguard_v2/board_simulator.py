@@ -137,6 +137,8 @@ class UnknownExposure:
     max_column_depth: int
     hypothetical_sword_completions: int
     hypothetical_sword_effective_max: int
+    refill_sword_auto_match_completions: int
+    refill_sword_auto_match_effective_max: int
 
 
 @dataclass(frozen=True)
@@ -486,7 +488,7 @@ def evaluate_sword_hold(move: MoveEvaluation) -> SwordHoldEvaluation:
     )
 
 
-def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int]:
+def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int, int, int]:
     """Count Sword swap potential involving an UNKNOWN refill slot.
 
     A hypothetical refill Sword that immediately completes a match is part of
@@ -499,6 +501,8 @@ def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int]:
 
     completions = 0
     effective_max = 0
+    auto_match_completions = 0
+    auto_match_effective_max = 0
     for row in range(8):
         for col in range(8):
             if grid[row][col].gem is not GemType.UNKNOWN:
@@ -508,7 +512,17 @@ def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int]:
             grid[row][col] = hypothetical
             matched = _match_through(grid, (row, col))
             exposure = 0
-            if not matched:
+            if matched:
+                auto_match_completions += 1
+                auto_match_effective_max = max(
+                    auto_match_effective_max,
+                    sum(
+                        grid[r][c].multiplier or 1
+                        for r, c in matched
+                        if grid[r][c].gem is GemType.SWORD
+                    ),
+                )
+            else:
                 for neighbour in (
                     (row - 1, col),
                     (row + 1, col),
@@ -563,7 +577,12 @@ def _hypothetical_unknown_hazard(grid: Grid) -> tuple[int, int]:
             if exposure:
                 completions += 1
                 effective_max = max(effective_max, exposure)
-    return completions, effective_max
+    return (
+        completions,
+        effective_max,
+        auto_match_completions,
+        auto_match_effective_max,
+    )
 
 
 def _collapse_support_hazard(
@@ -652,13 +671,20 @@ def simulate_move(
         for col in range(8)
         if grid[row][col].gem is GemType.UNKNOWN
     )
-    unknown_completions, unknown_effective = _hypothetical_unknown_hazard(grid)
+    (
+        unknown_completions,
+        unknown_effective,
+        refill_auto_matches,
+        refill_auto_effective,
+    ) = _hypothetical_unknown_hazard(grid)
     exposure = UnknownExposure(
         cells=sum(unknown_by_column.values()),
         columns=tuple(sorted(unknown_by_column.items())),
         max_column_depth=max(unknown_by_column.values(), default=0),
         hypothetical_sword_completions=unknown_completions,
         hypothetical_sword_effective_max=unknown_effective,
+        refill_sword_auto_match_completions=refill_auto_matches,
+        refill_sword_auto_match_effective_max=refill_auto_effective,
     )
     potentials, replies = _known_sword_opportunities(grid)
     regions = _danger_regions(grid)

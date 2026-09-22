@@ -78,6 +78,17 @@ SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
     EvolutionTarget.NONE, EvolutionTarget.NORMAL, EvolutionTarget.LEGENDARY,
 })
+DESKTOP_MAIN_PET_OPTIONS = (
+    MainPetType.NORMAL,
+    MainPetType.LEGENDARY,
+    MainPetType.MEGA,
+)
+DESKTOP_EVOLUTION_OPTIONS = (
+    EvolutionTarget.NONE,
+    EvolutionTarget.NORMAL,
+    EvolutionTarget.LEGENDARY,
+    EvolutionTarget.MEGA,
+)
 # Phase 3C.1 policy/backend and Phase 3C.2 normal Desktop routing are integrated.
 # The current V3 path remains read-only for state and uses only the accepted
 # bounded foreground keyboard/mouse input boundary.
@@ -144,27 +155,26 @@ def loadout_capability(
         SkillSourceStatus.EVOLUTION_TARGET_SKILL if sources else
         SkillSourceStatus.NO_SKILL
     )
-    selectable = supported and bool(sources)
-    valid = supported and (damage_card is DamageCardMode.DEFAULT_ATTACK or selectable)
-    default_runnable = (
+    selectable = supported and len(sources) == 1
+    valid = bool(
+        supported
+        and len(sources) <= 1
+        and (
+            damage_card is DamageCardMode.DEFAULT_ATTACK
+            or selectable
+        )
+    )
+    runnable = bool(
         valid
-        and main_pet is MainPetType.NORMAL
-        and evolution in {EvolutionTarget.NORMAL, EvolutionTarget.NONE}
-        and damage_card is DamageCardMode.DEFAULT_ATTACK
+        and (
+            damage_card is DamageCardMode.DEFAULT_ATTACK
+            or PET_SKILL_RUNTIME_ENABLED
+        )
     )
-    unique_main_pet_skill_runnable = (
-        PET_SKILL_RUNTIME_ENABLED
-        and valid
-        and main_pet is MainPetType.LEGENDARY
-        and evolution is EvolutionTarget.NONE
-        and damage_card is DamageCardMode.PET_SKILL
-        and sources == (SkillSource.MAIN_PET,)
-    )
-    runnable = default_runnable or unique_main_pet_skill_runnable
     reason = (
         "PET_OPTION_UNSUPPORTED" if not supported else
-        "PET_SKILL_SOURCE_MISSING" if not valid else
-        "PET_SKILL_SOURCE_SELECTION_UNDEFINED" if damage_card is DamageCardMode.PET_SKILL and len(sources) > 1 else
+        "PET_SKILL_SOURCE_SELECTION_UNDEFINED" if len(sources) > 1 else
+        "PET_SKILL_SOURCE_MISSING" if damage_card is DamageCardMode.PET_SKILL and not sources else
         "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL and not PET_SKILL_RUNTIME_ENABLED else
         "PET_SKILL_POLICY_PROFILE_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL and not runnable else
         "FARM_PROFILE_NOT_IMPLEMENTED" if not runnable else None
@@ -178,6 +188,22 @@ def normalize_damage(main_pet: MainPetType, evolution: EvolutionTarget,
     """UI-only normalization after an operator changes Pet/Evolution."""
     return (DamageCardMode(damage_card) if loadout_capability(main_pet, evolution).pet_skill_selectable
             else DamageCardMode.DEFAULT_ATTACK)
+
+
+def normalize_evolution(
+    main_pet: MainPetType,
+    evolution: EvolutionTarget,
+) -> EvolutionTarget:
+    """Prevent the currently ambiguous two-Pet-Skill loadout in the UI."""
+
+    main_pet = MainPetType(main_pet)
+    evolution = EvolutionTarget(evolution)
+    if (
+        main_pet is MainPetType.LEGENDARY
+        and evolution is EvolutionTarget.LEGENDARY
+    ):
+        return EvolutionTarget.NONE
+    return evolution
 
 
 @dataclass(frozen=True)
@@ -234,9 +260,8 @@ class GameplayConfig:
     @property
     def farm_policy_blocker_reason(self) -> str | None:
         if self.play_style is PlayStyle.SKILL_RUSH and not (
-            self.main_pet is MainPetType.LEGENDARY
-            and self.evolution is EvolutionTarget.NONE
-            and self.damage_card is DamageCardMode.PET_SKILL
+            self.damage_card is DamageCardMode.PET_SKILL
+            and self.capability.skill_source_count == 1
             and self.intelligence is Intelligence.BASIC
         ):
             return "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED"
@@ -340,7 +365,7 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
         intelligence=config.intelligence,
         mana_priority=(
             ManaPriority.EVOLUTION
-            if config.evolution is EvolutionTarget.NORMAL
+            if config.evolution is not EvolutionTarget.NONE
             else ManaPriority.ATTACK
         ),
         cast_when_boss_hp_below=config.cast_when_boss_hp_below,
@@ -352,8 +377,13 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
 
 
 def add_pet_arguments(parser: Any) -> None:
-    parser.add_argument("--main-pet", choices=[v.value for v in MainPetType])
-    parser.add_argument("--evolution-target", choices=[v.value for v in EvolutionTarget])
+    parser.add_argument(
+        "--main-pet", choices=[value.value for value in DESKTOP_MAIN_PET_OPTIONS]
+    )
+    parser.add_argument(
+        "--evolution-target",
+        choices=[value.value for value in DESKTOP_EVOLUTION_OPTIONS],
+    )
     parser.add_argument("--damage-card", choices=[v.value for v in DamageCardMode])
     parser.add_argument(
         "--pet-skill-fire-condition",

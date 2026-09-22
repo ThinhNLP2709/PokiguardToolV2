@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import Enum
 import math
+import random
 import time
 from typing import Callable, Protocol
 
@@ -180,6 +181,10 @@ class QteAssistEvent:
     reason: str | None = None
     direction_record: QteDirectionRecord | None = None
     summary: QteAssistSummary | None = None
+    sampled_inter_direction_delay_seconds: float | None = None
+    delay_started_monotonic: float | None = None
+    next_direction_not_before_monotonic: float | None = None
+    actual_inter_direction_wait_seconds: float | None = None
 
 
 @dataclass(frozen=True)
@@ -221,12 +226,16 @@ class QteDirectionAssist:
         executor: QteDirectionInputExecutor,
         *,
         response_timeout_seconds: float = 1.25,
+        inter_direction_delay_seconds: float = 0.0,
         timestamp: Callable[[], float] = time.time,
     ) -> None:
         if not 0.10 <= response_timeout_seconds <= 2.0:
             raise ValueError("QTE response timeout must be between 0.10 and 2.0 seconds")
+        if not 0.0 <= inter_direction_delay_seconds <= 1.0:
+            raise ValueError("QTE inter-direction delay must be between 0.0 and 1.0 seconds")
         self._executor = executor
         self.response_timeout_seconds = float(response_timeout_seconds)
+        self.inter_direction_delay_seconds = float(inter_direction_delay_seconds)
         self._timestamp = timestamp
         self._state = QteAssistState.DISARMED
         self._armed_session: CombatSessionKey | None = None
@@ -236,6 +245,9 @@ class QteDirectionAssist:
         self._records: list[QteDirectionRecord] = []
         self._confirmed = 0
         self._last_summary: QteAssistSummary | None = None
+        self._next_direction_not_before_monotonic: float | None = None
+        self._sampled_inter_direction_delay_seconds: float | None = None
+        self._inter_direction_delay_started_monotonic: float | None = None
 
     @property
     def state(self) -> QteAssistState:
@@ -269,6 +281,9 @@ class QteDirectionAssist:
         self._records = []
         self._confirmed = 0
         self._last_summary = None
+        self._next_direction_not_before_monotonic = None
+        self._sampled_inter_direction_delay_seconds = None
+        self._inter_direction_delay_started_monotonic = None
         self._state = QteAssistState.ARMED_WAITING_FOR_QTE
         return (QteAssistEvent("qte_direction_assist_armed", self._state),)
 
@@ -368,6 +383,12 @@ class QteDirectionAssist:
 
         if self._state is QteAssistState.EXECUTING_DIRECTIONS:
             return self._observe_pending(snapshot, monotonic_now)
+
+        if (
+            self._next_direction_not_before_monotonic is not None
+            and monotonic_now < self._next_direction_not_before_monotonic
+        ):
+            return ()
 
         return self._send_one(snapshot, window_binding, monotonic_now)
 
@@ -515,12 +536,27 @@ class QteDirectionAssist:
             sent_at_monotonic=monotonic_now,
             record_index=len(self._records) - 1,
         )
+        sampled_delay = self._sampled_inter_direction_delay_seconds
+        delay_started = self._inter_direction_delay_started_monotonic
+        not_before = self._next_direction_not_before_monotonic
+        actual_wait = (
+            max(0.0, monotonic_now - delay_started)
+            if delay_started is not None
+            else None
+        )
+        self._sampled_inter_direction_delay_seconds = None
+        self._inter_direction_delay_started_monotonic = None
+        self._next_direction_not_before_monotonic = None
         self._state = QteAssistState.EXECUTING_DIRECTIONS
         return (
             QteAssistEvent(
                 "qte_direction_input_sent",
                 self._state,
                 direction_record=record,
+                sampled_inter_direction_delay_seconds=sampled_delay,
+                delay_started_monotonic=delay_started,
+                next_direction_not_before_monotonic=not_before,
+                actual_inter_direction_wait_seconds=actual_wait,
             ),
         )
 
@@ -575,12 +611,24 @@ class QteDirectionAssist:
                 expected_presses=snapshot.presses,
                 cached_expected_direction=next_expected,
             )
+            # TẠO DELAY RANDOM NGAY TẠI ĐÂY (Vd: random từ 0.05s đến 0.20s)
+            delay = random.uniform(0.05, self.inter_direction_delay_seconds) if self.inter_direction_delay_seconds > 0 else 0.0
+            self._sampled_inter_direction_delay_seconds = delay
+            self._inter_direction_delay_started_monotonic = monotonic_now
+            self._next_direction_not_before_monotonic = (
+                monotonic_now + delay
+            )
             self._state = QteAssistState.BOUND_TO_GENERATION
             return (
                 QteAssistEvent(
                     "qte_direction_progress_confirmed",
                     self._state,
                     direction_record=record,
+                    sampled_inter_direction_delay_seconds=delay,
+                    delay_started_monotonic=monotonic_now,
+                    next_direction_not_before_monotonic=(
+                        self._next_direction_not_before_monotonic
+                    ),
                 ),
             )
 
@@ -743,6 +791,9 @@ class QteDirectionAssist:
         self._armed_window = None
         self._binding = None
         self._pending = None
+        self._next_direction_not_before_monotonic = None
+        self._sampled_inter_direction_delay_seconds = None
+        self._inter_direction_delay_started_monotonic = None
         event_name = (
             "qte_direction_sequence_complete"
             if reason == "DIRECTIONS_COMPLETE"

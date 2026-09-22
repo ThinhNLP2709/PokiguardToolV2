@@ -281,7 +281,7 @@ class BoardSimulatorTests(unittest.TestCase):
         grid[1][0] = _CellValue(GemType.SWORD, 1)
         grid[2][0] = _CellValue(GemType.SWORD, 1)
 
-        self.assertEqual(_hypothetical_unknown_hazard(grid), (0, 0))
+        self.assertEqual(_hypothetical_unknown_hazard(grid), (0, 0, 1, 3))
 
     def test_settled_refill_sword_swap_potential_remains_a_hazard(self) -> None:
         grid = self._hazard_grid()
@@ -290,7 +290,7 @@ class BoardSimulatorTests(unittest.TestCase):
         grid[1][1] = _CellValue(GemType.SWORD, 1)
         grid[1][2] = _CellValue(GemType.SWORD, 1)
 
-        self.assertEqual(_hypothetical_unknown_hazard(grid), (1, 3))
+        self.assertEqual(_hypothetical_unknown_hazard(grid), (1, 3, 0, 0))
 
     def test_known_sword_can_move_into_non_sword_refill_slot(self) -> None:
         grid = self._hazard_grid()
@@ -301,7 +301,7 @@ class BoardSimulatorTests(unittest.TestCase):
 
         # If the real refill at (0, 1) is not Sword, the boss can move the
         # already-known Sword at (0, 0) into it and complete the vertical 3.
-        self.assertEqual(_hypothetical_unknown_hazard(grid), (1, 3))
+        self.assertEqual(_hypothetical_unknown_hazard(grid), (1, 3, 1, 3))
 
     def test_row_two_rage_clear_reproduces_reported_sword_drop_hazard(self) -> None:
         grid = self._hazard_grid()

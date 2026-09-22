@@ -580,6 +580,49 @@ class NativeCardUiReader:
             )
         return self._active(native)
 
+    def read_game_object_component(
+        self,
+        game_object: int,
+        class_name: str,
+        namespace: str = "",
+    ) -> int:
+        """Return one exact managed component owned by ``game_object``.
+
+        The lookup stays inside the GameObject's bounded native component
+        array and validates every managed/native ownership roundtrip. It is
+        suitable for read-only UI state inspection without a heap scan.
+        """
+
+        if self._class_identity(game_object) != ("GameObject", "UnityEngine"):
+            raise LayoutValidationError("native_card_ui: object is not a GameObject")
+        native = self._pointer(game_object + 0x10)
+        if self._managed(native) != game_object:
+            raise LayoutValidationError(
+                "native_card_ui: GameObject managed/native roundtrip mismatch"
+            )
+        components = self._components(native)
+        matches: list[int] = []
+        for native_component in components:
+            managed = self._managed(native_component, optional=True)
+            if managed is not None and self._class_identity(managed) == (
+                class_name,
+                namespace,
+            ):
+                matches.append(managed)
+        if len(matches) != 1:
+            raise LayoutValidationError(
+                "native_card_ui: requested component is missing or ambiguous"
+            )
+        if (
+            self._pointer(game_object + 0x10) != native
+            or self._managed(native) != game_object
+            or self._components(native) != components
+        ):
+            raise NativeGeometryBusyError(
+                "native_card_ui: GameObject components changed during read"
+            )
+        return matches[0]
+
     def read_button_geometry(
         self,
         button: int,

@@ -22,8 +22,9 @@ from .pet_configuration import (
     AuditionMode, MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
     EVOLUTION_LABELS, DAMAGE_LABELS, AUDITION_LABELS, PLAY_STYLE_LABELS,
     PET_SKILL_FIRE_CONDITION_LABELS, PetSkillFireCondition,
+    DESKTOP_EVOLUTION_OPTIONS, DESKTOP_MAIN_PET_OPTIONS,
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
-    loadout_capability, normalize_damage,
+    loadout_capability, normalize_damage, normalize_evolution,
 )
 from .desktop_control_plane import (
     ControlPlaneSnapshot,
@@ -60,7 +61,7 @@ PREFERENCE_TABLE_ROWS = (
     "Tiến hóa",
     "Thẻ sát thương",
     "Điều kiện ra skill",
-    "Kiểu thử thách",
+    "Hành động skill",
     "Cách đi bàn cờ",
 )
 SETTINGS_TABLE_ROWS = ("Tệp chạy trò chơi",)
@@ -85,6 +86,13 @@ LIFECYCLE_LABELS = {
     "ACTIVE_COMBAT": "ĐANG CHIẾN ĐẤU",
     "POSTMATCH": "SAU TRẬN",
     "LOBBY_OTHER": "SẢNH KHÁC",
+}
+
+LOBBY_SURFACE_LABELS = {
+    "GAME_LOBBY": "SẢNH TRÒ CHƠI",
+    "WORLD_BOSS_LIST": "DANH SÁCH BOSS THẾ GIỚI",
+    "CHINH_PHUC_MAP": "BẢN ĐỒ CHINH PHỤC",
+    "CHINH_PHUC_ISLAND": "ĐẢO CHINH PHỤC",
 }
 
 CONTROLLER_STATE_LABELS = {
@@ -202,6 +210,8 @@ def runtime_target_text(runtime: RuntimeObservation) -> str:
 
     name = (runtime.target_name or "").strip()
     if not name:
+        if runtime.lobby_branch == "CHINH_PHUC_ISLAND":
+            return "CHƯA CHỌN BOSS"
         return "CHƯA XÁC ĐỊNH"
     level = (
         f" LV{runtime.target_level}"
@@ -211,6 +221,19 @@ def runtime_target_text(runtime: RuntimeObservation) -> str:
     island = (runtime.target_island or "").strip()
     suffix = f" - {island}" if island else ""
     return f"{name}{level}{suffix}"
+
+
+def runtime_lifecycle_text(runtime: RuntimeObservation) -> str:
+    """Prefer a positively proven visible lobby surface over a generic state."""
+
+    if runtime.lobby_branch == "CHINH_PHUC_ISLAND":
+        island = (runtime.target_island or "").strip()
+        return island.upper() if island else "ĐẢO CHINH PHỤC"
+
+    return LOBBY_SURFACE_LABELS.get(
+        runtime.lobby_branch or "",
+        lifecycle_text(runtime.lifecycle),
+    )
 
 
 def graceful_button_text(controller: DesktopControllerSnapshot) -> str:
@@ -654,7 +677,7 @@ class DesktopViewModel:
             "PET_SKILL_DESKTOP_INTEGRATION_PENDING": "Thẻ skill của pet: backend đã sẵn sàng, Desktop chưa có tích hợp để tự động farm.",
             "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED": "Thẻ skill của pet: Audition V3 chưa có tích hợp gameplay an toàn cho bản game hiện tại.",
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
-            "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi chỉ hỗ trợ Huyền thoại / Không tiến hóa / Thẻ skill của pet / Cơ bản.",
+            "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi yêu cầu Cơ bản, Thẻ skill của pet và đúng một nguồn skill pet.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
@@ -715,7 +738,7 @@ class DesktopViewModel:
             if runtime.pid is not None
             else "KHÔNG KHẢ DỤNG"
         )
-        lifecycle = lifecycle_text(runtime.lifecycle)
+        lifecycle = runtime_lifecycle_text(runtime)
         if stale:
             lifecycle = f"{lifecycle} (DỮ LIỆU CŨ / KHÔNG THỂ THAO TÁC)"
         runtime_target = runtime_target_text(runtime)
@@ -1011,16 +1034,20 @@ class DesktopApplication:
             ),
             editable_state="disabled",
         )
-        for row, label, name, variable, labels, supported in (
-            (2, "Pet của tôi", "main_pet", self.main_pet, MAIN_PET_LABELS, SUPPORTED_MAIN_PETS),
-            (3, "Tiến hóa", "evolution", self.evolution, EVOLUTION_LABELS, SUPPORTED_EVOLUTIONS),
-            (4, "Thẻ sát thương", "damage_card", self.damage_card, DAMAGE_LABELS, frozenset(DamageCardMode)),
+        for row, label, name, variable, labels, visible, supported in (
+            (2, "Pet của tôi", "main_pet", self.main_pet, MAIN_PET_LABELS,
+             DESKTOP_MAIN_PET_OPTIONS, SUPPORTED_MAIN_PETS),
+            (3, "Tiến hóa", "evolution", self.evolution, EVOLUTION_LABELS,
+             DESKTOP_EVOLUTION_OPTIONS, SUPPORTED_EVOLUTIONS),
+            (4, "Thẻ sát thương", "damage_card", self.damage_card, DAMAGE_LABELS,
+             tuple(DamageCardMode), frozenset(DamageCardMode)),
         ):
             ttk.Label(preferences_frame, text=f"{label}:").grid(
                 row=row, column=0, sticky=tk.NW, padx=(0, 12), pady=5)
             options = ttk.Frame(preferences_frame)
             options.grid(row=row, column=1, sticky=tk.EW, pady=5)
-            for value, caption in labels.items():
+            for value in visible:
+                caption = labels[value]
                 state = "normal" if value in supported else "disabled"
                 button = ttk.Radiobutton(options, text=caption, variable=variable,
                                          value=value.value, state=state)
@@ -1063,7 +1090,7 @@ class DesktopApplication:
         )
         self.audition_label, self.audition_widget = preference_field(
             row=6,
-            label="Kiểu thử thách",
+            label="Hành động skill",
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.audition_mode,
@@ -1580,6 +1607,18 @@ class DesktopApplication:
         profile = DesktopConfig.from_strings(**self._draft_fields())
         blocker = profile.farm_policy_blocker_reason
         editable = self._config_editable is not False
+        legendary_evolution = self._pet_option_widgets.get(
+            ("evolution", EvolutionTarget.LEGENDARY.value)
+        )
+        if legendary_evolution is not None:
+            legendary_evolution.configure(
+                state=(
+                    "normal"
+                    if editable
+                    and MainPetType(self.main_pet.get()) is not MainPetType.LEGENDARY
+                    else "disabled"
+                )
+            )
         self._pet_option_widgets["damage_card", "pet_skill"].configure(
             state="normal" if editable and capability.pet_skill_selectable else "disabled")
         self.profile_notice_var.set(
@@ -1671,13 +1710,26 @@ class DesktopApplication:
             self._display_pet_config(snapshot.config)
             return
         try:
-            normalized = normalize_damage(MainPetType(self.main_pet.get()),
-                                          EvolutionTarget(self.evolution.get()),
-                                          DamageCardMode(self.damage_card.get()))
-            if self.damage_card.get() != normalized.value:
+            main_pet = MainPetType(self.main_pet.get())
+            evolution = normalize_evolution(
+                main_pet,
+                EvolutionTarget(self.evolution.get()),
+            )
+            normalized = normalize_damage(
+                main_pet,
+                evolution,
+                DamageCardMode(self.damage_card.get()),
+            )
+            if (
+                self.evolution.get() != evolution.value
+                or self.damage_card.get() != normalized.value
+            ):
                 self._updating_pet_fields = True
-                self.damage_card.set(normalized.value)
-                self._updating_pet_fields = False
+                try:
+                    self.evolution.set(evolution.value)
+                    self.damage_card.set(normalized.value)
+                finally:
+                    self._updating_pet_fields = False
             self._sync_pet_options()
             self.view_model.apply_draft(**self._draft_fields())
         except (TypeError, ValueError):

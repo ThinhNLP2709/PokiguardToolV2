@@ -500,6 +500,17 @@ class NativeCardUiTests(unittest.TestCase):
         self.fixture.memory.map(self.fixture.root.native + 0x4F, b"\0")
         self.assertFalse(reader.read_game_object_active(self.fixture.root.managed))
 
+    def test_game_object_component_lookup_is_bounded_to_exact_owner(self):
+        manager_class = self.fixture.klass("ManagerChinhPhuc", "")
+        manager = self.fixture.component(self.fixture.root, manager_class)
+
+        observed = self.fixture.reader().read_game_object_component(
+            self.fixture.root.managed,
+            "ManagerChinhPhuc",
+        )
+
+        self.assertEqual(observed, manager.managed)
+
     def test_layout_change_after_first_card_invalidates_whole_hand(self):
         f = self.fixture
         original = self.reader._viewport_rect

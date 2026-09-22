@@ -30,6 +30,23 @@ decision in `DECISIONS.md`.
 | Current controller status | **No FarmRunner/PetSkill executor is running** |
 | Current live automation | **FarmRun `cdc37e234ec54b8f9c54bc718b92c636` completed 25/25 WIN and stopped in Starburst 1289 BOSS_LOBBY** |
 
+## v1.1.0 source acceptance refresh
+
+The Vietnamese Desktop UI now labels the Audition selector `Hành động skill`.
+The Pet Skill QTE direction executor uses the accepted 50–200 ms randomized
+post-ACK delay and records both the sampled delay and actual wait for every gap.
+Live FarmRun `0a1e201451e64812ad291b7b326c37a5` proved six distinct samples,
+7/7 confirmed directions, one Space and runtime PERFECT.
+
+Skill Rush setup now separates a refill Sword auto-match from an opponent Sword
+reply. Exact FarmRun board `ba0b3666517d4739ac59e25cb42d1583`, turn 13, had
+known Sword at screen row 1 columns 7–8 and formerly selected a vertical Shield
+clear in column 6. The regression now marks that UNKNOWN refill shape as a soft
+setup-preservation hazard: use an allowed PASS when no hazard-free preserving
+setup exists; when PASS is prohibited, select the lowest-risk preserving
+non-Sword move. Mana/Rage resource progress keeps its approved higher priority.
+Focused exact-board tests and full regression pass at **1,387/1,387**.
+
 ## Phase 3D.2 — PASS STRONG
 
 The accepted Skill Rush profile completed one immutable 25-match reliability
@@ -4055,3 +4072,22 @@ Island selection remains session-target driven: cached `GroupDTO/PetEnemyDTO`
 maps the pinned `pet_id` to its own group/index/name. No Dragon-Island constant
 or fixed Starburst group is used. Focused regression is **110/110 PASS** and
 full regression is **1366/1366 PASS**. Live recurrence follows.
+
+## Pet configuration and shared Evolution priority — offline PASS (2026-09-22)
+
+Desktop and CLI no longer show the redundant `EVOLVED` choices. `MEGA` remains
+visible but disabled. A Legendary main pet permits only `NONE` or `NORMAL`
+evolution; selecting Legendary while a Legendary evolution is drafted
+normalizes the evolution to `NONE`. The direct configuration boundary rejects
+`LEGENDARY / LEGENDARY` because it exposes two indistinguishable Pet Skill
+sources.
+
+Every supported BASIC play style now evaluates an affordable, actionable
+configured Evolution before its own board/skill branch, including opening,
+low-boss-HP and mandatory-consuming states. EVOLVE remains non-consuming: its
+terminal result requires a fresh full-state read and the same local turn then
+continues through the selected play style. For `NORMAL / LEGENDARY /
+PET_SKILL`, the pre-Fusion policy uses only the proven runtime Fusion cost as a
+temporary Mana deficit; after Fusion succeeds it rediscovers the new Pet Skill
+CardUI and retains the configured damage-card, fire-condition and Audition
+rules. Full regression: **1383/1383 PASS**.

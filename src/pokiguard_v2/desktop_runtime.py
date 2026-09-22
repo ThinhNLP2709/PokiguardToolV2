@@ -13,7 +13,9 @@ from typing import Any, Callable
 from .boss_entry import BossLobbyState
 from .boss_lobby_runtime import read_boss_lobby_runtime
 from .chinh_phuc_map import (
+    ChinhPhucIslandMetadata,
     ChinhPhucTargetMetadata,
+    read_chinh_phuc_island_metadata,
     read_chinh_phuc_target_metadata,
 )
 from .combat_lifecycle import CombatLifecycleState
@@ -48,12 +50,14 @@ class ReadOnlyGameStatusProvider:
         self._target: Any | None = None
         self._provider: MemoryBoardStateProvider | None = None
         self._target_metadata: dict[int, ChinhPhucTargetMetadata] = {}
+        self._island_metadata: dict[int, ChinhPhucIslandMetadata] = {}
         self._lock = threading.RLock()
 
     def _detach(self) -> None:
         target, self._target = self._target, None
         self._provider = None
         self._target_metadata.clear()
+        self._island_metadata.clear()
         if target is not None:
             try:
                 target.close()
@@ -193,14 +197,45 @@ class ReadOnlyGameStatusProvider:
                         )
                         for candidate in lobby.candidates
                     )
+                    if lobby.branch == "CHINH_PHUC_ISLAND":
+                        group_index = getattr(
+                            lobby.world_boss,
+                            "chinh_phuc_active_panel_index",
+                            None,
+                        )
+                        if group_index is not None:
+                            island_metadata = self._island_metadata.get(group_index)
+                            if island_metadata is None:
+                                island_metadata = read_chinh_phuc_island_metadata(
+                                    self._target.resolver,
+                                    group_index,
+                                )
+                                if island_metadata is not None:
+                                    self._island_metadata[group_index] = island_metadata
+                            if (
+                                island_metadata is not None
+                                and island_metadata.group_index == group_index
+                            ):
+                                target_island = (
+                                    island_metadata.island_name
+                                    or island_metadata.group_name
+                                )
                     selected = next(
                         (
                             candidate
                             for candidate in lobby.candidates
                             if candidate.selection.value == "SELECTED"
                         ),
-                        lobby.candidates[0] if lobby.candidates else None,
+                        None,
                     )
+                    if selected is None and lobby.branch == "WORLD_BOSS_LIST":
+                        available_world_bosses = tuple(
+                            candidate
+                            for candidate in lobby.candidates
+                            if candidate.available and candidate.active is True
+                        )
+                        if len(available_world_bosses) == 1:
+                            selected = available_world_bosses[0]
                     if selected is not None:
                         target_id = selected.identity.boss_id
                         target_name = selected.identity.boss_name

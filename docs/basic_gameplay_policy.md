@@ -44,10 +44,11 @@ The current user-facing configuration is:
 
 - `PlayStyle`: `SIMPLE`, `CAREFUL`, optional `SKILL_RUSH` (UI:
   `Chịu đấm ăn xôi`);
-- `MainPetType`: `NORMAL`, `LEGENDARY` (`EVOLVED`/`MEGA` are visible but
-  disabled);
-- `EvolutionTarget`: `NONE`, `NORMAL`, `LEGENDARY` (`EVOLVED`/`MEGA` are
-  visible but disabled);
+- `MainPetType`: `NORMAL`, `LEGENDARY`; `MEGA` is visible but disabled and
+  `EVOLVED` is no longer shown because it duplicates the current Legendary
+  skill/Audition semantics;
+- `EvolutionTarget`: `NONE`, `NORMAL`, `LEGENDARY`; `MEGA` is visible but
+  disabled and `EVOLVED` is no longer shown;
 - `DamageCardMode`: `DEFAULT_ATTACK`, `PET_SKILL` where a conceptual source
   exists;
 - `PetSkillFireCondition`: runtime-cost readiness or current known effective
@@ -60,9 +61,11 @@ The current user-facing configuration is:
 
 Canonical production policy now receives the three Phase 3A.2 profile fields.
 `ManaPriority` remains only as a compatibility bridge for old direct fixtures
-and checkpoints. The two default-Attack profiles retain their Phase 2 behavior.
-Phase 3C.1 additionally maps exactly `LEGENDARY/NONE/PET_SKILL`; other Pet
-Skill profiles remain gated.
+and checkpoints. All supported single-source profiles map to FarmRunner. A
+Legendary main pet may use `NONE` or `NORMAL` evolution. A normal main pet may
+use `NONE`, `NORMAL`, or `LEGENDARY`; the latter can select Pet Skill because
+Fusion creates the single source. `LEGENDARY/LEGENDARY` is invalid until the
+Damage selector can identify one of its two cards.
 
 The user-authored gameplay rules these steps implement live in
 `docs/gameplay_rules.md`, which is the source of truth for behaviour. Every
@@ -74,11 +77,15 @@ Only `BASIC` is implemented. Selecting `REASONING` returns `NONE` with
 
 ## Phase 3C.1 Pet Skill order
 
-For exact profile `LEGENDARY / NONE / PET_SKILL`, every decision first requires
-a unique current-session `PetSkillCapability`, a supported automatic-dot skill
-family, positive effective Mana/Rage requirements and known live CardUI
-actionability. Missing, stale, ambiguous or unsupported evidence returns
-`NONE`; it never becomes ordinary CAST or guessed resource play.
+For every profile with exactly one Pet Skill source, a present skill first
+requires a unique current-session `PetSkillCapability`, a supported
+automatic-dot skill family, positive effective Mana/Rage requirements and
+known live CardUI actionability. Missing, stale, ambiguous or unsupported
+evidence returns `NONE`; it never becomes ordinary CAST or guessed resource
+play. For `NORMAL / LEGENDARY / PET_SKILL`, the card does not exist before
+Fusion succeeds, so policy temporarily uses only the proven runtime Fusion
+Mana cost, never requires or clicks a skill card early, then applies the same
+capability rules after the mandatory fresh-state read.
 
 The implemented branch order is:
 
@@ -103,10 +110,10 @@ rarity cost constant. Net post-skill resources never authorize a later action.
 
 ## Current `SKILL_RUSH` order (Phase 3D.1-R1)
 
-The optional `SKILL_RUSH` branch is accepted only for
-`LEGENDARY / NONE / PET_SKILL / BASIC`; all other combinations are blocked by
-`SKILL_RUSH_PROFILE_NOT_IMPLEMENTED`. The serialized identity is `skill_rush`
-and the Desktop label is `Chịu đấm ăn xôi`. SIMPLE remains the default.
+The optional `SKILL_RUSH` branch is accepted for BASIC configurations with
+`PET_SKILL` and exactly one conceptual source. The serialized identity is
+`skill_rush` and the Desktop label is `Chịu đấm ăn xôi`. SIMPLE remains the
+default.
 
 After the unchanged combat/actionability and Pet Skill capability gates:
 
@@ -143,7 +150,11 @@ After the unchanged combat/actionability and Pet Skill capability gates:
    both known Sword and the selected condition GemType. Within the safe pool,
    direct clears at Manhattan distance at least 2 from every known Sword are
    preferred; distance never substitutes for direct, indirect and UNKNOWN
-   Sword-reply checks. If no safe preserving setup exists, use an authoritative
+   Sword-reply checks. An UNKNOWN refill that can immediately complete a known
+   Sword pair is a setup-preservation hazard even though that auto-match is not
+   an opponent reply. Prefer breaking remaining Sword opportunities, then
+   Drain/Shield resource protection among otherwise safe candidates. If no safe
+   preserving setup exists, use an authoritative
    `SKILL_RUSH_SETUP_PASS` while allowed. When PASS is prohibited, choose the
    lowest-risk preserving non-Sword action. If every legal move consumes Sword
    or the selected setup GemType, fail closed with
@@ -151,7 +162,9 @@ After the unchanged combat/actionability and Pet Skill capability gates:
 6. After the first current-match `SUCCESS_PERFECT`, the exact source turn stays
    closed. On a later authoritative local turn, fresh boss HP ratio `<= 30%`
    enables `POST_SKILL_FINISHER`: affordable ordinary Attack first, otherwise
-   deterministic Sword damage. EVOLVE stays disabled.
+   deterministic Sword damage. Any configured Evolution has already been
+   resolved by the shared pre-play-style branch and cannot repeat after
+   `Fusion.used`.
 7. If the surviving boss is above 30%, ordinary Attack and Sword remain blocked
    and resource/setup play resumes. A later second Pet Skill is legal only when
    runtime resources and the same selected generic fire condition become ready.
@@ -235,25 +248,24 @@ Sword danger regions are generated from aligned Sword pairs at spans 1-3 in
 rows and columns. Thus `(r,c)` / `(r,c+2)` is handled as one instance of the
 general detector rather than a hard-coded coordinate case.
 
-## Exact BASIC order
+## Shared Evolution branch and exact BASIC order
 
-1. From the second local turn onward, `EVOLVE` when priority is EVOLUTION, an
-   evolution pet is actually selected,
-   Fusion has not succeeded, the direct `MatchService` Fusion state and exact
-   `Board.selectedCards/cardsInHand` runtime slot are available, and mana
-   covers the current runtime cost. A live `FusionCardUI` is preferred but is
+1. Before every play-style branch, `EVOLVE` when canonical Evolution is not
+   `NONE`, Fusion has not succeeded, the direct `MatchService` Fusion state and
+   exact `Board.selectedCards/cardsInHand` slot are available, and Mana covers
+   the current positive runtime cost. A live `FusionCardUI` is preferred but is
    not required when those direct owners agree; a current visual tile proof is
-   still required immediately before input. It
-   consumes no turn and requires a fresh state read. ATTACK priority disables
-   evolution for the match. Low-boss-HP mode (boss current HP at or below the
-   enabled `cast_when_boss_hp_below` threshold) also disables EVOLVE, regardless
-   of mana priority, so the bot spends the endgame on Sword/Mana/CAST. EVOLVE
-   uses the same inclusive production action floor (currently one displayed
-   second) as normal gameplay; it is not silently postponed by the former
-   ten-second follow-up floor. At authoritative idle 2/3, EVOLVE is still
-   deferred because only a consuming SWAP/CAST can prevent ejection.
-   If no evolution pet was selected, EVOLVE is skipped and board policy
-   continues; this is not an automation stop.
+   still required immediately before input. Opening turn, low boss HP and an
+   authoritative mandatory-consuming state do not demote EVOLVE. It consumes
+   no turn and requires a fresh state read; the selected play style must then
+   produce the consuming action for that same local turn. EVOLVE uses the same
+   inclusive production action floor as normal gameplay plus its configured
+   same-turn response/follow-up floor. If no evolution pet was selected, cost
+   or authority is unavailable, or Mana is insufficient, board policy
+   continues. For a pending Legendary evolution Pet Skill, only the proven
+   Fusion cost supplies the temporary Mana deficit; after success, the new
+   CardUI/cost/capability are rediscovered and the configured Pet Skill fire
+   rule remains in force.
 2. If any deterministic result collects Sword, normally restrict selection to
    that group. Rank no direct/indirect opponent Sword reply, effective Sword,
    known combo, danger, then UNKNOWN exposure. If there is exactly one Sword

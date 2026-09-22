@@ -1,5 +1,53 @@
 # IL2CPP symbols — Phase 1
 
+## Card click transport b4 — 2026-09-22
+
+Verified with the same hash-matched b4 DLL as the QTE audit below:
+
+| Type | Member | b4 RVA / offset | Verified behavior |
+|---|---|---|---|
+| `CardUI` | `_Start_b__207_0()` | RVA `0xABCD40` | Button callback forwards card object to `RequestUseCard` |
+| `CardPhotonSync` | `RequestUseCard(CardUI)` | RVA `0x28F4D0` | Ordinary-card branch sends card identity; skill branches dispatch separately |
+| `MatchService` | `SendCardUse(int,int?)` | RVA `0x3D1300` | Forwards match/card/target to WsMatchClient |
+| `WsMatchClient` | `SendCardUse(string,int,int?)` | RVA `0x423E20` | Inlined `MATCH_CARD_USE_REQ` builder; no screen coordinates |
+| `ChatService` | `SendMatchCardUse(string,int,int?)` | RVA `0x3B30A0` | Same card-use builder; writes `cardId +0x108`, `cardTarget +0x110` |
+| `CardUI` | `OnMega1ToggleChanged`, `OnMega2ToggleChanged` | RVAs `0xAB3970`, `0xAB6EC0` | Skill hints contain board row/column selection, not screen click x/y |
+| `ChatService` | `SendMatchMove(...)` | RVA `0x3B2E20` | Sends board-cell coordinates and sequence/monotonic timestamp |
+
+Confidence: **HIGH** for the inspected input/transport paths. Raw pixel click
+logging was not found in these paths. Server retention and other uninspected
+collection paths remain **UNKNOWN**. See
+[card-click report](card_click_b4_transport.md) and
+[native evidence](../reference/card_click_b4_native.txt).
+
+## QTE / Audition V3 b4 input transport — 2026-09-22
+
+Read-only native audit against the exact b4 DLL SHA-256
+`D55BDE20918F65E84700736E0EDE33AA8EE50A10956590D28FB8E53D185B28D6`.
+
+| Type | Member | b4 RVA / offset | Verified behavior |
+|---|---|---|---|
+| `AuditionStage` | `PressDir(string)` | RVA `0xBD0080` | Calls bound press callback before local correct/wrong evaluation |
+| `AuditionStage` | `PressCallback`, `TapCallback` | `+0x28`, `+0x30` | Bound by `AuditionRunner.Run` to host press and runner tap callback |
+| `CardUI` | `IAuditionHost.OnAuditionPress`, `qtePresses` | RVA `0xA938F0`, `+0x498` | Appends direction string while list count < 64; no transport call |
+| `CardUIPVP` | `IAuditionHost.OnAuditionPress`, `qtePresses` | RVA `0x958EF0`, `+0x158` | Same local recording behavior |
+| `CardUI` / `CardUIPVP` | `CheckDotArrow(string)` | RVAs `0xAAE200` / `0x972A20` | Legacy handlers record directions locally before UI evaluation |
+| `AuditionStage` | `TapBar()` | RVA `0xBD0580` | Records tap timing, invokes tap callback once for active untapped stage |
+| `AuditionRunner.__c__DisplayClass12_0` | `_Run_b__0(int)` | RVA `0xBC7D60` | Calls host tap handler, then conditionally sends `MATCH_QTE_TAP` |
+| `CardUI._HandleDotSkillSequence_d__292` | `MoveNext()` | RVA `0xADC090` | Copies direction list and passes it to `SendSkillUse` after QTE |
+| `MatchService` | `SendSkillUse(...)` | RVA `0x3D1390` | Forwards list/timing/challenge to ChatService |
+| `ChatService` | `SendMatchSkillUse(...)` | RVA `0x3B21A0` | Builds and sends `MATCH_SKILL_USE_REQ` |
+| `ChatMessageDTO` | `qtePresses`, `qteElapsedMs`, `qteChallengeId` | `+0x150`, `+0x158`, `+0x160` | `List<string>`, `int?`, `long?`; populated in native skill sender |
+| `ChatService` | `SendMatchQteTap(...)` | RVA `0x3B27C0` | Sends timing/challenge separately; no direction list in this builder |
+| `AuditionRunner` | `RelayQte(...)` | RVA `0xBC79D0` | Verified caller phases are START/END, not individual direction presses |
+
+Confidence: **HIGH** for audited client flow. No per-direction packet occurs
+in these handlers; directions are later sent as a batch with skill use.
+Per-direction timestamps are absent from the audited `List<string>` payload.
+Backend validation/grading and live receipt remain **UNKNOWN**.
+See [full report](audition_qte_b4_input_transport.md) and
+[native evidence](../reference/audition_qte_b4_native.txt).
+
 ## Pokiguard 1.7.4-b4 default-runtime symbols — 2026-09-14
 
 Exact build gate: `GameAssembly.dll` SHA-256
@@ -1005,6 +1053,40 @@ Evidence:
 - read-only serialized scene inspection of
   `Pokiguard-1.7.4_Data/level2`, `btnIsland1` through `btnIsland18`
 - read-only live probe of `ChinhPhucDataService.Data` for pet 1289
+
+### 1.7.4-b4 hub surface visibility
+
+World Boss data and its `ManagerBoss` object survive after the user closes the
+overlay, so object/data presence is not visible-screen evidence. The desktop
+observer now validates each relevant managed `GameObject` through its native
+roundtrip and `activeInHierarchy` cache.
+
+| Assembly | Type | Member | Kind | Exact declared type | b4 field offset / RVA | Confidence |
+|---|---|---|---|---|---:|---|
+| Assembly-CSharp | `ManagerQuangTruong` | `panelBoss` | field | `UnityEngine.GameObject` | `+0x108` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `ManagerQuangTruong` | `panelPVP` | field | `UnityEngine.GameObject` | `+0x110` | CONFIRMED reverse |
+| Assembly-CSharp | `ManagerQuangTruong` | `panelGiftBox` | field | `UnityEngine.GameObject` | `+0x170` | CONFIRMED reverse |
+| Assembly-CSharp | `ManagerQuangTruong` | `panelGiftResult` | field | `UnityEngine.GameObject` | `+0x178` | CONFIRMED reverse |
+| Assembly-CSharp | `ManagerQuangTruong` | `panelChinhPhuc` | field | `UnityEngine.GameObject` | `+0x2C0` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `ManagerQuangTruong` | `loadingPanel` / `loadingRoom` | field | `UnityEngine.GameObject` | `+0x2D0` / `+0x2D8` | CONFIRMED reverse |
+| Assembly-CSharp | `ManagerQuangTruong` | `hubOnlyBlockers` | field | `UnityEngine.GameObject[]` | `+0x388` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `ManagerQuangTruong` | `PanelMasterLobby` | field | `UnityEngine.GameObject` | `+0x390` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `ManagerBoss` | `panelBoss` / `panelBossTG` | field | `UnityEngine.GameObject` | `+0x28` / `+0x30` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `UIPanelManager` | `Instance` | field | `UIPanelManager` | TypeInfo RVA `0x334C508`, static field `+0x00` | CONFIRMED reverse and live read |
+| Assembly-CSharp | `UIPanelManager` | `_openOrder` | field | `List<string>` | `+0x30` | CONFIRMED reverse and live read |
+
+After a World Boss overlay had been opened and closed, live evidence showed
+`PanelMasterLobby=true`, `panelBoss=false`, `panelBossTG=false`,
+`panelChinhPhuc=false`, and zero `UIPanelManager._openOrder` entries while the
+seven cached `BossItem` rows remained readable. This state is the general game
+lobby. Cached boss rows no longer promote it to `WORLD_BOSS_LIST`.
+
+Evidence:
+
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ManagerQuangTruong.cs:52-55,78-79,127-130,167-170`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ManagerBoss.cs:18-31`
+- `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/UIPanelManager.cs:16-40`
+- read-only live active-cache probe after closing the World Boss overlay
 
 ### 1.7.4-b2 Legend-card continuation audit addendum (Phase 3C.0)
 

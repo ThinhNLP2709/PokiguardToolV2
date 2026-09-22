@@ -262,6 +262,33 @@ FAILED_B1_TURN_13_ROWS = (
 )
 
 
+# Exact turn-13 board from FarmRun ba0b3666517d4739ac59e25cb42d1583.
+# Mana/Rage were already ready, but the old setup rank selected the vertical
+# Shield clear in column 6. Its three-cell refill can place an UNKNOWN Sword at
+# (row 1, column 6), immediately joining the known Sword pair at columns 7-8.
+REPORTED_TOP_SWORD_PAIR_SETUP_ROWS = (
+    ("health", "sword", "mana", "drain", "shield", "drain", "sword", "sword"),
+    ("drain", "rage", "sword", "mana", "mana", "shield", "drain", "health"),
+    ("rage", "mana", "drain", "shield", "rage", "shield", "mana", "rage"),
+    ("drain", "rage", "health", "sword", "drain", "health", "health", "shield"),
+    ("mana", "sword", "shield", "rage", "rage", "shield", "shield", "rage"),
+    ("drain", "shield", "rage", "health", "health", "rage", "drain", "mana"),
+    ("health", "sword", "drain", "shield", "mana", "sword", "health", "mana"),
+    ("health", "mana", "shield", "drain", "mana", "mana", "drain", "shield"),
+)
+
+REPORTED_TOP_SWORD_PAIR_SETUP_MULTIPLIERS = (
+    (1, 1, 1, 1, 2, 1, 1, 1),
+    (1, 1, 1, 2, 1, 1, 1, 3),
+    (1, 1, 1, 1, 2, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 4, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 2, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+)
+
+
 PHASE3D1_SETUP_BLOCKED_ROWS = (
     ("drain", "shield", "mana", "mana", "health", "rage", "rage", "mana"),
     ("mana", "health", "drain", "health", "drain", "rage", "mana", "drain"),
@@ -833,6 +860,53 @@ class Phase3c3SkillRushPolicyTests(unittest.TestCase):
         self.assertEqual(selected.known_sword_consumed, 0)
         self.assertEqual(selected.cleared_non_sword_adjacent_to_sword, 0)
         self.assertGreaterEqual(selected.cleared_non_sword_min_sword_distance or 0, 2)
+
+    def test_ready_setup_avoids_refill_into_top_sword_pair_while_pass_allowed(self) -> None:
+        state = boss_state(hp=60_552, maximum=84_180, mana=360, rage=225)
+        state = replace(
+            state,
+            board=board_from_names(
+                REPORTED_TOP_SWORD_PAIR_SETUP_ROWS,
+                multipliers=REPORTED_TOP_SWORD_PAIR_SETUP_MULTIPLIERS,
+            ),
+        )
+        state = with_idle_status(
+            state,
+            GameOwnedIdleStatus.RESET_BASELINE_CONFIRMED,
+            count=0,
+        )
+
+        decision = rush_policy().decide(state, pet_skill_capability=capability())
+
+        self.assertEqual(decision.action, PolicyAction.PASS)
+        self.assertEqual(decision.trace.policy_step, "SKILL_RUSH_SETUP_PASS")
+        self.assertTrue(decision.trace.setup_blocked)
+
+    def test_ready_setup_refill_pair_risk_is_soft_when_pass_is_forbidden(self) -> None:
+        state = boss_state(hp=60_552, maximum=84_180, mana=360, rage=225)
+        state = replace(
+            state,
+            board=board_from_names(
+                REPORTED_TOP_SWORD_PAIR_SETUP_ROWS,
+                multipliers=REPORTED_TOP_SWORD_PAIR_SETUP_MULTIPLIERS,
+            ),
+        )
+        state = with_idle_status(
+            state,
+            GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION,
+            count=2,
+        )
+
+        decision = rush_policy().decide(state, pet_skill_capability=capability())
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.policy_step, "SKILL_RUSH_SETUP_RELAXED")
+        self.assertNotEqual(decision.move.first, (3, 5))
+        self.assertIsNotNone(decision.trace.selected_candidate)
+        selected = decision.trace.selected_candidate
+        assert selected is not None
+        self.assertEqual(selected.known_sword_consumed, 0)
+        self.assertEqual(selected.refill_sword_auto_match_completions, 0)
 
     def test_failed_b1_turn_27_fires_at_inclusive_ten_sword(self) -> None:
         state = boss_state(hp=61_690, maximum=84_180, mana=215, rage=250)

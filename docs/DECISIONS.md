@@ -281,6 +281,13 @@ Sword-reply safety. No safe preserving setup uses an allowed PASS; a mandatory
 turn uses the lowest-risk preserving non-Sword move. If every legal move
 consumes Sword or the selected setup gem, policy fails closed.
 
+Setup safety also treats an UNKNOWN refill that could immediately complete a
+known Sword pair as a preservation hazard. This is a soft setup preference,
+not a global ban: collect Drain/Shield and break remaining Sword opportunities
+when a hazard-free preserving action exists; otherwise use an allowed PASS. If
+PASS is prohibited, take the lowest-risk preserving non-Sword action even when
+the refill hazard cannot be eliminated.
+
 Normal skill authorization requires current runtime resources, the selected
 fire condition and every existing actionability/session/QTE gate. After a
 current-match `SUCCESS_PERFECT`, boss HP ratio `> 30%` restarts the same
@@ -435,14 +442,12 @@ PlayStyle:
 Pet của tôi / MainPetType:
 - NORMAL (Pet thường)
 - LEGENDARY (Huyền thoại)
-- EVOLVED (Tiến hóa; visible but disabled)
 - MEGA (Mega; visible but disabled)
 
 Tiến hóa / EvolutionTarget:
 - NONE (Không tiến hóa)
 - NORMAL (Tiến hóa pet thường)
 - LEGENDARY (Tiến hóa pet huyền thoại)
-- EVOLVED (Tiến hóa pet tiến hóa; visible but disabled)
 - MEGA (Tiến hóa pet Mega; visible but disabled)
 
 Thẻ sát thương / DamageCardMode:
@@ -455,17 +460,17 @@ Intelligence:
 - REASONING
 ```
 
-The default is `NORMAL / NORMAL / DEFAULT_ATTACK`. The second default-Attack
-profile is `NORMAL / NONE / DEFAULT_ATTACK`. These preserve the old
-`EVOLUTION` and `ATTACK` BASIC behavior respectively. `ManaPriority` is no
-longer a product or Desktop setting. `LEGENDARY / NONE / PET_SKILL` is the
-first supported BASIC Pet Skill profile.
+The default is `NORMAL / NORMAL / DEFAULT_ATTACK`. `ManaPriority` is no longer
+a product or Desktop setting. Every supported single-source profile uses the
+same FarmRunner policy boundary. A Legendary main pet permits only `NONE` or
+`NORMAL`; a normal main pet permits `NONE`, `NORMAL`, or `LEGENDARY`.
 
-`LEGENDARY / NONE / PET_SKILL` reaches the normal Desktop/FarmRunner Pet Skill
-policy without translating it to ordinary Attack. `NORMAL / LEGENDARY`
-exposes an evolution-target skill source. `LEGENDARY / LEGENDARY` exposes both
-main-pet and evolution-target sources; no implementation may choose one
-implicitly.
+`LEGENDARY / NONE / PET_SKILL`, `LEGENDARY / NORMAL / PET_SKILL`, and
+`NORMAL / LEGENDARY / PET_SKILL` reach the normal Desktop/FarmRunner Pet Skill
+policy without translating it to ordinary Attack. The last profile begins with
+no skill CardUI; it evolves first and discovers the evolution-target source on
+the mandatory fresh read. `LEGENDARY / LEGENDARY` exposes two sources and is
+invalid; no implementation may choose one implicitly.
 
 User clarification on 2026-09-14 supersedes the assumption that the final
 Damage selector will always contain only two choices. When a future supported
@@ -503,20 +508,18 @@ to effective collected value.
 - Current accepted/observed Evolution cost in 1.7.4-b2 is 120 Mana.
 - Production input must still read an actual positive runtime Fusion cost; it
   must not guess 120 when runtime cost is unavailable.
-- In the runnable `NORMAL / NORMAL / DEFAULT_ATTACK` profile, if Fusion has not
-  succeeded, the live action is safely actionable, and Mana is sufficient,
-  keep trying from the second local turn until success under the
-  response/lock/fresh-state safety contract.
+- In every profile whose Evolution is not `NONE`, if Fusion has not succeeded,
+  the live action is safely actionable, and Mana is sufficient, EVOLVE is the
+  first policy branch under the response/lock/fresh-state safety contract.
 - Production Step 1 uses the same inclusive one-second action floor as normal
   input. The former ten-second EVOLVE follow-up floor is not a gameplay rule
   and must not postpone an otherwise actionable evolution.
 - A failed attempt may retry only after the current-turn lock clears and fresh
   actionable state permits it; no tight loop.
-- In the runnable `NORMAL / NONE / DEFAULT_ATTACK` profile, do not evolve
-  during that match.
-- While the boss current HP is at or below the enabled configurable low-HP
-  threshold (`cast_when_boss_hp_below`, default 30000), do not evolve even when
-  evolution is requested; preserve mana for the Sword/Mana/CAST finisher path.
+- In every profile whose Evolution is `NONE`, do not evolve during that match.
+- Opening-turn, low-boss-HP and mandatory-consuming/PASS state do not suppress
+  an otherwise authorized Evolution. The fresh same-turn decision still must
+  choose a consuming action afterward.
 - EVOLVE is a functional action and does not consume the gameplay turn.
 - After successful EVOLVE, reread full `GameState`; a consuming SWAP or CAST
   may still occur in the same turn.
