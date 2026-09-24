@@ -1,0 +1,766 @@
+{
+  "schemaVersion": 1,
+  "phase": "4A.1-R2",
+  "generatedAt": "2026-09-24",
+  "result": "PASS_STRONG_PINNED_FOREGROUND_LEASE",
+  "source": {
+    "version": "v1.1.0",
+    "commit": "4c2777d415a8f77037820babc7a67ad72186441c",
+    "branch": "codex/phase3a2-board-repair",
+    "gameBuild": "Pokiguard 1.7.4-b4",
+    "gameAssemblySha256": "D55BDE20918F65E84700736E0EDE33AA8EE50A10956590D28FB8E53D185B28D6"
+  },
+  "evidenceLabels": [
+    "CONFIRMED_FROM_CODE",
+    "CONFIRMED_FROM_REVERSE",
+    "CONFIRMED_FROM_PRIOR_LIVE",
+    "CONFIRMED_FROM_LIVE_PROBE",
+    "INFERRED",
+    "UNKNOWN"
+  ],
+  "globalContracts": {
+    "postMessageQueueResultIsAcceptance": false,
+    "backgroundProductionEnabled": false,
+    "coveredCombatPostMessageRoute": "UNSUPPORTED_BY_4A1_EVIDENCE",
+    "minimized": "UNSUPPORTED",
+    "coveredScreenDcCapture": "UNSUPPORTED",
+    "coordinateContract": "Target HWND plus nonnegative client coordinates packed into lParam; no screen-coordinate/global-cursor use in a background candidate.",
+    "noRetryContract": "An input that is partial, rejected, or sent without authoritative ACK is never retried blindly.",
+    "cleanupContract": "After drag DOWN is attempted, exactly one UP cleanup is mandatory even on stop or failure.",
+    "pinnedForegroundLeaseProductionEnabled": false,
+    "pinnedForegroundLeaseStatus": "PROVEN_LIVE_HARNESS"
+  },
+  "capabilities": [
+    {
+      "id": "single_ui_click_primitive",
+      "productionDomain": "shared primitive",
+      "gesture": "single_click",
+      "permit": "domain-specific FarmRun or recovery permit",
+      "currentTransport": "ForegroundClickExecutor.send_normalized_point -> SetCursorPos + mouse_event",
+      "coordinateSpace": "normalized client -> client pixel -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/win32_input.py:492-519,731-762",
+      "authoritativeAck": "domain-specific post-state; ClickStatus.SENT is not acceptance",
+      "visualDependency": "depends on caller; most UI callers use screen-DC locator",
+      "coveredBehavior": "UNKNOWN_UNSAFE_WHEN_CALLER_USES_SCREEN_DC",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "client WM_MOUSEMOVE(0), WM_LBUTTONDOWN(MK_LBUTTON), WM_LBUTTONUP(0)",
+      "backgroundStatus": "UNCONFIRMED",
+      "stopRule": "Stop on stale HWND/PID/geometry, minimized, queue false, partial sequence, no domain ACK, focus takeover, or cursor movement.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/win32_input.py:423-519,731-762",
+          "detail": "Current primitive is foreground/global-cursor only."
+        },
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "D:/PokiguardAuto/pokiguard_auto/win32.py:157-178",
+          "detail": "V1 candidate uses client lParam and Move/Down/Up but ignores PostMessage return values."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.1 live probe",
+          "detail": "Unity b4 background delivery has not been tested."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1/b2_hold_retry_20260923_155332",
+          "detail": "All three PostMessageW calls queued with a 31 ms hold, but no fresh combat session/opening ACK appeared during the 45-second window."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1/b2_user_observed_retry_20260923",
+          "detail": "A separate user-authorized observable repeat queued the same held click while background; the user confirmed the game did not enter and no opening ACK appeared."
+        }
+      ]
+    },
+    {
+      "id": "board_two_click",
+      "productionDomain": "GAMEPLAY_SWAP",
+      "gesture": "two_click",
+      "permit": "FarmRun.reserve_gameplay(GAMEPLAY_SWAP)",
+      "currentTransport": "ForegroundClickExecutor.send_swap -> two _send_one calls",
+      "coordinateSpace": "board client calibration converted to screen pixels",
+      "currentForegroundGate": "src/pokiguard_v2/actionability.py:281-288; src/pokiguard_v2/farm_run.py:1166-1209; src/pokiguard_v2/win32_input.py:492-598",
+      "authoritativeAck": "exact MatchService local/last sequence, last-move from/to cells, and opponent-turn transition",
+      "visualDependency": "screen-DC leave-modal sanity capture before production SWAP",
+      "coveredBehavior": "UNKNOWN",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "two bounded client Move/Down/Up sequences with state revalidation before the second click",
+      "backgroundStatus": "UNCONFIRMED",
+      "stopRule": "One sent click plus any failure is PARTIAL_INPUT; lock identity, wait bounded post-state, never retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/basic_auto_bot.py:8714-8982",
+          "detail": "Production preflight, permit, send and telemetry."
+        },
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/basic_auto_bot.py:3896-3959,6500-6530",
+          "detail": "Exact SWAP acceptance; unattributed ACK advance is not acceptance."
+        },
+        {
+          "classification": "CONFIRMED_FROM_REVERSE",
+          "source": "docs/pokiguard_1.7.4_compatibility.md:344-345,456-497",
+          "detail": "Dot supports tap and swipe handlers."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.1 B3",
+          "detail": "Posted two-click delivery is unproven."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1/b3_retry_20260923_160729",
+          "detail": "Six messages queued while non-foreground and cursor unchanged; turn and local sequence did not advance and no exact last-move ACK appeared."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1_r2/b3_retry9_20260924",
+          "detail": "Pinned foreground lease captured MATCH_START turn 1, sent exactly one two-click swap, received exact sequence/coordinate/turn ACK, and restored cursor/focus/topmost. Production integration remains false."
+        }
+      ],
+      "foregroundLeaseStatus": "PASS_STRONG_LIVE_HARNESS"
+    },
+    {
+      "id": "board_drag",
+      "productionDomain": "GAMEPLAY_SWAP",
+      "gesture": "drag",
+      "permit": "FarmRun.reserve_gameplay(GAMEPLAY_SWAP)",
+      "currentTransport": "ForegroundClickExecutor._send_drag -> SetCursorPos path + mouse_event DOWN/UP",
+      "coordinateSpace": "board client calibration converted to screen pixels with bounded overshoot",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1166-1209; src/pokiguard_v2/win32_input.py:600-729",
+      "authoritativeAck": "same exact SWAP ACK as two-click, recorded with gesture=drag",
+      "visualDependency": "screen-DC leave-modal sanity capture before production SWAP",
+      "coveredBehavior": "UNKNOWN",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "client MOVE start, DOWN, ordered MOVE(MK_LBUTTON), overshoot MOVE(MK_LBUTTON), unconditional UP",
+      "backgroundStatus": "UNCONFIRMED",
+      "stopRule": "After DOWN, send only cleanup UP on failure/stop; classify partial/unconfirmed and never retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/win32_input.py:600-729",
+          "detail": "Foreground drag order, revalidation and unconditional UP."
+        },
+        {
+          "classification": "CONFIRMED_FROM_REVERSE",
+          "source": "docs/pokiguard_1.7.4_compatibility.md:494-497",
+          "detail": "OnMouseDown/OnMouseUp displacement and swipe threshold."
+        },
+        {
+          "classification": "CONFIRMED_FROM_PRIOR_LIVE",
+          "source": "docs/CURRENT_STATE.md#pokiguard-174-native-viewport-mapping",
+          "detail": "Current quick foreground flick accepted; old slow drag was unconfirmed."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.1 B4",
+          "detail": "Posted held-button drag is unproven."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1/b4_drag_retry_20260923",
+          "detail": "Seven-message held drag including unconditional UP queued while non-foreground and cursor unchanged; turn and local sequence did not advance and no exact last-move ACK appeared."
+        }
+      ]
+    },
+    {
+      "id": "boss_room_shell_exit",
+      "productionDomain": "BOSS_ROOM_SHELL_EXIT",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_room_shell_exit",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "visual normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1731-1772",
+      "authoritativeAck": "detached shell closes and state becomes leave modal, map, or owner-free hub according to route",
+      "visualDependency": "detached room-shell exit locator from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up only after fresh target proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "No fresh shell identity/locator or no post-state transition means stop; no retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/farm_run.py:1505-1774; src/pokiguard_v2/farm_run.py:1731-1791",
+          "detail": "Current route, visual locator and one-shot permit."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background navigation route remains unproven."
+        }
+      ]
+    },
+    {
+      "id": "boss_room_shell_confirm",
+      "productionDomain": "BOSS_ROOM_SHELL_CONFIRM",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_room_shell_confirm",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "visual normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1793-1860",
+      "authoritativeAck": "leave modal closes and owner-free map/hub state appears",
+      "visualDependency": "confirm-leave locator from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact modal proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "No fresh modal proof or no owner-free post-state means stop; no retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/farm_run.py:1158-1272; src/pokiguard_v2/farm_run.py:1793-1860",
+          "detail": "Current modal proof, permit and click."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background confirm is unproven."
+        }
+      ]
+    },
+    {
+      "id": "boss_hub_chinh_phuc_open",
+      "productionDomain": "BOSS_HUB_CHINH_PHUC_OPEN",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_hub_chinh_phuc_open",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "visual normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1660-1729",
+      "authoritativeAck": "owner-free general hub transitions to the Chinh Phuc map branch",
+      "visualDependency": "hub control locator from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after stable runtime and visual proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "No exact hub branch/control or no map transition means stop; no retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/farm_run.py:1403-1475; src/pokiguard_v2/farm_run.py:1660-1729",
+          "detail": "Current hub open proof and permit."
+        },
+        {
+          "classification": "CONFIRMED_FROM_PRIOR_LIVE",
+          "source": "docs/CURRENT_STATE.md#empty-room-return-is-pet-derived-across-islands-2026-09-21",
+          "detail": "Foreground hub route accepted with bounded visual/runtime proof."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background hub click is unproven."
+        }
+      ]
+    },
+    {
+      "id": "boss_target_select",
+      "productionDomain": "BOSS_TARGET_SELECT",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_target_select",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "pet-derived visual normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1574-1658",
+      "authoritativeAck": "exact pet/group target room and boss lobby become current",
+      "visualDependency": "hunt-order badge and target control from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact pet/group/native/visual identity",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Panel/group/pet mismatch, stale locator, or no exact room transition stops without retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/farm_run.py:1505-2036; src/pokiguard_v2/farm_run.py:1574-1658",
+          "detail": "Current pet-derived map selection and permit."
+        },
+        {
+          "classification": "CONFIRMED_FROM_PRIOR_LIVE",
+          "source": "docs/CURRENT_STATE.md#empty-room-return-is-pet-derived-across-islands-2026-09-21",
+          "detail": "Foreground pet-derived route accepted."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background target selection is unproven."
+        }
+      ]
+    },
+    {
+      "id": "boss_card_select",
+      "productionDomain": "BOSS_CARD_SELECT",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_lobby_card_select",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "runtime-indexed toggle normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:872-948",
+      "authoritativeAck": "same exact card appears in ManagerRoom.selectedCards",
+      "visualDependency": "two stable Attack-toggle frames from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after unique RoomDTO card and fresh stable toggle proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Ambiguous card, changed room, stale pixels, no selectedCards ACK, or focus takeover stops; no retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/boss_entry.py:551-884; src/pokiguard_v2/farm_run.py:872-948",
+          "detail": "Unique card proof, click and memory confirmation."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.1 or 4B.3",
+          "detail": "Background card toggle is unproven."
+        }
+      ]
+    },
+    {
+      "id": "boss_entry",
+      "productionDomain": "BOSS_ENTRY",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_entry",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "stable Start normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:834-870",
+      "authoritativeAck": "distinct fresh combat session plus stable valid 64-cell MATCH_START opening",
+      "visualDependency": "stable Start proof from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up to current Start proof",
+      "backgroundStatus": "UNCONFIRMED",
+      "stopRule": "Wrong target/owner, stale Start proof, no new session/opening, queue failure, or focus takeover stops; B2 does not retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/boss_entry.py:498-516,942-2152; src/pokiguard_v2/farm_run.py:834-962",
+          "detail": "Start preflight, one-shot click, session and opening acceptance."
+        },
+        {
+          "classification": "CONFIRMED_FROM_PRIOR_LIVE",
+          "source": "docs/CURRENT_STATE.md",
+          "detail": "Foreground FarmRunner entry is accepted baseline."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.1 B2",
+          "detail": "Background Start delivery is unproven."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1/b2_hold_retry_20260923_155332",
+          "detail": "Exact Starburst Start proof and background single-click produced no authoritative entry ACK; no retry."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1/b2_user_observed_retry_20260923",
+          "detail": "User observed an explicitly requested repeat and confirmed Start still did not enter the match; this was not an automatic retry."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "logs/phase4a1_r2/b2_retry2_20260924",
+          "detail": "Pinned foreground Start lease produced a fresh ACTIVE session and restored cursor/focus. Production integration remains false."
+        }
+      ],
+      "foregroundLeaseStatus": "PASS_LIVE_HARNESS"
+    },
+    {
+      "id": "boss_entry_retry",
+      "productionDomain": "BOSS_ENTRY_RETRY",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_entry_retry",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "same stable Start normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:964-1052",
+      "authoritativeAck": "same as entry: distinct fresh session plus valid stable opening",
+      "visualDependency": "same-target stable Start proof",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up only after first entry is proven sent once and no session exists",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Never use in 4A.1 B2; duplicate, ambiguous first click, changed target/button, or no ACK stops.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/boss_entry.py:246-359; src/pokiguard_v2/farm_run.py:964-1052",
+          "detail": "One bounded foreground retry contract."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "future domain-specific integration",
+          "detail": "Background retry is unproven and excluded from initial live sample."
+        }
+      ]
+    },
+    {
+      "id": "gameplay_cast",
+      "productionDomain": "GAMEPLAY_CAST",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_gameplay(GAMEPLAY_CAST)",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "runtime card slot plus visual locator -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/actionability.py:281-288; src/pokiguard_v2/farm_run.py:1166-1209",
+      "authoritativeAck": "current-session card/skill response plus used/turn transition; direct owner path requires exact mana-cost delta and opponent turn",
+      "visualDependency": "gameplay-control locator and leave-modal screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact current card identity and fresh visual proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Missing card/resource/locator, response reject, no consuming post-state, or ambiguity stops; no click retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/basic_auto_bot.py:8983-9261,6409-6414,6568-6633",
+          "detail": "Current CAST preflight, input and response/post-state acceptance."
+        },
+        {
+          "classification": "CONFIRMED_FROM_REVERSE",
+          "source": "docs/card_click_b4_transport.md",
+          "detail": "Card request carries card identity/target, not click pixels."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4B.3",
+          "detail": "Background CAST click is unproven."
+        }
+      ]
+    },
+    {
+      "id": "gameplay_evolve",
+      "productionDomain": "GAMEPLAY_EVOLVE",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_gameplay(GAMEPLAY_EVOLVE)",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "runtime Fusion slot plus visual locator -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/actionability.py:281-288; src/pokiguard_v2/farm_run.py:1166-1209",
+      "authoritativeAck": "MATCH_FUSION_RES and/or durable Fusion used/locked/lastAttemptTurn terminal state",
+      "visualDependency": "EVOLVE gameplay-control locator and leave-modal screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact Fusion authority, cost and visual proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Missing authority/cost/locator or terminal ACK timeout stops; same-turn reread required and no click retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/basic_auto_bot.py:1396-1436,8983-9236,6403-6408,6531-6567",
+          "detail": "Current EVOLVE preflight and terminal ACK classification."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4B.3",
+          "detail": "Background EVOLVE click is unproven."
+        }
+      ]
+    },
+    {
+      "id": "pet_skill_card_click",
+      "productionDomain": "GAMEPLAY_PET_SKILL",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_gameplay(GAMEPLAY_PET_SKILL) plus PetSkillAction ownership",
+      "currentTransport": "PetSkillActionExecutor -> send_normalized_point",
+      "coordinateSpace": "current CardUI/Button normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1166-1209; src/pokiguard_v2/pet_skill_action.py:1085-1128,1161-1184",
+      "authoritativeAck": "fresh QTE generation bound to same session, card, button and inactive-QTE baseline",
+      "visualDependency": "runtime-derived card slot geometry; no board screenshot in critical QTE poll",
+      "coveredBehavior": "UNKNOWN",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact current CardUI identity",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "No QTE generation by original deadline is CARD_CLICK_SENT_QTE_UNCONFIRMED_NO_RETRY.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/pet_skill_action.py:564-625,1085-1128",
+          "detail": "Exact card identity, one click and QTE-generation ACK."
+        },
+        {
+          "classification": "CONFIRMED_FROM_REVERSE",
+          "source": "docs/card_click_b4_transport.md; docs/pokiguard_pet_skill_qte_reverse_report.md",
+          "detail": "Card callback and QTE creation/skill-use chain."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4B.3",
+          "detail": "Background Pet Skill card click is unproven."
+        }
+      ]
+    },
+    {
+      "id": "gameplay_pass",
+      "productionDomain": "GAMEPLAY_PASS",
+      "gesture": "zero_input",
+      "permit": "FarmRun.reserve_gameplay(GAMEPLAY_PASS)",
+      "currentTransport": "none",
+      "coordinateSpace": "not applicable",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1166-1209",
+      "authoritativeAck": "game-owned AFK/pass payload and later turn/reset semantics",
+      "visualDependency": "none for Windows input",
+      "coveredBehavior": "not a background transport capability",
+      "minimizedBehavior": "not assessed",
+      "backgroundCandidate": "none",
+      "backgroundStatus": "NOT_APPLICABLE",
+      "stopRule": "complete_gameplay must reject sent=true; no Windows message may be emitted.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/farm_run.py:1211-1228,1268-1295",
+          "detail": "PASS is explicitly zero-input."
+        },
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tests/test_authoritative_pass.py:414-415",
+          "detail": "PASS source is asserted not to call swap or point input."
+        }
+      ]
+    },
+    {
+      "id": "postmatch_confirm",
+      "productionDomain": "POSTMATCH_CONFIRM",
+      "gesture": "single_click",
+      "permit": "FarmRun.reserve_postmatch",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "stable result-confirm normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/farm_run.py:1538-1572",
+      "authoritativeAck": "return to exact boss lobby or classified owner-free return route",
+      "visualDependency": "three stable result-confirm frames from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after authoritative POSTMATCH and stable current proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Result identity conflict, stale proof, no return state, or queue failure stops; no duplicate confirm.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tools/farm_run.py:787-938; src/pokiguard_v2/farm_run.py:1538-1572",
+          "detail": "POSTMATCH lifecycle, 3-frame proof, one permit and return ACK."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4B.3",
+          "detail": "Background result confirm is unproven."
+        }
+      ]
+    },
+    {
+      "id": "qte_direction",
+      "productionDomain": "GAMEPLAY_PET_SKILL sub-action",
+      "gesture": "typed_key_direction",
+      "permit": "PetSkillAction/QteDirectionAssist ownership under one GAMEPLAY_PET_SKILL lease",
+      "currentTransport": "QteDirectionInputExecutor -> NativeWin32Backend.press_virtual_key -> keybd_event",
+      "coordinateSpace": "not applicable",
+      "currentForegroundGate": "src/pokiguard_v2/qte_direction_assist.py:83-118; src/pokiguard_v2/pet_skill_action.py:1161-1184",
+      "authoritativeAck": "same generation currentIndex +1, correctCount +1, and exactly one matching appended press",
+      "visualDependency": "none in critical control-only poll",
+      "coveredBehavior": "UNKNOWN",
+      "minimizedBehavior": "UNSUPPORTED_CURRENT_BACKEND",
+      "backgroundCandidate": "targeted typed WM_KEYDOWN/WM_KEYUP with correct VK/scan transition bits",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "No exact RAM progress, jump, mismatch, timeout, stop, or focus takeover ends action without next key or retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/qte_direction_assist.py:489-687",
+          "detail": "Per-direction send, exact RAM ACK and no-retry timeout."
+        },
+        {
+          "classification": "CONFIRMED_FROM_REVERSE",
+          "source": "docs/pokiguard_pet_skill_qte_reverse_report.md:302-307",
+          "detail": "CardUI.GetDirectionFromInput uses UnityEngine.Input.GetKeyDown."
+        },
+        {
+          "classification": "CONFIRMED_FROM_PRIOR_LIVE",
+          "source": "docs/CURRENT_STATE.md#v110-source-acceptance-refresh",
+          "detail": "Foreground keybd_event path produced exact 7/7 ACK."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.2",
+          "detail": "Background posted-key delivery is unproven."
+        },
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tests/test_foreground_qte_lease_transport.py; tests/test_foreground_qte_lease_probe.py",
+          "detail": "Phase 4 QTE session lease and physical-keyboard guard pass offline tests; live direction/Space acknowledgement remains pending."
+        }
+      ],
+      "pinnedForegroundLeaseStatus": "PASS_STRONG_LIVE_B2_MOUSE_RELEASE"
+    },
+    {
+      "id": "qte_space",
+      "productionDomain": "GAMEPLAY_PET_SKILL sub-action",
+      "gesture": "typed_key_space",
+      "permit": "PetSkillAction one-shot Space authority",
+      "currentTransport": "QteSpaceInputExecutor -> NativeWin32Backend.press_virtual_key(0x20) -> keybd_event",
+      "coordinateSpace": "not applicable",
+      "currentForegroundGate": "src/pokiguard_v2/pet_skill_action.py:119-143,780-826,1161-1184",
+      "authoritativeAck": "same QTE generation completed and current CardUI runtime result PERFECT",
+      "visualDependency": "none in critical control-only poll",
+      "coveredBehavior": "UNKNOWN",
+      "minimizedBehavior": "UNSUPPORTED_CURRENT_BACKEND",
+      "backgroundCandidate": "targeted typed WM_KEYDOWN/WM_KEYUP for Space with correct scan/transition bits",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "One Space maximum; runtime completion timeout is unconfirmed with no retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/pet_skill_action.py:780-904",
+          "detail": "One Space, bounded result wait and same-generation runtime PERFECT ACK."
+        },
+        {
+          "classification": "CONFIRMED_FROM_REVERSE",
+          "source": "docs/audition_qte_b4_input_transport.md",
+          "detail": "V3 confirm records timing and sends MATCH_QTE_TAP; skill request later includes QTE data."
+        },
+        {
+          "classification": "CONFIRMED_FROM_PRIOR_LIVE",
+          "source": "docs/CURRENT_STATE.md#v110-source-acceptance-refresh",
+          "detail": "Foreground Space produced runtime PERFECT."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4A.2",
+          "detail": "Background posted Space is unproven."
+        },
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "tests/test_foreground_qte_lease_transport.py; tests/test_foreground_qte_lease_probe.py",
+          "detail": "Phase 4 QTE session lease and physical-keyboard guard pass offline tests; live direction/Space acknowledgement remains pending."
+        }
+      ],
+      "pinnedForegroundLeaseStatus": "PASS_STRONG_LIVE_B2_KEYBOARD_ONLY"
+    },
+    {
+      "id": "recovery_exit",
+      "productionDomain": "RECOVERY_EXIT",
+      "gesture": "single_click",
+      "permit": "TechnicalRecoveryCoordinator.reserve_exit",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "validated Exit locator normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/technical_recovery.py:549-564",
+      "authoritativeAck": "exit modal appears while exact failed session remains controlled",
+      "visualDependency": "Exit locator from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact failed-session and current locator proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Changed session/lifecycle, no modal, queue failure, or ambiguity blocks recovery; no duplicate exit.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/technical_recovery.py:529-564,626-679; tools/technical_recovery.py:1077-1246",
+          "detail": "Exit proof, permit, input and modal transition."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background recovery exit is unproven."
+        }
+      ]
+    },
+    {
+      "id": "recovery_confirm",
+      "productionDomain": "RECOVERY_CONFIRM",
+      "gesture": "single_click",
+      "permit": "TechnicalRecoveryCoordinator.reserve_confirm",
+      "currentTransport": "send_normalized_point",
+      "coordinateSpace": "validated confirm locator normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/technical_recovery.py:566-584",
+      "authoritativeAck": "failed combat ownership closes and a clean owner-free lobby/map state is observed",
+      "visualDependency": "leave-confirm locator from screen-DC capture",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact current modal proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "No modal/lobby transition, dirty ownership, queue failure, or duplicate confirm blocks recovery.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/technical_recovery.py:539-584,662-685; tools/technical_recovery.py:1287-1538",
+          "detail": "Confirm proof, input and clean-lobby/ACK-epoch checks."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background recovery confirm is unproven."
+        }
+      ]
+    },
+    {
+      "id": "recovery_target_select",
+      "productionDomain": "RECOVERY_TARGET_SELECT",
+      "gesture": "single_click",
+      "permit": "TechnicalRecoveryCoordinator.reserve_target_select",
+      "currentTransport": "entry/map target selection click",
+      "coordinateSpace": "exact target normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/technical_recovery.py:586-596",
+      "authoritativeAck": "exact configured pet/room target becomes current before reentry",
+      "visualDependency": "target/map locator and runtime identity",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after exact pet-derived target proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Target mismatch, stale locator, or missing exact room ACK blocks reentry with no retry.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/technical_recovery.py:586-606; tools/technical_recovery.py:1613-1733",
+          "detail": "Recovery target verification and entry orchestration."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background recovery target selection is unproven."
+        }
+      ]
+    },
+    {
+      "id": "recovery_reentry",
+      "productionDomain": "RECOVERY_REENTRY",
+      "gesture": "single_click",
+      "permit": "TechnicalRecoveryCoordinator.reserve_reentry",
+      "currentTransport": "boss entry single click",
+      "coordinateSpace": "stable Start normalized client point -> screen pixel",
+      "currentForegroundGate": "src/pokiguard_v2/technical_recovery.py:598-624",
+      "authoritativeAck": "distinct fresh session and valid opening after clean recovery ACK epoch",
+      "visualDependency": "stable Start proof plus exact target runtime state",
+      "coveredBehavior": "UNSUPPORTED_CURRENT_ROUTE",
+      "minimizedBehavior": "UNSUPPORTED",
+      "backgroundCandidate": "single client Move/Down/Up after recovery target and Start proof",
+      "backgroundStatus": "UNKNOWN",
+      "stopRule": "Dirty ACK epoch, stale session/target, no fresh session/opening, or queue failure blocks; one reentry maximum per incident.",
+      "evidence": [
+        {
+          "classification": "CONFIRMED_FROM_CODE",
+          "source": "src/pokiguard_v2/technical_recovery.py:598-653; tools/technical_recovery.py:1491-1785",
+          "detail": "Clean ACK epoch, exact reentry permit and fresh-session handoff."
+        },
+        {
+          "classification": "UNKNOWN",
+          "source": "Phase 4C.2",
+          "detail": "Background recovery reentry is unproven."
+        }
+      ]
+    }
+  ],
+  "selectedBranch": "PINNED_FOREGROUND_LEASE",
+  "liveResults": {
+    "B1_TOPMOST_ZERO_INPUT": "ACCEPTED",
+    "B2_PINNED_FOREGROUND_START": "ACCEPTED",
+    "B3_PINNED_FOREGROUND_TWO_CLICK": "PASS_STRONG",
+    "B3_EXACT_ACK_ARTIFACT": "logs/phase4a1_r2/b3_retry9_20260924",
+    "productionIntegration": false,
+    "trueBackgroundMouse": "UNSUPPORTED_CURRENT_POSTMESSAGE_ROUTE",
+    "A2_PINNED_FOREGROUND_QTE": "PASS_STRONG",
+    "A2_B2_EXACT_ACK_ARTIFACT": "logs/phase4a2_r1/b2_mouse_release_retry_20260924_204513",
+    "A2_B3_ATTEMPT_1": "ACTION_PERFECT_FOCUS_RESTORE_TELEMETRY_FALSE",
+    "A2_B3_ATTEMPT_1_ARTIFACT": "logs/phase4a2_r1/b3_focus_handoff_20260924_205201",
+    "A2_B3_LATEST_RETRY": "INVALID_ZERO_INPUT_HARNESS_LEASE_CONSUMED_BEFORE_CARD_ACTIONABLE",
+    "A2_B3_LATEST_RETRY_ARTIFACT": "logs/phase4a2_r1/b3_best_effort_focus_retry_20260924_211102",
+    "A2_B3_HARNESS_FIX_VERIFICATION": "1470_TESTS_PASS",
+    "A2_B3_VALID_RETRY": "PASS_STRONG_EXISTING_FULL_ACTION_RUNTIME_PERFECT",
+    "A2_B3_VALID_RETRY_ARTIFACT": "logs/phase4a2_r1/b3_valid_retry_20260924_212722",
+    "selectedProductionCandidate": "PINNED_FOREGROUND_EXISTING_INPUT_LEASE"
+  }
+}

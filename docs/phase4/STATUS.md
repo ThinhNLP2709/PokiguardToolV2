@@ -38,27 +38,33 @@ Không stage, sửa hoặc xóa chúng chỉ vì Phase 4.
 ## Current next prompt
 
 ```text
-CURRENT PHASE: Phase 4A.1
-CURRENT RESULT: Phase 4A.0 PASS STRONG
-CURRENT NEXT PROMPT: prompts/4A1_BACKGROUND_MOUSE_LIVE_PROBE.md
-LATEST REPORT: phase4a0_report.md
-LATEST REMEDIATION: NONE
+CURRENT PHASE: Phase 4B.1
+CURRENT REMEDIATION: Phase 4A.1-R2 CLOSED — PINNED_FOREGROUND_LEASE
+CURRENT RESULT: 4A.2-R1 PASS STRONG — pinned foreground existing-input QTE lease accepted
+CURRENT NEXT PROMPT: prompts/4B1_PINNED_FOREGROUND_LEASE_CONTRACT_BACKEND.md
+LATEST REPORT: phase4a2_r1_report.md
+LATEST REMEDIATION RESEARCH: phase4a1_r1_alternative_transport_research.md
 ```
 
 ## Accepted capability matrix
 
-`UNKNOWN` không được coi là hỗ trợ.
+Nguồn machine-readable hiện tại là
+`artifacts/phase4a1_capability_matrix.json`. `UNKNOWN` và `UNCONFIRMED` không
+được coi là hỗ trợ.
 
 | Capability | Status | Evidence/report |
 |---|---|---|
 | Foreground input hiện tại | PASS STRONG | v1.1.0 accepted source/live history |
-| Background single mouse click | UNKNOWN | [4A.0 audit](phase4a0_transport_audit.md); chờ 4A.1 live ACK |
-| Background two-click swap | UNKNOWN | [4A.0 audit](phase4a0_transport_audit.md); exact SWAP ACK đã map, transport chưa live-prove |
-| Background drag swap | UNKNOWN | [4A.0 audit](phase4a0_transport_audit.md); hypothesis tách riêng two-click |
+| Pinned foreground Start lease | PASS LIVE | [4A.1-R2 report](phase4a1_r2_report.md); fresh ACTIVE session ACK, focus/cursor restored |
+| Pinned foreground board swap lease | PASS STRONG | [4A.1-R2 report](phase4a1_r2_report.md); first-turn exact sequence/coordinate/turn ACK, guard/focus/cursor restored |
+| Pinned foreground full Pet Skill/QTE lease | PASS STRONG | [4A.2-R1 report](phase4a2_r1_report.md); external foreground takeover, 1 card, 7/7 direction ACK, 1 Space, runtime PERFECT, clean release |
+| Background single mouse click | UNCONFIRMED | [4A.1 report](phase4a1_report.md); Start click queued nhưng không có fresh session/opening ACK |
+| Background two-click swap | UNCONFIRMED | [4A.1 report](phase4a1_report.md); messages queued nhưng turn/sequence/last-move không đổi |
+| Background drag swap | UNCONFIRMED | [4A.1 report](phase4a1_report.md); held drag + UP queued nhưng turn/sequence/last-move không đổi |
 | Background card click | UNKNOWN | [4A.0 audit](phase4a0_transport_audit.md); callback/payload đã reverse, delivery chưa prove |
 | Background QTE directions | UNKNOWN | `Input.GetKeyDown`; per-direction RAM ACK đã map, chờ 4A.2 |
 | Background Space confirm | UNKNOWN | same-generation runtime PERFECT ACK đã map, chờ 4A.2 |
-| Covered-window combat | UNKNOWN | memory state thuận lợi nhưng SWAP production còn modal screen-DC proof |
+| Covered-window combat | UNSUPPORTED_CURRENT_POSTMESSAGE_ROUTE | B3/B4 không có board ACK; production không được nối |
 | Covered-window navigation/re-entry | UNKNOWN | screen-DC visual dependency đã xác nhận tại 4A.0 |
 | Minimized operation | UNSUPPORTED | `NativeWin32Backend.client_geometry` rejects `IsIconic` |
 
@@ -67,13 +73,16 @@ LATEST REMEDIATION: NONE
 | Phase | Result | Report | Next decision |
 |---|---|---|---|
 | 4A.0 Transport audit | PASS STRONG | [report](phase4a0_report.md) | inventory/ACK/candidate/runbook hoàn chỉnh |
-| 4A.1 Mouse live proof | NEXT | — | tạo isolated bounded harness; user điều khiển live |
-| 4A.2 QTE keyboard live proof | PENDING | — | phụ thuộc mouse/card trigger evidence |
-| 4B.1 Mode contract/backend | PENDING | — | phụ thuộc capability matrix A-series |
-| 4B.2 Board integration | PENDING | — | chỉ mode swap đã proven |
-| 4B.3 UI/card integration | PENDING | — | chỉ click domain đã proven |
-| 4B.4F Full background QTE | CONDITIONAL | — | chỉ khi 4A.2 full PASS STRONG |
-| 4B.4H Hybrid QTE handoff | CONDITIONAL | — | khi keyboard nền không được proven |
+| 4A.1 Mouse live proof | BLOCKED | [report](phase4a1_report.md) | STOP; chỉ remediation nếu có hypothesis mới có bằng chứng |
+| 4A.1-R1 Alternative research | TRUE_BACKGROUND_BLOCKED | [research](phase4a1_r1_alternative_transport_research.md) | VM/máy thứ hai được khuyến nghị; foreground lease là phương án phụ |
+| 4A.1-R2 Pinned foreground lease | PASS STRONG | [report](phase4a1_r2_report.md) | B1/B2/B3 pass; capability là pinned foreground lease, production chưa tích hợp |
+| 4A.2 Existing QTE/input lease proof | PASS STRONG | [report](phase4a2_r1_report.md) | B1/B2/B3 accepted; exact-card gate fixed; 1470 tests pass; selected capability is pinned foreground lease |
+| 4B.1 Pinned lease contract/backend | ACTIVE | — | typed production contract/backend only; no call-site integration |
+| 4B.2 Board integration | PENDING | — | after 4B.1 PASS STRONG |
+| 4B.3 UI/card integration | PENDING | — | after 4B.2 PASS STRONG |
+| 4B.4P Pet Skill/QTE integration | PENDING | — | after 4B.3 PASS STRONG |
+| 4B.4F Full background QTE | NOT_SELECTED | — | PostMessage true-background route không được accepted |
+| 4B.4H Hybrid QTE handoff | NOT_SELECTED | — | nhánh hiện tại là full existing action trong pinned foreground lease |
 | 4C.1 Desktop/FarmRunner integration | PENDING | — | sau B-series accepted |
 | 4C.2 Navigation/re-entry closure | PENDING | — | route theo visual/native evidence |
 | 4D.1 Bounded A/B acceptance | PENDING | — | sau UI/Farm integration |
