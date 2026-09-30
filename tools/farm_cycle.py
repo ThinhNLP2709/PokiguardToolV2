@@ -217,7 +217,10 @@ def _resolve_pass_stage(args: Namespace) -> str:
     if getattr(args, "reset_evidence", None) is None:
         return "DISABLED"
     gameplay = gameplay_config_from_args(args)
-    if gameplay.damage_card is DamageCardMode.PET_SKILL:
+    if gameplay.damage_card in {
+        DamageCardMode.PET_SKILL,
+        DamageCardMode.PET_PASSIVE,
+    }:
         return "B3"
     if gameplay.evolution.value == "none":
         return "B4"

@@ -155,7 +155,10 @@ class DesktopConfig(GameplayConfig):
                 <= int(pet_skill_fire_value)
                 <= PET_SKILL_FIRE_VALUE_MAXIMUM
             )
-            if not valid_fire_value and damage is DamageCardMode.PET_SKILL:
+            if not valid_fire_value and damage in {
+                DamageCardMode.PET_SKILL,
+                DamageCardMode.PET_PASSIVE,
+            }:
                 raise ValueError(
                     "pet_skill_fire_value must contain ASCII decimal digits "
                     f"between 0 and {PET_SKILL_FIRE_VALUE_MAXIMUM}"

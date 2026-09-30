@@ -12,6 +12,7 @@ import time
 from typing import Any, Callable
 
 from .basic_policy import (
+    DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT,
     Intelligence,
     PET_SKILL_FIRE_VALUE_DEFAULT,
     PET_SKILL_FIRE_VALUE_MAXIMUM,
@@ -721,6 +722,9 @@ class DesktopViewModel:
             "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED": "Thẻ skill của pet: Audition V3 chưa có tích hợp gameplay an toàn cho bản game hiện tại.",
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
             "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi yêu cầu Cơ bản, Thẻ skill của pet và đúng một nguồn skill pet.",
+            "DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED": "Demon Aegis Farm yêu cầu Pet thường, Không tiến hóa, Nội tại pet và điều kiện Kiếm đủ.",
+            "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM": "Nội tại pet hiện chỉ dùng được với lối chơi Demon Aegis Farm.",
+            "PET_PASSIVE_PROFILE_INVALID": "Nội tại pet yêu cầu Pet thường và Không tiến hóa.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
@@ -1807,20 +1811,55 @@ class DesktopApplication:
         profile = DesktopConfig.from_strings(**self._draft_fields())
         blocker = profile.farm_policy_blocker_reason
         editable = self._config_editable is not False
-        legendary_evolution = self._pet_option_widgets.get(
-            ("evolution", EvolutionTarget.LEGENDARY.value)
-        )
-        if legendary_evolution is not None:
-            legendary_evolution.configure(
-                state=(
-                    "normal"
-                    if editable
-                    and MainPetType(self.main_pet.get()) is not MainPetType.LEGENDARY
-                    else "disabled"
+        demon = profile.play_style is PlayStyle.DEMON_AEGIS_FARM
+        main_pet = MainPetType(self.main_pet.get())
+        for value in DESKTOP_MAIN_PET_OPTIONS:
+            button = self._pet_option_widgets.get(("main_pet", value.value))
+            if button is not None:
+                button.configure(
+                    state=(
+                        "normal"
+                        if editable and not demon and value in SUPPORTED_MAIN_PETS
+                        else "disabled"
+                    )
+                )
+        for value in DESKTOP_EVOLUTION_OPTIONS:
+            button = self._pet_option_widgets.get(("evolution", value.value))
+            if button is not None:
+                button.configure(
+                    state=(
+                        "normal"
+                        if editable
+                        and not demon
+                        and value in SUPPORTED_EVOLUTIONS
+                        and not (
+                            value is EvolutionTarget.LEGENDARY
+                            and main_pet is MainPetType.LEGENDARY
+                        )
+                        else "disabled"
+                    )
+                )
+        for value in DamageCardMode:
+            button = self._pet_option_widgets.get(("damage_card", value.value))
+            if button is None:
+                continue
+            enabled = bool(
+                editable
+                and (
+                    (demon and value is DamageCardMode.PET_PASSIVE)
+                    or (
+                        not demon
+                        and (
+                            value is DamageCardMode.DEFAULT_ATTACK
+                            or (
+                                value is DamageCardMode.PET_SKILL
+                                and capability.pet_skill_selectable
+                            )
+                        )
+                    )
                 )
             )
-        self._pet_option_widgets["damage_card", "pet_skill"].configure(
-            state="normal" if editable and capability.pet_skill_selectable else "disabled")
+            button.configure(state="normal" if enabled else "disabled")
         self.profile_notice_var.set(
             self.view_model.reason_text(blocker)
             if blocker else "Cấu hình tương thích với lối chơi Cơ bản hiện tại.")
@@ -1831,18 +1870,39 @@ class DesktopApplication:
 
         if not hasattr(self, "pet_skill_fire_cell"):
             return
-        visible = self.damage_card.get() == DamageCardMode.PET_SKILL.value
+        damage = DamageCardMode(self.damage_card.get())
+        fire_visible = damage in {
+            DamageCardMode.PET_SKILL,
+            DamageCardMode.PET_PASSIVE,
+        }
+        audition_visible = damage is DamageCardMode.PET_SKILL
         for widget in (
             self.pet_skill_fire_label,
             self.pet_skill_fire_cell,
+        ):
+            if fire_visible:
+                widget.grid()
+            else:
+                widget.grid_remove()
+        for widget in (
             self.audition_label,
             self.audition_widget,
             self.audition_help,
         ):
-            if visible:
+            if audition_visible:
                 widget.grid()
             else:
                 widget.grid_remove()
+
+        demon = (
+            play_style_from_display(self.play_style.get())
+            is PlayStyle.DEMON_AEGIS_FARM
+        )
+        self.pet_skill_fire_condition_widget.configure(
+            values=(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT],)
+            if demon
+            else tuple(PET_SKILL_FIRE_CONDITION_LABELS.values())
+        )
 
         try:
             condition = pet_skill_fire_condition_from_display(
@@ -1948,6 +2008,30 @@ class DesktopApplication:
                 self._updating_play_style = False
             return
         try:
+            style = play_style_from_display(self.play_style.get())
+            self._updating_pet_fields = True
+            self._updating_fire_fields = True
+            try:
+                if style is PlayStyle.DEMON_AEGIS_FARM:
+                    self.main_pet.set(MainPetType.NORMAL.value)
+                    self.evolution.set(EvolutionTarget.NONE.value)
+                    self.damage_card.set(DamageCardMode.PET_PASSIVE.value)
+                    self.pet_skill_fire_condition.set(
+                        PET_SKILL_FIRE_CONDITION_LABELS[
+                            PetSkillFireCondition.SWORD_COUNT
+                        ]
+                    )
+                    self.pet_skill_fire_value.set(
+                        str(DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT)
+                    )
+                    self._last_valid_pet_skill_fire_value = (
+                        DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT
+                    )
+                elif self.damage_card.get() == DamageCardMode.PET_PASSIVE.value:
+                    self.damage_card.set(DamageCardMode.DEFAULT_ATTACK.value)
+            finally:
+                self._updating_fire_fields = False
+                self._updating_pet_fields = False
             self._sync_pet_options()
             self.view_model.apply_draft(**self._draft_fields())
         except (TypeError, ValueError):

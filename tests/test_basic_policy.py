@@ -407,7 +407,11 @@ class BasicPolicyTests(unittest.TestCase):
             rage=250,
             turn=5,
         )
-        for play_style in PlayStyle:
+        for play_style in (
+            PlayStyle.SIMPLE,
+            PlayStyle.CAREFUL,
+            PlayStyle.SKILL_RUSH,
+        ):
             with self.subTest(play_style=play_style):
                 decision = BasicPolicyEngine(
                     PolicyConfig(

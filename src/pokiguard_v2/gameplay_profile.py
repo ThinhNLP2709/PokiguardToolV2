@@ -28,6 +28,7 @@ class EvolutionTarget(str, Enum):
 class DamageCardMode(str, Enum):
     DEFAULT_ATTACK = "default_attack"
     PET_SKILL = "pet_skill"
+    PET_PASSIVE = "pet_passive"
 
 
 class PetSkillFireCondition(str, Enum):

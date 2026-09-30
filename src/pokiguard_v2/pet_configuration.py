@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any, Mapping
 
 from .basic_policy import (
+    DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT,
     Intelligence,
     ManaPriority,
     PET_SKILL_FIRE_VALUE_DEFAULT,
@@ -56,6 +57,7 @@ EVOLUTION_LABELS = {
 DAMAGE_LABELS = {
     DamageCardMode.DEFAULT_ATTACK: "Thẻ chưởng mặc định",
     DamageCardMode.PET_SKILL: "Thẻ skill của pet",
+    DamageCardMode.PET_PASSIVE: "Nội tại pet",
 }
 AUDITION_LABELS = {
     AuditionMode.V3_TWO_DIRECTION: "V3 (2 hướng — mặc định)",
@@ -73,6 +75,7 @@ PLAY_STYLE_LABELS = {
     PlayStyle.SIMPLE: "Đơn giản",
     PlayStyle.CAREFUL: "Cẩn trọng",
     PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
+    PlayStyle.DEMON_AEGIS_FARM: "Demon Aegis Farm",
 }
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
@@ -156,25 +159,35 @@ def loadout_capability(
         SkillSourceStatus.NO_SKILL
     )
     selectable = supported and len(sources) == 1
+    passive_profile = bool(
+        main_pet is MainPetType.NORMAL
+        and evolution is EvolutionTarget.NONE
+        and damage_card is DamageCardMode.PET_PASSIVE
+    )
     valid = bool(
         supported
         and len(sources) <= 1
         and (
             damage_card is DamageCardMode.DEFAULT_ATTACK
-            or selectable
+            or (damage_card is DamageCardMode.PET_SKILL and selectable)
+            or passive_profile
         )
     )
     runnable = bool(
         valid
         and (
             damage_card is DamageCardMode.DEFAULT_ATTACK
-            or PET_SKILL_RUNTIME_ENABLED
+            or (
+                damage_card is DamageCardMode.PET_SKILL
+                and PET_SKILL_RUNTIME_ENABLED
+            )
         )
     )
     reason = (
         "PET_OPTION_UNSUPPORTED" if not supported else
         "PET_SKILL_SOURCE_SELECTION_UNDEFINED" if len(sources) > 1 else
         "PET_SKILL_SOURCE_MISSING" if damage_card is DamageCardMode.PET_SKILL and not sources else
+        "PET_PASSIVE_PROFILE_INVALID" if damage_card is DamageCardMode.PET_PASSIVE and not passive_profile else
         "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL and not PET_SKILL_RUNTIME_ENABLED else
         "PET_SKILL_POLICY_PROFILE_NOT_IMPLEMENTED" if damage_card is DamageCardMode.PET_SKILL and not runnable else
         "FARM_PROFILE_NOT_IMPLEMENTED" if not runnable else None
@@ -266,6 +279,21 @@ class GameplayConfig:
             and self.intelligence is Intelligence.BASIC
         ):
             return "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED"
+        if self.play_style is PlayStyle.DEMON_AEGIS_FARM:
+            if not (
+                self.main_pet is MainPetType.NORMAL
+                and self.evolution is EvolutionTarget.NONE
+                and self.damage_card is DamageCardMode.PET_PASSIVE
+                and self.pet_skill_fire_condition is PetSkillFireCondition.SWORD_COUNT
+                and self.intelligence is Intelligence.BASIC
+            ):
+                return "DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED"
+            return None
+        if (
+            self.play_style is not PlayStyle.DEMON_AEGIS_FARM
+            and self.damage_card is DamageCardMode.PET_PASSIVE
+        ):
+            return "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM"
         if not self.capability.farm_policy_supported:
             return self.capability.blocker_reason or "FARM_PROFILE_NOT_IMPLEMENTED"
         return None
@@ -295,6 +323,7 @@ class GameplayConfig:
             pet_fields = {"main_pet": MainPetType(raw["main_pet"]),
                           "evolution": EvolutionTarget(raw["evolution"]),
                           "damage_card": DamageCardMode(raw["damage_card"])}
+        play_style = PlayStyle(raw.get("play_style", "simple"))
         condition = PetSkillFireCondition(
             raw.get(
                 "pet_skill_fire_condition",
@@ -306,13 +335,17 @@ class GameplayConfig:
                 "pet_skill_fire_value",
                 raw.get(
                     "skill_rush_sword_threshold",
-                    PET_SKILL_FIRE_VALUE_DEFAULT,
+                    (
+                        DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT
+                        if play_style is PlayStyle.DEMON_AEGIS_FARM
+                        else PET_SKILL_FIRE_VALUE_DEFAULT
+                    ),
                 ),
             )
         else:
             # A stale legacy/count value has no active meaning for resource-ready.
             fire_value = None
-        return cls(**pet_fields, play_style=PlayStyle(raw.get("play_style", "simple")),
+        return cls(**pet_fields, play_style=play_style,
                    intelligence=Intelligence(raw.get("intelligence", "basic")),
                    audition_mode=AuditionMode(
                        raw.get("audition_mode", AuditionMode.V3_TWO_DIRECTION.value)
@@ -359,7 +392,7 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
     """Legacy default-Attack bridge retained for old checkpoint/test callers."""
 
     config.require_farm_policy()
-    if config.damage_card is DamageCardMode.PET_SKILL:
+    if config.damage_card is not DamageCardMode.DEFAULT_ATTACK:
         raise FarmPolicyUnavailable("LEGACY_MANA_PRIORITY_CANNOT_EXPRESS_PET_SKILL")
     return PolicyConfig(
         play_style=config.play_style,

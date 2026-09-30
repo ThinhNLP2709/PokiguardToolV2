@@ -111,7 +111,10 @@ class PetConfigurationTests(unittest.TestCase):
     def test_stable_enum_values(self):
         self.assertEqual([v.value for v in Pet], ["normal", "legendary", "evolved", "mega"])
         self.assertEqual([v.value for v in Evo], ["none", "normal", "legendary", "evolved", "mega"])
-        self.assertEqual([v.value for v in Damage], ["default_attack", "pet_skill"])
+        self.assertEqual(
+            [v.value for v in Damage],
+            ["default_attack", "pet_skill", "pet_passive"],
+        )
         self.assertEqual([v.value for v in AuditionMode], ["audition_v3", "audition_v2"])
         self.assertEqual(
             [v.value for v in PetSkillFireCondition],

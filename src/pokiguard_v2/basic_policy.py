@@ -16,6 +16,10 @@ from .board_simulator import (
     evaluate_all_moves,
     evaluate_sword_hold,
 )
+from .demon_aegis import (
+    DemonAegisMoveEvaluation,
+    evaluate_demon_aegis_move,
+)
 from .gameplay_profile import (
     DamageCardMode,
     EvolutionTarget,
@@ -42,6 +46,7 @@ from .state import (
 PET_SKILL_FIRE_VALUE_DEFAULT = 10
 PET_SKILL_FIRE_VALUE_MINIMUM = 0
 PET_SKILL_FIRE_VALUE_MAXIMUM = 64 * MAX_CELL_MULTIPLIER
+DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT = 3
 # Narrow source-compatibility aliases for historical analyzers and imports.
 SKILL_RUSH_SWORD_THRESHOLD_DEFAULT = PET_SKILL_FIRE_VALUE_DEFAULT
 SKILL_RUSH_SWORD_THRESHOLD_MINIMUM = PET_SKILL_FIRE_VALUE_MINIMUM
@@ -56,6 +61,7 @@ class PlayStyle(str, Enum):
     SIMPLE = "simple"
     CAREFUL = "careful"
     SKILL_RUSH = "skill_rush"
+    DEMON_AEGIS_FARM = "demon_aegis_farm"
 
 
 class ManaPriority(str, Enum):
@@ -233,6 +239,16 @@ class PolicyConfig:
             self.damage_card is DamageCardMode.PET_SKILL
             and self.main_pet is not MainPetType.LEGENDARY
             and self.evolution is EvolutionTarget.LEGENDARY
+        )
+
+    @property
+    def demon_aegis_profile(self) -> bool:
+        return bool(
+            self.play_style is PlayStyle.DEMON_AEGIS_FARM
+            and self.main_pet is MainPetType.NORMAL
+            and self.evolution is EvolutionTarget.NONE
+            and self.damage_card is DamageCardMode.PET_PASSIVE
+            and self.pet_skill_fire_condition is PetSkillFireCondition.SWORD_COUNT
         )
 
     @property
@@ -1187,6 +1203,215 @@ class BasicPolicyEngine:
             candidate_count=1,
         )
 
+    @staticmethod
+    def _demon_aegis_fire_rank(
+        item: tuple[MoveEvaluation, DemonAegisMoveEvaluation],
+    ) -> tuple[object, ...]:
+        value, passive = item
+        return (
+            -passive.sword_cells,
+            -passive.sword_effective,
+            not value.sword_risk.safe,
+            value.sword_risk.danger_score,
+            -len(passive.blast_cells),
+            -value.total.effective(GemType.SHIELD),
+            value.unknown_exposure.cells,
+            value.move,
+        )
+
+    @staticmethod
+    def _demon_aegis_setup_rank(
+        item: tuple[MoveEvaluation, DemonAegisMoveEvaluation],
+        *,
+        threshold: int,
+    ) -> tuple[object, ...]:
+        value, passive = item
+        result_shields = _known_result_gem_count(value, GemType.SHIELD)
+        drain = value.total.effective(GemType.DRAIN)
+        shield = value.total.effective(GemType.SHIELD)
+        health = value.total.effective(GemType.HEALTH)
+        return (
+            passive.next_best_sword_cells < threshold,
+            -passive.next_best_sword_cells,
+            -passive.next_best_sword_effective,
+            passive.activates_passive,
+            -result_shields,
+            drain <= 0,
+            -drain,
+            shield <= 0,
+            -shield,
+            health <= 0,
+            -health,
+            value.sword_risk.danger_score,
+            value.unknown_exposure.cells,
+            not value.calculable,
+            not value.horizontal,
+            value.move,
+        )
+
+    def _decide_demon_aegis(
+        self,
+        state: GameState,
+        evaluations: tuple[MoveEvaluation, ...],
+        failures: list[str],
+        *,
+        player_hp_ratio: float | None,
+        pass_allowed: bool,
+        mandatory: bool,
+    ) -> PolicyDecision:
+        """Choose a Shield passive trigger or a bounded one-turn setup move."""
+
+        assert state.board is not None
+        threshold = self.config.pet_skill_fire_value
+        if threshold is None:
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "DEMON_AEGIS_CONFIG",
+                "Demon Aegis Sword threshold is unavailable",
+                failures,
+                evaluations,
+                blocker="DEMON_AEGIS_THRESHOLD_UNKNOWN",
+            )
+
+        evaluated = tuple(
+            (value, evaluate_demon_aegis_move(state.board, value))
+            for value in evaluations
+            # An ordinary Sword match or known Sword cascade is never an
+            # accepted Demon Aegis action. Swords may be removed only by the
+            # passive blast computed independently above.
+            if value.total.cells(GemType.SWORD) == 0
+        )
+        fire_candidates = tuple(
+            item
+            for item in evaluated
+            if item[1].activates_passive
+            and item[1].sword_cells >= threshold
+        )
+        if fire_candidates:
+            selected, passive = min(
+                fire_candidates,
+                key=self._demon_aegis_fire_rank,
+            )
+            return self._decision(
+                state,
+                PolicyAction.SWAP,
+                "DEMON_AEGIS_PASSIVE_FIRE",
+                (
+                    "Matched Shield to activate Demon Aegis; "
+                    f"blastSwordCells={passive.sword_cells} >= {threshold}, "
+                    f"blastSwordEffective={passive.sword_effective}, "
+                    f"shieldMatchCells={passive.shield_match_cells}, "
+                    f"blastCellCount={len(passive.blast_cells)}"
+                ),
+                failures,
+                evaluations,
+                selected=selected,
+                candidate_count=len(fire_candidates),
+            )
+
+        failures.append(
+            "DEMON_AEGIS_PASSIVE_FIRE: no Shield match has at least "
+            f"{threshold} known Sword cells in its perpendicular blast zone"
+        )
+        healthy = bool(
+            player_hp_ratio is not None
+            and player_hp_ratio > SKILL_RUSH_SURVIVAL_HP_RATIO
+        )
+        safe = tuple(item for item in evaluated if item[0].sword_risk.safe)
+        # Do not spend a non-qualifying Shield activation while a setup move is
+        # available. Its Shield lines are the scarce resource for the passive.
+        safe_setup = tuple(item for item in safe if not item[1].activates_passive)
+        any_setup = tuple(item for item in evaluated if not item[1].activates_passive)
+
+        pool: tuple[tuple[MoveEvaluation, DemonAegisMoveEvaluation], ...]
+        step: str
+        why: str
+        if safe_setup:
+            pool = safe_setup
+            step = "DEMON_AEGIS_SETUP"
+            why = "Selected a Sword-safe move that preserves Shield activation for setup"
+        elif safe:
+            pool = safe
+            step = "DEMON_AEGIS_SETUP"
+            why = "Only a sub-threshold Shield activation is Sword-safe; used the best safe fallback"
+        elif healthy and any_setup:
+            pool = any_setup
+            step = "DEMON_AEGIS_SETUP_RISK_ACCEPTED"
+            why = (
+                "No Sword-safe setup exists and player HP is above 30%; accepted "
+                "the lowest-risk non-Sword setup while allowing a boss Sword reply"
+            )
+        elif healthy and evaluated:
+            pool = evaluated
+            step = "DEMON_AEGIS_SETUP_RISK_ACCEPTED"
+            why = (
+                "No Sword-safe setup exists and player HP is above 30%; accepted "
+                "the lowest-risk non-Sword fallback"
+            )
+        else:
+            survival = tuple(
+                item
+                for item in evaluated
+                if item[0].total.effective(GemType.SHIELD) > 0
+                or item[0].total.effective(GemType.HEALTH) > 0
+            )
+            if survival:
+                pool = survival
+                step = "DEMON_AEGIS_SURVIVAL"
+                why = "Player HP is low or unknown; selected Shield/Health without directly consuming Sword"
+            elif pass_allowed:
+                return self._decision(
+                    state,
+                    PolicyAction.PASS,
+                    "DEMON_AEGIS_SETUP_PASS",
+                    (
+                        "No safe setup or survival move exists; used an "
+                        "authoritatively allowed PASS below the two-pass limit"
+                    ),
+                    failures,
+                    evaluations,
+                )
+            elif evaluated:
+                pool = evaluated
+                step = "DEMON_AEGIS_MANDATORY"
+                why = (
+                    "PASS is forbidden; selected the lowest-risk non-Sword move "
+                    "to prevent a third consecutive idle"
+                )
+            else:
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "DEMON_AEGIS_SWORD_ONLY_BLOCKED",
+                    "Every legal move directly consumes Sword; fail closed",
+                    failures,
+                    evaluations,
+                    blocker="DEMON_AEGIS_ONLY_SWORD_MOVES",
+                )
+
+        selected, passive = min(
+            pool,
+            key=lambda item: self._demon_aegis_setup_rank(
+                item,
+                threshold=threshold,
+            ),
+        )
+        return self._decision(
+            state,
+            PolicyAction.SWAP,
+            step,
+            (
+                f"{why}; nextBestBlastSwordCells={passive.next_best_sword_cells}, "
+                f"nextBestBlastSwordEffective={passive.next_best_sword_effective}, "
+                f"playerHpRatio={player_hp_ratio}, mandatory={mandatory}"
+            ),
+            failures,
+            evaluations,
+            selected=selected,
+            candidate_count=len(pool),
+        )
+
     def decide(
         self,
         state: GameState,
@@ -1276,6 +1501,22 @@ class BasicPolicyEngine:
                 failures,
                 no_candidates,
                 blocker="SKILL_RUSH_PROFILE_NOT_IMPLEMENTED",
+            )
+        if (
+            self.config.play_style is PlayStyle.DEMON_AEGIS_FARM
+            and not self.config.demon_aegis_profile
+        ):
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "CONFIG",
+                (
+                    "DEMON_AEGIS_FARM requires BASIC + regular main Pet + no "
+                    "evolution + Pet passive + Sword-count condition"
+                ),
+                failures,
+                no_candidates,
+                blocker="DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED",
             )
         if state.phase is not GamePhase.COMBAT or state.board is None:
             return self._decision(
@@ -1726,6 +1967,16 @@ class BasicPolicyEngine:
                 failures,
                 evaluations,
                 blocker="EXIT_IS_PROPOSAL_ONLY",
+            )
+
+        if self.config.play_style is PlayStyle.DEMON_AEGIS_FARM:
+            return self._decide_demon_aegis(
+                state,
+                evaluations,
+                failures,
+                player_hp_ratio=player_hp_ratio,
+                pass_allowed=skill_rush_pass_allowed,
+                mandatory=mandatory,
             )
 
         if (

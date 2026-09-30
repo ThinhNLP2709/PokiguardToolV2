@@ -30,6 +30,7 @@ from pokiguard_v2.input_delivery import InputDeliveryMode
 from pokiguard_v2.game_window_size import GameWindowSizeProfile
 from pokiguard_v2.pet_configuration import (
     AUDITION_LABELS, AuditionMode, DamageCardMode, EvolutionTarget,
+    DESKTOP_EVOLUTION_OPTIONS, DESKTOP_MAIN_PET_OPTIONS,
     GameplayConfig, MainPetType, PET_SKILL_FIRE_CONDITION_LABELS,
     PLAY_STYLE_LABELS,
     PetSkillFireCondition,
@@ -309,6 +310,49 @@ class PetConfigurationTkTests(unittest.TestCase):
         )
         self.assertEqual(restored.config.pet_skill_fire_value, 17)
         self.assertEqual(self.runner.starts, 0)
+
+    def test_demon_aegis_style_fixes_profile_and_exposes_only_sword_threshold(self):
+        self.app.play_style.set(
+            PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM]
+        )
+        self.root.update_idletasks()
+
+        self.assertEqual(self.app.main_pet.get(), MainPetType.NORMAL.value)
+        self.assertEqual(self.app.evolution.get(), EvolutionTarget.NONE.value)
+        self.assertEqual(
+            self.app.damage_card.get(),
+            DamageCardMode.PET_PASSIVE.value,
+        )
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Kiếm đủ")
+        self.assertEqual(self.app.pet_skill_fire_value.get(), "3")
+        self.assertEqual(
+            tuple(self.app.pet_skill_fire_condition_widget.cget("values")),
+            ("Kiếm đủ",),
+        )
+        self.assertEqual(self.app.pet_skill_fire_cell.winfo_manager(), "grid")
+        self.assertEqual(self.app.audition_widget.winfo_manager(), "")
+        for value in DESKTOP_MAIN_PET_OPTIONS:
+            self.assertTrue(
+                self.button("main_pet", value.value).instate(["disabled"])
+            )
+        for value in DESKTOP_EVOLUTION_OPTIONS:
+            self.assertTrue(
+                self.button("evolution", value.value).instate(["disabled"])
+            )
+        self.assertFalse(
+            self.button("damage_card", "pet_passive").instate(["disabled"])
+        )
+        self.assertTrue(
+            self.button("damage_card", "default_attack").instate(["disabled"])
+        )
+        valid, reason = self.app._draft_validity()
+        self.assertTrue(valid, reason)
+
+        self.app.validate_button.invoke()
+        restored = self.store.load()
+        self.assertIs(restored.config.play_style, PlayStyle.DEMON_AEGIS_FARM)
+        self.assertIs(restored.config.damage_card, DamageCardMode.PET_PASSIVE)
+        self.assertEqual(restored.config.pet_skill_fire_value, 3)
 
     def test_skill_rush_active_run_keeps_accepted_playstyle_immutable(self):
         self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH])

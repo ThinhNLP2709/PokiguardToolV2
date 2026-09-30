@@ -1405,11 +1405,24 @@ def _must_pause_for_no_safe_move(
             "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
         }
     )
+    demon_aegis_no_safe_fallback = bool(
+        decision.action is PolicyAction.SWAP
+        and decision.move is not None
+        and decision.trace.play_style == PlayStyle.DEMON_AEGIS_FARM.value
+        and decision.trace.policy_step
+        in {
+            "DEMON_AEGIS_PASSIVE_FIRE",
+            "DEMON_AEGIS_SETUP_RISK_ACCEPTED",
+            "DEMON_AEGIS_SURVIVAL",
+            "DEMON_AEGIS_MANDATORY",
+        }
+    )
     return bool(
         legal_move_count > 0
         and safe_move_count == 0
         and first_local_turn is not True
         and not skill_rush_no_safe_fallback
+        and not demon_aegis_no_safe_fallback
         and not (
             decision.action is PolicyAction.SWAP
             and (
