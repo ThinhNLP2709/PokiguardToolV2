@@ -24,7 +24,7 @@ from .native_card_ui import NativeButtonGeometry, NativeCardUiReader
 from .unity_ui_layout import transform_for_capture
 
 
-# Pokiguard 1.7.4-b4 ManagerQuangTruong, verified in the local Cpp2IL output.
+# Pokiguard 1.7.4-b5 ManagerQuangTruong, verified in the local Cpp2IL output.
 MQT_PANEL_CHINH_PHUC_OFFSET = 0x2C0
 MQT_BUTTON_CHINH_PHUC_OFFSET = 0x2C8
 
@@ -73,7 +73,10 @@ def read_hub_chinh_phuc_control(target: object) -> HubChinhPhucControl:
     resolver = target.resolver
     try:
         manager = _static_instance(
-            resolver, MANAGER_QUANG_TRUONG_TYPE_INFO_RVA, size=0x3E0
+            resolver,
+            MANAGER_QUANG_TRUONG_TYPE_INFO_RVA,
+            size=0x3E0,
+            static_field_offset=0x08,
         )
         if manager is None:
             reasons.append("ManagerQuangTruong.Instance unavailable")

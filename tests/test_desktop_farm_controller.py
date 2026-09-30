@@ -35,6 +35,8 @@ from pokiguard_v2.farm_checkpoint import (
     write_checkpoint,
 )
 from pokiguard_v2.farm_run import FarmRunLimits, FarmRunState, FarmRunStopReason
+from pokiguard_v2.input_delivery import InputDeliveryMode
+from pokiguard_v2.game_window_size import GameWindowSizeProfile
 
 
 def _source(
@@ -207,6 +209,7 @@ def _checkpoint(path: Path, config: DesktopConfig) -> None:
             stop_request_state="STOPPED_AT_LOBBY",
             stop_reason="STOPPED_GRACEFULLY",
             finalized_status="STOPPED_GRACEFULLY",
+            input_delivery_mode=config.input_delivery_mode,
         ),
     )
 
@@ -289,6 +292,30 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertTrue(self.runner.entered.wait(1.0))
         self.assertEqual(foregrounded, [4567])
         self.assertEqual(manager.snapshot().foreground_handoff, "SUCCEEDED")
+        self.runner.release.set()
+        self.assertTrue(manager.wait(2.0))
+
+    def test_start_applies_selected_client_size_before_runner(self) -> None:
+        prepared: list[tuple[int, int, int]] = []
+        manager = DesktopFarmControllerManager(
+            self.root,
+            runner=self.runner,
+            window_prepare=lambda pid, width, height: (
+                prepared.append((pid, width, height)) or True
+            ),
+            reset_evidence=self.root / "reset.json",
+            artifacts_root=self.root / "runs-size-profile",
+        )
+        config = replace(
+            self.config,
+            game_window_size_profile=GameWindowSizeProfile.COMPACT,
+        )
+
+        result = manager.start(config, game_pid=4567)
+
+        self.assertTrue(result.accepted)
+        self.assertTrue(self.runner.entered.wait(1.0))
+        self.assertEqual(prepared, [(4567, 800, 400)])
         self.runner.release.set()
         self.assertTrue(manager.wait(2.0))
 
@@ -415,6 +442,25 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertFalse(rejected.accepted)
         self.assertEqual(self.runner.starts, 1)
 
+    def test_resume_delivery_mode_mismatch_is_explicit_and_zero_runner(self) -> None:
+        checkpoint = self.root / "history" / "checkpoint.json"
+        _checkpoint(checkpoint, self.config)
+        beta_config = replace(
+            self.config,
+            input_delivery_mode=(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+        )
+
+        rejected = self.manager.resume(beta_config, checkpoint)
+
+        self.assertFalse(rejected.accepted)
+        self.assertEqual(
+            rejected.reason,
+            "CHECKPOINT_INPUT_DELIVERY_MODE_MISMATCH",
+        )
+        self.assertEqual(self.runner.starts, 0)
+
     def test_production_adapter_preserves_basic_policy_and_finite_limits(self) -> None:
         config = DesktopConfig(
             play_style=PlayStyle.CAREFUL,
@@ -440,6 +486,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertEqual(args.evolution_target, "none")
         self.assertEqual(args.audition_mode, "audition_v2")
         self.assertEqual(args.board_input_mode, "drag")
+        self.assertEqual(args.input_delivery_mode, "foreground")
         self.assertEqual(args.target_matches, 4)
         # The legacy CLI field remains parse-compatible but the desktop no
         # longer exposes or forwards a lifetime recovery cap.
@@ -476,6 +523,43 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertEqual(args.target_matches, 5)
         self.assertEqual(args.max_match_attempts, 8)
         self.assertEqual(args.pet_skill_fire_value, 17)
+
+    def test_production_adapter_passes_pinned_delivery_selection_explicitly(self) -> None:
+        from pokiguard_v2.input_delivery import InputDeliveryMode
+
+        config = DesktopConfig(
+            boss_id="1289",
+            boss_name="Starburst",
+            input_delivery_mode=InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
+        with patch("tools.farm_run.run", return_value=0) as run:
+            code = self.manager._run_production(  # noqa: SLF001
+                ControllerLaunch(config, None),
+                FarmControlHotkeyEdges(),
+                lambda _snapshot, _phase: None,
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            run.call_args.args[0].input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA.value,
+        )
+
+    def test_production_adapter_disables_beeps_from_desktop_preference(self) -> None:
+        config = DesktopConfig(
+            boss_id="1289",
+            boss_name="Starburst",
+            tool_sound_enabled=False,
+        )
+        with patch("tools.farm_run.run", return_value=0) as run:
+            code = self.manager._run_production(  # noqa: SLF001
+                ControllerLaunch(config, None),
+                FarmControlHotkeyEdges(),
+                lambda _snapshot, _phase: None,
+            )
+
+        self.assertEqual(code, 0)
+        self.assertTrue(run.call_args.args[0].no_beep)
 
 
 class DesktopControlCommandTests(unittest.TestCase):

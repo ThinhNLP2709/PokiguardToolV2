@@ -85,7 +85,7 @@ Source version `v1.0.49` exposes `Điều kiện ra skill` with stable generic k
 skill`, `Kiếm đủ`, `Mana Đủ`, `Nộ đủ`, `Hút đủ`, and `Khiên đủ`. The first uses
 authoritative current skill resources with no numeric value. The five board
 conditions use inclusive multiplier-weighted known GemType value `>= value`,
-where x1/x2/x3/x4 contribute 1/2/3/4; range `0..256`.
+where each current b5 x1..x7 cell contributes its exact value; range `0..448`.
 Actual runtime skill resources remain mandatory in every case. Default and old
 Sword-only migration are `Kiếm đủ / 10`.
 
@@ -4091,3 +4091,54 @@ PET_SKILL`, the pre-Fusion policy uses only the proven runtime Fusion cost as a
 temporary Mana deficit; after Fusion succeeds it rediscovers the new Pet Skill
 CardUI and retains the configured damage-card, fire-condition and Audition
 rules. Full regression: **1383/1383 PASS**.
+
+## Pokiguard 1.7.4-b5 offline compatibility — 2026-09-28
+
+The runtime profile now targets only the reverse-verified b5 GameAssembly
+hash. TypeInfo roots and shifted Board, ChatService, ChatMessageDTO,
+PetUserDTO and AuditionStage offsets were migrated. Boss-room entry now reads
+the new `RoomStartState` and permits the first main-button click only in
+`Idle`; it resolves the live `ManagerRoom.ButtonStart` RectTransform instead
+of assuming the b4 screen position. The native ownership bridge now uses the
+b5 cache at `GameAssembly+0x38AA280` and unmarshal signature at
+`GameAssembly+0x136097F`; both were verified against the installed process.
+The new room button sits in a full-design nested Canvas above layout-only
+RectTransforms without TransformAccess handles. Room entry now stops at that
+Canvas only after proving its exact screen-space parent and matching aspect;
+the operator screenshot passed the exact runtime-rectangle visual proof at
+confidence `0.99`.
+
+The first combat attempt exposed a migrated TypeInfo error: `0x03672E38` is
+`ActivePVP.PlayerStats`, while co-op `Active.PlayerStats` is `0x0364FB00`.
+After correction, full regression is **1570/1570 PASS**. B1 run
+`16381e658aee4a949664fb2ee7ac5e2a` then completed 1/1 with a STRONG WIN: five
+SWAPs all ACKed, one `SUCCESS_PERFECT` Pet Skill, current HP/Mana/Nộ for both
+participants, zero Pass/safe-stop/read error/rejection, consistent `Thắng`
+UI, and final `BOSS_LOBBY`. B1 is **PASS STRONG**; B2 is three consecutive b5
+matches to prove cross-match room/start/state continuity. See
+`docs/pokiguard_1.7.4_b5_compatibility_report.md`.
+
+B2 run `e223cce0bf33488e8cbe5401433210d1` completed exactly **3/3 WIN** with
+three unique MatchIds and STRONG consistent terminal results. It issued one
+entry per match, acknowledged 16/16 SWAPs, completed three current-session Pet
+Skills with 7/7 direction ACK and runtime `PERFECT`, and recorded zero Pass,
+safe-stop, read error, DTO rejection, technical recovery or safety violation.
+Final lifecycle was `BOSS_LOBBY`. Base b5 compatibility is **PASS STRONG**.
+These normal lobby returns do not satisfy Phase 4C.2's navigation re-entry
+gate; that phase remains live pending at 0/2 controlled cycles.
+
+## Pokiguard 1.7.4-b5 late-turn multiplier repair — 2026-09-29
+
+FarmRun `e746727a66bc4f7589e416b1abaacf8e` won attempts 1 and 2, then was
+ejected on attempt 3 after local turns 21, 23 and 25 received no board and no
+input. The last accepted sequence remained 40 while durable ACK advanced to
+42, 46 and 51. There were no policy PASS decisions. Immutable server payloads
+and the live Dot graph both contained x5, x6 and x7 cells, which the old
+x1..x4 domain rejected.
+
+Native b5 `DotMultiplierRoll.Roll`/`PermilleAt` proves the exact domain is
+x1..x7 and that x5..x7 become eligible from turn 20. The shared state model,
+transport decoder, rendered-Dot fallback and all board-evidence tools now use
+that domain. The maximum multiplier-weighted configuration value is 448.
+Focused multiplier regressions pass 75/75; full regression passes 1589/1589;
+`compileall` and `git diff --check` pass. A live retry remains required.

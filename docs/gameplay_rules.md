@@ -23,8 +23,8 @@ Ba trường cấu hình pet hiện hành là:
 - **Điều kiện ra skill**: chỉ hiện cùng Audition khi dùng **Thẻ skill của pet**.
   Sáu lựa chọn là Đủ mana skill, Kiếm đủ, Mana Đủ, Nộ đủ, Hút đủ, Khiên đủ.
   Đủ mana skill dùng chi phí runtime hiện tại và không có số; năm lựa chọn gem
-  dùng tổng giá trị hiệu dụng đã biết `>= value`, trong đó `x1/x2/x3/x4` đóng
-  góp `1/2/3/4`; ASCII `0..256`. Mặc định là Kiếm đủ / 10.
+  dùng tổng giá trị hiệu dụng đã biết `>= value`, trong đó `x1..x7` đóng góp
+  đúng giá trị `1..7`; ASCII `0..448`. Mặc định là Kiếm đủ / 10.
   Preferences/checkpoint lưu cấu hình, còn Start/Resume khóa nó cho FarmRun.
 
 Ma trận cấu hình được phép là:
@@ -398,7 +398,7 @@ có UI/CLI công khai.
 | Độ thông minh | `intelligence` | `--intelligence` | `basic` |
 | Biên đồng hồ lượt tối thiểu, inclusive (giây) | `minimum_turn_time_seconds` | `--minimum-action-time` | `1` |
 | Pet Skill — điều kiện ra skill | `pet_skill_fire_condition` | `--pet-skill-fire-condition` | `sword_count` / Kiếm đủ |
-| Pet Skill — giá trị hiệu dụng | `pet_skill_fire_value` | `--pet-skill-fire-value` | `10`, inclusive `known effective count >= value`, range `0..256`; null cho `skill_cost_ready` |
+| Pet Skill — giá trị hiệu dụng | `pet_skill_fire_value` | `--pet-skill-fire-value` | `10`, inclusive `known effective count >= value`, range `0..448`; null cho `skill_cost_ready` |
 | SKILL_RUSH ngưỡng HP người chơi để nhận rủi ro | `SKILL_RUSH_SURVIVAL_HP_RATIO` | — | `0.30`; chỉ nhận nước rủi ro khi `> 0.30` |
 | SKILL_RUSH finisher HP boss tương đối | `SKILL_RUSH_FINISHER_RATIO` | — | `<= 0.30` |
 
@@ -416,11 +416,15 @@ fail-closed nếu chưa chứng minh được.
   thẻ/điều kiện/Audition sau tiến hóa và dùng cost Fusion làm mục tiêu Mana tạm
   thời trước khi CardUI skill xuất hiện.
 
-- **2026-09-21** — Sửa điều kiện count dùng tổng multiplier x1–x4. FarmRun
+- **2026-09-29** — Bản b5 chứng minh multiplier x5–x7 từ turn 20 bằng cả
+  `DotMultiplierRoll` native và JSON server bất biến. Mở domain production thành
+  x1–x7 và range cấu hình thành `0..448`.
+- **2026-09-21** — Sửa điều kiện count dùng tổng multiplier x1–x4 trên build
+  lúc đó. FarmRun
   `03ceea93d6254ed1a4f4dac54562e85a` có turn 15 đủ tài nguyên và thẻ actionable,
   9 ô Kiếm nhưng 12 Kiếm hiệu dụng; cách đếm ô cũ ăn thêm Khiên rồi mới bắn ở
   turn 17. Policy mới phải bắn ngay tại turn 15. Telemetry lưu riêng số ô và
-  tổng hiệu dụng; range cấu hình mở thành `0..256`.
+  tổng hiệu dụng; range cấu hình lúc đó mở thành `0..256`, sau được b5 mở rộng.
 - **2026-09-21** — Sửa thứ tự tích tài nguyên từ FarmRun
   `420227ce72734e28a0fa4a89e0827f7f`: khi Mana/Nộ còn thiếu và HP trên 30%,
   nước bổ sung tài nguyên được chọn trước Hút/Khiên/turnover dù có thể chừa

@@ -77,6 +77,16 @@ Board = tuple[tuple[GemType, ...], ...]
 MultiplierBoard = tuple[tuple[int, ...], ...]
 TEnum = TypeVar("TEnum")
 
+# Pokiguard 1.7.4-b5 expanded the board multiplier tiers from x1..x4 to
+# x1..x7.  The upper bound is independently present in
+# DotMultiplierRoll.Roll/PermilleAt and was observed in immutable server JSON
+# during the 2026-09-29 reliability run.
+MIN_CELL_MULTIPLIER = 1
+MAX_CELL_MULTIPLIER = 7
+SUPPORTED_CELL_MULTIPLIERS = frozenset(
+    range(MIN_CELL_MULTIPLIER, MAX_CELL_MULTIPLIER + 1)
+)
+
 
 def _validate_8x8(name: str, value: tuple[tuple[object, ...], ...]) -> None:
     if len(value) != 8 or any(len(row) != 8 for row in value):
@@ -86,7 +96,7 @@ def _validate_8x8(name: str, value: tuple[tuple[object, ...], ...]) -> None:
 
 @dataclass(frozen=True)
 class CellState:
-    """One immutable cell using the proven gameplay multiplier values x1..x4."""
+    """One immutable cell using the proven gameplay multiplier values x1..x7."""
 
     row: int
     col: int
@@ -96,8 +106,8 @@ class CellState:
     def __post_init__(self) -> None:
         if not 0 <= self.row < 8 or not 0 <= self.col < 8:
             raise ValueError("cell coordinate must be inside the 8x8 board")
-        if self.multiplier not in (1, 2, 3, 4):
-            raise ValueError("cell multiplier must be one of the proven values 1..4")
+        if self.multiplier not in SUPPORTED_CELL_MULTIPLIERS:
+            raise ValueError("cell multiplier must be one of the proven values 1..7")
 
     @property
     def gem_type(self) -> GemType:
@@ -136,7 +146,7 @@ class BoardState:
     def production_ready(self) -> bool:
         return all(
             cell.gem is not GemType.UNKNOWN
-            and cell.multiplier in (1, 2, 3, 4)
+            and cell.multiplier in SUPPORTED_CELL_MULTIPLIERS
             for row in self.cells
             for cell in row
         )

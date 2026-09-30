@@ -20,12 +20,17 @@ from pokiguard_v2.boss_entry_ui import (
     locate_detached_chinh_phuc_room_shell_exit,
 )
 from pokiguard_v2.state import CombatSessionKey
+from pokiguard_v2.foreground_lease_transport import LeaseStatus
 from pokiguard_v2.win32_screenshot import read_png_rgb
 from tools.boss_entry import (
     ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS,
     ATTACK_CARD_SELECTION_VERIFY_WINDOW_SECONDS,
     _attack_toggle_visuals_stable,
     _entry_opening_timeout_recovery_required,
+    _entry_emergency_requested,
+    _entry_input_rejection_stop_reason,
+    _pinned_entry_delivery_can_wait_for_ack,
+    _entry_room_context_valid,
     _entry_retry_runtime_valid,
     _entry_preflight_runtime_valid,
     _jsonable,
@@ -88,6 +93,170 @@ def synthetic_button_image(
 
 
 class BossEntryLoggingTests(unittest.TestCase):
+    def test_locate_button_wait_exits_when_exact_room_becomes_island(self) -> None:
+        expected_candidate = candidate(0, "1289", "Starburst")
+        expected_lobby = SimpleNamespace(
+            state=BossLobbyState.BOSS_LOBBY,
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(
+                current_room_id="Coop_1",
+                button_start=expected_candidate.entry_control_address,
+            ),
+        )
+        island = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="CHINH_PHUC_ISLAND",
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                button_start=expected_candidate.entry_control_address,
+            ),
+        )
+
+        self.assertFalse(
+            _entry_room_context_valid(
+                island,
+                SimpleNamespace(resolved=False, candidate=None),
+                expected_lobby,
+                expected_candidate,
+            )
+        )
+
+    def test_locate_button_wait_accepts_only_same_room_target_and_button(self) -> None:
+        expected_candidate = candidate(0, "1289", "Starburst")
+        expected_lobby = SimpleNamespace(
+            state=BossLobbyState.BOSS_LOBBY,
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(
+                current_room_id="Coop_1",
+                button_start=expected_candidate.entry_control_address,
+            ),
+        )
+        current_candidate = candidate(0, "1289", "Starburst")
+        current_lobby = SimpleNamespace(
+            state=BossLobbyState.BOSS_LOBBY,
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(
+                current_room_id="Coop_1",
+                button_start=current_candidate.entry_control_address,
+            ),
+        )
+        resolution = SimpleNamespace(resolved=True, candidate=current_candidate)
+
+        self.assertTrue(
+            _entry_room_context_valid(
+                current_lobby,
+                resolution,
+                expected_lobby,
+                expected_candidate,
+            )
+        )
+        current_lobby.chinh_phuc.current_room_id = "Coop_other"
+        self.assertFalse(
+            _entry_room_context_valid(
+                current_lobby,
+                resolution,
+                expected_lobby,
+                expected_candidate,
+            )
+        )
+
+    def test_stale_pinned_post_focus_runtime_change_keeps_zero_input_reason(self) -> None:
+        lease = SimpleNamespace(
+            status=LeaseStatus.STALE_ACTION,
+            action_attempted=False,
+        )
+
+        self.assertEqual(
+            _entry_input_rejection_stop_reason(
+                authorized=True,
+                emergency_requested=False,
+                click=None,
+                entry_lease_error=None,
+                entry_lease_result=lease,
+                post_focus_preflight_stop_reason=(
+                    "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
+                ),
+            ),
+            "ENTRY_PREFLIGHT_RUNTIME_CHANGED",
+        )
+
+    def test_post_focus_reason_cannot_mask_attempted_action_or_lease_error(self) -> None:
+        attempted = SimpleNamespace(
+            status=LeaseStatus.STALE_ACTION,
+            action_attempted=True,
+        )
+        common = {
+            "authorized": True,
+            "emergency_requested": False,
+            "click": None,
+            "post_focus_preflight_stop_reason": (
+                "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
+            ),
+        }
+
+        self.assertEqual(
+            _entry_input_rejection_stop_reason(
+                **common,
+                entry_lease_error=None,
+                entry_lease_result=attempted,
+            ),
+            "FARM_ENTRY_CAPABILITY_DENIED",
+        )
+        self.assertEqual(
+            _entry_input_rejection_stop_reason(
+                **common,
+                entry_lease_error="window geometry changed",
+                entry_lease_result=SimpleNamespace(
+                    status=LeaseStatus.STALE_ACTION,
+                    action_attempted=False,
+                ),
+            ),
+            "PINNED_ENTRY_LEASE_REJECTED",
+        )
+
+    def test_desktop_emergency_channel_stops_entry_without_physical_f9(self) -> None:
+        runtime = SimpleNamespace(emergency_stop_requested=lambda: True)
+        self.assertTrue(_entry_emergency_requested(runtime, False))
+        self.assertTrue(
+            _entry_emergency_requested(
+                SimpleNamespace(emergency_stop_requested=None),
+                True,
+            )
+        )
+        self.assertFalse(
+            _entry_emergency_requested(
+                SimpleNamespace(emergency_stop_requested=lambda: False),
+                False,
+            )
+        )
+
+    def test_committed_pinned_entry_click_waits_for_ack_after_focus_returns_to_user(self) -> None:
+        sent = SimpleNamespace(sent=True)
+        contended = SimpleNamespace(
+            status=LeaseStatus.USER_TAKEOVER_DURING_ACTION,
+            action_succeeded=True,
+        )
+        complete = SimpleNamespace(
+            status=LeaseStatus.COMPLETE,
+            action_succeeded=True,
+        )
+        unsafe_release = SimpleNamespace(
+            status=LeaseStatus.RELEASE_INCOMPLETE,
+            action_succeeded=True,
+        )
+
+        self.assertTrue(_pinned_entry_delivery_can_wait_for_ack(complete, sent))
+        self.assertTrue(_pinned_entry_delivery_can_wait_for_ack(contended, sent))
+        self.assertFalse(
+            _pinned_entry_delivery_can_wait_for_ack(
+                contended,
+                SimpleNamespace(sent=False),
+            )
+        )
+        self.assertFalse(
+            _pinned_entry_delivery_can_wait_for_ack(unsafe_release, sent)
+        )
+
     def test_postmatch_card_render_and_selection_waits_are_bounded(self) -> None:
         self.assertEqual(ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS, 15.0)
         self.assertEqual(ATTACK_CARD_SELECTION_VERIFY_WINDOW_SECONDS, 10.0)
@@ -457,6 +626,49 @@ class BossEntryButtonLocatorTests(unittest.TestCase):
         self.assertFalse(located.found)
         self.assertEqual(located.reason, "start_button_ambiguous")
         self.assertEqual(len(located.candidates), 2)
+
+    def test_runtime_owned_b5_button_rect_is_not_tied_to_legacy_position(self) -> None:
+        width, height = 960, 540
+        runtime_rect = (0.24, 0.61, 0.53, 0.73)
+        rgb = synthetic_button_image((runtime_rect,), width=width, height=height)
+        located = locate_chinh_phuc_start(
+            rgb,
+            width,
+            height,
+            expected_rect=runtime_rect,
+        )
+        self.assertTrue(located.found, located)
+        self.assertEqual(located.normalized_rect, runtime_rect)
+        self.assertAlmostEqual(located.normalized_point[0], 0.385)  # type: ignore[index]
+        self.assertAlmostEqual(located.normalized_point[1], 0.67)  # type: ignore[index]
+        self.assertEqual(
+            located.reason, "runtime_owned_start_rect_with_visual_signature"
+        )
+
+    def test_runtime_owned_button_rect_still_requires_visual_signature(self) -> None:
+        width, height = 960, 540
+        located = locate_chinh_phuc_start(
+            bytes((10, 15, 20)) * width * height,
+            width,
+            height,
+            expected_rect=(0.24, 0.61, 0.53, 0.73),
+        )
+        self.assertFalse(located.found)
+        self.assertEqual(located.reason, "runtime_start_rect_visual_mismatch")
+
+    def test_runtime_owned_button_allows_b5_palette_change(self) -> None:
+        width, height = 960, 540
+        rect = (0.24, 0.61, 0.53, 0.73)
+        rgb = bytearray(bytes((10, 15, 20)) * width * height)
+        for y in range(round(height * rect[1]), round(height * rect[3])):
+            for x in range(round(width * rect[0]), round(width * rect[2])):
+                offset = (y * width + x) * 3
+                rgb[offset : offset + 3] = bytes((235, 135, 35))
+        located = locate_chinh_phuc_start(
+            bytes(rgb), width, height, expected_rect=rect
+        )
+        self.assertTrue(located.found, located)
+        self.assertEqual(located.metrics["geometrySource"], "ManagerRoom.ButtonStart")
 
     def test_detached_room_shell_requires_ready_control_and_circular_exit(self) -> None:
         width, height = 960, 540

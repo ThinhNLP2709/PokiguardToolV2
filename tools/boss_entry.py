@@ -78,7 +78,13 @@ from pokiguard_v2.il2cpp_layout import (  # noqa: E402
     LayoutValidationError,
     read_il2cpp_string,
 )
-from pokiguard_v2.live_state import board_state_hash  # noqa: E402
+from pokiguard_v2.live_state import (  # noqa: E402
+    EVIDENCED_MULTIPLIERS,
+    board_state_hash,
+)
+from pokiguard_v2.native_card_ui import NativeCardUiReader  # noqa: E402
+from pokiguard_v2.foreground_lease_transport import LeaseStatus  # noqa: E402
+from pokiguard_v2.input_delivery import InputDeliveryDomain  # noqa: E402
 from pokiguard_v2.lobby_card_selection import (  # noqa: E402
     AttackSelectionStatus,
     attack_selection_satisfied_by_rehydration,
@@ -136,6 +142,8 @@ class SharedEntryRuntime:
     entry_capability: Any | None = None
     lobby_card_capability: Any | None = None
     require_attack_card: bool = True
+    pinned_input_session: Any | None = None
+    emergency_stop_requested: Any | None = None
 
 
 def _retryable_board_messages(
@@ -216,6 +224,37 @@ def _entry_preflight_runtime_valid(
     )
 
 
+def _entry_room_context_valid(
+    current_lobby: Any,
+    current_resolution: Any,
+    expected_lobby: Any,
+    expected_candidate: Any,
+) -> bool:
+    """Keep the pre-visual-proof wait bound to the exact resolved room.
+
+    Boss Entry may need several samples before the Start control has stable
+    runtime geometry and visual proof.  Once an exact room has been resolved,
+    leaving that room is a navigation transition, not a reason to keep waiting
+    for its old button until the lobby timeout expires.
+    """
+
+    return bool(
+        current_lobby.state is BossLobbyState.BOSS_LOBBY
+        and current_lobby.branch == "CHINH_PHUC_ROOM"
+        and current_resolution.resolved
+        and current_resolution.candidate is not None
+        and current_resolution.candidate.identity.stable_key()
+        == expected_candidate.identity.stable_key()
+        and current_resolution.candidate.selection is TargetSelectionState.SELECTED
+        and current_resolution.candidate.entry_control_address
+        == expected_candidate.entry_control_address
+        and current_lobby.chinh_phuc.current_room_id
+        == expected_lobby.chinh_phuc.current_room_id
+        and current_lobby.chinh_phuc.button_start
+        == expected_lobby.chinh_phuc.button_start
+    )
+
+
 def _entry_retry_runtime_valid(
     current_lobby: Any,
     current_resolution: Any,
@@ -283,12 +322,16 @@ def _send_one_entry_retry(
             target=runtime.target,
             executor=runtime.executor,
             binding=runtime.binding,
+            button_address=ready.resolution.candidate.entry_control_address,
+            require_foreground=_proof_requires_foreground(runtime),
         )
         time.sleep(max(interval, 0.14))
         second_capture, second_location, second_signature = _capture_proof(
             target=runtime.target,
             executor=runtime.executor,
             binding=runtime.binding,
+            button_address=ready.resolution.candidate.entry_control_address,
+            require_foreground=_proof_requires_foreground(runtime),
         )
     except RuntimeError as exc:
         _write(log, "entry_retry_rejected", reason=str(exc))
@@ -308,39 +351,133 @@ def _send_one_entry_retry(
         )
         return False, "ENTRY_RETRY_BUTTON_CHANGED"
     status = runtime.executor.window_status(runtime.binding)
-    permit = capability.reserve_retry(
-        foreground=status.valid and status.foreground is True,
-        exact_same_target=True,
-        no_combat_owner=runtime.provider.current_session_key is None,
-        stable_same_button=True,
-    )
-    if permit is None:
-        return False, "ENTRY_RETRY_CAPABILITY_DENIED"
-    try:
-        if hasattr(capability, "execute"):
-            authorized, click = capability.execute(
-                lambda: runtime.executor.send_normalized_point(
-                    runtime.binding, second_location.normalized_point
-                )
-            )
-            if not authorized or click is None:
-                return False, "F9_EMERGENCY_STOP"
-        else:
-            click = runtime.executor.send_normalized_point(
-                runtime.binding, second_location.normalized_point
-            )
-    except Exception:
-        capability.complete_retry(
-            permit,
-            sent=False,
-            detail="entry retry executor raised before result",
+    permit = None
+    click = None
+    authorized = True
+    lease_result = None
+
+    def final_retry_preflight() -> bool:
+        fresh_poll = runtime.provider.poll()
+        if fresh_poll.combat_lifecycle is None:
+            return False
+        fresh_lobby = read_boss_lobby_runtime(
+            runtime.target.resolver, fresh_poll.combat_lifecycle
         )
-        raise
-    capability.complete_retry(
-        permit,
-        sent=click.sent,
-        detail=f"entry#{capability.entry_number}:retry:{click.status.value}",
-    )
+        fresh_resolution = resolve_target(farm_target, fresh_lobby.candidates)
+        if not _entry_retry_runtime_valid(
+            fresh_lobby,
+            fresh_resolution,
+            ready,
+            provider_session=runtime.provider.current_session_key,
+        ):
+            return False
+        try:
+            _capture, fresh_location, fresh_signature = _capture_proof(
+                target=runtime.target,
+                executor=runtime.executor,
+                binding=runtime.binding,
+                button_address=ready.resolution.candidate.entry_control_address,
+                require_foreground=True,
+            )
+        except RuntimeError:
+            return False
+        return bool(
+            fresh_signature == ready.signature
+            and fresh_location.normalized_point
+            == second_location.normalized_point
+        )
+
+    def send_retry_once() -> bool:
+        nonlocal permit, click, authorized
+        permit = capability.reserve_retry(
+            foreground=True,
+            exact_same_target=True,
+            no_combat_owner=runtime.provider.current_session_key is None,
+            stable_same_button=True,
+        )
+        if permit is None:
+            return False
+        try:
+            if hasattr(capability, "execute"):
+                authorized, click = capability.execute(
+                    lambda: runtime.executor.send_normalized_point(
+                        runtime.binding,
+                        second_location.normalized_point,
+                        settle_cursor=True,
+                    )
+                )
+                if not authorized or click is None:
+                    capability.complete_retry(
+                        permit,
+                        sent=False,
+                        detail="authority revoked before entry retry input",
+                    )
+                    return False
+            else:
+                click = runtime.executor.send_normalized_point(
+                    runtime.binding,
+                    second_location.normalized_point,
+                    settle_cursor=True,
+                )
+        except Exception:
+            capability.complete_retry(
+                permit,
+                sent=False,
+                detail="entry retry executor raised before result",
+            )
+            raise
+        completed = capability.complete_retry(
+            permit,
+            sent=click.sent,
+            detail=f"entry#{capability.entry_number}:retry:{click.status.value}",
+        )
+        return bool(completed and click.sent)
+
+    if _pinned_mouse_active(runtime):
+        session = runtime.pinned_input_session
+        lease_result = session.execute_mouse(
+            domain=InputDeliveryDomain.BOSS_ENTRY,
+            action_identity=f"BOSS_START_RETRY:{ready.attempt.digest()}",
+            action=send_retry_once,
+            preflight=lambda: runtime.provider.current_session_key is None,
+            post_focus_preflight=final_retry_preflight,
+            expected_cursor_after=session.expected_cursor_for_normalized_point(
+                second_location.normalized_point
+            ),
+        )
+        sent_ok = lease_result.action_succeeded
+        _write(
+            log,
+            "entry_retry_pinned_delivery",
+            delivery=lease_result,
+            click=click,
+            noBlindRetry=True,
+        )
+    else:
+        if not status.valid or status.foreground is not True:
+            return False, "ENTRY_RETRY_CAPABILITY_DENIED"
+        sent_ok = send_retry_once()
+    if not sent_ok or click is None:
+        return False, (
+            "F9_EMERGENCY_STOP"
+            if not authorized
+            else "ENTRY_RETRY_CAPABILITY_DENIED"
+        )
+    if lease_result is not None and not _pinned_entry_delivery_can_wait_for_ack(
+        lease_result,
+        click,
+    ):
+        return False, "PINNED_ENTRY_RETRY_LEASE_CLEANUP_FAILED"
+    if (
+        lease_result is not None
+        and lease_result.status is LeaseStatus.USER_TAKEOVER_DURING_ACTION
+    ):
+        _write(
+            log,
+            "entry_retry_pinned_cleanup_contended_after_sent",
+            delivery=lease_result,
+            authoritativeOpeningObservationContinues=True,
+        )
     _save_capture(artifact_dir / "entry_retry_button.png", second_capture)
     _write(
         log,
@@ -500,10 +637,19 @@ def _capture_proof(
     target: Any,
     executor: ForegroundClickExecutor,
     binding: Any,
+    button_address: int | None,
+    require_foreground: bool = True,
 ) -> tuple[ClientRgbCapture, Any, str]:
     status = executor.window_status(binding)
-    if not status.valid or status.foreground is not True or status.geometry is None:
-        raise RuntimeError("game window must be unchanged and foreground")
+    if (
+        not status.valid
+        or status.geometry is None
+        or (require_foreground and status.foreground is not True)
+    ):
+        raise RuntimeError(
+            "game window must be unchanged"
+            + (" and foreground" if require_foreground else "")
+        )
     capture = capture_client_rgb(target.pid)
     if (capture.width, capture.height) != (
         status.geometry.width,
@@ -513,7 +659,27 @@ def _capture_proof(
     modal = locate_confirm_leave(capture.rgb, capture.width, capture.height)
     if modal.found:
         raise RuntimeError("modal-like two-button overlay is visible")
-    location = locate_chinh_phuc_start(capture.rgb, capture.width, capture.height)
+    if button_address is None:
+        raise RuntimeError("runtime Start button address is unavailable")
+    try:
+        geometry = NativeCardUiReader(
+            target.memory,
+            target.resolver.game_assembly_base,
+        ).read_button_geometry(
+            button_address,
+            max_translation_jitter=1.0,
+            allow_nested_fullscreen_canvas=True,
+        )
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
+        raise RuntimeError(f"runtime Start button geometry is invalid: {exc}") from exc
+    if not geometry.active or geometry.viewport_rect is None:
+        raise RuntimeError("runtime Start button is not active")
+    location = locate_chinh_phuc_start(
+        capture.rgb,
+        capture.width,
+        capture.height,
+        expected_rect=geometry.viewport_rect,
+    )
     if not location.found or location.normalized_point is None or location.normalized_rect is None:
         raise RuntimeError(location.reason)
     if location.confidence < 0.90:
@@ -525,6 +691,84 @@ def _capture_proof(
         client_size=(capture.width, capture.height),
     )
     return capture, location, signature
+
+
+def _pinned_mouse_active(runtime: SharedEntryRuntime) -> bool:
+    session = runtime.pinned_input_session
+    return bool(session is not None and getattr(session, "active", False))
+
+
+def _pinned_entry_delivery_can_wait_for_ack(
+    lease_result: Any,
+    click: Any,
+) -> bool:
+    """Accept a committed click when focus returns to the user afterwards."""
+
+    return bool(
+        lease_result is not None
+        and getattr(lease_result, "action_succeeded", False)
+        and click is not None
+        and getattr(click, "sent", False)
+        and lease_result.status
+        in (
+            LeaseStatus.COMPLETE,
+            LeaseStatus.USER_TAKEOVER_DURING_ACTION,
+        )
+    )
+
+
+def _entry_input_rejection_stop_reason(
+    *,
+    authorized: bool,
+    emergency_requested: bool,
+    click: Any,
+    entry_lease_error: str | None,
+    entry_lease_result: Any,
+    post_focus_preflight_stop_reason: str | None,
+) -> str:
+    """Preserve a proven zero-input post-focus preflight rejection.
+
+    The pinned lease deliberately collapses every rejected callback to
+    ``STALE_ACTION``.  Boss entry still needs the callback's narrower reason
+    so FarmRunner can reroute a room-to-map transition without charging an
+    attempt or sending a blind Start click.  Only a rejection before the
+    action began may carry that reason across the lease boundary.
+    """
+
+    if not authorized or emergency_requested:
+        return "F9_EMERGENCY_STOP"
+    if click is not None:
+        return f"ENTRY_INPUT_{click.status.value}"
+    if entry_lease_error is not None:
+        return "PINNED_ENTRY_LEASE_REJECTED"
+    if (
+        post_focus_preflight_stop_reason is not None
+        and entry_lease_result is not None
+        and entry_lease_result.status is LeaseStatus.STALE_ACTION
+        and not bool(getattr(entry_lease_result, "action_attempted", False))
+    ):
+        return post_focus_preflight_stop_reason
+    return "FARM_ENTRY_CAPABILITY_DENIED"
+
+
+def _entry_emergency_requested(
+    runtime: SharedEntryRuntime,
+    physical_f9_edge: bool,
+) -> bool:
+    if physical_f9_edge:
+        return True
+    callback = runtime.emergency_stop_requested
+    if not callable(callback):
+        return False
+    try:
+        return bool(callback())
+    except Exception:
+        # An unreadable emergency-control channel must fail closed.
+        return True
+
+
+def _proof_requires_foreground(runtime: SharedEntryRuntime) -> bool:
+    return not _pinned_mouse_active(runtime)
 
 
 def _save_capture(path: Path, capture: ClientRgbCapture) -> None:
@@ -616,7 +860,14 @@ def _ensure_required_attack_card(
     binding = runtime.binding
     executor = runtime.executor
     status = executor.window_status(binding)
-    if not status.valid or status.foreground is not True:
+    if (
+        not status.valid
+        or status.geometry is None
+        or (
+            status.foreground is not True
+            and not _pinned_mouse_active(runtime)
+        )
+    ):
         result.update(status="STOPPED", stopReason="ATTACK_CARD_FOREGROUND_LOST")
         _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
         return None
@@ -644,7 +895,10 @@ def _ensure_required_attack_card(
         current_status = executor.window_status(binding)
         if (
             not current_status.valid
-            or current_status.foreground is not True
+            or (
+                current_status.foreground is not True
+                and not _pinned_mouse_active(runtime)
+            )
             or current_status.geometry is None
             or expected_geometry is None
             or (
@@ -799,36 +1053,129 @@ def _ensure_required_attack_card(
         )
         return None
 
-    permit = runtime.lobby_card_capability.reserve(
-        foreground=True,
-        exact_attack_identity=True,
-        no_combat_owner=True,
-        selected_attack_missing=True,
-        unique_room_attack=True,
+    permit = None
+    click = None
+    authorized = True
+    lease_result = None
+    attack_card_action_identity = (
+        f"LOBBY_ATTACK_CARD:{lobby.chinh_phuc.current_room_id}:"
+        f"{plan.data_id}:{plan.card_id}:{plan.room_card_index}:"
+        f"{time.monotonic_ns()}"
     )
-    if permit is None:
-        result.update(status="STOPPED", stopReason="ATTACK_CARD_CAPABILITY_DENIED")
-        _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
-        return None
-    authorized, click = runtime.lobby_card_capability.execute(
-        lambda: executor.send_normalized_point(
-            binding, second_location.normalized_point
+
+    def final_attack_card_preflight() -> bool:
+        fresh_poll = provider.poll()
+        if fresh_poll.combat_lifecycle is None:
+            return False
+        fresh_lobby = read_boss_lobby_runtime(
+            target.resolver, fresh_poll.combat_lifecycle
         )
-    )
-    if not authorized or click is None:
-        runtime.lobby_card_capability.complete(
-            permit, sent=False, detail="authority revoked before Attack-card click"
+        fresh_plan = plan_required_attack_selection(
+            fresh_lobby.chinh_phuc.card_loadout
         )
-        result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
-        return None
-    if not runtime.lobby_card_capability.complete(
-        permit,
-        sent=click.sent,
-        detail=(
-            f"ATTACK data={plan.data_id} card={plan.card_id} "
-            f"roomIndex={plan.room_card_index}:{click.status.value}"
-        ),
-    ):
+        if not (
+            fresh_lobby.state is BossLobbyState.BOSS_LOBBY
+            and fresh_lobby.branch == "CHINH_PHUC_ROOM"
+            and fresh_lobby.chinh_phuc.current_room_id
+            == lobby.chinh_phuc.current_room_id
+            and fresh_lobby.chinh_phuc.enemy_pet_id
+            == lobby.chinh_phuc.enemy_pet_id
+            and provider.current_session_key is None
+            and fresh_plan.status is AttackSelectionStatus.REQUIRED
+            and fresh_plan.identity == plan.identity
+            and fresh_plan.room_card_index == plan.room_card_index
+        ):
+            return False
+        fresh_capture = capture_client_rgb(target.pid)
+        fresh_location = locate_chinh_phuc_attack_card_toggle(
+            fresh_capture.rgb,
+            fresh_capture.width,
+            fresh_capture.height,
+            room_card_count=len(fresh_lobby.chinh_phuc.card_loadout.room_cards),
+            attack_card_index=plan.room_card_index,
+        )
+        return bool(
+            fresh_location.found
+            and fresh_location.normalized_point
+            == second_location.normalized_point
+        )
+
+    def send_attack_card_once() -> bool:
+        nonlocal permit, click, authorized
+        permit = runtime.lobby_card_capability.reserve(
+            foreground=True,
+            exact_attack_identity=True,
+            no_combat_owner=provider.current_session_key is None,
+            selected_attack_missing=True,
+            unique_room_attack=True,
+        )
+        if permit is None:
+            return False
+        authorized, click = runtime.lobby_card_capability.execute(
+            lambda: executor.send_normalized_point(
+                binding, second_location.normalized_point
+            )
+        )
+        if not authorized or click is None:
+            runtime.lobby_card_capability.complete(
+                permit,
+                sent=False,
+                detail="authority revoked before Attack-card click",
+            )
+            return False
+        return bool(
+            runtime.lobby_card_capability.complete(
+                permit,
+                sent=click.sent,
+                detail=(
+                    f"ATTACK data={plan.data_id} card={plan.card_id} "
+                    f"roomIndex={plan.room_card_index}:{click.status.value}"
+                ),
+            )
+            and click.sent
+        )
+
+    if _pinned_mouse_active(runtime):
+        session = runtime.pinned_input_session
+        lease_result = session.execute_mouse(
+            domain=InputDeliveryDomain.BOSS_ENTRY,
+            action_identity=attack_card_action_identity,
+            action=send_attack_card_once,
+            preflight=lambda: provider.current_session_key is None,
+            post_focus_preflight=final_attack_card_preflight,
+            expected_cursor_after=session.expected_cursor_for_normalized_point(
+                second_location.normalized_point
+            ),
+        )
+        _write(
+            log,
+            "preentry_attack_card_pinned_delivery",
+            delivery=lease_result,
+            click=click,
+            noBlindRetry=True,
+        )
+        if not lease_result.action_succeeded:
+            result.update(
+                status="STOPPED",
+                stopReason=(
+                    "F9_EMERGENCY_STOP"
+                    if not authorized
+                    else "ATTACK_CARD_INPUT_FAILED"
+                ),
+            )
+            return None
+    else:
+        if not final_attack_card_preflight() or not send_attack_card_once():
+            result.update(
+                status="STOPPED",
+                stopReason=(
+                    "F9_EMERGENCY_STOP"
+                    if not authorized
+                    else "ATTACK_CARD_INPUT_FAILED"
+                ),
+            )
+            return None
+    if click is None:
         result.update(status="STOPPED", stopReason="ATTACK_CARD_INPUT_FAILED")
         return None
     result["preentryCardSelectionClicks"] = (
@@ -836,6 +1183,12 @@ def _ensure_required_attack_card(
     )
     if not click.sent:
         result.update(status="STOPPED", stopReason="ATTACK_CARD_INPUT_FAILED")
+        return None
+    if lease_result is not None and lease_result.status is not LeaseStatus.COMPLETE:
+        result.update(
+            status="STOPPED",
+            stopReason="PINNED_ATTACK_CARD_LEASE_CLEANUP_FAILED",
+        )
         return None
 
     verification_deadline = (
@@ -997,12 +1350,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         stable_lobby_count = 0
         lobby_epoch = 0
         last_lobby_status = None
+        locked_lobby: BossLobbyRuntimeSnapshot | None = None
+        locked_candidate: BossCandidate | None = None
         deadline = time.monotonic() + args.lobby_timeout
 
         while target.is_running() and time.monotonic() < deadline and ready is None:
             f8_edge, f9_edge = hotkeys.poll()
             del f8_edge
-            if f9_edge:
+            if _entry_emergency_requested(runtime, f9_edge):
                 result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
                 _write(log, "entry_stopped", reason=result["stopReason"])
                 _beep("stop", beep_enabled)
@@ -1025,6 +1380,28 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     reasons=lobby.reasons,
                 )
                 last_lobby_status = status
+            if locked_lobby is not None and locked_candidate is not None:
+                current_resolution = resolve_target(farm_target, lobby.candidates)
+                if not _entry_room_context_valid(
+                    lobby,
+                    current_resolution,
+                    locked_lobby,
+                    locked_candidate,
+                ):
+                    result.update(
+                        status="STOPPED",
+                        stopReason="ENTRY_PREFLIGHT_RUNTIME_CHANGED",
+                    )
+                    _write(
+                        log,
+                        "entry_stopped",
+                        reason=result["stopReason"],
+                        stage="LOCATE_ENTER_BUTTON",
+                        inputSent=False,
+                        observedState=lobby.state,
+                        observedBranch=lobby.branch,
+                    )
+                    break
             if lobby.state is not BossLobbyState.BOSS_LOBBY:
                 stable_lobby_key = None
                 stable_lobby_count = 0
@@ -1193,11 +1570,17 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     preentryCardIdentity=loadout.identity,
                     preentryOptionalCardMode=_preentry_optional_card_mode(loadout),
                 )
+            locked_lobby = lobby
+            locked_candidate = candidate
             state = _transition(log, state, BossEntryState.LOCATE_ENTER_BUTTON)
 
             try:
                 first_capture, first_location, first_signature = _capture_proof(
-                    target=target, executor=executor, binding=binding
+                    target=target,
+                    executor=executor,
+                    binding=binding,
+                    button_address=candidate.entry_control_address,
+                    require_foreground=_proof_requires_foreground(runtime),
                 )
             except RuntimeError as exc:
                 _write(log, "fight_button_waiting", reason=str(exc))
@@ -1206,7 +1589,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             time.sleep(max(args.interval, 0.14))
             try:
                 second_capture, second_location, second_signature = _capture_proof(
-                    target=target, executor=executor, binding=binding
+                    target=target,
+                    executor=executor,
+                    binding=binding,
+                    button_address=candidate.entry_control_address,
+                    require_foreground=_proof_requires_foreground(runtime),
                 )
             except RuntimeError as exc:
                 _write(log, "fight_button_unstable", reason=str(exc))
@@ -1325,7 +1712,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             confirmed = False
             while target.is_running() and time.monotonic() < confirm_deadline:
                 f8_edge, f9_edge = hotkeys.poll()
-                if f9_edge:
+                if _entry_emergency_requested(runtime, f9_edge):
                     result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
                     _write(log, "entry_stopped", reason=result["stopReason"])
                     break
@@ -1345,19 +1732,65 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
 
         # Learn the short-lived ChatMessageDTO allocation regions before the
         # only entry click. On a cold process the full read-only heap scan can
-        # take roughly 1--2 seconds; paying that cost after clicking can miss
-        # MATCH_START and therefore the mandatory first local turn. The
-        # monitor reuses current-process evidence on later entries and rescans
-        # here only if every learned range disappeared.
-        transport_prime = monitor.ensure_regions_primed()
-        _write(
-            log,
-            "entry_transport_regions_ready",
-            prime=transport_prime,
-            coldScanPerformed=transport_prime.scanned_bytes > 0,
-            timing="before_entry_input",
-            gameplayInput=False,
-        )
+        # take several seconds; paying that cost after clicking can miss
+        # MATCH_START and therefore the mandatory first local turn.
+        #
+        # In pinned mode this work must run *inside* the entry mouse lease.
+        # Otherwise the game is pinned but the user's mouse remains free for
+        # the entire cold scan, allowing the exact game geometry to move before
+        # the Start click is armed. The lease's post-focus preflight already
+        # runs after exclusive mouse ownership, so it is the correct bounded
+        # place to prime and then reread the exact room/button.
+        transport_prime = None
+
+        def ensure_entry_transport_ready(*, guarded_by_entry_lease: bool) -> bool:
+            nonlocal transport_prime
+            if transport_prime is not None:
+                return True
+            try:
+                transport_prime = monitor.ensure_regions_primed(
+                    stop_requested=lambda: _entry_emergency_requested(
+                        runtime, False
+                    )
+                )
+            except InterruptedError:
+                return False
+            _write(
+                log,
+                "entry_transport_regions_ready",
+                prime=transport_prime,
+                coldScanPerformed=transport_prime.scanned_bytes > 0,
+                timing="before_entry_input",
+                gameplayInput=False,
+                guardedByEntryLease=guarded_by_entry_lease,
+            )
+            return True
+
+        if _pinned_mouse_active(runtime):
+            _write(
+                log,
+                "entry_transport_regions_deferred",
+                timing="post_focus_preflight",
+                exclusiveMouseRequired=True,
+            )
+        elif not ensure_entry_transport_ready(guarded_by_entry_lease=False):
+            result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
+            _write(log, "entry_stopped", reason=result["stopReason"])
+            _beep("stop", beep_enabled)
+            summary_path.write_text(
+                json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            return 2
+        if _entry_emergency_requested(runtime, False):
+            result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
+            _write(log, "entry_stopped", reason=result["stopReason"])
+            _beep("stop", beep_enabled)
+            summary_path.write_text(
+                json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            return 2
 
         # Atomic preflight immediately before the only allowed entry click.
         poll = provider.poll()
@@ -1406,7 +1839,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             sources_agree=current_loadout.sources_agree,
         )
         capture, location, signature = _capture_proof(
-            target=target, executor=executor, binding=binding
+            target=target,
+            executor=executor,
+            binding=binding,
+            button_address=ready.resolution.candidate.entry_control_address,
+            require_foreground=_proof_requires_foreground(runtime),
         )
         if signature != ready.signature:
             result.update(status="STOPPED", stopReason="ENTRY_PREFLIGHT_BUTTON_CHANGED")
@@ -1417,7 +1854,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             )
             return 2
         window_status = executor.window_status(binding)
-        if not window_status.valid or window_status.foreground is not True or window_status.geometry is None:
+        if (
+            not window_status.valid
+            or window_status.geometry is None
+            or (
+                window_status.foreground is not True
+                and not _pinned_mouse_active(runtime)
+            )
+        ):
             raise RuntimeError("game lost foreground before entry click")
         if result["entryClicks"] != 0:
             result["duplicateEntryClicks"] += 1
@@ -1431,67 +1875,216 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             diagnostics=dispatcher_tap.diagnostics,
         )
         entry_permit = None
-        if runtime.entry_capability is not None:
-            entry_permit = runtime.entry_capability.reserve(
-                foreground=window_status.valid and window_status.foreground is True
-            )
-            if entry_permit is None:
-                result.update(status="STOPPED", stopReason="FARM_ENTRY_CAPABILITY_DENIED")
-                _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
-                _beep("stop", beep_enabled)
-                summary_path.write_text(
-                    json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
-                    encoding="utf-8",
+        authorized = True
+        click = None
+        entry_lease_result = None
+        entry_lease_error: str | None = None
+        post_focus_preflight_stop_reason: str | None = None
+
+        def final_entry_lease_preflight() -> bool:
+            nonlocal post_focus_preflight_stop_reason
+            post_focus_preflight_stop_reason = None
+            if not ensure_entry_transport_ready(guarded_by_entry_lease=True):
+                post_focus_preflight_stop_reason = (
+                    "F9_EMERGENCY_STOP"
+                    if _entry_emergency_requested(runtime, False)
+                    else "ENTRY_PREFLIGHT_TRANSPORT_UNAVAILABLE"
                 )
-                return 2
-        try:
-            if (
-                runtime.entry_capability is not None
-                and hasattr(runtime.entry_capability, "execute")
+                return False
+            fresh_poll = provider.poll()
+            if fresh_poll.combat_lifecycle is None:
+                post_focus_preflight_stop_reason = (
+                    "ENTRY_PREFLIGHT_RUNTIME_UNAVAILABLE"
+                )
+                return False
+            fresh_lobby = read_boss_lobby_runtime(
+                target.resolver, fresh_poll.combat_lifecycle
+            )
+            fresh_resolution = resolve_target(farm_target, fresh_lobby.candidates)
+            if not _entry_preflight_runtime_valid(
+                fresh_lobby, fresh_resolution, ready
             ):
-                authorized, click = runtime.entry_capability.execute(
-                    lambda: executor.send_normalized_point(
-                        binding, location.normalized_point
-                    )
+                post_focus_preflight_stop_reason = (
+                    "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
                 )
-                if not authorized or click is None:
-                    result.update(
-                        status="STOPPED",
-                        stopReason="F9_EMERGENCY_STOP",
-                    )
-                    _write(
-                        log,
-                        "entry_stopped",
-                        reason=result["stopReason"],
-                        inputSent=False,
-                    )
-                    summary_path.write_text(
-                        json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
-                        encoding="utf-8",
-                    )
-                    return 2
-            else:
-                click = executor.send_normalized_point(
-                    binding, location.normalized_point
+                return False
+            try:
+                _fresh_capture, fresh_location, fresh_signature = _capture_proof(
+                    target=target,
+                    executor=executor,
+                    binding=binding,
+                    button_address=ready.resolution.candidate.entry_control_address,
+                    require_foreground=True,
                 )
-        except Exception:
-            if runtime.entry_capability is not None and entry_permit is not None:
-                runtime.entry_capability.cancel(entry_permit, detail="executor raised before result")
-            raise
-        if runtime.entry_capability is not None and entry_permit is not None:
-            runtime.entry_capability.complete(
-                entry_permit,
-                sent=click.sent,
-                detail=f"entry#{runtime.entry_capability.entry_number}:{click.status.value}",
+            except RuntimeError:
+                post_focus_preflight_stop_reason = (
+                    "ENTRY_PREFLIGHT_BUTTON_CHANGED"
+                )
+                return False
+            valid = bool(
+                fresh_signature == ready.signature
+                and fresh_location.normalized_point == location.normalized_point
+                and provider.current_session_key is None
             )
-        if not click.sent:
-            result.update(status="STOPPED", stopReason=f"ENTRY_INPUT_{click.status.value}")
-            _write(log, "entry_stopped", reason=result["stopReason"])
+            if not valid:
+                post_focus_preflight_stop_reason = (
+                    "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
+                    if provider.current_session_key is not None
+                    else "ENTRY_PREFLIGHT_BUTTON_CHANGED"
+                )
+            return valid
+
+        def send_entry_once() -> bool:
+            nonlocal entry_permit, authorized, click
+            if runtime.entry_capability is not None:
+                entry_permit = runtime.entry_capability.reserve(foreground=True)
+                if entry_permit is None:
+                    return False
+            try:
+                if (
+                    runtime.entry_capability is not None
+                    and hasattr(runtime.entry_capability, "execute")
+                ):
+                    authorized, click = runtime.entry_capability.execute(
+                        lambda: executor.send_normalized_point(
+                            binding,
+                            location.normalized_point,
+                            settle_cursor=True,
+                        )
+                    )
+                    if not authorized or click is None:
+                        if entry_permit is not None:
+                            runtime.entry_capability.cancel(
+                                entry_permit,
+                                detail="authority revoked before entry input",
+                            )
+                        return False
+                else:
+                    click = executor.send_normalized_point(
+                        binding,
+                        location.normalized_point,
+                        settle_cursor=True,
+                    )
+            except Exception:
+                if runtime.entry_capability is not None and entry_permit is not None:
+                    runtime.entry_capability.cancel(
+                        entry_permit, detail="executor raised before result"
+                    )
+                raise
+            if runtime.entry_capability is not None and entry_permit is not None:
+                completed = runtime.entry_capability.complete(
+                    entry_permit,
+                    sent=click.sent,
+                    detail=(
+                        f"entry#{runtime.entry_capability.entry_number}:"
+                        f"{click.status.value}"
+                    ),
+                )
+                return bool(completed and click.sent)
+            return bool(click.sent)
+
+        try:
+            if _pinned_mouse_active(runtime):
+                session = runtime.pinned_input_session
+                entry_lease_result = session.execute_mouse(
+                    domain=InputDeliveryDomain.BOSS_ENTRY,
+                    action_identity=f"BOSS_START:{ready.attempt.digest()}",
+                    action=send_entry_once,
+                    preflight=lambda: provider.current_session_key is None,
+                    post_focus_preflight=final_entry_lease_preflight,
+                    expected_cursor_after=(
+                        session.expected_cursor_for_normalized_point(
+                            location.normalized_point
+                        )
+                    ),
+                )
+                _write(
+                    log,
+                    "entry_pinned_delivery",
+                    attemptDigest=ready.attempt.digest(),
+                    delivery=entry_lease_result,
+                    click=click,
+                    noBlindRetry=True,
+                )
+                sent_ok = entry_lease_result.action_succeeded
+            else:
+                sent_ok = send_entry_once()
+        except RuntimeError as exc:
+            if not _pinned_mouse_active(runtime):
+                raise
+            entry_lease_error = str(exc)
+            sent_ok = False
+            current_geometry = runtime.pinned_input_session.backend.client_geometry(
+                binding.hwnd
+            )
+            _write(
+                log,
+                "entry_pinned_delivery_rejected",
+                error=entry_lease_error,
+                expectedGeometry=runtime.pinned_input_session.binding.geometry,
+                currentGeometry=current_geometry,
+                inputSent=False,
+            )
+        if not sent_ok or click is None or not click.sent:
+            emergency_requested = _entry_emergency_requested(runtime, False)
+            result.update(
+                status="STOPPED",
+                stopReason=_entry_input_rejection_stop_reason(
+                    authorized=authorized,
+                    emergency_requested=emergency_requested,
+                    click=click,
+                    entry_lease_error=entry_lease_error,
+                    entry_lease_result=entry_lease_result,
+                    post_focus_preflight_stop_reason=(
+                        post_focus_preflight_stop_reason
+                    ),
+                ),
+            )
+            _write(
+                log,
+                "entry_stopped",
+                reason=result["stopReason"],
+                leaseError=entry_lease_error,
+                postFocusPreflightReason=(
+                    post_focus_preflight_stop_reason
+                ),
+                actionAttempted=(
+                    getattr(entry_lease_result, "action_attempted", None)
+                    if entry_lease_result is not None
+                    else None
+                ),
+            )
             _beep("stop", beep_enabled)
             summary_path.write_text(
                 json.dumps(_jsonable(result), ensure_ascii=False, indent=2), encoding="utf-8"
             )
             return 2
+        if entry_lease_result is not None and not _pinned_entry_delivery_can_wait_for_ack(
+            entry_lease_result,
+            click,
+        ):
+            result.update(
+                status="STOPPED",
+                stopReason="PINNED_ENTRY_LEASE_CLEANUP_FAILED",
+            )
+            _write(
+                log,
+                "entry_stopped",
+                reason=result["stopReason"],
+                inputSent=True,
+                blindRetry=False,
+            )
+            return 2
+        if (
+            entry_lease_result is not None
+            and entry_lease_result.status is LeaseStatus.USER_TAKEOVER_DURING_ACTION
+        ):
+            _write(
+                log,
+                "entry_pinned_cleanup_contended_after_sent",
+                delivery=entry_lease_result,
+                authoritativeOpeningObservationContinues=True,
+            )
         result["entryClicks"] = 1
         geometry = window_status.geometry
         client_x = int(location.normalized_point[0] * (geometry.width - 1))
@@ -1533,7 +2126,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
 
         while target.is_running():
             _f8_edge, f9_edge = hotkeys.poll()
-            if f9_edge:
+            if _entry_emergency_requested(runtime, f9_edge):
                 result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
                 _write(log, "entry_stopped", reason=result["stopReason"])
                 break
@@ -2075,7 +2668,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 unique_coordinates = len({(cell.row, cell.col) for cell in cells})
                 gem_types_valid = all(cell.gem is not GemType.UNKNOWN for cell in cells)
                 multipliers_valid = all(
-                    cell.multiplier in (1, 2, 3, 4) for cell in cells
+                    cell.multiplier in EVIDENCED_MULTIPLIERS for cell in cells
                 )
                 opening_ok = bool(
                     game_state.battle.session_key == active_session

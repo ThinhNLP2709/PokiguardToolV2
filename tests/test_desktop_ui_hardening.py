@@ -36,6 +36,8 @@ from pokiguard_v2.desktop_ui import (
     DESKTOP_TAB_TITLES,
     INITIAL_FOCUS_TARGET,
     INTELLIGENCE_LABELS,
+    INPUT_DELIVERY_LABELS,
+    PINNED_INPUT_DELIVERY_HELP,
     PREFERENCE_TABLE_ROWS,
     SETTINGS_TABLE_ROWS,
     VISIBLE_RUNTIME_ROWS,
@@ -346,10 +348,15 @@ class CompactPresentationContractTests(unittest.TestCase):
                 "Thẻ sát thương",
                 "Điều kiện ra skill",
                 "Hành động skill", "Cách đi bàn cờ",
+                "Chế độ thao tác",
+                "Kích thước cửa sổ game",
             ),
             PREFERENCE_TABLE_ROWS,
         )
-        self.assertEqual(("Tệp chạy trò chơi",), SETTINGS_TABLE_ROWS)
+        self.assertEqual(
+            ("Tệp chạy trò chơi", "Âm báo của tool"),
+            SETTINGS_TABLE_ROWS,
+        )
         self.assertEqual("notebook", INITIAL_FOCUS_TARGET)
 
     def test_operator_choice_labels_are_vietnamese_while_values_stay_stable(self) -> None:
@@ -362,6 +369,23 @@ class CompactPresentationContractTests(unittest.TestCase):
         )
         self.assertEqual("Hai lần nhấp", BOARD_INPUT_LABELS[BoardInputMode.TWO_CLICK])
         self.assertEqual("Kéo thả", BOARD_INPUT_LABELS[BoardInputMode.DRAG])
+        from pokiguard_v2.input_delivery import InputDeliveryMode
+
+        self.assertEqual(
+            "Tiền cảnh (mặc định)",
+            INPUT_DELIVERY_LABELS[InputDeliveryMode.FOREGROUND],
+        )
+        self.assertEqual(
+            "Ghim game để tự chơi khi dùng máy — Beta",
+            INPUT_DELIVERY_LABELS[
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ],
+        )
+        self.assertIn("luôn hiển thị và ở trên cùng", PINNED_INPUT_DELIVERY_HELP)
+        self.assertIn("không hỗ trợ thu nhỏ", PINNED_INPUT_DELIVERY_HELP)
+        self.assertIn("tạm giữ chuột", PINNED_INPUT_DELIVERY_HELP)
+        self.assertIn("khóa bàn phím trong QTE", PINNED_INPUT_DELIVERY_HELP)
+        self.assertIn("khả năng tốt nhất", PINNED_INPUT_DELIVERY_HELP)
 
     def test_blank_surface_clears_focus_but_controls_keep_their_click(self) -> None:
         for widget_class in ("Tk", "TFrame", "TLabelframe", "TLabel"):
@@ -370,7 +394,7 @@ class CompactPresentationContractTests(unittest.TestCase):
             self.assertFalse(background_click_clears_entry_focus(widget_class))
 
     def test_sword_threshold_entry_accepts_ascii_digits_and_temporary_empty_only(self) -> None:
-        for value in ("", "0", "10", "256"):
+        for value in ("", "0", "10", "256", "448"):
             self.assertTrue(decimal_digits_or_empty(value))
         for value in ("-1", "+10", "10.0", " 10", "10 ", "abc", "１０"):
             self.assertFalse(decimal_digits_or_empty(value))

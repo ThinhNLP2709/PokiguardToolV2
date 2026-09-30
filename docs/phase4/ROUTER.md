@@ -158,3 +158,46 @@ visible/topmost với foreground takeover ngắn quanh input cũ, không phải 
 background/minimized transport. Prompt kế tiếp là
 `4B1_PINNED_FOREGROUND_LEASE_CONTRACT_BACKEND.md`; các prompt production sau đó
 phải dùng nhánh pinned foreground tương ứng và không claim background.
+
+Phase 4B.1 đã promote đúng implementation live-proven vào package production,
+thêm immutable mode/domain/authority/telemetry contract và giữ default
+`FOREGROUND`. Probe modules chỉ còn là compatibility shim trỏ tới production
+classes. Zero FarmRunner/UI call site đổi mode; 151 focused và 1481 full tests
+pass. Router chuyển sang `4B2_PINNED_FOREGROUND_BOARD_INTEGRATION.md`.
+
+Phase 4B.2 đã nối duy nhất production board SWAP vào mouse lease. Nhánh
+foreground giữ executor cũ; nhánh Beta pin exact HWND, cho phép input-free
+board preparation khi app khác giữ focus, reread direct runtime sau acquire,
+xin FarmRunner permit tại input boundary và dùng proposal/mapping/executor/ACK
+cũ. B1 foreground đạt 5/5 ACK. B2 Beta cuối đạt 3/3 ACK, trong đó hai lease lấy
+focus từ HWND ngoài game rồi trả focus/cursor và nhả guard sạch; mọi critical
+safety counter bằng 0. Same-thread emergency poll deadlock và legacy
+pre-lease foreground gate phát hiện ở các attempt trước đã có regression.
+Latest full suite 1498/1498 pass. Phase 4B.2 đạt `PASS STRONG`; router chuyển
+sang `4B3_PINNED_FOREGROUND_UI_CARD_INTEGRATION.md`.
+
+Phase 4B.3 đã nối các domain Start, exact lobby card, result confirm và cleanup
+vào production pinned lease; live full match sạch và 1514/1514 tests pass.
+Router chuyển sang `4B4P_PINNED_FOREGROUND_QTE_INTEGRATION.md`.
+
+Phase 4B.4P đã nối nguyên Pet Skill action cũ vào QTE child lease. Sau
+remediation initial observer binding, 1526/1526 tests pass và ba production
+live actions độc lập đều đạt đúng 1 card click, 7/7 direction RAM ACK, 1 Space,
+runtime `PERFECT`, immediate kill và cleanup guard/focus/cursor sạch. Phase
+4B.4P đạt `PASS STRONG`; router chuyển sang
+`4C1_PINNED_FOREGROUND_DESKTOP_FARMRUNNER_INTEGRATION.md`.
+
+Phase 4C.1 đã nối mode Beta xuyên suốt Desktop UI, config, FarmRunner,
+checkpoint/resume và mọi production input domain. Sau remediation rebase thuần
+origin giữa action và giữ focus trong post-click Unity settle, full suite đạt
+1537/1537. Live B1 foreground, B2 Beta có reposition, B3 soak 3 trận và B4
+graceful stop đều sạch; B4 dừng đúng 1/3 ở boss lobby và phát đúng một entry.
+Phase 4C.1 đạt `PASS STRONG`; router chuyển sang
+`4C2_PINNED_FOREGROUND_NAVIGATION_REENTRY.md`.
+
+Phase 4C.2 đạt `PASS STRONG`. Run `f591da152cbe47dd9b7ef501f9c079a8`
+hoàn tất `3/3 WIN` và tạo đúng hai production re-entry cycle sạch. Cả hai chọn
+Starburst bằng native `panelButtons[pet_index]` RectTransform, fresh post-focus
+proof, đúng một click, room/opening ACK và zero critical event. Full suite
+`1575/1575` pass; router chuyển sang
+`4D1_PINNED_FOREGROUND_AB_ACCEPTANCE.md`.

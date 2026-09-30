@@ -182,7 +182,109 @@ def locate_chinh_phuc_start(
     rgb: bytes,
     width: int,
     height: int,
+    *,
+    expected_rect: tuple[float, float, float, float] | None = None,
 ) -> EntryUiLocation:
+    if expected_rect is not None:
+        if width < 640 or height < 360 or len(rgb) != width * height * 3:
+            return EntryUiLocation(
+                BossEntryControl.CHINH_PHUC_START,
+                False,
+                None,
+                None,
+                0.0,
+                "invalid_capture",
+                (),
+                {"candidateCount": 0},
+            )
+        left, top, right, bottom = expected_rect
+        rect_width = right - left
+        rect_height = bottom - top
+        if not (
+            0.0 <= left < right <= 1.0
+            and 0.0 <= top < bottom <= 1.0
+            and 0.06 <= rect_width <= 0.60
+            and 0.035 <= rect_height <= 0.30
+        ):
+            return EntryUiLocation(
+                BossEntryControl.CHINH_PHUC_START,
+                False,
+                None,
+                None,
+                0.0,
+                "runtime_start_rect_invalid",
+                (),
+                {"candidateCount": 0},
+            )
+        x0 = max(0, min(width - 1, round(left * width)))
+        x1 = max(x0 + 1, min(width, round(right * width)))
+        y0 = max(0, min(height - 1, round(top * height)))
+        y1 = max(y0 + 1, min(height, round(bottom * height)))
+        cyan_pixels = 0
+        decorated_pixels = 0
+        warm_or_white_pixels = 0
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                pixel = _pixel(rgb, width, x, y)
+                cyan_pixels += int(_cyan(*pixel))
+                decorated_pixels += int(
+                    max(pixel) >= 150 and max(pixel) - min(pixel) >= 60
+                )
+                warm_or_white_pixels += int(_warm_or_white(*pixel))
+        area = (x1 - x0) * (y1 - y0)
+        minimum_decorated = max(24, round(area * 0.008))
+        minimum_text = max(12, round(area * 0.003))
+        if (
+            decorated_pixels < minimum_decorated
+            or warm_or_white_pixels < minimum_text
+        ):
+            return EntryUiLocation(
+                BossEntryControl.CHINH_PHUC_START,
+                False,
+                None,
+                None,
+                0.0,
+                "runtime_start_rect_visual_mismatch",
+                (),
+                {
+                    "candidateCount": 0,
+                    "cyanPixels": cyan_pixels,
+                    "decoratedPixels": decorated_pixels,
+                    "warmOrWhitePixels": warm_or_white_pixels,
+                    "minimumDecoratedPixels": minimum_decorated,
+                    "minimumWarmOrWhitePixels": minimum_text,
+                },
+            )
+        center = ((left + right) / 2.0, (top + bottom) / 2.0)
+        confidence = min(
+            0.99,
+            0.94
+            + min(0.03, decorated_pixels / max(1, area) * 0.30)
+            + min(0.02, warm_or_white_pixels / max(1, area) * 0.35),
+        )
+        candidate = EntryButtonCandidate(
+            expected_rect,
+            center,
+            cyan_pixels,
+            warm_or_white_pixels,
+            confidence,
+        )
+        return EntryUiLocation(
+            BossEntryControl.CHINH_PHUC_START,
+            True,
+            center,
+            expected_rect,
+            confidence,
+            "runtime_owned_start_rect_with_visual_signature",
+            (candidate,),
+            {
+                "candidateCount": 1,
+                "cyanPixels": cyan_pixels,
+                "decoratedPixels": decorated_pixels,
+                "warmOrWhitePixels": warm_or_white_pixels,
+                "geometrySource": "ManagerRoom.ButtonStart",
+            },
+        )
     candidates = find_chinh_phuc_start_candidates(rgb, width, height)
     if not candidates:
         return EntryUiLocation(
@@ -263,6 +365,8 @@ def locate_detached_chinh_phuc_room_shell_exit(
     rgb: bytes,
     width: int,
     height: int,
+    *,
+    expected_start_rect: tuple[float, float, float, float] | None = None,
 ) -> EntryUiLocation:
     """Locate the normal close control of a detached Chinh Phuc room shell.
 
@@ -273,7 +377,12 @@ def locate_detached_chinh_phuc_room_shell_exit(
     ownership and target identity are checked separately by ``farm_run``.
     """
 
-    start = locate_chinh_phuc_start(rgb, width, height)
+    start = locate_chinh_phuc_start(
+        rgb,
+        width,
+        height,
+        expected_rect=expected_start_rect,
+    )
     if not start.found:
         return EntryUiLocation(
             BossEntryControl.CHINH_PHUC_ROOM_SHELL_EXIT,

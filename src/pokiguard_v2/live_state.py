@@ -12,7 +12,12 @@ import hashlib
 import json
 from typing import Iterable, Protocol
 
-from .state import BoardState, CellState, GemType
+from .state import (
+    BoardState,
+    CellState,
+    GemType,
+    SUPPORTED_CELL_MULTIPLIERS,
+)
 
 
 class CellLike(Protocol):
@@ -31,9 +36,10 @@ TAG_TO_GEM = {
     "trang": GemType.DRAIN,
 }
 
-# Phase 2A post-match DTO evidence observed all four values.  Phase 2A.5's
-# production acceptance additionally requires live DTO/Dot correlation.
-EVIDENCED_MULTIPLIERS = frozenset({1, 2, 3, 4})
+# Phase 2A first observed x1..x4. Pokiguard 1.7.4-b5 subsequently exposed
+# x5/x6/x7 in immutable MATCH_MOVE_RES JSON, and native
+# DotMultiplierRoll.Roll/PermilleAt explicitly enumerate tiers through seven.
+EVIDENCED_MULTIPLIERS = SUPPORTED_CELL_MULTIPLIERS
 
 
 def runtime_row_to_screen_row(runtime_row: int) -> int:

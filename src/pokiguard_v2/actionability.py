@@ -262,7 +262,12 @@ class ActionabilityGate:
         if battle.connection_ready is None or battle.reconnecting is None:
             return cls._reject(GateReason.CONNECTION_UNKNOWN)
         if battle.reconnecting or battle.match_resyncing or battle.board_is_resuming:
-            return cls._reject(GateReason.RECONNECTING)
+            return cls._reject(
+                GateReason.RECONNECTING,
+                reconnecting=battle.reconnecting,
+                matchResyncing=battle.match_resyncing,
+                boardIsResuming=battle.board_is_resuming,
+            )
         if not battle.connection_ready:
             return cls._reject(GateReason.DISCONNECTED)
         if battle.clock_paused is None:

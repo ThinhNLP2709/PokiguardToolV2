@@ -7,10 +7,12 @@ import tempfile
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
+from .input_delivery import InputDeliveryMode
 from .pet_configuration import GameplayConfig
 
 
-CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v2"
+CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v3"
+PRIOR_CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v2"
 LEGACY_CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v1"
 
 
@@ -44,6 +46,7 @@ class CheckpointPayload:
     stop_reason: str | None
     finalized_status: str | None
     gameplay_config: GameplayConfig | None = GameplayConfig()
+    input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND
 
 
 ALLOWED_KEYS = frozenset(
@@ -76,6 +79,7 @@ ALLOWED_KEYS = frozenset(
         "stop_reason",
         "finalized_status",
         "gameplay_config",
+        "input_delivery_mode",
     }
 )
 
@@ -115,6 +119,7 @@ class ResumeDecision:
     run_started_at: float = 0.0
     last_completed_match_id: str | None = None
     gameplay_config: GameplayConfig | None = None
+    input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND
 
 
 def write_checkpoint(path: Path, payload: CheckpointPayload) -> None:
@@ -153,9 +158,18 @@ def load_checkpoint(path: Path) -> CheckpointPayload:
             f"forbidden gameplay state keys present: {sorted(forbidden)}",
         )
     schema = str(raw.get("schema_version", ""))
-    if schema not in {CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA}:
+    if schema not in {
+        CHECKPOINT_SCHEMA,
+        PRIOR_CHECKPOINT_SCHEMA,
+        LEGACY_CHECKPOINT_SCHEMA,
+    }:
         raise CheckpointError("CHECKPOINT_SCHEMA_UNSUPPORTED", f"unsupported schema {schema!r}")
-    required = ALLOWED_KEYS if schema == CHECKPOINT_SCHEMA else ALLOWED_KEYS - {"gameplay_config"}
+    if schema == CHECKPOINT_SCHEMA:
+        required = ALLOWED_KEYS
+    elif schema == PRIOR_CHECKPOINT_SCHEMA:
+        required = ALLOWED_KEYS - {"input_delivery_mode"}
+    else:
+        required = ALLOWED_KEYS - {"gameplay_config", "input_delivery_mode"}
     missing = required - set(raw.keys())
     if missing:
         raise CheckpointError(
@@ -239,7 +253,10 @@ def validate_for_resume(
     max_technical_recoveries: int,
     max_match_attempts: int,
     gameplay_config: GameplayConfig | None = None,
+    input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND,
 ) -> ResumeDecision:
+    if not isinstance(input_delivery_mode, InputDeliveryMode):
+        raise TypeError("input_delivery_mode must be InputDeliveryMode")
     if payload.finalized_status == "COMPLETED":
         return ResumeDecision(False, "CHECKPOINT_ALREADY_COMPLETED", {}, (), 0)
 
@@ -301,6 +318,14 @@ def validate_for_resume(
         )
     if gameplay_config is not None and gameplay_config != historical_config:
         return ResumeDecision(False, "CHECKPOINT_CONFIG_MISMATCH", {}, (), 0)
+    if payload.input_delivery_mode is not input_delivery_mode:
+        return ResumeDecision(
+            False,
+            "CHECKPOINT_INPUT_DELIVERY_MODE_MISMATCH",
+            {},
+            (),
+            0,
+        )
     counters = {
         "match_attempts": payload.match_attempts,
         "completed_matches": payload.completed_matches,
@@ -325,6 +350,7 @@ def validate_for_resume(
         run_started_at=payload.run_started_at,
         last_completed_match_id=payload.last_completed_match_id,
         gameplay_config=historical_config,
+        input_delivery_mode=payload.input_delivery_mode,
     )
 
 
@@ -381,6 +407,12 @@ def _validate_raw_payload_types(raw: dict[str, Any]) -> None:
             raise CheckpointError(
                 "CHECKPOINT_INVALID", f"{name} must be a string"
             )
+    if "input_delivery_mode" in raw and not isinstance(
+        raw["input_delivery_mode"], str
+    ):
+        raise CheckpointError(
+            "CHECKPOINT_INVALID", "input_delivery_mode must be a string"
+        )
     for name in (
         "continuation_of",
         "last_completed_match_id",
@@ -408,13 +440,19 @@ def _validate_raw_payload_types(raw: dict[str, Any]) -> None:
 def _validate_payload(payload: CheckpointPayload) -> None:
     """Reject internally inconsistent history before it can authorize input."""
 
-    if payload.schema_version not in {CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA}:
+    if payload.schema_version not in {
+        CHECKPOINT_SCHEMA,
+        PRIOR_CHECKPOINT_SCHEMA,
+        LEGACY_CHECKPOINT_SCHEMA,
+    }:
         raise CheckpointError("CHECKPOINT_SCHEMA_UNSUPPORTED", "unsupported checkpoint schema")
     if payload.gameplay_config is None:
         if payload.schema_version != LEGACY_CHECKPOINT_SCHEMA:
             raise CheckpointError("CHECKPOINT_INVALID", "new checkpoint requires gameplay configuration")
     elif not isinstance(payload.gameplay_config, GameplayConfig):
         raise CheckpointError("CHECKPOINT_INVALID", "invalid gameplay configuration")
+    if not isinstance(payload.input_delivery_mode, InputDeliveryMode):
+        raise CheckpointError("CHECKPOINT_INVALID", "invalid input delivery mode")
     scalar_counts = {
         "checkpoint_seq": payload.checkpoint_seq,
         "match_attempts": payload.match_attempts,
@@ -558,6 +596,7 @@ def _validate_payload(payload: CheckpointPayload) -> None:
 def _payload_to_dict(payload: CheckpointPayload) -> dict[str, Any]:
     return {
         "schema_version": payload.schema_version,
+        "input_delivery_mode": payload.input_delivery_mode.value,
         **({"gameplay_config": payload.gameplay_config.to_dict()}
            if payload.gameplay_config is not None else {}),
         "farm_run_id": payload.farm_run_id,
@@ -592,6 +631,9 @@ def _payload_to_dict(payload: CheckpointPayload) -> dict[str, Any]:
 def _dict_to_payload(raw: dict[str, Any]) -> CheckpointPayload:
     return CheckpointPayload(
         schema_version=str(raw["schema_version"]),
+        input_delivery_mode=InputDeliveryMode(
+            raw.get("input_delivery_mode", InputDeliveryMode.FOREGROUND.value)
+        ),
         gameplay_config=(
             GameplayConfig.from_dict(raw["gameplay_config"], legacy=(
                 raw["schema_version"] == LEGACY_CHECKPOINT_SCHEMA

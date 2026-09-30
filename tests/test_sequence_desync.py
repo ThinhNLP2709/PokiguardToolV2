@@ -1108,6 +1108,39 @@ class RuntimeRegionLearningTests(unittest.TestCase):
         self.assertEqual(monitor._learned_regions, set())
         monitor.prime_regions.assert_called_once_with()
 
+    def test_entry_region_prime_can_be_interrupted_by_emergency_stop(self) -> None:
+        region = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(
+            memory=object(),
+            resolver=SimpleNamespace(
+                resolve_type_info_class=lambda _rva: 0xABC,
+            ),
+        )
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 1
+        monitor._dto_class = 0xABC
+        monitor._batch_class = None
+        monitor._learned_regions = set()
+
+        def scan(*_args, **kwargs):
+            kwargs["progress"](1, 4096)
+            self.fail("cancelled progress must stop the scan")
+
+        stop_answers = iter((False, True))
+
+        with patch(
+            "tools.sequence_desync_runtime._regions",
+            return_value=(region,),
+        ), patch(
+            "tools.sequence_desync_runtime.scan_aligned_qwords",
+            side_effect=scan,
+        ):
+            with self.assertRaisesRegex(InterruptedError, "prime stopped"):
+                monitor.ensure_regions_primed(
+                    stop_requested=lambda: next(stop_answers)
+                )
+
     def test_gap_and_duplicate_rejects(self) -> None:
         gap = classify_sequence_signal(
             event_type="MATCH_REJECT", reject_code="SEQ_GAP"

@@ -299,13 +299,14 @@ profile remains `LEGENDARY / NONE / PET_SKILL / BASIC` with Audition V3.
 ### Multiplier-weighted generic fire value (approved 2026-09-21)
 
 Every board-gem fire condition uses the sum of proven cell multipliers, not the
-number of physical cells. A known x1/x2/x3/x4 cell contributes 1/2/3/4. UNKNOWN
+number of physical cells. On current b5, a known x1 through x7 cell contributes
+its exact multiplier value. UNKNOWN
 contributes zero. `Kiếm đủ / 10` therefore accepts 9 Sword cells worth 12 and
 must fire immediately when runtime resources and all actionability gates are
 also ready. This rule applies equally to Mana, Nộ, Hút and Khiên conditions.
 
 Telemetry records physical cell count and effective value separately. The
-configuration range is `0..256`, matching the maximum 64 known cells at x4.
+configuration range is `0..448`, matching the maximum 64 known cells at x7.
 FarmRun `03ceea93d6254ed1a4f4dac54562e85a` is the canonical regression: turn
 15 had 9 Sword cells worth 12, but the old physical count selected Shield and
 spent one extra energy before firing at turn 17.

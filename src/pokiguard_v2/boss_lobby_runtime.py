@@ -8,6 +8,7 @@ written.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import IntEnum
 import struct
 
 from .boss_entry import (
@@ -34,9 +35,13 @@ from .native_card_ui import NativeCardUiReader
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
-MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x334C3A8
-MANAGER_ROOM_TYPE_INFO_RVA = 0x334A068
-WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x3366060
+MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x3695CB8
+MANAGER_ROOM_TYPE_INFO_RVA = 0x36954C8
+WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x36AB988
+ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x36746D0
+
+# b5 inserted ``KnownUserLevel`` before ``ManagerQuangTruong.Instance``.
+MANAGER_QUANG_TRUONG_INSTANCE_STATIC_OFFSET = 0x08
 
 # ManagerQuangTruong (Assembly-CSharp).
 MQT_PANEL_BOSS_OFFSET = 0x108
@@ -61,7 +66,7 @@ MANAGER_BOSS_PANEL_WORLD_OFFSET = 0x30
 
 # UIPanelManager (Assembly-CSharp).  The managed open-order count is the
 # read-only counterpart of the final AnyPanelOpen check in IsHubViewActive.
-UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x334C508
+UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x3695D80
 UI_PANEL_MANAGER_OPEN_ORDER_OFFSET = 0x30
 
 # ManagerRoom (Assembly-CSharp).
@@ -71,6 +76,23 @@ MANAGER_ROOM_LOADING_OFFSET = 0x30
 MANAGER_ROOM_ROOM_DATA_OFFSET = 0x100
 MANAGER_ROOM_SELECTED_CARDS_OFFSET = 0x108
 MANAGER_ROOM_IS_OPENING_FLOW_OFFSET = 0x130
+
+# RoomCoopV2View / RoomCoopV2Refs / RoomStartState (new in b5).  The visible
+# main control is still ManagerRoom.ButtonStart, but its action now depends on
+# this state object.  Only Idle is safe for a first automated click: the same
+# button means ReadyOff or CancelCountdown in later phases.
+ROOM_COOP_V2_REFS_OFFSET = 0x20
+ROOM_COOP_V2_START_STATE_OFFSET = 0x68
+ROOM_COOP_V2_REFS_BUTTON_START_OFFSET = 0x38
+ROOM_START_PHASE_OFFSET = 0x10
+ROOM_START_MY_READY_OFFSET = 0x14
+
+
+class RoomStartPhase(IntEnum):
+    IDLE = 0
+    READY_WAIT = 1
+    COUNTING = 2
+    LOCKED = 3
 
 # RoomDTO.
 ROOM_ID_OFFSET = 0x10
@@ -184,6 +206,11 @@ class ChinhPhucRoomSnapshot:
     local_username: str | None
     is_host: bool | None
     properties: int | None
+    room_coop_v2_view: int | None
+    room_coop_v2_refs: int | None
+    room_start_state: int | None
+    room_start_phase: RoomStartPhase | None
+    room_start_my_ready: bool | None
     clean: bool
     reasons: tuple[str, ...]
 
@@ -237,16 +264,23 @@ def _read_string(resolver: object, base: int, offset: int) -> str | None:
     return value or None
 
 
-def _static_instance(resolver: object, rva: int, *, size: int) -> int | None:
+def _static_instance(
+    resolver: object,
+    rva: int,
+    *,
+    size: int,
+    static_field_offset: int = 0,
+) -> int | None:
     klass = resolver.resolve_type_info_class(rva)
     if klass is None:
         return None
     fields = resolver.read_pointer(klass + IL2CPP_CLASS_STATIC_FIELDS_OFFSET)
     if not fields or not is_canonical_user_pointer(fields):
         return None
-    if not resolver.memory.is_readable(fields, 8):
+    instance_slot = checked_address(fields, static_field_offset)
+    if not resolver.memory.is_readable(instance_slot, 8):
         raise ExternalReadError("static fields are unreadable")
-    instance = resolver.read_pointer(fields)
+    instance = resolver.read_pointer(instance_slot)
     if not instance:
         return None
     if not is_canonical_user_pointer(instance) or not resolver.memory.is_readable(
@@ -380,6 +414,63 @@ def _read_lobby_card_loadout(
     )
 
 
+def _read_room_start_state(
+    resolver: object,
+    expected_button: int | None,
+) -> tuple[
+    int | None,
+    int | None,
+    int | None,
+    RoomStartPhase | None,
+    bool | None,
+    tuple[str, ...],
+]:
+    """Read the b5 main-button state and bind it to ManagerRoom.ButtonStart."""
+
+    reasons: list[str] = []
+    view = refs = state = None
+    phase: RoomStartPhase | None = None
+    my_ready: bool | None = None
+    try:
+        view = _static_instance(resolver, ROOM_COOP_V2_VIEW_TYPE_INFO_RVA, size=0xB8)
+        if view is None:
+            reasons.append("RoomCoopV2View.Instance unavailable")
+        else:
+            refs = _read_pointer(resolver, view, ROOM_COOP_V2_REFS_OFFSET)
+            state = _read_pointer(resolver, view, ROOM_COOP_V2_START_STATE_OFFSET)
+            if refs is None or not resolver.memory.is_readable(
+                refs, ROOM_COOP_V2_REFS_BUTTON_START_OFFSET + 8
+            ):
+                reasons.append("RoomCoopV2View refs unavailable")
+            else:
+                refs_button = _read_pointer(
+                    resolver, refs, ROOM_COOP_V2_REFS_BUTTON_START_OFFSET
+                )
+                if refs_button != expected_button:
+                    reasons.append(
+                        "RoomCoopV2Refs.ButtonStart disagrees with ManagerRoom.ButtonStart"
+                    )
+            if state is None or not resolver.memory.is_readable(
+                state, ROOM_START_MY_READY_OFFSET + 1
+            ):
+                reasons.append("RoomCoopV2View start state unavailable")
+            else:
+                phase_value = resolver.read_i32(state + ROOM_START_PHASE_OFFSET)
+                try:
+                    phase = RoomStartPhase(phase_value)
+                except ValueError:
+                    reasons.append(f"RoomStartState phase {phase_value} is invalid")
+                my_ready = resolver.read_bool(state + ROOM_START_MY_READY_OFFSET)
+                if phase is not RoomStartPhase.IDLE:
+                    phase_label = phase.name if phase is not None else str(phase_value)
+                    reasons.append(f"RoomStartState is not Idle ({phase_label})")
+                if my_ready is not False:
+                    reasons.append("RoomStartState already marks the local user ready")
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
+        reasons.append(f"RoomCoopV2View read error: {exc}")
+    return view, refs, state, phase, my_ready, tuple(reasons)
+
+
 def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple[BossCandidate, ...]]:
     reasons: list[str] = []
     manager_room = manager_native = None
@@ -389,6 +480,9 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
     room_name = enemy_name = None
     card_loadout = _read_lobby_card_loadout(resolver, None, None)
     ws = properties = None
+    room_coop_view = room_coop_refs = room_start_state = None
+    room_start_phase: RoomStartPhase | None = None
+    room_start_my_ready: bool | None = None
     room_id = room_type = owner = local_username = None
     is_host: bool | None = None
 
@@ -434,6 +528,16 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
         reasons.append(f"ManagerRoom read error: {exc}")
 
     card_loadout = _read_lobby_card_loadout(resolver, manager_room, room_data)
+
+    (
+        room_coop_view,
+        room_coop_refs,
+        room_start_state,
+        room_start_phase,
+        room_start_my_ready,
+        room_start_reasons,
+    ) = _read_room_start_state(resolver, button)
+    reasons.extend(room_start_reasons)
 
     try:
         ws = _static_instance(resolver, WS_ROOM_SERVICE_TYPE_INFO_RVA, size=0xD0)
@@ -488,6 +592,11 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
         local_username,
         is_host,
         properties,
+        room_coop_view,
+        room_coop_refs,
+        room_start_state,
+        room_start_phase,
+        room_start_my_ready,
         clean,
         tuple(reasons),
     )
@@ -527,12 +636,32 @@ def _hub_surface_flags(
     other_blockers: tuple[bool, ...],
     extra_blockers: tuple[bool, ...],
     dynamic_panel_count: int | None,
+    chinh_phuc_panel_main_active: bool | None = None,
+    chinh_phuc_active_panel_index: int | None = None,
 ) -> tuple[bool, bool, bool]:
     """Classify the three evidenced hub surfaces without guessing a target."""
 
     no_dynamic_panel = dynamic_panel_count == 0
     ordinary_blockers_clear = all(value is False for value in other_blockers)
     extra_blockers_clear = all(value is False for value in extra_blockers)
+    chinh_phuc_base_visible = bool(
+        master_lobby_active is True
+        and panel_chinh_phuc_active is True
+        and panel_boss_active is False
+        and ordinary_blockers_clear
+        and extra_blockers_clear
+    )
+    # The conquest map owns no UIPanelManager entry.  Opening one island keeps
+    # the same ManagerQuangTruong surface alive and adds exactly one dynamic
+    # panel.  Treating every dynamic panel as a blocker made the proven island
+    # graph impossible to classify even though ManagerChinhPhuc exposed one
+    # unambiguous active island index.
+    exact_island_panel_visible = bool(
+        chinh_phuc_base_visible
+        and dynamic_panel_count == 1
+        and chinh_phuc_panel_main_active is True
+        and chinh_phuc_active_panel_index is not None
+    )
     world_boss_visible = bool(
         master_lobby_active is True
         and panel_boss_active is True
@@ -540,12 +669,8 @@ def _hub_surface_flags(
         and panel_chinh_phuc_active is False
     )
     chinh_phuc_map_visible = bool(
-        master_lobby_active is True
-        and panel_chinh_phuc_active is True
-        and panel_boss_active is False
-        and ordinary_blockers_clear
-        and extra_blockers_clear
-        and no_dynamic_panel
+        (chinh_phuc_base_visible and no_dynamic_panel)
+        or exact_island_panel_visible
     )
     game_lobby_visible = bool(
         master_lobby_active is True
@@ -573,7 +698,10 @@ def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple
     candidates: list[BossCandidate] = []
     try:
         manager_qt = _static_instance(
-            resolver, MANAGER_QUANG_TRUONG_TYPE_INFO_RVA, size=0x410
+            resolver,
+            MANAGER_QUANG_TRUONG_TYPE_INFO_RVA,
+            size=0x410,
+            static_field_offset=MANAGER_QUANG_TRUONG_INSTANCE_STATIC_OFFSET,
         )
         if manager_qt is None:
             reasons.append("ManagerQuangTruong.Instance unavailable")
@@ -809,6 +937,8 @@ def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple
                 other_blockers=tuple(other_blockers),
                 extra_blockers=tuple(extra_blockers),
                 dynamic_panel_count=dynamic_panel_count,
+                chinh_phuc_panel_main_active=chinh_panel_main_active,
+                chinh_phuc_active_panel_index=chinh_active_panel_index,
             )
     except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
         reasons.append(f"WorldBoss read error: {exc}")

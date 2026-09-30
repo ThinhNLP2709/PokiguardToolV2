@@ -37,6 +37,22 @@ from .pet_configuration import (
     SkillSource,
     SkillSourceStatus,
 )
+from .input_delivery import (
+    DeliveryAttemptStatus,
+    ExactWindowBinding,
+    InputDeliveryAuthority,
+    InputDeliveryConfig,
+    InputDeliveryDomain,
+    InputDeliveryMode,
+    InputDeliveryTelemetry,
+    InputLeaseKind,
+    input_delivery_capability,
+)
+from .pinned_board_input import (
+    PinnedBoardLeaseSettings,
+    PinnedForegroundBoardSession,
+)
+from .game_window_size import GameWindowSizeProfile
 
 __all__ = [
     "BattleState",
@@ -70,4 +86,16 @@ __all__ = [
     "PetLoadoutCapability",
     "SkillSource",
     "SkillSourceStatus",
+    "DeliveryAttemptStatus",
+    "ExactWindowBinding",
+    "InputDeliveryAuthority",
+    "InputDeliveryConfig",
+    "InputDeliveryDomain",
+    "InputDeliveryMode",
+    "InputDeliveryTelemetry",
+    "InputLeaseKind",
+    "input_delivery_capability",
+    "PinnedBoardLeaseSettings",
+    "PinnedForegroundBoardSession",
+    "GameWindowSizeProfile",
 ]

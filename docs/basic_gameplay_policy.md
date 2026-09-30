@@ -52,9 +52,9 @@ The current user-facing configuration is:
 - `DamageCardMode`: `DEFAULT_ATTACK`, `PET_SKILL` where a conceptual source
   exists;
 - `PetSkillFireCondition`: runtime-cost readiness or current known effective
-  board value, including x1/x2/x3/x4, for `SWORD`, `MANA`, `RAGE`, `DRAIN`, or
+  board value, including x1 through x7, for `SWORD`, `MANA`, `RAGE`, `DRAIN`, or
   `SHIELD`;
-- `pet_skill_fire_value`: optional integer `0..256`; unused for runtime-cost
+- `pet_skill_fire_value`: optional integer `0..448`; unused for runtime-cost
   readiness. The Desktop row is `Điều kiện ra skill`, and count readiness uses
   inclusive `>=`; default is `sword_count / 10`;
 - `Intelligence`: `BASIC`, `REASONING`.
@@ -129,7 +129,7 @@ After the unchanged combat/actionability and Pet Skill capability gates:
    use only the current accepted known `SWORD`, `MANA`, `RAGE`, `DRAIN`, or
    `SHIELD` cells and sum their proven multipliers with inclusive
    `known_effective_count >= pet_skill_fire_value`. UNKNOWN adds zero. Range is
-   `0..256`; default/migration is `sword_count / 10`. A skill
+   `0..448`; default/migration is `sword_count / 10`. A skill
    fires only when actual current runtime resources, the selected condition and
    all technical/actionability gates pass. Boss HP does not authorize a normal
    first skill.

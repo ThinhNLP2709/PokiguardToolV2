@@ -53,6 +53,9 @@ class FakeLeaseBackend:
         self.focus_results: list[bool] = []
         self.focus_calls: list[int] = []
         self.cursor_calls: list[tuple[int, int]] = []
+        self.input_guard_active = False
+        self.guarded_focus_reclaim_attempts = 0
+        self.guarded_focus_reclaim_successes = 0
 
     def window_pid(self, _hwnd: int) -> int | None:
         return self.pid
@@ -114,8 +117,24 @@ class FakeLeaseBackend:
     def block_user_input(self, blocked: bool) -> bool:
         self.block_calls.append(blocked)
         if self.block_results:
-            return self.block_results.pop(0)
-        return True
+            accepted = self.block_results.pop(0)
+        else:
+            accepted = True
+        if accepted:
+            self.input_guard_active = blocked
+        return accepted
+
+    def ensure_foreground_for_guarded_input(self, hwnd: int) -> bool:
+        if self.foreground == hwnd:
+            return True
+        if not self.input_guard_active:
+            return False
+        self.guarded_focus_reclaim_attempts += 1
+        accepted = self.restore_and_foreground(hwnd)
+        if accepted and self.foreground == hwnd:
+            self.guarded_focus_reclaim_successes += 1
+            return True
+        return False
 
 
 def exact_binding(backend: FakeLeaseBackend) -> ExactWindowBinding:
@@ -198,6 +217,31 @@ class NativeLeaseTelemetryTests(unittest.TestCase):
         self.assertEqual(backend.foreground_requests, 1)
         self.assertEqual(backend.focus_bridge_attempts, 1)
         self.assertEqual(backend.focus_bridge_successes, 1)
+
+    def test_guarded_input_reclaims_focus_but_never_does_so_without_guard(self) -> None:
+        state = {"foreground": 99}
+
+        class Delegate:
+            def restore_and_foreground(self, hwnd: int) -> bool:
+                state["foreground"] = hwnd
+                return True
+
+        backend = NativeForegroundLeaseBackend(
+            Delegate(),
+            block_input_call=lambda _blocked: True,
+        )
+        backend.foreground_window = (  # type: ignore[method-assign]
+            lambda: state["foreground"]
+        )
+
+        self.assertFalse(backend.ensure_foreground_for_guarded_input(5))
+        self.assertEqual(backend.foreground_requests, 0)
+        self.assertTrue(backend.block_user_input(True))
+        self.assertTrue(backend.ensure_foreground_for_guarded_input(5))
+        self.assertEqual(backend.foreground_requests, 1)
+        self.assertEqual(backend.guarded_focus_reclaim_attempts, 1)
+        self.assertEqual(backend.guarded_focus_reclaim_successes, 1)
+        self.assertTrue(backend.block_user_input(False))
 
     def test_cursor_confine_fallback_tracks_executor_points_and_restores(self) -> None:
         class Delegate:
@@ -301,6 +345,35 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         self.assertTrue(result.focus_restored)
         self.assertTrue(result.cursor_restored)
         self.assertEqual(second.status, LeaseStatus.ALREADY_CONSUMED)
+
+    def test_expensive_post_focus_preflight_runs_only_after_focus_acquire(self) -> None:
+        backend = FakeLeaseBackend()
+        clock = FakeClock()
+        lease = armed_lease(backend, clock, focus_settle_seconds=0.0)
+        light_calls = 0
+        final_calls = 0
+
+        def light_preflight() -> bool:
+            nonlocal light_calls
+            light_calls += 1
+            return True
+
+        def post_focus_preflight() -> bool:
+            nonlocal final_calls
+            final_calls += 1
+            self.assertEqual(backend.foreground, 5)
+            return True
+
+        result = lease.execute(
+            lambda: True,
+            preflight=light_preflight,
+            post_focus_preflight=post_focus_preflight,
+            expected_cursor_after=backend.cursor,
+        )
+
+        self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertEqual(light_calls, 2)
+        self.assertEqual(final_calls, 1)
 
     def test_busy_user_timeout_sends_no_action_or_focus_request(self) -> None:
         backend = FakeLeaseBackend()
@@ -522,6 +595,62 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
             names.index("foreground_lease_exclusive_input_release"),
         )
 
+    def test_post_action_settle_reclaims_focus_before_unity_sampling_finishes(
+        self,
+    ) -> None:
+        backend = FakeLeaseBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict[str, object]]] = []
+        action_returned = False
+        focus_stolen = False
+
+        def sleep(seconds: float) -> None:
+            nonlocal focus_stolen
+            if action_returned and not focus_stolen:
+                backend.foreground = 77
+                focus_stolen = True
+            clock.sleep(seconds)
+
+        lease = BoundedForegroundLease(
+            backend,
+            sleeper=sleep,
+            monotonic=clock.monotonic,
+            event_sink=lambda event, fields: events.append((event, fields)),
+            required_idle_seconds=0.45,
+            idle_timeout_seconds=8.0,
+            focus_settle_seconds=0.0,
+            allow_already_foreground=True,
+            require_exclusive_input=True,
+            post_action_settle_seconds=0.20,
+        )
+        lease.arm(exact_binding(backend), "test:post-action-focus-race")
+
+        def action() -> bool:
+            nonlocal action_returned
+            backend.cursor = (700, 600)
+            action_returned = True
+            return True
+
+        result = lease.execute(
+            action,
+            preflight=lambda: True,
+            expected_cursor_after=(700, 600),
+        )
+
+        self.assertTrue(focus_stolen)
+        self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertFalse(result.user_took_focus)
+        self.assertEqual(backend.guarded_focus_reclaim_attempts, 1)
+        self.assertEqual(backend.guarded_focus_reclaim_successes, 1)
+        settle = next(
+            fields
+            for event, fields in events
+            if event == "foreground_lease_post_action_settle"
+        )
+        self.assertEqual(settle["focusReclaimAttempts"], 1)
+        self.assertEqual(settle["focusReclaimSuccesses"], 1)
+        self.assertEqual(settle["foregroundAfterSettle"], 5)
+
     def test_exclusive_input_failure_is_zero_action(self) -> None:
         backend = FakeLeaseBackend()
         backend.block_results = [False, False, False]
@@ -726,6 +855,48 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         self.assertIsNone(result.cursor_restored)
         self.assertEqual(backend.cursor, (900, 700))
         self.assertEqual(backend.foreground, 99)
+
+    def test_user_activity_after_guard_release_does_not_reclassify_completed_action(self) -> None:
+        backend = FakeLeaseBackend()
+        clock = FakeClock()
+        lease = armed_lease(
+            backend,
+            clock,
+            require_exclusive_input=True,
+        )
+        original_block = backend.block_user_input
+
+        def block_user_input(blocked: bool) -> bool:
+            released = original_block(blocked)
+            if not blocked and released:
+                # Model the native CURSOR_CONFINE fallback: releasing the clip
+                # exposes the physical cursor/focus choice the user made while
+                # the typed action owned the endpoint.
+                backend.foreground = 77
+                backend.cursor = (900, 700)
+            return released
+
+        backend.block_user_input = block_user_input  # type: ignore[method-assign]
+
+        def action() -> bool:
+            backend.cursor = (700, 600)
+            return True
+
+        result = lease.execute(
+            action,
+            preflight=lambda: True,
+            expected_cursor_after=(700, 600),
+        )
+
+        self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertFalse(result.user_took_focus)
+        self.assertFalse(result.user_moved_cursor)
+        self.assertEqual(result.foreground_after_action, 5)
+        self.assertEqual(result.cursor_after_action, (700, 600))
+        self.assertEqual(result.foreground_final, 77)
+        self.assertEqual(result.cursor_final, (900, 700))
+        self.assertIsNone(result.focus_restored)
+        self.assertIsNone(result.cursor_restored)
 
     def test_action_exception_still_releases_owned_focus(self) -> None:
         backend = FakeLeaseBackend()

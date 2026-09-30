@@ -52,6 +52,9 @@ from pokiguard_v2.memory_board_provider import (  # noqa: E402
 )
 from pokiguard_v2.il2cpp_external import ExternalReadError  # noqa: E402
 from pokiguard_v2.il2cpp_layout import LayoutValidationError  # noqa: E402
+from pokiguard_v2.live_state import EVIDENCED_MULTIPLIERS  # noqa: E402
+from pokiguard_v2.foreground_lease_transport import LeaseStatus  # noqa: E402
+from pokiguard_v2.input_delivery import InputDeliveryDomain  # noqa: E402
 from pokiguard_v2.recovery_ui import locate_confirm_leave, locate_exit_back  # noqa: E402
 from pokiguard_v2.state import (  # noqa: E402
     BattleState,
@@ -688,6 +691,24 @@ def _failed_session_still_active(poll: Any, failed: FailedSessionEvidence) -> bo
     )
 
 
+def _recovery_session_preflight(
+    poll: Any,
+    failed: FailedSessionEvidence,
+) -> bool:
+    """Prove that a recovery control still belongs to the failed combat.
+
+    An ACTIVE provider poll may intentionally return before publishing the
+    detailed lifecycle object while it waits for a stable board batch.  In
+    that branch ``poll.session_key`` is issued from the same ACTIVE lifecycle
+    sample and is therefore sufficient evidence.  Requiring a second
+    ``combat_lifecycle == ACTIVE`` check here used to reject the recovery Exit
+    or confirmation during a reconnecting local turn, leaving the game to count
+    the remaining unattended turns and eject the player.
+    """
+
+    return _failed_session_still_active(poll, failed)
+
+
 def _block_and_finalize(
     coordinator: TechnicalRecoveryCoordinator,
     artifacts: RecoveryArtifactWriter,
@@ -747,7 +768,9 @@ def _recovered_opening(provider: MemoryBoardStateProvider) -> RecoveredOpeningEv
         stable_confirmations=poll.confirmations,
         production_ready=state.board.production_ready,
         gem_types_valid=all(cell.gem is not GemType.UNKNOWN for cell in cells),
-        multipliers_valid=all(cell.multiplier in (1, 2, 3, 4) for cell in cells),
+        multipliers_valid=all(
+            cell.multiplier in EVIDENCED_MULTIPLIERS for cell in cells
+        ),
         fresh_dto=source in state.battle.sources,
         timer_safe=(
             state.battle.turn_time_remaining_seconds is not None
@@ -1082,8 +1105,11 @@ def _run_live(
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
             return 130
         _poll_farm_graceful_stop(shared_runtime)
+        pinned_session = getattr(shared_runtime, "pinned_input_session", None)
         hover_window = executor.window_status(binding)
-        if not hover_window.valid or hover_window.foreground is not True:
+        if not hover_window.valid or (
+            hover_window.foreground is not True and pinned_session is None
+        ):
             return _block_and_finalize(
                 coordinator,
                 artifacts,
@@ -1106,34 +1132,44 @@ def _run_live(
             and hover_calibration.normalized_point is not None
             else (0.04134466769706337, 0.06824712643678162)
         )
-        hover_authorized, hover = _execute_farm_controlled_input(
-            shared_runtime,
-            lambda: executor.move_normalized_point(
-                binding,
-                hover_point,
-            ),
-        )
-        if not hover_authorized or hover is None:
-            coordinator.emergency_stop(
-                detail="emergency authority revoked before recovery Exit hover"
+        if pinned_session is None:
+            hover_authorized, hover = _execute_farm_controlled_input(
+                shared_runtime,
+                lambda: executor.move_normalized_point(
+                    binding,
+                    hover_point,
+                ),
             )
-            artifacts.event("emergency_stop", stage="EXIT_HOVER", inputSent=False)
-            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
-            return 130
-        artifacts.event(
-            "recovery_exit_hover_probe",
-            normalizedPoint=hover_point,
-            calibration=hover_calibration,
-            status=hover,
-            clickSent=False,
-        )
-        if hover.value != "SENT":
-            return _block_and_finalize(
-                coordinator,
-                artifacts,
-                TechnicalRecoveryResult.RECOVERY_BLOCKED_FOREGROUND,
-                f"Exit hover probe failed: {hover.value}",
-                event="recovery_exit_hover_blocked",
+            if not hover_authorized or hover is None:
+                coordinator.emergency_stop(
+                    detail="emergency authority revoked before recovery Exit hover"
+                )
+                artifacts.event("emergency_stop", stage="EXIT_HOVER", inputSent=False)
+                artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
+                return 130
+            artifacts.event(
+                "recovery_exit_hover_probe",
+                normalizedPoint=hover_point,
+                calibration=hover_calibration,
+                status=hover,
+                clickSent=False,
+            )
+            if hover.value != "SENT":
+                return _block_and_finalize(
+                    coordinator,
+                    artifacts,
+                    TechnicalRecoveryResult.RECOVERY_BLOCKED_FOREGROUND,
+                    f"Exit hover probe failed: {hover.value}",
+                    event="recovery_exit_hover_blocked",
+                )
+        else:
+            artifacts.event(
+                "recovery_exit_hover_skipped_for_pinned_lease",
+                normalizedPoint=hover_point,
+                calibration=hover_calibration,
+                clickSent=False,
+                pointerMoved=False,
+                reason="mouse acquisition belongs to the exact Exit click lease",
             )
         exit_deadline = time.monotonic() + args.exit_locator_timeout
         # Exact-dimension calibration with live SENT + modal evidence is
@@ -1212,39 +1248,106 @@ def _run_live(
             failedSession=coordinator.trigger.failed_session,
             sameFailedSessionActive=same_failed_session,
         )
-        window = executor.window_status(binding)
-        permit = coordinator.reserve_exit(
-            foreground=window.valid and window.foreground is True,
-            same_session=same_failed_session,
-            lifecycle_active=(
-                pre_exit_lifecycle is CombatLifecycleState.ACTIVE
-                or same_failed_session
-            ),
-        )
-        if permit is None:
-            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
-            return 2
-        click_authorized, click = _execute_farm_controlled_input(
-            shared_runtime,
-            lambda: executor.send_normalized_point(
-                binding, exit_location.normalized_point
-            ),
-        )
-        if not click_authorized or click is None:
-            coordinator.cancel_input(
-                permit, detail="emergency authority revoked before recovery Exit input"
+        permit = None
+        click = None
+        click_authorized = True
+        exit_completed = True
+        exit_lease_result = None
+
+        def final_exit_preflight() -> bool:
+            fresh_exit = provider.poll()
+            if not _recovery_session_preflight(
+                fresh_exit, coordinator.trigger.failed_session
+            ):
+                return False
+            fresh_capture = capture_client_rgb(process.pid)
+            fresh_location = locate_exit_back(
+                fresh_capture.rgb, fresh_capture.width, fresh_capture.height
             )
+            if not fresh_location.found:
+                fresh_location = _live_exit_calibration(
+                    pid=process.pid,
+                    width=fresh_capture.width,
+                    height=fresh_capture.height,
+                ) or fresh_location
+            return bool(
+                fresh_location.found
+                and fresh_location.normalized_point
+                == exit_location.normalized_point
+            )
+
+        def send_exit_once() -> bool:
+            nonlocal permit, click, click_authorized, exit_completed
+            lease_window = executor.window_status(binding)
+            permit = coordinator.reserve_exit(
+                foreground=(
+                    lease_window.valid and lease_window.foreground is True
+                ),
+                same_session=True,
+                lifecycle_active=True,
+            )
+            if permit is None:
+                return False
+            click_authorized, click = _execute_farm_controlled_input(
+                shared_runtime,
+                lambda: executor.send_normalized_point(
+                    binding, exit_location.normalized_point
+                ),
+            )
+            if not click_authorized or click is None:
+                coordinator.cancel_input(
+                    permit,
+                    detail=(
+                        "emergency authority revoked before recovery Exit input"
+                    ),
+                )
+                return False
+            exit_completed = coordinator.complete_input(
+                permit,
+                sent=click.sent,
+                detail=f"EXIT_BACK:{click.status.value}",
+            )
+            return bool(exit_completed and click.sent)
+
+        if pinned_session is not None:
+            exit_lease_result = pinned_session.execute_mouse(
+                domain=InputDeliveryDomain.NAVIGATION_RECOVERY,
+                action_identity=(
+                    f"RECOVERY_EXIT:{coordinator.trigger.failed_session.match_id}:"
+                    f"{coordinator.trigger.failed_session.board_instance}"
+                ),
+                action=send_exit_once,
+                preflight=lambda: coordinator.trigger is not None,
+                post_focus_preflight=final_exit_preflight,
+                expected_cursor_after=(
+                    pinned_session.expected_cursor_for_normalized_point(
+                        exit_location.normalized_point
+                    )
+                ),
+            )
+            exit_sent_ok = exit_lease_result.action_succeeded
+            artifacts.event(
+                "recovery_exit_pinned_delivery",
+                delivery=exit_lease_result,
+                click=click,
+                noBlindRetry=True,
+            )
+        else:
+            window = executor.window_status(binding)
+            if not window.valid or window.foreground is not True:
+                exit_sent_ok = False
+            else:
+                exit_sent_ok = send_exit_once()
+        if not click_authorized:
             coordinator.emergency_stop(
                 detail="emergency authority revoked before recovery Exit input"
             )
             artifacts.event("emergency_stop", stage="EXIT_INPUT", inputSent=False)
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
             return 130
-        coordinator.complete_input(
-            permit,
-            sent=click.sent,
-            detail=f"EXIT_BACK:{click.status.value}",
-        )
+        if not exit_sent_ok or click is None or not exit_completed:
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
+            return 2
         artifacts.event(
             "recovery_exit_input",
             locator=exit_location,
@@ -1252,6 +1355,12 @@ def _run_live(
             count=1 if click.sent else 0,
         )
         if not click.sent:
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
+            return 2
+        if (
+            exit_lease_result is not None
+            and exit_lease_result.status is not LeaseStatus.COMPLETE
+        ):
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
             return 2
 
@@ -1318,42 +1427,99 @@ def _run_live(
             failedSession=coordinator.trigger.failed_session,
             sameFailedSessionActive=confirm_same_failed_session,
         )
-        window = executor.window_status(binding)
-        permit = coordinator.reserve_confirm(
-            foreground=window.valid and window.foreground is True,
-            context_valid=(
-                (
-                    confirm_lifecycle is CombatLifecycleState.ACTIVE
-                    or confirm_same_failed_session
-                )
-                and confirm_same_failed_session
-            ),
-        )
-        if permit is None:
-            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
-            return 2
-        click_authorized, click = _execute_farm_controlled_input(
-            shared_runtime,
-            lambda: executor.send_normalized_point(
-                binding, confirm_location.normalized_point
-            ),
-        )
-        if not click_authorized or click is None:
-            coordinator.cancel_input(
-                permit,
-                detail="emergency authority revoked before recovery confirm input",
+        permit = None
+        click = None
+        click_authorized = True
+        confirm_completed = True
+        confirm_lease_result = None
+
+        def final_confirm_preflight() -> bool:
+            fresh_confirm = provider.poll()
+            if not _recovery_session_preflight(
+                fresh_confirm, coordinator.trigger.failed_session
+            ):
+                return False
+            fresh_capture = capture_client_rgb(process.pid)
+            fresh_location = locate_confirm_leave(
+                fresh_capture.rgb, fresh_capture.width, fresh_capture.height
             )
+            return bool(
+                fresh_location.found
+                and fresh_location.normalized_point
+                == confirm_location.normalized_point
+            )
+
+        def send_confirm_once() -> bool:
+            nonlocal permit, click, click_authorized, confirm_completed
+            lease_window = executor.window_status(binding)
+            permit = coordinator.reserve_confirm(
+                foreground=(
+                    lease_window.valid and lease_window.foreground is True
+                ),
+                context_valid=True,
+            )
+            if permit is None:
+                return False
+            click_authorized, click = _execute_farm_controlled_input(
+                shared_runtime,
+                lambda: executor.send_normalized_point(
+                    binding, confirm_location.normalized_point
+                ),
+            )
+            if not click_authorized or click is None:
+                coordinator.cancel_input(
+                    permit,
+                    detail=(
+                        "emergency authority revoked before recovery confirm input"
+                    ),
+                )
+                return False
+            confirm_completed = coordinator.complete_input(
+                permit,
+                sent=click.sent,
+                detail=f"CONFIRM_LEAVE:{click.status.value}",
+            )
+            return bool(confirm_completed and click.sent)
+
+        if pinned_session is not None:
+            confirm_lease_result = pinned_session.execute_mouse(
+                domain=InputDeliveryDomain.NAVIGATION_RECOVERY,
+                action_identity=(
+                    f"RECOVERY_CONFIRM:{coordinator.trigger.failed_session.match_id}:"
+                    f"{coordinator.trigger.failed_session.board_instance}"
+                ),
+                action=send_confirm_once,
+                preflight=lambda: coordinator.trigger is not None,
+                post_focus_preflight=final_confirm_preflight,
+                expected_cursor_after=(
+                    pinned_session.expected_cursor_for_normalized_point(
+                        confirm_location.normalized_point
+                    )
+                ),
+            )
+            confirm_sent_ok = confirm_lease_result.action_succeeded
+            artifacts.event(
+                "recovery_confirm_pinned_delivery",
+                delivery=confirm_lease_result,
+                click=click,
+                noBlindRetry=True,
+            )
+        else:
+            window = executor.window_status(binding)
+            if not window.valid or window.foreground is not True:
+                confirm_sent_ok = False
+            else:
+                confirm_sent_ok = send_confirm_once()
+        if not click_authorized:
             coordinator.emergency_stop(
                 detail="emergency authority revoked before recovery confirm input"
             )
             artifacts.event("emergency_stop", stage="CONFIRM_INPUT", inputSent=False)
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="ABORTED")
             return 130
-        coordinator.complete_input(
-            permit,
-            sent=click.sent,
-            detail=f"CONFIRM_LEAVE:{click.status.value}",
-        )
+        if not confirm_sent_ok or click is None or not confirm_completed:
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
+            return 2
         artifacts.event(
             "recovery_confirm_input",
             locator=confirm_location,
@@ -1361,6 +1527,12 @@ def _run_live(
             count=1 if click.sent else 0,
         )
         if not click.sent:
+            artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
+            return 2
+        if (
+            confirm_lease_result is not None
+            and confirm_lease_result.status is not LeaseStatus.COMPLETE
+        ):
             artifacts.finalize(coordinator, stage="B_LIVE", stageResult="SAFE_STOP")
             return 2
 
@@ -1654,6 +1826,9 @@ def _run_live(
             ),
             require_attack_card=getattr(
                 shared_runtime, "require_attack_card", True
+            ),
+            pinned_input_session=getattr(
+                shared_runtime, "pinned_input_session", None
             ),
         )
         boss_entry.run(_entry_args(args, reentry_dir), shared_runtime=runtime)

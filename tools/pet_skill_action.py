@@ -32,6 +32,14 @@ from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
 from pokiguard_v2.gameplay_ui import locate_native_pet_skill_control  # noqa: E402
 from pokiguard_v2.gameplay_profile import AuditionMode  # noqa: E402
+from pokiguard_v2.foreground_qte_lease_transport import (  # noqa: E402
+    BoundedForegroundQteLease,
+    NativeQteLeaseBackend,
+    QteLeaseAcquireResult,
+    QteLeaseGuardRetentionResult,
+    QteLeaseMouseReleaseResult,
+    QteLeaseReleaseResult,
+)
 from pokiguard_v2.native_card_ui import NativeCardUiReader, NativeGeometryBusyError  # noqa: E402
 from pokiguard_v2.combat_cards import read_combat_card  # noqa: E402
 from pokiguard_v2.il2cpp_external import (  # noqa: E402
@@ -163,6 +171,23 @@ class Phase3b3RuntimeHook:
         # so do not run the high-frequency dispatcher-response tap at all.
         self._result_tap: Any | None = None
         self._post_transport_offers: set[tuple[str, int, int, str]] = set()
+
+    def is_expected_initial_match_id(self, match_id: str | None) -> bool:
+        """Return whether the observer's first runtime match is the bound session.
+
+        Embedded Pet Skill observation starts after FarmRunner has already
+        established the combat session.  Its local ``previous_match_id`` is
+        therefore initially empty even though the current match is not new.
+        Accept only the exact match already authorized by FarmRunner; later
+        changes and unexpected first matches remain invalidations.
+        """
+
+        expected_match_id = getattr(self._expected_session, "match_id", None)
+        return bool(
+            match_id is not None
+            and expected_match_id is not None
+            and match_id == expected_match_id
+        )
 
     @property
     def critical_qte_session(self) -> Any:
@@ -1253,6 +1278,7 @@ class Phase3b3RuntimeHook:
             ),
         )
 
+
     def _emit_events(self) -> None:
         if self._executor is None or self._emit is None:
             return
@@ -1308,6 +1334,176 @@ class Phase3b3RuntimeHook:
                 f"cardClicks={result.card_clicks}, Space={result.space_presses}",
                 flush=True,
             )
+
+
+class PinnedForegroundPetSkillHook(Phase3b3RuntimeHook):
+    """Bind the accepted full Pet Skill action to one proven QTE lease.
+
+    The subclass changes only desktop transport ownership.  Card identity,
+    QTE generation ownership, direction ACKs, pacing and the one-shot Space
+    decision remain implemented by ``Phase3b3RuntimeHook`` and its existing
+    ``PetSkillActionExecutor``.
+    """
+
+    name = "PHASE4B4P_PINNED_FOREGROUND_EXISTING_FULL_QTE"
+
+    def __init__(
+        self,
+        *,
+        backend: NativeQteLeaseBackend,
+        binding: Any,
+        lease: BoundedForegroundQteLease,
+        stop_requested: Callable[[], bool],
+        audition_mode: AuditionMode,
+        direction_ack_timeout_seconds: float,
+        qte_generation_timeout_seconds: float,
+        result_timeout_seconds: float,
+        post_state_timeout_seconds: float,
+        expected_session: Any | None = None,
+        expected_skill_card_id: int | None = None,
+        basic_policy_integration: bool = True,
+        atomic_input_gate: (
+            Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None
+        ) = None,
+        on_lease_acquired: Callable[[], bool] | None = None,
+    ) -> None:
+        super().__init__(
+            direction_ack_timeout_seconds=direction_ack_timeout_seconds,
+            qte_generation_timeout_seconds=qte_generation_timeout_seconds,
+            result_timeout_seconds=result_timeout_seconds,
+            post_state_timeout_seconds=post_state_timeout_seconds,
+            expected_session=expected_session,
+            expected_skill_card_id=expected_skill_card_id,
+            # A fresh native-hand read can be torn while Unity is laying out
+            # the card strip. No input has been emitted at that point, so keep
+            # the already validated bounded lease and wait for one complete
+            # sample. Post-input failures remain terminal in the executor.
+            allow_zero_input_rearm=True,
+            require_fusion_success=False,
+            basic_policy_integration=basic_policy_integration,
+            provided_backend=backend,
+            provided_binding=binding,
+            atomic_input_gate=atomic_input_gate,
+            audition_mode=audition_mode,
+        )
+        self._phase4_lease = lease
+        self._phase4_stop_requested = stop_requested
+        self._on_lease_acquired = on_lease_acquired
+        self._lease_callback_completed = False
+        self.lease_acquire_result: QteLeaseAcquireResult | None = None
+        self.guard_retention_result: QteLeaseGuardRetentionResult | None = None
+        # Kept for backward-compatible telemetry. Production no longer returns
+        # mouse authority before the QTE/Audition terminal state.
+        self.mouse_release_result: QteLeaseMouseReleaseResult | None = None
+        self.lease_release_result: QteLeaseReleaseResult | None = None
+
+    @property
+    def done(self) -> bool:
+        if self._phase4_stop_requested():
+            self.stop("EMERGENCY_STOP")
+            return True
+        return super().done
+
+    def _geometry_proof(self, session: Any, live_card: Any) -> Any:
+        if self._phase4_lease.active and not self._phase4_lease.validate_active():
+            self.invalidate("PINNED_QTE_LEASE_INVALIDATED")
+            return None
+        if not self._phase4_lease.active:
+            # Do not acquire merely because policy resources are ready.  The
+            # exact current card itself must already be actionable.  After the
+            # bounded focus handoff the base hook performs a fresh whole-hand
+            # identity/geometry proof before its one click.
+            if not bool(
+                live_card is not None
+                and getattr(live_card, "interactable", None) is True
+                and getattr(live_card, "button_address", None) is not None
+                and getattr(live_card, "has_used_this_match", None) is not True
+                and getattr(live_card, "has_used_this_turn", None) is not True
+                and getattr(live_card, "action_pending", None) is not True
+                and getattr(live_card, "is_placeholder", None) is not True
+            ):
+                return None
+            self.lease_acquire_result = self._phase4_lease.acquire(
+                preflight=lambda: bool(
+                    not self._phase4_stop_requested()
+                    and session is not None
+                    and live_card is not None
+                    and getattr(live_card, "interactable", None) is True
+                )
+            )
+            if not self.lease_acquire_result.acquired:
+                self.invalidate(
+                    f"PINNED_QTE_LEASE_{self.lease_acquire_result.status.value}"
+                )
+                return None
+            if self._on_lease_acquired is not None:
+                try:
+                    callback_ok = bool(self._on_lease_acquired())
+                except Exception:
+                    callback_ok = False
+                if not callback_ok:
+                    self.invalidate("PINNED_QTE_FARM_CAPABILITY_DENIED")
+                    return None
+            self._lease_callback_completed = True
+            # Focus acquisition spans several frames.  Never click from the
+            # pre-acquire sample; force one new read-only observation.
+            return None
+        return super()._geometry_proof(session, live_card)
+
+    def _drive(self, qte: Any, *, inactive_qte_proven: bool) -> None:
+        if self._phase4_lease.active and not self._phase4_lease.validate_active():
+            self.invalidate("PINNED_QTE_LEASE_INVALIDATED")
+            return
+        try:
+            super()._drive(qte, inactive_qte_proven=inactive_qte_proven)
+            executor = self._executor
+            if (
+                self._phase4_lease.active
+                and self.guard_retention_result is None
+                and executor is not None
+                and executor.state is PetSkillActionState.DIRECTIONS
+            ):
+                self.guard_retention_result = (
+                    self._phase4_lease.retain_mouse_for_keyboard_phase(
+                        "CURRENT_QTE_BOUND_FULL_GUARD"
+                    )
+                )
+                if not self.guard_retention_result.ready:
+                    self.invalidate("PINNED_QTE_FULL_GUARD_FAILED")
+        finally:
+            if super().done:
+                self._release("FULL_QTE_TERMINAL")
+
+    def unreadable(self, reason: str) -> None:
+        if self._phase4_lease.active:
+            self._fatal_stop_reason = reason
+        try:
+            super().unreadable(reason)
+        finally:
+            self._release(reason)
+
+    def invalidate(self, reason: str) -> None:
+        self._fatal_stop_reason = reason
+        try:
+            super().invalidate(reason)
+        finally:
+            self._release(reason)
+
+    def _check_stage_stall(self, now: float, *, limit_seconds: float = 2.0) -> bool:
+        stalled = super()._check_stage_stall(now, limit_seconds=limit_seconds)
+        if stalled:
+            self._release(self._fatal_stop_reason or "OBSERVER_STAGE_STALLED")
+        return stalled
+
+    def stop(self, reason: str) -> None:
+        try:
+            super().stop(reason)
+        finally:
+            self._release(reason)
+
+    def _release(self, reason: str) -> None:
+        if self._phase4_lease.active:
+            self.lease_release_result = self._phase4_lease.release(reason)
 
 
 def executor_is_active(executor: PetSkillActionExecutor | None) -> bool:
@@ -1464,6 +1660,10 @@ def run_embedded_policy_action(
     backend: Any | None = None,
     binding: Any | None = None,
     atomic_input_gate: Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None = None,
+    pinned_qte_backend: NativeQteLeaseBackend | None = None,
+    pinned_qte_lease: BoundedForegroundQteLease | None = None,
+    on_pinned_qte_lease_acquired: Callable[[], bool] | None = None,
+    stop_requested: Callable[[], bool] = lambda: False,
     interval: float = 0.025,
     timeout: float = 20.0,
 ) -> Phase3b3RuntimeHook:
@@ -1474,21 +1674,43 @@ def run_embedded_policy_action(
     can race the QTE.
     """
 
-    hook = Phase3b3RuntimeHook(
-        direction_ack_timeout_seconds=1.25,
-        qte_generation_timeout_seconds=3.0,
-        result_timeout_seconds=15.0,
-        post_state_timeout_seconds=15.0,
-        expected_session=expected_session,
-        expected_skill_card_id=expected_skill_card_id,
-        allow_zero_input_rearm=False,
-        require_fusion_success=False,
-        basic_policy_integration=True,
-        provided_backend=backend,
-        provided_binding=binding,
-        atomic_input_gate=atomic_input_gate,
-        audition_mode=audition_mode,
-    )
+    if (pinned_qte_backend is None) != (pinned_qte_lease is None):
+        raise ValueError(
+            "pinned_qte_backend and pinned_qte_lease must be provided together"
+        )
+    if pinned_qte_backend is not None and pinned_qte_lease is not None:
+        hook: Phase3b3RuntimeHook = PinnedForegroundPetSkillHook(
+            backend=pinned_qte_backend,
+            binding=binding,
+            lease=pinned_qte_lease,
+            stop_requested=stop_requested,
+            audition_mode=audition_mode,
+            direction_ack_timeout_seconds=1.25,
+            qte_generation_timeout_seconds=3.0,
+            result_timeout_seconds=15.0,
+            post_state_timeout_seconds=15.0,
+            expected_session=expected_session,
+            expected_skill_card_id=expected_skill_card_id,
+            basic_policy_integration=True,
+            atomic_input_gate=atomic_input_gate,
+            on_lease_acquired=on_pinned_qte_lease_acquired,
+        )
+    else:
+        hook = Phase3b3RuntimeHook(
+            direction_ack_timeout_seconds=1.25,
+            qte_generation_timeout_seconds=3.0,
+            result_timeout_seconds=15.0,
+            post_state_timeout_seconds=15.0,
+            expected_session=expected_session,
+            expected_skill_card_id=expected_skill_card_id,
+            allow_zero_input_rearm=False,
+            require_fusion_success=False,
+            basic_policy_integration=True,
+            provided_backend=backend,
+            provided_binding=binding,
+            atomic_input_gate=atomic_input_gate,
+            audition_mode=audition_mode,
+        )
     observer_args = argparse.Namespace(
         watch=True,
         log=log_path,

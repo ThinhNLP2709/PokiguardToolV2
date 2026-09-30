@@ -245,7 +245,8 @@ class GameplayConfig:
                 <= PET_SKILL_FIRE_VALUE_MAXIMUM
             ):
                 raise ValueError(
-                    "pet_skill_fire_value must be an integer between 0 and 256 "
+                    f"pet_skill_fire_value must be an integer between 0 and "
+                    f"{PET_SKILL_FIRE_VALUE_MAXIMUM} "
                     "for a board-count condition"
                 )
         elif self.pet_skill_fire_value is not None:

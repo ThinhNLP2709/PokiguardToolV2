@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
@@ -28,9 +29,12 @@ from tools.farm_cycle import (
     _combat_args,
     _final_invariants,
     _is_detached_chinh_phuc_room_candidate,
+    _is_owner_free_chinh_phuc_map_candidate,
     _is_transient_chinh_phuc_room_rehydration,
+    _read_lobby_runtime_with_provider_fallback,
     _resolve_pass_stage,
     _validate_combat_summary,
+    _wait_boss_lobby,
 )
 
 
@@ -94,6 +98,141 @@ class FarmCycleTests(unittest.TestCase):
                 lobby, target_pet_id=1289, no_combat_owner=False
             )
         )
+
+    def test_proven_island_panel_outweighs_stale_detached_room_fields(self) -> None:
+        lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="CHINH_PHUC_ISLAND",
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                room_data=0x20000001000,
+                enemy_pet_id=1289,
+                button_start=0x20000002000,
+                button_native=0x10000002000,
+                button_interactable=True,
+                is_host=False,
+            ),
+            world_boss=SimpleNamespace(clean_for_chinh_phuc_map=True),
+        )
+        self.assertFalse(
+            _is_detached_chinh_phuc_room_candidate(
+                lobby, target_pet_id=1289, no_combat_owner=True
+            )
+        )
+        self.assertTrue(
+            _is_owner_free_chinh_phuc_map_candidate(
+                lobby, no_combat_owner=True
+            )
+        )
+        lobby.world_boss.clean_for_chinh_phuc_map = False
+        self.assertFalse(
+            _is_owner_free_chinh_phuc_map_candidate(
+                lobby, no_combat_owner=True
+            )
+        )
+
+    def test_owner_free_lobby_fallback_bypasses_destroyed_board_only(self) -> None:
+        expected = object()
+        lifecycle = SimpleNamespace(
+            state=CombatLifecycleState.LOBBY,
+            signals=SimpleNamespace(read_errors=()),
+        )
+        process = SimpleNamespace(resolver=object())
+        provider = SimpleNamespace(
+            current_session_key=None,
+            poll=lambda: SimpleNamespace(combat_lifecycle=None),
+        )
+        with patch(
+            "tools.farm_cycle.read_combat_lifecycle", return_value=lifecycle
+        ) as direct, patch(
+            "tools.farm_cycle.read_boss_lobby_runtime", return_value=expected
+        ) as lobby_read:
+            observed = _read_lobby_runtime_with_provider_fallback(
+                process, provider
+            )
+
+        self.assertIs(observed, expected)
+        direct.assert_called_once_with(
+            process.resolver, board=None, match_id=None
+        )
+        lobby_read.assert_called_once_with(process.resolver, lifecycle)
+
+    def test_lobby_fallback_rejects_owned_unknown_or_read_error_state(self) -> None:
+        process = SimpleNamespace(resolver=object())
+        owned_provider = SimpleNamespace(
+            current_session_key=object(),
+            poll=lambda: SimpleNamespace(combat_lifecycle=None),
+        )
+        with patch("tools.farm_cycle.read_combat_lifecycle") as direct:
+            self.assertIsNone(
+                _read_lobby_runtime_with_provider_fallback(
+                    process, owned_provider
+                )
+            )
+        direct.assert_not_called()
+
+        provider = SimpleNamespace(
+            current_session_key=None,
+            poll=lambda: SimpleNamespace(combat_lifecycle=None),
+        )
+        for state, errors in (
+            (CombatLifecycleState.UNKNOWN, ()),
+            (CombatLifecycleState.LOBBY, ("MatchHost:unreadable",)),
+        ):
+            with self.subTest(state=state, errors=errors), patch(
+                "tools.farm_cycle.read_combat_lifecycle",
+                return_value=SimpleNamespace(
+                    state=state,
+                    signals=SimpleNamespace(read_errors=errors),
+                ),
+            ), patch(
+                "tools.farm_cycle.read_boss_lobby_runtime"
+            ) as lobby_read:
+                self.assertIsNone(
+                    _read_lobby_runtime_with_provider_fallback(
+                        process, provider
+                    )
+                )
+                lobby_read.assert_not_called()
+
+    def test_wait_lobby_surfaces_owner_free_proven_island_map(self) -> None:
+        lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="CHINH_PHUC_ISLAND",
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                room_data=0x20000001000,
+                enemy_pet_id=1289,
+                button_start=0x20000002000,
+                button_native=0x10000002000,
+                button_interactable=True,
+                is_host=False,
+            ),
+            world_boss=SimpleNamespace(clean_for_chinh_phuc_map=True),
+        )
+        process = SimpleNamespace(is_running=lambda: True)
+        provider = SimpleNamespace(current_session_key=None)
+        hotkeys = SimpleNamespace(poll=lambda: (False, False))
+        with patch(
+            "tools.farm_cycle._read_lobby_runtime_with_provider_fallback",
+            return_value=lobby,
+        ), patch("tools.farm_cycle.time.sleep"):
+            result = _wait_boss_lobby(
+                process,
+                provider,
+                FarmTarget(boss_id="1289"),
+                timeout=1.0,
+                interval=0.01,
+                hotkeys=hotkeys,
+            )
+
+        self.assertEqual(result.reason, "CHINH_PHUC_MAP_CANDIDATE")
+        self.assertEqual(result.stable_frames, 2)
+        self.assertIs(result.lobby, lobby)
 
     def test_production_combat_uses_restored_four_second_floor(self) -> None:
         args = SimpleNamespace(

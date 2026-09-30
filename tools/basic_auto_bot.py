@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 import time
 import traceback
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 from typing import Any, Callable, Sequence
 
 try:
@@ -159,6 +159,19 @@ from pokiguard_v2.gameplay_profile import (  # noqa: E402
     MainPetType,
     PetSkillFireCondition,
 )
+from pokiguard_v2.foreground_lease_transport import (  # noqa: E402
+    LeaseStatus,
+    NativeForegroundLeaseBackend,
+)
+from pokiguard_v2.input_delivery import (  # noqa: E402
+    ExactWindowBinding,
+    InputDeliveryConfig,
+    InputDeliveryDomain,
+    InputDeliveryMode,
+)
+from pokiguard_v2.pinned_board_input import (  # noqa: E402
+    PinnedForegroundBoardSession,
+)
 from pokiguard_v2.pet_configuration import (  # noqa: E402
     GameplayConfig,
     basic_policy_config,
@@ -205,6 +218,14 @@ class SharedCombatRuntime:
         Callable[[str, Any, int, int, int], None] | None
     ) = None
     require_attack_card: bool = True
+    # Phase 4B integration remains source-selected until 4C.1 wires the
+    # desktop UI/FarmRunner setting. Missing/legacy runtimes stay foreground.
+    input_delivery_config: InputDeliveryConfig = field(
+        default_factory=InputDeliveryConfig
+    )
+    # FarmRunner owns one exact-HWND pin for the complete bounded run.  A
+    # standalone controller leaves this unset and creates its own session.
+    pinned_input_session: Any | None = None
 
 
 def _current_pet_skill_capability(
@@ -290,6 +311,27 @@ def _farm_emergency_requested(runtime: SharedCombatRuntime | None) -> bool:
         return False
     _graceful, emergency = runtime.farm_control_hotkeys.poll()
     return bool(emergency)
+
+
+def _pinned_board_selection_gate_foreground(
+    config: InputDeliveryConfig,
+    observed_foreground: bool | None,
+) -> bool | None:
+    """Allow input-free SWAP preparation to reach the bounded focus lease.
+
+    The ordinary foreground route must still fail closed at ActionabilityGate.
+    Beta keeps the exact game HWND visible and may acquire foreground, so its
+    policy/board preparation is allowed while another application owns focus.
+    This helper is used only for the initial input-free selection gate and the
+    fresh gate of an already-selected SWAP. Every actual click still requires
+    the lease to acquire the exact HWND and rerun its final runtime preflight.
+    """
+
+    if observed_foreground is True:
+        return True
+    if config.mode is InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA:
+        return True
+    return observed_foreground
 
 
 def _cancel_farm_gameplay(
@@ -2963,6 +3005,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=BoardInputMode.TWO_CLICK.value,
         help="normal adjacent-swap gesture; cards and modal controls remain clicks",
     )
+    parser.add_argument(
+        "--input-delivery-mode",
+        choices=[value.value for value in InputDeliveryMode],
+        default=InputDeliveryMode.FOREGROUND.value,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--minimum-action-time", type=int, default=1)
     parser.add_argument(
         "--cast-when-boss-hp-below",
@@ -3183,7 +3231,23 @@ def _create_shared_combat_runtime(
         chunk_mib=args.chunk_mib,
         full_rescan_interval=8,
     )
-    return SharedCombatRuntime(target, provider, monitor, binding, executor, backend)
+    return SharedCombatRuntime(
+        target,
+        provider,
+        monitor,
+        binding,
+        executor,
+        backend,
+        input_delivery_config=InputDeliveryConfig(
+            InputDeliveryMode(
+                getattr(
+                    args,
+                    "input_delivery_mode",
+                    InputDeliveryMode.FOREGROUND.value,
+                )
+            )
+        ),
+    )
 
 
 def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None) -> int:
@@ -3320,6 +3384,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         runtime_owner as target,
         log_path.open("a", encoding="utf-8", buffering=1) as log,
         DispatcherTransportTap(target) as dispatcher_tap,
+        ExitStack() as input_delivery_stack,
     ):
         runtime = shared_runtime or _create_shared_combat_runtime(target, args, v1_config)
         binding = runtime.binding
@@ -3327,6 +3392,77 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         provider = runtime.provider
         monitor = runtime.monitor
         backend = runtime.backend
+        input_delivery_config = runtime.input_delivery_config
+        board_lease_session: PinnedForegroundBoardSession | None = None
+        board_lease_executor: ForegroundClickExecutor | None = None
+
+        def board_delivery_stop_requested() -> bool:
+            return bool(
+                hotkeys.emergency_stop_requested()
+                or _farm_emergency_requested(shared_runtime)
+            )
+
+        if (
+            input_delivery_config.mode
+            is InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+        ):
+            board_lease_executor = executor
+            if runtime.pinned_input_session is not None:
+                board_lease_session = runtime.pinned_input_session
+                if (
+                    not getattr(board_lease_session, "active", False)
+                    or board_lease_session.binding.window != binding
+                ):
+                    raise RuntimeError(
+                        "farm-owned pinned input session does not match combat binding"
+                    )
+                _write(
+                    log,
+                    "pinned_board_session_reused",
+                    mode=input_delivery_config.mode,
+                    exactBinding=board_lease_session.binding,
+                    owner="FARM_RUN",
+                )
+            else:
+                exact_geometry = backend.client_geometry(binding.hwnd)
+                if exact_geometry is None:
+                    raise RuntimeError(
+                        "pinned board delivery requires a valid non-minimized client"
+                    )
+                exact_binding = ExactWindowBinding(binding, exact_geometry)
+                lease_backend = NativeForegroundLeaseBackend(backend)
+                board_lease_executor = ForegroundClickExecutor(
+                    lease_backend,
+                    click_delay_seconds=executor.click_delay_seconds,
+                    cursor_settle_seconds=executor.cursor_settle_seconds,
+                    input_mode=executor.input_mode,
+                    drag_duration_seconds=executor.drag_duration_seconds,
+                    drag_steps=executor.drag_steps,
+                    drag_overshoot_fraction=executor.drag_overshoot_fraction,
+                    sleeper=executor.sleeper,
+                    swap_pacer=executor.swap_pacer,
+                )
+                board_lease_session = PinnedForegroundBoardSession(
+                    config=input_delivery_config,
+                    binding=exact_binding,
+                    backend=lease_backend,
+                    stop_requested=board_delivery_stop_requested,
+                    event_sink=(
+                        lambda event, payload: _write(log, event, **payload)
+                    ),
+                )
+                pin_result = board_lease_session.start()
+                _write(
+                    log,
+                    "pinned_board_session_started",
+                    mode=input_delivery_config.mode,
+                    result=pin_result,
+                    exactBinding=exact_binding,
+                    owner="COMBAT_STANDALONE",
+                )
+                if not pin_result.pinned:
+                    raise RuntimeError(pin_result.reason)
+                input_delivery_stack.callback(board_lease_session.close)
         opening_message_max_region_mib = max(args.max_region_mib, 16)
         try:
             transport_region_prime = _prime_transport_for_runtime(
@@ -3440,6 +3576,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             transportRegionPrime=transport_region_prime,
             provider=provider.scan_diagnostics,
             swapInputPacing=executor.swap_pacer.decision(),
+            inputDeliveryMode=input_delivery_config.mode,
+            pinnedBoardSessionActive=(
+                board_lease_session.active
+                if board_lease_session is not None
+                else False
+            ),
         )
         if provider.scan_diagnostics["lobbyBaselineReady"]:
             print(f"Phase 2C.2B Stage {stage_name.upper()} ready in lobby; log: {log_path}", flush=True)
@@ -6995,7 +7137,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 state,
                 GateContext(
                     current_session=provider.current_session_key,
-                    game_foreground=window.foreground,
+                    game_foreground=_pinned_board_selection_gate_foreground(
+                        input_delivery_config,
+                        window.foreground,
+                    ),
                     window_valid=window.valid,
                     input_locked=False,
                     auto_paused=False,
@@ -8278,11 +8423,26 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 continue
             _write(log, "action_identity_created", identity=identity)
             fresh_window = executor.window_status(binding)
+            fresh_gate_foreground = fresh_window.foreground
+            if decision.action in {
+                PolicyAction.SWAP,
+                PolicyAction.EVOLVE,
+                PolicyAction.CAST,
+            } or (
+                decision.action is PolicyAction.PET_SKILL
+                and board_lease_session is not None
+            ):
+                fresh_gate_foreground = (
+                    _pinned_board_selection_gate_foreground(
+                        input_delivery_config,
+                        fresh_window.foreground,
+                    )
+                )
             fresh_gate = ActionabilityGate.evaluate(
                 fresh,
                 GateContext(
                     provider.current_session_key,
-                    fresh_window.foreground,
+                    fresh_gate_foreground,
                     fresh_window.valid,
                     sequence_desync=monitor.tracker.state,
                     allow_opening_board_only=True,
@@ -8527,8 +8687,35 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     maxSimultaneousLimit=1,
                 )
                 dispatch_context: dict[str, Any] = {}
+                pinned_qte_action = None
+                deferred_pinned_permit = object()
+                if board_lease_session is not None:
+                    pinned_qte_action = board_lease_session.create_qte_lease(
+                        action_identity=(
+                            f"PET_SKILL_QTE:{fresh.battle.match_id}:"
+                            f"{fresh.battle.turn_number}:{decision.skill_card_id}"
+                        )
+                    )
+                    _write(
+                        log,
+                        "pinned_pet_skill_qte_prepared",
+                        identity=identity,
+                        deliveryAuthority=pinned_qte_action.authority,
+                        exactBinding=board_lease_session.binding,
+                        runScopedTopmost=True,
+                        inputSent=False,
+                    )
 
                 def acquire_pet_skill_lease() -> Any | None:
+                    if pinned_qte_action is not None:
+                        if (
+                            board_delivery_stop_requested()
+                            or not board_lease_session.active
+                        ):
+                            return None
+                        # The exact FarmRun gameplay permit is intentionally
+                        # deferred until the QTE lease has acquired foreground.
+                        return deferred_pinned_permit
                     farm_window = executor.window_status(binding)
                     accepted, permit = _reserve_farm_gameplay(
                         runtime,
@@ -8540,6 +8727,62 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         ),
                     )
                     return permit if accepted else None
+
+                def reserve_pinned_pet_skill_after_focus() -> bool:
+                    if pinned_qte_action is None:
+                        return True
+                    farm_window = executor.window_status(binding)
+                    accepted, permit = _reserve_farm_gameplay(
+                        runtime,
+                        action=PolicyAction.PET_SKILL,
+                        session=fresh.battle.session_key,
+                        foreground=(
+                            farm_window.valid
+                            and farm_window.foreground is True
+                        ),
+                    )
+                    dispatch_context["farm_permit"] = permit
+                    _write(
+                        log,
+                        "pinned_pet_skill_farm_capability_reserved",
+                        identity=identity,
+                        accepted=accepted,
+                        foreground=farm_window.foreground,
+                        windowValid=farm_window.valid,
+                        inputSent=False,
+                    )
+                    return accepted
+
+                def complete_pet_skill_lease(
+                    permit: Any,
+                    sent: bool,
+                    detail: str,
+                ) -> bool:
+                    actual = (
+                        dispatch_context.get("farm_permit")
+                        if permit is deferred_pinned_permit
+                        else permit
+                    )
+                    return _complete_farm_gameplay(
+                        runtime,
+                        actual,
+                        sent=sent,
+                        detail=detail,
+                    )
+
+                def abandon_pet_skill_lease(permit: Any, detail: str) -> bool:
+                    actual = (
+                        dispatch_context.get("farm_permit")
+                        if permit is deferred_pinned_permit
+                        else permit
+                    )
+                    if permit is deferred_pinned_permit and actual is None:
+                        return True
+                    return _abandon_farm_gameplay_preflight(
+                        runtime,
+                        actual,
+                        detail=detail,
+                    )
 
                 def execute_pet_skill_once() -> Any:
                     hook = run_embedded_policy_action(
@@ -8563,6 +8806,22 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 operation,
                             )
                         ),
+                        pinned_qte_backend=(
+                            pinned_qte_action.backend
+                            if pinned_qte_action is not None
+                            else None
+                        ),
+                        pinned_qte_lease=(
+                            pinned_qte_action.lease
+                            if pinned_qte_action is not None
+                            else None
+                        ),
+                        on_pinned_qte_lease_acquired=(
+                            reserve_pinned_pet_skill_after_focus
+                            if pinned_qte_action is not None
+                            else None
+                        ),
+                        stop_requested=board_delivery_stop_requested,
                         interval=0.025,
                         timeout=20.0,
                     )
@@ -8574,25 +8833,25 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     acquire=acquire_pet_skill_lease,
                     primitive=execute_pet_skill_once,
                     complete=(
-                        lambda permit, sent, detail: _complete_farm_gameplay(
-                            runtime,
-                            permit,
-                            sent=sent,
-                            detail=detail,
-                        )
+                        complete_pet_skill_lease
                     ),
                     abandon=(
-                        lambda permit, detail: _abandon_farm_gameplay_preflight(
-                            runtime,
-                            permit,
-                            detail=detail,
-                        )
+                        abandon_pet_skill_lease
                     ),
                 )
                 hook = dispatch_context.get("hook")
                 result = outcome.result
                 input_sent = outcome.input_sent
                 completed = outcome.lease_resolved
+                pinned_qte_cleanup_ok = bool(
+                    pinned_qte_action is None
+                    or (
+                        hook is not None
+                        and hook.lease_release_result is not None
+                        and hook.lease_release_result.released
+                        and not pinned_qte_action.lease.active
+                    )
+                )
                 _write(
                     log,
                     "pet_skill_dispatch_result",
@@ -8606,6 +8865,27 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     primitiveCalls=pet_skill_dispatcher.primitive_calls,
                     sourceTurnClosed=outcome.source_turn_closed,
                     sameTurnFallback=outcome.allow_same_turn_fallback,
+                    pinnedQteLeaseAcquire=(
+                        hook.lease_acquire_result
+                        if pinned_qte_action is not None and hook is not None
+                        else None
+                    ),
+                    pinnedQteMouseRelease=(
+                        hook.mouse_release_result
+                        if pinned_qte_action is not None and hook is not None
+                        else None
+                    ),
+                    pinnedQteGuardRetention=(
+                        hook.guard_retention_result
+                        if pinned_qte_action is not None and hook is not None
+                        else None
+                    ),
+                    pinnedQteLeaseRelease=(
+                        hook.lease_release_result
+                        if pinned_qte_action is not None and hook is not None
+                        else None
+                    ),
+                    pinnedQteCleanupOk=pinned_qte_cleanup_ok,
                     blindRetry=False,
                 )
                 if outcome.state is PetSkillDispatchState.LEASE_DENIED:
@@ -8654,6 +8934,27 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         guard.stop()
                         stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
                         break
+                    if pinned_qte_action is not None:
+                        guard.stop()
+                        stop_reason = "PINNED_QTE_ZERO_INPUT_LEASE_CONSUMED"
+                        _write(
+                            log,
+                            "pinned_pet_skill_zero_input_fail_closed",
+                            identity=identity,
+                            leaseAcquire=(
+                                hook.lease_acquire_result
+                                if hook is not None
+                                else None
+                            ),
+                            leaseRelease=(
+                                hook.lease_release_result
+                                if hook is not None
+                                else None
+                            ),
+                            inputSent=False,
+                            blindRetry=False,
+                        )
+                        break
                     time.sleep(args.interval)
                     continue
                 guard.begin(pending_action)
@@ -8665,6 +8966,22 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 counters.turn_consuming_actions_total += 1
                 consuming_action_turns.add(turn_key)
                 turn_transitions.begin(identity)
+                if not pinned_qte_cleanup_ok:
+                    guard.stop()
+                    stop_reason = "PINNED_QTE_LEASE_CLEANUP_FAILED"
+                    _write(
+                        log,
+                        "pinned_pet_skill_cleanup_fail_closed",
+                        identity=identity,
+                        leaseRelease=(
+                            hook.lease_release_result
+                            if hook is not None
+                            else None
+                        ),
+                        inputSent=True,
+                        blindRetry=False,
+                    )
+                    break
                 fast_transition_deadline = time.monotonic() + max(
                     args.action_timeout,
                     15.0,
@@ -8765,105 +9082,342 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     _write(log, "user_pause", key="F7", checkpoint="BEFORE_SWAP_INPUT", staleProposalRetained=False)
                     _beep("pause", not args.no_beep)
                     continue
-                farm_window = executor.window_status(binding)
-                farm_swap_ok, farm_swap_permit = _reserve_farm_gameplay(
-                    runtime,
-                    action=PolicyAction.SWAP,
-                    session=fresh.battle.session_key,
-                    foreground=farm_window.valid and farm_window.foreground is True,
-                )
-                if not farm_swap_ok:
-                    _cancel_unsent(guard, identity, consuming_turns=consuming_turns)
-                    guard.stop()
-                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
-                    _write(
-                        log,
-                        "farm_gameplay_capability_denied",
-                        action="SWAP",
-                        session=fresh.battle.session_key,
-                        inputSent=False,
-                    )
-                    _beep("pause", not args.no_beep)
-                    break
-                try:
-                    _service, pre_input_runtime = read_match_runtime(target)
-                    pre_input_failure = direct_runtime_swap_preflight_failure(
-                        pending_action,
-                        match_id=pre_input_runtime.match_id,
-                        turn=pre_input_runtime.turn,
-                        current_player=pre_input_runtime.current_player,
-                        local_username=pre_input_runtime.local_username,
-                        remaining_seconds=pre_input_runtime.remaining,
-                        local_move_sequence=(
-                            pre_input_runtime.local_move_sequence
-                        ),
-                        minimum_action_time=args.minimum_action_time,
-                    )
-                except (OSError, RuntimeError, ValueError) as exc:
-                    pre_input_runtime = None
-                    pre_input_failure = (
-                        f"DIRECT_RUNTIME_READ_FAILED:{type(exc).__name__}"
-                    )
-                if pre_input_failure is not None:
-                    counters.expired_actions += 1
-                    if pre_input_failure in {
-                        "TIMER_UNKNOWN",
-                        "TIMER_AT_OR_BELOW_ACTION_FLOOR",
-                    }:
-                        counters.too_late += 1
-                    abandoned = _abandon_farm_gameplay_preflight(
-                        runtime,
-                        farm_swap_permit,
-                        detail=(
-                            "SWAP final direct-runtime preflight rejected: "
-                            f"{pre_input_failure}"
-                        ),
-                    )
-                    _cancel_unsent(
-                        guard,
-                        identity,
-                        consuming_turns=consuming_turns,
-                    )
-                    _write(
-                        log,
-                        "action_result",
-                        result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED,
-                        identity=identity,
-                        reason="FINAL_SWAP_DIRECT_RUNTIME_PREFLIGHT_REJECTED",
-                        preflightFailure=pre_input_failure,
-                        directRuntime=pre_input_runtime,
-                        inputSent=False,
-                        farmPermitReleased=abandoned,
-                    )
-                    if runtime.gameplay_capability is not None and not abandoned:
-                        guard.stop()
-                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
-                        break
-                    time.sleep(args.interval)
-                    continue
-                actual_send_start = time.monotonic()
-                pending_action.sent_at = actual_send_start
-                pending_action.response_deadline = (
-                    actual_send_start + args.action_timeout
-                )
-                try:
-                    input_authorized, click = _execute_farm_gameplay_input(
-                        runtime,
-                        lambda: executor.send_swap(
-                            binding,
-                            plan,
-                            remaining_seconds=(
-                                fresh.battle.turn_time_remaining_seconds
+                board_lease_result = None
+                farm_swap_permit = None
+                pre_input_runtime = None
+                pre_input_failure = None
+                input_authorized = True
+                click = None
+                farm_swap_completed = True
+
+                def read_final_swap_preflight() -> bool:
+                    nonlocal pre_input_runtime, pre_input_failure
+                    try:
+                        _service, observed_runtime = read_match_runtime(target)
+                        failure = direct_runtime_swap_preflight_failure(
+                            pending_action,
+                            match_id=observed_runtime.match_id,
+                            turn=observed_runtime.turn,
+                            current_player=observed_runtime.current_player,
+                            local_username=observed_runtime.local_username,
+                            remaining_seconds=observed_runtime.remaining,
+                            local_move_sequence=(
+                                observed_runtime.local_move_sequence
                             ),
+                            minimum_action_time=args.minimum_action_time,
+                        )
+                    except (OSError, RuntimeError, ValueError) as exc:
+                        observed_runtime = None
+                        failure = (
+                            f"DIRECT_RUNTIME_READ_FAILED:{type(exc).__name__}"
+                        )
+                    pre_input_runtime = observed_runtime
+                    pre_input_failure = failure
+                    return failure is None
+
+                if board_lease_session is None:
+                    # Accepted foreground path: preserve the exact ordering
+                    # and executor used before Phase 4.
+                    farm_window = executor.window_status(binding)
+                    farm_swap_ok, farm_swap_permit = _reserve_farm_gameplay(
+                        runtime,
+                        action=PolicyAction.SWAP,
+                        session=fresh.battle.session_key,
+                        foreground=(
+                            farm_window.valid
+                            and farm_window.foreground is True
                         ),
                     )
-                except Exception:
-                    _cancel_farm_gameplay(
-                        runtime,
-                        farm_swap_permit,
-                        detail="SWAP executor raised before result",
+                    if not farm_swap_ok:
+                        _cancel_unsent(
+                            guard,
+                            identity,
+                            consuming_turns=consuming_turns,
+                        )
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                        _write(
+                            log,
+                            "farm_gameplay_capability_denied",
+                            action="SWAP",
+                            session=fresh.battle.session_key,
+                            inputSent=False,
+                        )
+                        _beep("pause", not args.no_beep)
+                        break
+                    if not read_final_swap_preflight():
+                        counters.expired_actions += 1
+                        if pre_input_failure in {
+                            "TIMER_UNKNOWN",
+                            "TIMER_AT_OR_BELOW_ACTION_FLOOR",
+                        }:
+                            counters.too_late += 1
+                        abandoned = _abandon_farm_gameplay_preflight(
+                            runtime,
+                            farm_swap_permit,
+                            detail=(
+                                "SWAP final direct-runtime preflight rejected: "
+                                f"{pre_input_failure}"
+                            ),
+                        )
+                        _cancel_unsent(
+                            guard,
+                            identity,
+                            consuming_turns=consuming_turns,
+                        )
+                        _write(
+                            log,
+                            "action_result",
+                            result=(
+                                ActionResultKind.ACTION_ABORTED_STATE_CHANGED
+                            ),
+                            identity=identity,
+                            reason=(
+                                "FINAL_SWAP_DIRECT_RUNTIME_PREFLIGHT_REJECTED"
+                            ),
+                            preflightFailure=pre_input_failure,
+                            directRuntime=pre_input_runtime,
+                            inputSent=False,
+                            farmPermitReleased=abandoned,
+                        )
+                        if (
+                            runtime.gameplay_capability is not None
+                            and not abandoned
+                        ):
+                            guard.stop()
+                            stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
+                            break
+                        time.sleep(args.interval)
+                        continue
+                    actual_send_start = time.monotonic()
+                    pending_action.sent_at = actual_send_start
+                    pending_action.response_deadline = (
+                        actual_send_start + args.action_timeout
                     )
-                    raise
+                    try:
+                        input_authorized, click = _execute_farm_gameplay_input(
+                            runtime,
+                            lambda: executor.send_swap(
+                                binding,
+                                plan,
+                                remaining_seconds=(
+                                    fresh.battle.turn_time_remaining_seconds
+                                ),
+                            ),
+                        )
+                    except Exception:
+                        _cancel_farm_gameplay(
+                            runtime,
+                            farm_swap_permit,
+                            detail="SWAP executor raised before result",
+                        )
+                        raise
+                    if input_authorized and click is not None:
+                        farm_swap_completed = _complete_farm_gameplay(
+                            runtime,
+                            farm_swap_permit,
+                            sent=click.sent_clicks > 0,
+                            detail=(
+                                f"SWAP:{click.status.value};"
+                                f"sentClicks={click.sent_clicks};"
+                                f"interClickDelay={click.inter_click_delay_seconds};"
+                                f"cursorSettle={click.cursor_settle_seconds};"
+                                f"buttonHold={click.mouse_button_hold_seconds};"
+                                f"inputMode={click.input_mode};"
+                                f"dragDuration={click.drag_duration_seconds};"
+                                f"dragSteps={click.drag_steps};"
+                                f"dragOvershootPixels={click.drag_overshoot_pixels};"
+                                f"pacing={click.pacing_mode}"
+                            ),
+                        )
+                else:
+                    if board_lease_executor is None:
+                        raise RuntimeError(
+                            "pinned board session has no lease-aware executor"
+                        )
+                    lease_context: dict[str, Any] = {}
+
+                    def send_pinned_swap_once() -> bool:
+                        nonlocal farm_swap_permit, input_authorized, click
+                        nonlocal farm_swap_completed
+                        _write(
+                            log,
+                            "pinned_board_swap_stage",
+                            identity=identity,
+                            stage="ACTION_CALLBACK_ENTERED",
+                        )
+                        lease_window = board_lease_executor.window_status(binding)
+                        farm_swap_ok, permit = _reserve_farm_gameplay(
+                            runtime,
+                            action=PolicyAction.SWAP,
+                            session=fresh.battle.session_key,
+                            foreground=(
+                                lease_window.valid
+                                and lease_window.foreground is True
+                            ),
+                        )
+                        farm_swap_permit = permit
+                        lease_context["farmPermitAccepted"] = farm_swap_ok
+                        _write(
+                            log,
+                            "pinned_board_swap_stage",
+                            identity=identity,
+                            stage="FARM_PERMIT_RESOLVED",
+                            farmPermitAccepted=farm_swap_ok,
+                        )
+                        if not farm_swap_ok:
+                            return False
+                        actual_send_start = time.monotonic()
+                        pending_action.sent_at = actual_send_start
+                        pending_action.response_deadline = (
+                            actual_send_start + args.action_timeout
+                        )
+                        try:
+                            _write(
+                                log,
+                                "pinned_board_swap_stage",
+                                identity=identity,
+                                stage="ATOMIC_INPUT_ENTER",
+                            )
+                            input_authorized, click = (
+                                _execute_farm_gameplay_input(
+                                    runtime,
+                                    lambda: board_lease_executor.send_swap(
+                                        binding,
+                                        plan,
+                                        remaining_seconds=(
+                                            pre_input_runtime.remaining
+                                            if pre_input_runtime is not None
+                                            else None
+                                        ),
+                                        stop_requested=(
+                                            board_delivery_stop_requested
+                                        ),
+                                    ),
+                                )
+                            )
+                            _write(
+                                log,
+                                "pinned_board_swap_stage",
+                                identity=identity,
+                                stage="ATOMIC_INPUT_RETURNED",
+                                inputAuthorized=input_authorized,
+                                click=click,
+                            )
+                        except Exception:
+                            _cancel_farm_gameplay(
+                                runtime,
+                                farm_swap_permit,
+                                detail="pinned SWAP executor raised before result",
+                            )
+                            raise
+                        if not input_authorized or click is None:
+                            _cancel_farm_gameplay(
+                                runtime,
+                                farm_swap_permit,
+                                detail=(
+                                    "pinned SWAP atomic input gate denied before result"
+                                ),
+                            )
+                            return False
+                        farm_swap_completed = _complete_farm_gameplay(
+                            runtime,
+                            farm_swap_permit,
+                            sent=click.sent_clicks > 0,
+                            detail=(
+                                f"SWAP:{click.status.value};"
+                                f"sentClicks={click.sent_clicks};"
+                                f"inputDelivery={input_delivery_config.mode.value};"
+                                f"interClickDelay={click.inter_click_delay_seconds};"
+                                f"cursorSettle={click.cursor_settle_seconds};"
+                                f"buttonHold={click.mouse_button_hold_seconds};"
+                                f"inputMode={click.input_mode};"
+                                f"dragDuration={click.drag_duration_seconds};"
+                                f"dragSteps={click.drag_steps};"
+                                f"dragOvershootPixels={click.drag_overshoot_pixels};"
+                                f"pacing={click.pacing_mode}"
+                            ),
+                        )
+                        return bool(farm_swap_completed and click.sent)
+
+                    board_lease_result = board_lease_session.execute_swap(
+                        action_identity=(
+                            f"SWAP:{fresh.battle.match_id}:"
+                            f"{fresh.battle.turn_number}:"
+                            f"{fresh.battle.local_move_sequence}:"
+                            f"{decision.move.first}->{decision.move.second}"
+                        ),
+                        action=send_pinned_swap_once,
+                        preflight=read_final_swap_preflight,
+                        expected_cursor_after=(
+                            plan.second.screen_x,
+                            plan.second.screen_y,
+                        ),
+                    )
+                    _write(
+                        log,
+                        "pinned_board_swap_delivery",
+                        identity=identity,
+                        delivery=board_lease_result,
+                        directRuntime=pre_input_runtime,
+                        preflightFailure=pre_input_failure,
+                        click=click,
+                        farmPermitAccepted=lease_context.get(
+                            "farmPermitAccepted"
+                        ),
+                        noBlindRetry=True,
+                    )
+                    if not board_lease_result.action_attempted:
+                        _cancel_unsent(
+                            guard,
+                            identity,
+                            consuming_turns=consuming_turns,
+                        )
+                        if pre_input_failure is not None:
+                            counters.expired_actions += 1
+                            if pre_input_failure in {
+                                "TIMER_UNKNOWN",
+                                "TIMER_AT_OR_BELOW_ACTION_FLOOR",
+                            }:
+                                counters.too_late += 1
+                        if board_delivery_stop_requested():
+                            guard.stop()
+                            stop_reason = "EMERGENCY_STOP"
+                            break
+                        guard.pause(automatic=True)
+                        _write(
+                            log,
+                            "action_result",
+                            result=(
+                                ActionResultKind.ACTION_ABORTED_STATE_CHANGED
+                            ),
+                            identity=identity,
+                            reason="PINNED_BOARD_LEASE_REJECTED",
+                            leaseStatus=board_lease_result.status,
+                            preflightFailure=pre_input_failure,
+                            directRuntime=pre_input_runtime,
+                            inputSent=False,
+                            autoPaused=True,
+                        )
+                        continue
+                    if lease_context.get("farmPermitAccepted") is False:
+                        _cancel_unsent(
+                            guard,
+                            identity,
+                            consuming_turns=consuming_turns,
+                        )
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                        _write(
+                            log,
+                            "farm_gameplay_capability_denied",
+                            action="SWAP",
+                            session=fresh.battle.session_key,
+                            inputSent=False,
+                            inputDelivery=input_delivery_config.mode,
+                        )
+                        break
+
                 if not input_authorized or click is None:
                     guard.stop()
                     stop_reason = "EMERGENCY_STOP"
@@ -8873,24 +9427,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         key="UI",
                         checkpoint="ATOMIC_SWAP_INPUT_GATE",
                         inputSent=False,
+                        inputDelivery=input_delivery_config.mode,
                     )
                     break
-                if not _complete_farm_gameplay(
-                    runtime,
-                    farm_swap_permit,
-                    sent=click.sent_clicks > 0,
-                    detail=(
-                        f"SWAP:{click.status.value};sentClicks={click.sent_clicks};"
-                        f"interClickDelay={click.inter_click_delay_seconds};"
-                        f"cursorSettle={click.cursor_settle_seconds};"
-                        f"buttonHold={click.mouse_button_hold_seconds};"
-                        f"inputMode={click.input_mode};"
-                        f"dragDuration={click.drag_duration_seconds};"
-                        f"dragSteps={click.drag_steps};"
-                        f"dragOvershootPixels={click.drag_overshoot_pixels};"
-                        f"pacing={click.pacing_mode}"
-                    ),
-                ):
+                if not farm_swap_completed:
                     guard.stop()
                     stop_reason = "FARM_GAMEPLAY_CAPABILITY_COMPLETION_FAILED"
                     _beep("pause", not args.no_beep)
@@ -8978,8 +9518,28 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     dragDurationSeconds=click.drag_duration_seconds,
                     dragSteps=click.drag_steps,
                     dragOvershootPixels=click.drag_overshoot_pixels,
+                    inputDeliveryMode=input_delivery_config.mode,
+                    boardLease=board_lease_result,
                     **fields,
                 )
+                if (
+                    board_lease_result is not None
+                    and board_lease_result.status is not LeaseStatus.COMPLETE
+                ):
+                    # The swap identity has already been consumed. Stop after
+                    # recording it; never retry a sent action whose desktop
+                    # cleanup could not be proven complete.
+                    guard.stop()
+                    stop_reason = "PINNED_BOARD_LEASE_CLEANUP_FAILED"
+                    _write(
+                        log,
+                        "pinned_board_fail_closed_after_input",
+                        identity=identity,
+                        lease=board_lease_result,
+                        inputSent=True,
+                        blindRetry=False,
+                    )
+                    break
             else:
                 control = GameplayControl.EVOLVE if decision.action is PolicyAction.EVOLVE else GameplayControl.CAST_ATTACK
                 card = None
@@ -9154,60 +9714,217 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     _beep("pause", not args.no_beep)
                     continue
                 farm_window = executor.window_status(binding)
-                farm_card_ok, farm_card_permit = _reserve_farm_gameplay(
-                    runtime,
-                    action=decision.action,
-                    session=fresh.battle.session_key,
-                    foreground=farm_window.valid and farm_window.foreground is True,
-                )
-                if not farm_card_ok:
-                    _cancel_unsent(guard, identity, consuming_turns=consuming_turns)
-                    guard.stop()
-                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
-                    _write(
-                        log,
-                        "farm_gameplay_capability_denied",
-                        action=decision.action,
-                        session=fresh.battle.session_key,
-                        inputSent=False,
-                    )
-                    _beep("pause", not args.no_beep)
-                    break
-                try:
-                    input_authorized, click = _execute_farm_gameplay_input(
-                        runtime,
-                        lambda: executor.send_normalized_point(
-                            binding, locator.normalized_point
+                farm_card_permit = None
+                farm_card_ok = True
+                farm_card_completed = True
+                input_authorized = True
+                click = None
+                card_lease_result = None
+
+                def final_card_preflight() -> bool:
+                    final_poll = provider.poll()
+                    final_state = final_poll.state
+                    if final_state is None or not identity.source.matches(final_state):
+                        return False
+                    final_window = executor.window_status(binding)
+                    final_gate = ActionabilityGate.evaluate(
+                        final_state,
+                        GateContext(
+                            provider.current_session_key,
+                            final_window.foreground,
+                            final_window.valid,
+                            sequence_desync=monitor.tracker.state,
+                            allow_opening_board_only=True,
+                            allow_authoritative_board_only_stats=True,
                         ),
                     )
-                except Exception:
-                    _cancel_farm_gameplay(
+                    if not final_gate.actionable:
+                        return False
+                    if decision.action is PolicyAction.EVOLVE:
+                        final_fusion = final_state.fusion
+                        if not (
+                            final_fusion is not None
+                            and final_fusion.interaction_authorized
+                            and final_fusion.ui_slot == slot_index
+                            and final_fusion.ui_slot_count == slot_count
+                            and final_fusion.mana_cost == pending_action.mana_cost
+                        ):
+                            return False
+                    else:
+                        final_card = next(
+                            (
+                                value
+                                for value in final_state.cards
+                                if value.object_address
+                                == pending_action.card_object_address
+                            ),
+                            None,
+                        )
+                        if not (
+                            final_card is not None
+                            and final_card.is_attack
+                            and final_card.interactable
+                            and not final_card.action_pending
+                            and not final_card.has_used_this_turn
+                            and final_card.ui_slot == slot_index
+                            and final_card.ui_slot_count == slot_count
+                            and final_state.player is not None
+                            and final_state.player.mana is not None
+                            and final_state.player.mana >= pending_action.mana_cost
+                        ):
+                            return False
+                    final_capture = capture_client_rgb(target.pid)
+                    if locate_confirm_leave(
+                        final_capture.rgb,
+                        final_capture.width,
+                        final_capture.height,
+                    ).found:
+                        return False
+                    final_locator = locate_gameplay_control(
+                        final_capture.rgb,
+                        final_capture.width,
+                        final_capture.height,
+                        control,
+                        slot_index=slot_index,
+                        slot_count=slot_count,
+                    )
+                    return bool(
+                        final_locator.found
+                        and final_locator.normalized_point
+                        == locator.normalized_point
+                    )
+
+                def send_card_once() -> bool:
+                    nonlocal farm_card_ok, farm_card_permit
+                    nonlocal farm_card_completed, input_authorized, click
+                    lease_window = executor.window_status(binding)
+                    farm_card_ok, farm_card_permit = _reserve_farm_gameplay(
+                        runtime,
+                        action=decision.action,
+                        session=fresh.battle.session_key,
+                        foreground=(
+                            lease_window.valid
+                            and lease_window.foreground is True
+                        ),
+                    )
+                    if not farm_card_ok:
+                        return False
+                    try:
+                        input_authorized, click = _execute_farm_gameplay_input(
+                            runtime,
+                            lambda: executor.send_normalized_point(
+                                binding, locator.normalized_point
+                            ),
+                        )
+                    except Exception:
+                        _cancel_farm_gameplay(
+                            runtime,
+                            farm_card_permit,
+                            detail=(
+                                f"{decision.action.value} executor raised before result"
+                            ),
+                        )
+                        raise
+                    if not input_authorized or click is None:
+                        _cancel_farm_gameplay(
+                            runtime,
+                            farm_card_permit,
+                            detail=(
+                                f"{decision.action.value} atomic input denied"
+                            ),
+                        )
+                        return False
+                    farm_card_completed = _complete_farm_gameplay(
                         runtime,
                         farm_card_permit,
-                        detail=f"{decision.action.value} executor raised before result",
+                        sent=click.sent,
+                        detail=f"{decision.action.value}:{click.status.value}",
                     )
-                    raise
-                if not input_authorized or click is None:
-                    guard.stop()
-                    stop_reason = "EMERGENCY_STOP"
+                    return bool(farm_card_completed and click.sent)
+
+                if board_lease_session is not None:
+                    card_lease_result = board_lease_session.execute_mouse(
+                        domain=InputDeliveryDomain.UI_CARD,
+                        action_identity=(
+                            f"UI_CARD:{decision.action.value}:"
+                            f"{fresh.battle.match_id}:{fresh.battle.turn_number}:"
+                            f"{fresh.battle.local_move_sequence}:{slot_index}"
+                        ),
+                        action=send_card_once,
+                        preflight=(
+                            lambda: provider.current_session_key
+                            == fresh.battle.session_key
+                        ),
+                        post_focus_preflight=final_card_preflight,
+                        expected_cursor_after=(
+                            board_lease_session.expected_cursor_for_normalized_point(
+                                locator.normalized_point
+                            )
+                        ),
+                    )
                     _write(
                         log,
-                        "emergency_stop",
-                        key="UI",
-                        checkpoint="ATOMIC_CARD_INPUT_GATE",
-                        inputSent=False,
+                        "pinned_ui_card_delivery",
+                        action=decision.action,
+                        identity=identity,
+                        delivery=card_lease_result,
+                        click=click,
+                        farmPermitAccepted=farm_card_ok,
+                        noBlindRetry=True,
                     )
-                    break
-                if not _complete_farm_gameplay(
-                    runtime,
-                    farm_card_permit,
-                    sent=click.sent,
-                    detail=f"{decision.action.value}:{click.status.value}",
-                ):
-                    guard.stop()
-                    stop_reason = "FARM_GAMEPLAY_CAPABILITY_COMPLETION_FAILED"
-                    _beep("pause", not args.no_beep)
-                    break
+                    sent_ok = card_lease_result.action_succeeded
+                else:
+                    sent_ok = send_card_once()
+
+                if not sent_ok:
+                    if not farm_card_ok:
+                        _cancel_unsent(
+                            guard, identity, consuming_turns=consuming_turns
+                        )
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_DENIED"
+                        _write(
+                            log,
+                            "farm_gameplay_capability_denied",
+                            action=decision.action,
+                            session=fresh.battle.session_key,
+                            inputSent=False,
+                        )
+                        _beep("pause", not args.no_beep)
+                        break
+                    if not input_authorized:
+                        guard.stop()
+                        stop_reason = "EMERGENCY_STOP"
+                        _write(
+                            log,
+                            "emergency_stop",
+                            key="UI",
+                            checkpoint="ATOMIC_CARD_INPUT_GATE",
+                            inputSent=False,
+                        )
+                        break
+                    if not farm_card_completed:
+                        guard.stop()
+                        stop_reason = "FARM_GAMEPLAY_CAPABILITY_COMPLETION_FAILED"
+                        _beep("pause", not args.no_beep)
+                        break
+                    if click is None:
+                        _cancel_unsent(
+                            guard, identity, consuming_turns=consuming_turns
+                        )
+                        guard.pause(automatic=True)
+                        _write(
+                            log,
+                            "action_result",
+                            result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED,
+                            reason=(
+                                card_lease_result.status
+                                if card_lease_result is not None
+                                else "UI_CARD_PREFLIGHT_CHANGED"
+                            ),
+                            autoPaused=True,
+                        )
+                        continue
                 if not click.sent:
                     _cancel_unsent(guard, identity, consuming_turns=consuming_turns)
                     guard.pause(automatic=True)
@@ -9233,7 +9950,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     fusion_attempts_by_turn[fusion_turn_key] = (
                         fusion_attempts_by_turn.get(fusion_turn_key, 0) + 1
                     )
-                    _write(log, "action_sent", action="EVOLVE", identity=identity, attemptIndex=evolve_attempts, mana=fresh.player.mana if fresh.player else None, manaCost=pending_action.mana_cost, locator=locator, **fields)
+                    _write(log, "action_sent", action="EVOLVE", identity=identity, attemptIndex=evolve_attempts, mana=fresh.player.mana if fresh.player else None, manaCost=pending_action.mana_cost, locator=locator, inputDeliveryMode=input_delivery_config.mode, cardLease=card_lease_result, **fields)
                 else:
                     counters.cast_sent += 1
                     if pending_action.mandatory_after_idle_2:
@@ -9256,9 +9973,27 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         idleBefore=pending_action.idle_state_before,
                         resetBaselineBefore=pending_action.reset_baseline_before,
                         locator=locator,
+                        inputDeliveryMode=input_delivery_config.mode,
+                        cardLease=card_lease_result,
                         waitState="WAIT_CARD_RESPONSE",
                         **fields,
                     )
+                if (
+                    card_lease_result is not None
+                    and card_lease_result.status is not LeaseStatus.COMPLETE
+                ):
+                    guard.stop()
+                    stop_reason = "PINNED_UI_CARD_LEASE_CLEANUP_FAILED"
+                    _write(
+                        log,
+                        "pinned_ui_card_fail_closed_after_input",
+                        action=decision.action,
+                        identity=identity,
+                        delivery=card_lease_result,
+                        inputSent=True,
+                        blindRetry=False,
+                    )
+                    break
 
             time.sleep(args.interval)
 

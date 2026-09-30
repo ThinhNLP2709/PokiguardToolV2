@@ -1,4 +1,4 @@
-"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b4 card strip.
+"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b5 card strip.
 
 No heap scan and no engine invocation. Offsets below are native-code verified,
 not Cpp2IL managed-field offsets; see docs/phase3b3_native_card_evidence.md.
@@ -18,10 +18,11 @@ from .il2cpp_layout import (
     is_canonical_user_pointer,
     read_il2cpp_string,
 )
+from .state import SUPPORTED_CELL_MULTIPLIERS
 
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
-_COMPONENT_GO_ICALL = 0x355F678
+_COMPONENT_GO_ICALL = 0x38AA280
 _COMPONENT_GO_RVA = 0x1067390
 _NATIVE_SIGNATURES = (
     (0x1067396, "488b5928"),  # Component -> GameObject +28
@@ -41,8 +42,8 @@ _NATIVE_SIGNATURES = (
     (0xB5AB4E, "8b4338"),  # Canvas renderMode
 )
 _UNMARSHAL_SIGNATURE = (
-    0x10971EF,
-    "4885db7433f6c301740d488bcbe8bfe416ff488bd8eb03488b1b",
+    0x136097F,
+    "4885db7433f6c301740d488bcbe88fb2eafe488bd8eb03488b1b",
 )
 
 
@@ -161,7 +162,7 @@ class NativeCardUiReader:
         return value
 
     def _managed(self, native: int, *, optional: bool = False) -> int | None:
-        # UnmarshalUnityObject<T> at GA+10971EF: even handle is pointer-to-object;
+        # UnmarshalUnityObject<T> at GA+136097F: even handle is pointer-to-object;
         # odd handle requires an engine GC-handle resolver. Never invoke it.
         # A tagged GC handle can be a small integer, not a user-space address.
         # Inspect its tag BEFORE treating an even handle as a pointer.
@@ -279,7 +280,7 @@ class NativeCardUiReader:
     ) -> NativeDotBoard:
         """Walk ``Board.allDots -> GameObject components -> Dot`` exactly.
 
-        Pokiguard 1.7.4-b4 writes the spawn tag to ``Dot.PoolTag +0x100`` and
+        Pokiguard 1.7.4-b5 writes the spawn tag to ``Dot.PoolTag +0x100`` and
         keeps column, row, multiplier and Board ownership on that same managed
         component. Every wrapper/native/component relationship and every Dot
         identity field is sampled again after all 64 cells have been decoded.
@@ -341,9 +342,10 @@ class NativeCardUiReader:
                 raise LayoutValidationError(
                     "native_card_ui: Dot coordinates are outside the 8x8 board"
                 )
-            if multiplier not in (1, 2, 3, 4):
+            if multiplier not in SUPPORTED_CELL_MULTIPLIERS:
                 raise LayoutValidationError(
-                    "native_card_ui: Dot multiplier is outside the supported domain"
+                    "native_card_ui: Dot multiplier is outside the supported domain "
+                    f"at ({row},{column}): {multiplier}"
                 )
             if is_falling or is_prediction or squashing or render_hidden:
                 raise NativeGeometryBusyError(
@@ -453,11 +455,69 @@ class NativeCardUiReader:
         self._nodes[transform] = result
         return result
 
-    def _viewport_rect(self, transform: int):
+    @staticmethod
+    def _centered_rect(rect: tuple[float, float, float, float]) -> bool:
+        x, y, width, height = rect
+        tolerance = max(width, height) * 0.0001
+        return abs(x + width / 2.0) <= tolerance and abs(y + height / 2.0) <= tolerance
+
+    def _nested_canvas_matches_screen_root(
+        self,
+        canvas: int,
+        canvas_rect: tuple[float, float, float, float],
+        parent_canvas: int,
+    ) -> bool:
+        """Prove one b5 full-screen WorldSpace Canvas against its screen root.
+
+        The b5 room places the main button below a full-design WorldSpace
+        Canvas. Two layout-only RectTransforms between that Canvas and the
+        screen root have no native TransformAccess handle, so walking through
+        them cannot authorize geometry. The nested Canvas is accepted only
+        when its exact native parent is one active screen-space root Canvas,
+        both centered rectangles have the same aspect, and every
+        managed/native ownership roundtrip is valid. The caller still performs
+        an exact visual proof inside the resulting rectangle.
+        """
+
+        if not parent_canvas or self._managed(parent_canvas) is None:
+            return False
+        if self._class_identity(self._managed(parent_canvas)) != (
+            "Canvas",
+            "UnityEngine",
+        ):
+            return False
+        if self._pointer(parent_canvas + 0x308, nullable=True):
+            return False
+        if struct.unpack("<i", self._remember(canvas + 0x38, 4))[0] != 2:
+            return False
+        if struct.unpack("<i", self._remember(parent_canvas + 0x38, 4))[0] not in (
+            0,
+            1,
+        ):
+            return False
+        parent_owner = self._pointer(parent_canvas + 0x28)
+        parent_components = self._components(parent_owner)
+        if parent_canvas not in parent_components:
+            return False
+        parent_transform = parent_components[0]
+        parent_rect = self._node(parent_transform)[0]
+        if not self._centered_rect(canvas_rect) or not self._centered_rect(parent_rect):
+            return False
+        canvas_aspect = canvas_rect[2] / canvas_rect[3]
+        parent_aspect = parent_rect[2] / parent_rect[3]
+        return abs(canvas_aspect - parent_aspect) <= 0.001
+
+    def _viewport_rect(
+        self,
+        transform: int,
+        *,
+        allow_nested_fullscreen_canvas: bool = False,
+    ):
         nodes = []
         visited = set()
         current = transform
         root_canvas = None
+        accepted_nested_canvas = False
         for _ in range(16):
             if current in visited:
                 raise LayoutValidationError("native_card_ui: transform cycle")
@@ -488,6 +548,12 @@ class NativeCardUiReader:
                 if not parent_canvas:
                     root_canvas = canvases[0]
                     break
+                if allow_nested_fullscreen_canvas and self._nested_canvas_matches_screen_root(
+                    canvases[0], node[0], parent_canvas
+                ):
+                    root_canvas = canvases[0]
+                    accepted_nested_canvas = True
+                    break
             current = node[2]
             if not current:
                 break
@@ -502,7 +568,7 @@ class NativeCardUiReader:
         for index, (node_transform, _) in enumerate(nodes):
             self._canvas_paths[node_transform] = (tuple(nodes[index:]), root_canvas)
         mode = struct.unpack("<i", self._remember(root_canvas + 0x38, 4))[0]
-        if mode not in (0, 1):
+        if mode not in (0, 1) and not (accepted_nested_canvas and mode == 2):
             raise LayoutValidationError("native_card_ui: unsupported Canvas mode/root")
         x, y, w, h = nodes[0][1][0]
         for _, (_, trs, _, _) in nodes[:-1]:
@@ -623,11 +689,171 @@ class NativeCardUiReader:
             )
         return matches[0]
 
+    def read_game_object_descendant_components(
+        self,
+        game_object: int,
+        class_name: str,
+        namespace: str = "",
+        *,
+        max_nodes: int = 512,
+    ) -> tuple[int, ...]:
+        """Read components in Unity's root-first hierarchy order.
+
+        ``GameObject.GetComponentsInChildren<T>(true)`` walks the root and
+        then its Transform children in sibling order.  ManagerChinhPhuc uses
+        that exact array order to associate ``listPetEnemy[i]`` with
+        ``panelButtons[i]``.  Reconstructing the bounded native hierarchy lets
+        callers recover that association without invoking a game method or
+        looking at pixels.
+
+        The whole Transform/component graph is fenced after the walk.  A
+        hierarchy mutation, duplicate node, foreign parent, unsupported
+        managed handle, or oversized graph fails closed.
+        """
+
+        if not 1 <= max_nodes <= 4096:
+            raise ValueError("max_nodes must be between 1 and 4096")
+        if self._class_identity(game_object) != ("GameObject", "UnityEngine"):
+            raise LayoutValidationError("native_card_ui: object is not a GameObject")
+        native_root = self._pointer(game_object + 0x10)
+        if self._managed(native_root) != game_object:
+            raise LayoutValidationError(
+                "native_card_ui: GameObject managed/native roundtrip mismatch"
+            )
+        root_components = self._components(native_root)
+        root_transform = root_components[0]
+
+        seen: set[int] = set()
+        matches: list[int] = []
+        records: list[
+            tuple[int, int, tuple[int, ...], int, int, bytes]
+        ] = []
+
+        def walk(transform: int, expected_parent: int) -> None:
+            if len(seen) >= max_nodes:
+                raise LayoutValidationError(
+                    "native_card_ui: descendant hierarchy exceeds bound"
+                )
+            if transform in seen:
+                raise LayoutValidationError(
+                    "native_card_ui: duplicate descendant Transform"
+                )
+            seen.add(transform)
+            parent = self._pointer(transform + 0x70, nullable=True)
+            if parent != expected_parent:
+                raise LayoutValidationError(
+                    "native_card_ui: descendant parent mismatch"
+                )
+            owner = self._pointer(transform + 0x28)
+            components = self._components(owner)
+            if components[0] != transform:
+                raise LayoutValidationError(
+                    "native_card_ui: descendant Transform is not owner component zero"
+                )
+            for native_component in components:
+                managed = self._managed(native_component, optional=True)
+                if managed is not None and self._class_identity(managed) == (
+                    class_name,
+                    namespace,
+                ):
+                    matches.append(managed)
+
+            count_raw = self._read(transform + 0x60, 4)
+            child_count = struct.unpack("<i", count_raw)[0]
+            if not 0 <= child_count <= 256:
+                raise LayoutValidationError(
+                    "native_card_ui: descendant child count out of bounds"
+                )
+            children_pointer = 0
+            children_raw = b""
+            if child_count:
+                children_pointer = self._pointer(transform + 0x50)
+                children_raw = self._read(children_pointer, child_count * 8)
+                children = struct.unpack(f"<{child_count}Q", children_raw)
+                if len(set(children)) != len(children):
+                    raise LayoutValidationError(
+                        "native_card_ui: duplicate child Transform"
+                    )
+            else:
+                children = ()
+            records.append(
+                (
+                    transform,
+                    owner,
+                    components,
+                    child_count,
+                    children_pointer,
+                    children_raw,
+                )
+            )
+            for child in children:
+                if not is_canonical_user_pointer(child):
+                    raise LayoutValidationError(
+                        "native_card_ui: invalid child Transform"
+                    )
+                walk(child, transform)
+
+        walk(root_transform, self._pointer(root_transform + 0x70, nullable=True))
+        if len(set(matches)) != len(matches):
+            raise LayoutValidationError(
+                "native_card_ui: duplicate descendant component"
+            )
+        for (
+            transform,
+            owner,
+            components,
+            child_count,
+            children_pointer,
+            children_raw,
+        ) in records:
+            if (
+                self._pointer(transform + 0x28) != owner
+                or self._components(owner) != components
+                or self._read(transform + 0x60, 4)
+                != struct.pack("<i", child_count)
+                or (
+                    child_count
+                    and (
+                        self._pointer(transform + 0x50) != children_pointer
+                        or self._read(children_pointer, child_count * 8)
+                        != children_raw
+                    )
+                )
+            ):
+                raise NativeGeometryBusyError(
+                    "native_card_ui: descendant hierarchy changed during read"
+                )
+        if (
+            self._pointer(game_object + 0x10) != native_root
+            or self._managed(native_root) != game_object
+            or self._components(native_root) != root_components
+        ):
+            raise NativeGeometryBusyError(
+                "native_card_ui: descendant root changed during read"
+            )
+        return tuple(matches)
+
+    def read_game_object_descendant_buttons(
+        self,
+        game_object: int,
+        *,
+        max_nodes: int = 512,
+    ) -> tuple[int, ...]:
+        """Return all Unity UI Buttons below one GameObject, root first."""
+
+        return self.read_game_object_descendant_components(
+            game_object,
+            "Button",
+            "UnityEngine.UI",
+            max_nodes=max_nodes,
+        )
+
     def read_button_geometry(
         self,
         button: int,
         *,
         max_translation_jitter: float = 0.0,
+        allow_nested_fullscreen_canvas: bool = False,
     ) -> NativeButtonGeometry:
         """Resolve one managed Unity UI Button to its live clickable rectangle.
 
@@ -657,7 +883,16 @@ class NativeCardUiReader:
         transform = components[0]
         active = self._active(native_game_object)
         rect, root, aspect = (
-            self._viewport_rect(transform) if active else (None, None, None)
+            (
+                self._viewport_rect(
+                    transform,
+                    allow_nested_fullscreen_canvas=True,
+                )
+                if allow_nested_fullscreen_canvas
+                else self._viewport_rect(transform)
+            )
+            if active
+            else (None, None, None)
         )
         if (
             self._pointer(button + 0x10) != native_button

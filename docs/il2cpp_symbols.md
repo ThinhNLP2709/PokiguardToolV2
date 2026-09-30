@@ -1204,3 +1204,103 @@ Evidence:
 - `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/CardUI.cs`
 - `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/MatchService.cs`
 - `reverse/reverse_1.7.4-b4/cs/Assembly-CSharp/ChatMessageDTO.cs`
+
+## Pokiguard 1.7.4-b5 compatibility addendum — 2026-09-28
+
+The exact supported GameAssembly is SHA-256
+`E2A2457128B4F412EAE302AC5314350F0C18529C12716B4EBDB36281D923F9E9`,
+metadata version 110, preferred image base `0x180000000`. The complete audit is
+in `docs/pokiguard_1.7.4_b5_compatibility_report.md`.
+
+| Type/root | b5 TypeInfo RVA | Static owner |
+|---|---:|---:|
+| `Board` | `0x0369C9A0` | `+0x10` |
+| `Active` | `0x0369C898` | `+0x00` |
+| `ManagerMatch` | `0x03697630` | `+0x00` |
+| `MatchService` | `0x03695528` | `+0x00` |
+| `ChatService` | `0x03695190` | `+0x00` |
+| `ChatMessageDTO` | `0x036A0060` | N/A |
+| `Dot` | `0x0369EAD0` | N/A |
+| `WsCombatBatch` | `0x036A25D8` | N/A |
+| `BoardWsApplier` | `0x03695308` | N/A |
+| `CardUI` | `0x036954D8` | `+0x00` active card |
+| `FusionCardUI` | `0x036BF9B0` | N/A |
+| `Active.PlayerStats` | `0x0364FB00` | N/A |
+| `PetUserDTO` | `0x03672E28` | N/A |
+| `CardData` | `0x036BF9B8` | N/A |
+| `AuditionStage` | `0x03655DD0` | `+0x00` active stage |
+| `AuditionChallenge` | `0x03655A50` | N/A |
+| `ManagerQuangTruong` | `0x03695CB8` | `Instance +0x08` |
+| `ManagerRoom` | `0x036954C8` | `+0x00` |
+| `WsRoomService` | `0x036AB988` | `+0x00` |
+| `RoomCoopV2View` | `0x036746D0` | `+0x00` |
+| `UIPanelManager` | `0x03695D80` | `+0x00` |
+| `ChinhPhucDataService` | `0x0366F870` | `+0x00` |
+
+B5 boss-room entry fields:
+
+| Type | Member | Offset |
+|---|---|---:|
+| `ManagerRoom` | `ButtonStart` | `+0x28` |
+| `RoomCoopV2View` | `_refs`, `_start` | `+0x20`, `+0x68` |
+| `RoomCoopV2Refs` | `ButtonStart` | `+0x38` |
+| `RoomStartState` | `_phase`, `_myReady` | `+0x10`, `+0x14` |
+| `WsRoomService` | `OnStartCountdown`, `OnStartCancelled` | `+0xB8`, `+0xC0` |
+
+`RoomStartState.Describe` at RVA `0x007FF6E0` proves the main-button action
+depends on `Idle/ReadyWait/Counting/Locked`. Automated first entry is bounded
+to `Idle` and `_myReady == false`; this prevents a repeated click from
+executing `ReadyOff` or `CancelCountdown`.
+
+### 1.7.4-b5 multiplier domain
+
+`Dot.multiplier` remains `System.Int32` at `+0x88`. Native
+`DotMultiplierRoll.Roll` at RVA `0x00C6D960` walks multiplier tiers from 7
+down to 2; its `PermilleAt` helper at RVA `0x00C6DB40` accepts tiers 2..7 and
+the static `PERMILLE` table has eight entries. The turn gates make x5..x7
+eligible from turn 20. Immutable server `MATCH_MOVE_RES` payloads from FarmRun
+`e746727a66bc4f7589e416b1abaacf8e` independently contain x5, x6 and x7 cells.
+The exact supported runtime domain is therefore `1..7`; values outside it are
+UNKNOWN/invalid and must not be published.
+
+The b5 native Unity ownership bridge anchors are:
+
+| Anchor | b5 RVA |
+|---|---:|
+| cached `Component.get_gameObject` target | `0x038AA280` |
+| managed/native unmarshal signature | `0x0136097F` |
+
+The first cache resolves to the unchanged UnityPlayer function at RVA
+`0x01067390`. Both GameAssembly anchors were verified against the installed
+b5 process before authorizing runtime button geometry.
+
+### 1.7.4-b5 Chinh Phuc cell-button geometry correction
+
+The b5 `ManagerChinhPhuc.OnReceived` body at RVA `0x00AA0B30` calls
+`GameObject.GetComponentsInChildren<Button>(true)` for each island panel, then
+pairs `listPetEnemy[i]` with `buttons[i]`. The configured Starburst entry is
+group index 5, pet index 7, so the room-opening control is the eighth cell
+Button in the active island panel. Its live `RectTransform` is the navigation
+geometry authority.
+
+`EnsureBadgeLayer` at RVA `0x00AA4EF0` creates a later sibling layer above the
+cell controls. `EnsureOrderBadgeTap` at RVA `0x00AA91A0` attaches a separate
+Button whose `<>c__DisplayClass78_0` delegate opens the boss information tip.
+Therefore the hunt-order digit `8` is not a room-entry hitbox and must never be
+used as the click coordinate.
+
+The external reader now reconstructs Unity's root-first Transform traversal,
+takes the leading DTO-sized cell-button slice, selects `buttons[pet_index]`,
+and reads that exact Button's native RectTransform. Pointer ownership,
+hierarchy stability, active/interactable state and CanvasGroup gates all fail
+closed. No screenshot, game method call, memory write or ASLR-dependent runtime
+address is used for boss selection.
+
+Evidence:
+
+- `reverse/reverse_1.7.4-b5/cs/Assembly-CSharp/ManagerChinhPhuc.cs:16-41,184-200,446,466-475`
+- read-only native disassembly of `GameAssembly.dll` RVAs `0x00AA0B30`,
+  `0x00AA4EF0` and `0x00AA91A0`
+
+Other migrated offsets used by the runtime are recorded in the b5
+compatibility report. Any value not verified there remains UNKNOWN.

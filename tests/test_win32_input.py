@@ -175,6 +175,22 @@ class WindowPreparationTests(unittest.TestCase):
         self.assertEqual((backend.geometry.width, backend.geometry.height), (1280, 640))
         self.assertGreaterEqual(backend.restore_calls, 2)
 
+    def test_start_preflight_applies_selected_aspect_safe_profile(self) -> None:
+        backend = FakeBackend()
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 640)
+
+        prepared = prepare_bound_window(
+            binding,
+            backend,
+            client_width=800,
+            client_height=400,
+            sleeper=lambda _seconds: None,
+        )
+
+        self.assertTrue(prepared)
+        self.assertEqual(backend.resize_calls, [(800, 400)])
+        self.assertEqual((backend.geometry.width, backend.geometry.height), (800, 400))
+
     def test_start_preflight_wrong_pid_fails_without_resize(self) -> None:
         backend = FakeBackend()
         backend.pid = 999
@@ -216,6 +232,42 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         ])
         # Xác nhận kết quả có cộng thêm random
         self.assertEqual(result.inter_click_delay_seconds, 0.35 + 0.1)
+
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_guarded_executor_reclaims_focus_at_each_click_boundary(
+        self, _mock_random_uniform
+    ) -> None:
+        class GuardedBackend(FakeBackend):
+            def __init__(self) -> None:
+                super().__init__()
+                self.focused = True
+                self.reclaim_calls = 0
+
+            def is_foreground(self, _hwnd: int) -> bool:
+                return self.focused
+
+            def ensure_foreground_for_guarded_input(self, _hwnd: int) -> bool:
+                self.reclaim_calls += 1
+                self.focused = True
+                return True
+
+        backend = GuardedBackend()
+
+        def lose_focus_during_delay(_seconds: float) -> None:
+            backend.focused = False
+
+        executor = ForegroundClickExecutor(backend, sleeper=lose_focus_during_delay)
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(binding, plan)
+
+        self.assertEqual(result.status, ClickStatus.SENT)
+        self.assertEqual(result.sent_clicks, 2)
+        self.assertEqual(backend.clicks, 2)
+        self.assertGreaterEqual(backend.reclaim_calls, 4)
 
     @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
     def test_drag_flicks_quickly_and_releases_past_second_gem_centre(
@@ -424,8 +476,93 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(backend.clicks, 1)
         self.assertEqual(result.inter_click_delay_seconds, 0.35 + 0.1)
 
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_stop_between_two_click_endpoints_never_sends_second_click(
+        self, _mock_random_uniform
+    ) -> None:
+        backend = FakeBackend()
+        stopped = False
+        sleeps = 0
+
+        def sleeper(_seconds: float) -> None:
+            nonlocal stopped, sleeps
+            sleeps += 1
+            # reaction, first cursor settle, then inter-click delay
+            if sleeps == 3:
+                stopped = True
+
+        executor = ForegroundClickExecutor(backend, sleeper=sleeper)
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(
+            binding,
+            plan,
+            stop_requested=lambda: stopped,
+        )
+
+        self.assertEqual(result.status, ClickStatus.PARTIAL_INPUT)
+        self.assertEqual(result.sent_clicks, 1)
+        self.assertEqual(backend.clicks, 1)
+
+    @patch("pokiguard_v2.win32_input.random.uniform", return_value=0.0)
+    def test_stop_during_drag_always_releases_mouse_button(
+        self, _mock_random_uniform
+    ) -> None:
+        backend = FakeBackend()
+        checks = 0
+
+        def stopped() -> bool:
+            nonlocal checks
+            checks += 1
+            # Before reaction and before mouse-down remain clear; the first
+            # in-drag checkpoint observes the stop.
+            return checks >= 3
+
+        executor = ForegroundClickExecutor(
+            backend,
+            input_mode="drag",
+            sleeper=lambda _value: None,
+        )
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(
+            binding,
+            plan,
+            stop_requested=stopped,
+        )
+
+        self.assertEqual(result.status, ClickStatus.PARTIAL_INPUT)
+        self.assertEqual(result.sent_clicks, 1)
+        self.assertEqual(backend.button_events, ["down", "up"])
+
 
 class FarmControlAuthorityTests(unittest.TestCase):
+    def test_started_atomic_input_can_poll_its_own_emergency_authority(self) -> None:
+        edges = FarmControlHotkeyEdges()
+        completed = threading.Event()
+        result: list[tuple[bool, object | None]] = []
+
+        def operation() -> tuple[bool, bool]:
+            return edges.poll()
+
+        worker = threading.Thread(
+            target=lambda: (result.append(edges.execute_if_authorized(operation)), completed.set())
+        )
+        worker.start()
+
+        self.assertTrue(
+            completed.wait(1.0),
+            "nested emergency polling deadlocked the accepted input operation",
+        )
+        worker.join(1.0)
+        self.assertEqual(result, [(True, (False, False))])
+
     def test_emergency_ack_waits_for_started_atomic_input_then_denies_future(self) -> None:
         edges = FarmControlHotkeyEdges()
         input_started = threading.Event()

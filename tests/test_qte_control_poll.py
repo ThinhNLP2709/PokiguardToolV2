@@ -30,6 +30,7 @@ from tools.pet_qte_observer import (
     _poll_delay,
     _requires_full_qte_result_scan,
     _notify_explicit_server_reject,
+    _is_expected_initial_runtime_match,
 )
 from tools.pet_skill_action import Phase3b3RuntimeHook, build_parser
 from tests.test_pet_skill_action import (
@@ -82,6 +83,41 @@ class QteControlPollTests(unittest.TestCase):
         args = build_parser().parse_args(["--execute-once"])
         self.assertEqual(args.result_timeout, 15.0)
         self.assertEqual(args.post_state_timeout, 30.0)
+
+    def test_embedded_observer_initial_binding_is_not_a_match_change(self):
+        runtime_hook = Mock()
+        runtime_hook.is_expected_initial_match_id.return_value = True
+
+        self.assertTrue(
+            _is_expected_initial_runtime_match(
+                runtime_hook,
+                previous_match_id=None,
+                runtime_match_id="M_A",
+            )
+        )
+        runtime_hook.is_expected_initial_match_id.assert_called_once_with("M_A")
+
+    def test_real_or_unexpected_match_change_still_invalidates(self):
+        runtime_hook = Mock()
+        runtime_hook.is_expected_initial_match_id.return_value = True
+
+        self.assertFalse(
+            _is_expected_initial_runtime_match(
+                runtime_hook,
+                previous_match_id="M_A",
+                runtime_match_id="M_B",
+            )
+        )
+        runtime_hook.is_expected_initial_match_id.assert_not_called()
+
+        runtime_hook.is_expected_initial_match_id.return_value = False
+        self.assertFalse(
+            _is_expected_initial_runtime_match(
+                runtime_hook,
+                previous_match_id=None,
+                runtime_match_id="M_UNEXPECTED",
+            )
+        )
 
     def test_fresh_control_has_no_board_cards_or_publication(self):
         p = self.provider

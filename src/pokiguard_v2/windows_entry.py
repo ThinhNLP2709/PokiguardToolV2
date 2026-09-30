@@ -17,6 +17,7 @@ from pokiguard_v2.version import APP_TITLE
 
 
 PACKAGING_SELF_CHECK_ARG = "--packaging-self-check"
+_PACKAGED_CONSOLE_STREAM = None
 
 
 def _timestamp() -> str:
@@ -41,6 +42,36 @@ def _append_startup_event(path: Path, event: str, **fields: object) -> None:
 
 def _fallback_startup_log() -> Path:
     return Path(tempfile.gettempdir()).resolve() / "PokiguardToolV2-startup.jsonl"
+
+
+def _redirect_frozen_standard_streams(
+    paths: AppPaths,
+    *,
+    frozen: bool | None = None,
+) -> Path | None:
+    """Keep in-process controller diagnostics valid in a windowed build.
+
+    PyInstaller ``console=False`` does not provide a durable console stream.
+    A launcher may temporarily leave inherited handles on ``sys.stdout`` and
+    ``sys.stderr``; once that launcher exits, an otherwise harmless ``print``
+    can raise ``OSError(22)`` inside the FarmRunner thread.  The packaged app
+    therefore owns one append-only diagnostic stream for its full lifetime.
+    Source runs keep their normal terminal streams.
+    """
+
+    is_frozen = (
+        bool(getattr(sys, "frozen", False)) if frozen is None else bool(frozen)
+    )
+    if not is_frozen:
+        return None
+
+    global _PACKAGED_CONSOLE_STREAM
+    output_path = paths.startup_logs / "packaged_console.log"
+    stream = output_path.open("a", encoding="utf-8", buffering=1)
+    _PACKAGED_CONSOLE_STREAM = stream
+    sys.stdout = stream
+    sys.stderr = stream
+    return output_path
 
 
 def _show_error(message: str) -> None:
@@ -93,6 +124,7 @@ def _run_packaging_self_check(paths: AppPaths) -> int:
 def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = None) -> int:
     resolved = paths or current_app_paths()
     resolved.ensure_writable_directories()
+    console_log = _redirect_frozen_standard_streams(resolved)
     _append_startup_event(
         resolved.startup_log,
         "packaged_app_started",
@@ -100,6 +132,7 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
         executable=str(Path(sys.executable).resolve()),
         installRoot=str(resolved.install_root),
         dataRoot=str(resolved.data_root),
+        consoleLog=str(console_log) if console_log is not None else None,
         currentWorkingDirectoryIgnored=True,
         automaticStart=False,
         automaticResume=False,

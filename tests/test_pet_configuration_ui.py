@@ -17,9 +17,17 @@ from pokiguard_v2.desktop_control_plane import (
 )
 from pokiguard_v2.desktop_farm_controller import DesktopFarmControllerManager
 from pokiguard_v2.desktop_preferences import DesktopPreferenceStore
-from pokiguard_v2.desktop_ui import DesktopApplication, DesktopEventLog, DesktopViewModel, PREFERENCE_TABLE_ROWS
+from pokiguard_v2.desktop_ui import (
+    DesktopApplication,
+    DesktopEventLog,
+    DesktopViewModel,
+    GAME_WINDOW_SIZE_LABELS,
+    PREFERENCE_TABLE_ROWS,
+)
 from pokiguard_v2.farm_checkpoint import LEGACY_CHECKPOINT_SCHEMA, write_checkpoint
 from pokiguard_v2.farm_run import FarmRun
+from pokiguard_v2.input_delivery import InputDeliveryMode
+from pokiguard_v2.game_window_size import GameWindowSizeProfile
 from pokiguard_v2.pet_configuration import (
     AUDITION_LABELS, AuditionMode, DamageCardMode, EvolutionTarget,
     GameplayConfig, MainPetType, PET_SKILL_FIRE_CONDITION_LABELS,
@@ -88,6 +96,45 @@ class PetConfigurationTkTests(unittest.TestCase):
             self.assertTrue(button.instate(["disabled"]))
             button.invoke()
             self.assertEqual(getattr(self.app, name).get(), "normal")
+
+    def test_window_size_save_applies_immediately_and_persists_profile(self):
+        applied = []
+        self.app.game_window_size_changed = applied.append
+        self.app.game_window_size_profile.set(
+            GAME_WINDOW_SIZE_LABELS[GameWindowSizeProfile.COMPACT]
+        )
+
+        self.app._validate_draft()
+
+        self.assertEqual(applied, [GameWindowSizeProfile.COMPACT])
+        loaded = self.store.load()
+        self.assertTrue(loaded.loaded)
+        self.assertIs(
+            loaded.config.game_window_size_profile,
+            GameWindowSizeProfile.COMPACT,
+        )
+
+    def test_tool_sound_switch_saves_and_reaches_launch_config(self):
+        self.assertTrue(self.app.tool_sound_enabled.get())
+
+        self.app.tool_sound_widget.invoke()
+
+        self.assertFalse(self.app.tool_sound_enabled.get())
+        self.assertFalse(self.store.load().config.tool_sound_enabled)
+        self.app._start_farm()
+        self.assertTrue(self.runner.entered.wait(1))
+        self.assertFalse(self.runner.launches[0].config.tool_sound_enabled)
+
+    def test_input_delivery_row_does_not_overlap_preference_actions(self):
+        delivery_row = int(self.app.input_delivery_widget.grid_info()["row"])
+        validate_row = int(self.app.validate_button.grid_info()["row"])
+        checkpoint_row = int(
+            self.app.load_checkpoint_preferences_button.grid_info()["row"]
+        )
+
+        self.assertEqual(delivery_row, 9)
+        self.assertGreater(validate_row, delivery_row)
+        self.assertGreater(checkpoint_row, validate_row)
 
     def test_pet_skill_updates_and_invalid_selection_normalizes(self):
         skill = self.button("damage_card", "pet_skill")
@@ -223,14 +270,14 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.button("main_pet", "legendary").invoke()
         self.button("evolution", "none").invoke()
         self.button("damage_card", "pet_skill").invoke()
-        for value in ("", "-1", "+5", "10.5", "1e1", "257"):
+        for value in ("", "-1", "+5", "10.5", "1e1", "449"):
             with self.subTest(value=value):
                 self.app.pet_skill_fire_value.set(value)
                 valid, _reason = self.app._draft_validity()
                 self.assertFalse(valid)
                 self.app._render()
                 self.assertTrue(self.app.start_button.instate(["disabled"]))
-        for value in ("0", "10", "256"):
+        for value in ("0", "10", "256", "448"):
             with self.subTest(value=value):
                 self.app.pet_skill_fire_value.set(value)
                 valid, reason = self.app._draft_validity()
@@ -345,6 +392,9 @@ class PetConfigurationTkTests(unittest.TestCase):
             replace(
                 FarmRun(FarmTarget("1289", "Starburst")).checkpoint_payload(),
                 gameplay_config=pet_skill,
+                input_delivery_mode=(
+                    InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+                ),
             ),
         )
         self.plane.refresh()
@@ -356,6 +406,14 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.app.resume_commands_submitted, 0)
         self.assertEqual(self.app.pet_skill_fire_condition.get(), "Nộ đủ")
         self.assertEqual(self.app.pet_skill_fire_value.get(), "17")
+        self.assertEqual(
+            self.app.input_delivery_mode.get(),
+            "Ghim game để tự chơi khi dùng máy — Beta",
+        )
+        self.assertIs(
+            self.plane.snapshot().config.input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
         self.assertEqual(self.runner.starts, 0)
         self.app._render()
         self.assertFalse(self.app.start_button.instate(["disabled"]))
@@ -378,6 +436,8 @@ class PetConfigurationTkTests(unittest.TestCase):
     def test_settings_lock_until_controller_stops_and_keep_disabled_options(self):
         self.app._start_farm()
         self.assertTrue(self.runner.entered.wait(1))
+        self.app._render()
+        self.assertTrue(self.app.input_delivery_widget.instate(["disabled"]))
         for widget in self.app._pet_option_widgets.values():
             self.assertTrue(widget.instate(["disabled"]))
         launch_config = self.runner.launches[0].config
@@ -386,6 +446,15 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertEqual(self.runner.launches[0].config, launch_config)
         with self.assertRaisesRegex(RuntimeError, "CONFIG_LOCKED"):
             self.plane.update_config(replace(launch_config, evolution=EvolutionTarget.NONE))
+        with self.assertRaisesRegex(RuntimeError, "CONFIG_LOCKED"):
+            self.plane.update_config(
+                replace(
+                    launch_config,
+                    input_delivery_mode=(
+                        InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+                    ),
+                )
+            )
         self.runner.release.set()
         self.assertTrue(self.manager.wait(2))
         self.plane.refresh()

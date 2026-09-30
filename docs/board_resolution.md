@@ -199,7 +199,8 @@ bounded current-render fallback:
    component owner and exactly one managed component with the b2 Dot class;
 4. read `Dot.column +0x20`, `row +0x24`, `_board +0x48`, `multiplier +0x88`,
    motion flags `+0xB0/+0xE0/+0xF4`, `PoolTag +0xF8`, and `RenderHidden +0x129`;
-5. require 64 unique coordinates, six known tags and multipliers 1..4, then
+5. on the b2 build, require 64 unique coordinates, six known tags and
+   multipliers 1..4 (the current b5 domain is recorded below), then
    repeat every ownership/identity read and the ACK HashSet read;
 6. publish the resulting board at the unchanged highest ACK watermark only
    after the existing whole-provider stability confirmation.
@@ -369,3 +370,47 @@ target method. Vì vậy không có `GameAssemblyBase + RVA` nào được ghi/h
 3. Nếu external static resolution vẫn không ổn định, dừng Level A và xin review trước khi
    chuyển sang IL2CPP bridge read-only ở phase sau. Bridge có thể resolve class/field theo
    runtime API, nhưng không thuộc Phase 1.
+
+## Pokiguard 1.7.4-b5 board addendum — 2026-09-28
+
+The b5 GameAssembly hash is
+`E2A2457128B4F412EAE302AC5314350F0C18529C12716B4EBDB36281D923F9E9`.
+The three existing read-only Board owners remain valid with migrated TypeInfo
+RVAs:
+
+```text
+GameAssembly.base + 0x369C9A0 -> Board Il2CppClass -> static_fields +0x10 -> Board*
+GameAssembly.base + 0x369C898 -> Active Il2CppClass -> static_fields +0x00 -> Active* -> board +0x38
+GameAssembly.base + 0x3697630 -> ManagerMatch Il2CppClass -> static_fields +0x00 -> ManagerMatch* -> active +0x130 -> board +0x38
+```
+
+Board dimensions, `allDots`, `active`, cascade, current state, processing UI,
+game-over and result-title offsets are unchanged. Removing `HOTTURN` and
+`SUBHOTTURN` shifted only the late readiness block:
+
+| Field | b4 | b5 |
+|---|---:|---:|
+| `isBoardReady` | `+0x398` | `+0x390` |
+| `isUsingLegendCard` | `+0x399` | `+0x391` |
+| `isUsingMega` | `+0x3A0` | `+0x398` |
+| `isResuming` | `+0x3B8` | `+0x3B0` |
+| `isMega1PanelOpen` | `+0x478` | `+0x470` |
+
+The b5 reader applies these offsets together with the exact hash gate. It does
+not enable the b4 hash with the b5 layout.
+
+The b5 multiplier domain is `1..7`. This is verified by two independent
+sources: immutable `MATCH_MOVE_RES` JSON in FarmRun
+`e746727a66bc4f7589e416b1abaacf8e` contains x5, x6 and x7 cells, and native
+`DotMultiplierRoll.Roll` at RVA `0x00C6D960` iterates tiers 7 down to 2 while
+`PermilleAt` at RVA `0x00C6DB40` accepts tiers 2 through 7. Tiers 5..7 become
+eligible only from turn 20, which is why the older x1..x4 validator passed
+short matches but rejected every board at local turns 21, 23 and 25 in that
+run. Both the transport DTO decoder and rendered-Dot fallback now require
+exact integer multipliers in `1..7`; any value outside this range still fails
+closed.
+
+Native ownership of the rendered Dot/GameObject graph uses the b5
+`Component.get_gameObject` cache at `GameAssembly+0x38AA280` and the b5
+managed/native unmarshal signature at `GameAssembly+0x136097F`. The resolved
+UnityPlayer function remains `UnityPlayer+0x1067390`.

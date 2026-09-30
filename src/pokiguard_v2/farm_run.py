@@ -22,6 +22,7 @@ from .farm_checkpoint import (
     ResumeDecision,
 )
 from .pet_configuration import GameplayConfig
+from .input_delivery import InputDeliveryMode
 from .farm_control import FarmControlState, GracefulStopController
 from .farm_cycle import OpeningEvidence
 from .state import (
@@ -338,6 +339,7 @@ class FarmRunSnapshot:
     checkpoint_seq: int = 0
     continuation_of: str | None = None
     gameplay_config: GameplayConfig = GameplayConfig()
+    input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND
 
 
 class FarmRun:
@@ -366,11 +368,17 @@ class FarmRun:
         continuation_of: str | None = None,
         max_retained_events: int = 4000,
         gameplay_config: GameplayConfig | None = None,
+        input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND,
     ) -> None:
+        if not isinstance(input_delivery_mode, InputDeliveryMode):
+            raise ValueError("input_delivery_mode must be InputDeliveryMode")
+        self._input_delivery_mode = input_delivery_mode
         self._gameplay_config = gameplay_config or (resume.gameplay_config if resume else None) or GameplayConfig()
         self._gameplay_config.require_farm_policy()
         if resume and resume.gameplay_config is not None and resume.gameplay_config != self._gameplay_config:
             raise ValueError("CHECKPOINT_CONFIG_MISMATCH")
+        if resume and resume.input_delivery_mode is not self._input_delivery_mode:
+            raise ValueError("CHECKPOINT_INPUT_DELIVERY_MODE_MISMATCH")
         self.farm_run_id = farm_run_id or uuid4().hex
         self.target = target
         self.limits = limits or FarmRunLimits()
@@ -518,6 +526,7 @@ class FarmRun:
         return CheckpointPayload(
             schema_version=CHECKPOINT_SCHEMA,
             gameplay_config=self._gameplay_config,
+            input_delivery_mode=self._input_delivery_mode,
             farm_run_id=self.farm_run_id,
             continuation_of=self.continuation_of,
             checkpoint_seq=self.checkpoint_seq,
@@ -809,6 +818,7 @@ class FarmRun:
             self.checkpoint_seq,
             self.continuation_of,
             self._gameplay_config,
+            self._input_delivery_mode,
         )
 
     def observe_initial_lobby(self, lobby: BossLobbyState) -> bool:
@@ -830,6 +840,33 @@ class FarmRun:
         if not self._entry_budget_available():
             return False
         self._transition(FarmRunState.ENTRY_READY, "exact_target_resolved")
+        return True
+
+    def observe_entry_preflight_runtime_changed(self) -> bool:
+        """Return an untouched entry attempt to the lobby/navigation router.
+
+        The room can disappear after it was resolved but before Boss Start is
+        reserved (for example when the operator closes the just-returned room).
+        The atomic entry preflight correctly rejects that stale room.  Because
+        no entry permit or Windows input exists yet, this is a navigation
+        transition rather than a failed match attempt.
+        """
+
+        if (
+            self.state is not FarmRunState.ENTRY_READY
+            or self._pending is not None
+            or self.current_session is not None
+        ):
+            return self._reject(
+                "entry_preflight_runtime_change_out_of_order",
+                observedState=self.state,
+            )
+        self._transition(
+            FarmRunState.WAIT_BOSS_LOBBY,
+            "entry_preflight_runtime_changed",
+            matchAttempt=self.match_attempts + 1,
+            entryInputSent=False,
+        )
         return True
 
     def reserve_entry(self, *, foreground: bool) -> FarmInputPermit | None:

@@ -115,6 +115,20 @@ def _defer_heap_result_scan(
     return 0.0 <= elapsed < DISPATCHER_RESULT_EXCLUSIVE_WINDOW_SECONDS
 
 
+def _is_expected_initial_runtime_match(
+    runtime_hook: Any,
+    *,
+    previous_match_id: str | None,
+    runtime_match_id: str | None,
+) -> bool:
+    """Recognize the first sample of an already-bound embedded observer."""
+
+    if runtime_hook is None or previous_match_id is not None:
+        return False
+    predicate = getattr(runtime_hook, "is_expected_initial_match_id", None)
+    return bool(callable(predicate) and predicate(runtime_match_id))
+
+
 def _poll_provider(provider: Any, runtime_hook: Any) -> tuple[Any, bool]:
     def trace(stage: str) -> None:
         callback = getattr(runtime_hook, "trace_stage", None)
@@ -995,16 +1009,22 @@ def run(
                 continue
 
             if runtime.match_id != previous_match_id:
+                expected_initial_binding = _is_expected_initial_runtime_match(
+                    runtime_hook,
+                    previous_match_id=previous_match_id,
+                    runtime_match_id=runtime.match_id,
+                )
                 _write(
                     log,
                     "match_changed",
                     before=previous_match_id,
                     after=runtime.match_id,
                     turn=runtime.turn,
+                    expectedInitialBinding=expected_initial_binding,
                 )
                 tracker.invalidate()
                 shadow_observer.invalidate("match_changed")
-                if runtime_hook is not None:
+                if runtime_hook is not None and not expected_initial_binding:
                     runtime_hook.invalidate("MATCH_CHANGED")
                 previous_match_id = runtime.match_id
                 pending = None

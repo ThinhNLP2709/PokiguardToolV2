@@ -82,9 +82,10 @@ class StateModelTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             BoardState(bad)  # type: ignore[arg-type]
 
-    def test_rejects_unproven_multiplier(self) -> None:
+    def test_accepts_b5_maximum_and_rejects_multiplier_above_it(self) -> None:
+        self.assertEqual(CellState(0, 0, GemType.HEALTH, 7).multiplier, 7)
         with self.assertRaises(ValueError):
-            CellState(0, 0, GemType.HEALTH, 5)
+            CellState(0, 0, GemType.HEALTH, 8)
 
     def test_adapter_accepts_actual_v1_token_when_reference_is_available(self) -> None:
         v1_root = Path(r"D:\PokiguardAuto")

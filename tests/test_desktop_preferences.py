@@ -15,6 +15,8 @@ from pokiguard_v2.desktop_preferences import (
     PREFERENCE_SCHEMA,
     PreferenceError,
 )
+from pokiguard_v2.input_delivery import InputDeliveryMode
+from pokiguard_v2.game_window_size import GameWindowSizeProfile
 from pokiguard_v2.win32_input import BoardInputMode
 
 
@@ -47,6 +49,9 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
             max_match_attempts=32,
             pet_skill_fire_condition=PetSkillFireCondition.RAGE_GEM_COUNT,
             pet_skill_fire_value=17,
+            input_delivery_mode=InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+            game_window_size_profile=GameWindowSizeProfile.SMALL,
+            tool_sound_enabled=False,
         )
         self.store.save(config, game_location=r"D:\pc\Pokiguard-1.7.4.exe")
         result = self.store.load()
@@ -56,6 +61,15 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         self.assertEqual(result.config.intelligence, config.intelligence)
         self.assertEqual(result.config.board_input_mode, config.board_input_mode)
         self.assertEqual(result.config.audition_mode, AuditionMode.V2_FOUR_DIRECTION)
+        self.assertIs(
+            result.config.input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
+        self.assertIs(
+            result.config.game_window_size_profile,
+            GameWindowSizeProfile.SMALL,
+        )
+        self.assertFalse(result.config.tool_sound_enabled)
         self.assertEqual(
             result.config.target_completed_matches,
             config.target_completed_matches,
@@ -82,6 +96,15 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         )
         self.assertEqual(raw["config"]["board_input_mode"], "two_click")
         self.assertEqual(raw["config"]["audition_mode"], "audition_v2")
+        self.assertEqual(
+            raw["config"]["input_delivery_mode"],
+            "pinned_foreground_lease_beta",
+        )
+        self.assertEqual(
+            raw["config"]["game_window_size_profile"],
+            "small_960x480",
+        )
+        self.assertFalse(raw["config"]["tool_sound_enabled"])
         self.assertEqual(raw["config"]["pet_skill_fire_value"], 17)
         self.assertEqual(raw["config"]["pet_skill_fire_condition"], "rage_gem_count")
         encoded = json.dumps(raw)
@@ -123,6 +146,31 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         self.assertEqual(3, result.config.target_completed_matches)
         self.assertEqual((), result.warnings)
 
+    def test_missing_delivery_mode_migrates_to_safe_foreground_default(self) -> None:
+        raw = self._valid_payload()
+        raw["config"].pop("input_delivery_mode", None)
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+
+        loaded = self.store.load()
+
+        self.assertTrue(loaded.loaded)
+        self.assertIs(loaded.config.input_delivery_mode, InputDeliveryMode.FOREGROUND)
+
+    def test_missing_window_and_sound_preferences_use_legacy_defaults(self) -> None:
+        raw = self._valid_payload()
+        raw["config"].pop("game_window_size_profile", None)
+        raw["config"].pop("tool_sound_enabled", None)
+        self.path.write_text(json.dumps(raw), encoding="utf-8")
+
+        loaded = self.store.load()
+
+        self.assertTrue(loaded.loaded)
+        self.assertIs(
+            loaded.config.game_window_size_profile,
+            GameWindowSizeProfile.ORIGINAL,
+        )
+        self.assertTrue(loaded.config.tool_sound_enabled)
+
     def test_missing_threshold_uses_default_and_invalid_threshold_falls_back(self) -> None:
         raw = self._valid_payload()
         self.path.write_text(json.dumps(raw), encoding="utf-8")
@@ -130,7 +178,7 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         self.assertTrue(loaded.loaded)
         self.assertEqual(loaded.config.pet_skill_fire_value, 10)
 
-        raw["config"]["pet_skill_fire_value"] = 257
+        raw["config"]["pet_skill_fire_value"] = 449
         self.path.write_text(json.dumps(raw), encoding="utf-8")
         rejected = self.store.load()
         self.assertFalse(rejected.loaded)
@@ -155,7 +203,7 @@ class DesktopPreferenceStoreTests(unittest.TestCase):
         raw["config"].update(
             {
                 "pet_skill_fire_condition": "skill_cost_ready",
-                "pet_skill_fire_value": 256,
+                "pet_skill_fire_value": 448,
             }
         )
         self.path.write_text(json.dumps(raw), encoding="utf-8")

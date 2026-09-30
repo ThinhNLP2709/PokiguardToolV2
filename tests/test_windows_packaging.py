@@ -22,6 +22,7 @@ from pokiguard_v2.runtime_calibration import production_input_calibration  # noq
 from pokiguard_v2.version import APP_BUILD, APP_TITLE, APP_VERSION  # noqa: E402
 from pokiguard_v2.windows_entry import (  # noqa: E402
     PACKAGING_SELF_CHECK_ARG,
+    _redirect_frozen_standard_streams,
     run_packaged,
 )
 
@@ -52,6 +53,35 @@ class WindowsPackagingTests(unittest.TestCase):
             self.assertFalse(started["automaticStart"])
             self.assertFalse(started["automaticResume"])
             self.assertEqual(Path(started["dataRoot"]), paths.data_root)
+
+    def test_windowed_build_redirects_controller_prints_to_durable_log(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = self._paths(Path(temporary).resolve())
+            paths.ensure_writable_directories()
+            original_stdout = sys.stdout
+            original_stderr = sys.stderr
+            stream = None
+            try:
+                output_path = _redirect_frozen_standard_streams(
+                    paths,
+                    frozen=True,
+                )
+                stream = sys.stdout
+                print("controller transition", flush=True)
+            finally:
+                sys.stdout = original_stdout
+                sys.stderr = original_stderr
+                if stream is not None:
+                    stream.close()
+
+            self.assertEqual(
+                output_path,
+                paths.startup_logs / "packaged_console.log",
+            )
+            self.assertIn(
+                "controller transition",
+                output_path.read_text(encoding="utf-8"),
+            )
 
     def test_packaged_entry_rejects_a_second_ui_owner(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -108,6 +138,10 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertIn("reset_capabilities.json", spec)
         self.assertIn("exit_ui_live_calibration.json", spec)
         self.assertIn("console=False", spec)
+        self.assertIn('"pokiguard_v2.input_delivery"', spec)
+        self.assertIn('"pokiguard_v2.pinned_board_input"', spec)
+        self.assertIn('"pokiguard_v2.foreground_lease_transport"', spec)
+        self.assertIn('"pokiguard_v2.foreground_qte_lease_transport"', spec)
         for forbidden in ("reverse", "cpp2il", "Pokiguard.exe", "GameAssembly.dll"):
             self.assertNotIn(forbidden, spec)
 

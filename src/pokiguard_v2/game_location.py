@@ -20,11 +20,11 @@ _VERSIONED_NAME = re.compile(
 )
 _LEGACY_NAME = "pokiguard.exe"
 
-# Runtime layouts are verified only for the exact current 1.7.4-b4 binary.
+# Runtime layouts are verified only for the exact current 1.7.4-b5 binary.
 # Future executable names may still resolve in Settings, but attachment must
 # fail closed until their GameAssembly fingerprint is reverse-verified.
 SUPPORTED_GAME_ASSEMBLY_SHA256 = frozenset(
-    {"d55bde20918f65e84700736e0ede33aa8ee50a10956590d28fb8e53d185b28d6"}
+    {"e2a2457128b4f412eae302ac5314350f0c18529c12716b4ebdb36281d923f9e9"}
 )
 
 

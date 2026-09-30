@@ -9,6 +9,7 @@ from pathlib import Path
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
 from pokiguard_v2.farm_checkpoint import (
     CHECKPOINT_SCHEMA,
+    PRIOR_CHECKPOINT_SCHEMA,
     CheckpointError,
     CheckpointPayload,
     ResumeDecision,
@@ -16,6 +17,7 @@ from pokiguard_v2.farm_checkpoint import (
     validate_for_resume,
     write_checkpoint,
 )
+from pokiguard_v2.input_delivery import InputDeliveryMode
 from pokiguard_v2.farm_control import FarmControlState, GracefulStopController
 from pokiguard_v2.farm_cycle import OpeningEvidence
 from pokiguard_v2.farm_run import (
@@ -345,6 +347,44 @@ class CheckpointRoundTripTests(unittest.TestCase):
             self.assertEqual(loaded.seen_match_ids, ("M_a", "M_b"))
             self.assertEqual(loaded.schema_version, CHECKPOINT_SCHEMA)
 
+    def test_beta_delivery_mode_round_trips_as_durable_run_intent(self) -> None:
+        payload = replace(
+            _payload(),
+            input_delivery_mode=(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "checkpoint.json"
+            write_checkpoint(path, payload)
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            loaded = load_checkpoint(path)
+
+        self.assertEqual(
+            raw["input_delivery_mode"],
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA.value,
+        )
+        self.assertIs(
+            loaded.input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
+
+    def test_v2_checkpoint_without_delivery_mode_defaults_to_foreground(self) -> None:
+        payload = _payload(finalized="STOPPED_GRACEFULLY")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "checkpoint.json"
+            write_checkpoint(path, payload)
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            raw["schema_version"] = PRIOR_CHECKPOINT_SCHEMA
+            del raw["input_delivery_mode"]
+            path.write_text(json.dumps(raw), encoding="utf-8")
+            before = path.read_bytes()
+            loaded = load_checkpoint(path)
+            after = path.read_bytes()
+
+        self.assertIs(loaded.input_delivery_mode, InputDeliveryMode.FOREGROUND)
+        self.assertEqual(after, before)
+
     def test_atomic_write_leaves_no_temp_on_success(self) -> None:
         payload = _payload()
         with tempfile.TemporaryDirectory() as tmp:
@@ -600,6 +640,64 @@ class CheckpointRoundTripTests(unittest.TestCase):
         self.assertEqual(decision.remaining_completed, 3)
         self.assertEqual(decision.seen_match_ids, ("M_a", "M_b"))
 
+    def test_resume_requires_exact_checkpoint_input_delivery_mode(self) -> None:
+        beta = replace(
+            _payload(finalized="STOPPED_GRACEFULLY"),
+            input_delivery_mode=(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+        )
+        rejected = validate_for_resume(
+            beta,
+            target_boss_id="1289",
+            target_boss_name="Starburst",
+            target_completed_matches=5,
+            max_technical_recoveries=1,
+            max_match_attempts=8,
+            input_delivery_mode=InputDeliveryMode.FOREGROUND,
+        )
+        accepted = validate_for_resume(
+            beta,
+            target_boss_id="1289",
+            target_boss_name="Starburst",
+            target_completed_matches=5,
+            max_technical_recoveries=1,
+            max_match_attempts=8,
+            input_delivery_mode=(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+        )
+
+        self.assertFalse(rejected.allowed)
+        self.assertEqual(
+            rejected.reason,
+            "CHECKPOINT_INPUT_DELIVERY_MODE_MISMATCH",
+        )
+        self.assertTrue(accepted.allowed)
+        self.assertIs(
+            accepted.input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
+
+    def test_foreground_checkpoint_rejects_beta_resume(self) -> None:
+        foreground = _payload(finalized="STOPPED_GRACEFULLY")
+        decision = validate_for_resume(
+            foreground,
+            target_boss_id="1289",
+            target_boss_name="Starburst",
+            target_completed_matches=5,
+            max_technical_recoveries=1,
+            max_match_attempts=8,
+            input_delivery_mode=(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(
+            decision.reason,
+            "CHECKPOINT_INPUT_DELIVERY_MODE_MISMATCH",
+        )
+
     def test_forbidden_gameplay_state_key_rejected(self) -> None:
         payload = _payload()
         raw = dict(zip(
@@ -630,6 +728,22 @@ class CheckpointRoundTripTests(unittest.TestCase):
 
 
 class AccountingContinuityTests(unittest.TestCase):
+    def test_farm_run_snapshot_and_checkpoint_keep_selected_delivery_mode(self) -> None:
+        run = FarmRun(
+            FarmTarget("1289", "Starburst"),
+            input_delivery_mode=(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+        )
+        self.assertIs(
+            run.snapshot().input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
+        self.assertIs(
+            run.checkpoint_payload().input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
+
     def test_pet_skill_profile_round_trip_restores_intent_only(self) -> None:
         profile = GameplayConfig(
             main_pet=MainPetType.LEGENDARY,

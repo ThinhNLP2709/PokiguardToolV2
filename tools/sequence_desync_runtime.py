@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import time
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from pokiguard_v2.il2cpp_external import (
     ExternalReadError,
@@ -270,7 +270,11 @@ class RuntimeSequenceMonitor:
             added += 1
         return added
 
-    def prime_regions(self) -> RuntimeRegionPrime:
+    def prime_regions(
+        self,
+        *,
+        stop_requested: Callable[[], bool] | None = None,
+    ) -> RuntimeRegionPrime:
         """Learn ChatMessageDTO allocation regions while waiting in lobby.
 
         This does not decode messages, mark them seen, or establish a combat
@@ -301,11 +305,19 @@ class RuntimeSequenceMonitor:
             # DTO regions are retained, every later ACK gap broad-scans
             # hundreds of MiB during the player's 14-second turn.
             needles["batch"] = int(batch_class)
+        if stop_requested is not None and stop_requested():
+            raise InterruptedError("runtime region prime stopped")
+
+        def stop_progress(_visited: int, _bytes_read: int) -> None:
+            if stop_requested is not None and stop_requested():
+                raise InterruptedError("runtime region prime stopped")
+
         scan = scan_aligned_qwords(
             self.target.memory,
             all_regions,
             needles,
             chunk_size=self.chunk_mib * 1024 * 1024,
+            progress=stop_progress if stop_requested is not None else None,
         )
         hits = scan.matches.get("chat_message", ())
         learned = regions_containing_addresses(
@@ -324,7 +336,11 @@ class RuntimeSequenceMonitor:
             time.perf_counter() - started,
         )
 
-    def ensure_regions_primed(self) -> RuntimeRegionPrime:
+    def ensure_regions_primed(
+        self,
+        *,
+        stop_requested: Callable[[], bool] | None = None,
+    ) -> RuntimeRegionPrime:
         """Reuse live DTO-region evidence or learn it before entry input.
 
         A cold full ChatMessageDTO scan is deliberately paid while the game is
@@ -349,7 +365,9 @@ class RuntimeSequenceMonitor:
                 0,
                 time.perf_counter() - started,
             )
-        return self.prime_regions()
+        if stop_requested is None:
+            return self.prime_regions()
+        return self.prime_regions(stop_requested=stop_requested)
 
     def observe_captured_messages(
         self,

@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import struct
 import unittest
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
+import pokiguard_v2.chinh_phuc_map as chinh_map
 from pokiguard_v2.chinh_phuc_map import (
     CHINH_PHUC_ISLAND_DISPLAY_NAMES,
     ChinhPhucMapTarget,
     ChinhPhucPlayerPrefs,
+    ChinhPhucTargetMetadata,
     _DIGIT_8_1280X720_ROWS,
     _DIGIT_ROWS,
     PET_CLICK_CLOSURE_SIZE,
@@ -19,6 +23,7 @@ from pokiguard_v2.chinh_phuc_map import (
     _decode_pet_click_closure,
     _find_pet_in_groups,
     _prefixed_dword,
+    discover_chinh_phuc_map_target,
     locate_hunt_order_badge,
 )
 from tests.test_combat_cards import FakeMemory, map_string
@@ -114,11 +119,166 @@ class ChinhPhucMapTests(unittest.TestCase):
             ),
             1289,
         )
-        self.assertIsNone(
-            _prefixed_dword(
-                (("SelectedPetId", 1289), ("SelectedPetId_h1", 1290)),
-                "SelectedPetId",
+
+    def test_live_manager_uses_native_panel_button_without_heap_scan(self) -> None:
+        manager = self.BASE + 0xB000
+        memory = SimpleNamespace(is_readable=lambda _address, _size: True)
+        resolver = SimpleNamespace(memory=memory)
+        process = SimpleNamespace(memory=memory, resolver=resolver)
+        metadata = ChinhPhucTargetMetadata(
+            1289,
+            "Starburst",
+            10,
+            73,
+            6,
+            "Tam giới Tinh",
+            5,
+            7,
+            False,
+            "Đảo rồng",
+            11,
+        )
+        expected = self._target(650)
+        expected = ChinhPhucMapTarget(
+            **{
+                **expected.__dict__,
+                "manager_address": manager,
+                "proof_source": "panel_button_index",
+                "button_viewport_rect": (0.05, 0.50, 0.20, 0.90),
+                "button_root_transform": self.BASE + 0xF000,
+                "button_proof": (
+                    "ManagerChinhPhuc.OnReceived panelButtons[pet_index]"
+                ),
+            }
+        )
+        panel_resolver = MagicMock(return_value=expected)
+        with patch.object(
+            chinh_map, "_find_pet_in_cached_groups", return_value=metadata
+        ), patch.object(
+            chinh_map, "_manager_panel_map_target", panel_resolver
+        ), patch.object(
+            chinh_map, "scan_aligned_qwords"
+        ) as scan:
+            result = discover_chinh_phuc_map_target(
+                process,
+                1289,
+                manager_hint=manager,
+                active_panel_index=5,
             )
+
+        self.assertIs(result, expected)
+        panel_resolver.assert_called_once()
+        scan.assert_not_called()
+
+    def test_panel_button_index_maps_starburst_to_eighth_cell_not_badge(self) -> None:
+        manager = self.BASE + 0xB000
+        panels_array = self.BASE + 0xC000
+        panel = self.BASE + 0xD000
+        cell_buttons = tuple(self.BASE + 0x10000 + i * 0x100 for i in range(11))
+        badge_buttons = tuple(self.BASE + 0x20000 + i * 0x100 for i in range(11))
+        native = self.BASE + 0x30000
+        root = self.BASE + 0x40000
+        metadata = ChinhPhucTargetMetadata(
+            1289,
+            "Starburst",
+            10,
+            73,
+            6,
+            "Tam giới Tinh",
+            5,
+            7,
+            False,
+            "Đảo rồng",
+            11,
+        )
+        prefs = ChinhPhucPlayerPrefs(650, 0, 5, None, "fixture")
+        memory = SimpleNamespace(is_readable=lambda _address, _size: True)
+        resolver = SimpleNamespace(
+            memory=memory,
+            game_assembly_base=self.BASE + 0x50000,
+            read_bool=lambda _address: True,
+        )
+        process = SimpleNamespace(memory=memory, resolver=resolver)
+        reader = MagicMock()
+        reader.read_game_object_descendant_buttons.return_value = (
+            cell_buttons + badge_buttons
+        )
+        reader.read_button_geometry.return_value = SimpleNamespace(
+            active=True,
+            viewport_rect=(0.06, 0.52, 0.20, 0.91),
+            native_button=native,
+            root_transform=root,
+            root_aspect=16 / 9,
+        )
+        with patch.object(
+            chinh_map,
+            "_read_pointer",
+            return_value=panels_array,
+        ), patch.object(
+            chinh_map,
+            "read_reference_array",
+            return_value=(0, 0, 0, 0, 0, panel),
+        ), patch.object(
+            chinh_map, "NativeCardUiReader", return_value=reader
+        ), patch.object(
+            chinh_map, "read_chinh_phuc_player_prefs", return_value=prefs
+        ):
+            result = chinh_map._manager_panel_map_target(
+                process,
+                metadata,
+                manager=manager,
+                active_panel_index=5,
+            )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.button_address, cell_buttons[7])
+        self.assertNotIn(result.button_address, badge_buttons)
+        assert result.viewport_point is not None
+        self.assertAlmostEqual(result.viewport_point[0], 0.13)
+        self.assertAlmostEqual(result.viewport_point[1], 0.715)
+        self.assertEqual(result.proof_source, "panel_button_index")
+        self.assertTrue(result.clean, result.reasons)
+
+    def test_live_active_panel_mismatch_keeps_target_unclean(self) -> None:
+        metadata = ChinhPhucTargetMetadata(
+            1289, "Starburst", 10, 73, 6, "Tam giới Tinh", 5, 7, False,
+            "Đảo rồng", 11,
+        )
+        target = MagicMock()
+        target.resolver = SimpleNamespace(
+            memory=SimpleNamespace(is_readable=lambda _a, _s: True),
+            game_assembly_base=self.BASE,
+            read_bool=lambda _address: True,
+        )
+        target.memory = target.resolver.memory
+        reader = MagicMock()
+        reader.read_game_object_descendant_buttons.return_value = tuple(
+            self.BASE + 0x10000 + i * 0x100 for i in range(11)
+        )
+        reader.read_button_geometry.return_value = SimpleNamespace(
+            active=True,
+            viewport_rect=(0.1, 0.1, 0.2, 0.2),
+            native_button=self.BASE + 0x30000,
+            root_transform=self.BASE + 0x40000,
+            root_aspect=16 / 9,
+        )
+        with patch.object(chinh_map, "_read_pointer", return_value=self.BASE), patch.object(
+            chinh_map, "read_reference_array", return_value=(0, 0, 0, 0, 1)
+        ), patch.object(chinh_map, "NativeCardUiReader", return_value=reader):
+            result = chinh_map._manager_panel_map_target(
+                target,
+                metadata,
+                manager=self.BASE + 0xB000,
+                active_panel_index=4,
+            )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertFalse(result.clean)
+        self.assertIn(
+            "live active panel does not match target cached-data group",
+            result.reasons,
         )
 
     def test_server_group_id_resolves_verified_display_level_and_island(self) -> None:

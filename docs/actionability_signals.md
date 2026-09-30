@@ -74,7 +74,7 @@ stored.
 | Requirement | Runtime source | Authorization rule | Evidence/confidence |
 |---|---|---|---|
 | Combat exists | resolved `Board.Instance` and current `(epoch, Board*, matchId)` session key | Board must exist and the snapshot session must equal the provider's current session | Phase 2B.5 runtime lifecycle; HIGH |
-| Production board | preferred `WsCombatBatch.board : BoardCellDTO[][]`; b2 ops-only fallback `Board.allDots -> GameObject -> Dot` | exactly 64 unique coordinates, exact known tags, multipliers in x1..x4; direct fallback additionally requires exact component/Board ownership and settled Dot flags | `memory_board_hardening.md`; HIGH, first live run 5/5 accepted |
+| Production board | preferred `WsCombatBatch.board : BoardCellDTO[][]`; ops-only fallback `Board.allDots -> GameObject -> Dot` | exactly 64 unique coordinates, exact known tags, current b5 multipliers in x1..x7; direct fallback additionally requires exact component/Board ownership and settled Dot flags | `memory_board_hardening.md`; b5 `DotMultiplierRoll` and immutable server JSON; HIGH |
 | Current/acknowledged | `MatchService._ackedSeqs : HashSet<Int64>` at b2 `+0x1B8` | selected sequence must equal the highest stable ACK watermark; the board may be a same-sequence DTO or the double-sampled rendered Dot board after that ACK | b2 `HandleResEnvelope`/`SendAnimAck`; HIGH, first live run passed |
 | Stable/rendered | `BoardWsApplier` owner/queue/render state, `Board.allDots` reference-array stability, identical DTO/hash confirmation twice | publisher must label the state stable, ready and non-cascade | Phase 2B.5 acceptance; PASS STRONG |
 

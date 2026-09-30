@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "phase": "4A.1-R2",
-  "generatedAt": "2026-09-24",
-  "result": "PASS_STRONG_PINNED_FOREGROUND_LEASE",
+  "phase": "4B.4P",
+  "generatedAt": "2026-09-25",
+  "result": "PASS_STRONG_PINNED_FOREGROUND_PET_SKILL_QTE_INTEGRATION",
   "source": {
     "version": "v1.1.0",
     "commit": "4c2777d415a8f77037820babc7a67ad72186441c",
@@ -27,8 +27,8 @@
     "coordinateContract": "Target HWND plus nonnegative client coordinates packed into lParam; no screen-coordinate/global-cursor use in a background candidate.",
     "noRetryContract": "An input that is partial, rejected, or sent without authoritative ACK is never retried blindly.",
     "cleanupContract": "After drag DOWN is attempted, exactly one UP cleanup is mandatory even on stop or failure.",
-    "pinnedForegroundLeaseProductionEnabled": false,
-    "pinnedForegroundLeaseStatus": "PROVEN_LIVE_HARNESS"
+    "pinnedForegroundLeaseProductionEnabled": true,
+    "pinnedForegroundLeaseStatus": "PRODUCTION_BOARD_UI_CARD_AND_PET_SKILL_QTE_ACCEPTED; DESKTOP_FARMRUNNER_ACCEPTANCE_PENDING_4C1"
   },
   "capabilities": [
     {
@@ -484,8 +484,14 @@
           "classification": "UNKNOWN",
           "source": "Phase 4B.3",
           "detail": "Background Pet Skill card click is unproven."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "docs/phase4/phase4b4p_report.md",
+          "detail": "Pinned foreground production integration passed 3/3 independent full Pet Skill actions with exactly one current-card click each."
         }
-      ]
+      ],
+      "pinnedForegroundLeaseStatus": "PASS_STRONG_PRODUCTION_LIVE_3_OF_3"
     },
     {
       "id": "gameplay_pass",
@@ -582,10 +588,15 @@
         {
           "classification": "CONFIRMED_FROM_CODE",
           "source": "tests/test_foreground_qte_lease_transport.py; tests/test_foreground_qte_lease_probe.py",
-          "detail": "Phase 4 QTE session lease and physical-keyboard guard pass offline tests; live direction/Space acknowledgement remains pending."
+          "detail": "Phase 4 QTE session lease and physical-keyboard guard pass offline tests."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "docs/phase4/phase4b4p_report.md",
+          "detail": "Production live 3/3: every action sent and authoritatively confirmed all 7 directions with zero wrong, skipped, duplicate, stale, unconfirmed or blind retry."
         }
       ],
-      "pinnedForegroundLeaseStatus": "PASS_STRONG_LIVE_B2_MOUSE_RELEASE"
+      "pinnedForegroundLeaseStatus": "PASS_STRONG_PRODUCTION_LIVE_3_OF_3_MOUSE_RELEASE"
     },
     {
       "id": "qte_space",
@@ -626,10 +637,15 @@
         {
           "classification": "CONFIRMED_FROM_CODE",
           "source": "tests/test_foreground_qte_lease_transport.py; tests/test_foreground_qte_lease_probe.py",
-          "detail": "Phase 4 QTE session lease and physical-keyboard guard pass offline tests; live direction/Space acknowledgement remains pending."
+          "detail": "Phase 4 QTE session lease and physical-keyboard guard pass offline tests."
+        },
+        {
+          "classification": "CONFIRMED_FROM_LIVE_PROBE",
+          "source": "docs/phase4/phase4b4p_report.md",
+          "detail": "Production live 3/3: exactly one Space per action in the current PERFECT window, runtime PERFECT, immediate kill and complete guard/focus/cursor release."
         }
       ],
-      "pinnedForegroundLeaseStatus": "PASS_STRONG_LIVE_B2_KEYBOARD_ONLY"
+      "pinnedForegroundLeaseStatus": "PASS_STRONG_PRODUCTION_LIVE_3_OF_3_KEYBOARD_ONLY"
     },
     {
       "id": "recovery_exit",
@@ -750,7 +766,8 @@
     "B2_PINNED_FOREGROUND_START": "ACCEPTED",
     "B3_PINNED_FOREGROUND_TWO_CLICK": "PASS_STRONG",
     "B3_EXACT_ACK_ARTIFACT": "logs/phase4a1_r2/b3_retry9_20260924",
-    "productionIntegration": false,
+    "productionIntegration": true,
+    "desktopFarmRunnerAcceptance": "PENDING_4C1",
     "trueBackgroundMouse": "UNSUPPORTED_CURRENT_POSTMESSAGE_ROUTE",
     "A2_PINNED_FOREGROUND_QTE": "PASS_STRONG",
     "A2_B2_EXACT_ACK_ARTIFACT": "logs/phase4a2_r1/b2_mouse_release_retry_20260924_204513",
@@ -761,6 +778,17 @@
     "A2_B3_HARNESS_FIX_VERIFICATION": "1470_TESTS_PASS",
     "A2_B3_VALID_RETRY": "PASS_STRONG_EXISTING_FULL_ACTION_RUNTIME_PERFECT",
     "A2_B3_VALID_RETRY_ARTIFACT": "logs/phase4a2_r1/b3_valid_retry_20260924_212722",
-    "selectedProductionCandidate": "PINNED_FOREGROUND_EXISTING_INPUT_LEASE"
+    "selectedProductionCandidate": "PINNED_FOREGROUND_EXISTING_INPUT_LEASE",
+    "phase4B1Contract": "PASS_STRONG_OFFLINE_ZERO_CALLSITE_INTEGRATION",
+    "phase4B1Report": "docs/phase4/phase4b1_report.md",
+    "phase4B1Verification": "151_FOCUSED_1481_FULL_PASS",
+    "phase4B4PIntegration": "PASS_STRONG_PRODUCTION_LIVE_3_OF_3",
+    "phase4B4PReport": "docs/phase4/phase4b4p_report.md",
+    "phase4B4PVerification": "1526_FULL_PASS_AND_3_OF_3_LIVE_PERFECT",
+    "phase4B4PLiveArtifacts": [
+      "logs/farm_runs/f6bfeb958d2b44499829c522e4994caa",
+      "logs/farm_runs/03f6f449efd845e7b9aa09969d341cd2",
+      "logs/farm_runs/4c287b6a5aba472287e819af396bed03"
+    ]
   }
 }

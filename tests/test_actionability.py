@@ -446,10 +446,12 @@ class ActionabilityGateTests(unittest.TestCase):
         )
         for candidate, reason in cases:
             with self.subTest(reason=reason):
-                self.assertEqual(
-                    ActionabilityGate.evaluate(candidate, context()).reason,
-                    reason,
-                )
+                result = ActionabilityGate.evaluate(candidate, context())
+                self.assertEqual(result.reason, reason)
+                if reason is GateReason.RECONNECTING:
+                    self.assertEqual(result.details["reconnecting"], True)
+                    self.assertEqual(result.details["matchResyncing"], False)
+                    self.assertEqual(result.details["boardIsResuming"], False)
         self.assertEqual(
             ActionabilityGate.evaluate(
                 state, context(game_foreground=False)

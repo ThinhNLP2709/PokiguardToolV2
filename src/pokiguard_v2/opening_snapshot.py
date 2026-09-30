@@ -29,14 +29,15 @@ from .il2cpp_layout import (
     read_il2cpp_string,
 )
 from .live_state import dto_rejection_reasons
+from .state import MAX_CELL_MULTIPLIER
 
 
 # Metadata-usage slots referenced as typeof(...) by the local Newtonsoft.Json
 # native bodies.  These are build RVAs, never ASLR-dependent addresses.
-JARRAY_TYPE_INFO_RVA = 0x33482F0
-JOBJECT_TYPE_INFO_RVA = 0x33482E8
-JPROPERTY_TYPE_INFO_RVA = 0x337AD08
-JVALUE_TYPE_INFO_RVA = 0x33663A0
+JARRAY_TYPE_INFO_RVA = 0x3695F68
+JOBJECT_TYPE_INFO_RVA = 0x3695F60
+JPROPERTY_TYPE_INFO_RVA = 0x3687078
+JVALUE_TYPE_INFO_RVA = 0x36ABC98
 
 JARRAY_VALUES_OFFSET = 0x50
 LIST_ITEMS_OFFSET = 0x10
@@ -64,14 +65,14 @@ JTOKEN_INTEGER = 6
 JTOKEN_STRING = 8
 MAX_SERVER_SEQUENCE = 10_000_000
 
-# Pokiguard 1.7.4-b4 pre-parses board-bearing websocket payloads before their
+# Pokiguard 1.7.4-b5 pre-parses board-bearing websocket payloads before their
 # callback enters UnityMainThreadDispatcher.  The original matchPayload may be
 # compacted/cleared by the time the queued closure is sampled, while these
 # typed fields remain owned by the same exact ChatMessageDTO.
 CHAT_MESSAGE_TYPE_OFFSET = 0x38
-CHAT_MESSAGE_MATCH_ID_OFFSET = 0xB8
-CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x420
-CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x428
+CHAT_MESSAGE_MATCH_ID_OFFSET = 0xF8
+CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x480
+CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x488
 
 # All three response handlers in the supported 1.7.4 build delegate to
 # MatchService.HandleResEnvelope, which in turn calls ParseCombatBatch on the
@@ -153,7 +154,7 @@ def read_preparsed_board_snapshot(
     event_type: str,
     sequence: int,
 ) -> OpeningBoardSnapshot:
-    """Decode b4 ``ChatMessageDTO.preBoard`` with immutable JSON sequence.
+    """Decode b5 ``ChatMessageDTO.preBoard`` with immutable JSON sequence.
 
     ``MatchPayloadPreparser.PrepareBoard`` runs before the callback is queued.
     The raw callback string remains the authority for event, MatchId and
@@ -385,7 +386,10 @@ def _read_boxed_integer(
     int32 = struct.unpack_from("<i", raw)[0]
     candidates = {value for value in (int64, int32) if minimum <= value <= maximum}
     if len(candidates) != 1:
-        raise LayoutValidationError("boxed integer is invalid/ambiguous")
+        raise LayoutValidationError(
+            "boxed integer is invalid/ambiguous "
+            f"(int32={int32}, int64={int64}, expected={minimum}..{maximum})"
+        )
     return candidates.pop()
 
 
@@ -415,7 +419,7 @@ def _read_cell(
 
     col = small_integer("col", 0, 7)
     row = small_integer("row", 0, 7)
-    multiplier = small_integer("multiplier", 1, 4)
+    multiplier = small_integer("multiplier", 1, MAX_CELL_MULTIPLIER)
     tag_object = _read_jvalue_object(
         memory, tokens["tag"], classes=classes, token_type=JTOKEN_STRING
     )

@@ -35,12 +35,13 @@ from .state import (
     GamePhase,
     GameState,
     GemType,
+    MAX_CELL_MULTIPLIER,
 )
 
 
 PET_SKILL_FIRE_VALUE_DEFAULT = 10
 PET_SKILL_FIRE_VALUE_MINIMUM = 0
-PET_SKILL_FIRE_VALUE_MAXIMUM = 256
+PET_SKILL_FIRE_VALUE_MAXIMUM = 64 * MAX_CELL_MULTIPLIER
 # Narrow source-compatibility aliases for historical analyzers and imports.
 SKILL_RUSH_SWORD_THRESHOLD_DEFAULT = PET_SKILL_FIRE_VALUE_DEFAULT
 SKILL_RUSH_SWORD_THRESHOLD_MINIMUM = PET_SKILL_FIRE_VALUE_MINIMUM
@@ -152,8 +153,8 @@ class PolicyConfig:
     boss_high_mana: int = 160
     boss_high_rage: int = 100
     boss_low_resource: int = 50
-    # Normal Pet Skill fire condition. Count-based conditions use inclusive >= and
-    # a maximum of 63 so every accepted value remains satisfiable on 64 cells.
+    # Normal Pet Skill fire condition. Count-based conditions use inclusive >=
+    # over multiplier-weighted board value. b5 supports 64 cells up to x7.
     pet_skill_fire_condition: PetSkillFireCondition = PetSkillFireCondition.SWORD_COUNT
     pet_skill_fire_value: int | None = PET_SKILL_FIRE_VALUE_DEFAULT
 
@@ -195,7 +196,8 @@ class PolicyConfig:
                 <= PET_SKILL_FIRE_VALUE_MAXIMUM
             ):
                 raise ValueError(
-                    "pet_skill_fire_value must be an integer between 0 and 256 "
+                    f"pet_skill_fire_value must be an integer between 0 and "
+                    f"{PET_SKILL_FIRE_VALUE_MAXIMUM} "
                     "for a board-count condition"
                 )
         elif self.pet_skill_fire_value is not None:

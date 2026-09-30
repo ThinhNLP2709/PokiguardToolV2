@@ -131,7 +131,7 @@ class NativeFixture:
     def reader(self):
         return NativeCardUiReader(self.memory, self.ga)
 
-    def dot_board(self):
+    def dot_board(self, *, multiplier_tiers=4):
         dot_class = self.klass("Dot", "")
         tags = ("Vang", "XanhDuong", "Do", "Tim", "Xanh", "Trang")
         nodes, dots = [], []
@@ -142,7 +142,10 @@ class NativeFixture:
                 self.i(dot.managed + 0x20, column)
                 self.i(dot.managed + 0x24, row)
                 self.q(dot.managed + 0x48, self.board)
-                self.i(dot.managed + 0x88, 1 + (row + column) % 4)
+                self.i(
+                    dot.managed + 0x88,
+                    1 + (row + column) % multiplier_tiers,
+                )
                 self.q(dot.managed + 0x100, self.string(tags[(row * 8 + column) % len(tags)]))
                 nodes.append(node)
                 dots.append(dot)
@@ -150,6 +153,16 @@ class NativeFixture:
 
 
 class NativeCardUiTests(unittest.TestCase):
+    def test_b5_gameassembly_bridge_anchors_are_pinned(self):
+        self.assertEqual(_COMPONENT_GO_ICALL, 0x38AA280)
+        self.assertEqual(
+            _UNMARSHAL_SIGNATURE,
+            (
+                0x136097F,
+                "4885db7433f6c301740d488bcbe88fb2eafe488bd8eb03488b1b",
+            ),
+        )
+
     def setUp(self):
         self.fixture = NativeFixture()
         self.reader = self.fixture.reader()
@@ -170,6 +183,15 @@ class NativeCardUiTests(unittest.TestCase):
             {(row, col) for row in range(8) for col in range(8)},
         )
         self.assertEqual(set(result.dot_addresses), {dot.managed for dot in dots})
+
+    def test_b5_x5_x6_x7_dot_multipliers_are_decoded(self):
+        dot_class, nodes, _dots = self.fixture.dot_board(multiplier_tiers=7)
+        result = self.reader.read_dot_board(
+            self.fixture.board,
+            tuple(node.managed for node in nodes),
+            dot_class,
+        )
+        self.assertEqual({cell.multiplier for cell in result.cells}, set(range(1, 8)))
 
     def test_moving_dot_board_is_rejected(self):
         dot_class, nodes, dots = self.fixture.dot_board()
@@ -456,6 +478,49 @@ class NativeCardUiTests(unittest.TestCase):
         self.assertEqual(observed.viewport_rect, expected.viewport_rect)
         self.assertEqual(observed.root_aspect, expected.root_aspect)
 
+    def test_b5_room_button_can_stop_at_proven_fullscreen_nested_canvas(self):
+        f = self.fixture
+        # RoomCoopV2 uses a WorldSpace full-design Canvas whose native parent
+        # is the ordinary screen-space root Canvas. A layout-only transform
+        # above it has no TransformAccess handle in b5.
+        layout_only = f.node(f.root, (-600, -300, 1200, 600), (0, 0, 0))
+        f.q(layout_only.transform + 0x40, 0)
+        nested = f.node(layout_only, (-600, -300, 1200, 600), (0, 0, 0))
+        nested_canvas = f.component(nested, f.canvas_class)
+        f.i(nested_canvas.native + 0x38, 2)
+        f.q(nested_canvas.native + 0x308, f.canvas.native)
+        control = f.node(nested, (-120, -30, 240, 60), (360, -220, 0))
+        button = f.component(control, f.button_class)
+
+        with self.assertRaisesRegex(LayoutValidationError, "invalid pointer"):
+            f.reader().read_button_geometry(button.managed)
+
+        observed = f.reader().read_button_geometry(
+            button.managed,
+            allow_nested_fullscreen_canvas=True,
+        )
+        self.assertTrue(observed.active)
+        self.assertEqual(observed.root_transform, nested.transform)
+        self.assertEqual(observed.root_aspect, 2.0)
+        self.assertEqual(observed.viewport_rect, (0.7, 0.8166666666666667, 0.9, 0.9166666666666666))
+
+    def test_nested_canvas_opt_in_rejects_wrong_parent_aspect(self):
+        f = self.fixture
+        layout_only = f.node(f.root, (-600, -300, 1200, 600), (0, 0, 0))
+        f.q(layout_only.transform + 0x40, 0)
+        nested = f.node(layout_only, (-500, -300, 1000, 600), (0, 0, 0))
+        nested_canvas = f.component(nested, f.canvas_class)
+        f.i(nested_canvas.native + 0x38, 2)
+        f.q(nested_canvas.native + 0x308, f.canvas.native)
+        control = f.node(nested, (-120, -30, 240, 60), (300, -220, 0))
+        button = f.component(control, f.button_class)
+
+        with self.assertRaisesRegex(LayoutValidationError, "invalid pointer"):
+            f.reader().read_button_geometry(
+                button.managed,
+                allow_nested_fullscreen_canvas=True,
+            )
+
     def test_button_geometry_can_allow_only_bounded_idle_translation(self):
         f = self.fixture
         reader = f.reader()
@@ -510,6 +575,28 @@ class NativeCardUiTests(unittest.TestCase):
         )
 
         self.assertEqual(observed, manager.managed)
+
+    def test_descendant_buttons_keep_cell_order_before_late_badge_layer(self):
+        f = self.fixture
+        badge_layer = f.node(f.container, (-150, -33, 300, 66), (0, 0, 0))
+        badge_buttons = []
+        for index in range(5):
+            badge = f.node(
+                badge_layer,
+                (-10, -10, 20, 20),
+                (-100 + index * 50, 20, 0),
+            )
+            badge_buttons.append(f.component(badge, f.button_class).managed)
+
+        observed = f.reader().read_game_object_descendant_buttons(
+            f.container.managed
+        )
+
+        self.assertEqual(
+            observed[:5],
+            tuple(card.button.managed for card in f.cards),
+        )
+        self.assertEqual(observed[5:], tuple(badge_buttons))
 
     def test_layout_change_after_first_card_invalidates_whole_hand(self):
         f = self.fixture

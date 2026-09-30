@@ -185,3 +185,13 @@ Transient DTO/Dot mismatches were also observed before convergence, including
 `srvSeq=71` where DTO `(6,4)` was `1` while the rendered Dot was still `3`.
 Those samples were never published. This confirms the server snapshot can lead
 the rendered board and justifies the two-consecutive-confirmation gate.
+
+## Pokiguard 1.7.4-b5 extension (2026-09-29)
+
+The earlier Phase 2 evidence covered only values `1..4`. Current b5 native
+`DotMultiplierRoll.Roll` at RVA `0x00C6D960` iterates tiers 7 down to 2 and
+`PermilleAt` at RVA `0x00C6DB40` accepts tiers 2..7. Tiers 5..7 are gated until
+turn 20. Immutable `MATCH_MOVE_RES` JSON in FarmRun
+`e746727a66bc4f7589e416b1abaacf8e` contains x5, x6 and x7, independently
+confirming that these values reach the production DTO and rendered Dot paths.
+The supported current domain is therefore exactly `1..7`.

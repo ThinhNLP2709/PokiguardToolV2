@@ -111,6 +111,13 @@ class FakeQteBackend:
             self.qte_input_guard_mode = "KEYBOARD_HOOK"
         return transitioned
 
+    def retain_mouse_and_enable_keyboard_guard(self) -> bool:
+        self.guard_calls.append("retain_full_guard")
+        retained = self.guard_transition_ok and self.guard_active
+        if retained:
+            self.qte_input_guard_mode = "CURSOR_CONFINE+KEYBOARD_HOOK"
+        return retained
+
     def qte_input_guard_active(self) -> bool:
         return self.guard_active
 
@@ -201,6 +208,36 @@ class BoundedForegroundQteLeaseTests(unittest.TestCase):
         self.assertTrue(backend.guard_active)
         self.assertTrue(lease.release("FAIL_CLOSED").released)
 
+    def test_full_qte_guard_retains_mouse_until_terminal_release(self) -> None:
+        backend = FakeQteBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict]] = []
+        lease = armed(
+            backend,
+            clock,
+            event_sink=lambda event, fields: events.append((event, fields)),
+        )
+        self.assertTrue(lease.acquire(preflight=lambda: True).acquired)
+        cursor_before = backend.cursor
+
+        retained = lease.retain_mouse_for_keyboard_phase()
+
+        self.assertTrue(retained.ready)
+        self.assertTrue(retained.mouse_guard_retained)
+        self.assertTrue(retained.keyboard_guard_active)
+        self.assertEqual(retained.guard_mode, "CURSOR_CONFINE+KEYBOARD_HOOK")
+        self.assertEqual(backend.cursor, cursor_before)
+        self.assertEqual(backend.guard_calls, ["acquire", "retain_full_guard"])
+        self.assertTrue(lease.validate_active())
+        self.assertTrue(lease.release("QTE_PERFECT").released)
+        self.assertEqual(
+            backend.guard_calls,
+            ["acquire", "retain_full_guard", "release"],
+        )
+        self.assertTrue(
+            any(event == "foreground_qte_full_guard_retained" for event, _ in events)
+        )
+
     def test_focus_restore_retries_within_bound_after_one_windows_rejection(self) -> None:
         backend = FakeQteBackend()
         clock = FakeClock()
@@ -276,6 +313,92 @@ class BoundedForegroundQteLeaseTests(unittest.TestCase):
         self.assertEqual(backend.focus_calls, [])
         self.assertEqual(backend.guard_calls, [])
 
+    def test_zero_input_focus_collision_retries_same_action_then_acquires(self) -> None:
+        backend = FakeQteBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict]] = []
+        focus_stolen = False
+
+        def sleep_with_one_focus_collision(seconds: float) -> None:
+            nonlocal focus_stolen
+            clock.sleep(seconds)
+            if backend.guard_active and not focus_stolen:
+                backend.foreground = 99
+                focus_stolen = True
+
+        lease = BoundedForegroundQteLease(
+            backend,
+            sleeper=sleep_with_one_focus_collision,
+            monotonic=clock.monotonic,
+            event_sink=lambda event, fields: events.append((event, fields)),
+            focus_takeover_attempts=3,
+        )
+        lease.arm(exact_binding(backend), "qte:focus-collision")
+
+        result = lease.acquire(preflight=lambda: True)
+
+        self.assertTrue(result.acquired)
+        self.assertTrue(lease.active)
+        self.assertEqual(backend.foreground, 5)
+        self.assertEqual(backend.guard_calls, ["acquire", "release", "acquire"])
+        failed = [
+            fields
+            for event, fields in events
+            if event == "foreground_qte_acquire_validation_failed"
+        ]
+        self.assertEqual(len(failed), 1)
+        self.assertEqual(failed[0]["foregroundObserved"], 99)
+        self.assertFalse(failed[0]["inputSent"])
+        retries = [
+            fields
+            for event, fields in events
+            if event == "foreground_qte_focus_takeover_retry"
+        ]
+        self.assertEqual(len(retries), 1)
+        self.assertEqual(retries[0]["nextAttempt"], 2)
+        acquired = next(
+            fields
+            for event, fields in events
+            if event == "foreground_qte_lease_acquired"
+        )
+        self.assertEqual(acquired["focusTakeoverAttempt"], 2)
+        self.assertTrue(lease.release("TEST_COMPLETE").released)
+        self.assertEqual(
+            backend.guard_calls,
+            ["acquire", "release", "acquire", "release"],
+        )
+
+    def test_final_preflight_failure_after_guard_is_not_retried(self) -> None:
+        backend = FakeQteBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict]] = []
+        preflight_results = iter((True, True, False))
+        lease = armed(
+            backend,
+            clock,
+            event_sink=lambda event, fields: events.append((event, fields)),
+            focus_takeover_attempts=3,
+        )
+
+        result = lease.acquire(preflight=lambda: next(preflight_results))
+
+        self.assertEqual(result.status, QteLeaseStatus.STALE_ACTION)
+        self.assertFalse(lease.active)
+        self.assertEqual(backend.guard_calls, ["acquire", "release"])
+        self.assertFalse(
+            any(
+                event == "foreground_qte_focus_takeover_retry"
+                for event, _fields in events
+            )
+        )
+        failed = next(
+            fields
+            for event, fields in events
+            if event == "foreground_qte_acquire_validation_failed"
+        )
+        self.assertFalse(failed["preflightCurrent"])
+        self.assertFalse(failed["inputSent"])
+
     def test_held_mouse_times_out_without_focus_takeover(self) -> None:
         backend = FakeQteBackend()
         backend.pointer_pressed = True
@@ -302,6 +425,67 @@ class BoundedForegroundQteLeaseTests(unittest.TestCase):
         backend.guard_active = False
         self.assertFalse(lease.validate_active())
         lease.release("TEST_CLEANUP")
+
+    def test_keyboard_phase_reclaims_exact_game_focus_without_reacquiring_mouse(self) -> None:
+        backend = FakeQteBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict]] = []
+        lease = armed(
+            backend,
+            clock,
+            event_sink=lambda event, fields: events.append((event, fields)),
+        )
+        self.assertTrue(lease.acquire(preflight=lambda: True).acquired)
+        self.assertTrue(lease.release_mouse_for_keyboard_phase().released)
+        focus_calls_before = len(backend.focus_calls)
+        backend.foreground = 88
+
+        self.assertTrue(lease.validate_active())
+
+        self.assertEqual(backend.foreground, 5)
+        self.assertEqual(backend.focus_calls[focus_calls_before:], [5])
+        self.assertTrue(backend.guard_active)
+        self.assertEqual(backend.qte_input_guard_mode, "KEYBOARD_HOOK")
+        self.assertEqual(
+            backend.guard_calls,
+            ["acquire", "mouse_to_keyboard"],
+        )
+        reclaimed = next(
+            fields
+            for event, fields in events
+            if event == "foreground_qte_focus_reclaimed"
+        )
+        self.assertEqual(reclaimed["foregroundObserved"], 88)
+        self.assertEqual(reclaimed["foregroundAfter"], 5)
+        self.assertTrue(reclaimed["reclaimed"])
+        self.assertTrue(lease.release("TEST_CLEANUP").released)
+
+    def test_keyboard_phase_focus_reclaim_failure_fails_closed(self) -> None:
+        backend = FakeQteBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict]] = []
+        lease = armed(
+            backend,
+            clock,
+            event_sink=lambda event, fields: events.append((event, fields)),
+        )
+        self.assertTrue(lease.acquire(preflight=lambda: True).acquired)
+        self.assertTrue(lease.release_mouse_for_keyboard_phase().released)
+        backend.foreground = 88
+        backend.focus_failures_remaining = 1
+
+        self.assertFalse(lease.validate_active())
+
+        self.assertEqual(backend.foreground, 88)
+        self.assertTrue(backend.guard_active)
+        failed = next(
+            fields
+            for event, fields in events
+            if event == "foreground_qte_focus_reclaim_failed"
+        )
+        self.assertEqual(failed["attempts"], 1)
+        self.assertFalse(failed["reclaimed"])
+        self.assertTrue(lease.release("TEST_CLEANUP").released)
 
     def test_duration_is_bounded(self) -> None:
         backend = FakeQteBackend()
@@ -379,6 +563,41 @@ class FakeForegroundBackend:
 
 
 class NativeQteLeaseBackendTests(unittest.TestCase):
+    def test_cursor_confine_retains_mouse_and_adds_keyboard_hook_for_full_qte(self) -> None:
+        foreground = FakeForegroundBackend("CURSOR_CONFINE")
+        keyboard = FakeKeyboardGuard()
+        backend = NativeQteLeaseBackend(foreground, keyboard_guard=keyboard)
+
+        self.assertTrue(backend.acquire_qte_input_guard())
+        self.assertTrue(backend.retain_mouse_and_enable_keyboard_guard())
+
+        self.assertEqual(
+            backend.qte_input_guard_mode,
+            "CURSOR_CONFINE+KEYBOARD_HOOK",
+        )
+        self.assertEqual(foreground.input_guard_mode, "CURSOR_CONFINE")
+        self.assertEqual(foreground.block_calls, [True])
+        self.assertEqual(keyboard.calls, ["acquire"])
+        self.assertTrue(backend.press_virtual_key(0x25))
+        self.assertTrue(backend.release_qte_input_guard())
+        self.assertEqual(foreground.block_calls, [True, False])
+        self.assertEqual(keyboard.calls, ["acquire", "release"])
+
+    def test_block_input_retains_full_guard_and_allows_injected_qte_key(self) -> None:
+        foreground = FakeForegroundBackend("BLOCK_INPUT")
+        keyboard = FakeKeyboardGuard()
+        backend = NativeQteLeaseBackend(foreground, keyboard_guard=keyboard)
+
+        self.assertTrue(backend.acquire_qte_input_guard())
+        self.assertTrue(backend.retain_mouse_and_enable_keyboard_guard())
+
+        self.assertEqual(backend.qte_input_guard_mode, "BLOCK_INPUT")
+        self.assertEqual(foreground.block_calls, [True])
+        self.assertEqual(keyboard.calls, [])
+        self.assertTrue(backend.press_virtual_key(0x20))
+        self.assertTrue(backend.release_qte_input_guard())
+        self.assertEqual(foreground.block_calls, [True, False])
+
     def test_cursor_confine_transitions_to_keyboard_only_before_injected_key(self) -> None:
         foreground = FakeForegroundBackend("CURSOR_CONFINE")
         keyboard = FakeKeyboardGuard()

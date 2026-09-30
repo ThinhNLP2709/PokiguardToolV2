@@ -45,6 +45,7 @@ from pokiguard_v2.desktop_ui import (  # noqa: E402
     create_root,
 )
 from pokiguard_v2.memory_board_provider import MemoryProviderConfig  # noqa: E402
+from pokiguard_v2.game_window_size import GameWindowSizeProfile  # noqa: E402
 from tools.runtime_common import (  # noqa: E402
     attach_target,
     configure_game_location,
@@ -225,6 +226,19 @@ def run(args: argparse.Namespace) -> int:
         config=preference_load.config,
         controller=controller,
     )
+
+    def apply_game_window_size(profile: GameWindowSizeProfile) -> bool:
+        snapshot = control_plane.snapshot()
+        pid = snapshot.runtime.pid
+        if pid is None or not snapshot.runtime.attached:
+            raise RuntimeError("chưa phát hiện cửa sổ game đang hoạt động")
+        prepared = controller.prepare_game_window(pid, profile)
+        if not prepared:
+            raise RuntimeError(
+                "không thể xác nhận cửa sổ game ở kích thước "
+                f"{profile.width}x{profile.height}"
+            )
+        return True
     evidence = _EvidenceSink(event_log)
     poller = SnapshotPoller(
         control_plane,
@@ -292,6 +306,7 @@ def run(args: argparse.Namespace) -> int:
                 else ""
             ),
             game_location_changed=apply_game_location,
+            game_window_size_changed=apply_game_window_size,
             auto_close_seconds=args.smoke_seconds,
         )
         result = app.run()

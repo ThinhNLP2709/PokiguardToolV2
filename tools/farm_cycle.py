@@ -31,7 +31,10 @@ from pokiguard_v2.boss_entry import (  # noqa: E402
 )
 from pokiguard_v2.boss_lobby_runtime import read_boss_lobby_runtime  # noqa: E402
 from pokiguard_v2.controller_lease import AutomationControllerLease  # noqa: E402
-from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
+from pokiguard_v2.combat_lifecycle import (  # noqa: E402
+    CombatLifecycleState,
+    read_combat_lifecycle,
+)
 from pokiguard_v2.farm_cycle import (  # noqa: E402
     FarmCycle,
     FarmCycleState,
@@ -56,6 +59,7 @@ from pokiguard_v2.pet_configuration import (  # noqa: E402
     gameplay_config_from_args,
 )
 from pokiguard_v2.gameplay_profile import DamageCardMode  # noqa: E402
+from pokiguard_v2.live_state import EVIDENCED_MULTIPLIERS  # noqa: E402
 from pokiguard_v2.state import GemType  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
     BoardInputMode,
@@ -315,12 +319,16 @@ def _is_detached_chinh_phuc_room_candidate(
     lifecycle = getattr(
         getattr(lobby, "combat_lifecycle", None), "state", None
     )
+    branch = getattr(lobby, "branch", None)
     return bool(
         target_pet_id is not None
         and target_pet_id > 0
         and no_combat_owner
         and getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
-        and getattr(lobby, "branch", None) is None
+        # A positively proven island/map panel is a direct map-return source,
+        # even when ManagerRoom still retains stale roomData.  Treat only the
+        # unclassified owner-free shape as a detached room shell.
+        and branch is None
         and lifecycle
         in {
             CombatLifecycleState.LOBBY,
@@ -336,6 +344,75 @@ def _is_detached_chinh_phuc_room_candidate(
         and getattr(chinh, "button_interactable", None) is True
         and getattr(chinh, "is_host", None) is False
     )
+
+
+def _is_owner_free_chinh_phuc_map_candidate(
+    lobby: Any,
+    *,
+    no_combat_owner: bool,
+) -> bool:
+    """Recognize a settled island map without trusting stale roomData.
+
+    Live Phase 4C.2 evidence showed that closing the room immediately after a
+    postmatch confirm leaves ``ManagerRoom.roomData`` and ``ButtonStart``
+    allocated while the visible Chinh Phuc island panel is already active.
+    The active, clean map surface plus an owner-free lobby is the stronger
+    lifecycle signal.  Exact target/runtime/visual proof is still required by
+    the navigation controller before any target click is allowed.
+    """
+
+    chinh = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(
+        getattr(lobby, "combat_lifecycle", None), "state", None
+    )
+    world = getattr(lobby, "world_boss", None)
+    return bool(
+        no_combat_owner
+        and getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
+        and getattr(lobby, "branch", None)
+        in {"CHINH_PHUC_MAP", "CHINH_PHUC_ISLAND"}
+        and lifecycle is CombatLifecycleState.LOBBY
+        and world is not None
+        and getattr(world, "clean_for_chinh_phuc_map", False) is True
+        and chinh is not None
+        and getattr(chinh, "current_room_id", None) is None
+        and getattr(chinh, "current_room_type", None) is None
+        and getattr(chinh, "owner_username", None) is None
+        and getattr(chinh, "is_host", None) is False
+    )
+
+
+def _read_lobby_runtime_with_provider_fallback(
+    process: Any,
+    provider: MemoryBoardStateProvider,
+) -> Any | None:
+    """Read lobby state even when the board provider fails after teardown.
+
+    ``MemoryBoardStateProvider.poll`` resolves the Board before publishing its
+    lifecycle.  After a completed match Unity may destroy that Board while a
+    stale empty-room layer remains visible, so a board read error can yield no
+    lifecycle at all.  At an owner-free boundary only, reread the independent
+    MatchHost/scene/singleton lifecycle without a Board.  The fallback is
+    accepted solely as a clean LOBBY observation; ACTIVE/UNKNOWN/read-error
+    samples cannot weaken the existing lobby and re-entry proofs.
+    """
+
+    poll = provider.poll()
+    lifecycle = poll.combat_lifecycle
+    if lifecycle is None:
+        if provider.current_session_key is not None:
+            return None
+        lifecycle = read_combat_lifecycle(
+            process.resolver,
+            board=None,
+            match_id=None,
+        )
+        if (
+            lifecycle.state is not CombatLifecycleState.LOBBY
+            or lifecycle.signals.read_errors
+        ):
+            return None
+    return read_boss_lobby_runtime(process.resolver, lifecycle)
 
 
 def _wait_boss_lobby(
@@ -372,15 +449,41 @@ def _wait_boss_lobby(
         _f8_edge, f9_edge = hotkeys.poll()
         if f9_edge or external_f9:
             return LobbyWaitResult(False, last_state, None, "F9_EMERGENCY_STOP", stable_frames=stable_count)
-        poll = provider.poll()
-        if poll.combat_lifecycle is None:
+        lobby = _read_lobby_runtime_with_provider_fallback(process, provider)
+        if lobby is None:
             time.sleep(interval)
             continue
-        lobby = read_boss_lobby_runtime(process.resolver, poll.combat_lifecycle)
         last_state = lobby.state
         if lobby.state is not BossLobbyState.BOSS_LOBBY:
             stable_key, stable_count = None, 0
             no_combat_owner = provider.current_session_key is None
+            if _is_owner_free_chinh_phuc_map_candidate(
+                lobby,
+                no_combat_owner=no_combat_owner,
+            ):
+                candidate_key = (
+                    lobby.branch,
+                    getattr(lobby.world_boss, "manager_chinh_phuc", None),
+                    getattr(lobby.world_boss, "chinh_phuc_active_panel_index", None),
+                )
+                detached_shell_count = (
+                    detached_shell_count + 1
+                    if candidate_key == detached_shell_key
+                    else 1
+                )
+                detached_shell_key = candidate_key
+                detached_shell_since = None
+                if detached_shell_count >= 2:
+                    return LobbyWaitResult(
+                        False,
+                        lobby.state,
+                        None,
+                        "CHINH_PHUC_MAP_CANDIDATE",
+                        lobby,
+                        detached_shell_count,
+                    )
+                time.sleep(interval)
+                continue
             if _is_detached_chinh_phuc_room_candidate(
                 lobby,
                 target_pet_id=target_pet_id,
@@ -506,7 +609,9 @@ def _opening_from_provider(provider: MemoryBoardStateProvider) -> OpeningEvidenc
         stable_confirmations=poll.confirmations,
         production_ready=state.board.production_ready,
         gem_types_valid=all(cell.gem is not GemType.UNKNOWN for cell in cells),
-        multipliers_valid=all(cell.multiplier in (1, 2, 3, 4) for cell in cells),
+        multipliers_valid=all(
+            cell.multiplier in EVIDENCED_MULTIPLIERS for cell in cells
+        ),
         fresh_dto=source in state.battle.sources,
         timer_safe=(
             state.battle.turn_time_remaining_seconds is not None

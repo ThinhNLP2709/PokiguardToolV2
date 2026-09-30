@@ -48,6 +48,7 @@ from tools.technical_recovery import (
     _failed_session_still_active,
     _final_live_invariants,
     _guard_recovered_handoff,
+    _recovery_session_preflight,
     _recovery_lobby_ack_epoch_rejection,
     _recovered_handoff_rejection,
     _recovered_opening_from_entry,
@@ -1254,6 +1255,44 @@ class LiveRecoveryPreflightTests(unittest.TestCase):
                     combat_lifecycle=None,
                     state=None,
                     session_key=stale,
+                ),
+                failed,
+            )
+        )
+
+    def test_recovery_controls_accept_exact_active_early_return_without_duplicate_lifecycle(self) -> None:
+        state = active_state()
+        session = state.battle.session_key
+        assert session is not None
+        failed = FailedSessionEvidence(
+            session,
+            state.battle.match_id or "",
+            state.battle.board_instance,
+            session.lifecycle_epoch,
+            state.battle.turn_number,
+            state.battle.srv_seq,
+            state.battle.board_hash,
+        )
+
+        self.assertTrue(
+            _recovery_session_preflight(
+                SimpleNamespace(
+                    combat_lifecycle=None,
+                    state=None,
+                    session_key=session,
+                ),
+                failed,
+            )
+        )
+        self.assertFalse(
+            _recovery_session_preflight(
+                SimpleNamespace(
+                    combat_lifecycle=None,
+                    state=None,
+                    session_key=replace(
+                        session,
+                        lifecycle_epoch=session.lifecycle_epoch + 1,
+                    ),
                 ),
                 failed,
             )

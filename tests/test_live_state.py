@@ -70,6 +70,15 @@ class LiveStateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             to_board_state(values)
 
+    def test_b5_x5_x6_x7_multipliers_are_production_ready(self) -> None:
+        values = list(cells())
+        values[0] = CellFixture(0, 0, "vang Dot", 5)
+        values[1] = CellFixture(0, 1, "xanhduong Dot", 6)
+        values[2] = CellFixture(0, 2, "do Dot", 7)
+        state = to_board_state(values)
+        self.assertTrue(state.production_ready)
+        self.assertEqual(state.multipliers[7][:3], (5, 6, 7))
+
     def test_stable_gate_requires_consecutive_valid_pairs(self) -> None:
         gate = StableSnapshotGate()
         self.assertEqual(gate.observe(("hash-a", 1), True), (False, 1))

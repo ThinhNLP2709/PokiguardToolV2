@@ -20,6 +20,8 @@ from .boss_entry import FarmTarget
 from .controller_lease import AutomationControllerLease
 from .farm_checkpoint import CheckpointError, load_checkpoint, validate_for_resume
 from .farm_run import FarmRunLimits
+from .input_delivery import InputDeliveryMode
+from .game_window_size import GameWindowSizeProfile
 from .win32_input import (
     BoardInputMode,
     FarmControlHotkeyEdges,
@@ -128,7 +130,7 @@ class DesktopFarmControllerManager:
         *,
         runner: Runner | None = None,
         foreground_handoff: Callable[[int], bool] | None = None,
-        window_prepare: Callable[[int], bool] | None = None,
+        window_prepare: Callable[[int, int, int], bool] | None = None,
         reset_evidence: Path | None = None,
         artifacts_root: Path | None = None,
         data_root: Path | None = None,
@@ -151,13 +153,20 @@ class DesktopFarmControllerManager:
             else injected_focus
         )
         # Desktop Start owns one stronger, zero-input preflight: restore the
-        # exact game PID and normalize its client to the current 1280x640
+        # exact game PID and normalize its client to the selected profile
         # calibration before FarmRunner binds the HWND.  Tests with an injected
         # runner retain their historical foreground callback unless they opt in
         # to a distinct preparation implementation.
-        self._window_prepare = window_prepare or (
-            prepare_process_window if runner is None else injected_focus
-        )
+        if window_prepare is not None:
+            self._window_prepare = window_prepare
+        elif runner is None:
+            self._window_prepare = lambda pid, width, height: prepare_process_window(
+                pid,
+                client_width=width,
+                client_height=height,
+            )
+        else:
+            self._window_prepare = lambda pid, _width, _height: injected_focus(pid)
         self._lock = threading.RLock()
         self._thread: threading.Thread | None = None
         self._edges: FarmControlHotkeyEdges | None = None
@@ -168,6 +177,22 @@ class DesktopFarmControllerManager:
     def snapshot(self) -> DesktopControllerSnapshot:
         with self._lock:
             return self._snapshot
+
+    def prepare_game_window(
+        self,
+        pid: int,
+        profile: GameWindowSizeProfile,
+    ) -> bool:
+        """Apply one validated client-size profile through controller authority."""
+
+        if not isinstance(pid, int) or pid <= 0:
+            raise ValueError("pid must be a positive integer")
+        if not isinstance(profile, GameWindowSizeProfile):
+            raise TypeError("profile must be GameWindowSizeProfile")
+        with self._lock:
+            if self._snapshot.active:
+                raise RuntimeError("CONFIG_LOCKED_CONTROLLER_ACTIVE")
+        return bool(self._window_prepare(pid, profile.width, profile.height))
 
     def _result(self, accepted: bool, reason: str) -> ControllerCommandResult:
         snapshot = self._snapshot
@@ -187,6 +212,7 @@ class DesktopFarmControllerManager:
             raise ValueError("REASONING is not implemented")
         config.gameplay_config.require_farm_policy()
         BoardInputMode(config.board_input_mode)
+        InputDeliveryMode(config.input_delivery_mode)
         target = FarmTarget(
             config.normalized_boss_id,
             config.normalized_boss_name,
@@ -207,6 +233,7 @@ class DesktopFarmControllerManager:
             max_technical_recoveries=limits.max_technical_recoveries,
             max_match_attempts=limits.max_match_attempts,
             gameplay_config=config.gameplay_config,
+            input_delivery_mode=config.input_delivery_mode,
         )
         if not decision.allowed:
             raise CheckpointError(
@@ -324,10 +351,17 @@ class DesktopFarmControllerManager:
         error: str | None = None
         try:
             if launch.game_pid is not None:
-                if not self._window_prepare(launch.game_pid):
+                window_width = launch.config.game_window_size_profile.width
+                window_height = launch.config.game_window_size_profile.height
+                if not self._window_prepare(
+                    launch.game_pid,
+                    window_width,
+                    window_height,
+                ):
                     raise RuntimeError(
                         f"GAME_WINDOW_PREPARATION_FAILED: PID {launch.game_pid}; "
-                        "expected foreground canonical client 1280x640"
+                        "expected foreground client "
+                        f"{window_width}x{window_height}"
                     )
                 with self._lock:
                     if self._snapshot.generation != generation:
@@ -639,6 +673,8 @@ class DesktopFarmControllerManager:
             config.pet_skill_fire_condition.value,
             "--board-input-mode",
             config.board_input_mode.value,
+            "--input-delivery-mode",
+            config.input_delivery_mode.value,
             "--reset-evidence",
             str(self.reset_evidence),
             "--artifacts",
@@ -648,6 +684,8 @@ class DesktopFarmControllerManager:
             argv.extend(
                 ["--pet-skill-fire-value", str(config.pet_skill_fire_value)]
             )
+        if not config.tool_sound_enabled:
+            argv.append("--no-beep")
         if config.normalized_boss_id is None:
             argv[1:3] = ["--boss-name", config.normalized_boss_name or ""]
         argv.extend(

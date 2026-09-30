@@ -94,6 +94,24 @@ class DesktopPreferenceStore:
                         "board_input_mode", safe_defaults.board_input_mode.value
                     )
                 ),
+                input_delivery_mode=str(
+                    config_raw.get(
+                        "input_delivery_mode",
+                        safe_defaults.input_delivery_mode.value,
+                    )
+                ),
+                game_window_size_profile=str(
+                    config_raw.get(
+                        "game_window_size_profile",
+                        safe_defaults.game_window_size_profile.value,
+                    )
+                ),
+                tool_sound_enabled=str(
+                    config_raw.get(
+                        "tool_sound_enabled",
+                        safe_defaults.tool_sound_enabled,
+                    )
+                ).lower(),
             ).with_gameplay_config(gameplay).without_target()
             game_location_raw = config_raw.get("game_location", "")
             if not isinstance(game_location_raw, str):
@@ -125,6 +143,11 @@ class DesktopPreferenceStore:
                 "boss_name": None,
                 "target_completed_matches": config.target_completed_matches,
                 "max_match_attempts": config.max_match_attempts,
+                "input_delivery_mode": config.input_delivery_mode.value,
+                "game_window_size_profile": (
+                    config.game_window_size_profile.value
+                ),
+                "tool_sound_enabled": config.tool_sound_enabled,
                 "game_location": game_location.strip(),
             },
         }

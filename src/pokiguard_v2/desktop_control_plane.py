@@ -32,6 +32,11 @@ from .desktop_farm_controller import (
     DesktopControllerState,
     DesktopFarmControllerManager,
 )
+from .input_delivery import InputDeliveryMode
+from .game_window_size import (
+    DEFAULT_GAME_WINDOW_SIZE_PROFILE,
+    GameWindowSizeProfile,
+)
 from .win32_input import BoardInputMode
 
 
@@ -54,9 +59,22 @@ class DesktopConfig(GameplayConfig):
     target_completed_matches: int = 3
     max_technical_recoveries: int = 1
     max_match_attempts: int = 5
+    input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND
+    game_window_size_profile: GameWindowSizeProfile = (
+        DEFAULT_GAME_WINDOW_SIZE_PROFILE
+    )
+    tool_sound_enabled: bool = True
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        if not isinstance(self.input_delivery_mode, InputDeliveryMode):
+            raise ValueError("input_delivery_mode must be InputDeliveryMode")
+        if not isinstance(self.game_window_size_profile, GameWindowSizeProfile):
+            raise ValueError(
+                "game_window_size_profile must be GameWindowSizeProfile"
+            )
+        if not isinstance(self.tool_sound_enabled, bool):
+            raise ValueError("tool_sound_enabled must be bool")
         if self.normalized_boss_id is not None or self.normalized_boss_name is not None:
             FarmTarget(self.normalized_boss_id, self.normalized_boss_name)
         FarmRunLimits(
@@ -116,7 +134,13 @@ class DesktopConfig(GameplayConfig):
         rage_target: str = "100",
         pet_skill_fire_condition: str = PetSkillFireCondition.SWORD_COUNT.value,
         pet_skill_fire_value: str | None = "10",
+        input_delivery_mode: str = InputDeliveryMode.FOREGROUND.value,
+        game_window_size_profile: str = DEFAULT_GAME_WINDOW_SIZE_PROFILE.value,
+        tool_sound_enabled: str = "true",
     ) -> "DesktopConfig":
+        normalized_sound = str(tool_sound_enabled).strip().lower()
+        if normalized_sound not in {"true", "false"}:
+            raise ValueError("tool_sound_enabled must be true or false")
         damage = DamageCardMode(damage_card)
         condition = PetSkillFireCondition(pet_skill_fire_condition)
         if condition.uses_board_count:
@@ -134,7 +158,7 @@ class DesktopConfig(GameplayConfig):
             if not valid_fire_value and damage is DamageCardMode.PET_SKILL:
                 raise ValueError(
                     "pet_skill_fire_value must contain ASCII decimal digits "
-                    "between 0 and 256"
+                    f"between 0 and {PET_SKILL_FIRE_VALUE_MAXIMUM}"
                 )
             fire_value = (
                 int(pet_skill_fire_value)
@@ -161,6 +185,11 @@ class DesktopConfig(GameplayConfig):
             target_completed_matches=int(target_completed_matches),
             max_technical_recoveries=int(max_technical_recoveries),
             max_match_attempts=int(max_match_attempts),
+            input_delivery_mode=InputDeliveryMode(input_delivery_mode),
+            game_window_size_profile=GameWindowSizeProfile(
+                game_window_size_profile
+            ),
+            tool_sound_enabled=normalized_sound == "true",
         )
 
 
@@ -204,6 +233,7 @@ class CheckpointSummary:
     updated_at: float | None = None
     error: str | None = None
     gameplay_config: GameplayConfig | None = None
+    input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND
 
     @property
     def resumable_candidate(self) -> bool:
@@ -369,6 +399,7 @@ def _checkpoint_summary(path: Path, payload: CheckpointPayload) -> CheckpointSum
         stop_reason=payload.stop_reason,
         updated_at=payload.updated_at,
         gameplay_config=payload.gameplay_config,
+        input_delivery_mode=payload.input_delivery_mode,
     )
 
 
@@ -404,6 +435,7 @@ class DesktopControlPlane:
         self._lock = threading.RLock()
         self._closed = False
         self._safety = UiSafetyEvidence()
+        self._target_display_cache: RuntimeObservation | None = None
         initial_runtime = RuntimeObservation(
             game_detected=None,
             attached=False,
@@ -719,20 +751,73 @@ class DesktopControlPlane:
                 raise CheckpointError("CHECKPOINT_PROFILE_UNKNOWN", "historical profile is UNKNOWN")
             config = replace(
                 self._snapshot.config.with_gameplay_config(payload.gameplay_config).without_target(),
+                input_delivery_mode=payload.input_delivery_mode,
                 **payload.configured_limits,
             )
             self.update_config(config)
             return config
+
+    @staticmethod
+    def _with_pinned_target_display(
+        runtime: RuntimeObservation,
+        config: DesktopConfig,
+        cached: RuntimeObservation | None,
+    ) -> RuntimeObservation:
+        """Keep the accepted farm target visible across combat projections.
+
+        A live room read proves the boss level and island before Start.  During
+        entry and combat the lightweight controller projection intentionally
+        avoids rereading the room graph, which Unity may already have torn
+        down.  Reuse only metadata whose boss ID matches the target pinned in
+        the immutable active-run configuration.
+        """
+
+        target_id = config.normalized_boss_id
+        target_name = config.normalized_boss_name
+        if target_id is None:
+            return runtime
+        matching_cache = bool(
+            cached is not None
+            and cached.target_id is not None
+            and cached.target_id.strip() == target_id
+        )
+        return replace(
+            runtime,
+            target_id=target_id,
+            target_name=(
+                target_name
+                or (cached.target_name if matching_cache and cached is not None else None)
+            ),
+            target_level=(
+                cached.target_level
+                if matching_cache and cached is not None
+                else runtime.target_level
+            ),
+            target_island=(
+                cached.target_island
+                if matching_cache and cached is not None
+                else runtime.target_island
+            ),
+        )
 
     def refresh(self) -> ControlPlaneSnapshot:
         with self._lock:
             if self._closed:
                 return self._snapshot
             previous = self._snapshot
+            target_display_cache = self._target_display_cache
             attempts = previous.refresh_attempts + 1
         try:
             controller = self._controller_snapshot()
-            if controller.active:
+            live_lobby_boundary_states = {
+                "WAIT_INITIAL_BOSS_LOBBY",
+                "RESOLVE_TARGET",
+                "WAIT_BOSS_LOBBY",
+            }
+            if (
+                controller.active
+                and controller.run_state not in live_lobby_boundary_states
+            ):
                 lifecycle_map = {
                     "WAIT_INITIAL_BOSS_LOBBY": "BOSS_LOBBY",
                     "RESOLVE_TARGET": "BOSS_LOBBY",
@@ -756,8 +841,29 @@ class DesktopControlPlane:
                     provider_reason="farm_controller_snapshot",
                     error=None,
                 )
+                runtime = self._with_pinned_target_display(
+                    runtime,
+                    previous.config,
+                    target_display_cache,
+                )
             else:
+                # At lobby/navigation boundaries the controller state only
+                # describes what FarmRunner is waiting for.  It does not prove
+                # the currently visible game surface.  Read the live, read-only
+                # runtime here so an island cannot remain displayed as the old
+                # boss room while re-entry is in progress.
                 runtime = self._runtime.read()
+                if controller.active and runtime.lifecycle in {
+                    "ENTERING_COMBAT",
+                    "ACTIVE_COMBAT",
+                    "POSTMATCH",
+                    "LEAVING_COMBAT",
+                }:
+                    runtime = self._with_pinned_target_display(
+                        runtime,
+                        previous.config,
+                        target_display_cache,
+                    )
             checkpoint = self._checkpoint.read_latest()
             error = runtime.error or checkpoint.error
             stale = bool(error)
@@ -771,6 +877,11 @@ class DesktopControlPlane:
                 current = self._snapshot
                 controller = self._controller_snapshot()
                 config = current.config
+                if (
+                    runtime.lobby_branch == "CHINH_PHUC_ROOM"
+                    and runtime.target_id is not None
+                ):
+                    self._target_display_cache = runtime
                 if current.controller.active and not controller.active:
                     config = config.without_target()
                 self._safety = self._ui_safety(controller)

@@ -21,6 +21,11 @@ from pokiguard_v2.farm_checkpoint import (
     CheckpointPayload,
     write_checkpoint,
 )
+from pokiguard_v2.input_delivery import InputDeliveryMode
+from pokiguard_v2.desktop_farm_controller import (
+    DesktopControllerSnapshot,
+    DesktopControllerState,
+)
 
 
 class _Runtime:
@@ -53,6 +58,14 @@ class _BlockingRuntime:
 
     def close(self) -> None:
         self.closes += 1
+
+
+class _Controller:
+    def __init__(self, snapshot: DesktopControllerSnapshot) -> None:
+        self.value = snapshot
+
+    def snapshot(self) -> DesktopControllerSnapshot:
+        return self.value
 
 
 def _checkpoint_payload() -> CheckpointPayload:
@@ -150,6 +163,23 @@ class DesktopConfigTests(unittest.TestCase):
         )
         self.assertIs(config.play_style, PlayStyle.SIMPLE)
         self.assertEqual(config.pet_skill_fire_value, 17)
+        from pokiguard_v2.input_delivery import InputDeliveryMode
+
+        pinned = DesktopConfig.from_strings(
+            play_style="simple",
+            evolution="normal",
+            intelligence="basic",
+            boss_id="1289",
+            boss_name="Starburst",
+            target_completed_matches="3",
+            max_technical_recoveries="1",
+            max_match_attempts="5",
+            input_delivery_mode="pinned_foreground_lease_beta",
+        )
+        self.assertIs(
+            pinned.input_delivery_mode,
+            InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+        )
         with self.assertRaises(ValueError):
             DesktopConfig.from_strings(
                 play_style="invented",
@@ -161,7 +191,7 @@ class DesktopConfigTests(unittest.TestCase):
                 max_technical_recoveries="1",
                 max_match_attempts="5",
             )
-        for invalid in ("", "-1", "257", "abc"):
+        for invalid in ("", "-1", "449", "abc"):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(ValueError):
                     DesktopConfig.from_strings(
@@ -180,6 +210,133 @@ class DesktopConfigTests(unittest.TestCase):
 
 
 class ControlPlaneSnapshotTests(unittest.TestCase):
+    def test_active_resolve_target_reads_live_island_instead_of_old_room(self) -> None:
+        runtime = _Runtime(
+            [
+                RuntimeObservation(
+                    True,
+                    True,
+                    99,
+                    "x64",
+                    "LOBBY_OTHER",
+                    target_island="Đảo rồng",
+                    provider_reason="visible Chinh Phuc island panel proven",
+                    lobby_branch="CHINH_PHUC_ISLAND",
+                )
+            ]
+        )
+        controller = _Controller(
+            DesktopControllerSnapshot(
+                state=DesktopControllerState.RUNNING,
+                active=True,
+                run_state="RESOLVE_TARGET",
+            )
+        )
+        plane = DesktopControlPlane(runtime, controller=controller)  # type: ignore[arg-type]
+
+        snapshot = plane.refresh()
+
+        self.assertEqual(runtime.reads, 1)
+        self.assertEqual(snapshot.runtime.lobby_branch, "CHINH_PHUC_ISLAND")
+        self.assertEqual(snapshot.runtime.target_island, "Đảo rồng")
+
+    def test_active_combat_keeps_lightweight_controller_projection(self) -> None:
+        runtime = _Runtime(
+            [
+                RuntimeObservation(
+                    True,
+                    True,
+                    99,
+                    "x64",
+                    "BOSS_LOBBY",
+                    target_id="1289",
+                    target_name="Starburst",
+                    target_level=73,
+                    target_island="Đảo rồng",
+                    lobby_branch="CHINH_PHUC_ROOM",
+                )
+            ]
+        )
+        controller = _Controller(DesktopControllerSnapshot())
+        plane = DesktopControlPlane(
+            runtime,
+            controller=controller,  # type: ignore[arg-type]
+            config=DesktopConfig(boss_id="1289", boss_name="Starburst"),
+        )
+        plane.refresh()
+        controller.value = DesktopControllerSnapshot(
+            state=DesktopControllerState.RUNNING,
+            active=True,
+            run_state="COMBAT_ACTIVE",
+            current_match_id="M_live",
+        )
+
+        snapshot = plane.refresh()
+
+        self.assertEqual(runtime.reads, 1)
+        self.assertEqual(snapshot.runtime.lifecycle, "ACTIVE_COMBAT")
+        self.assertEqual(snapshot.runtime.match_id, "M_live")
+        self.assertEqual(snapshot.runtime.target_id, "1289")
+        self.assertEqual(snapshot.runtime.target_name, "Starburst")
+        self.assertEqual(snapshot.runtime.target_level, 73)
+        self.assertEqual(snapshot.runtime.target_island, "Đảo rồng")
+
+    def test_active_transition_keeps_pinned_target_without_masking_island(self) -> None:
+        room = RuntimeObservation(
+            True,
+            True,
+            99,
+            "x64",
+            "BOSS_LOBBY",
+            target_id="1289",
+            target_name="Starburst",
+            target_level=73,
+            target_island="Đảo rồng",
+            lobby_branch="CHINH_PHUC_ROOM",
+        )
+        combat = RuntimeObservation(
+            True,
+            True,
+            99,
+            "x64",
+            "ACTIVE_COMBAT",
+        )
+        island = RuntimeObservation(
+            True,
+            True,
+            99,
+            "x64",
+            "LOBBY_OTHER",
+            target_island="Đảo rồng",
+            lobby_branch="CHINH_PHUC_ISLAND",
+        )
+        runtime = _Runtime([room, combat, island])
+        controller = _Controller(DesktopControllerSnapshot())
+        plane = DesktopControlPlane(
+            runtime,
+            controller=controller,  # type: ignore[arg-type]
+            config=DesktopConfig(boss_id="1289", boss_name="Starburst"),
+        )
+        plane.refresh()
+        controller.value = DesktopControllerSnapshot(
+            state=DesktopControllerState.RUNNING,
+            active=True,
+            run_state="RESOLVE_TARGET",
+        )
+
+        active = plane.refresh()
+        self.assertEqual(active.runtime.lifecycle, "ACTIVE_COMBAT")
+        self.assertEqual(active.runtime.target_id, "1289")
+        self.assertEqual(active.runtime.target_name, "Starburst")
+        self.assertEqual(active.runtime.target_level, 73)
+        self.assertEqual(active.runtime.target_island, "Đảo rồng")
+
+        visible_island = plane.refresh()
+        self.assertEqual(visible_island.runtime.lifecycle, "LOBBY_OTHER")
+        self.assertIsNone(visible_island.runtime.target_id)
+        self.assertIsNone(visible_island.runtime.target_name)
+        self.assertEqual(visible_island.runtime.target_island, "Đảo rồng")
+
     def test_attached_lobby_maps_to_immutable_read_only_snapshot(self) -> None:
         runtime = _Runtime(
             [
@@ -258,13 +415,25 @@ class CheckpointSummaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             path = root / "run" / "checkpoint.json"
-            write_checkpoint(path, _checkpoint_payload())
+            write_checkpoint(
+                path,
+                replace(
+                    _checkpoint_payload(),
+                    input_delivery_mode=(
+                        InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+                    ),
+                ),
+            )
             provider = LatestCheckpointSummaryProvider(root)
             summary = provider.read_latest()
             self.assertTrue(summary.available)
             self.assertTrue(summary.resumable_candidate)
             self.assertEqual(summary.farm_run_id, "ui-summary-run")
             self.assertEqual(summary.target_completed_matches, 3)
+            self.assertIs(
+                summary.input_delivery_mode,
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA,
+            )
             self.assertEqual(path.read_text(encoding="utf-8").count("farm_run_id"), 1)
 
     def test_malformed_latest_checkpoint_fails_closed(self) -> None:

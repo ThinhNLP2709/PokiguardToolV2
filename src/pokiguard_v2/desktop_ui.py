@@ -43,6 +43,8 @@ from .desktop_preferences import (
     PreferenceError,
     PreferenceWarning,
 )
+from .input_delivery import InputDeliveryMode
+from .game_window_size import GameWindowSizeProfile
 from .version import APP_BUILD, APP_TITLE, APP_VERSION
 from .win32_input import BoardInputMode
 
@@ -63,8 +65,10 @@ PREFERENCE_TABLE_ROWS = (
     "Điều kiện ra skill",
     "Hành động skill",
     "Cách đi bàn cờ",
+    "Chế độ thao tác",
+    "Kích thước cửa sổ game",
 )
-SETTINGS_TABLE_ROWS = ("Tệp chạy trò chơi",)
+SETTINGS_TABLE_ROWS = ("Tệp chạy trò chơi", "Âm báo của tool")
 INITIAL_FOCUS_TARGET = "notebook"
 BACKGROUND_UNFOCUS_WIDGET_CLASSES = frozenset(
     {"Tk", "TFrame", "TLabelframe", "TLabel", "Frame", "Label"}
@@ -78,6 +82,27 @@ BOARD_INPUT_LABELS = {
     BoardInputMode.TWO_CLICK: "Hai lần nhấp",
     BoardInputMode.DRAG: "Kéo thả",
 }
+INPUT_DELIVERY_LABELS = {
+    InputDeliveryMode.FOREGROUND: "Tiền cảnh (mặc định)",
+    InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA: (
+        "Ghim game để tự chơi khi dùng máy — Beta"
+    ),
+}
+GAME_WINDOW_SIZE_LABELS = {
+    GameWindowSizeProfile.COMPACT: "Nhỏ gọn — 800 × 400",
+    GameWindowSizeProfile.SMALL: "Nhỏ — 960 × 480",
+    GameWindowSizeProfile.MEDIUM: "Vừa — 1120 × 560",
+    GameWindowSizeProfile.ORIGINAL: "Mặc định — 1280 × 640",
+}
+GAME_WINDOW_SIZE_HELP = (
+    "Giữ đúng tỉ lệ 2:1. Lưu sẽ đổi kích thước ngay khi game đang mở; "
+    "Bắt đầu/Tiếp tục luôn áp dụng lại profile đã lưu."
+)
+PINNED_INPUT_DELIVERY_HELP = (
+    "Beta giữ cửa sổ game luôn hiển thị và ở trên cùng; không hỗ trợ thu nhỏ. "
+    "Tool có thể tạm giữ chuột khi nhấp/đổi viên và khóa bàn phím trong QTE. "
+    "Việc trả lại cửa sổ đang dùng được thực hiện theo khả năng tốt nhất."
+)
 
 LIFECYCLE_LABELS = {
     "UNAVAILABLE": "KHÔNG KHẢ DỤNG",
@@ -179,6 +204,24 @@ def board_input_mode_from_display(value: str) -> BoardInputMode:
         if value == label:
             return mode
     return BoardInputMode(value)
+
+
+def input_delivery_mode_from_display(value: str) -> InputDeliveryMode:
+    """Map the Vietnamese delivery label to its stable serialized value."""
+
+    for mode, label in INPUT_DELIVERY_LABELS.items():
+        if value == label:
+            return mode
+    return InputDeliveryMode(value)
+
+
+def game_window_size_profile_from_display(value: str) -> GameWindowSizeProfile:
+    """Map the Vietnamese size label to its stable preference value."""
+
+    for profile, label in GAME_WINDOW_SIZE_LABELS.items():
+        if value == label:
+            return profile
+    return GameWindowSizeProfile(value)
 
 
 def lifecycle_text(value: str | None) -> str:
@@ -681,6 +724,9 @@ class DesktopViewModel:
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
+            "CHECKPOINT_INPUT_DELIVERY_MODE_MISMATCH": (
+                "Chọn đúng chế độ thao tác đã lưu trong checkpoint để tiếp tục."
+            ),
             "AVAILABLE": "Sẵn sàng.",
             "INITIALIZING": "Đang khởi tạo trạng thái hệ thống.",
             "CONTROL_PLANE_CLOSED": "Bộ điều khiển Desktop đang đóng.",
@@ -766,6 +812,10 @@ class DesktopViewModel:
                 )
             else:
                 checkpoint_text += "\nCấu hình lịch sử: CHƯA XÁC ĐỊNH"
+            checkpoint_text += (
+                "\nChế độ thao tác: "
+                f"{INPUT_DELIVERY_LABELS[checkpoint.input_delivery_mode]}"
+            )
         elif checkpoint.error:
             checkpoint_text = f"KHÔNG KHẢ DỤNG — {checkpoint.error}"
         else:
@@ -784,7 +834,9 @@ class DesktopViewModel:
             f"Lần thử {controller.match_attempts}\n"
             f"Thắng/Thua/Chưa rõ {controller.wins}/{controller.losses}/{controller.unknown_results} — "
             f"Lượt chạy {controller.farm_run_id or 'ĐANG CHỜ'}\n"
-            f"{match_energy_text(controller)}"
+            f"{match_energy_text(controller)}\n"
+            f"Chế độ thao tác: "
+            f"{INPUT_DELIVERY_LABELS[snapshot.config.input_delivery_mode]}"
         )
         controls = snapshot.controls
         if controller.active:
@@ -851,6 +903,9 @@ class DesktopApplication:
         game_location: str = "",
         game_executable: str = "",
         game_location_changed: Callable[[str], Any] | None = None,
+        game_window_size_changed: (
+            Callable[[GameWindowSizeProfile], bool] | None
+        ) = None,
         auto_close_seconds: float = 0.0,
     ) -> None:
         import tkinter as tk
@@ -862,6 +917,7 @@ class DesktopApplication:
         self.preference_store = preference_store
         self.preference_warnings = preference_warnings
         self.game_location_changed = game_location_changed
+        self.game_window_size_changed = game_window_size_changed
         self.auto_close_seconds = max(0.0, float(auto_close_seconds))
         self.render_ticks = 0
         self.handled_ui_errors = 0
@@ -883,7 +939,7 @@ class DesktopApplication:
         self.emergency_commands_submitted = 0
 
         root.title(APP_TITLE)
-        root.geometry("520x780")
+        root.geometry("540x820")
         root.minsize(460, 680)
         root.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -976,6 +1032,15 @@ class DesktopApplication:
         self.profile_notice_var = tk.StringVar()
         self.intelligence = tk.StringVar(value=INTELLIGENCE_LABELS[Intelligence.BASIC])
         self.board_input_mode = tk.StringVar(value=BOARD_INPUT_LABELS[config.board_input_mode])
+        self.input_delivery_mode = tk.StringVar(
+            value=INPUT_DELIVERY_LABELS[config.input_delivery_mode]
+        )
+        self.game_window_size_profile = tk.StringVar(
+            value=GAME_WINDOW_SIZE_LABELS[config.game_window_size_profile]
+        )
+        self.tool_sound_enabled = tk.BooleanVar(
+            value=config.tool_sound_enabled
+        )
         self.boss_id = tk.StringVar(value=config.normalized_boss_id or "")
         self.boss_name = tk.StringVar(value=config.normalized_boss_name or "")
         self.target_matches = tk.StringVar(value=str(config.target_completed_matches))
@@ -1121,6 +1186,44 @@ class DesktopApplication:
             ),
             editable_state="readonly",
         )
+        _, self.input_delivery_widget = preference_field(
+            row=9,
+            label="Chế độ thao tác",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.input_delivery_mode,
+                values=tuple(INPUT_DELIVERY_LABELS.values()),
+                state="readonly",
+            ),
+            editable_state="readonly",
+        )
+        self.input_delivery_help = ttk.Label(
+            preferences_frame,
+            text=PINNED_INPUT_DELIVERY_HELP,
+            wraplength=390,
+        )
+        self.input_delivery_help.grid(
+            row=10, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+        )
+        _, self.game_window_size_widget = preference_field(
+            row=11,
+            label="Kích thước cửa sổ game",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.game_window_size_profile,
+                values=tuple(GAME_WINDOW_SIZE_LABELS.values()),
+                state="readonly",
+            ),
+            editable_state="readonly",
+        )
+        self.game_window_size_help = ttk.Label(
+            preferences_frame,
+            text=GAME_WINDOW_SIZE_HELP,
+            wraplength=410,
+        )
+        self.game_window_size_help.grid(
+            row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+        )
 
         def horizontal_field(
             parent: Any,
@@ -1158,13 +1261,13 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=9, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=13, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
         )
         ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
-                  wraplength=390).grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
+                  wraplength=390).grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.load_checkpoint_preferences_button = ttk.Button(
             preferences_frame, text="Nạp tùy chọn từ checkpoint", command=self._load_checkpoint_preferences)
-        self.load_checkpoint_preferences_button.grid(row=11, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.load_checkpoint_preferences_button.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=5)
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
@@ -1213,11 +1316,24 @@ class DesktopApplication:
             textvariable=self.game_executable_var,
             wraplength=330,
         ).grid(row=2, column=1, columnspan=2, sticky=tk.W, pady=5)
+        ttk.Label(settings_frame, text="Âm báo của tool:").grid(
+            row=3, column=0, sticky=tk.W, padx=(0, 12), pady=8
+        )
+        self.tool_sound_widget = ttk.Checkbutton(
+            settings_frame,
+            text="Bật tiếng beep cảnh báo",
+            variable=self.tool_sound_enabled,
+            command=self._tool_sound_changed,
+        )
+        self.tool_sound_widget.grid(
+            row=3, column=1, columnspan=2, sticky=tk.W, pady=8
+        )
         self._config_widgets.extend(
             (
                 (self.game_location_entry, "normal"),
                 (self.game_location_folder_button, "normal"),
                 (self.game_location_apply_button, "normal"),
+                (self.tool_sound_widget, "normal"),
             )
         )
 
@@ -1396,6 +1512,16 @@ class DesktopApplication:
             self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])
         if hasattr(self, "board_input_mode"):
             self.board_input_mode.set(BOARD_INPUT_LABELS[config.board_input_mode])
+        if hasattr(self, "input_delivery_mode"):
+            self.input_delivery_mode.set(
+                INPUT_DELIVERY_LABELS[config.input_delivery_mode]
+            )
+        if hasattr(self, "game_window_size_profile"):
+            self.game_window_size_profile.set(
+                GAME_WINDOW_SIZE_LABELS[config.game_window_size_profile]
+            )
+        if hasattr(self, "tool_sound_enabled"):
+            self.tool_sound_enabled.set(config.tool_sound_enabled)
         self._display_pet_config(config)
         self._set_config_editable(False)
         self.start_button.configure(state="disabled")
@@ -1476,6 +1602,31 @@ class DesktopApplication:
                 error=f"{type(exc).__name__}: {exc}",
             )
 
+    def _tool_sound_changed(self) -> None:
+        """Persist the operator beep switch immediately while idle."""
+
+        try:
+            config = self.view_model.apply_draft(**self._draft_fields())
+            warning = self._persist_preferences(config)
+            state = "bật" if config.tool_sound_enabled else "tắt"
+            self.command_feedback.set(
+                f"Đã {state} âm báo của tool."
+                + (f" Cảnh báo: {warning}." if warning else "")
+            )
+            self.event_log.write(
+                "tool_sound_preference_changed",
+                enabled=config.tool_sound_enabled,
+                operatorMessage=f"Âm báo của tool: {state}.",
+            )
+        except Exception as exc:
+            current = self.view_model.control_plane.snapshot().config
+            self.tool_sound_enabled.set(current.tool_sound_enabled)
+            self.command_feedback.set(f"Không thể đổi âm báo — {exc}")
+            self.event_log.write(
+                "tool_sound_preference_rejected",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
     def _choose_game_executable(self) -> None:
         from tkinter import filedialog
 
@@ -1508,13 +1659,42 @@ class DesktopApplication:
         try:
             config = self.view_model.apply_draft(**self._draft_fields())
             warning = self._persist_preferences(config)
+            size_applied = False
+            size_warning = None
+            if self.game_window_size_changed is not None:
+                try:
+                    size_applied = bool(
+                        self.game_window_size_changed(
+                            config.game_window_size_profile
+                        )
+                    )
+                except Exception as exc:  # preference remains valid and saved
+                    size_warning = f"{type(exc).__name__}: {exc}"
+                    self.event_log.write(
+                        "game_window_size_apply_warning",
+                        profile=config.game_window_size_profile.value,
+                        error=size_warning,
+                        operatorMessage=(
+                            "Đã lưu profile cửa sổ; chưa thể áp dụng ngay. "
+                            "Bắt đầu sẽ thử lại."
+                        ),
+                    )
             self.command_feedback.set(
-                f"Đã lưu tùy chọn — số trận={config.target_completed_matches}."
+                f"Đã lưu tùy chọn — số trận={config.target_completed_matches}; "
+                f"cửa sổ={config.game_window_size_profile.width}×"
+                f"{config.game_window_size_profile.height}."
+                + (" Đã áp dụng ngay lên game." if size_applied else "")
+                + (
+                    " Game chưa sẵn sàng để đổi ngay; Bắt đầu sẽ áp dụng lại."
+                    if size_warning
+                    else ""
+                )
                 + (f" Cảnh báo: {warning}." if warning else "")
             )
             self.event_log.write(
                 "draft_config_validated",
                 config=asdict(config),
+                gameWindowSizeApplied=size_applied,
                 operatorMessage="Cấu hình đã được kiểm tra bằng mô hình chuẩn.",
             )
         except Exception as exc:  # expected validation feedback, not UI failure
@@ -1544,6 +1724,17 @@ class DesktopApplication:
             "board_input_mode": board_input_mode_from_display(
                 self.board_input_mode.get()
             ).value,
+            "input_delivery_mode": input_delivery_mode_from_display(
+                self.input_delivery_mode.get()
+            ).value,
+            "game_window_size_profile": (
+                game_window_size_profile_from_display(
+                    self.game_window_size_profile.get()
+                ).value
+            ),
+            "tool_sound_enabled": (
+                "true" if self.tool_sound_enabled.get() else "false"
+            ),
             "boss_id": self.boss_id.get(),
             "boss_name": self.boss_name.get(),
             "target_completed_matches": self.target_matches.get(),
@@ -1582,6 +1773,15 @@ class DesktopApplication:
     def _load_checkpoint_preferences(self) -> None:
         try:
             config = self.view_model.control_plane.load_checkpoint_preferences()
+            # Set the delivery mode before pet field traces can commit the
+            # imported draft back to the control plane.
+            self.input_delivery_mode.set(
+                INPUT_DELIVERY_LABELS[config.input_delivery_mode]
+            )
+            self.game_window_size_profile.set(
+                GAME_WINDOW_SIZE_LABELS[config.game_window_size_profile]
+            )
+            self.tool_sound_enabled.set(config.tool_sound_enabled)
             self._display_pet_config(config)
             self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
             self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])

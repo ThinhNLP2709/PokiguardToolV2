@@ -49,6 +49,7 @@ from pokiguard_v2.pet_qte_observer import (  # noqa: E402
     MATCH_SERVICE_SERVER_QTE_DURATION_MS_OFFSET,
     MATCH_SERVICE_SERVER_QTE_CHALLENGE_ID_OFFSET,
     MATCH_SERVICE_SERVER_QTE_WINDOW_OFFSET,
+    PET_USER_CARD_DATA_OFFSET,
     PET_USER_READ_SIZE,
     CardUiQteSnapshot,
     QteBindingContext,
@@ -184,7 +185,7 @@ class Fixture:
         struct.pack_into("<i", pet, 0x70, 200)
         struct.pack_into("<i", pet, 0x78, 3)
         if skill_card_id:
-            struct.pack_into("<Q", pet, 0x98, self.CARD)
+            struct.pack_into("<Q", pet, PET_USER_CARD_DATA_OFFSET, self.CARD)
         self.memory.map(self.PET, pet)
         if not skill_card_id:
             return

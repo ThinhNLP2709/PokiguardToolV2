@@ -73,9 +73,9 @@ class PetConfigurationTests(unittest.TestCase):
         self.assertEqual(GameplayConfig.from_dict(raw).pet_skill_fire_value, 10)
         configured = replace(PET_SKILL_PROFILE, pet_skill_fire_value=17)
         self.assertEqual(basic_policy_config(configured).pet_skill_fire_value, 17)
-        for invalid in (-1, 257, True, 10.0, "10"):
+        for invalid in (-1, 449, True, 10.0, "10"):
             with self.subTest(invalid=invalid):
-                with self.assertRaisesRegex(ValueError, "between 0 and 256"):
+                with self.assertRaisesRegex(ValueError, "between 0 and 448"):
                     GameplayConfig(pet_skill_fire_value=invalid)
 
     def test_generic_fire_condition_migrates_old_sword_only_config(self):
@@ -522,7 +522,7 @@ class PetCheckpointTests(unittest.TestCase):
     def test_invalid_generic_checkpoint_condition_or_value_is_rejected(self):
         for field, value in (
             ("pet_skill_fire_condition", "future_condition"),
-            ("pet_skill_fire_value", 257),
+            ("pet_skill_fire_value", 449),
         ):
             with self.subTest(field=field):
                 raw = asdict(

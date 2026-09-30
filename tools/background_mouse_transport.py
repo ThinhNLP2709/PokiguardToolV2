@@ -16,7 +16,8 @@ import os
 import time
 from typing import Any, Callable, Protocol
 
-from pokiguard_v2.win32_input import ClientGeometry, CoordinatePlan, WindowBinding
+from pokiguard_v2.input_delivery import ExactWindowBinding
+from pokiguard_v2.win32_input import ClientGeometry, CoordinatePlan
 
 
 WM_MOUSEMOVE = 0x0200
@@ -93,12 +94,6 @@ def runtime_proves_swap_accepted(pre: SwapPreState, runtime: Any) -> bool:
         second_col,
         7 - second_row,
     )
-
-
-@dataclass(frozen=True)
-class ExactWindowBinding:
-    window: WindowBinding
-    geometry: ClientGeometry
 
 
 @dataclass(frozen=True)

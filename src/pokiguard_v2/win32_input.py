@@ -242,6 +242,7 @@ class ClickStatus(str, Enum):
     GAME_NOT_FOREGROUND = "GAME_NOT_FOREGROUND"
     CURSOR_MOVE_FAILED = "CURSOR_MOVE_FAILED"
     PARTIAL_INPUT = "PARTIAL_INPUT"
+    STOPPED = "STOPPED"
 
 
 @dataclass(frozen=True)
@@ -489,6 +490,18 @@ class ForegroundClickExecutor:
             "ok",
         )
 
+    def _ensure_guarded_foreground(self, hwnd: int) -> bool:
+        """Use lease-only focus recovery when the bound backend provides it."""
+
+        ensure = getattr(
+            self.backend,
+            "ensure_foreground_for_guarded_input",
+            None,
+        )
+        if callable(ensure):
+            return bool(ensure(hwnd))
+        return bool(self.backend.is_foreground(hwnd))
+
     def _send_one(
         self,
         binding: WindowBinding,
@@ -497,6 +510,13 @@ class ForegroundClickExecutor:
         *,
         settle_cursor: bool = False,
     ) -> ClickStatus:
+        ensure = getattr(
+            self.backend,
+            "ensure_foreground_for_guarded_input",
+            None,
+        )
+        if callable(ensure) and not ensure(binding.hwnd):
+            return ClickStatus.GAME_NOT_FOREGROUND
         status = self.window_status(binding)
         if not status.valid or status.geometry is None:
             return ClickStatus.WINDOW_INVALID
@@ -513,7 +533,7 @@ class ForegroundClickExecutor:
         # mouse pulse, so board swaps deliberately span several 60-FPS frames.
         if settle_cursor and self.cursor_settle_seconds > 0:
             self.sleeper(self.cursor_settle_seconds)
-        if not self.backend.is_foreground(binding.hwnd):
+        if not self._ensure_guarded_foreground(binding.hwnd):
             return ClickStatus.GAME_NOT_FOREGROUND
         self.backend.click_mouse()
         return ClickStatus.SENT
@@ -524,6 +544,7 @@ class ForegroundClickExecutor:
         plan: CoordinatePlan,
         *,
         remaining_seconds: float | None = None,
+        stop_requested: Callable[[], bool] | None = None,
     ) -> ClickPairResult:
         pacing = self.swap_pacer.decision(remaining_seconds=remaining_seconds)
         # ==============================================================
@@ -536,8 +557,25 @@ class ForegroundClickExecutor:
 
         self.sleeper(reaction_delay)
         # ==============================================================
+        if stop_requested is not None and stop_requested():
+            return ClickPairResult(
+                ClickStatus.STOPPED,
+                0,
+                pacing.delay_seconds,
+                pacing.mode,
+                pacing.reason,
+                pacing.lag_score,
+                self.cursor_settle_seconds,
+                getattr(self.backend, "mouse_button_hold_seconds", None),
+                self.input_mode.value,
+            )
         if self.input_mode is BoardInputMode.DRAG:
-            return self._send_drag(binding, plan, pacing)
+            return self._send_drag(
+                binding,
+                plan,
+                pacing,
+                stop_requested=stop_requested,
+            )
 
         first = self._send_one(
             binding,
@@ -565,6 +603,19 @@ class ForegroundClickExecutor:
             safe_max_delay = max(0.0, float(remaining_seconds) - 1.25)
             actual_delay = min(actual_delay, safe_max_delay)
         self.sleeper(actual_delay)
+
+        if stop_requested is not None and stop_requested():
+            return ClickPairResult(
+                ClickStatus.PARTIAL_INPUT,
+                1,
+                actual_delay,
+                pacing.mode,
+                pacing.reason,
+                pacing.lag_score,
+                self.cursor_settle_seconds,
+                getattr(self.backend, "mouse_button_hold_seconds", None),
+                BoardInputMode.TWO_CLICK.value,
+            )
 
         second = self._send_one(
             binding,
@@ -602,6 +653,8 @@ class ForegroundClickExecutor:
         binding: WindowBinding,
         plan: CoordinatePlan,
         pacing: SwapPacingDecision,
+        *,
+        stop_requested: Callable[[], bool] | None = None,
     ) -> ClickPairResult:
         """Flick from the first gem and release beyond the second gem's centre.
 
@@ -670,6 +723,13 @@ class ForegroundClickExecutor:
                 drag_overshoot_pixels=overshoot_pixels,
             )
 
+        ensure = getattr(
+            self.backend,
+            "ensure_foreground_for_guarded_input",
+            None,
+        )
+        if callable(ensure) and not ensure(binding.hwnd):
+            return result(ClickStatus.GAME_NOT_FOREGROUND, 0)
         status = self.window_status(binding)
         if not status.valid or status.geometry is None:
             return result(ClickStatus.WINDOW_INVALID, 0)
@@ -681,7 +741,9 @@ class ForegroundClickExecutor:
             return result(ClickStatus.CURSOR_MOVE_FAILED, 0)
         if self.cursor_settle_seconds > 0:
             self.sleeper(self.cursor_settle_seconds)
-        if not self.backend.is_foreground(binding.hwnd):
+        if stop_requested is not None and stop_requested():
+            return result(ClickStatus.STOPPED, 0)
+        if not self._ensure_guarded_foreground(binding.hwnd):
             return result(ClickStatus.GAME_NOT_FOREGROUND, 0)
 
         self.backend.mouse_left_down()
@@ -690,6 +752,9 @@ class ForegroundClickExecutor:
         try:
             step_delay = duration / self.drag_steps
             for index in range(1, self.drag_steps + 1):
+                if stop_requested is not None and stop_requested():
+                    failure = ClickStatus.PARTIAL_INPUT
+                    break
                 current = self.window_status(binding)
                 if not current.valid or current.geometry is None:
                     failure = ClickStatus.PARTIAL_INPUT
@@ -1146,12 +1211,20 @@ def prepare_bound_window(
 def prepare_process_window(
     pid: int,
     backend: NativeWin32Backend | None = None,
+    *,
+    client_width: int = CANONICAL_CLIENT_WIDTH,
+    client_height: int = CANONICAL_CLIENT_HEIGHT,
 ) -> bool:
     """Prepare the largest visible exact-PID game window for desktop Start."""
 
     active_backend = backend or NativeWin32Backend()
     binding = find_window_for_pid(pid, active_backend)
-    return prepare_bound_window(binding, active_backend)
+    return prepare_bound_window(
+        binding,
+        active_backend,
+        client_width=client_width,
+        client_height=client_height,
+    )
 
 
 class HotkeyEdges:
@@ -1218,7 +1291,13 @@ class FarmControlHotkeyEdges:
         self._emergency_ack_monotonic: float | None = None
         self._authorized_operations_started = 0
         self._authorized_operations_after_emergency_ack = 0
-        self._lock = threading.Lock()
+        # An accepted input operation owns this lock until its final mouse-up
+        # or key-up. Bounded executors poll this same authority from inside
+        # that operation so an F9 edge can stop at an input boundary. A plain
+        # Lock deadlocks that same-thread poll before the first click; RLock
+        # preserves serialization against other threads while allowing the
+        # owner to inspect its own stop state.
+        self._lock = threading.RLock()
 
     @property
     def emergency_requested(self) -> bool:

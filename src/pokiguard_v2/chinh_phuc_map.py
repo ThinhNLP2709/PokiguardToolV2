@@ -1,10 +1,11 @@
-"""Read-only Chinh Phuc map target proof and normal-input badge locator.
+"""Read-only Chinh Phuc map target proof and native Button geometry.
 
 The game can occasionally return a completed Chinh Phuc match to the island
 map instead of the selected ``ManagerRoom``.  The runtime half of this module
-associates the configured pet ID with the exact map ``Button`` by walking the
-button's ordinary UnityEvent listener graph.  The visual half locates the
-runtime-derived hunt-order badge; pixels never decide boss identity.
+associates the configured pet ID with the exact map ``Button`` through either
+its listener or the same panel/Button index relation used by
+``ManagerChinhPhuc.OnReceived``.  The latter path reads the live Transform
+hierarchy and the target Button's RectTransform; it does not inspect pixels.
 
 No game method is called and no target memory or PlayerPrefs value is written.
 """
@@ -27,17 +28,23 @@ from .boss_lobby_runtime import (
 )
 from .il2cpp_external import ExternalReadError, is_canonical_user_pointer
 from .il2cpp_layout import LayoutValidationError, read_il2cpp_string, read_reference_array
-from .memory_scan import bounded_private_writable_regions, scan_aligned_qwords
+from .memory_scan import (
+    bounded_private_writable_regions,
+    regions_sharing_anchor_allocations,
+    scan_aligned_qwords,
+)
+from .native_card_ui import NativeCardUiReader
 
 
 # ManagerChinhPhuc / GroupDTO / PetEnemyDTO, verified in DiffableCs.
 MANAGER_CHINH_PHUC_CACHED_DATA_OFFSET = 0x98
+MANAGER_CHINH_PHUC_PANELS_OFFSET = 0x28
 # ChinhPhucDataService is a persistent singleton that owns the same server data
 # even when the island panel is not visible.  Reading it avoids the bounded
 # native Button scan used by the re-entry executor.
-CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x333DF98
+CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x366F870
 CHINH_PHUC_DATA_SERVICE_DATA_OFFSET = 0x20
-# Display-only mapping verified from the b4 ``level2`` scene: each server
+# Display-only mapping carried forward from the unchanged b5 data model: each server
 # ``GroupDTO.id`` matches the serialized ``btnIsland{id}`` label.  This map is
 # never navigation authority; unknown IDs simply omit the island label.
 CHINH_PHUC_ISLAND_DISPLAY_NAMES = {
@@ -76,10 +83,8 @@ INVOKABLE_RUNTIME_CALLS_OFFSET = 0x18
 INVOKABLE_DELEGATE_OFFSET = 0x10
 DELEGATE_TARGET_OFFSET = 0x20
 
-# ManagerChinhPhuc.<>c__DisplayClass41_0, verified in the 1.7.4-b4
-# Il2CppInspector output.  b4 inserted ``islandLockMsg`` between the leading
-# bool and the numeric click payload, shifting every field after it.  The old
-# 1.7.4 layout must not be used against the b4 build.
+# ManagerChinhPhuc.<>c__DisplayClass41_0, unchanged in the 1.7.4-b5
+# Il2CppInspector output.
 PET_CLICK_LOCKED_OFFSET = 0x10
 PET_CLICK_LOCKED_ORDER_OFFSET = 0x20
 PET_CLICK_REQUIRED_ATTACK_OFFSET = 0x24
@@ -89,6 +94,11 @@ PET_CLICK_MANAGER_OFFSET = 0x38
 PET_CLICK_CLOSURE_SIZE = 0x40
 
 PLAYER_PREFS_PATH = r"Software\Pokiguard\PokiguardOnlines"
+# Live 1.7.4-b4 evidence places ManagerChinhPhuc and its target Button in one
+# 16 MiB private writable allocation.  Runtime-anchored discovery may cover
+# this exact allocation, while the legacy unanchored fallback keeps its
+# smaller caller-provided per-region bound.
+ANCHORED_MAP_ALLOCATION_MAX_BYTES = 16 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -110,12 +120,12 @@ class ChinhPhucMapTarget:
     group_index: int
     pet_index: int
     hunt_order: int
-    button_address: int
-    button_native: int
+    button_address: int | None
+    button_native: int | None
     manager_address: int
     locked: bool
-    locked_order: int
-    required_attack: int
+    locked_order: int | None
+    required_attack: int | None
     required_attack_text: str | None
     prefs: ChinhPhucPlayerPrefs
     clean: bool
@@ -125,12 +135,24 @@ class ChinhPhucMapTarget:
     button_class_hits: int
     boss_level: int | None = None
     boss_display_level: int | None = None
+    proof_source: str = "button_closure"
+    button_viewport_rect: tuple[float, float, float, float] | None = None
+    button_root_transform: int | None = None
+    button_root_aspect: float | None = None
+    button_proof: str | None = None
 
     @property
     def selection_required(self) -> bool:
         """Whether the exact runtime-proven target differs from the saved pet."""
 
         return self.prefs.selected_pet_id != self.pet_id
+
+    @property
+    def viewport_point(self) -> tuple[float, float] | None:
+        if self.button_viewport_rect is None:
+            return None
+        left, top, right, bottom = self.button_viewport_rect
+        return ((left + right) / 2.0, (top + bottom) / 2.0)
 
 
 @dataclass(frozen=True)
@@ -157,6 +179,7 @@ class ChinhPhucTargetMetadata:
     pet_index: int
     locked: bool
     island_name: str | None = None
+    group_pet_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -335,6 +358,7 @@ def _find_pet_in_groups(
                     pet_index=pet_index,
                     locked=locked,
                     island_name=CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id),
+                    group_pet_count=len(pets),
                 )
             )
     return matches[0] if len(matches) == 1 else None
@@ -420,10 +444,113 @@ def _find_pet_in_cached_groups(
     return _find_pet_in_groups(resolver, cached, target_pet_id)
 
 
+def _manager_panel_map_target(
+    target: object,
+    pet: ChinhPhucTargetMetadata,
+    *,
+    manager: int,
+    active_panel_index: int,
+    scan_regions: int = 0,
+    scan_bytes: int = 0,
+    button_class_hits: int = 0,
+) -> ChinhPhucMapTarget | None:
+    """Bind one cached pet row to its exact live panel Button and geometry.
+
+    b5 ``OnReceived`` obtains
+    ``panel.GetComponentsInChildren<Button>(true)`` and pairs
+    ``listPetEnemy[i]`` with ``panelButtons[i]``.  It creates the separate
+    ``tapInfo`` order-badge controls afterwards, on a badge layer placed after
+    the original cell roots.  Replaying the same bounded root-first hierarchy
+    walk therefore resolves the boss hitbox instead of the numbered badge.
+    """
+
+    prefs = read_chinh_phuc_player_prefs()
+    reasons: list[str] = []
+    if active_panel_index != pet.group_index:
+        reasons.append("live active panel does not match target cached-data group")
+    if pet.locked:
+        reasons.append("target pet is locked")
+    if pet.group_pet_count <= 0 or pet.pet_index >= pet.group_pet_count:
+        return None
+    resolver = target.resolver
+    panels_address = _read_pointer(
+        resolver,
+        manager + MANAGER_CHINH_PHUC_PANELS_OFFSET,
+    )
+    if panels_address is None:
+        return None
+    panels = read_reference_array(resolver.memory, panels_address, max_length=64)
+    if active_panel_index >= len(panels):
+        return None
+    panel = panels[active_panel_index]
+    if not panel:
+        return None
+    reader = NativeCardUiReader(
+        target.memory,
+        resolver.game_assembly_base,
+    )
+    panel_buttons = reader.read_game_object_descendant_buttons(panel)
+    if len(panel_buttons) < pet.group_pet_count:
+        return None
+    # EnsureOrderBadgeTap adds one Button per numbered badge after OnReceived
+    # has captured its cell array. EnsureBadgeLayer places that overlay after
+    # the original cell roots, so only the leading DTO-sized slice has cell
+    # semantics.
+    cell_buttons = panel_buttons[: pet.group_pet_count]
+    if len(set(cell_buttons)) != pet.group_pet_count:
+        return None
+    button = cell_buttons[pet.pet_index]
+    geometry = reader.read_button_geometry(
+        button,
+        allow_nested_fullscreen_canvas=True,
+    )
+    if not geometry.active or geometry.viewport_rect is None:
+        return None
+    if not resolver.memory.is_readable(
+        button, SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET + 1
+    ):
+        return None
+    if not resolver.read_bool(button + SELECTABLE_INTERACTABLE_OFFSET):
+        reasons.append("target panel Button is not interactable")
+    if not resolver.read_bool(button + SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET):
+        reasons.append("target panel Button CanvasGroup blocks interaction")
+    return ChinhPhucMapTarget(
+        pet_id=pet.pet_id,
+        pet_name=pet.pet_name,
+        group_id=pet.group_id,
+        group_name=pet.group_name,
+        group_index=pet.group_index,
+        pet_index=pet.pet_index,
+        hunt_order=pet.pet_index + 1,
+        button_address=button,
+        button_native=geometry.native_button,
+        manager_address=manager,
+        locked=pet.locked,
+        locked_order=None,
+        required_attack=None,
+        required_attack_text=None,
+        prefs=prefs,
+        clean=not reasons,
+        reasons=tuple(reasons),
+        scan_regions=scan_regions,
+        scan_bytes=scan_bytes,
+        button_class_hits=(button_class_hits or len(panel_buttons)),
+        boss_level=pet.boss_level,
+        boss_display_level=pet.boss_display_level,
+        proof_source="panel_button_index",
+        button_viewport_rect=geometry.viewport_rect,
+        button_root_transform=geometry.root_transform,
+        button_root_aspect=geometry.root_aspect,
+        button_proof="ManagerChinhPhuc.OnReceived panelButtons[pet_index]",
+    )
+
+
 def discover_chinh_phuc_map_target(
     target: object,
     target_pet_id: int,
     *,
+    manager_hint: int | None = None,
+    active_panel_index: int | None = None,
     max_region_mib: int = 8,
     chunk_mib: int = 2,
 ) -> ChinhPhucMapTarget | None:
@@ -431,21 +558,96 @@ def discover_chinh_phuc_map_target(
 
     if target_pet_id <= 0:
         raise ValueError("target_pet_id must be positive")
+    if manager_hint is not None:
+        if (
+            not is_canonical_user_pointer(manager_hint)
+            or active_panel_index is None
+            or active_panel_index < 0
+            or active_panel_index >= 64
+        ):
+            return None
     resolver = target.resolver
+    live_cached_pet = None
+    if manager_hint is not None:
+        if not resolver.memory.is_readable(manager_hint, 0xC0):
+            return None
+        try:
+            live_cached_pet = _find_pet_in_cached_groups(
+                resolver, manager_hint, target_pet_id
+            )
+        except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+            return None
+        if live_cached_pet is None:
+            return None
+
+    def cached_fallback(
+        *,
+        scan_regions: int = 0,
+        scan_bytes: int = 0,
+        button_class_hits: int = 0,
+    ) -> ChinhPhucMapTarget | None:
+        if (
+            live_cached_pet is None
+            or manager_hint is None
+            or active_panel_index is None
+        ):
+            return None
+        try:
+            return _manager_panel_map_target(
+                target,
+                live_cached_pet,
+                manager=manager_hint,
+                active_panel_index=active_panel_index,
+                scan_regions=scan_regions,
+                scan_bytes=scan_bytes,
+                button_class_hits=button_class_hits,
+            )
+        except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+            return None
+
+    # A visible b5 island exposes the exact ManagerChinhPhuc and active panel.
+    # Prefer its bounded hierarchy over a 16 MiB heap scan.  This is also the
+    # only current path that remains valid after b5 recreates/clears runtime
+    # UnityEvent lists while keeping the cell Buttons alive.
+    if manager_hint is not None:
+        return cached_fallback()
+
     manager_room = _static_instance(resolver, MANAGER_ROOM_TYPE_INFO_RVA, size=0x150)
     if manager_room is None:
-        return None
+        return cached_fallback()
     start_button = _read_pointer(resolver, manager_room + MANAGER_ROOM_BUTTON_START_OFFSET)
     if start_button is None:
-        return None
+        return cached_fallback()
     button_class = _read_pointer(resolver, start_button)
     if button_class is None:
-        return None
+        return cached_fallback()
 
-    regions = bounded_private_writable_regions(
-        target.memory.iter_readable_regions(),
-        max_region_size=max_region_mib * 1024 * 1024,
-    )
+    readable_regions = tuple(target.memory.iter_readable_regions())
+    if manager_hint is None:
+        regions = bounded_private_writable_regions(
+            readable_regions,
+            max_region_size=max_region_mib * 1024 * 1024,
+        )
+    else:
+        anchored = regions_sharing_anchor_allocations(
+            readable_regions, (manager_hint,)
+        )
+        regions = bounded_private_writable_regions(
+            anchored,
+            max_region_size=ANCHORED_MAP_ALLOCATION_MAX_BYTES,
+        )
+        # Keep the widened scan tied to one verified allocation and to the
+        # measured 16 MiB envelope.  A missing anchor or a larger allocation
+        # fails closed instead of falling back to a whole-process scan.
+        if (
+            not regions
+            or not any(
+                region.base <= manager_hint < region.end for region in regions
+            )
+            or sum(region.size for region in regions)
+            > ANCHORED_MAP_ALLOCATION_MAX_BYTES
+        ):
+            return cached_fallback()
     scan = scan_aligned_qwords(
         target.memory,
         regions,
@@ -454,6 +656,7 @@ def discover_chinh_phuc_map_target(
         max_matches_per_needle=10_000,
     )
     exact: list[tuple[int, int, int, int, int, str | None, int]] = []
+    target_pet_closures_seen = 0
     for button in scan.matches["button_class"]:
         try:
             on_click = _read_pointer(resolver, button + BUTTON_ON_CLICK_OFFSET)
@@ -494,6 +697,12 @@ def discover_chinh_phuc_map_target(
                 native = _read_pointer(resolver, button + UNITY_OBJECT_CACHED_PTR_OFFSET)
                 if native is None or not resolver.memory.is_readable(native, 1):
                     continue
+                target_pet_closures_seen += 1
+                # A live target-pet closure tied to another manager is
+                # contradictory evidence. Destroyed historical buttons have a
+                # null native pointer and were filtered immediately above.
+                if manager_hint is not None and manager != manager_hint:
+                    continue
                 interactable = resolver.read_bool(button + SELECTABLE_INTERACTABLE_OFFSET)
                 groups_allow = resolver.read_bool(
                     button + SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET
@@ -515,12 +724,22 @@ def discover_chinh_phuc_map_target(
             continue
     unique = {item[0]: item for item in exact}
     if len(unique) != 1:
+        if len(unique) == 0 and target_pet_closures_seen == 0:
+            return cached_fallback(
+                scan_regions=scan.regions_visited,
+                scan_bytes=scan.bytes_read,
+                button_class_hits=len(scan.matches["button_class"]),
+            )
         return None
     button, native, manager, locked_order, required_attack, required_text, locked_raw = next(
         iter(unique.values())
     )
     try:
-        pet = _find_pet_in_cached_groups(resolver, manager, target_pet_id)
+        pet = (
+            live_cached_pet
+            if manager_hint is not None and manager == manager_hint
+            else _find_pet_in_cached_groups(resolver, manager, target_pet_id)
+        )
     except (ExternalReadError, LayoutValidationError, OSError, ValueError):
         return None
     if pet is None:
@@ -532,21 +751,48 @@ def discover_chinh_phuc_map_target(
     pet_name = pet.pet_name
     dto_locked = pet.locked
     prefs = read_chinh_phuc_player_prefs()
-    reasons = list(prefs.reasons)
+    # When the visible map supplies its live ManagerChinhPhuc and active panel,
+    # those two read-only values are current authority. Unity PlayerPrefs can
+    # legitimately retain a previous pet/island after the result-room X path;
+    # keep them as telemetry without allowing stale registry data to reject an
+    # otherwise exact live association.
+    reasons = [] if manager_hint is not None else list(prefs.reasons)
     # A different SelectedPetId is the normal reason this exact target button
     # needs to be clicked. It is informational, not a broken association.
     # PlayerPrefs availability/ambiguity remains fail-closed through
     # ``prefs.reasons`` and the group/panel checks below.
-    if prefs.selected_group_index != group_index:
-        reasons.append("SelectedGroupIndex does not match target cached-data group")
-    if prefs.active_panel_index != group_index:
-        reasons.append("ActivePanelIndex does not match target cached-data group")
-    if prefs.return_panel_index is not None and prefs.return_panel_index != group_index:
-        reasons.append("ReturnToPanelIndex does not match target cached-data group")
+    if manager_hint is not None:
+        if manager != manager_hint:
+            reasons.append("click closure manager does not match live map manager")
+        if active_panel_index != group_index:
+            reasons.append("live active panel does not match target cached-data group")
+    else:
+        if prefs.selected_group_index != group_index:
+            reasons.append("SelectedGroupIndex does not match target cached-data group")
+        if prefs.active_panel_index != group_index:
+            reasons.append("ActivePanelIndex does not match target cached-data group")
+        if prefs.return_panel_index is not None and prefs.return_panel_index != group_index:
+            reasons.append("ReturnToPanelIndex does not match target cached-data group")
     if bool(locked_raw) != dto_locked:
         reasons.append("click closure and PetEnemyDTO locked state disagree")
     if locked_raw:
         reasons.append("target pet is locked")
+    try:
+        geometry = NativeCardUiReader(
+            target.memory,
+            resolver.game_assembly_base,
+        ).read_button_geometry(
+            button,
+            allow_nested_fullscreen_canvas=True,
+        )
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+        return None
+    if (
+        not geometry.active
+        or geometry.viewport_rect is None
+        or geometry.native_button != native
+    ):
+        return None
     return ChinhPhucMapTarget(
         target_pet_id,
         pet_name,
@@ -570,6 +816,11 @@ def discover_chinh_phuc_map_target(
         len(scan.matches["button_class"]),
         pet.boss_level,
         pet.boss_display_level,
+        "button_closure",
+        geometry.viewport_rect,
+        geometry.root_transform,
+        geometry.root_aspect,
+        "UnityEvent DisplayClass41 petId",
     )
 
 
