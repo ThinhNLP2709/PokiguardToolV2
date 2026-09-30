@@ -28,7 +28,8 @@ root tách biệt, không tự Start/Resume và không ghi cạnh EXE.
 Capability được phát hành đúng tên: game visible/topmost với bounded foreground
 takeover. Minimized và true-background `PostMessage` không được quảng bá.
 
-Commit/tag/push/release chưa thực hiện vì prompt yêu cầu chỉ làm khi người dùng
-yêu cầu chốt.
+Acceptance commit `5f135696` đã được tạo và branch
+`codex/phase3a2-board-repair` được push theo yêu cầu chốt. Tag/release publish
+chưa thực hiện.
 
 **Phase 4E.1 PASS STRONG. Phase 4 acceptance roadmap hoàn tất.**
