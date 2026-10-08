@@ -137,6 +137,32 @@ class FakeLeaseBackend:
         return False
 
 
+class FakeKeyboardGuard:
+    def __init__(self, backend: FakeLeaseBackend, *, acquire_ok: bool = True) -> None:
+        self.backend = backend
+        self.acquire_ok = acquire_ok
+        self._active = False
+        self.calls: list[str] = []
+        self.focus_calls_when_acquired: list[int] = []
+        self.foreground_when_released: int | None = None
+
+    @property
+    def active(self) -> bool:
+        return self._active
+
+    def acquire(self) -> bool:
+        self.calls.append("acquire")
+        self.focus_calls_when_acquired = list(self.backend.focus_calls)
+        self._active = self.acquire_ok
+        return self._active
+
+    def release(self) -> bool:
+        self.calls.append("release")
+        self.foreground_when_released = self.backend.foreground
+        self._active = False
+        return True
+
+
 def exact_binding(backend: FakeLeaseBackend) -> ExactWindowBinding:
     return ExactWindowBinding(
         WindowBinding(5, backend.pid, backend.title, 1280, 640),
@@ -346,7 +372,7 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         self.assertTrue(result.cursor_restored)
         self.assertEqual(second.status, LeaseStatus.ALREADY_CONSUMED)
 
-    def test_expensive_post_focus_preflight_runs_only_after_focus_acquire(self) -> None:
+    def test_expensive_final_preflight_runs_before_focus_and_input_takeover(self) -> None:
         backend = FakeLeaseBackend()
         clock = FakeClock()
         lease = armed_lease(backend, clock, focus_settle_seconds=0.0)
@@ -358,16 +384,17 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
             light_calls += 1
             return True
 
-        def post_focus_preflight() -> bool:
+        def final_pre_takeover_preflight() -> bool:
             nonlocal final_calls
             final_calls += 1
-            self.assertEqual(backend.foreground, 5)
+            self.assertEqual(backend.foreground, 99)
+            self.assertFalse(backend.input_guard_active)
             return True
 
         result = lease.execute(
             lambda: True,
             preflight=light_preflight,
-            post_focus_preflight=post_focus_preflight,
+            final_pre_takeover_preflight=final_pre_takeover_preflight,
             expected_cursor_after=backend.cursor,
         )
 
@@ -537,6 +564,36 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         self.assertEqual(result.status, LeaseStatus.COMPLETE)
         self.assertEqual(backend.focus_calls, [5, 5, 99])
 
+    def test_observed_foreground_ownership_overrides_false_request_result(self) -> None:
+        backend = FakeLeaseBackend()
+        clock = FakeClock()
+
+        def false_but_foregrounded(hwnd: int) -> bool:
+            backend.focus_calls.append(hwnd)
+            backend.foreground = hwnd
+            return False
+
+        backend.restore_and_foreground = false_but_foregrounded  # type: ignore[method-assign]
+        lease = armed_lease(
+            backend,
+            clock,
+            focus_settle_seconds=0.0,
+            require_exclusive_input=True,
+        )
+
+        def action() -> bool:
+            backend.cursor = (700, 600)
+            return True
+
+        result = lease.execute(
+            action,
+            preflight=lambda: True,
+            expected_cursor_after=(700, 600),
+        )
+
+        self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertTrue(result.action_succeeded)
+
     def test_exclusive_input_wraps_action_and_releases_in_finally(self) -> None:
         backend = FakeLeaseBackend()
         clock = FakeClock()
@@ -559,6 +616,89 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         )
 
         self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertEqual(backend.block_calls, [True, False])
+
+    def test_keyboard_and_mouse_are_guarded_before_focus_takeover(self) -> None:
+        backend = FakeLeaseBackend()
+        keyboard = FakeKeyboardGuard(backend)
+        clock = FakeClock()
+        lease = armed_lease(
+            backend,
+            clock,
+            focus_settle_seconds=0.0,
+            require_exclusive_input=True,
+            takeover_keyboard_guard=keyboard,
+        )
+
+        def action() -> bool:
+            self.assertTrue(keyboard.active)
+            self.assertTrue(backend.input_guard_active)
+            backend.cursor = (700, 600)
+            return True
+
+        result = lease.execute(
+            action,
+            preflight=lambda: True,
+            expected_cursor_after=(700, 600),
+        )
+
+        self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertEqual(keyboard.calls, ["acquire", "release"])
+        self.assertEqual(keyboard.focus_calls_when_acquired, [])
+        self.assertEqual(keyboard.foreground_when_released, 99)
+        self.assertEqual(backend.block_calls, [True, False])
+
+    def test_focus_failure_releases_keyboard_and_mouse_guards(self) -> None:
+        backend = FakeLeaseBackend()
+        backend.focus_denied.add(5)
+        keyboard = FakeKeyboardGuard(backend)
+        clock = FakeClock()
+        lease = armed_lease(
+            backend,
+            clock,
+            focus_settle_seconds=0.0,
+            require_exclusive_input=True,
+            takeover_keyboard_guard=keyboard,
+        )
+
+        result = lease.execute(
+            lambda: True,
+            preflight=lambda: True,
+            expected_cursor_after=(700, 600),
+        )
+
+        self.assertEqual(result.status, LeaseStatus.FOCUS_ACQUIRE_FAILED)
+        self.assertEqual(keyboard.calls, ["acquire", "release"])
+        self.assertFalse(keyboard.active)
+        self.assertEqual(backend.block_calls, [True, False])
+
+    def test_keyboard_guard_failure_sends_no_action_and_releases_mouse(self) -> None:
+        backend = FakeLeaseBackend()
+        keyboard = FakeKeyboardGuard(backend, acquire_ok=False)
+        clock = FakeClock()
+        action_calls = 0
+        lease = armed_lease(
+            backend,
+            clock,
+            focus_settle_seconds=0.0,
+            require_exclusive_input=True,
+            takeover_keyboard_guard=keyboard,
+        )
+
+        def action() -> bool:
+            nonlocal action_calls
+            action_calls += 1
+            return True
+
+        result = lease.execute(
+            action,
+            preflight=lambda: True,
+            expected_cursor_after=(700, 600),
+        )
+
+        self.assertEqual(result.status, LeaseStatus.EXCLUSIVE_INPUT_FAILED)
+        self.assertEqual(action_calls, 0)
+        self.assertEqual(keyboard.calls, ["acquire"])
         self.assertEqual(backend.block_calls, [True, False])
 
     def test_post_action_settle_holds_guard_before_release(self) -> None:
@@ -755,7 +895,7 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         self.assertEqual(called, 0)
         self.assertEqual(backend.focus_calls, [5])
 
-    def test_stale_post_focus_preflight_releases_without_action(self) -> None:
+    def test_stale_pre_takeover_preflight_sends_no_action_or_focus(self) -> None:
         backend = FakeLeaseBackend()
         clock = FakeClock()
         lease = armed_lease(backend, clock)
@@ -765,7 +905,7 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         def preflight() -> bool:
             nonlocal preflight_calls
             preflight_calls += 1
-            return preflight_calls < 3
+            return True
 
         def action() -> bool:
             nonlocal action_calls
@@ -775,13 +915,15 @@ class BoundedForegroundLeaseTests(unittest.TestCase):
         result = lease.execute(
             action,
             preflight=preflight,
+            final_pre_takeover_preflight=lambda: False,
             expected_cursor_after=(700, 600),
         )
 
         self.assertEqual(result.status, LeaseStatus.STALE_ACTION)
         self.assertEqual(action_calls, 0)
         self.assertEqual(backend.foreground, 99)
-        self.assertTrue(result.focus_restored)
+        self.assertEqual(backend.focus_calls, [])
+        self.assertEqual(backend.block_calls, [])
 
     def test_new_user_input_after_focus_acquire_releases_without_action(self) -> None:
         backend = FakeLeaseBackend()

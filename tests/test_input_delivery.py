@@ -83,7 +83,7 @@ class InputDeliveryConfigTests(unittest.TestCase):
 
 
 class InputDeliveryCapabilityTests(unittest.TestCase):
-    def test_only_beta_board_preparation_may_reach_focus_lease_from_background(
+    def test_only_beta_gameplay_preparation_may_reach_focus_lease_from_background(
         self,
     ) -> None:
         foreground = InputDeliveryConfig(InputDeliveryMode.FOREGROUND)

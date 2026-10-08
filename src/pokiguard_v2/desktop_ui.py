@@ -25,7 +25,7 @@ from .pet_configuration import (
     PET_SKILL_FIRE_CONDITION_LABELS, PetSkillFireCondition,
     DESKTOP_EVOLUTION_OPTIONS, DESKTOP_MAIN_PET_OPTIONS,
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
-    loadout_capability, normalize_damage, normalize_evolution,
+    normalize_damage, normalize_evolution,
 )
 from .desktop_control_plane import (
     ControlPlaneSnapshot,
@@ -725,6 +725,11 @@ class DesktopViewModel:
             "DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED": "Demon Aegis Farm yêu cầu Pet thường, Không tiến hóa, Nội tại pet và điều kiện Kiếm đủ.",
             "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM": "Nội tại pet hiện chỉ dùng được với lối chơi Demon Aegis Farm.",
             "PET_PASSIVE_PROFILE_INVALID": "Nội tại pet yêu cầu Pet thường và Không tiến hóa.",
+            "MEGA_ICARUS_LOADOUT_INVALID": "Mega Icarus yêu cầu Mega + Không tiến hóa/Tiến hóa pet thường, hoặc Pet thường + Tiến hóa pet Mega.",
+            "MEGA_ICARUS_REQUIRES_PET_SKILL": "Mega Icarus yêu cầu Thẻ skill của pet.",
+            "MEGA_ICARUS_REQUIRES_NO_ACTION": "Mega Icarus yêu cầu Hành động skill là Không có.",
+            "NO_ACTION_REQUIRES_MEGA_ICARUS": "Hành động skill Không có hiện chỉ dùng cho Mega Icarus.",
+            "MEGA_ICARUS_POLICY_NOT_IMPLEMENTED": "Cấu hình Mega Icarus hợp lệ; policy click-only sẽ được nối ở MI.2.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
@@ -737,7 +742,7 @@ class DesktopViewModel:
             "CONTROLLER_UNAVAILABLE": "Bộ điều khiển farm không khả dụng.",
             "CONTROLLER_ALREADY_ACTIVE": "Một lượt farm có giới hạn đang chạy.",
             "STALE_RUNTIME_SNAPSHOT": "Ảnh trạng thái đã cũ; đang chờ dữ liệu mới.",
-            "GAME_NOT_DETECTED": "Pokiguard chưa chạy.",
+            "GAME_NOT_DETECTED": "PetPuzzle chưa chạy.",
             "GAME_NOT_ATTACHED": "Đang chờ kết nối chỉ đọc với trò chơi.",
             "UNSUPPORTED_ARCHITECTURE": "Kiến trúc của trò chơi không được hỗ trợ.",
             "BACKEND_NOT_HEALTHY": "Hệ thống nền chưa ở trạng thái có thể thao tác.",
@@ -1163,7 +1168,10 @@ class DesktopApplication:
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.audition_mode,
-                values=tuple(AUDITION_LABELS[value] for value in AuditionMode),
+                values=(
+                    AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION],
+                    AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION],
+                ),
                 state="readonly",
             ),
             editable_state="readonly",
@@ -1646,11 +1654,12 @@ class DesktopApplication:
                 initial_directory = str(current_path)
         selected = filedialog.askopenfilename(
             parent=self.root,
-            title="Chọn tệp chạy trò chơi Pokiguard",
+            title="Chọn tệp chạy trò chơi PetPuzzle",
             initialdir=initial_directory,
             initialfile=initial_file,
             filetypes=(
-                ("Tệp chạy Pokiguard", "Pokiguard-*.exe"),
+                ("Tệp chạy PetPuzzle", "PetPuzzle-*.exe"),
+                ("Tệp chạy Pokiguard cũ", "Pokiguard-*.exe"),
                 ("Tệp thực thi", "*.exe"),
             ),
         )
@@ -1805,13 +1814,14 @@ class DesktopApplication:
         # while the Pet Skill row is hidden; selecting Pet Skill must restore
         # its last valid value before canonical validation runs.
         self._sync_pet_skill_fields()
-        capability = loadout_capability(MainPetType(self.main_pet.get()),
-                                       EvolutionTarget(self.evolution.get()),
-                                       DamageCardMode(self.damage_card.get()))
         profile = DesktopConfig.from_strings(**self._draft_fields())
+        capability = profile.capability
         blocker = profile.farm_policy_blocker_reason
         editable = self._config_editable is not False
         demon = profile.play_style is PlayStyle.DEMON_AEGIS_FARM
+        mega_icarus = (
+            profile.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
+        )
         main_pet = MainPetType(self.main_pet.get())
         for value in DESKTOP_MAIN_PET_OPTIONS:
             button = self._pet_option_widgets.get(("main_pet", value.value))
@@ -1819,7 +1829,15 @@ class DesktopApplication:
                 button.configure(
                     state=(
                         "normal"
-                        if editable and not demon and value in SUPPORTED_MAIN_PETS
+                        if editable
+                        and not demon
+                        and (
+                            (mega_icarus and value in {
+                                MainPetType.NORMAL,
+                                MainPetType.MEGA,
+                            })
+                            or (not mega_icarus and value in SUPPORTED_MAIN_PETS)
+                        )
                         else "disabled"
                     )
                 )
@@ -1831,10 +1849,31 @@ class DesktopApplication:
                         "normal"
                         if editable
                         and not demon
-                        and value in SUPPORTED_EVOLUTIONS
-                        and not (
-                            value is EvolutionTarget.LEGENDARY
-                            and main_pet is MainPetType.LEGENDARY
+                        and (
+                            (
+                                mega_icarus
+                                and (
+                                    (
+                                        main_pet is MainPetType.MEGA
+                                        and value in {
+                                            EvolutionTarget.NONE,
+                                            EvolutionTarget.NORMAL,
+                                        }
+                                    )
+                                    or (
+                                        main_pet is MainPetType.NORMAL
+                                        and value is EvolutionTarget.MEGA
+                                    )
+                                )
+                            )
+                            or (
+                                not mega_icarus
+                                and value in SUPPORTED_EVOLUTIONS
+                                and not (
+                                    value is EvolutionTarget.LEGENDARY
+                                    and main_pet is MainPetType.LEGENDARY
+                                )
+                            )
                         )
                         else "disabled"
                     )
@@ -1847,8 +1886,9 @@ class DesktopApplication:
                 editable
                 and (
                     (demon and value is DamageCardMode.PET_PASSIVE)
+                    or (mega_icarus and value is DamageCardMode.PET_SKILL)
                     or (
-                        not demon
+                        not demon and not mega_icarus
                         and (
                             value is DamageCardMode.DEFAULT_ATTACK
                             or (
@@ -1898,10 +1938,29 @@ class DesktopApplication:
             play_style_from_display(self.play_style.get())
             is PlayStyle.DEMON_AEGIS_FARM
         )
+        mega_icarus = (
+            play_style_from_display(self.play_style.get())
+            is PlayStyle.MEGA_ICARUS_SPAM_SKILL
+        )
         self.pet_skill_fire_condition_widget.configure(
             values=(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT],)
             if demon
             else tuple(PET_SKILL_FIRE_CONDITION_LABELS.values())
+        )
+        self.audition_widget.configure(
+            values=(
+                (AUDITION_LABELS[AuditionMode.NO_ACTION],)
+                if mega_icarus
+                else (
+                    AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION],
+                    AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION],
+                )
+            ),
+            state=(
+                "disabled"
+                if mega_icarus or self._config_editable is False
+                else "readonly"
+            ),
         )
 
         try:
@@ -1971,21 +2030,40 @@ class DesktopApplication:
             return
         try:
             main_pet = MainPetType(self.main_pet.get())
-            evolution = normalize_evolution(
-                main_pet,
-                EvolutionTarget(self.evolution.get()),
-            )
-            normalized = normalize_damage(
-                main_pet,
-                evolution,
-                DamageCardMode(self.damage_card.get()),
-            )
+            style = play_style_from_display(self.play_style.get())
+            if style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+                if main_pet is MainPetType.NORMAL:
+                    evolution = EvolutionTarget.MEGA
+                else:
+                    main_pet = MainPetType.MEGA
+                    current_evolution = EvolutionTarget(self.evolution.get())
+                    evolution = (
+                        current_evolution
+                        if current_evolution in {
+                            EvolutionTarget.NONE,
+                            EvolutionTarget.NORMAL,
+                        }
+                        else EvolutionTarget.NONE
+                    )
+                normalized = DamageCardMode.PET_SKILL
+            else:
+                evolution = normalize_evolution(
+                    main_pet,
+                    EvolutionTarget(self.evolution.get()),
+                )
+                normalized = normalize_damage(
+                    main_pet,
+                    evolution,
+                    DamageCardMode(self.damage_card.get()),
+                )
             if (
-                self.evolution.get() != evolution.value
+                self.main_pet.get() != main_pet.value
+                or self.evolution.get() != evolution.value
                 or self.damage_card.get() != normalized.value
             ):
                 self._updating_pet_fields = True
                 try:
+                    self.main_pet.set(main_pet.value)
                     self.evolution.set(evolution.value)
                     self.damage_card.set(normalized.value)
                 finally:
@@ -2027,8 +2105,37 @@ class DesktopApplication:
                     self._last_valid_pet_skill_fire_value = (
                         DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT
                     )
-                elif self.damage_card.get() == DamageCardMode.PET_PASSIVE.value:
+                elif style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+                    self.main_pet.set(MainPetType.MEGA.value)
+                    self.evolution.set(EvolutionTarget.NONE.value)
+                    self.damage_card.set(DamageCardMode.PET_SKILL.value)
+                    self.audition_mode.set(
+                        AUDITION_LABELS[AuditionMode.NO_ACTION]
+                    )
+                    self.pet_skill_fire_condition.set(
+                        PET_SKILL_FIRE_CONDITION_LABELS[
+                            PetSkillFireCondition.SWORD_COUNT
+                        ]
+                    )
+                    self.pet_skill_fire_value.set(
+                        str(PET_SKILL_FIRE_VALUE_DEFAULT)
+                    )
+                    self._last_valid_pet_skill_fire_value = (
+                        PET_SKILL_FIRE_VALUE_DEFAULT
+                    )
+                elif (
+                    self.damage_card.get() == DamageCardMode.PET_PASSIVE.value
+                    or self.main_pet.get() == MainPetType.MEGA.value
+                    or self.evolution.get() == EvolutionTarget.MEGA.value
+                    or self.audition_mode.get()
+                    == AUDITION_LABELS[AuditionMode.NO_ACTION]
+                ):
+                    self.main_pet.set(MainPetType.NORMAL.value)
+                    self.evolution.set(EvolutionTarget.NORMAL.value)
                     self.damage_card.set(DamageCardMode.DEFAULT_ATTACK.value)
+                    self.audition_mode.set(
+                        AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION]
+                    )
             finally:
                 self._updating_fire_fields = False
                 self._updating_pet_fields = False

@@ -138,6 +138,7 @@ class FarmInputDomain(str, Enum):
     BOSS_ROOM_SHELL_EXIT = "BOSS_ROOM_SHELL_EXIT"
     BOSS_ROOM_SHELL_CONFIRM = "BOSS_ROOM_SHELL_CONFIRM"
     BOSS_HUB_CHINH_PHUC_OPEN = "BOSS_HUB_CHINH_PHUC_OPEN"
+    BOSS_ISLAND_SELECT = "BOSS_ISLAND_SELECT"
     BOSS_TARGET_SELECT = "BOSS_TARGET_SELECT"
     BOSS_CARD_SELECT = "BOSS_CARD_SELECT"
     BOSS_ENTRY = "BOSS_ENTRY"
@@ -148,6 +149,7 @@ class FarmInputDomain(str, Enum):
     GAMEPLAY_EVOLVE = "GAMEPLAY_EVOLVE"
     GAMEPLAY_PASS = "GAMEPLAY_PASS"
     POSTMATCH_CONFIRM = "POSTMATCH_CONFIRM"
+    POSTMATCH_CONFIRM_RETRY = "POSTMATCH_CONFIRM_RETRY"
     RECOVERY_EXIT = "RECOVERY_EXIT"
     RECOVERY_CONFIRM = "RECOVERY_CONFIRM"
     RECOVERY_TARGET_SELECT = "RECOVERY_TARGET_SELECT"
@@ -180,6 +182,58 @@ class FarmRunLimits:
             raise ValueError("max_match_attempts must be positive")
         if self.target_completed_matches > self.max_match_attempts:
             raise ValueError("target_completed_matches cannot exceed max_match_attempts")
+
+
+@dataclass(frozen=True)
+class ActiveCombatHandoffEvidence:
+    """A fresh, untouched combat observed after the immutable opening expired.
+
+    Slow game loading can let the first local turn expire before the short-lived
+    ``MATCH_START`` board is published.  This evidence is deliberately stricter
+    than an ordinary mid-combat attach: the exact session must come from the
+    just-sent entry, no local move may have been acknowledged, and the current
+    8x8 board must be stable and acknowledgement-attested.
+    """
+
+    session: CombatSessionKey
+    match_id: str
+    board_hash: str
+    complete_cells: int
+    unique_coordinates: int
+    source: str
+    current_board_attested: bool
+    turn_number: int
+    first_local_turn: bool
+    local_move_sequence: int | None
+    srv_seq: int
+    stable_confirmations: int
+    production_ready: bool = True
+    gem_types_valid: bool = True
+    multipliers_valid: bool = True
+    entry_clicks: int = 1
+    gameplay_inputs: int = 0
+
+    def valid(self) -> bool:
+        normalized_hash = self.board_hash.strip()
+        return (
+            self.session.match_id == self.match_id
+            and len(normalized_hash) == 64
+            and all(char in "0123456789abcdefABCDEF" for char in normalized_hash)
+            and self.complete_cells == 64
+            and self.unique_coordinates == 64
+            and bool(self.source)
+            and self.current_board_attested
+            and self.turn_number > 1
+            and self.first_local_turn is False
+            and self.local_move_sequence == 0
+            and self.srv_seq > 0
+            and self.stable_confirmations >= 2
+            and self.production_ready
+            and self.gem_types_valid
+            and self.multipliers_valid
+            and self.entry_clicks in {1, 2}
+            and self.gameplay_inputs == 0
+        )
 
 
 @dataclass
@@ -355,6 +409,7 @@ class FarmRun:
         "LATE_MANDATORY_RESET",
         "ROOM_EJECTED_TO_BOSS_MAP",
         "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT",
+        "UNCONFIRMED_SWAP_DELIVERY",
     }
 
     def __init__(
@@ -406,6 +461,7 @@ class FarmRun:
         self._recovered_opening: OpeningEvidence | None = None
         self._test_only_recovery_required = False
         self._ejected_map_reentry_pending = False
+        self._ejected_map_reentry_origin: str | None = None
         self._control = control
         self.continuation_of = continuation_of
         self.checkpoint_seq = 0
@@ -674,6 +730,7 @@ class FarmRun:
                 FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
                 FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
                 FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
+                FarmInputDomain.BOSS_ISLAND_SELECT,
                 FarmInputDomain.BOSS_TARGET_SELECT,
                 FarmInputDomain.BOSS_CARD_SELECT,
                 FarmInputDomain.BOSS_ENTRY,
@@ -681,7 +738,13 @@ class FarmRun:
             }
         )
         postmatch = sum(
-            r.sent for r in self.input_records if r.domain is FarmInputDomain.POSTMATCH_CONFIRM
+            r.sent
+            for r in self.input_records
+            if r.domain
+            in {
+                FarmInputDomain.POSTMATCH_CONFIRM,
+                FarmInputDomain.POSTMATCH_CONFIRM_RETRY,
+            }
         )
         recovery = sum(r.sent for r in self.input_records if r.domain.recovery)
         consistent = self.historical_consistency_aggregates.get("consistent", 0) + sum(
@@ -1179,6 +1242,45 @@ class FarmRun:
             )
         return True
 
+    def accept_active_combat_handoff(
+        self, evidence: ActiveCombatHandoffEvidence
+    ) -> bool:
+        """Adopt an untouched current board when slow loading hid MATCH_START.
+
+        The entry click and session were already accepted normally.  This path
+        only replaces a destructive Exit/re-entry recovery when the same fresh
+        session is still active and the game proves that the tool has sent no
+        gameplay input in it.
+        """
+
+        sent_gameplay = any(
+            record.domain.gameplay
+            and record.session == evidence.session
+            and record.sent
+            for record in self.input_records
+        )
+        if (
+            self.state is not FarmRunState.WAIT_OPENING
+            or self.current_session is None
+            or evidence.session != self.current_session
+            or not evidence.valid()
+            or sent_gameplay
+        ):
+            self.safe_stop(
+                FarmRunStopReason.OPENING_INVARIANT_FAILED,
+                activeCombatHandoff=evidence,
+                sentGameplay=sent_gameplay,
+            )
+            return False
+        self._transition(
+            FarmRunState.COMBAT_ACTIVE,
+            "combat_current_board_handoff_ready",
+            activeCombatHandoff=evidence,
+            gameplayPermitted=True,
+            openingMissed=True,
+        )
+        return True
+
     def resume_recovered_gameplay(self, *, old_state_leak_free: bool) -> bool:
         if (
             self.state is not FarmRunState.RECOVERY_OPENING_READY
@@ -1572,15 +1674,35 @@ class FarmRun:
         self._transition(FarmRunState.WAIT_BOSS_LOBBY, "normal_postmatch_observed")
         return True
 
-    def reserve_postmatch(self, *, foreground: bool) -> FarmInputPermit | None:
+    def reserve_postmatch(
+        self,
+        *,
+        foreground: bool,
+        retry: bool = False,
+    ) -> FarmInputPermit | None:
         if self.state is not FarmRunState.WAIT_BOSS_LOBBY or self._pending is not None:
             self.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS)
             return None
-        if any(
-            r.domain is FarmInputDomain.POSTMATCH_CONFIRM
-            and r.attempt_index == self.match_attempts
+        primary = [
+            r
             for r in self.input_records
-        ):
+            if r.domain is FarmInputDomain.POSTMATCH_CONFIRM
+            and r.attempt_index == self.match_attempts
+        ]
+        retries = [
+            r
+            for r in self.input_records
+            if r.domain is FarmInputDomain.POSTMATCH_CONFIRM_RETRY
+            and r.attempt_index == self.match_attempts
+        ]
+        retry_allowed = bool(
+            retry
+            and len(primary) == 1
+            and primary[0].sent
+            and not retries
+        )
+        primary_allowed = bool(not retry and not primary and not retries)
+        if not (retry_allowed or primary_allowed):
             self.safety.duplicate_postmatch_confirm += 1
             self.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS)
             return None
@@ -1589,17 +1711,34 @@ class FarmRun:
             return None
         permit = FarmInputPermit(
             uuid4().hex,
-            FarmInputDomain.POSTMATCH_CONFIRM,
+            (
+                FarmInputDomain.POSTMATCH_CONFIRM_RETRY
+                if retry
+                else FarmInputDomain.POSTMATCH_CONFIRM
+            ),
             None,
             self.match_attempts,
         )
         self._pending = permit
+        self._event(
+            "postmatch_confirm_retry_reserved"
+            if retry
+            else "postmatch_confirm_reserved",
+            attemptIndex=self.match_attempts,
+        )
         return permit
 
     def complete_postmatch(
         self, permit: FarmInputPermit, *, sent: bool, detail: str = ""
     ) -> bool:
-        if permit != self._pending or permit.domain is not FarmInputDomain.POSTMATCH_CONFIRM:
+        if (
+            permit != self._pending
+            or permit.domain
+            not in {
+                FarmInputDomain.POSTMATCH_CONFIRM,
+                FarmInputDomain.POSTMATCH_CONFIRM_RETRY,
+            }
+        ):
             self.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS)
             return False
         self._pending = None
@@ -1632,18 +1771,44 @@ class FarmRun:
                 detail="target selection reserved outside return-to-lobby state",
             )
             return None
-        if any(
-            record.domain is FarmInputDomain.BOSS_TARGET_SELECT
-            and record.attempt_index == self.match_attempts
-            and record.sent
+        transition_records = [
+            record
             for record in self.input_records
-        ):
+            if record.attempt_index == self.match_attempts and record.sent
+        ]
+        target_positions = [
+            index
+            for index, record in enumerate(transition_records)
+            if record.domain is FarmInputDomain.BOSS_TARGET_SELECT
+        ]
+        if len(target_positions) >= 2:
             self.safety.duplicate_lobby_entry += 1
             self.safe_stop(
                 FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
-                detail="duplicate target selection in one return transition",
+                detail="target selection retry budget exhausted",
             )
             return None
+        if target_positions:
+            # The updated room service can accept the exact map target, then
+            # render one owner-free room shell instead of hydrating ownership.
+            # A second target selection is legal only after that shell was
+            # explicitly closed.  This preserves the former single-click
+            # fence for every other duplicate path and caps the repair at one.
+            shell_exits_after_target = [
+                record
+                for record in transition_records[target_positions[0] + 1 :]
+                if record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+            ]
+            if len(shell_exits_after_target) != 1:
+                self.safety.duplicate_lobby_entry += 1
+                self.safe_stop(
+                    FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                    detail=(
+                        "second target selection requires one later "
+                        "detached-room shell exit"
+                    ),
+                )
+                return None
         shell_exit_sent = any(
             record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
             and record.attempt_index == self.match_attempts
@@ -1673,7 +1838,11 @@ class FarmRun:
             self.match_attempts,
         )
         self._pending = permit
-        self._event("boss_target_select_reserved", attemptIndex=self.match_attempts)
+        self._event(
+            "boss_target_select_reserved",
+            attemptIndex=self.match_attempts,
+            selectionOrdinal=len(target_positions) + 1,
+        )
         return permit
 
     def complete_target_select(
@@ -1695,14 +1864,86 @@ class FarmRun:
             return False
         return True
 
+    def reserve_island_select(self, *, foreground: bool) -> FarmInputPermit | None:
+        """Reserve one exact island selection during a map re-entry.
+
+        The island is an intermediate navigation surface. It receives its own
+        one-shot capability so selecting it never consumes or relaxes the
+        separately bounded boss-cell selection capability.
+        """
+
+        if self.stopped:
+            self.safety.input_after_farm_stop += 1
+            return None
+        if (
+            self.state is not FarmRunState.WAIT_BOSS_LOBBY
+            or self._pending is not None
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="island selection reserved outside return-to-lobby state",
+            )
+            return None
+        if any(
+            record.domain is FarmInputDomain.BOSS_ISLAND_SELECT
+            and record.attempt_index == self.match_attempts
+            and record.sent
+            for record in self.input_records
+        ):
+            self.safety.duplicate_lobby_entry += 1
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="island selection duplicated",
+            )
+            return None
+        if not foreground:
+            self.safe_stop(FarmRunStopReason.FOREGROUND_LOST)
+            return None
+        permit = FarmInputPermit(
+            uuid4().hex,
+            FarmInputDomain.BOSS_ISLAND_SELECT,
+            None,
+            self.match_attempts,
+        )
+        self._pending = permit
+        self._event(
+            "boss_island_select_reserved",
+            attemptIndex=self.match_attempts,
+        )
+        return permit
+
+    def complete_island_select(
+        self,
+        permit: FarmInputPermit,
+        *,
+        sent: bool,
+        detail: str = "",
+    ) -> bool:
+        if (
+            permit != self._pending
+            or permit.domain is not FarmInputDomain.BOSS_ISLAND_SELECT
+        ):
+            self.safe_stop(
+                FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
+                detail="island selection capability mismatch",
+            )
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail=detail)
+            return False
+        return True
+
     def reserve_hub_chinh_phuc_open(
         self, *, foreground: bool
     ) -> FarmInputPermit | None:
         """Reserve one exact ManagerQuangTruong Chinh Phuc Button click.
 
-        This is available only after the current completed match lost its room
-        and the single detached-shell close was already sent.  Runtime and UI
-        geometry proof remain the caller's responsibility.
+        This is available after either a direct, proven general-hub ejection or
+        after the current match lost its room and one detached-shell close was
+        sent. Runtime and UI geometry proof remain the caller's responsibility.
         """
 
         if self.stopped:
@@ -1722,7 +1963,15 @@ class FarmRun:
             and record.attempt_index == self.match_attempts
             and record.sent
         ]
-        if len(shell_exits) != 1 or any(
+        direct_general_hub = bool(
+            self._ejected_map_reentry_pending
+            and self._ejected_map_reentry_origin == "GENERAL_HUB"
+        )
+        valid_origin = bool(
+            (direct_general_hub and len(shell_exits) == 0)
+            or (not direct_general_hub and len(shell_exits) == 1)
+        )
+        if not valid_origin or any(
             record.domain is FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN
             and record.attempt_index == self.match_attempts
             and record.sent
@@ -1731,7 +1980,10 @@ class FarmRun:
             self.safety.duplicate_lobby_entry += 1
             self.safe_stop(
                 FarmRunStopReason.RETURN_LOBBY_TIMEOUT,
-                detail="hub Chinh Phuc open missing shell exit or duplicated",
+                detail=(
+                    "hub Chinh Phuc open missing an authorized direct-hub or "
+                    "single-shell-exit origin, or duplicated"
+                ),
             )
             return None
         if not foreground:
@@ -2021,6 +2273,7 @@ class FarmRun:
         target_boss_id: str,
         exact_world_map: bool,
         detached_room_shell: bool = False,
+        general_hub: bool = False,
         no_combat_owner: bool,
     ) -> bool:
         """Move a proven owner-free ejection to exact-pet map recovery.
@@ -2037,7 +2290,10 @@ class FarmRun:
             not in {FarmRunState.RECOVERY_PENDING, FarmRunState.RECOVERY_ACTIVE}
             or self._pending is not None
             or self._ejected_map_reentry_pending
-            or int(bool(exact_world_map)) + int(bool(detached_room_shell)) != 1
+            or int(bool(exact_world_map))
+            + int(bool(detached_room_shell))
+            + int(bool(general_hub))
+            != 1
             or not no_combat_owner
             or not expected_id
             or str(target_boss_id).strip() != expected_id
@@ -2048,19 +2304,25 @@ class FarmRun:
                 observedBossId=str(target_boss_id).strip(),
                 exactWorldMap=exact_world_map,
                 detachedRoomShell=detached_room_shell,
+                generalHub=general_hub,
                 noCombatOwner=no_combat_owner,
             )
         self._ejected_map_reentry_pending = True
+        self._ejected_map_reentry_origin = (
+            "GENERAL_HUB"
+            if general_hub
+            else (
+                "DETACHED_ROOM_SHELL"
+                if detached_room_shell
+                else "WORLD_BOSS_LIST"
+            )
+        )
         self._transition(
             FarmRunState.WAIT_BOSS_LOBBY,
             "ejected_map_reentry_started",
             targetBossId=expected_id,
             priorAttempt=self.match_attempts,
-            origin=(
-                "DETACHED_ROOM_SHELL"
-                if detached_room_shell
-                else "WORLD_BOSS_LIST"
-            ),
+            origin=self._ejected_map_reentry_origin,
         )
         return True
 
@@ -2189,6 +2451,7 @@ class FarmRun:
             )
             return False
         self._ejected_map_reentry_pending = False
+        self._ejected_map_reentry_origin = None
         self.technical_recoveries += 1
         self._event(
             "ejected_map_reentry_completed",
@@ -2256,6 +2519,7 @@ class FarmRun:
         self.current_session = None
         self._pending = None
         self._ejected_map_reentry_pending = False
+        self._ejected_map_reentry_origin = None
         self.safe_stops += 1
         self.stop_reason = reason
         self.end_timestamp = self.end_timestamp or utc_timestamp()

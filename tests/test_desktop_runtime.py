@@ -171,6 +171,50 @@ class ReadOnlyGameStatusProviderTests(unittest.TestCase):
         self.assertEqual(observation.current_room_id, "room-1289")
         read_metadata.assert_called_once_with(target.resolver, 1289)
 
+    @patch.object(desktop_runtime_module, "read_chinh_phuc_target_metadata")
+    @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
+    @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
+    def test_exact_room_property_id_enriches_missing_name_from_same_pet_id(
+        self, provider_class: Mock, read_lobby: Mock, read_metadata: Mock
+    ) -> None:
+        target = _Target()
+        provider_class.return_value.poll.return_value = ProviderPoll(
+            None,
+            False,
+            "lobby",
+            combat_lifecycle=_lifecycle(CombatLifecycleState.LOBBY),
+        )
+        candidate = SimpleNamespace(
+            selection=SimpleNamespace(value="SELECTED"),
+            identity=SimpleNamespace(boss_id="1436", boss_name=None),
+        )
+        read_lobby.return_value = SimpleNamespace(
+            state=SimpleNamespace(value="BOSS_LOBBY"),
+            branch="CHINH_PHUC_ROOM",
+            chinh_phuc=SimpleNamespace(
+                current_room_id="Coop_667444",
+                enemy_pet_level=77,
+            ),
+            reasons=(),
+            candidates=(candidate,),
+        )
+        read_metadata.return_value = SimpleNamespace(
+            pet_id=1436,
+            pet_name="Lieyun",
+            boss_display_level=77,
+            island_name="Thập nhị tinh",
+        )
+
+        observation = ReadOnlyGameStatusProvider(lambda: target).read()
+
+        self.assertEqual(observation.lifecycle, "BOSS_LOBBY")
+        self.assertEqual(observation.lobby_branch, "CHINH_PHUC_ROOM")
+        self.assertEqual(observation.target_id, "1436")
+        self.assertEqual(observation.target_name, "Lieyun")
+        self.assertEqual(observation.target_level, 77)
+        self.assertEqual(observation.target_island, "Thập nhị tinh")
+        self.assertEqual(observation.target_candidates, (("1436", "Lieyun"),))
+
     @patch.object(desktop_runtime_module, "read_boss_lobby_runtime")
     @patch.object(desktop_runtime_module, "MemoryBoardStateProvider")
     def test_world_boss_list_uses_only_the_unique_available_boss(

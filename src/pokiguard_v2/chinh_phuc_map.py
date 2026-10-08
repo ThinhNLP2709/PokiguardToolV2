@@ -39,10 +39,11 @@ from .native_card_ui import NativeCardUiReader
 # ManagerChinhPhuc / GroupDTO / PetEnemyDTO, verified in DiffableCs.
 MANAGER_CHINH_PHUC_CACHED_DATA_OFFSET = 0x98
 MANAGER_CHINH_PHUC_PANELS_OFFSET = 0x28
+MANAGER_CHINH_PHUC_BUTTONS_OFFSET = 0x30
 # ChinhPhucDataService is a persistent singleton that owns the same server data
 # even when the island panel is not visible.  Reading it avoids the bounded
 # native Button scan used by the re-entry executor.
-CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x366F870
+CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x369B7E8
 CHINH_PHUC_DATA_SERVICE_DATA_OFFSET = 0x20
 # Display-only mapping carried forward from the unchanged b5 data model: each server
 # ``GroupDTO.id`` matches the serialized ``btnIsland{id}`` label.  This map is
@@ -190,6 +191,31 @@ class ChinhPhucIslandMetadata:
     group_name: str
     group_index: int
     island_name: str | None = None
+
+
+@dataclass(frozen=True)
+class ChinhPhucIslandTarget:
+    """Exact live island control associated with one configured boss pet."""
+
+    pet_id: int
+    group_id: int
+    group_name: str
+    group_index: int
+    island_name: str | None
+    manager_address: int
+    button_address: int
+    button_native: int
+    button_viewport_rect: tuple[float, float, float, float]
+    button_root_transform: int | None
+    button_root_aspect: float | None
+    clean: bool
+    reasons: tuple[str, ...]
+    button_proof: str = "ManagerChinhPhuc.buttons[group_index]"
+
+    @property
+    def viewport_point(self) -> tuple[float, float]:
+        left, top, right, bottom = self.button_viewport_rect
+        return ((left + right) / 2.0, (top + bottom) / 2.0)
 
 
 @dataclass(frozen=True)
@@ -442,6 +468,97 @@ def _find_pet_in_cached_groups(
     if cached is None:
         return None
     return _find_pet_in_groups(resolver, cached, target_pet_id)
+
+
+def discover_chinh_phuc_island_target(
+    target: object,
+    target_pet_id: int,
+    *,
+    manager_hint: int,
+) -> ChinhPhucIslandTarget | None:
+    """Resolve the configured boss's island Button on the main conquest map.
+
+    ``ManagerChinhPhuc.Start`` binds its serialized ``buttons`` array by the
+    same zero-based group index consumed by ``ShowPanel``. ``OnReceived``
+    stores the server group list in that order. Binding the configured pet to
+    its cached ``GroupDTO`` therefore identifies one exact island control
+    without pixels, names, or a fixed island number.
+    """
+
+    if target_pet_id <= 0:
+        raise ValueError("target_pet_id must be positive")
+    if not is_canonical_user_pointer(manager_hint):
+        return None
+    resolver = target.resolver
+    if not resolver.memory.is_readable(manager_hint, 0xC0):
+        return None
+    try:
+        pet = _find_pet_in_cached_groups(
+            resolver,
+            manager_hint,
+            target_pet_id,
+        )
+        if pet is None or pet.group_index < 0 or pet.group_index >= 64:
+            return None
+        buttons_address = _read_pointer(
+            resolver,
+            manager_hint + MANAGER_CHINH_PHUC_BUTTONS_OFFSET,
+        )
+        if buttons_address is None:
+            return None
+        buttons = read_reference_array(
+            resolver.memory,
+            buttons_address,
+            max_length=64,
+        )
+        if pet.group_index >= len(buttons):
+            return None
+        button = buttons[pet.group_index]
+        if not button:
+            return None
+        reader = NativeCardUiReader(
+            target.memory,
+            resolver.game_assembly_base,
+        )
+        geometry = reader.read_button_geometry(
+            button,
+            allow_nested_fullscreen_canvas=True,
+        )
+        if (
+            not geometry.active
+            or geometry.viewport_rect is None
+            or geometry.native_button is None
+        ):
+            return None
+        reasons: list[str] = []
+        if not resolver.memory.is_readable(
+            button,
+            SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET + 1,
+        ):
+            return None
+        if not resolver.read_bool(button + SELECTABLE_INTERACTABLE_OFFSET):
+            reasons.append("target island Button is not interactable")
+        if not resolver.read_bool(
+            button + SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET
+        ):
+            reasons.append("target island Button CanvasGroup blocks interaction")
+        return ChinhPhucIslandTarget(
+            pet_id=pet.pet_id,
+            group_id=pet.group_id,
+            group_name=pet.group_name,
+            group_index=pet.group_index,
+            island_name=pet.island_name,
+            manager_address=manager_hint,
+            button_address=button,
+            button_native=geometry.native_button,
+            button_viewport_rect=geometry.viewport_rect,
+            button_root_transform=geometry.root_transform,
+            button_root_aspect=geometry.root_aspect,
+            clean=not reasons,
+            reasons=tuple(reasons),
+        )
+    except (ExternalReadError, LayoutValidationError, OSError, ValueError):
+        return None
 
 
 def _manager_panel_map_target(
@@ -1089,11 +1206,13 @@ def locate_hunt_order_badge(
 __all__ = [
     "CHINH_PHUC_ISLAND_DISPLAY_NAMES",
     "ChinhPhucIslandMetadata",
+    "ChinhPhucIslandTarget",
     "ChinhPhucMapTarget",
     "ChinhPhucPlayerPrefs",
     "ChinhPhucTargetMetadata",
     "HuntBadgeCandidate",
     "HuntBadgeLocation",
+    "discover_chinh_phuc_island_target",
     "discover_chinh_phuc_map_target",
     "locate_hunt_order_badge",
     "read_chinh_phuc_island_metadata",

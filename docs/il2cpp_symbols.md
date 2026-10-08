@@ -1304,3 +1304,105 @@ Evidence:
 
 Other migrated offsets used by the runtime are recorded in the b5
 compatibility report. Any value not verified there remains UNKNOWN.
+
+## PetPuzzle 1.7.4-b6 compatibility addendum — 2026-10-01
+
+The exact supported GameAssembly SHA-256 is
+`72D10A43FBFDAB705E2DB7CACA1CC2B998B0B8581D56946DC545D87C720EC063`;
+metadata is version 110 and preferred image base is `0x180000000`.
+
+| Type/root | b6 TypeInfo RVA | Static owner |
+|---|---:|---:|
+| `Board` | `0x036C9F88` | `+0x10` |
+| `Active` | `0x036C9E70` | `+0x00` |
+| `ManagerMatch` | `0x036C6148` | `+0x00` |
+| `MatchService` | `0x036C4020` | `+0x00` |
+| `ChatService` | `0x036C3C38` | `+0x00` |
+| `ChatMessageDTO` | `0x036CDBB8` | N/A |
+| `Dot` | `0x036CBD30` | N/A |
+| `WsCombatBatch` | `0x036CFC28` | N/A |
+| `BoardWsApplier` | `0x036C3DE8` | N/A |
+| `CardUI` | `0x036C3FD0` | `+0x00` active card |
+| `FusionCardUI` | `0x036EC2B0` | N/A |
+| co-op `Active.PlayerStats` | `0x0367C930` | N/A |
+| `PetUserDTO` | `0x0369EB60` | N/A |
+| `CardData` | `0x036EC2C0` | N/A |
+| `AuditionStage` | `0x03682B68` | `+0x00` active stage |
+| `AuditionChallenge` | `0x03682828` | N/A |
+| `ManagerQuangTruong` | `0x036C4718` | `Instance +0x08` |
+| `ManagerRoom` | `0x036C3FC0` | `+0x00` |
+| `WsRoomService` | `0x036D7B08` | `+0x00` |
+| `RoomCoopV2View` | `0x036A0A30` | `+0x00` |
+| `UIPanelManager` | `0x036C47E0` | `+0x00` |
+| `ChinhPhucDataService` | `0x0369B7E8` | `+0x00` |
+
+The b5/b6 field diff leaves every production offset currently read by V2
+unchanged. `ChatService` adds late world-replay fields, but the connection and
+reconnect offsets used by V2 remain `+0x28/+0x30` and `+0x2FC..+0x30C`.
+
+GameAssembly native anchors moved to `Component.get_gameObject` cache
+`0x038D7AE8` and unmarshal signature `0x0138561F`. `UnityPlayer.dll` is
+unchanged and still resolves the cached target to `UnityPlayer+0x01067390`.
+The full table and verification are in
+`docs/petpuzzle_1.7.4_b6_compatibility_report.md`.
+
+### b6 Evolution card ownership with a main Mega skill — 2026-10-03
+
+`BoardWsApplier.FindFusionCardUI()` at RVA `0x003B8680` returns `CardUI`, while
+the Evolution tile created by `Board.EnsureFusionCards()` still owns the exact
+`FusionCardUI` component (`TypeInfo` RVA `0x036EC2B0`). The current
+`Board.cardsInHand +0x350` list is the bounded owner root for both that tile
+and an already-present Mega skill tile. A main-Mega plus normal-Evolution live
+run proved that `selectedCards` can be empty while `cardsInHand` contains two
+objects; therefore selected-card cardinality alone cannot identify Evolution.
+
+V2 now walks only those current-hand GameObjects through the verified native
+component bridge, requires exactly one `FusionCardUI`, revalidates its current
+pet ID, Button and GameObject ownership, and derives its visual slot from the
+same non-overlapping live hand. Missing or multiple candidates remain UNKNOWN.
+No absolute runtime address, heap-wide inference, method invocation or memory
+write is used.
+
+### b6 Chinh Phuc room identity without `ManagerRoom.roomData` — 2026-10-04
+
+A live host room proved that `ManagerRoom.roomData +0x100` may be null while
+the room is still active. In the same stable samples, `WsRoomService` retained
+`CurrentRoomId="Coop_667444"`, `CurrentRoomType="ChinhPhuc"`, the local owner,
+and a non-null `Properties +0x38` dictionary. The exact dictionary contained
+`enemyPetId=1436` and `enemyPetLevel=77`; server JSON values were boxed as
+`System.Int64`, not `System.Int32`. `ChinhPhucDataService` independently mapped
+pet ID 1436 to Lieyun, display level 77, group `Thập nhị tinh`.
+
+The verified b6 type-info RVAs used for strict read-only validation are:
+
+| Type | b6 TypeInfo RVA |
+|---|---:|
+| `Dictionary<string, object>` | `0x036C4108` |
+| `System.Int32` | `0x036C3FE8` |
+| `System.Int64` | `0x036C4C20` |
+| `System.String` | `0x036C38A0` |
+
+V2 may use those exact room properties as a fallback identity only when the
+current room ID, `ChinhPhuc` type, local-host ownership, native Start button
+and idle `RoomStartState` all validate. Dictionary class, array shape,
+count/freeCount/version, key strings and boxed numeric classes are checked;
+unstable or conflicting data remains UNKNOWN. The still-visible conquest
+island layer is not allowed to override this stronger exact-room proof.
+
+### b6 rendered-Dot identity cross-check — 2026-10-08
+
+The current `BoardWsApplier` owns the bounded six-tag
+`Dictionary<string, GameObject> _prefabByTag` at `+0x50`. Native
+`SpawnDotByTag` resolves the incoming tag through that table and writes the
+same selected managed `GameObject` to `Dot.originalPrefab +0xD8`, together with
+`Dot.PoolTag +0x100`, coordinates and multiplier. V2 now reads this bounded
+dictionary through the already validated current `BoardWsApplier` owner and
+requires exact `PoolTag -> prefab == originalPrefab` agreement for every Dot.
+
+`PoolTag` pointer-to-text values are intentionally cached for one board walk
+only. They must not be retained across matches because DTO-owned IL2CPP strings
+can become unreachable and their addresses can later be reused. The table
+pointer, dictionary shape/header, key strings, managed prefab GameObject class,
+native object readability, Dot owner and both identity fields all fail closed.
+No engine method, heap scan, memory write or ASLR-dependent absolute address is
+introduced.

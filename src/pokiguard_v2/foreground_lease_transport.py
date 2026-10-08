@@ -102,6 +102,14 @@ class ForegroundLeaseBackend(Protocol):
     def block_user_input(self, blocked: bool) -> bool: ...
 
 
+class ForegroundKeyboardGuard(Protocol):
+    @property
+    def active(self) -> bool: ...
+
+    def acquire(self) -> bool: ...
+    def release(self) -> bool: ...
+
+
 def jsonable(value: Any) -> Any:
     if is_dataclass(value):
         return jsonable(asdict(value))
@@ -214,6 +222,7 @@ class BoundedForegroundLease:
         exclusive_input_attempts: int = 1,
         exclusive_input_retry_seconds: float = 0.05,
         post_action_settle_seconds: float = 0.0,
+        takeover_keyboard_guard: ForegroundKeyboardGuard | None = None,
     ) -> None:
         if not 0.20 <= required_idle_seconds <= 2.0:
             raise ValueError("required_idle_seconds must be between 0.20 and 2.0")
@@ -258,6 +267,7 @@ class BoundedForegroundLease:
         self.exclusive_input_attempts = int(exclusive_input_attempts)
         self.exclusive_input_retry_seconds = float(exclusive_input_retry_seconds)
         self.post_action_settle_seconds = float(post_action_settle_seconds)
+        self.takeover_keyboard_guard = takeover_keyboard_guard
         self._armed: tuple[ExactWindowBinding, str] | None = None
         self._consumed = False
 
@@ -281,7 +291,7 @@ class BoundedForegroundLease:
         *,
         preflight: Callable[[], bool],
         expected_cursor_after: tuple[int, int] | None,
-        post_focus_preflight: Callable[[], bool] | None = None,
+        final_pre_takeover_preflight: Callable[[], bool] | None = None,
     ) -> LeaseResult:
         if self._consumed:
             return self._early_result(
@@ -367,6 +377,55 @@ class BoundedForegroundLease:
                 idle_wait_seconds=idle_wait,
             )
 
+        # Phase 4 is an input-delivery extension over the already accepted
+        # Phase 3 pipeline. Any memory polling, screenshot inspection, locator
+        # work, or other action preparation must finish before physical input
+        # ownership is taken. Callers use this last pre-takeover check to prove
+        # that their fully prepared action is still current; after it returns,
+        # the lease performs only exact-window/stop/guard checks plus input.
+        final_preflight_started = self.monotonic()
+        final_preflight_ok = bool(
+            final_pre_takeover_preflight is None
+            or self._safe_preflight(final_pre_takeover_preflight)
+        )
+        final_preflight_seconds = max(
+            0.0, self.monotonic() - final_preflight_started
+        )
+        self.event_sink(
+            "foreground_lease_final_pre_takeover_preflight",
+            {
+                "actionIdentity": identity,
+                "accepted": final_preflight_ok,
+                "elapsedSeconds": final_preflight_seconds,
+                "physicalInputOwned": False,
+            },
+        )
+        if not final_preflight_ok:
+            return self._early_result(
+                LeaseStatus.STALE_ACTION,
+                "final pre-takeover action preflight rejected",
+                identity,
+                idle_age_seconds=idle_age,
+                idle_wait_seconds=idle_wait,
+            )
+        failure = _binding_failure(self.backend, binding)
+        if failure is not None:
+            return self._early_result(
+                failure,
+                "exact game window changed during final action preparation",
+                identity,
+                idle_age_seconds=idle_age,
+                idle_wait_seconds=idle_wait,
+            )
+        if self.stop_requested():
+            return self._early_result(
+                LeaseStatus.STOPPED,
+                "stop requested after final action preparation",
+                identity,
+                idle_age_seconds=idle_age,
+                idle_wait_seconds=idle_wait,
+            )
+
         foreground_before = self.backend.foreground_window()
         cursor_before = self.backend.cursor_pos()
         game_already_foreground = foreground_before == binding.window.hwnd
@@ -394,6 +453,142 @@ class BoundedForegroundLease:
             )
 
         lease_started = self.monotonic()
+        action_attempted = False
+        action_succeeded = False
+        action_exception: Exception | None = None
+        exclusive_input_acquired = False
+        exclusive_input_released: bool | None = None
+        exclusive_attempt_count = 0
+        keyboard_guard_acquired = False
+        keyboard_guard_released: bool | None = None
+
+        def release_exclusive_input() -> bool | None:
+            nonlocal exclusive_input_released
+            if not exclusive_input_acquired:
+                return None
+            exclusive_input_released = False
+            release_attempts = 0
+            while release_attempts < 5:
+                release_attempts += 1
+                if self.backend.block_user_input(False):
+                    exclusive_input_released = True
+                    break
+                if release_attempts < 5:
+                    self.sleeper(self.exclusive_input_retry_seconds)
+            self.event_sink(
+                "foreground_lease_exclusive_input_release",
+                {
+                    "actionIdentity": identity,
+                    "attempts": release_attempts,
+                    "released": exclusive_input_released,
+                    "mode": getattr(self.backend, "last_input_guard_mode", None),
+                },
+            )
+            return exclusive_input_released
+
+        def release_keyboard_guard() -> bool | None:
+            nonlocal keyboard_guard_released
+            if not keyboard_guard_acquired or self.takeover_keyboard_guard is None:
+                return None
+            try:
+                keyboard_guard_released = bool(
+                    self.takeover_keyboard_guard.release()
+                )
+            except Exception:
+                keyboard_guard_released = False
+            self.event_sink(
+                "foreground_lease_keyboard_guard_release",
+                {
+                    "actionIdentity": identity,
+                    "released": keyboard_guard_released,
+                    "active": bool(self.takeover_keyboard_guard.active),
+                },
+            )
+            return keyboard_guard_released
+
+        # Acquire both guards before asking Windows for foreground ownership.
+        # This closes the race where a physical key typed during focus takeover
+        # is delivered to the game before the pointer-only fallback is armed.
+        if self.require_exclusive_input:
+            while exclusive_attempt_count < self.exclusive_input_attempts:
+                exclusive_attempt_count += 1
+                if self.backend.block_user_input(True):
+                    exclusive_input_acquired = True
+                    break
+                if exclusive_attempt_count < self.exclusive_input_attempts:
+                    self.sleeper(self.exclusive_input_retry_seconds)
+            if exclusive_input_acquired and self.takeover_keyboard_guard is not None:
+                try:
+                    keyboard_guard_acquired = bool(
+                        self.takeover_keyboard_guard.acquire()
+                    )
+                except Exception:
+                    keyboard_guard_acquired = False
+            self.event_sink(
+                "foreground_lease_exclusive_input_acquire",
+                {
+                    "actionIdentity": identity,
+                    "attempts": exclusive_attempt_count,
+                    "acquired": exclusive_input_acquired,
+                    "mode": getattr(self.backend, "input_guard_mode", None),
+                    "blockInputError": getattr(
+                        self.backend, "block_input_error", None
+                    ),
+                    "keyboardGuardRequired": (
+                        self.takeover_keyboard_guard is not None
+                    ),
+                    "keyboardGuardAcquired": keyboard_guard_acquired,
+                },
+            )
+        guard_acquisition_failed = bool(
+            self.require_exclusive_input
+            and (
+                not exclusive_input_acquired
+                or (
+                    self.takeover_keyboard_guard is not None
+                    and not keyboard_guard_acquired
+                )
+            )
+        )
+        if guard_acquisition_failed:
+            release_exclusive_input()
+            release_keyboard_guard()
+            current_foreground = self.backend.foreground_window()
+            current_cursor = self.backend.cursor_pos()
+            release_incomplete = bool(
+                exclusive_input_released is False
+                or keyboard_guard_released is False
+            )
+            return self._result(
+                identity,
+                (
+                    LeaseStatus.RELEASE_INCOMPLETE
+                    if release_incomplete
+                    else LeaseStatus.EXCLUSIVE_INPUT_FAILED
+                ),
+                (
+                    "physical-input guard did not release after acquisition failure"
+                    if release_incomplete
+                    else "bounded mouse and keyboard lock was not acquired"
+                ),
+                False,
+                False,
+                foreground_before,
+                current_foreground,
+                current_foreground,
+                current_foreground,
+                cursor_before,
+                current_cursor,
+                current_cursor,
+                None,
+                None,
+                False,
+                False,
+                idle_age,
+                idle_wait,
+                max(0.0, self.monotonic() - lease_started),
+            )
+
         requested = True
         focus_request_count = 0
         if not game_already_foreground:
@@ -421,11 +616,30 @@ class BoundedForegroundLease:
                 ):
                     self.sleeper(self.poll_interval_seconds)
         foreground_after_acquire = self.backend.foreground_window()
-        if not requested or foreground_after_acquire != binding.window.hwnd:
+        # SetForegroundWindow/bridge return values are advisory. Windows can
+        # report a failed request even though the immediate authoritative read
+        # already proves that the exact game HWND owns foreground (observed in
+        # the 2026-10-02 typing/takeover incident). Trust ownership, not the
+        # request's boolean return value.
+        if foreground_after_acquire != binding.window.hwnd:
+            release_exclusive_input()
+            release_keyboard_guard()
+            release_incomplete = bool(
+                exclusive_input_released is False
+                or keyboard_guard_released is False
+            )
             return self._result(
                 identity,
-                LeaseStatus.FOCUS_ACQUIRE_FAILED,
-                "Windows did not grant foreground ownership",
+                (
+                    LeaseStatus.RELEASE_INCOMPLETE
+                    if release_incomplete
+                    else LeaseStatus.FOCUS_ACQUIRE_FAILED
+                ),
+                (
+                    "input guard did not release after focus acquisition failed"
+                    if release_incomplete
+                    else "Windows did not grant foreground ownership"
+                ),
                 False,
                 False,
                 foreground_before,
@@ -461,32 +675,6 @@ class BoundedForegroundLease:
                 ),
             },
         )
-        action_attempted = False
-        action_succeeded = False
-        action_exception: Exception | None = None
-        exclusive_input_acquired = False
-        exclusive_input_released: bool | None = None
-        exclusive_attempt_count = 0
-        if self.require_exclusive_input:
-            while exclusive_attempt_count < self.exclusive_input_attempts:
-                exclusive_attempt_count += 1
-                if self.backend.block_user_input(True):
-                    exclusive_input_acquired = True
-                    break
-                if exclusive_attempt_count < self.exclusive_input_attempts:
-                    self.sleeper(self.exclusive_input_retry_seconds)
-            self.event_sink(
-                "foreground_lease_exclusive_input_acquire",
-                {
-                    "actionIdentity": identity,
-                    "attempts": exclusive_attempt_count,
-                    "acquired": exclusive_input_acquired,
-                    "mode": getattr(self.backend, "input_guard_mode", None),
-                    "blockInputError": getattr(
-                        self.backend, "block_input_error", None
-                    ),
-                },
-            )
         if self.focus_settle_seconds:
             self.sleeper(self.focus_settle_seconds)
         post_focus_idle_age = self.backend.last_input_age_seconds()
@@ -514,9 +702,8 @@ class BoundedForegroundLease:
         elif (
             _binding_failure(self.backend, binding) is not None
             or self.backend.foreground_window() != binding.window.hwnd
-            or not self._safe_preflight(post_focus_preflight or preflight)
         ):
-            reason = "post-focus preflight rejected before input"
+            reason = "exact window changed after input takeover"
             pre_action_status = LeaseStatus.STALE_ACTION
         else:
             action_attempted = True
@@ -641,25 +828,7 @@ class BoundedForegroundLease:
             and not self._cursor_near(cursor_after_action, expected_cursor_after)
         )
 
-        if exclusive_input_acquired:
-            exclusive_input_released = False
-            release_attempts = 0
-            while release_attempts < 5:
-                release_attempts += 1
-                if self.backend.block_user_input(False):
-                    exclusive_input_released = True
-                    break
-                if release_attempts < 5:
-                    self.sleeper(self.exclusive_input_retry_seconds)
-            self.event_sink(
-                "foreground_lease_exclusive_input_release",
-                {
-                    "actionIdentity": identity,
-                    "attempts": release_attempts,
-                    "released": exclusive_input_released,
-                    "mode": getattr(self.backend, "last_input_guard_mode", None),
-                },
-            )
+        release_exclusive_input()
 
         # Release can immediately expose a fresh user focus/cursor choice.
         # Respect that choice during cleanup, but do not rewrite the bounded
@@ -732,6 +901,9 @@ class BoundedForegroundLease:
                 # A different cursor position is treated as user ownership.
                 cursor_restored = None
 
+        # Keep physical keys suppressed until focus and cursor have been handed
+        # back. This prevents text typed during cleanup from reaching the game.
+        release_keyboard_guard()
         foreground_final = self.backend.foreground_window()
         cursor_final = self.backend.cursor_pos()
         duration = max(0.0, self.monotonic() - lease_started)
@@ -749,6 +921,9 @@ class BoundedForegroundLease:
         elif exclusive_input_released is False:
             status = LeaseStatus.RELEASE_INCOMPLETE
             reason = "action completed but physical-input lock did not release"
+        elif keyboard_guard_released is False:
+            status = LeaseStatus.RELEASE_INCOMPLETE
+            reason = "action completed but keyboard guard did not release"
         elif focus_restored is False or cursor_restored is False:
             status = LeaseStatus.RELEASE_INCOMPLETE
             reason = "action completed but focus or cursor restoration failed"

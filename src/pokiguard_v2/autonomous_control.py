@@ -42,6 +42,64 @@ class SwapAcceptanceStatus(str, Enum):
     SEQUENCE_ADVANCED_UNATTRIBUTED = "SEQUENCE_ADVANCED_UNATTRIBUTED"
 
 
+@dataclass(frozen=True)
+class ConsumedSwapBoardSource:
+    """One immutable board snapshot that already produced a SWAP input."""
+
+    session: CombatSessionKey
+    srv_seq: int
+    board_hash: str
+    source_turn: int
+
+
+class ConsumedSwapBoardGuard:
+    """Reject a later local turn that still exposes a consumed SWAP board.
+
+    MatchService turn/stat fields may advance while the provider still carries
+    an older reconstructed ``Board.allDots`` snapshot.  A later turn does not
+    make that old board safe to solve again.  Remembering its immutable
+    identity prevents repeated invalid clicks and the resulting AFK removal.
+    """
+
+    def __init__(self) -> None:
+        self._sources: dict[
+            tuple[CombatSessionKey, int, str], ConsumedSwapBoardSource
+        ] = {}
+
+    def begin_session(self) -> None:
+        self._sources.clear()
+
+    def observe(self, pending: "PendingAutonomousAction") -> None:
+        if pending.identity.action is not PolicyAction.SWAP:
+            return
+        source = pending.identity.source
+        key = (source.session, source.srv_seq, source.board_hash)
+        existing = self._sources.get(key)
+        if existing is None or source.turn < existing.source_turn:
+            self._sources[key] = ConsumedSwapBoardSource(
+                source.session,
+                source.srv_seq,
+                source.board_hash,
+                source.turn,
+            )
+
+    def blocking_source(self, state: GameState) -> ConsumedSwapBoardSource | None:
+        battle = state.battle
+        if (
+            battle.session_key is None
+            or battle.srv_seq is None
+            or battle.board_hash is None
+            or battle.turn_number is None
+        ):
+            return None
+        source = self._sources.get(
+            (battle.session_key, battle.srv_seq, battle.board_hash)
+        )
+        if source is None or battle.turn_number <= source.source_turn:
+            return None
+        return source
+
+
 def _critical_state_fingerprint(state: GameState) -> str:
     """Hash gameplay-relevant state while deliberately excluding timer ticks."""
 

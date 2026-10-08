@@ -252,12 +252,18 @@ class ReadOnlyGameStatusProvider:
                                 )
                                 if metadata is not None:
                                     self._target_metadata[pet_id] = metadata
-                            if (
+                            metadata_matches = bool(
                                 metadata is not None
                                 and metadata.pet_id == pet_id
-                                and metadata.pet_name.casefold()
-                                == (target_name or "").casefold()
-                            ):
+                                and (
+                                    not target_name
+                                    or metadata.pet_name.casefold()
+                                    == target_name.casefold()
+                                )
+                            )
+                            if metadata_matches:
+                                if not target_name:
+                                    target_name = metadata.pet_name
                                 target_level = metadata.boss_display_level
                                 target_island = metadata.island_name
                             else:
@@ -268,6 +274,23 @@ class ReadOnlyGameStatusProvider:
                                 )
                                 if room_level is not None and room_level > 0:
                                     target_level = room_level
+                        # Keep the exact-room candidate pair synchronized with
+                        # the display identity enriched from that same pet ID.
+                        # Otherwise Start sees (id, None) in candidates but
+                        # (id, verified_name) as the current target and rejects
+                        # its own observation as ambiguous.
+                        if lobby.branch == "CHINH_PHUC_ROOM" and target_id:
+                            target_candidates = tuple(
+                                (
+                                    candidate.identity.boss_id,
+                                    (
+                                        target_name
+                                        if candidate is selected
+                                        else candidate.identity.boss_name
+                                    ),
+                                )
+                                for candidate in lobby.candidates
+                            )
                 except Exception as exc:  # noqa: BLE001 - lifecycle stays safe
                     lifecycle = (
                         BossLobbyState.UNKNOWN.value

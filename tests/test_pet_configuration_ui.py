@@ -354,6 +354,77 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertIs(restored.config.damage_card, DamageCardMode.PET_PASSIVE)
         self.assertEqual(restored.config.pet_skill_fire_value, 3)
 
+    def test_mega_icarus_defaults_matrix_locks_and_preference_roundtrip(self):
+        self.app.play_style.set(
+            PLAY_STYLE_LABELS[PlayStyle.MEGA_ICARUS_SPAM_SKILL]
+        )
+        self.root.update_idletasks()
+
+        self.assertEqual(self.app.main_pet.get(), MainPetType.MEGA.value)
+        self.assertEqual(self.app.evolution.get(), EvolutionTarget.NONE.value)
+        self.assertEqual(self.app.damage_card.get(), DamageCardMode.PET_SKILL.value)
+        self.assertEqual(
+            self.app.audition_mode.get(),
+            AUDITION_LABELS[AuditionMode.NO_ACTION],
+        )
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Kiếm đủ")
+        self.assertEqual(self.app.pet_skill_fire_value.get(), "10")
+        self.assertEqual(
+            tuple(self.app.audition_widget.cget("values")),
+            (AUDITION_LABELS[AuditionMode.NO_ACTION],),
+        )
+        self.assertTrue(self.app.audition_widget.instate(["disabled"]))
+        self.assertTrue(self.button("main_pet", "legendary").instate(["disabled"]))
+        self.assertFalse(self.button("main_pet", "normal").instate(["disabled"]))
+        self.assertFalse(self.button("main_pet", "mega").instate(["disabled"]))
+        self.assertFalse(self.button("evolution", "none").instate(["disabled"]))
+        self.assertFalse(self.button("evolution", "normal").instate(["disabled"]))
+        self.assertTrue(self.button("evolution", "mega").instate(["disabled"]))
+        self.assertFalse(self.button("damage_card", "pet_skill").instate(["disabled"]))
+        self.assertTrue(self.button("damage_card", "default_attack").instate(["disabled"]))
+        self.app._render()
+        self.assertFalse(self.app.start_button.instate(["disabled"]))
+
+        self.button("main_pet", "normal").invoke()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.evolution.get(), EvolutionTarget.MEGA.value)
+        self.assertFalse(self.button("evolution", "mega").instate(["disabled"]))
+        self.assertTrue(self.button("evolution", "none").instate(["disabled"]))
+
+        self.app.pet_skill_fire_condition.set("Hút đủ")
+        self.app.pet_skill_fire_value.set("12")
+        self.app.validate_button.invoke()
+        restored = self.store.load()
+        self.assertTrue(restored.loaded)
+        self.assertIs(restored.config.play_style, PlayStyle.MEGA_ICARUS_SPAM_SKILL)
+        self.assertIs(restored.config.main_pet, MainPetType.NORMAL)
+        self.assertIs(restored.config.evolution, EvolutionTarget.MEGA)
+        self.assertIs(restored.config.audition_mode, AuditionMode.NO_ACTION)
+        self.assertIs(
+            restored.config.pet_skill_fire_condition,
+            PetSkillFireCondition.DRAIN_GEM_COUNT,
+        )
+        self.assertEqual(restored.config.pet_skill_fire_value, 12)
+
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SIMPLE])
+        self.root.update_idletasks()
+        self.assertEqual(self.app.main_pet.get(), MainPetType.NORMAL.value)
+        self.assertEqual(self.app.evolution.get(), EvolutionTarget.NORMAL.value)
+        self.assertEqual(self.app.damage_card.get(), DamageCardMode.DEFAULT_ATTACK.value)
+        self.assertEqual(
+            tuple(self.app.audition_widget.cget("values")),
+            (
+                AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION],
+                AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION],
+            ),
+        )
+        self.assertNotIn(
+            AUDITION_LABELS[AuditionMode.NO_ACTION],
+            tuple(self.app.audition_widget.cget("values")),
+        )
+        self.assertTrue(self.button("main_pet", "mega").instate(["disabled"]))
+        self.assertTrue(self.button("evolution", "mega").instate(["disabled"]))
+
     def test_skill_rush_active_run_keeps_accepted_playstyle_immutable(self):
         self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH])
         self.button("main_pet", "legendary").invoke()

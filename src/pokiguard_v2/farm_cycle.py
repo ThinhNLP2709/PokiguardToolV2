@@ -14,6 +14,10 @@ from typing import Any
 from uuid import uuid4
 
 from .boss_entry import BossLobbyState, FarmTarget
+from .opening_snapshot import (
+    ACK_ATTESTED_LIVE_BOARD_SOURCE,
+    PRISTINE_NATIVE_OPENING_BOARD_SOURCE,
+)
 from .state import CombatSessionKey
 
 
@@ -103,19 +107,33 @@ class OpeningEvidence:
     timer_safe: bool = True
 
     def valid(self) -> bool:
+        source_valid = bool(
+            (
+                self.source
+                == "ChatMessageDTO.MATCH_START.matchPayload.board"
+                and self.fresh_dto
+            )
+            or (
+                self.source == ACK_ATTESTED_LIVE_BOARD_SOURCE
+                and not self.fresh_dto
+            )
+            or (
+                self.source == PRISTINE_NATIVE_OPENING_BOARD_SOURCE
+                and not self.fresh_dto
+            )
+        )
         return (
             self.session.match_id == self.match_id
             and re.fullmatch(r"[0-9a-fA-F]{64}", self.board_hash) is not None
             and self.complete_cells == 64
             and self.unique_coordinates == 64
-            and self.source == "ChatMessageDTO.MATCH_START.matchPayload.board"
+            and source_valid
             and self.first_local_turn
             and self.local_move_sequence == 0
             and self.stable_confirmations >= 2
             and self.production_ready
             and self.gem_types_valid
             and self.multipliers_valid
-            and self.fresh_dto
             and self.timer_safe
         )
 

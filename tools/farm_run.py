@@ -31,6 +31,7 @@ from pokiguard_v2.board_diagnostics import analyze_game_state  # noqa: E402
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget  # noqa: E402
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.chinh_phuc_map import (  # noqa: E402
+    discover_chinh_phuc_island_target,
     discover_chinh_phuc_map_target,
 )
 from pokiguard_v2.boss_entry_ui import (  # noqa: E402
@@ -55,6 +56,7 @@ from pokiguard_v2.farm_control import (  # noqa: E402
     GracefulStopController,
 )
 from pokiguard_v2.farm_run import (  # noqa: E402
+    ActiveCombatHandoffEvidence,
     FarmInputDomain,
     FarmRun,
     FarmRunArtifactWriter,
@@ -65,6 +67,9 @@ from pokiguard_v2.farm_run import (  # noqa: E402
     FarmRunState,
     FarmRunStopReason,
     MatchResult,
+)
+from pokiguard_v2.opening_snapshot import (  # noqa: E402
+    is_ack_attested_current_board_source,
 )
 from pokiguard_v2.state import (  # noqa: E402
     CombatSessionKey,
@@ -303,7 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--postmatch-ui-timeout",
         type=float,
-        default=15.0,
+        default=30.0,
         help=(
             "bounded wait for the stable Thang/Thua result modal after the "
             "authoritative combat lifecycle has ended"
@@ -658,6 +663,56 @@ def _entry_preflight_runtime_changed_before_start(
     )
 
 
+def _active_combat_handoff_evidence(
+    result: dict[str, Any],
+) -> ActiveCombatHandoffEvidence | None:
+    """Parse the exact untouched-current-board proof emitted by BossEntry."""
+
+    if (
+        result.get("status") != "RECOVERY_REQUIRED"
+        or result.get("stopReason") != "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
+    ):
+        return None
+    raw = result.get("activeCombatTimeoutEvidence") or {}
+    raw_session = raw.get("session") or {}
+    if raw.get("firstLocalTurn") is not False:
+        return None
+    try:
+        session = CombatSessionKey(
+            int(raw_session["lifecycle_epoch"]),
+            int(raw_session["board_instance"]),
+            str(raw_session["match_id"]),
+        )
+        evidence = ActiveCombatHandoffEvidence(
+            session=session,
+            match_id=str(raw["matchId"]),
+            board_hash=str(raw["boardHash"]),
+            complete_cells=int(raw["completeCells"]),
+            unique_coordinates=int(raw["uniqueCoordinates"]),
+            source=str(raw["boardSource"]),
+            current_board_attested=is_ack_attested_current_board_source(
+                raw.get("boardSource")
+            ),
+            turn_number=int(raw["turn"]),
+            first_local_turn=raw.get("firstLocalTurn") is True,
+            local_move_sequence=(
+                None
+                if raw.get("localMoveSequence") is None
+                else int(raw["localMoveSequence"])
+            ),
+            srv_seq=int(raw["srvSeq"]),
+            stable_confirmations=int(raw["stableConfirmations"]),
+            production_ready=raw.get("productionReady") is True,
+            gem_types_valid=raw.get("gemTypesValid") is True,
+            multipliers_valid=raw.get("multipliersValid") is True,
+            entry_clicks=int(result.get("entryClicks") or 0),
+            gameplay_inputs=int(result.get("gameplayInputs") or 0),
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+    return evidence if evidence.valid() else None
+
+
 def _run_entry(
     *,
     run: FarmRun,
@@ -672,7 +727,10 @@ def _run_entry(
     control_hotkeys: Any | None = None,
     test_only_recovery: bool = False,
     pinned_input_session: PinnedForegroundMouseSession | None = None,
-) -> tuple[OpeningEvidence | None, dict[str, Any] | None]:
+) -> tuple[
+    OpeningEvidence | ActiveCombatHandoffEvidence | None,
+    dict[str, Any] | None,
+]:
     if not run.target_resolved(exact=True):
         return None, None
     entry_directory = directory / "entry"
@@ -720,6 +778,24 @@ def _run_entry(
         if result.get("status") == "RECOVERY_REQUIRED" and result.get(
             "stopReason"
         ) == "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT":
+            handoff = (
+                None
+                if test_only_recovery
+                else _active_combat_handoff_evidence(result)
+            )
+            if (
+                handoff is not None
+                and provider.current_session_key == handoff.session
+                and run.accept_session(handoff.session)
+                and run.accept_active_combat_handoff(handoff)
+            ):
+                result.update(
+                    status="PASS",
+                    stopReason="CURRENT_COMBAT_HANDOFF_READY",
+                    activeCombatHandoffAccepted=True,
+                    openingMode="CURRENT_ACK_ATTESTED_BOARD",
+                )
+                return handoff, result
             raw = result.get("activeCombatTimeoutEvidence") or {}
             raw_session = raw.get("session") or {}
             try:
@@ -1064,7 +1140,7 @@ def _confirm_postmatch(
             event_sink = getattr(pinned_input_session, "event_sink", None)
             if callable(event_sink):
                 event_sink(
-                    "postmatch_post_focus_preflight",
+                    "postmatch_final_pre_takeover_preflight",
                     {
                         "accepted": False,
                         "lifecycle": fresh_lifecycle.value,
@@ -1088,7 +1164,7 @@ def _confirm_postmatch(
         event_sink = getattr(pinned_input_session, "event_sink", None)
         if callable(event_sink):
             event_sink(
-                "postmatch_post_focus_preflight",
+                "postmatch_final_pre_takeover_preflight",
                 {
                     "accepted": accepted,
                     "lifecycle": fresh_lifecycle.value,
@@ -1101,20 +1177,34 @@ def _confirm_postmatch(
             )
         return accepted
 
-    def send_postmatch_once() -> bool:
+    def send_postmatch_once(
+        *,
+        retry: bool = False,
+        point: tuple[float, float] | None = None,
+    ) -> bool:
         nonlocal permit, click, authorized, completed
+        click_point = point or proof.normalized_point
+        if click_point is None:
+            return False
         lease_window = executor.window_status(binding)
         permit = run.reserve_postmatch(
             foreground=(
                 lease_window.valid and lease_window.foreground is True
-            )
+            ),
+            retry=retry,
         )
         if permit is None:
             return False
         authorized, click = _execute_controlled_input(
             control_hotkeys,
             lambda: executor.send_normalized_point(
-                binding, proof.normalized_point
+                binding,
+                click_point,
+                # Unity's legacy mouse path can sample cursor movement and
+                # button state on different frames, especially in a VM.  A
+                # short settle prevents a Windows SENT result whose click is
+                # nevertheless missed by the result modal.
+                settle_cursor=True,
             ),
         )
         if not authorized or click is None:
@@ -1122,7 +1212,12 @@ def _confirm_postmatch(
         completed = run.complete_postmatch(
             permit,
             sent=click.sent,
-            detail=f"RESULT_CONFIRM:{click.status.value}",
+            detail=(
+                "RESULT_CONFIRM_RETRY"
+                if retry
+                else "RESULT_CONFIRM"
+            )
+            + f":{click.status.value}",
         )
         return bool(completed and click.sent)
 
@@ -1137,7 +1232,7 @@ def _confirm_postmatch(
             action=send_postmatch_once,
             preflight=lambda: run.state
             in {FarmRunState.WAIT_POSTMATCH, FarmRunState.WAIT_BOSS_LOBBY},
-            post_focus_preflight=final_postmatch_preflight,
+            final_pre_takeover_preflight=final_postmatch_preflight,
             expected_cursor_after=(
                 pinned_input_session.expected_cursor_for_normalized_point(
                     proof.normalized_point
@@ -1165,6 +1260,96 @@ def _confirm_postmatch(
         run.safe_stop(
             FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
             detail="pinned postmatch lease cleanup failed after one sent click",
+        )
+        return False, ui_result, ui_text
+
+    # ``ClickStatus.SENT`` confirms only that Windows accepted the synthetic
+    # input.  It is not an acknowledgement from Unity.  VM scheduling can
+    # occasionally leave the same result modal untouched.  Retry once, and
+    # only once, after both authoritative POSTMATCH memory and the same stable
+    # visible control prove that the first click had no effect.
+    post_click = provider.poll()
+    post_click_lifecycle = (
+        post_click.combat_lifecycle.state
+        if post_click.combat_lifecycle is not None
+        else CombatLifecycleState.UNKNOWN
+    )
+    if post_click_lifecycle is not CombatLifecycleState.POSTMATCH:
+        return True, ui_result, ui_text
+    sleeper(max(0.35, interval))
+    if _control_emergency_requested(control_hotkeys):
+        run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
+        return False, ui_result, ui_text
+    retry_state = provider.poll()
+    retry_lifecycle = (
+        retry_state.combat_lifecycle.state
+        if retry_state.combat_lifecycle is not None
+        else CombatLifecycleState.UNKNOWN
+    )
+    if retry_lifecycle is not CombatLifecycleState.POSTMATCH:
+        return True, ui_result, ui_text
+    retry_capture = capture_client_rgb(process.pid)
+    retry_location = locate_result_confirm(
+        retry_capture.rgb,
+        retry_capture.width,
+        retry_capture.height,
+    )
+    retry_proof = prove_stable_result_confirm(
+        [*locations[-2:], retry_location],
+        required_frames=3,
+    )
+    if not retry_proof.proven or retry_proof.normalized_point is None:
+        return True, ui_result, ui_text
+
+    permit = None
+    click = None
+    authorized = True
+    completed = True
+    lease_result = None
+    if pinned_input_session is not None:
+        snapshot = run.snapshot()
+        lease_result = pinned_input_session.execute_mouse(
+            domain=InputDeliveryDomain.POSTMATCH_CONFIRM,
+            action_identity=(
+                f"POSTMATCH_CONFIRM:{run.farm_run_id}:"
+                f"{snapshot.match_attempts}:{snapshot.completed_matches}:retry:1"
+            ),
+            action=lambda: send_postmatch_once(
+                retry=True,
+                point=retry_proof.normalized_point,
+            ),
+            preflight=lambda: run.state is FarmRunState.WAIT_BOSS_LOBBY,
+            final_pre_takeover_preflight=final_postmatch_preflight,
+            expected_cursor_after=(
+                pinned_input_session.expected_cursor_for_normalized_point(
+                    retry_proof.normalized_point
+                )
+            ),
+        )
+        retry_sent_ok = lease_result.action_succeeded
+    else:
+        retry_sent_ok = send_postmatch_once(
+            retry=True,
+            point=retry_proof.normalized_point,
+        )
+    if not authorized:
+        run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
+        return False, ui_result, ui_text
+    if not retry_sent_ok or click is None or not completed:
+        status = (
+            lease_result.status.value
+            if lease_result is not None
+            else "POSTMATCH_RETRY_NOT_COMPLETED"
+        )
+        run.safe_stop(
+            FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+            detail=f"postmatch confirmation retry not sent; lease={status}",
+        )
+        return False, ui_result, ui_text
+    if lease_result is not None and lease_result.status is not LeaseStatus.COMPLETE:
+        run.safe_stop(
+            FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+            detail="pinned postmatch retry cleanup failed after one sent click",
         )
         return False, ui_result, ui_text
     return True, ui_result, ui_text
@@ -1406,6 +1591,207 @@ def _navigation_action_identity(
     )
 
 
+def _same_clean_chinh_phuc_island_target(left: Any, right: Any) -> bool:
+    return bool(
+        left is not None
+        and right is not None
+        and getattr(left, "clean", False)
+        and getattr(right, "clean", False)
+        and getattr(left, "pet_id", None) == getattr(right, "pet_id", None)
+        and getattr(left, "group_id", None) == getattr(right, "group_id", None)
+        and getattr(left, "group_index", None)
+        == getattr(right, "group_index", None)
+        and getattr(left, "manager_address", None)
+        == getattr(right, "manager_address", None)
+        and getattr(left, "button_address", None)
+        == getattr(right, "button_address", None)
+        and getattr(left, "button_native", None)
+        == getattr(right, "button_native", None)
+        and getattr(left, "button_viewport_rect", None)
+        == getattr(right, "button_viewport_rect", None)
+        and getattr(left, "button_root_transform", None)
+        == getattr(right, "button_root_transform", None)
+    )
+
+
+def _select_chinh_phuc_island_from_main_map(
+    *,
+    run: FarmRun,
+    process: Any,
+    provider: MemoryBoardStateProvider,
+    pet_id: int,
+    first_lobby: Any,
+    binding: Any,
+    executor: ForegroundClickExecutor,
+    interval: float,
+    control_hotkeys: Any,
+    pinned_input_session: PinnedForegroundMouseSession | None,
+) -> bool:
+    """Select the configured boss's exact island from the conquest main map."""
+
+    first_manager, first_panel = _chinh_phuc_map_runtime_hints(first_lobby)
+    if (
+        first_manager is None
+        or first_panel is not None
+        or not _owner_free_chinh_phuc_map_snapshot(first_lobby)
+        or provider.current_session_key is not None
+    ):
+        return False
+    first_target = discover_chinh_phuc_island_target(
+        process,
+        pet_id,
+        manager_hint=first_manager,
+    )
+    if first_target is None or not first_target.clean:
+        return False
+    time.sleep(max(interval, 0.18))
+    second_lobby = _read_lobby_runtime_with_provider_fallback(process, provider)
+    second_manager, second_panel = _chinh_phuc_map_runtime_hints(second_lobby)
+    second_target = (
+        discover_chinh_phuc_island_target(
+            process,
+            pet_id,
+            manager_hint=second_manager,
+        )
+        if second_manager is not None and second_panel is None
+        else None
+    )
+    stable = bool(
+        second_lobby is not None
+        and _owner_free_chinh_phuc_map_snapshot(second_lobby)
+        and provider.current_session_key is None
+        and first_manager == second_manager
+        and _same_clean_chinh_phuc_island_target(first_target, second_target)
+    )
+    if not stable:
+        return False
+
+    point = second_target.viewport_point
+    click_context: dict[str, Any] = {
+        "authorized": True,
+        "click": None,
+        "completed": False,
+    }
+
+    def fresh_island_preflight() -> bool:
+        fresh_lobby = _read_lobby_runtime_with_provider_fallback(process, provider)
+        fresh_manager, fresh_panel = _chinh_phuc_map_runtime_hints(fresh_lobby)
+        fresh_target = (
+            discover_chinh_phuc_island_target(
+                process,
+                pet_id,
+                manager_hint=fresh_manager,
+            )
+            if fresh_manager is not None and fresh_panel is None
+            else None
+        )
+        accepted = bool(
+            fresh_lobby is not None
+            and _owner_free_chinh_phuc_map_snapshot(fresh_lobby)
+            and provider.current_session_key is None
+            and _same_clean_chinh_phuc_island_target(
+                second_target,
+                fresh_target,
+            )
+        )
+        run._event(  # noqa: SLF001
+            "chinh_phuc_island_final_pre_takeover_preflight",
+            attemptIndex=run.match_attempts,
+            targetPetId=pet_id,
+            accepted=accepted,
+            islandTarget=fresh_target,
+            freshLobby=fresh_lobby,
+        )
+        return accepted
+
+    # Foreground mode does not have a lease callback, so perform the same
+    # atomic reread explicitly. Pinned mode performs it after takeover.
+    if pinned_input_session is None and not fresh_island_preflight():
+        return False
+
+    def send_island_once() -> bool:
+        if _control_emergency_requested(control_hotkeys):
+            click_context["authorized"] = False
+            return False
+        status = executor.window_status(binding)
+        permit = run.reserve_island_select(
+            foreground=status.valid and status.foreground is True
+        )
+        if permit is None:
+            return False
+        authorized, click = _execute_controlled_input(
+            control_hotkeys,
+            lambda: executor.send_normalized_point(binding, point),
+        )
+        click_context["authorized"] = authorized
+        click_context["click"] = click
+        if not authorized or click is None:
+            return False
+        completed = run.complete_island_select(
+            permit,
+            sent=click.sent,
+            detail=(
+                f"CHINH_PHUC_ISLAND pet={pet_id} "
+                f"group={second_target.group_index}:{click.status.value}"
+            ),
+        )
+        click_context["completed"] = completed
+        return bool(completed and click.sent)
+
+    lease_result = None
+    if pinned_input_session is not None:
+        lease_result = pinned_input_session.execute_mouse(
+            domain=InputDeliveryDomain.NAVIGATION_RECOVERY,
+            action_identity=_navigation_action_identity(
+                run,
+                f"ISLAND_SELECT:{second_target.group_index}",
+                pet_id=pet_id,
+            ),
+            action=send_island_once,
+            preflight=lambda: not run.stopped,
+            final_pre_takeover_preflight=fresh_island_preflight,
+            expected_cursor_after=(
+                pinned_input_session.expected_cursor_for_normalized_point(point)
+            ),
+        )
+        sent = bool(
+            lease_result.action_succeeded
+            and lease_result.status is LeaseStatus.COMPLETE
+        )
+    else:
+        sent = send_island_once()
+    if not click_context["authorized"]:
+        run.safe_stop(
+            FarmRunStopReason.EMERGENCY_STOP,
+            detail="emergency authority revoked before island input",
+        )
+        return False
+    click = click_context["click"]
+    if not sent or click is None or not click_context["completed"]:
+        if lease_result is not None:
+            run._event(  # noqa: SLF001
+                "chinh_phuc_island_lease_rejected",
+                attemptIndex=run.match_attempts,
+                targetPetId=pet_id,
+                leaseStatus=lease_result.status.value,
+                leaseReason=lease_result.reason,
+            )
+        return False
+    run._event(  # noqa: SLF001
+        "chinh_phuc_island_selected",
+        attemptIndex=run.match_attempts,
+        targetPetId=pet_id,
+        islandTarget=second_target,
+        targetButtonPoint=point,
+        clickStatus=click.status.value,
+        association=(
+            "cached GroupDTO target pet + ManagerChinhPhuc.buttons[group_index] "
+            "+ native Button RectTransform geometry"
+        ),
+    )
+    return bool(click.sent)
+
+
 def _detached_shell_exit_runtime_proven(
     lobby: Any,
     *,
@@ -1413,6 +1799,7 @@ def _detached_shell_exit_runtime_proven(
     current_session: Any | None,
     first_map_target: Any | None,
     current_map_target: Any | None,
+    allow_map_backed_shell: bool = False,
 ) -> bool:
     """Authorize only the shell-exit step when map objects are not loaded yet.
 
@@ -1424,11 +1811,20 @@ def _detached_shell_exit_runtime_proven(
     visual frames are required separately by the caller.
     """
 
-    if not _is_detached_chinh_phuc_room_candidate(
+    detached_runtime = _is_detached_chinh_phuc_room_candidate(
         lobby,
         target_pet_id=pet_id,
         no_combat_owner=current_session is None,
-    ):
+    )
+    map_backed_runtime = bool(
+        allow_map_backed_shell
+        and _is_map_backed_detached_chinh_phuc_room_candidate(
+            lobby,
+            target_pet_id=pet_id,
+            no_combat_owner=current_session is None,
+        )
+    )
+    if not detached_runtime and not map_backed_runtime:
         return False
     for target in (first_map_target, current_map_target):
         if target is not None:
@@ -1446,6 +1842,46 @@ def _detached_shell_exit_runtime_proven(
     return True
 
 
+def _is_map_backed_detached_chinh_phuc_room_candidate(
+    lobby: Any,
+    *,
+    target_pet_id: int,
+    no_combat_owner: bool,
+) -> bool:
+    """Recognize contradictory map memory beneath an exact room shell.
+
+    After a server-side room teardown Unity can leave both the detached room
+    canvas and the Chinh Phuc island panel active. Memory alone must not pick
+    either surface: this predicate only enables the caller's two-frame visual
+    disambiguation. A room-shell click still requires the visible Start/Ready
+    control and circular exit proof.
+    """
+
+    chinh = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(
+        getattr(lobby, "combat_lifecycle", None), "state", None
+    )
+    world = getattr(lobby, "world_boss", None)
+    return bool(
+        no_combat_owner
+        and getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
+        and getattr(lobby, "branch", None)
+        in {"CHINH_PHUC_MAP", "CHINH_PHUC_ISLAND"}
+        and lifecycle is CombatLifecycleState.LOBBY
+        and world is not None
+        and getattr(world, "clean_for_chinh_phuc_map", False) is True
+        and chinh is not None
+        and getattr(chinh, "current_room_id", None) is None
+        and getattr(chinh, "current_room_type", None) is None
+        and getattr(chinh, "room_data", None) is not None
+        and getattr(chinh, "enemy_pet_id", None) == target_pet_id
+        and getattr(chinh, "button_start", None) is not None
+        and getattr(chinh, "button_native", None) is not None
+        and getattr(chinh, "button_interactable", None) is True
+        and getattr(chinh, "is_host", None) is False
+    )
+
+
 def _postmatch_reentry_source(
     initial: LobbyWaitResult,
     *,
@@ -1457,6 +1893,14 @@ def _postmatch_reentry_source(
     lobby = initial.lobby
     if lobby is None or current_session is not None:
         return None
+    if (
+        initial.reason == "GENERAL_HUB_CANDIDATE"
+        and lobby.state is BossLobbyState.LOBBY_OTHER
+        and lobby.branch == "GAME_LOBBY"
+        and getattr(lobby.chinh_phuc, "current_room_id", None) is None
+        and getattr(lobby.chinh_phuc, "current_room_type", None) is None
+    ):
+        return "GENERAL_HUB"
     if (
         initial.reason == "TARGET_MISSING"
         and lobby.state is BossLobbyState.BOSS_LOBBY
@@ -1547,7 +1991,16 @@ def _owner_free_general_hub_snapshot(
         return False
     return bool(
         getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
-        and getattr(lobby, "branch", None) is None
+        and getattr(lobby, "branch", None) in {None, "GAME_LOBBY"}
+        and (
+            getattr(lobby, "branch", None) is None
+            or getattr(
+                getattr(lobby, "world_boss", None),
+                "clean_for_game_lobby",
+                False,
+            )
+            is True
+        )
         and getattr(lifecycle, "state", None) is CombatLifecycleState.LOBBY
         and getattr(chinh_phuc, "current_room_id", None) is None
         and getattr(chinh_phuc, "current_room_type", None) is None
@@ -1576,6 +2029,7 @@ def _settle_detached_room_shell_exit(
     pinned_input_session: PinnedForegroundMouseSession | None = None,
     max_region_mib: int = 8,
     chunk_mib: int = 2,
+    allow_map_backed_shell: bool = False,
 ) -> tuple[str, Any | None] | None:
     """Prove either direct map navigation or one stable leave confirmation."""
 
@@ -1655,6 +2109,7 @@ def _settle_detached_room_shell_exit(
                 current_session=provider.current_session_key,
                 first_map_target=None,
                 current_map_target=None,
+                allow_map_backed_shell=allow_map_backed_shell,
             ):
                 run._event(  # noqa: SLF001
                     "chinh_phuc_room_shell_confirm_rejected",
@@ -1687,6 +2142,7 @@ def _settle_detached_room_shell_exit(
                         current_session=provider.current_session_key,
                         first_map_target=None,
                         current_map_target=None,
+                        allow_map_backed_shell=allow_map_backed_shell,
                     )
                     and _stable_visual_proof(
                         capture,
@@ -1696,7 +2152,7 @@ def _settle_detached_room_shell_exit(
                     )
                 )
                 run._event(  # noqa: SLF001
-                    "chinh_phuc_room_shell_confirm_post_focus_preflight",
+                    "chinh_phuc_room_shell_confirm_final_pre_takeover_preflight",
                     **event_fields,
                     accepted=accepted,
                     freshModal=fresh_modal,
@@ -1744,7 +2200,7 @@ def _settle_detached_room_shell_exit(
                     ),
                     action=send_confirm_once,
                     preflight=lambda: not run.stopped,
-                    post_focus_preflight=fresh_confirm_preflight,
+                    final_pre_takeover_preflight=fresh_confirm_preflight,
                     expected_cursor_after=(
                         pinned_input_session.expected_cursor_for_normalized_point(
                             modal.normalized_point
@@ -1977,7 +2433,7 @@ def _open_chinh_phuc_from_general_hub(
             )
         )
         run._event(  # noqa: SLF001
-            "general_hub_chinh_phuc_post_focus_preflight",
+            "general_hub_chinh_phuc_final_pre_takeover_preflight",
             **event_fields,
             accepted=accepted,
             freshControl=fresh_control,
@@ -2024,7 +2480,7 @@ def _open_chinh_phuc_from_general_hub(
             ),
             action=send_hub_once,
             preflight=lambda: not run.stopped,
-            post_focus_preflight=fresh_hub_preflight,
+            final_pre_takeover_preflight=fresh_hub_preflight,
             expected_cursor_after=(
                 pinned_input_session.expected_cursor_for_normalized_point(
                     location.normalized_point
@@ -2129,6 +2585,53 @@ def _return_from_chinh_phuc_map(
         )
         return LobbyWaitResult(False, lobby.state, None, "GAME_NOT_FOREGROUND", lobby)
 
+    if reentry_source == "GENERAL_HUB":
+        first_hub_lobby = _read_lobby_runtime_with_provider_fallback(
+            process, provider
+        )
+        first_hub_control = read_hub_chinh_phuc_control(process)
+        if not _owner_free_general_hub_snapshot(
+            first_hub_lobby,
+            first_hub_control,
+            current_session=provider.current_session_key,
+        ):
+            return None
+        time.sleep(max(interval, 0.18))
+        second_hub_lobby = _read_lobby_runtime_with_provider_fallback(
+            process, provider
+        )
+        second_hub_control = read_hub_chinh_phuc_control(process)
+        if not (
+            same_clean_hub_chinh_phuc_control(
+                first_hub_control, second_hub_control
+            )
+            and _owner_free_general_hub_snapshot(
+                second_hub_lobby,
+                second_hub_control,
+                current_session=provider.current_session_key,
+            )
+        ):
+            return None
+        if not _open_chinh_phuc_from_general_hub(
+            run=run,
+            process=process,
+            provider=provider,
+            first_control=second_hub_control,
+            binding=binding,
+            executor=executor,
+            control_hotkeys=control_hotkeys,
+            directory=directory,
+            event_fields={
+                "attemptIndex": run.match_attempts,
+                "targetPetId": pet_id,
+                "initialBranch": lobby.branch,
+                "reentrySource": reentry_source,
+            },
+            pinned_input_session=pinned_input_session,
+        ):
+            return None
+        time.sleep(max(0.75, interval * 3.0))
+
     # Detached-shell teardown destroys the island-map Button closures before
     # rendering the stale room shell. Scanning here is both inconclusive and
     # expensive; close the exactly proven shell first, then discover the map
@@ -2137,7 +2640,16 @@ def _return_from_chinh_phuc_map(
     direct_map_source = reentry_source in {
         "WORLD_BOSS_LIST",
         "CHINH_PHUC_MAP",
+        "GENERAL_HUB",
     }
+    map_backed_shell_probe = bool(
+        reentry_source == "CHINH_PHUC_MAP"
+        and _is_map_backed_detached_chinh_phuc_room_candidate(
+            lobby,
+            target_pet_id=pet_id,
+            no_combat_owner=provider.current_session_key is None,
+        )
+    )
     first_runtime = None
     last_runtime = None
     runtime_scan_count = 0
@@ -2145,6 +2657,7 @@ def _return_from_chinh_phuc_map(
     runtime_stable_count = 0
     runtime_wait_reason = None
     last_runtime_wait_signature = None
+    island_selection_sent = False
     if direct_map_source:
         # The visible island panel can become authoritative several frames
         # before Unity rebuilds the cached GroupDTO/PetEnemyDTO Button graph.
@@ -2193,12 +2706,51 @@ def _return_from_chinh_phuc_map(
                 or not _owner_free_chinh_phuc_map_snapshot(current_map_lobby)
                 or provider.current_session_key is not None
             ):
+                if (
+                    reentry_source == "GENERAL_HUB"
+                    and current_map_lobby is not None
+                    and getattr(current_map_lobby, "state", None)
+                    is BossLobbyState.LOBBY_OTHER
+                    and getattr(current_map_lobby, "branch", None)
+                    == "GAME_LOBBY"
+                    and provider.current_session_key is None
+                ):
+                    # The foreground click is already complete; allow the
+                    # general hub a bounded interval to construct the Chinh
+                    # Phuc panel. No additional input is authorized here.
+                    time.sleep(max(interval, 0.25))
+                    continue
                 runtime_wait_reason = "owner-free map proof changed during runtime wait"
                 break
             manager_hint, panel_hint = _chinh_phuc_map_runtime_hints(
                 current_map_lobby
             )
             if (manager_hint is None) != (panel_hint is None):
+                if manager_hint is not None and panel_hint is None:
+                    if not island_selection_sent:
+                        island_selection_sent = _select_chinh_phuc_island_from_main_map(
+                            run=run,
+                            process=process,
+                            provider=provider,
+                            pet_id=pet_id,
+                            first_lobby=current_map_lobby,
+                            binding=binding,
+                            executor=executor,
+                            interval=interval,
+                            control_hotkeys=control_hotkeys,
+                            pinned_input_session=pinned_input_session,
+                        )
+                        if run.stopped:
+                            return LobbyWaitResult(
+                                False,
+                                lobby.state,
+                                None,
+                                "ISLAND_SELECTION_FAILED",
+                                lobby,
+                            )
+                        if island_selection_sent:
+                            time.sleep(max(0.75, interval * 3.0))
+                            continue
                 world = getattr(current_map_lobby, "world_boss", None)
                 wait_signature = (
                     getattr(current_map_lobby, "branch", None),
@@ -2251,7 +2803,9 @@ def _return_from_chinh_phuc_map(
         "targetPetId": pet_id,
         "initialBranch": lobby.branch,
         "reentrySource": reentry_source,
-        "staleRoomPetId": lobby.chinh_phuc.enemy_pet_id,
+        "staleRoomPetId": getattr(
+            getattr(lobby, "chinh_phuc", None), "enemy_pet_id", None
+        ),
         "runtime": first_runtime,
         "lastRuntime": last_runtime,
         "runtimeProbes": runtime_probe_count,
@@ -2277,11 +2831,12 @@ def _return_from_chinh_phuc_map(
     second_capture = None
     proof_frames = 0
 
-    # A clean target already contains the exact Button and its native
-    # RectTransform geometry from two stable memory samples.  Screenshots are
-    # unnecessary on that path.  Pixels remain only for the distinct stale
-    # room-shell X recovery, where no map target exists yet.
-    if not stable_native_target:
+    # A clean target normally contains the exact Button and its native
+    # RectTransform geometry from two stable memory samples. One server
+    # teardown shape leaves that map graph active *behind* the exact detached
+    # room canvas. Only for that contradictory shape, use the same bounded
+    # two-frame room-control proof before deciding which surface owns input.
+    if not stable_native_target or map_backed_shell_probe:
         if not _navigation_window_ready(
             binding, executor, pinned_input_session
         ):
@@ -2311,7 +2866,7 @@ def _return_from_chinh_phuc_map(
                 ),
                 action=park_cursor,
                 preflight=lambda: not run.stopped,
-                post_focus_preflight=None,
+                final_pre_takeover_preflight=None,
                 expected_cursor_after=(
                     pinned_input_session.expected_cursor_for_normalized_point(
                         (0.50, 0.015)
@@ -2398,7 +2953,7 @@ def _return_from_chinh_phuc_map(
                 second_capture.height,
                 second_capture.rgb,
             )
-        if not stable_room_shell:
+        if not stable_room_shell and not map_backed_shell_probe:
             run._event(  # noqa: SLF001
                 "chinh_phuc_map_return_rejected",
                 **writer_fields,
@@ -2408,6 +2963,18 @@ def _return_from_chinh_phuc_map(
                 reason="detached-room shell did not pass bounded two-frame proof",
             )
             return None
+        if not stable_room_shell and map_backed_shell_probe:
+            run._event(  # noqa: SLF001
+                "chinh_phuc_map_backed_shell_not_visible",
+                **writer_fields,
+                firstShellExit=first_shell_exit,
+                secondShellExit=second_shell_exit,
+                proofFrames=proof_frames,
+                reason=(
+                    "stale room runtime coexists with map, but the bounded "
+                    "room-shell visual proof is absent"
+                ),
+            )
 
     if stable_room_shell:
         # A completed match can leave Unity rendering a stale room shell after
@@ -2426,6 +2993,7 @@ def _return_from_chinh_phuc_map(
             current_session=provider.current_session_key,
             first_map_target=first_runtime,
             current_map_target=None,
+            allow_map_backed_shell=map_backed_shell_probe,
         )
         if not shell_runtime_stable:
             run._event(  # noqa: SLF001
@@ -2466,6 +3034,7 @@ def _return_from_chinh_phuc_map(
                     current_session=provider.current_session_key,
                     first_map_target=first_runtime,
                     current_map_target=None,
+                    allow_map_backed_shell=map_backed_shell_probe,
                 )
                 and _stable_visual_proof(
                     second_capture,
@@ -2475,7 +3044,7 @@ def _return_from_chinh_phuc_map(
                 )
             )
             run._event(  # noqa: SLF001
-                "chinh_phuc_room_shell_exit_post_focus_preflight",
+                "chinh_phuc_room_shell_exit_final_pre_takeover_preflight",
                 **writer_fields,
                 accepted=accepted,
                 freshShellExit=fresh_shell,
@@ -2523,7 +3092,7 @@ def _return_from_chinh_phuc_map(
                 ),
                 action=send_shell_exit_once,
                 preflight=lambda: not run.stopped,
-                post_focus_preflight=fresh_shell_exit_preflight,
+                final_pre_takeover_preflight=fresh_shell_exit_preflight,
                 expected_cursor_after=(
                     pinned_input_session.expected_cursor_for_normalized_point(
                         second_shell_exit.normalized_point
@@ -2586,6 +3155,7 @@ def _return_from_chinh_phuc_map(
             pinned_input_session=pinned_input_session,
             max_region_mib=max_region_mib,
             chunk_mib=chunk_mib,
+            allow_map_backed_shell=map_backed_shell_probe,
         )
         if shell_transition_result is None:
             return None
@@ -2655,6 +3225,38 @@ def _return_from_chinh_phuc_map(
                 )
             except (AttributeError, OSError, ValueError):
                 current_map_lobby = None
+            current_manager, current_panel = _chinh_phuc_map_runtime_hints(
+                current_map_lobby
+            )
+            if (
+                current_map_lobby is not None
+                and current_manager is not None
+                and current_panel is None
+                and not island_selection_sent
+            ):
+                island_selection_sent = _select_chinh_phuc_island_from_main_map(
+                    run=run,
+                    process=process,
+                    provider=provider,
+                    pet_id=pet_id,
+                    first_lobby=current_map_lobby,
+                    binding=binding,
+                    executor=executor,
+                    interval=interval,
+                    control_hotkeys=control_hotkeys,
+                    pinned_input_session=pinned_input_session,
+                )
+                if run.stopped:
+                    return LobbyWaitResult(
+                        False,
+                        lobby.state,
+                        None,
+                        "ISLAND_SELECTION_FAILED",
+                        lobby,
+                    )
+                if island_selection_sent:
+                    time.sleep(max(0.75, interval * 3.0))
+                    continue
             last_map_runtime = (
                 _discover_chinh_phuc_map_target_for_lobby(
                     process,
@@ -2810,7 +3412,7 @@ def _return_from_chinh_phuc_map(
             if probe < 3:
                 time.sleep(max(interval, 0.18))
         run._event(  # noqa: SLF001
-            "chinh_phuc_map_target_post_focus_preflight",
+            "chinh_phuc_map_target_final_pre_takeover_preflight",
             **writer_fields,
             accepted=accepted,
             postFocusRuntimeProbes=runtime_probes,
@@ -2858,6 +3460,13 @@ def _return_from_chinh_phuc_map(
         target_context["completed"] = completed
         return bool(completed and click.sent)
 
+    target_selection_ordinal = 1 + sum(
+        1
+        for record in run.input_records
+        if record.domain is FarmInputDomain.BOSS_TARGET_SELECT
+        and record.attempt_index == run.match_attempts
+        and record.sent
+    )
     target_lease = None
     if pinned_input_session is not None:
         target_lease = pinned_input_session.execute_mouse(
@@ -2866,13 +3475,14 @@ def _return_from_chinh_phuc_map(
                 run,
                 (
                     f"TARGET_SELECT:{second_runtime.group_index}:"
-                    f"{second_runtime.hunt_order}"
+                    f"{second_runtime.hunt_order}:"
+                    f"{target_selection_ordinal}"
                 ),
                 pet_id=pet_id,
             ),
             action=send_target_once,
             preflight=lambda: not run.stopped,
-            post_focus_preflight=fresh_target_preflight,
+            final_pre_takeover_preflight=fresh_target_preflight,
             expected_cursor_after=(
                 pinned_input_session.expected_cursor_for_normalized_point(
                     target_point
@@ -2933,6 +3543,11 @@ def _return_from_chinh_phuc_map(
         hotkeys,
         control_hotkeys,
         wait_through_target_missing=True,
+        wait_through_map_candidate=True,
+        transient_room_grace_seconds=min(
+            10.0,
+            max(2.0, timeout * 0.20),
+        ),
     )
 
 
@@ -2966,8 +3581,8 @@ def _farm_room_ejection_sources(
     *,
     target_boss_id: str,
     current_session: Any | None,
-) -> tuple[bool, bool]:
-    """Classify the only two owner-free origins allowed to restore a room."""
+) -> tuple[bool, bool, bool]:
+    """Classify owner-free map, detached-shell, and general-hub origins."""
 
     exact_world_map = _world_map_ejection_proven(
         result, current_session=current_session
@@ -2987,7 +3602,7 @@ def _farm_room_ejection_sources(
             == "CHINH_PHUC_MAP"
         )
     if exact_world_map or direct_chinh_phuc_map:
-        return True, False
+        return True, False, False
     detached_room_shell = bool(
         target_pet_id > 0
         and _postmatch_reentry_source(
@@ -2997,7 +3612,16 @@ def _farm_room_ejection_sources(
         )
         == "DETACHED_ROOM_SHELL"
     )
-    return exact_world_map, detached_room_shell
+    general_hub = bool(
+        target_pet_id > 0
+        and _postmatch_reentry_source(
+            result,
+            target_pet_id=target_pet_id,
+            current_session=current_session,
+        )
+        == "GENERAL_HUB"
+    )
+    return exact_world_map, detached_room_shell, general_hub
 
 
 def _exact_target_room_restored(
@@ -3038,12 +3662,12 @@ def _restore_ejected_farm_room(
         int(target_id)
     except ValueError:
         return False
-    exact_world_map, detached_room_shell = _farm_room_ejection_sources(
+    exact_world_map, detached_room_shell, general_hub = _farm_room_ejection_sources(
         initial,
         target_boss_id=target_id,
         current_session=provider.current_session_key,
     )
-    if not exact_world_map and not detached_room_shell:
+    if not exact_world_map and not detached_room_shell and not general_hub:
         return False
     if run.state is FarmRunState.COMBAT_ACTIVE:
         if not run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"):
@@ -3059,6 +3683,7 @@ def _restore_ejected_farm_room(
         target_boss_id=target_id,
         exact_world_map=exact_world_map,
         detached_room_shell=detached_room_shell,
+        general_hub=general_hub,
         no_combat_owner=True,
     ):
         return False
@@ -4363,7 +4988,7 @@ def _run_live(
                             ejected,
                             current_session=provider.current_session_key,
                         )
-                        exact_world_map, detached_room_shell = (
+                        exact_world_map, detached_room_shell, general_hub = (
                             _farm_room_ejection_sources(
                                 ejected,
                                 target_boss_id=str(
@@ -4379,6 +5004,7 @@ def _run_live(
                             exactTargetRoom=exact_target_room,
                             exactWorldMap=exact_world_map,
                             detachedRoomShell=detached_room_shell,
+                            generalHub=general_hub,
                         )
                         if exact_target_room:
                             if not run.prepare_failed_recovery_map_fallback(
@@ -4402,7 +5028,11 @@ def _run_live(
                                 oldCombatStateReused=False,
                             )
                             return restored
-                        if not exact_world_map and not detached_room_shell:
+                        if (
+                            not exact_world_map
+                            and not detached_room_shell
+                            and not general_hub
+                        ):
                             return False
                         restored = _restore_ejected_farm_room(
                             run=run,
@@ -4485,7 +5115,7 @@ def _run_live(
                                 20.0, args.return_lobby_timeout * 0.5
                             ),
                         )
-                        exact_world_map, detached_room_shell = (
+                        exact_world_map, detached_room_shell, general_hub = (
                             _farm_room_ejection_sources(
                                 ejected,
                                 target_boss_id=str(
@@ -4501,9 +5131,14 @@ def _run_live(
                             result=ejected,
                             exactWorldMap=exact_world_map,
                             detachedRoomShell=detached_room_shell,
+                            generalHub=general_hub,
                             completedMatchCounted=False,
                         )
-                        if not exact_world_map and not detached_room_shell:
+                        if (
+                            not exact_world_map
+                            and not detached_room_shell
+                            and not general_hub
+                        ):
                             run.safe_stop(
                                 FarmRunStopReason.COMBAT_SAFE_STOP,
                                 detail=combat_reason,
@@ -4644,17 +5279,25 @@ def _run_live(
                         mapTargetSelectionAttempted=False,
                     )
                     continue
-                if (
-                    controlled_run
-                    and not args.stop_if_room_ejected
-                    and not returned.ready
-                    and returned.reason
-                    in {
-                        "TARGET_MISSING",
-                        "CHINH_PHUC_MAP_CANDIDATE",
-                        "DETACHED_ROOM_SHELL_CANDIDATE",
-                    }
-                ):
+                reentry_reasons = {
+                    "TARGET_MISSING",
+                    "CHINH_PHUC_MAP_CANDIDATE",
+                    "DETACHED_ROOM_SHELL_CANDIDATE",
+                }
+                # One server failure mode accepts the exact target click but
+                # creates an owner-free room shell.  Route that shell once,
+                # then reselect the same immutable target.  Two bounded route
+                # passes cover map->shell->map without permitting an open
+                # retry loop or a third target selection.
+                for reentry_pass in range(1, 3):
+                    if not (
+                        controlled_run
+                        and not args.stop_if_room_ejected
+                        and not returned.ready
+                        and returned.reason in reentry_reasons
+                        and not run.stopped
+                    ):
+                        break
                     map_return = _return_from_chinh_phuc_map(
                         run=run,
                         process=process,
@@ -4675,11 +5318,13 @@ def _run_live(
                     writer.event(
                         "chinh_phuc_map_return",
                         attemptIndex=attempt_index,
+                        reentryPass=reentry_pass,
                         initial=returned,
                         result=map_return,
                     )
-                    if map_return is not None:
-                        returned = map_return
+                    if map_return is None:
+                        break
+                    returned = map_return
                 if not returned.ready:
                     if run.stopped:
                         continue
@@ -5122,7 +5767,7 @@ def _run_live(
         and unexpected.get("type") == "ProcessProbeError"
     ):
         print(
-            f"Hint: {unexpected['message']}.  Start Pokiguard, bring it to the "
+            f"Hint: {unexpected['message']}.  Start PetPuzzle, bring it to the "
             "foreground at a clean BOSS LOBBY, then re-run.  No Windows input "
             "was sent.",
             flush=True,

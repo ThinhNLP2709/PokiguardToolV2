@@ -224,3 +224,24 @@ lobby/map router without incrementing match attempts or sending a blind Start
 click. Geometry, transport, capability, emergency-stop and after-action errors
 remain terminal. Focused Boss Entry/FarmRunner verification is 104/104 PASS;
 the full repository is 1560/1560 PASS. Live acceptance remains pending.
+A regression audit on 2026-10-07 found one missing intermediate action in the
+general-hub route. Runs `64dc13f47d9240d1a16d3fa490cdaa21` (43/500),
+`dd3dd1c10ea44b15bf9e267495afb639` (18/500),
+`77106b46bf1e4870aaeb36e71b7320fd` (35/500),
+`4d549961c3c2402db11a92a697e2c2d9` (66/500),
+`fc23e471b4d646a59c45eda8fb34f872` (69/500), and
+`c9cd5d9751ba45f9970c42f9eaab2767` (102/500) all stopped with the same
+`RECOVERY_FAILED` shape. The exact Chinh Phuc hub click was sent, then the game
+settled on `CHINH_PHUC_MAP` with a live `ManagerChinhPhuc`, no active island
+panel, and `panelMainActive=false`. The runner incorrectly treated that stable
+main-map state as a construction race and waited 90 seconds for an island to
+open itself.
+
+The recovery route now resolves the configured boss through cached
+`GroupDTO/PetEnemyDTO`, selects `ManagerChinhPhuc.buttons[group_index]` using
+its live native `Button`/`RectTransform`, and only then reuses the existing
+active-panel boss selector. Island selection has its own one-shot FarmRun
+capability, so it cannot consume or duplicate the boss-cell capability. Both
+normal foreground and pinned input modes perform two stable reads plus a final
+fresh preflight before the click. No island name or coordinate is fixed in the
+executor.

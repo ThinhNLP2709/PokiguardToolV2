@@ -448,6 +448,39 @@ class ForegroundExecutorContinuationTests(unittest.TestCase):
         self.assertEqual(decision.delay_seconds, 1.0)
         self.assertEqual(decision.reason, "SUSTAINED_FAST_ACK_DECAY")
 
+    def test_new_combat_resets_degraded_swap_pacing(self) -> None:
+        pacer = AdaptiveSwapPacer()
+        pacer.observe_unconfirmed("OLD_MATCH_TIMEOUT")
+
+        pacer.reset_for_new_combat()
+
+        decision = pacer.decision(remaining_seconds=12)
+        self.assertEqual(decision.mode, "NORMAL")
+        self.assertEqual(decision.delay_seconds, 0.35)
+        self.assertEqual(decision.reason, "NEW_COMBAT_BASELINE")
+
+    @patch("pokiguard_v2.win32_input.random.uniform")
+    def test_severe_random_spacing_stays_below_client_selection_timeout(
+        self, mock_random_uniform
+    ) -> None:
+        # Four coordinate-jitter draws, then reaction and click-spacing draws.
+        mock_random_uniform.side_effect = [0.0, 0.0, 0.0, 0.0, 0.0, 1.5]
+        backend = FakeBackend()
+        delays: list[float] = []
+        executor = ForegroundClickExecutor(backend, sleeper=delays.append)
+        executor.note_swap_unconfirmed()
+        binding = WindowBinding(5, 123, "Pokiguard", 1280, 720)
+        plan = map_swap_to_pixels(
+            (4, 2), (4, 3), BoardCalibration(), backend.geometry
+        )
+
+        result = executor.send_swap(binding, plan, remaining_seconds=12)
+
+        self.assertTrue(result.sent)
+        self.assertEqual(result.pacing_mode, "SEVERE_LAG")
+        self.assertEqual(result.inter_click_delay_seconds, 1.85)
+        self.assertEqual(delays, [0.0, 0.06, 1.85, 0.06])
+
     def test_adaptive_delay_is_clamped_to_keep_second_click_before_deadline(self) -> None:
         pacer = AdaptiveSwapPacer()
         pacer.observe_unconfirmed()

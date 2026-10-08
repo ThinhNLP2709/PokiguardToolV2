@@ -76,6 +76,8 @@ from pokiguard_v2.pet_skill_shadow import (  # noqa: E402
     LivePetSkillCard,
     PetSkillCapabilityProvider,
     PetSkillCapabilityStatus,
+    PetSkillFamily,
+    PetSkillTargetMode,
     QteEvidenceStatus,
     QteObserver,
     live_pet_skill_card_from_state,
@@ -98,6 +100,38 @@ from tools.runtime_common import attach_target, default_log_path, hex_pointer  #
 # scan was blocking.  Three seconds stays well inside the bounded 15-second
 # result deadline and leaves ample fallback time if the direct tap is absent.
 DISPATCHER_RESULT_EXCLUSIVE_WINDOW_SECONDS = 3.0
+
+
+def _no_action_click_only_inactive_edge(
+    audition_mode: AuditionMode,
+    capability: Any,
+    *,
+    post_click_pending: bool = False,
+) -> bool:
+    """Prove that a current click-only skill intentionally has no QTE.
+
+    Mega Icarus resolves immediately from its card click.  Waiting for either
+    the V2 or V3 QTE singleton to publish an inactive edge therefore deadlocks
+    the action until the turn clock expires.  Keep this exemption exact: the
+    selected mode, current owned capability, family, automatic targeting and
+    live CardUI must all agree.  Before input, CardUI must be actionable.  Once
+    the exact click-only executor has sent its one click, a non-interactable
+    CardUI is expected progress and remains an intentional inactive-QTE edge.
+    Direction/Perfect skills retain their existing singleton-backed proof.
+    """
+
+    return bool(
+        audition_mode is AuditionMode.NO_ACTION
+        and capability is not None
+        and capability.current
+        and capability.skill_family is PetSkillFamily.MEGA_ICARUS_CLICK_ONLY
+        and capability.target_mode is PetSkillTargetMode.AUTOMATIC
+        and capability.live_card_present
+        and (
+            capability.live_card_actionable is True
+            or post_click_pending
+        )
+    )
 
 
 def _defer_heap_result_scan(
@@ -1955,7 +1989,23 @@ def run(
                 previous_capability_signature = capability_signature
             if not candidates or active_qte_card is None:
                 # Only a proven null singleton is an inactive edge.  A failed
-                # or torn read must not manufacture freshness mid-QTE.
+                # or torn read must not manufacture freshness mid-QTE.  The
+                # sole exception is an exact current click-only capability:
+                # that card intentionally creates no QTE, so its validated
+                # actionable CardUI is the inactive baseline needed to issue
+                # the one card click before the turn timer expires.
+                no_action_inactive = _no_action_click_only_inactive_edge(
+                    audition_mode,
+                    capability,
+                    post_click_pending=bool(
+                        runtime_hook is not None
+                        and getattr(
+                            runtime_hook,
+                            "no_action_post_click_pending",
+                            False,
+                        )
+                    ),
+                )
                 v3_inactive = bool(
                     audition_mode is AuditionMode.V3_TWO_DIRECTION
                     and audition_stage_resolution is not None
@@ -1972,7 +2022,7 @@ def run(
                     and active_qte_resolution.status == "instance_null"
                     and active_qte_resolution.instance is None
                 )
-                if v3_inactive or v2_inactive:
+                if no_action_inactive or v3_inactive or v2_inactive:
                     tracker.note_inactive(session)
                     shadow_observer.note_inactive(session)
                     if runtime_hook is not None:

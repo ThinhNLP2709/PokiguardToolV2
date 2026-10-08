@@ -16,6 +16,7 @@ from .foreground_lease_transport import (
     ForegroundLeaseBackend,
     LeaseResult,
     LeaseStatus,
+    NativeForegroundLeaseBackend,
     PinResult,
     PinStatus,
     PinnedWindowSession,
@@ -23,6 +24,8 @@ from .foreground_lease_transport import (
 )
 from .foreground_qte_lease_transport import (
     BoundedForegroundQteLease,
+    KeyboardGuard,
+    NativeLowLevelKeyboardGuard,
     NativeQteLeaseBackend,
 )
 from .input_delivery import (
@@ -43,7 +46,10 @@ class PinnedBoardLeaseSettings:
     required_idle_seconds: float = 0.25
     idle_timeout_seconds: float = 0.75
     focus_settle_seconds: float = 0.40
-    post_action_settle_seconds: float = 0.20
+    # Keep the cursor over the second gem briefly after mouse-up.  Unity may
+    # consume the click on the next rendered frame; restoring the operator's
+    # cursor immediately can otherwise turn a valid swap into a missed input.
+    post_action_settle_seconds: float = 0.30
     focus_request_attempts: int = 3
     exclusive_input_attempts: int = 3
     focus_takeover_attempts: int = 3
@@ -56,6 +62,10 @@ class PinnedQteLeaseSettings:
     required_idle_seconds: float = 0.10
     idle_timeout_seconds: float = 0.10
     focus_settle_seconds: float = 0.20
+    # Click-only Mega cards have no QTE phase that naturally retains the
+    # lease. Keep the cursor/focus guard through a few Unity frames before the
+    # desktop is restored.
+    no_action_post_click_settle_seconds: float = 0.30
     focus_request_attempts: int = 3
     focus_takeover_attempts: int = 3
     maximum_duration_seconds: float = 20.0
@@ -87,6 +97,7 @@ class PinnedForegroundMouseSession:
         stop_requested: Callable[[], bool],
         event_sink: Callable[[str, dict[str, Any]], None] | None = None,
         settings: PinnedBoardLeaseSettings | None = None,
+        keyboard_guard: KeyboardGuard | None = None,
         sleeper: Callable[[float], None] | None = None,
         monotonic: Callable[[], float] | None = None,
     ) -> None:
@@ -98,6 +109,11 @@ class PinnedForegroundMouseSession:
         self.stop_requested = stop_requested
         self.event_sink = event_sink or (lambda _event, _fields: None)
         self.settings = settings or PinnedBoardLeaseSettings()
+        self.keyboard_guard = keyboard_guard
+        if self.keyboard_guard is None and isinstance(
+            backend, NativeForegroundLeaseBackend
+        ):
+            self.keyboard_guard = NativeLowLevelKeyboardGuard()
         self.sleeper = sleeper
         self.monotonic = monotonic
         self._pin = PinnedWindowSession(
@@ -214,7 +230,7 @@ class PinnedForegroundMouseSession:
         action: Callable[[], bool],
         preflight: Callable[[], bool],
         expected_cursor_after: tuple[int, int],
-        post_focus_preflight: Callable[[], bool] | None = None,
+        final_pre_takeover_preflight: Callable[[], bool] | None = None,
     ) -> LeaseResult:
         if not self._active:
             raise RuntimeError("pinned mouse session is not active")
@@ -242,7 +258,6 @@ class PinnedForegroundMouseSession:
             kwargs["sleeper"] = self.sleeper
         if self.monotonic is not None:
             kwargs["monotonic"] = self.monotonic
-        held_pointer = getattr(self.backend, "any_pointer_button_pressed", None)
         attempt_limit = max(1, int(self.settings.focus_takeover_attempts))
         result: LeaseResult | None = None
         for attempt in range(1, attempt_limit + 1):
@@ -255,22 +270,19 @@ class PinnedForegroundMouseSession:
                 focus_settle_seconds=self.settings.focus_settle_seconds,
                 allow_takeover_after_idle_timeout=True,
                 allow_already_foreground=True,
-                held_input_pressed=(
-                    held_pointer
-                    if callable(held_pointer)
-                    else self.backend.any_input_pressed
-                ),
+                held_input_pressed=self.backend.any_input_pressed,
                 focus_request_attempts=self.settings.focus_request_attempts,
                 require_exclusive_input=True,
                 exclusive_input_attempts=self.settings.exclusive_input_attempts,
                 post_action_settle_seconds=self.settings.post_action_settle_seconds,
+                takeover_keyboard_guard=self.keyboard_guard,
                 **kwargs,
             )
             lease.arm(self.binding, authority.action_identity)
             result = lease.execute(
                 action,
                 preflight=preflight,
-                post_focus_preflight=post_focus_preflight,
+                final_pre_takeover_preflight=final_pre_takeover_preflight,
                 expected_cursor_after=expected_cursor_after,
             )
             retryable_takeover = bool(
@@ -348,7 +360,7 @@ class PinnedForegroundMouseSession:
             action_identity=action_identity,
             action=action,
             preflight=preflight,
-            post_focus_preflight=None,
+            final_pre_takeover_preflight=None,
             expected_cursor_after=expected_cursor_after,
         )
 
@@ -388,7 +400,10 @@ class PinnedForegroundMouseSession:
             kwargs["sleeper"] = self.sleeper
         if self.monotonic is not None:
             kwargs["monotonic"] = self.monotonic
-        backend = NativeQteLeaseBackend(self.backend)
+        backend = NativeQteLeaseBackend(
+            self.backend,
+            keyboard_guard=(self.keyboard_guard or NativeLowLevelKeyboardGuard()),
+        )
         lease = BoundedForegroundQteLease(
             backend,
             stop_requested=self.stop_requested,
@@ -396,6 +411,9 @@ class PinnedForegroundMouseSession:
             required_idle_seconds=qte_settings.required_idle_seconds,
             idle_timeout_seconds=qte_settings.idle_timeout_seconds,
             focus_settle_seconds=qte_settings.focus_settle_seconds,
+            post_mouse_action_settle_seconds=(
+                qte_settings.no_action_post_click_settle_seconds
+            ),
             focus_request_attempts=qte_settings.focus_request_attempts,
             focus_takeover_attempts=qte_settings.focus_takeover_attempts,
             maximum_duration_seconds=qte_settings.maximum_duration_seconds,

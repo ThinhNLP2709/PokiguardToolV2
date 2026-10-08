@@ -34,6 +34,7 @@ class FakeLease:
         self.acquire_calls = 0
         self.mouse_release_calls = 0
         self.guard_retention_calls = 0
+        self.post_click_settle_calls: list[str] = []
         self.release_reasons: list[str] = []
 
     def acquire(self, *, preflight):
@@ -55,6 +56,10 @@ class FakeLease:
     def retain_mouse_for_keyboard_phase(self, _reason: str):
         self.guard_retention_calls += 1
         return SimpleNamespace(ready=self.retain_ok)
+
+    def settle_after_mouse_action(self, reason: str) -> bool:
+        self.post_click_settle_calls.append(reason)
+        return True
 
     def release(self, reason: str):
         self.release_reasons.append(reason)
@@ -79,13 +84,14 @@ def hook(
     stopped=lambda: False,
     acquired=lambda: True,
     expected_session=None,
+    audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
 ) -> PinnedForegroundPetSkillHook:
     return PinnedForegroundPetSkillHook(
         backend=SimpleNamespace(),
         binding=SimpleNamespace(hwnd=5),
         lease=lease,  # type: ignore[arg-type]
         stop_requested=stopped,
-        audition_mode=AuditionMode.V3_TWO_DIRECTION,
+        audition_mode=audition_mode,
         direction_ack_timeout_seconds=1.25,
         qte_generation_timeout_seconds=3.0,
         result_timeout_seconds=15.0,
@@ -180,6 +186,27 @@ class PinnedForegroundPetSkillHookTests(unittest.TestCase):
         self.assertEqual(lease.guard_retention_calls, 1)
         self.assertTrue(action.guard_retention_result.ready)
         self.assertIsNone(action.mouse_release_result)
+
+    def test_no_action_releases_lease_after_card_click_without_keyboard_guard(self) -> None:
+        lease = FakeLease()
+        lease.active = True
+        action = hook(lease, audition_mode=AuditionMode.NO_ACTION)
+        action._executor = SimpleNamespace(
+            state=PetSkillActionState.POST_SKILL_REREAD,
+            result=None,
+            active=True,
+        )
+
+        with patch.object(Phase3b3RuntimeHook, "_drive", return_value=None):
+            action._drive(None, inactive_qte_proven=True)
+
+        self.assertFalse(lease.active)
+        self.assertEqual(lease.guard_retention_calls, 0)
+        self.assertEqual(
+            lease.post_click_settle_calls,
+            ["NO_ACTION_CARD_CLICK_SENT"],
+        )
+        self.assertEqual(lease.release_reasons, ["NO_ACTION_CARD_CLICK_SENT"])
 
     def test_focus_or_binding_loss_aborts_and_releases(self) -> None:
         lease = FakeLease()

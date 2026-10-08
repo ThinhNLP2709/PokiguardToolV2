@@ -1,4 +1,4 @@
-"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b5 card strip.
+"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b6 card strip.
 
 No heap scan and no engine invocation. Offsets below are native-code verified,
 not Cpp2IL managed-field offsets; see docs/phase3b3_native_card_evidence.md.
@@ -18,11 +18,23 @@ from .il2cpp_layout import (
     is_canonical_user_pointer,
     read_il2cpp_string,
 )
-from .state import SUPPORTED_CELL_MULTIPLIERS
+from .live_state import gem_for_tag, normalize_tag
+from .state import GemType, SUPPORTED_CELL_MULTIPLIERS
+
+
+_DICTIONARY_ENTRIES_OFFSET = 0x18
+_DICTIONARY_COUNT_OFFSET = 0x20
+_DICTIONARY_FREE_COUNT_OFFSET = 0x28
+_DICTIONARY_VERSION_OFFSET = 0x2C
+_DICTIONARY_ENTRY_SIZE = 0x18
+_DICTIONARY_ENTRY_KEY_OFFSET = 0x08
+_DICTIONARY_ENTRY_VALUE_OFFSET = 0x10
+_ARRAY_DATA_OFFSET = 0x20
+_MAX_DOT_PREFAB_ENTRIES = 16
 
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
-_COMPONENT_GO_ICALL = 0x38AA280
+_COMPONENT_GO_ICALL = 0x38D7AE8
 _COMPONENT_GO_RVA = 0x1067390
 _NATIVE_SIGNATURES = (
     (0x1067396, "488b5928"),  # Component -> GameObject +28
@@ -42,8 +54,8 @@ _NATIVE_SIGNATURES = (
     (0xB5AB4E, "8b4338"),  # Canvas renderMode
 )
 _UNMARSHAL_SIGNATURE = (
-    0x136097F,
-    "4885db7433f6c301740d488bcbe88fb2eafe488bd8eb03488b1b",
+    0x138561F,
+    "4885db7433f6c301740d488bcbe87f6ee8fe488bd8eb03488b1b",
 )
 
 
@@ -137,6 +149,7 @@ class NativeCardUiReader:
         self._nodes: dict[int, tuple] = {}
         self._canvas_paths: dict[int, tuple[tuple, int]] = {}
         self._geometry_chunks: dict[tuple[int, int], bytes] = {}
+        self._dot_component_index: int | None = None
 
     def _remember(self, address: int, size: int) -> bytes:
         value = self._read(address, size)
@@ -146,9 +159,17 @@ class NativeCardUiReader:
         return value
 
     def _read(self, address: int, size: int) -> bytes:
-        if not is_canonical_user_pointer(address) or not self.memory.is_readable(address, size):
+        if not is_canonical_user_pointer(address) or size <= 0:
             raise LayoutValidationError("native_card_ui: unreadable range")
-        raw = self.memory.read(address, size)
+        if (
+            not getattr(self.memory, "read_validates_range", False)
+            and not self.memory.is_readable(address, size)
+        ):
+            raise LayoutValidationError("native_card_ui: unreadable range")
+        try:
+            raw = self.memory.read(address, size)
+        except (KeyError, OSError, ValueError) as exc:
+            raise LayoutValidationError("native_card_ui: unreadable range") from exc
         if len(raw) != size:
             raise LayoutValidationError("native_card_ui: short read")
         return raw
@@ -162,7 +183,7 @@ class NativeCardUiReader:
         return value
 
     def _managed(self, native: int, *, optional: bool = False) -> int | None:
-        # UnmarshalUnityObject<T> at GA+136097F: even handle is pointer-to-object;
+        # UnmarshalUnityObject<T> at GA+138561F: even handle is pointer-to-object;
         # odd handle requires an engine GC-handle resolver. Never invoke it.
         # A tagged GC handle can be a small integer, not a user-space address.
         # Inspect its tag BEFORE treating an even handle as a pointer.
@@ -197,7 +218,12 @@ class NativeCardUiReader:
         self._class_names[klass] = tuple(values)
         return tuple(values)
 
-    def _components(self, game_object: int) -> tuple[int, ...]:
+    def _components(
+        self,
+        game_object: int,
+        *,
+        validate_component_owners: bool = True,
+    ) -> tuple[int, ...]:
         raw = self._read(game_object + 0x28, 0x18)
         storage = struct.unpack_from("<Q", raw)[0]
         count = struct.unpack_from("<Q", raw, 0x10)[0]
@@ -207,12 +233,60 @@ class NativeCardUiReader:
         result = tuple(struct.unpack_from("<Q", values, i * 16 + 8)[0] for i in range(count))
         if len(set(result)) != len(result):
             raise LayoutValidationError("native_card_ui: duplicate component")
-        for component in result:
-            if self._pointer(component + 0x28) != game_object:
-                raise LayoutValidationError("native_card_ui: component owner mismatch")
+        if validate_component_owners:
+            for component in result:
+                if self._pointer(component + 0x28) != game_object:
+                    raise LayoutValidationError(
+                        "native_card_ui: component owner mismatch"
+                    )
         if self._read(game_object + 0x28, 0x18) != raw or self._read(storage, count * 16) != values:
             raise LayoutValidationError("native_card_ui: component list changed")
         return result
+
+    def _dot_component(
+        self,
+        native_game_object: int,
+        dot_class: int,
+    ) -> tuple[tuple[int, ...], int, int, int]:
+        """Resolve the exact Dot component with a validated prefab index cache.
+
+        Combat cells share one Unity prefab component layout.  Discover the Dot
+        slot once, then validate that same slot's class, GameObject owner and
+        managed/native roundtrip for every remaining cell.  A changed layout
+        falls back to a complete component search instead of being accepted.
+        """
+
+        components = self._components(
+            native_game_object,
+            validate_component_owners=False,
+        )
+        preferred = self._dot_component_index
+        if preferred is not None and 0 <= preferred < len(components):
+            native_component = components[preferred]
+            dot = self._managed(native_component, optional=True)
+            if (
+                dot is not None
+                and self._pointer(dot) == dot_class
+                and self._pointer(native_component + 0x28) == native_game_object
+            ):
+                return components, native_component, dot, preferred
+
+        matches: list[tuple[int, int, int]] = []
+        for index, native_component in enumerate(components):
+            dot = self._managed(native_component, optional=True)
+            if dot is not None and self._pointer(dot) == dot_class:
+                if self._pointer(native_component + 0x28) != native_game_object:
+                    raise LayoutValidationError(
+                        "native_card_ui: Dot component owner mismatch"
+                    )
+                matches.append((native_component, dot, index))
+        if len(matches) != 1:
+            raise LayoutValidationError(
+                "native_card_ui: Dot component is missing or ambiguous"
+            )
+        native_component, dot, index = matches[0]
+        self._dot_component_index = index
+        return components, native_component, dot, index
 
     def _active(self, game_object: int) -> bool:
         value = self._read(game_object + 0x4F, 1)[0]
@@ -222,8 +296,8 @@ class NativeCardUiReader:
 
     def _dot_sample(
         self, dot: int
-    ) -> tuple[int, int, int, int, int, int, int, int, int, int, int]:
-        """Read only the b4 fields that define one settled Dot identity."""
+    ) -> tuple[int, int, int, int, int, int, int, int, int, int, int, int]:
+        """Read only the b6 fields that define one settled Dot identity."""
 
         # One bounded object read avoids nine extra ReadProcessMemory calls per
         # sample while preserving the same fail-closed field validation.
@@ -234,6 +308,7 @@ class NativeCardUiReader:
         board = struct.unpack_from("<Q", raw, 0x48)[0]
         multiplier = struct.unpack_from("<i", raw, 0x88)[0]
         is_falling = raw[0xB0]
+        original_prefab = struct.unpack_from("<Q", raw, 0xD8)[0]
         is_prediction = raw[0xE0]
         squashing = raw[0xFC]
         pool_tag = struct.unpack_from("<Q", raw, 0x100)[0]
@@ -242,6 +317,7 @@ class NativeCardUiReader:
             ("class", class_pointer),
             ("native component", native_component),
             ("Board", board),
+            ("originalPrefab", original_prefab),
             ("PoolTag", pool_tag),
         ):
             if not is_canonical_user_pointer(value):
@@ -266,21 +342,127 @@ class NativeCardUiReader:
             board,
             multiplier,
             is_falling,
+            original_prefab,
             is_prediction,
             squashing,
             pool_tag,
             render_hidden,
         )
 
+    def _read_dot_prefab_table(self, dictionary: int) -> dict[str, int]:
+        """Decode the exact b6 ``BoardWsApplier._prefabByTag`` dictionary.
+
+        The returned keys are normalized gem tags and the values are the
+        managed prefab ``GameObject`` wrappers written to ``Dot.originalPrefab``
+        by ``SpawnDotByTag``.  This is a bounded owner walk, not a heap scan.
+        """
+
+        header_before = self._read(dictionary, 0x30)
+        entries = struct.unpack_from(
+            "<Q", header_before, _DICTIONARY_ENTRIES_OFFSET
+        )[0]
+        count = struct.unpack_from(
+            "<i", header_before, _DICTIONARY_COUNT_OFFSET
+        )[0]
+        free_count = struct.unpack_from(
+            "<i", header_before, _DICTIONARY_FREE_COUNT_OFFSET
+        )[0]
+        version = struct.unpack_from(
+            "<i", header_before, _DICTIONARY_VERSION_OFFSET
+        )[0]
+        if (
+            not 1 <= count <= _MAX_DOT_PREFAB_ENTRIES
+            or not 0 <= free_count < count
+            or version < 0
+            or not is_canonical_user_pointer(entries)
+        ):
+            raise LayoutValidationError(
+                "native_card_ui: Dot prefab dictionary shape is invalid"
+            )
+
+        raw_entries = self._read(
+            entries,
+            _ARRAY_DATA_OFFSET + count * _DICTIONARY_ENTRY_SIZE,
+        )
+        array_class, _monitor, bounds, capacity = struct.unpack_from(
+            "<4Q", raw_entries, 0
+        )
+        if (
+            not is_canonical_user_pointer(array_class)
+            or bounds != 0
+            or not count <= capacity <= 32
+        ):
+            raise LayoutValidationError(
+                "native_card_ui: Dot prefab dictionary entries are invalid"
+            )
+
+        result: dict[str, int] = {}
+        live_entries = 0
+        for index in range(count):
+            entry = _ARRAY_DATA_OFFSET + index * _DICTIONARY_ENTRY_SIZE
+            hash_code = struct.unpack_from("<i", raw_entries, entry)[0]
+            key_pointer = struct.unpack_from(
+                "<Q", raw_entries, entry + _DICTIONARY_ENTRY_KEY_OFFSET
+            )[0]
+            prefab = struct.unpack_from(
+                "<Q", raw_entries, entry + _DICTIONARY_ENTRY_VALUE_OFFSET
+            )[0]
+            if hash_code < 0:
+                continue
+            live_entries += 1
+            if not is_canonical_user_pointer(
+                key_pointer
+            ) or not is_canonical_user_pointer(prefab):
+                raise LayoutValidationError(
+                    "native_card_ui: Dot prefab dictionary entry is invalid"
+                )
+            tag = read_il2cpp_string(self.memory, key_pointer, max_length=64)
+            normalized = normalize_tag(tag)
+            if (
+                not normalized
+                or gem_for_tag(tag) is GemType.UNKNOWN
+                or normalized in result
+            ):
+                raise LayoutValidationError(
+                    "native_card_ui: Dot prefab dictionary tag is invalid or ambiguous"
+                )
+            if self._class_identity(prefab) != ("GameObject", "UnityEngine"):
+                raise LayoutValidationError(
+                    "native_card_ui: Dot prefab is not a GameObject"
+                )
+            native_prefab = self._pointer(prefab + 0x10)
+            # Asset prefabs may use Unity's odd/tagged GC-handle form, which an
+            # external reader cannot resolve without invoking engine code.  The
+            # managed GameObject class and readable native object are sufficient
+            # here because the exact managed pointer is cross-checked against
+            # Dot.originalPrefab below.
+            self._read(native_prefab, 8)
+            result[normalized] = prefab
+
+        if (
+            live_entries != count - free_count
+            or not 1 <= len(result) <= 6
+            or len(set(result.values())) != len(result)
+        ):
+            raise LayoutValidationError(
+                "native_card_ui: Dot prefab dictionary is incomplete or aliased"
+            )
+        if self._read(dictionary, 0x30) != header_before:
+            raise NativeGeometryBusyError(
+                "native_card_ui: Dot prefab dictionary changed during read"
+            )
+        return result
+
     def read_dot_board(
         self,
         board: int,
         game_objects: tuple[int, ...],
         dot_class: int,
+        prefab_by_tag: int,
     ) -> NativeDotBoard:
         """Walk ``Board.allDots -> GameObject components -> Dot`` exactly.
 
-        Pokiguard 1.7.4-b5 writes the spawn tag to ``Dot.PoolTag +0x100`` and
+        Pet Puzzle 1.7.4-b6 writes the spawn tag to ``Dot.PoolTag +0x100`` and
         keeps column, row, multiplier and Board ownership on that same managed
         component. Every wrapper/native/component relationship and every Dot
         identity field is sampled again after all 64 cells have been decoded.
@@ -290,11 +472,18 @@ class NativeCardUiReader:
             dot_class
         ):
             raise LayoutValidationError("native_card_ui: invalid Dot board/class")
+        if not is_canonical_user_pointer(prefab_by_tag):
+            raise LayoutValidationError("native_card_ui: invalid Dot prefab table")
         if len(game_objects) != 64 or len(set(game_objects)) != 64:
             raise LayoutValidationError(
                 "native_card_ui: Board.allDots does not contain 64 unique objects"
             )
 
+        prefab_table = self._read_dot_prefab_table(prefab_by_tag)
+        # Cache strings only for this one stable ownership walk.  PoolTag
+        # strings originate in transient DTOs; retaining pointer->text entries
+        # across matches can decode a recycled IL2CPP address as an old gem.
+        tag_cache: dict[int, str] = {}
         records = []
         cells = []
         for game_object in game_objects:
@@ -307,17 +496,9 @@ class NativeCardUiReader:
                 raise LayoutValidationError(
                     "native_card_ui: Board.allDots contains an inactive object"
                 )
-            components = self._components(native_game_object)
-            candidates = []
-            for component in components:
-                managed = self._managed(component, optional=True)
-                if managed is not None and self._pointer(managed) == dot_class:
-                    candidates.append((component, managed))
-            if len(candidates) != 1:
-                raise LayoutValidationError(
-                    "native_card_ui: Dot component is missing or ambiguous"
-                )
-            native_component, dot = candidates[0]
+            components, native_component, dot, component_index = (
+                self._dot_component(native_game_object, dot_class)
+            )
             sample = self._dot_sample(dot)
             (
                 _class_pointer,
@@ -327,6 +508,7 @@ class NativeCardUiReader:
                 observed_board,
                 multiplier,
                 is_falling,
+                original_prefab,
                 is_prediction,
                 squashing,
                 pool_tag,
@@ -351,9 +533,18 @@ class NativeCardUiReader:
                 raise NativeGeometryBusyError(
                     "native_card_ui: Dot board is still moving/rendering"
                 )
-            tag = read_il2cpp_string(self.memory, pool_tag, max_length=64)
+            tag = tag_cache.get(pool_tag)
+            if tag is None:
+                tag = read_il2cpp_string(self.memory, pool_tag, max_length=64)
+                tag_cache[pool_tag] = tag
             if not tag or any(ord(character) < 0x20 for character in tag):
                 raise LayoutValidationError("native_card_ui: Dot.PoolTag is invalid")
+            expected_prefab = prefab_table.get(normalize_tag(tag))
+            if expected_prefab is None or original_prefab != expected_prefab:
+                raise LayoutValidationError(
+                    "native_card_ui: Dot.PoolTag/originalPrefab mismatch "
+                    f"at ({row},{column})"
+                )
             cells.append(
                 BoardCellSnapshot(dot, column, row, pool_tag, tag, multiplier)
             )
@@ -364,6 +555,7 @@ class NativeCardUiReader:
                     components,
                     native_component,
                     dot,
+                    component_index,
                     sample,
                 )
             )
@@ -381,19 +573,29 @@ class NativeCardUiReader:
             components,
             native_component,
             dot,
+            component_index,
             sample,
         ) in records:
+            current_components = self._components(
+                native_game_object,
+                validate_component_owners=False,
+            )
             if (
                 self._pointer(game_object + 0x10) != native_game_object
-                or self._managed(native_game_object) != game_object
                 or not self._active(native_game_object)
-                or self._components(native_game_object) != components
+                or current_components != components
+                or current_components[component_index] != native_component
+                or self._pointer(native_component + 0x28) != native_game_object
                 or self._managed(native_component) != dot
                 or self._dot_sample(dot) != sample
             ):
                 raise NativeGeometryBusyError(
                     "native_card_ui: Dot board changed during ownership walk"
                 )
+        if self._read_dot_prefab_table(prefab_by_tag) != prefab_table:
+            raise NativeGeometryBusyError(
+                "native_card_ui: Dot prefab dictionary changed during ownership walk"
+            )
         return NativeDotBoard(
             board,
             game_objects,
@@ -659,6 +861,30 @@ class NativeCardUiReader:
         suitable for read-only UI state inspection without a heap scan.
         """
 
+        result = self.find_game_object_component(
+            game_object,
+            class_name,
+            namespace,
+        )
+        if result is None:
+            raise LayoutValidationError(
+                "native_card_ui: requested component is missing"
+            )
+        return result
+
+    def find_game_object_component(
+        self,
+        game_object: int,
+        class_name: str,
+        namespace: str = "",
+    ) -> int | None:
+        """Return one exact component, or ``None`` when it is absent.
+
+        Multiple matching components remain an error.  This lets callers walk
+        a bounded owner list such as ``Board.cardsInHand`` without treating an
+        expected non-matching sibling as a malformed Unity object.
+        """
+
         if self._class_identity(game_object) != ("GameObject", "UnityEngine"):
             raise LayoutValidationError("native_card_ui: object is not a GameObject")
         native = self._pointer(game_object + 0x10)
@@ -675,9 +901,9 @@ class NativeCardUiReader:
                 namespace,
             ):
                 matches.append(managed)
-        if len(matches) != 1:
+        if len(matches) > 1:
             raise LayoutValidationError(
-                "native_card_ui: requested component is missing or ambiguous"
+                "native_card_ui: requested component is ambiguous"
             )
         if (
             self._pointer(game_object + 0x10) != native
@@ -687,7 +913,7 @@ class NativeCardUiReader:
             raise NativeGeometryBusyError(
                 "native_card_ui: GameObject components changed during read"
             )
-        return matches[0]
+        return matches[0] if matches else None
 
     def read_game_object_descendant_components(
         self,

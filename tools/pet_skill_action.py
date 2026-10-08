@@ -274,6 +274,26 @@ class Phase3b3RuntimeHook:
         return None
 
     @property
+    def no_action_post_click_pending(self) -> bool:
+        """True while a click-only skill awaits its read-only confirmation.
+
+        A Mega Icarus card becomes non-interactable immediately after the one
+        accepted click.  That is expected progress, not evidence that a QTE
+        became unreadable.  Exposing this narrow state lets the observer keep
+        publishing the intentional inactive-QTE edge until the executor sees a
+        fresh authoritative turn/resource/card transition.
+        """
+
+        executor = self._executor
+        return bool(
+            self.audition_mode is AuditionMode.NO_ACTION
+            and executor is not None
+            and executor.active
+            and executor.state is PetSkillActionState.POST_SKILL_REREAD
+            and executor.telemetry.card_click_timestamp is not None
+        )
+
+    @property
     def done(self) -> bool:
         return bool(
             self._fatal_stop_reason is not None
@@ -332,6 +352,7 @@ class Phase3b3RuntimeHook:
                 qte_generation_timeout_seconds=self._qte_generation_timeout,
                 result_timeout_seconds=self._result_timeout,
                 post_state_timeout_seconds=self._post_state_timeout,
+                audition_mode=self.audition_mode,
             )
 
         self._executor_factory = build_executor
@@ -344,8 +365,15 @@ class Phase3b3RuntimeHook:
             architecture=target.architecture,
             actionLimit=1,
             cardClickLimit=1,
-            confirmKey="VK_SPACE",
+            confirmKey=(
+                None
+                if self.audition_mode is AuditionMode.NO_ACTION
+                else "VK_SPACE"
+            ),
             allowedDirectionKeys=(
+                []
+                if self.audition_mode is AuditionMode.NO_ACTION
+                else
                 ["LEFT", "RIGHT"]
                 if self.audition_mode is AuditionMode.V3_TWO_DIRECTION
                 else ["UP", "DOWN", "LEFT", "RIGHT"]
@@ -631,7 +659,7 @@ class Phase3b3RuntimeHook:
         return self.retain_pre_action_after_transient_read_failure(reason)
 
     def retain_post_space_after_control_read_failure(self, reason: str) -> bool:
-        """Keep only read-only result/post-state work after the QTE closes.
+        """Keep read-only result/post-state work after the only input is sent.
 
         A PERFECT Pet Skill may kill the boss and tear down ``Board`` ownership
         before the optional ``MATCH_SKILL_USE_RES`` callback is sampled. Once the
@@ -640,9 +668,24 @@ class Phase3b3RuntimeHook:
         the immutable ActionId/MatchId until an exact terminal state is read or
         the original bounded settle deadline expires. The dispatcher tap may
         still collect telemetry, but it is not a success dependency.
+
+        A click-only Mega Icarus action has the same read-only boundary directly
+        after its one card click.  It intentionally has no QTE/Space, so a short
+        presentation-busy control gap must not invalidate that accepted click.
         """
 
         executor = self._executor
+        qte_post_space = bool(
+            executor is not None
+            and executor.telemetry.space_send_timestamp is not None
+            and executor.runtime_completion_observed
+        )
+        click_only_post_click = bool(
+            executor is not None
+            and self.audition_mode is AuditionMode.NO_ACTION
+            and executor.state is PetSkillActionState.POST_SKILL_REREAD
+            and executor.telemetry.card_click_timestamp is not None
+        )
         retain = bool(
             executor is not None
             and executor.active
@@ -653,8 +696,7 @@ class Phase3b3RuntimeHook:
                 PetSkillActionState.RESULT_CORRELATED,
                 PetSkillActionState.POST_SKILL_REREAD,
             }
-            and executor.telemetry.space_send_timestamp is not None
-            and executor.runtime_completion_observed
+            and (qte_post_space or click_only_post_click)
             and self._target is not None
             and self._target.is_running()
         )
@@ -669,7 +711,8 @@ class Phase3b3RuntimeHook:
                 session=executor.action_id.session_key,
                 inputEmitted=False,
                 cardClicks=1,
-                spacePresses=1,
+                spacePresses=(1 if qte_post_space else 0),
+                auditionMode=self.audition_mode.value,
             )
         self._last_post_space_read_rejection = reason
         return True
@@ -1457,6 +1500,21 @@ class PinnedForegroundPetSkillHook(Phase3b3RuntimeHook):
         try:
             super()._drive(qte, inactive_qte_proven=inactive_qte_proven)
             executor = self._executor
+            if (
+                self.audition_mode is AuditionMode.NO_ACTION
+                and self._phase4_lease.active
+                and executor is not None
+                and executor.state is PetSkillActionState.POST_SKILL_REREAD
+            ):
+                # Click-only cards need mouse authority through the exact
+                # CardUI click and a short post-click Unity sampling window.
+                # They never enter the keyboard/QTE direction phase.
+                if not self._phase4_lease.settle_after_mouse_action(
+                    "NO_ACTION_CARD_CLICK_SENT"
+                ):
+                    self.invalidate("PINNED_QTE_POST_CLICK_SETTLE_FAILED")
+                    return
+                self._release("NO_ACTION_CARD_CLICK_SENT")
             if (
                 self._phase4_lease.active
                 and self.guard_retention_result is None

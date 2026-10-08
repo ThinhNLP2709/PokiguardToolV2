@@ -21,6 +21,7 @@ import uuid
 from typing import Callable, Protocol
 
 from .combat_lifecycle import CombatLifecycleState
+from .gameplay_profile import AuditionMode
 from .pet_qte_observer import QteBindingStatus
 from .pet_skill_shadow import (
     PetSkillCapability,
@@ -61,6 +62,7 @@ class PetSkillActionState(str, Enum):
 
 class PetSkillActionResultKind(str, Enum):
     SUCCESS_PERFECT = "SUCCESS_PERFECT"
+    SUCCESS_NO_ACTION = "SUCCESS_NO_ACTION"
     PREFLIGHT_REJECTED = "PREFLIGHT_REJECTED"
     CARD_CLICK_UNCONFIRMED = "CARD_CLICK_UNCONFIRMED"
     CARD_CLICK_SENT_QTE_UNCONFIRMED = "CARD_CLICK_SENT_QTE_UNCONFIRMED"
@@ -272,10 +274,14 @@ class PetSkillActionResult:
     space_presses: int
     telemetry: PetSkillActionTelemetry
     post_state: GameState | None = None
+    direction_presses: int = 0
 
     @property
     def success(self) -> bool:
-        return self.kind is PetSkillActionResultKind.SUCCESS_PERFECT
+        return self.kind in {
+            PetSkillActionResultKind.SUCCESS_PERFECT,
+            PetSkillActionResultKind.SUCCESS_NO_ACTION,
+        }
 
 
 class PetSkillActionExecutor:
@@ -298,6 +304,7 @@ class PetSkillActionExecutor:
         maximum_sample_age_seconds: float = 0.35,
         timestamp: Callable[[], float] = time.monotonic,
         action_id_factory: Callable[[], str] = lambda: uuid.uuid4().hex,
+        audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
     ) -> None:
         if not 0.5 <= qte_generation_timeout_seconds <= 10.0:
             raise ValueError("QTE generation timeout must be between 0.5 and 10 seconds")
@@ -316,6 +323,7 @@ class PetSkillActionExecutor:
         self._sample_age = float(maximum_sample_age_seconds)
         self._timestamp = timestamp
         self._action_id_factory = action_id_factory
+        self._audition_mode = AuditionMode(audition_mode)
         self._state = PetSkillActionState.IDLE
         self._action_id: PetSkillActionId | None = None
         self._window: WindowBinding | None = None
@@ -454,7 +462,7 @@ class PetSkillActionExecutor:
         } and not 0 <= monotonic_now - sample_time <= self._sample_age:
             stop_kind, stop_reason = PetSkillActionResultKind.INVALIDATED, "QTE_CONTROL_SAMPLE_STALE"
         if stop_kind is not None:
-            self._record_direction_events(self._directions.abort(stop_reason), monotonic_now)
+            self._abort_directions(stop_reason, monotonic_now)
             self._fail(stop_kind, stop_reason, monotonic_now)
             return tuple(self._events[start:])
 
@@ -492,8 +500,8 @@ class PetSkillActionExecutor:
         if not self.active:
             return ()
         start = len(self._events)
-        self._record_direction_events(
-            self._directions.abort("EMERGENCY_STOP" if emergency else reason), monotonic_now,
+        self._abort_directions(
+            "EMERGENCY_STOP" if emergency else reason, monotonic_now
         )
         self._fail(
             PetSkillActionResultKind.EMERGENCY_STOPPED
@@ -574,11 +582,12 @@ class PetSkillActionExecutor:
         window = observation.window_binding
         geometry = observation.geometry
         assert session is not None and window is not None and geometry is not None
-        self._directions.arm(
-            session_key=session,
-            window_binding=window,
-            inactive_baseline_proven=observation.inactive_qte_proven,
-        )
+        if self._audition_mode is not AuditionMode.NO_ACTION:
+            self._directions.arm(
+                session_key=session,
+                window_binding=window,
+                inactive_baseline_proven=observation.inactive_qte_proven,
+            )
         self._transition(PetSkillActionState.CARD_CLICK, now)
         # The 1.7.4 legacy Unity input path may sample the mouse position on a
         # rendered frame after SetCursorPos.  Use the same bounded cursor-settle
@@ -590,7 +599,7 @@ class PetSkillActionExecutor:
             settle_cursor=True,
         )
         if not click.sent:
-            self._directions.abort("CARD_CLICK_INPUT_FAILED")
+            self._abort_directions("CARD_CLICK_INPUT_FAILED", now)
             self._fail(
                 PetSkillActionResultKind.CARD_CLICK_UNCONFIRMED,
                 f"PET_SKILL_CLICK_{click.status.value}",
@@ -599,6 +608,15 @@ class PetSkillActionExecutor:
             return
         self._card_clicks = 1
         self._telemetry = self._replace_telemetry(card_click_timestamp=self._timestamp())
+        if self._audition_mode is AuditionMode.NO_ACTION:
+            self._deadline = now + self._post_timeout
+            self._transition(PetSkillActionState.POST_SKILL_REREAD, now)
+            self._event(
+                "pet_skill_no_action_click_sent",
+                now,
+                "ONE_CARD_CLICK_ZERO_DIRECTION_ZERO_SPACE",
+            )
+            return
         self._deadline = now + self._qte_timeout
         self._transition(PetSkillActionState.WAIT_QTE_GENERATION, now)
 
@@ -893,6 +911,7 @@ class PetSkillActionExecutor:
                         card_clicks=self._card_clicks,
                         space_presses=self._space_presses,
                         telemetry=self._telemetry,
+                        direction_presses=self._direction_presses(),
                     )
                     self._event("pet_skill_action_complete", now)
                     return
@@ -926,6 +945,9 @@ class PetSkillActionExecutor:
         observation: PetSkillActionObservation,
         now: float,
     ) -> None:
+        if self._audition_mode is AuditionMode.NO_ACTION:
+            self._step_no_action_post_state(observation, now)
+            return
         qte = observation.qte
         if qte is not None:
             inactive_current = bool(
@@ -1037,6 +1059,7 @@ class PetSkillActionExecutor:
                 space_presses=self._space_presses,
                 telemetry=self._telemetry,
                 post_state=state,
+                direction_presses=self._direction_presses(),
             )
             self._event("pet_skill_action_complete", now)
             return
@@ -1044,6 +1067,117 @@ class PetSkillActionExecutor:
             self._fail(
                 PetSkillActionResultKind.POST_SKILL_REREAD_UNCONFIRMED,
                 "RUNTIME_PERFECT_BUT_FRESH_SETTLED_GAME_STATE_UNAVAILABLE",
+                now,
+            )
+
+    def _step_no_action_post_state(
+        self,
+        observation: PetSkillActionObservation,
+        now: float,
+    ) -> None:
+        """Confirm one click-only Mega action without touching QTE input."""
+
+        if observation.post_state_fresh and observation.post_state is not None:
+            state = observation.post_state
+            if (
+                state.battle.match_id is not None
+                and self._action_id is not None
+                and state.battle.match_id != self._action_id.match_id
+            ):
+                self._fail(
+                    PetSkillActionResultKind.INVALIDATED,
+                    "POST_STATE_WRONG_MATCH",
+                    now,
+                )
+                return
+            battle = state.battle
+            terminal = bool(
+                state.phase is not GamePhase.COMBAT
+                and (
+                    battle.combat_lifecycle is CombatLifecycleState.POSTMATCH
+                    or battle.match_over is True
+                    or battle.board_is_game_over is True
+                    or battle.local_has_left_match is True
+                )
+            )
+            settled_combat = bool(
+                state.phase is GamePhase.COMBAT
+                and battle.stable
+                and battle.is_board_ready is True
+                and battle.is_cascade_running is False
+                and battle.board_is_processing_ui is not True
+                and battle.presentation_busy is not True
+                and battle.board_is_game_over is not True
+                and battle.match_over is not True
+            )
+            resources_after = (
+                state.player.mana if state.player is not None else None,
+                state.player.power if state.player is not None else None,
+            )
+            board_progressed = bool(
+                self._source_board_key is not None
+                and state.dedup_key is not None
+                and state.dedup_key != self._source_board_key
+            )
+            turn_progressed = bool(
+                self._telemetry.turn_before is not None
+                and battle.turn_number is not None
+                and battle.turn_number != self._telemetry.turn_before
+            )
+            resources_progressed = any(
+                before is not None and after is not None and before != after
+                for before, after in zip(
+                    self._telemetry.resources_before,
+                    resources_after,
+                )
+            )
+            card = observation.live_card
+            capability = observation.capability
+            card_progressed = bool(
+                card is None
+                or card.object_address != self._card_ui
+                or card.has_used_this_turn
+                or card.action_pending
+                or not card.interactable
+                or capability is None
+                or not capability.current
+                or capability.skill_card_id
+                != (self._action_id.skill_card_id if self._action_id else None)
+                or capability.live_card_actionable is False
+            )
+            authoritative_progress = bool(
+                board_progressed
+                or turn_progressed
+                or resources_progressed
+                or card_progressed
+            )
+            if terminal or (settled_combat and authoritative_progress):
+                self._telemetry = self._replace_telemetry(
+                    resources_after=resources_after,
+                    turn_after=battle.turn_number,
+                )
+                self._state = PetSkillActionState.COMPLETE
+                self._result = PetSkillActionResult(
+                    kind=PetSkillActionResultKind.SUCCESS_NO_ACTION,
+                    state=self._state,
+                    action_id=self._action_id,
+                    reason=(
+                        "NO_ACTION_CARD_CLICK_CONFIRMED_BY_TERMINAL_STATE"
+                        if terminal
+                        else "NO_ACTION_CARD_CLICK_CONFIRMED_BY_FRESH_AUTHORITATIVE_TRANSITION"
+                    ),
+                    card_clicks=self._card_clicks,
+                    space_presses=0,
+                    telemetry=self._telemetry,
+                    post_state=state,
+                    direction_presses=0,
+                )
+                self._event("pet_skill_action_complete", now)
+                return
+        if self._deadline is not None and now >= self._deadline:
+            self._fail(
+                PetSkillActionResultKind.POST_SKILL_REREAD_UNCONFIRMED,
+                "NO_ACTION_CARD_CLICK_SENT_TRANSITION_UNCONFIRMED_NO_RETRY",
                 now,
             )
 
@@ -1138,10 +1272,19 @@ class PetSkillActionExecutor:
         # current QTE to cross that read-only boundary.  This does not weaken
         # any pre-Space gate, and an inactive/stale QTE is still rejected.
         terminal_readonly_wait = bool(
-            self._space_presses == 1
-            and (
-                self.runtime_completion_observed
-                or self._current_runtime_perfect(observation.qte)
+            (
+                (
+                    self._space_presses == 1
+                    and (
+                        self.runtime_completion_observed
+                        or self._current_runtime_perfect(observation.qte)
+                    )
+                )
+                or (
+                    self._audition_mode is AuditionMode.NO_ACTION
+                    and self._card_clicks == 1
+                    and self._state is PetSkillActionState.POST_SKILL_REREAD
+                )
             )
             and self._state
             in {
@@ -1150,7 +1293,10 @@ class PetSkillActionExecutor:
                 PetSkillActionState.POST_SKILL_REREAD,
             }
             and observation.postmatch_or_terminal
-            and observation.qte is None
+            and (
+                self._audition_mode is AuditionMode.NO_ACTION
+                or observation.qte is None
+            )
         )
         if observation.emergency_stop:
             return PetSkillActionResultKind.EMERGENCY_STOPPED, "EMERGENCY_STOP"
@@ -1380,6 +1526,15 @@ class PetSkillActionExecutor:
             if item.summary is not None:
                 self._telemetry = self._replace_telemetry(direction_summary=item.summary)
 
+    def _abort_directions(self, reason: str, now: float) -> None:
+        if self._audition_mode is AuditionMode.NO_ACTION:
+            return
+        self._record_direction_events(self._directions.abort(reason), now)
+
+    def _direction_presses(self) -> int:
+        summary = self._telemetry.direction_summary
+        return summary.directions_sent if summary is not None else 0
+
     def _transition(self, state: PetSkillActionState, now: float) -> None:
         self._state = state
         self._event("pet_skill_action_state", now)
@@ -1402,6 +1557,7 @@ class PetSkillActionExecutor:
             card_clicks=self._card_clicks,
             space_presses=self._space_presses,
             telemetry=self._telemetry,
+            direction_presses=self._direction_presses(),
         )
         self._event("pet_skill_action_failed", now, reason)
 

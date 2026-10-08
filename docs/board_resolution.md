@@ -1,5 +1,27 @@
 # Board instance resolution — Phase 1
 
+## First-turn native opening fallback — 2026-10-04
+
+Run `f3e21495f84245b38e8e7d25a9e3a0a9` proved that a clean entry could bind
+the new Board session while the short-lived `MATCH_START` Newtonsoft object
+was still absent from the bounded transport scan. The provider stayed in
+`awaiting_match_start_opening_dto` for more than 20 seconds, emitted zero
+gameplay inputs, and therefore let the server consume the first turn. This was
+an entry handoff delay, not a BASIC/Demon/Mega policy `PASS` decision.
+
+`MATCH_START` remains the preferred opening source. During the pristine local
+opening only, the provider may now fall back to its already verified bounded
+`Board.allDots -> GameObject.components -> Dot.PoolTag` reader when all of the
+following remain true: current session and local turn 0/1, local move sequence
+zero, no previous move, exactly one idle `BoardWsApplier` owner, 64 unique
+Dots, no pending/in-flight batch, Board ready with no cascade/UI processing,
+and an unchanged `MatchService._ackedSeqs` set across the complete read. The
+entry gate requires two stable provider confirmations, a complete valid board,
+more than four seconds on the authoritative turn timer, and the exact
+ACK-attested native source before gameplay handoff. If any proof is absent,
+the provider still returns to the transport sampler and sends no input; broad
+ACK heap scanning remains excluded from this opening window.
+
 ## B4 board-cell coordinates versus card click pixels — 2026-09-22
 
 `MATCH_MOVE_REQ` carries integer board-cell coordinates (`fromCol/fromRow`,
@@ -414,3 +436,105 @@ Native ownership of the rendered Dot/GameObject graph uses the b5
 `Component.get_gameObject` cache at `GameAssembly+0x38AA280` and the b5
 managed/native unmarshal signature at `GameAssembly+0x136097F`. The resolved
 UnityPlayer function remains `UnityPlayer+0x1067390`.
+
+## PetPuzzle 1.7.4-b6 board addendum — 2026-10-01
+
+The b6 GameAssembly SHA-256 is
+`72D10A43FBFDAB705E2DB7CACA1CC2B998B0B8581D56946DC545D87C720EC063`.
+The three board owners migrate to these module-relative RVAs:
+
+```text
+GameAssembly.base + 0x36C9F88 -> Board Il2CppClass -> static_fields +0x10 -> Board*
+GameAssembly.base + 0x36C9E70 -> Active Il2CppClass -> static_fields +0x00 -> Active* -> board +0x38
+GameAssembly.base + 0x36C6148 -> ManagerMatch Il2CppClass -> static_fields +0x00 -> ManagerMatch* -> active +0x130 -> board +0x38
+```
+
+Exact b5/b6 DiffableCs comparison confirms the Board fields consumed by the
+reader are unchanged: dimensions, allDots, Active owner, cascade/current
+state, destroyed-this-turn, UI/mega/game-over/readiness flags and result title.
+The multiplier domain remains exact integer `1..7`.
+
+Native Dot/GameObject ownership now uses the b6 GameAssembly cache at
+`+0x038D7AE8` and unmarshal code at `+0x0138561F`. The installed
+`UnityPlayer.dll` is unchanged, and the bridge resolved read-only in the live
+b6 process. A lobby-screen probe cannot initialize scene-owned Board/Dot
+classes; authoritative 64-cell board publication remains part of bounded B1
+live acceptance rather than being inferred from a null lobby singleton.
+
+### b6 main-Mega + Evolution card-strip correction — 2026-10-03
+
+Live run `42ffa806daf043f59e21649f8a95e6a0` had `selectedCards=0`,
+`cardsInHand=2`, one validated `MEGA_ICARUS` `CardUI`, and an unused normal-pet
+Evolution candidate with runtime cost 120. The previous Fusion heap scan never
+resolved the visible Evolution wrapper, so every turn failed closed at shared
+policy step 1 despite sufficient Mana.
+
+The provider now follows the already-verified
+`Board.cardsInHand -> GameObject -> native components -> managed wrapper`
+chain for Evolution as well as Pet Skill. It accepts Evolution only when one
+exact current-hand `FusionCardUI` passes class, selected-pet identity,
+Button/native owner and stable slot checks. The policy order is unchanged:
+Evolution is non-consuming, forces a fresh state read, and a ready Mega skill
+may still be used on that same local turn.
+
+### b6 intermittent non-matching SWAP hardening — 2026-10-07
+
+FarmRun `d2db2ce9c6974f2ba5b2003c13fcb397`, attempt 61, proves six legal
+policy swaps were physically sent while only one produced the exact
+MatchService local-sequence/last-move acknowledgement. The rejected inputs
+used valid cell-centre coordinates; their two-click spacing reached
+`1.67..2.84s`. Reverse evidence in b6 `Dot.cs` gives the client tap-selection
+timeout as `3.5s`, so degraded pacing plus scheduler/render delay can expire
+the first selected cell before the second click.
+
+FarmRun `f80dce141b994d20b281a485867c9e3d`, attempt 38, is a distinct policy
+case: all eight sent swaps received exact acknowledgements, then Demon Aegis
+returned `DEMON_AEGIS_SWORD_ONLY_BLOCKED` on the mandatory turn where the only
+legal move consumed Sword. This was not a board-coordinate failure.
+
+The hardened path now:
+
+- caps randomized two-click spacing at `1.85s` and resets degraded pacing at
+  each combat boundary;
+- does not classify a match-ending pending SWAP as delivery degradation;
+- prefers the exact ACK-matched `MATCH_MOVE_RES` board over a conflicting
+  presentation-time `Board.allDots` sample, retaining the latter as fallback;
+- enters bounded technical recovery on the first physically sent SWAP whose
+  local move sequence does not advance before the response/ACK timeout; and
+- uses the least-consuming Sword move only as Demon Aegis' mandatory final
+  fallback, preventing a third consecutive idle.
+
+### b6 long-run native tag-address reuse correction — 2026-10-08
+
+The later VM evidence narrows the remaining non-matching SWAP to a provider
+identity defect rather than solver legality. The visible board showed Health at
+screen `(row=5,col=5)` and Shield at `(row=6,col=5)`, while V2 physically sent
+that adjacent swap even though it made no match. The downloaded Desktop UI log
+does not contain the per-turn board payload, but the same failure class in
+FarmRun `d2db2ce9c6974f2ba5b2003c13fcb397` published a native-Dot board and selected
+a solver-legal move that the rendered game did not accept. Inter-click times
+alone cannot explain this: both accepted and rejected samples overlap the same
+timing range.
+
+The native reader had retained a process-lifetime cache keyed only by the
+managed `Dot.PoolTag` string address. These tag strings originate in transient
+combat DTOs. Once an old string becomes unreachable, IL2CPP may reuse that
+address for another tag; a process-lifetime pointer cache then returns the old
+gem identity even though the current Dot and screen carry the new one. This is
+exactly capable of producing a match on V2's reconstructed board and a
+non-match at the same coordinates in the game.
+
+The repair scopes pointer-to-tag caching to one stable 64-Dot ownership walk.
+It also independently decodes the exact current
+`BoardWsApplier._prefabByTag +0x50` dictionary and requires, for every cell:
+
+```text
+normalize(Dot.PoolTag) -> _prefabByTag value == Dot.originalPrefab +0xD8
+```
+
+The dictionary and all 64 Dot identity samples are read again before the board
+may be published. A recycled tag address is therefore decoded again; a partial
+or contradictory rendered identity fails closed before policy or input. The
+regression suite explicitly reuses one former tag address for a different tag
+between consecutive board reads and verifies that the second board receives
+the new identity. Full validation passes 1,734 tests.

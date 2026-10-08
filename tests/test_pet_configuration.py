@@ -115,7 +115,10 @@ class PetConfigurationTests(unittest.TestCase):
             [v.value for v in Damage],
             ["default_attack", "pet_skill", "pet_passive"],
         )
-        self.assertEqual([v.value for v in AuditionMode], ["audition_v3", "audition_v2"])
+        self.assertEqual(
+            [v.value for v in AuditionMode],
+            ["audition_v3", "audition_v2", "none"],
+        )
         self.assertEqual(
             [v.value for v in PetSkillFireCondition],
             [

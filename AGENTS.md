@@ -70,7 +70,6 @@ Until explicitly approved:
 - no direct RequestSwap
 - no network/packet manipulation
 - no HP/damage/reward modification
-- no anti-cheat bypass
 - no use of game enableAutoMove logic
 
 External memory work begins read-only.

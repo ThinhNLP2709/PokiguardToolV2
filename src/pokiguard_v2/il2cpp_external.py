@@ -1,4 +1,4 @@
-"""Read-only IL2CPP singleton resolution for the verified Pokiguard build.
+"""Read-only IL2CPP singleton resolution for the verified PetPuzzle build.
 
 This module deliberately does not initialize IL2CPP metadata, invoke methods, or
 write target memory. It only follows global slots and layouts verified in the
@@ -17,50 +17,50 @@ from typing import Protocol
 
 POINTER_SIZE = 8
 MAX_USER_ADDRESS = 0x00007FFFFFFFFFFF
-# Unity 6000.7.0a4 / Pokiguard 1.7.4 live-verified Il2CppClass layout.
+# Unity 6000.7.0a4 / PetPuzzle 1.7.4 live-verified Il2CppClass layout.
 # Bounded RPM checks across ManagerQuangTruong, ManagerRoom and WsRoomService
 # all resolve their static-field blocks at +0x98; +0xB8 is null in this build.
 IL2CPP_CLASS_STATIC_FIELDS_OFFSET = 0x98
 
-# Verified for the current Pokiguard 1.7.4-b5 / metadata 110 build with
-# Il2CppInspector output under reverse/reverse_1.7.4-b5 (preferred image base
-# 0x180000000). game_location gates attachment by the exact b5 hash.
-BOARD_TYPE_INFO_RVA = 0x369C9A0
-ACTIVE_TYPE_INFO_RVA = 0x369C898
-MANAGER_MATCH_TYPE_INFO_RVA = 0x3697630
-MATCH_SERVICE_TYPE_INFO_RVA = 0x3695528
-CHAT_SERVICE_TYPE_INFO_RVA = 0x3695190
+# Verified for the current PetPuzzle 1.7.4-b6 / metadata 110 build with
+# Il2CppInspector output under reverse/reverse_1.7.4-b6 (preferred image base
+# 0x180000000). game_location gates attachment by the exact b6 hash.
+BOARD_TYPE_INFO_RVA = 0x36C9F88
+ACTIVE_TYPE_INFO_RVA = 0x36C9E70
+MANAGER_MATCH_TYPE_INFO_RVA = 0x36C6148
+MATCH_SERVICE_TYPE_INFO_RVA = 0x36C4020
+CHAT_SERVICE_TYPE_INFO_RVA = 0x36C3C38
 # Repeated ChatService native bodies initialize this slot immediately before
 # ``typeof(ChatMessageDTO)`` / ``il2cpp_codegen_object_new``.
-CHAT_MESSAGE_DTO_TYPE_INFO_RVA = 0x36A0060
-HUB_SUSPEND_MANAGER_TYPE_INFO_RVA = 0x36951A8
-MATCH_HOST_TYPE_INFO_RVA = 0x3695910
-MATCH_SCENE_LOADER_TYPE_INFO_RVA = 0x3695818
-TURN_ANNOUNCER_TYPE_INFO_RVA = 0x36953A0
-DOT_TYPE_INFO_RVA = 0x369EAD0
-WS_COMBAT_BATCH_TYPE_INFO_RVA = 0x36A25D8
-BOARD_WS_APPLIER_TYPE_INFO_RVA = 0x3695308
-CARD_UI_TYPE_INFO_RVA = 0x36954D8
-FUSION_CARD_UI_TYPE_INFO_RVA = 0x36BF9B0
+CHAT_MESSAGE_DTO_TYPE_INFO_RVA = 0x36CDBB8
+HUB_SUSPEND_MANAGER_TYPE_INFO_RVA = 0x36C3C50
+MATCH_HOST_TYPE_INFO_RVA = 0x36C4370
+MATCH_SCENE_LOADER_TYPE_INFO_RVA = 0x36C4278
+TURN_ANNOUNCER_TYPE_INFO_RVA = 0x36C3E90
+DOT_TYPE_INFO_RVA = 0x36CBD30
+WS_COMBAT_BATCH_TYPE_INFO_RVA = 0x36CFC28
+BOARD_WS_APPLIER_TYPE_INFO_RVA = 0x36C3DE8
+CARD_UI_TYPE_INFO_RVA = 0x36C3FD0
+FUSION_CARD_UI_TYPE_INFO_RVA = 0x36EC2B0
 # Keep the co-op ``Active.PlayerStats`` class distinct from the adjacent PVP
-# type.  In b5 ``0x03672E38`` is ``ActivePVP.PlayerStats``; the co-op class
-# used by ``Active.playerStatsMap`` is at ``0x0364FB00``.
-ACTIVE_PLAYER_STATS_TYPE_INFO_RVA = 0x364FB00
-PET_USER_DTO_TYPE_INFO_RVA = 0x3672E28
-CARD_DATA_TYPE_INFO_RVA = 0x36BF9B8
-# Audition V3 roots from the exact b5 Il2CppInspector output.  AuditionStage is
+# type.  In b6 ``0x0369EB68`` is ``ActivePVP.PlayerStats``; the co-op class
+# used by ``Active.playerStatsMap`` is at ``0x0367C930``.
+ACTIVE_PLAYER_STATS_TYPE_INFO_RVA = 0x367C930
+PET_USER_DTO_TYPE_INFO_RVA = 0x369EB60
+CARD_DATA_TYPE_INFO_RVA = 0x36EC2C0
+# Audition V3 roots from the exact b6 Il2CppInspector output.  AuditionStage is
 # a managed state object; its first static field owns the current stage.
-AUDITION_STAGE_TYPE_INFO_RVA = 0x3655DD0
-AUDITION_CHALLENGE_TYPE_INFO_RVA = 0x3655A50
-# Read-only websocket-dispatch roots verified in the 1.7.4-b5 Inspector output.
+AUDITION_STAGE_TYPE_INFO_RVA = 0x3682B68
+AUDITION_CHALLENGE_TYPE_INFO_RVA = 0x3682828
+# Read-only websocket-dispatch roots verified in the 1.7.4-b6 Inspector output.
 # ``ChatService.OnWebSocketMessage`` captures the fully deserialized
 # ``ChatMessageDTO`` in this closure before enqueuing its Action on
 # ``UnityMainThreadDispatcher``.  These are type-info slots, never absolute
 # runtime addresses; the normal module-base + RVA resolver remains mandatory.
-CHAT_SERVICE_MESSAGE_CLOSURE_TYPE_INFO_RVA = 0x36A0168
-UNITY_MAIN_THREAD_DISPATCHER_TYPE_INFO_RVA = 0x36A0280
-UNITY_PENDING_ACTION_LIST_TYPE_INFO_RVA = 0x36ABE58
-UNITY_PENDING_ACTION_QUEUE_TYPE_INFO_RVA = 0x36ABE90
+CHAT_SERVICE_MESSAGE_CLOSURE_TYPE_INFO_RVA = 0x36D0348
+UNITY_MAIN_THREAD_DISPATCHER_TYPE_INFO_RVA = 0x36CDE18
+UNITY_PENDING_ACTION_LIST_TYPE_INFO_RVA = 0x36D8100
+UNITY_PENDING_ACTION_QUEUE_TYPE_INFO_RVA = 0x36D8150
 
 BOARD_WIDTH_OFFSET = 0x88
 BOARD_HEIGHT_OFFSET = 0x8C
@@ -134,6 +134,7 @@ TURN_ANNOUNCER_BLOCKING_STATIC_OFFSET = 0x80
 TURN_ANNOUNCER_BLOCK_DEADLINE_STATIC_OFFSET = 0x84
 BOARD_WS_APPLIER_BOARD_OFFSET = 0x20
 BOARD_WS_APPLIER_BOOTSTRAPPED_MATCH_ID_OFFSET = 0x30
+BOARD_WS_APPLIER_PREFAB_BY_TAG_OFFSET = 0x50
 BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET = 0x60
 BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET = 0x68
 
@@ -609,6 +610,12 @@ if os.name == "nt":
 
 class Win32RemoteMemory:
     """Read and validate committed target memory through an existing handle."""
+
+    # ``read`` validates the canonical range and ReadProcessMemory must consume
+    # the complete requested span.  Bounded native ownership walkers can use
+    # this marker to avoid a redundant VirtualQueryEx call before every small
+    # read while retaining fail-closed short/invalid-read behaviour.
+    read_validates_range = True
 
     def __init__(self, process_handle: int) -> None:
         if os.name != "nt":

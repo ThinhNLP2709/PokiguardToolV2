@@ -21,6 +21,7 @@ from pokiguard_v2.chinh_phuc_map import (
     PET_CLICK_REQUIRED_ATTACK_OFFSET,
     PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET,
     _decode_pet_click_closure,
+    discover_chinh_phuc_island_target,
     _find_pet_in_groups,
     _prefixed_dword,
     discover_chinh_phuc_map_target,
@@ -169,6 +170,67 @@ class ChinhPhucMapTests(unittest.TestCase):
         self.assertIs(result, expected)
         panel_resolver.assert_called_once()
         scan.assert_not_called()
+
+    def test_main_map_island_target_uses_cached_group_index_button(self) -> None:
+        manager = self.BASE + 0xB000
+        buttons_array = self.BASE + 0xC000
+        buttons = tuple(self.BASE + 0x10000 + i * 0x100 for i in range(18))
+        native = self.BASE + 0x30000
+        root = self.BASE + 0x40000
+        metadata = ChinhPhucTargetMetadata(
+            1289,
+            "Starburst",
+            10,
+            73,
+            6,
+            "Tam giới Tinh",
+            5,
+            7,
+            False,
+            "Đảo rồng",
+            11,
+        )
+        memory = SimpleNamespace(is_readable=lambda _address, _size: True)
+        resolver = SimpleNamespace(
+            memory=memory,
+            game_assembly_base=self.BASE + 0x50000,
+            read_bool=lambda _address: True,
+        )
+        process = SimpleNamespace(memory=memory, resolver=resolver)
+        reader = MagicMock()
+        reader.read_button_geometry.return_value = SimpleNamespace(
+            active=True,
+            viewport_rect=(0.10, 0.20, 0.30, 0.40),
+            native_button=native,
+            root_transform=root,
+            root_aspect=16 / 9,
+        )
+        with patch.object(
+            chinh_map, "_find_pet_in_cached_groups", return_value=metadata
+        ), patch.object(
+            chinh_map, "_read_pointer", return_value=buttons_array
+        ), patch.object(
+            chinh_map, "read_reference_array", return_value=buttons
+        ), patch.object(
+            chinh_map, "NativeCardUiReader", return_value=reader
+        ):
+            result = discover_chinh_phuc_island_target(
+                process,
+                1289,
+                manager_hint=manager,
+            )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertTrue(result.clean)
+        self.assertEqual(result.group_index, 5)
+        self.assertEqual(result.button_address, buttons[5])
+        self.assertAlmostEqual(result.viewport_point[0], 0.20)
+        self.assertAlmostEqual(result.viewport_point[1], 0.30)
+        reader.read_button_geometry.assert_called_once_with(
+            buttons[5],
+            allow_nested_fullscreen_canvas=True,
+        )
 
     def test_panel_button_index_maps_starburst_to_eighth_cell_not_badge(self) -> None:
         manager = self.BASE + 0xB000

@@ -299,6 +299,23 @@ class PetSkillCapabilityTests(unittest.TestCase):
         self.assertEqual(value.skill_family, PetSkillFamily.DOT_QTE_OTHER)
         self.assertEqual((value.effective_mana_cost, value.effective_power_cost), (200, 150))
 
+    def test_petpuzzle_b6_mega_icarus_live_card_is_current(self) -> None:
+        value = capability(
+            value=card(
+                card_id=22,
+                name="Kết Ấn — Mega Icarus",
+                element_type="MEGA_ICARUS",
+                condition_use=200,
+                power=150,
+                need_perfection=False,
+            )
+        )
+        self.assertEqual(value.status, PetSkillCapabilityStatus.CURRENT)
+        self.assertEqual(value.skill_family, PetSkillFamily.MEGA_ICARUS_CLICK_ONLY)
+        self.assertEqual(value.target_mode, PetSkillTargetMode.AUTOMATIC)
+        self.assertEqual((value.effective_mana_cost, value.effective_power_cost), (200, 150))
+        self.assertTrue(value.live_card_present)
+
     def test_raw_zero_costs_are_preserved(self) -> None:
         value = capability()
         self.assertEqual((value.raw_mana_cost, value.raw_power_cost), (0, 0))

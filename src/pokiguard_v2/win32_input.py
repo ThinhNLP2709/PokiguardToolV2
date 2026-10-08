@@ -35,6 +35,7 @@ NATIVE_MOUSE_BUTTON_HOLD_SECONDS = 0.075
 DEFAULT_SWAP_DRAG_DURATION_SECONDS = 0.10
 DEFAULT_SWAP_DRAG_STEPS = 3
 DEFAULT_SWAP_DRAG_OVERSHOOT_FRACTION = 0.35
+MAX_TAP_SELECTION_INTER_CLICK_DELAY_SECONDS = 1.85
 
 
 class BoardInputMode(str, Enum):
@@ -364,6 +365,14 @@ class AdaptiveSwapPacer:
             self._consecutive_fast_acknowledgements = 0
             self._reason = str(reason or "SWAP_OUTCOME_UNCONFIRMED")
 
+    def reset_for_new_combat(self) -> None:
+        """Start a newly owned combat at the proven normal click cadence."""
+
+        with self._lock:
+            self._lag_score = 0
+            self._consecutive_fast_acknowledgements = 0
+            self._reason = "NEW_COMBAT_BASELINE"
+
     def observe_acknowledged(self, latency_seconds: float) -> None:
         latency = max(0.0, float(latency_seconds))
         with self._lock:
@@ -471,6 +480,9 @@ class ForegroundClickExecutor:
         self, reason: str = "SWAP_OUTCOME_UNCONFIRMED"
     ) -> None:
         self.swap_pacer.observe_unconfirmed(reason)
+
+    def reset_swap_pacing_after_combat(self) -> None:
+        self.swap_pacer.reset_for_new_combat()
 
     def window_status(self, binding: WindowBinding) -> WindowStatus:
         if self.backend.window_pid(binding.hwnd) != binding.pid:
@@ -596,7 +608,13 @@ class ForegroundClickExecutor:
                 BoardInputMode.TWO_CLICK.value,
             )
         random_jitter = random.uniform(0.0, 1.5)
-        actual_delay = pacing.delay_seconds + random_jitter
+        # Dot clears a tap selection after 3.5 seconds in the b6 client.
+        # Keep the randomized spacing comfortably below that timeout even
+        # when adaptive pacing has entered a degraded mode.
+        actual_delay = min(
+            pacing.delay_seconds + random_jitter,
+            MAX_TAP_SELECTION_INTER_CLICK_DELAY_SECONDS,
+        )
 
         # 2. Rất Quan Trọng: Đảm bảo thời gian chờ không vượt quá thời gian còn lại của lượt (chừa lại 1.25s an toàn)
         if remaining_seconds is not None:

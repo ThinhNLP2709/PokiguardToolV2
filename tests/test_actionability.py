@@ -18,6 +18,7 @@ from pokiguard_v2.actionability import (
     GateReason,
 )
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
+from pokiguard_v2.opening_snapshot import PRISTINE_NATIVE_OPENING_BOARD_SOURCE
 from pokiguard_v2.state import (
     BattleState,
     BoardState,
@@ -177,6 +178,46 @@ class ActionabilityGateTests(unittest.TestCase):
         result = ActionabilityGate.evaluate(opening, context())
         self.assertTrue(result.actionable)
         self.assertEqual(result.reason, GateReason.PASS)
+
+    def test_exact_pristine_native_opening_is_authoritative_without_ack(self) -> None:
+        state = actionable_state()
+        opening = replace(
+            state,
+            battle=replace(
+                state.battle,
+                srv_seq=0,
+                sources=(PRISTINE_NATIVE_OPENING_BOARD_SOURCE,),
+                acknowledged=False,
+                turn_number=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            ),
+        )
+
+        result = ActionabilityGate.evaluate(opening, context())
+
+        self.assertTrue(result.actionable, result)
+        self.assertEqual(result.reason, GateReason.PASS)
+
+    def test_pristine_native_opening_after_local_move_fails_closed(self) -> None:
+        state = actionable_state()
+        stale = replace(
+            state,
+            battle=replace(
+                state.battle,
+                srv_seq=0,
+                sources=(PRISTINE_NATIVE_OPENING_BOARD_SOURCE,),
+                acknowledged=False,
+                turn_number=1,
+                local_move_sequence=1,
+                last_move_sequence=1,
+            ),
+        )
+
+        result = ActionabilityGate.evaluate(stale, context())
+
+        self.assertFalse(result.actionable)
+        self.assertEqual(result.reason, GateReason.INVALID_BOARD)
 
     def test_exact_opening_can_be_board_only_when_stats_have_not_hydrated(self) -> None:
         state = actionable_state()

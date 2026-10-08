@@ -34,13 +34,21 @@ def result_modal_rgb(*, second_button: bool = False, panel: bool = True) -> byte
 
 def current_wide_result_rgb(
     *,
+    width: int = 1000,
+    height: int = 500,
     banner: bool = True,
     button: bool = True,
     second_button: bool = False,
+    button_label: bool = True,
+    compact_profile_glow: bool = False,
 ) -> tuple[bytes, int, int]:
-    width = 1000
-    height = 500
     rgb = bytearray(bytes((28, 55, 80)) * width * height)
+
+    def x(value: float) -> int:
+        return round(width * value)
+
+    def y(value: float) -> int:
+        return round(height * value)
 
     def fill(
         left: int,
@@ -55,13 +63,20 @@ def current_wide_result_rgb(
                 rgb[offset : offset + 3] = bytes(color)
 
     if banner:
-        fill(110, 5, 890, 110, (235, 120, 25))
+        fill(x(0.11), y(0.01), x(0.89), y(0.22), (235, 120, 25))
     if button:
         if second_button:
-            fill(360, 435, 440, 472, (25, 145, 230))
-            fill(560, 435, 640, 472, (25, 145, 230))
+            fill(x(0.36), y(0.87), x(0.44), y(0.944), (25, 145, 230))
+            fill(x(0.56), y(0.87), x(0.64), y(0.944), (25, 145, 230))
+            if button_label:
+                fill(x(0.385), y(0.898), x(0.415), y(0.918), (245, 245, 245))
+                fill(x(0.585), y(0.898), x(0.615), y(0.918), (245, 245, 245))
         else:
-            fill(455, 435, 545, 472, (25, 145, 230))
+            button_top = y(0.822 if compact_profile_glow else 0.87)
+            button_bottom = y(0.952 if compact_profile_glow else 0.944)
+            fill(x(0.455), button_top, x(0.545), button_bottom, (25, 145, 230))
+            if button_label:
+                fill(x(0.485), y(0.898), x(0.515), y(0.918), (245, 245, 245))
     return bytes(rgb), width, height
 
 
@@ -86,9 +101,56 @@ class PostmatchUiTests(unittest.TestCase):
             {"banner": False},
             {"button": False},
             {"second_button": True},
+            {"button_label": False},
         ):
             with self.subTest(kwargs=kwargs):
                 rgb, width, height = current_wide_result_rgb(**kwargs)
+                self.assertFalse(
+                    locate_result_confirm(rgb, width, height).found
+                )
+
+    def test_accepts_joined_blue_glow_on_all_window_profiles(self) -> None:
+        for width, height in (
+            (800, 400),
+            (960, 480),
+            (1120, 560),
+            (1280, 640),
+        ):
+            with self.subTest(profile=(width, height)):
+                rgb, width, height = current_wide_result_rgb(
+                    width=width,
+                    height=height,
+                    compact_profile_glow=True,
+                )
+                location = locate_result_confirm(rgb, width, height)
+
+                self.assertTrue(location.found, location)
+                self.assertEqual(
+                    location.reason,
+                    "single_blue_button_below_orange_result_banner",
+                )
+                self.assertGreater(
+                    location.metrics["buttonHeight"], height * 0.10
+                )
+                self.assertLessEqual(
+                    location.metrics["buttonHeight"], height * 0.14
+                )
+
+    def test_joined_glow_still_requires_label_on_all_window_profiles(self) -> None:
+        for width, height in (
+            (800, 400),
+            (960, 480),
+            (1120, 560),
+            (1280, 640),
+        ):
+            with self.subTest(profile=(width, height)):
+                rgb, width, height = current_wide_result_rgb(
+                    width=width,
+                    height=height,
+                    compact_profile_glow=True,
+                    button_label=False,
+                )
+
                 self.assertFalse(
                     locate_result_confirm(rgb, width, height).found
                 )

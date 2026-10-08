@@ -134,9 +134,31 @@ class NativeFixture:
     def dot_board(self, *, multiplier_tiers=4):
         dot_class = self.klass("Dot", "")
         tags = ("Vang", "XanhDuong", "Do", "Tim", "Xanh", "Trang")
+        prefabs = {
+            tag: self.node(None, (-1, -1, 2, 2), (0, 0, 0))
+            for tag in tags
+        }
+        self.prefabs_by_tag = {
+            tag: node.managed for tag, node in prefabs.items()
+        }
+        self.prefab_by_tag = self.alloc()
+        prefab_entries = self.alloc()
+        prefab_array_class = self.alloc()
+        self.q(self.prefab_by_tag + 0x18, prefab_entries)
+        self.i(self.prefab_by_tag + 0x20, len(tags))
+        self.i(self.prefab_by_tag + 0x28, 0)
+        self.i(self.prefab_by_tag + 0x2C, 1)
+        self.q(prefab_entries, prefab_array_class)
+        self.q(prefab_entries + 0x18, len(tags))
+        for index, tag in enumerate(tags):
+            entry = prefab_entries + 0x20 + index * 0x18
+            self.i(entry, index)
+            self.q(entry + 0x08, self.string(tag))
+            self.q(entry + 0x10, self.prefabs_by_tag[tag])
         nodes, dots = [], []
         for row in range(8):
             for column in range(8):
+                tag = tags[(row * 8 + column) % len(tags)]
                 node = self.node(None, (-1, -1, 2, 2), (0, 0, 0))
                 dot = self.component(node, dot_class)
                 self.i(dot.managed + 0x20, column)
@@ -146,20 +168,21 @@ class NativeFixture:
                     dot.managed + 0x88,
                     1 + (row + column) % multiplier_tiers,
                 )
-                self.q(dot.managed + 0x100, self.string(tags[(row * 8 + column) % len(tags)]))
+                self.q(dot.managed + 0xD8, self.prefabs_by_tag[tag])
+                self.q(dot.managed + 0x100, self.string(tag))
                 nodes.append(node)
                 dots.append(dot)
         return dot_class, nodes, dots
 
 
 class NativeCardUiTests(unittest.TestCase):
-    def test_b5_gameassembly_bridge_anchors_are_pinned(self):
-        self.assertEqual(_COMPONENT_GO_ICALL, 0x38AA280)
+    def test_b6_gameassembly_bridge_anchors_are_pinned(self):
+        self.assertEqual(_COMPONENT_GO_ICALL, 0x38D7AE8)
         self.assertEqual(
             _UNMARSHAL_SIGNATURE,
             (
-                0x136097F,
-                "4885db7433f6c301740d488bcbe88fb2eafe488bd8eb03488b1b",
+                0x138561F,
+                "4885db7433f6c301740d488bcbe87f6ee8fe488bd8eb03488b1b",
             ),
         )
 
@@ -176,6 +199,7 @@ class NativeCardUiTests(unittest.TestCase):
             self.fixture.board,
             tuple(node.managed for node in nodes),
             dot_class,
+            self.fixture.prefab_by_tag,
         )
         self.assertEqual(len(result.cells), 64)
         self.assertEqual(
@@ -190,6 +214,7 @@ class NativeCardUiTests(unittest.TestCase):
             self.fixture.board,
             tuple(node.managed for node in nodes),
             dot_class,
+            self.fixture.prefab_by_tag,
         )
         self.assertEqual({cell.multiplier for cell in result.cells}, set(range(1, 8)))
 
@@ -201,6 +226,7 @@ class NativeCardUiTests(unittest.TestCase):
                 self.fixture.board,
                 tuple(node.managed for node in nodes),
                 dot_class,
+                self.fixture.prefab_by_tag,
             )
 
     def test_dot_mutation_during_second_sample_is_rejected(self):
@@ -222,7 +248,55 @@ class NativeCardUiTests(unittest.TestCase):
                 self.fixture.board,
                 tuple(node.managed for node in nodes),
                 dot_class,
+                self.fixture.prefab_by_tag,
             )
+
+    def test_dot_pool_tag_must_match_original_prefab(self):
+        dot_class, nodes, dots = self.fixture.dot_board()
+        self.fixture.q(
+            dots[0].managed + 0xD8,
+            self.fixture.prefabs_by_tag["Xanh"],
+        )
+
+        with self.assertRaisesRegex(
+            LayoutValidationError,
+            "PoolTag/originalPrefab mismatch",
+        ):
+            self.reader.read_dot_board(
+                self.fixture.board,
+                tuple(node.managed for node in nodes),
+                dot_class,
+                self.fixture.prefab_by_tag,
+            )
+
+    def test_dot_tag_pointer_cache_does_not_survive_board_reads(self):
+        dot_class, nodes, dots = self.fixture.dot_board()
+        game_objects = tuple(node.managed for node in nodes)
+        first = self.reader.read_dot_board(
+            self.fixture.board,
+            game_objects,
+            dot_class,
+            self.fixture.prefab_by_tag,
+        )
+        self.assertEqual(first.cells[0].tag, "Vang")
+
+        recycled_string = struct.unpack(
+            "<Q", self.fixture.memory.read(dots[0].managed + 0x100, 8)
+        )[0]
+        self.fixture.i(recycled_string + 0x10, len("Xanh"))
+        self.fixture.memory.map(recycled_string + 0x14, "Xanh".encode("utf-16-le"))
+        self.fixture.q(
+            dots[0].managed + 0xD8,
+            self.fixture.prefabs_by_tag["Xanh"],
+        )
+
+        second = self.reader.read_dot_board(
+            self.fixture.board,
+            game_objects,
+            dot_class,
+            self.fixture.prefab_by_tag,
+        )
+        self.assertEqual(second.cells[0].tag, "Xanh")
 
     def test_owned_handles_find_new_card_without_any_region_scan(self):
         f = self.fixture
@@ -575,6 +649,21 @@ class NativeCardUiTests(unittest.TestCase):
         )
 
         self.assertEqual(observed, manager.managed)
+
+    def test_optional_component_lookup_distinguishes_absent_from_ambiguous(self):
+        reader = self.fixture.reader()
+
+        self.assertIsNone(
+            reader.find_game_object_component(
+                self.fixture.root.managed,
+                "FusionCardUI",
+            )
+        )
+        with self.assertRaisesRegex(LayoutValidationError, "missing"):
+            reader.read_game_object_component(
+                self.fixture.root.managed,
+                "FusionCardUI",
+            )
 
     def test_descendant_buttons_keep_cell_order_before_late_badge_layer(self):
         f = self.fixture

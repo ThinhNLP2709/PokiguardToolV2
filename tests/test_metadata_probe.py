@@ -49,6 +49,17 @@ class MetadataProbeTests(unittest.TestCase):
         self.assertEqual(result.version, 110)
         self.assertTrue(result.valid)
 
+    def test_resolves_petpuzzle_versioned_game_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            path = (
+                root
+                / "PetPuzzle-1.7.4_Data/il2cpp_data/Metadata/global-metadata.dat"
+            )
+            path.parent.mkdir(parents=True)
+            path.write_bytes(struct.pack("<II", EXPECTED_MAGIC, 110))
+            self.assertEqual(resolve_metadata_path(root), path.resolve())
+
     def test_rejects_short_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "global-metadata.dat"

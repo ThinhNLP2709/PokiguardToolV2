@@ -85,12 +85,12 @@ class Il2CppExternalResolverTests(unittest.TestCase):
         self.assertFalse(is_canonical_user_pointer(0x1234))
         self.assertEqual(checked_address(self.CLASS, 0xB8), self.CLASS + 0xB8)
 
-    def test_b5_coop_player_stats_typeinfo_does_not_use_pvp_class(self) -> None:
-        # reverse/reverse_1.7.4-b5/cpp/appdata/il2cpp-types-ptr.h:
-        #   0x0364FB00 -> Active_PlayerStats
-        #   0x03672E38 -> ActivePVP_PlayerStats
-        self.assertEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x0364FB00)
-        self.assertNotEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x03672E38)
+    def test_b6_coop_player_stats_typeinfo_does_not_use_pvp_class(self) -> None:
+        # reverse/reverse_1.7.4-b6/cpp/appdata/il2cpp-types-ptr.h:
+        #   0x0367C930 -> Active_PlayerStats
+        #   0x0369EB68 -> ActivePVP_PlayerStats
+        self.assertEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x0367C930)
+        self.assertNotEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x0369EB68)
 
     def test_resolves_board_through_verified_static_chain(self) -> None:
         memory = FakeMemory()

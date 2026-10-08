@@ -111,7 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--postmatch-ui-timeout",
         type=float,
-        default=15.0,
+        default=30.0,
         help="bounded wait for a stable terminal result modal",
     )
     parser.add_argument("--return-lobby-timeout", type=float, default=90.0)
@@ -385,6 +385,38 @@ def _is_owner_free_chinh_phuc_map_candidate(
     )
 
 
+def _is_owner_free_general_hub_candidate(
+    lobby: Any,
+    *,
+    no_combat_owner: bool,
+) -> bool:
+    """Surface the exact game lobby so FarmRunner can restore Chinh Phuc.
+
+    This is observation only.  The recovery controller must still prove the
+    live ManagerQuangTruong Chinh Phuc Button and its geometry immediately
+    before it reserves normal foreground input.
+    """
+
+    chinh = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(
+        getattr(lobby, "combat_lifecycle", None), "state", None
+    )
+    world = getattr(lobby, "world_boss", None)
+    return bool(
+        no_combat_owner
+        and getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
+        and getattr(lobby, "branch", None) == "GAME_LOBBY"
+        and lifecycle is CombatLifecycleState.LOBBY
+        and world is not None
+        and getattr(world, "clean_for_game_lobby", False) is True
+        and chinh is not None
+        and getattr(chinh, "current_room_id", None) is None
+        and getattr(chinh, "current_room_type", None) is None
+        and getattr(chinh, "owner_username", None) is None
+        and getattr(chinh, "is_host", None) is False
+    )
+
+
 def _read_lobby_runtime_with_provider_fallback(
     process: Any,
     provider: MemoryBoardStateProvider,
@@ -428,6 +460,7 @@ def _wait_boss_lobby(
     control_hotkeys: Any = None,
     *,
     wait_through_target_missing: bool = False,
+    wait_through_map_candidate: bool = False,
     transient_room_grace_seconds: float = 0.0,
 ) -> LobbyWaitResult:
     deadline = time.monotonic() + timeout
@@ -438,6 +471,9 @@ def _wait_boss_lobby(
     detached_shell_since: float | None = None
     detached_shell_key: tuple[Any, ...] | None = None
     detached_shell_count = 0
+    general_hub_key: tuple[Any, ...] | None = None
+    general_hub_count = 0
+    last_lobby: Any | None = None
     try:
         target_pet_id = int(target.boss_id or "")
     except (TypeError, ValueError):
@@ -456,10 +492,40 @@ def _wait_boss_lobby(
         if lobby is None:
             time.sleep(interval)
             continue
+        last_lobby = lobby
         last_state = lobby.state
         if lobby.state is not BossLobbyState.BOSS_LOBBY:
             stable_key, stable_count = None, 0
             no_combat_owner = provider.current_session_key is None
+            if _is_owner_free_general_hub_candidate(
+                lobby,
+                no_combat_owner=no_combat_owner,
+            ):
+                candidate_key = (
+                    lobby.branch,
+                    getattr(lobby.chinh_phuc, "current_room_id", None),
+                    getattr(lobby.chinh_phuc, "current_room_type", None),
+                    getattr(lobby.chinh_phuc, "owner_username", None),
+                )
+                general_hub_count = (
+                    general_hub_count + 1
+                    if candidate_key == general_hub_key
+                    else 1
+                )
+                general_hub_key = candidate_key
+                if general_hub_count >= 2:
+                    return LobbyWaitResult(
+                        False,
+                        lobby.state,
+                        None,
+                        "GENERAL_HUB_CANDIDATE",
+                        lobby,
+                        general_hub_count,
+                    )
+                time.sleep(interval)
+                continue
+            general_hub_key = None
+            general_hub_count = 0
             if _is_owner_free_chinh_phuc_map_candidate(
                 lobby,
                 no_combat_owner=no_combat_owner,
@@ -477,6 +543,9 @@ def _wait_boss_lobby(
                 detached_shell_key = candidate_key
                 detached_shell_since = None
                 if detached_shell_count >= 2:
+                    if wait_through_map_candidate:
+                        time.sleep(interval)
+                        continue
                     return LobbyWaitResult(
                         False,
                         lobby.state,
@@ -530,6 +599,8 @@ def _wait_boss_lobby(
         detached_shell_since = None
         detached_shell_key = None
         detached_shell_count = 0
+        general_hub_key = None
+        general_hub_count = 0
         resolution = resolve_target(target, lobby.candidates)
         no_combat_owner = provider.current_session_key is None
         key = (
@@ -589,7 +660,14 @@ def _wait_boss_lobby(
             return LobbyWaitResult(True, lobby.state, resolution.status, "BOSS_LOBBY_READY", lobby, stable_count)
         time.sleep(interval)
     reason = "TARGET_PROCESS_EXITED" if not process.is_running() else "BOSS_LOBBY_TIMEOUT"
-    return LobbyWaitResult(False, last_state, None, reason, stable_frames=stable_count)
+    return LobbyWaitResult(
+        False,
+        last_state,
+        None,
+        reason,
+        last_lobby,
+        stable_count,
+    )
 
 
 def _opening_from_provider(provider: MemoryBoardStateProvider) -> OpeningEvidence | None:

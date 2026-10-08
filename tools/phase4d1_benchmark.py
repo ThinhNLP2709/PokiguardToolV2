@@ -49,7 +49,7 @@ def _parser() -> argparse.ArgumentParser:
 
     prepare = sub.add_parser("prepare", help="freeze a pending A/B manifest")
     prepare.add_argument("--output", type=Path, default=DEFAULT_MANIFEST)
-    prepare.add_argument("--game-executable", type=Path, default=Path(r"D:\pc\Pokiguard-1.7.4.exe"))
+    prepare.add_argument("--game-executable", type=Path, default=Path(r"D:\pc\PetPuzzle-1.7.4.exe"))
     prepare.add_argument("--game-assembly", type=Path, default=Path(r"D:\pc\GameAssembly.dll"))
     prepare.add_argument("--boss-id", default="1289")
     prepare.add_argument("--boss-name", default="Starburst")

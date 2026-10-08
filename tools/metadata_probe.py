@@ -20,6 +20,9 @@ EXPECTED_VERSION = 31
 SUPPORTED_VERSIONS = frozenset({31, 110})
 HEADER_SIZE = 8
 DEFAULT_RELATIVE_METADATA = Path(
+    "PetPuzzle_Data/il2cpp_data/Metadata/global-metadata.dat"
+)
+LEGACY_RELATIVE_METADATA = Path(
     "Pokiguard_Data/il2cpp_data/Metadata/global-metadata.dat"
 )
 
@@ -46,15 +49,16 @@ def _candidate_paths(value: Path) -> Iterable[Path]:
         return
     yield value / "global-metadata.dat"
     yield value / DEFAULT_RELATIVE_METADATA
+    yield value / LEGACY_RELATIVE_METADATA
     if value.is_dir():
         # Current launchers are versioned and Unity mirrors that name in the
-        # data directory, for example Pokiguard-1.7.4_Data.
-        yield from sorted(
-            value.glob(
-                "Pokiguard-*_Data/il2cpp_data/Metadata/global-metadata.dat"
-            ),
-            reverse=True,
-        )
+        # Versioned launchers mirror the product name in the Unity data
+        # directory. Keep the retired Pokiguard family for old evidence.
+        for pattern in (
+            "PetPuzzle-*_Data/il2cpp_data/Metadata/global-metadata.dat",
+            "Pokiguard-*_Data/il2cpp_data/Metadata/global-metadata.dat",
+        ):
+            yield from sorted(value.glob(pattern), reverse=True)
 
 
 def resolve_metadata_path(value: str | Path | None = None) -> Path:
@@ -82,7 +86,7 @@ def resolve_metadata_path(value: str | Path | None = None) -> Path:
             if normalized.is_file():
                 return normalized
     raise MetadataProbeError(
-        "global-metadata.dat not found; pass the file path or the Pokiguard game folder"
+        "global-metadata.dat not found; pass the file path or the PetPuzzle game folder"
     )
 
 
@@ -103,12 +107,12 @@ def parse_metadata(path: str | Path) -> MetadataHeader:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Read-only probe for Pokiguard global-metadata.dat"
+        description="Read-only probe for PetPuzzle global-metadata.dat"
     )
     parser.add_argument(
         "path",
         nargs="?",
-        help="metadata file, Metadata directory, or Pokiguard game directory",
+        help="metadata file, Metadata directory, or PetPuzzle game directory",
     )
     return parser
 

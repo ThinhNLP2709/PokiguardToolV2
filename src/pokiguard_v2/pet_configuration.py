@@ -62,6 +62,7 @@ DAMAGE_LABELS = {
 AUDITION_LABELS = {
     AuditionMode.V3_TWO_DIRECTION: "V3 (2 hướng — mặc định)",
     AuditionMode.V2_FOUR_DIRECTION: "V2 (4 hướng — tương thích)",
+    AuditionMode.NO_ACTION: "Không có",
 }
 PET_SKILL_FIRE_CONDITION_LABELS = {
     PetSkillFireCondition.SKILL_COST_READY: "Đủ mana skill",
@@ -76,6 +77,7 @@ PLAY_STYLE_LABELS = {
     PlayStyle.CAREFUL: "Cẩn trọng",
     PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
     PlayStyle.DEMON_AEGIS_FARM: "Demon Aegis Farm",
+    PlayStyle.MEGA_ICARUS_SPAM_SKILL: "Mega Icarus (Spam Skill)",
 }
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
@@ -142,10 +144,60 @@ def loadout_capability(
     main_pet: MainPetType,
     evolution: EvolutionTarget,
     damage_card: DamageCardMode = DamageCardMode.DEFAULT_ATTACK,
+    *,
+    play_style: PlayStyle | None = None,
+    audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
 ) -> PetLoadoutCapability:
-    main_pet, evolution, damage_card = (
-        MainPetType(main_pet), EvolutionTarget(evolution), DamageCardMode(damage_card)
+    main_pet, evolution, damage_card, audition_mode = (
+        MainPetType(main_pet), EvolutionTarget(evolution),
+        DamageCardMode(damage_card), AuditionMode(audition_mode),
     )
+    if play_style is not None:
+        play_style = PlayStyle(play_style)
+    if play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+        matrix_valid = bool(
+            (
+                main_pet is MainPetType.MEGA
+                and evolution in {EvolutionTarget.NONE, EvolutionTarget.NORMAL}
+            )
+            or (
+                main_pet is MainPetType.NORMAL
+                and evolution is EvolutionTarget.MEGA
+            )
+        )
+        sources = tuple(source for present, source in (
+            (main_pet is MainPetType.MEGA, SkillSource.MAIN_PET),
+            (evolution is EvolutionTarget.MEGA, SkillSource.EVOLUTION_TARGET),
+        ) if present)
+        status = (
+            SkillSourceStatus.MULTIPLE_SKILL_SOURCES if len(sources) > 1 else
+            SkillSourceStatus.MAIN_PET_SKILL if sources == (SkillSource.MAIN_PET,) else
+            SkillSourceStatus.EVOLUTION_TARGET_SKILL if sources else
+            SkillSourceStatus.NO_SKILL
+        )
+        valid = bool(
+            matrix_valid
+            and len(sources) == 1
+            and damage_card is DamageCardMode.PET_SKILL
+            and audition_mode is AuditionMode.NO_ACTION
+        )
+        reason = (
+            "MEGA_ICARUS_LOADOUT_INVALID" if not matrix_valid or len(sources) != 1 else
+            "MEGA_ICARUS_REQUIRES_PET_SKILL" if damage_card is not DamageCardMode.PET_SKILL else
+            "MEGA_ICARUS_REQUIRES_NO_ACTION" if audition_mode is not AuditionMode.NO_ACTION else
+            None
+        )
+        return PetLoadoutCapability(
+            main_pet,
+            evolution,
+            sources,
+            status,
+            matrix_valid,
+            valid,
+            matrix_valid and len(sources) == 1,
+            valid,
+            reason,
+        )
     sources = tuple(source for present, source in (
         (main_pet is MainPetType.LEGENDARY, SkillSource.MAIN_PET),
         (evolution is EvolutionTarget.LEGENDARY, SkillSource.EVOLUTION_TARGET),
@@ -244,6 +296,11 @@ class GameplayConfig:
                 raise ValueError(f"{name} must be {enum.__name__}")
         if self.intelligence is not Intelligence.BASIC:
             raise ValueError("REASONING is not implemented")
+        if (
+            self.play_style is not PlayStyle.MEGA_ICARUS_SPAM_SKILL
+            and self.audition_mode is AuditionMode.NO_ACTION
+        ):
+            raise ValueError("NO_ACTION_REQUIRES_MEGA_ICARUS")
         if not self.capability.config_valid:
             raise ValueError(self.capability.blocker_reason)
         for name in ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target"):
@@ -269,10 +326,18 @@ class GameplayConfig:
 
     @property
     def capability(self) -> PetLoadoutCapability:
-        return loadout_capability(self.main_pet, self.evolution, self.damage_card)
+        return loadout_capability(
+            self.main_pet,
+            self.evolution,
+            self.damage_card,
+            play_style=self.play_style,
+            audition_mode=self.audition_mode,
+        )
 
     @property
     def farm_policy_blocker_reason(self) -> str | None:
+        if self.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+            return self.capability.blocker_reason
         if self.play_style is PlayStyle.SKILL_RUSH and not (
             self.damage_card is DamageCardMode.PET_SKILL
             and self.capability.skill_source_count == 1
@@ -345,10 +410,15 @@ class GameplayConfig:
         else:
             # A stale legacy/count value has no active meaning for resource-ready.
             fire_value = None
+        audition_default = (
+            AuditionMode.NO_ACTION.value
+            if play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
+            else AuditionMode.V3_TWO_DIRECTION.value
+        )
         return cls(**pet_fields, play_style=play_style,
                    intelligence=Intelligence(raw.get("intelligence", "basic")),
                    audition_mode=AuditionMode(
-                       raw.get("audition_mode", AuditionMode.V3_TWO_DIRECTION.value)
+                       raw.get("audition_mode", audition_default)
                     ),
                     board_input_mode=BoardInputMode(raw.get("board_input_mode", "drag")),
                     pet_skill_fire_condition=condition,

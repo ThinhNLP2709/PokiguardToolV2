@@ -56,6 +56,10 @@ class AuditionMode(str, Enum):
 
     V3_TWO_DIRECTION = "audition_v3"
     V2_FOUR_DIRECTION = "audition_v2"
+    # Mega Icarus activates on the accepted CardUI click itself.  Keep this
+    # identity in the existing persisted field so old V2/V3 checkpoints do
+    # not need a schema migration.
+    NO_ACTION = "none"
 
 
 __all__ = [

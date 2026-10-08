@@ -34,10 +34,10 @@ from .state import MAX_CELL_MULTIPLIER
 
 # Metadata-usage slots referenced as typeof(...) by the local Newtonsoft.Json
 # native bodies.  These are build RVAs, never ASLR-dependent addresses.
-JARRAY_TYPE_INFO_RVA = 0x3695F68
-JOBJECT_TYPE_INFO_RVA = 0x3695F60
-JPROPERTY_TYPE_INFO_RVA = 0x3687078
-JVALUE_TYPE_INFO_RVA = 0x36ABC98
+JARRAY_TYPE_INFO_RVA = 0x36C49D0
+JOBJECT_TYPE_INFO_RVA = 0x36C49C8
+JPROPERTY_TYPE_INFO_RVA = 0x36B66D8
+JVALUE_TYPE_INFO_RVA = 0x36D7EA0
 
 JARRAY_VALUES_OFFSET = 0x50
 LIST_ITEMS_OFFSET = 0x10
@@ -65,7 +65,7 @@ JTOKEN_INTEGER = 6
 JTOKEN_STRING = 8
 MAX_SERVER_SEQUENCE = 10_000_000
 
-# Pokiguard 1.7.4-b5 pre-parses board-bearing websocket payloads before their
+# PetPuzzle 1.7.4-b6 pre-parses board-bearing websocket payloads before their
 # callback enters UnityMainThreadDispatcher.  The original matchPayload may be
 # compacted/cleared by the time the queued closure is sampled, while these
 # typed fields remain owned by the same exact ChatMessageDTO.
@@ -106,6 +106,46 @@ def is_transport_board_source(source: str | None, *, event_type: str) -> bool:
         base.startswith(prefix)
         and base[len(prefix) :] in SUPPORTED_TRANSPORT_BOARD_PROVENANCES
     )
+
+
+ACK_ATTESTED_LIVE_BOARD_SOURCE = (
+    "Board.allDots->GameObject.components->Dot.PoolTag+"
+    "MatchService._ackedSeqs"
+)
+
+PRISTINE_NATIVE_OPENING_BOARD_SOURCE = (
+    "Board.allDots->GameObject.components->Dot.PoolTag+"
+    "PristineOpeningGeneration"
+)
+
+
+def is_ack_attested_current_board_source(source: str | None) -> bool:
+    """Recognize exact current-board evidence after the opening was missed.
+
+    A response DTO is preferred when retained. PetPuzzle b6 can compact that
+    short-lived object before entry finishes; the provider then publishes the
+    same settled board through its bounded 64-Dot ownership walk only after
+    the exact MatchService ACK set remains stable across the read. Accept just
+    those two already-authoritative identities, never a bare rendered board or
+    an arbitrary source that merely contains an ACK-looking suffix.
+    """
+
+    return bool(
+        is_transport_board_source(source, event_type="MATCH_MOVE_RES")
+        or source == ACK_ATTESTED_LIVE_BOARD_SOURCE
+    )
+
+
+def is_pristine_native_opening_board_source(source: str | None) -> bool:
+    """Recognize the exact no-ACK opening fallback source.
+
+    Before either player has acted, ``MatchService._ackedSeqs`` can remain
+    empty for the whole first turn.  This source is emitted only for an exact
+    active first-local-turn generation whose owned ``Board.allDots`` graph and
+    presentation signals remain unchanged across the provider stability gate.
+    """
+
+    return source == PRISTINE_NATIVE_OPENING_BOARD_SOURCE
 
 
 @dataclass(frozen=True)
@@ -627,6 +667,8 @@ def read_match_start_opening_snapshot(
 
 
 __all__ = [
+    "ACK_ATTESTED_LIVE_BOARD_SOURCE",
+    "PRISTINE_NATIVE_OPENING_BOARD_SOURCE",
     "JARRAY_TYPE_INFO_RVA",
     "JOBJECT_TYPE_INFO_RVA",
     "JPROPERTY_TYPE_INFO_RVA",
@@ -635,6 +677,8 @@ __all__ = [
     "OpeningBoardSnapshot",
     "SUPPORTED_TRANSPORT_BOARD_EVENTS",
     "SUPPORTED_TRANSPORT_BOARD_PROVENANCES",
+    "is_ack_attested_current_board_source",
+    "is_pristine_native_opening_board_source",
     "is_transport_board_source",
     "parse_transport_board_envelope_json",
     "read_opening_board_jarray",

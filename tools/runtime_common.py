@@ -164,7 +164,7 @@ def _discover_running_game() -> tuple[GameExecutableSelection, int] | None:
     }
     if len(unique) != 1:
         raise ProcessProbeError(
-            "multiple Pokiguard game processes are running; select the exact "
+            "multiple supported game processes are running; select the exact "
             "game folder in Settings"
         )
     return next(iter(unique.values()))
@@ -179,7 +179,7 @@ def attach_target() -> RuntimeTarget:
         discovered = _discover_running_game()
         if discovered is None:
             raise ProcessProbeError(
-                "Pokiguard-<version>.exe is not running; select the game folder "
+                "PetPuzzle-<version>.exe is not running; select the game folder "
                 "in Settings"
             )
         selection, pid = discovered

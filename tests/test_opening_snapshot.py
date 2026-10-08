@@ -10,8 +10,10 @@ from pokiguard_v2.memory_board_provider import (
     ProviderMetrics,
 )
 from pokiguard_v2.opening_snapshot import (
+    PRISTINE_NATIVE_OPENING_BOARD_SOURCE,
     NewtonsoftClasses,
     OpeningBoardSnapshot,
+    is_pristine_native_opening_board_source,
     is_transport_board_source,
     parse_transport_board_envelope_json,
     read_match_payload_board_snapshot,
@@ -19,6 +21,26 @@ from pokiguard_v2.opening_snapshot import (
     read_preparsed_board_snapshot,
 )
 from pokiguard_v2.state import CombatSessionKey
+
+
+class PristineNativeOpeningSourceTests(unittest.TestCase):
+    def test_only_exact_provider_source_is_accepted(self) -> None:
+        self.assertTrue(
+            is_pristine_native_opening_board_source(
+                PRISTINE_NATIVE_OPENING_BOARD_SOURCE
+            )
+        )
+        for source in (
+            None,
+            "",
+            "Board.allDots->GameObject.components->Dot.PoolTag",
+            "Board.allDots->GameObject.components->Dot.PoolTag+MatchService._ackedSeqs",
+            PRISTINE_NATIVE_OPENING_BOARD_SOURCE + "+forged",
+        ):
+            with self.subTest(source=source):
+                self.assertFalse(
+                    is_pristine_native_opening_board_source(source)
+                )
 
 
 class FakeMemory:

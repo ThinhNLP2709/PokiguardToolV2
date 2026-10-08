@@ -36,6 +36,7 @@ from pokiguard_v2.combat_lifecycle import (  # noqa: E402
     read_combat_lifecycle,
 )
 from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
+from pokiguard_v2.game_location import is_supported_game_executable_name  # noqa: E402
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
     MemoryProviderConfig,
@@ -177,7 +178,9 @@ def _live_exit_calibration(
             payload = json.loads(path.read_text(encoding="utf-8"))
             if payload.get("schema") != "pokiguard.exit_ui_calibration.v1":
                 continue
-            if payload.get("processName") != "Pokiguard.exe":
+            if not is_supported_game_executable_name(
+                str(payload.get("processName", ""))
+            ):
                 continue
             if (
                 payload.get("clientWidth") != width

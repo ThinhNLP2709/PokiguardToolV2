@@ -14,19 +14,27 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from pokiguard_v2.boss_lobby_runtime import (  # noqa: E402
+    DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA,
+    INT32_TYPE_INFO_RVA,
+    INT64_TYPE_INFO_RVA,
     MANAGER_ROOM_SELECTED_CARDS_OFFSET,
+    MANAGER_ROOM_TYPE_INFO_RVA,
     ROOM_COOP_V2_REFS_BUTTON_START_OFFSET,
     ROOM_COOP_V2_REFS_OFFSET,
     ROOM_COOP_V2_START_STATE_OFFSET,
     ROOM_START_MY_READY_OFFSET,
     ROOM_START_PHASE_OFFSET,
     ROOM_CARDS_OFFSET,
+    STRING_TYPE_INFO_RVA,
+    WS_ROOM_SERVICE_TYPE_INFO_RVA,
     RoomStartPhase,
+    _read_chinh_phuc_room_property_identity,
     _hub_surface_flags,
     _read_lobby_card_loadout,
     _read_room_start_state,
     _static_instance,
     read_boss_lobby_runtime,
+    read_chinh_phuc_room,
 )
 from pokiguard_v2.boss_entry import BossLobbyState  # noqa: E402
 from pokiguard_v2.combat_lifecycle import (  # noqa: E402
@@ -34,6 +42,7 @@ from pokiguard_v2.combat_lifecycle import (  # noqa: E402
     CombatLifecycleSignals,
     CombatLifecycleState,
 )
+from pokiguard_v2.il2cpp_layout import LayoutValidationError  # noqa: E402
 import pokiguard_v2.boss_lobby_runtime as lobby_runtime_module  # noqa: E402
 
 
@@ -52,8 +61,16 @@ class FakeMemory:
 
 
 class FakeResolver:
-    def __init__(self, memory: FakeMemory) -> None:
+    def __init__(
+        self,
+        memory: FakeMemory,
+        *,
+        type_classes: dict[int, int] | None = None,
+        singleton: object | None = None,
+    ) -> None:
         self.memory = memory
+        self.type_classes = type_classes or {}
+        self.singleton = singleton
 
     def read_pointer(self, address: int) -> int:
         return struct.unpack("<Q", self.memory.read(address, 8))[0]
@@ -63,6 +80,12 @@ class FakeResolver:
 
     def read_bool(self, address: int) -> bool:
         return bool(self.memory.read(address, 1)[0])
+
+    def resolve_type_info_class(self, rva: int) -> int | None:
+        return self.type_classes.get(rva)
+
+    def resolve_singleton(self, _descriptor: object) -> object:
+        return self.singleton or SimpleNamespace(resolved=False, instance=None)
 
 
 def map_string(memory: FakeMemory, address: int, value: str, klass: int) -> None:
@@ -118,8 +141,228 @@ def map_list(
     memory.map(array_address, raw_array)
 
 
+def map_room_properties(
+    memory: FakeMemory,
+    dictionary: int,
+    entries: int,
+    *,
+    dictionary_class: int,
+    array_class: int,
+    string_class: int,
+    int32_class: int,
+    int64_class: int | None = None,
+    use_int64: bool = False,
+    enemy_pet_id: int,
+    enemy_pet_level: int,
+) -> None:
+    pairs = (("enemyPetId", enemy_pet_id), ("enemyPetLevel", enemy_pet_level))
+    int64_class = int64_class or (int32_class + 0x40)
+    for klass in (
+        dictionary_class,
+        array_class,
+        string_class,
+        int32_class,
+        int64_class,
+    ):
+        memory.map(klass, bytes(8))
+    dictionary_raw = bytearray(0x30)
+    struct.pack_into("<Q", dictionary_raw, 0, dictionary_class)
+    struct.pack_into("<Q", dictionary_raw, 0x18, entries)
+    struct.pack_into("<i", dictionary_raw, 0x20, len(pairs))
+    struct.pack_into("<i", dictionary_raw, 0x28, 0)
+    struct.pack_into("<i", dictionary_raw, 0x2C, 5)
+    memory.map(dictionary, dictionary_raw)
+
+    entries_raw = bytearray(0x20 + len(pairs) * 0x18)
+    struct.pack_into("<Q", entries_raw, 0, array_class)
+    struct.pack_into("<Q", entries_raw, 0x18, len(pairs))
+    for index, (key, value) in enumerate(pairs):
+        key_pointer = entries + 0x1000 + index * 0x100
+        value_pointer = entries + 0x2000 + index * 0x100
+        entry = 0x20 + index * 0x18
+        struct.pack_into("<i", entries_raw, entry, 100 + index)
+        struct.pack_into("<Q", entries_raw, entry + 0x08, key_pointer)
+        struct.pack_into("<Q", entries_raw, entry + 0x10, value_pointer)
+        map_string(memory, key_pointer, key, string_class)
+        boxed = bytearray(0x18)
+        struct.pack_into("<Q", boxed, 0, int64_class if use_int64 else int32_class)
+        if use_int64:
+            struct.pack_into("<q", boxed, 0x10, value)
+        else:
+            struct.pack_into("<i", boxed, 0x10, value)
+        memory.map(value_pointer, boxed)
+    memory.map(entries, entries_raw)
+
+
 class BossLobbyCardTests(unittest.TestCase):
     BASE = 0x0000021000000000
+
+    def test_b6_room_properties_prove_exact_boss_without_room_dto(self) -> None:
+        memory = FakeMemory()
+        dictionary = self.BASE + 0x1000
+        entries = self.BASE + 0x2000
+        dictionary_class = self.BASE + 0x3000
+        array_class = self.BASE + 0x4000
+        string_class = self.BASE + 0x5000
+        int32_class = self.BASE + 0x6000
+        int64_class = self.BASE + 0x6080
+        map_room_properties(
+            memory,
+            dictionary,
+            entries,
+            dictionary_class=dictionary_class,
+            array_class=array_class,
+            string_class=string_class,
+            int32_class=int32_class,
+            int64_class=int64_class,
+            use_int64=True,
+            enemy_pet_id=1436,
+            enemy_pet_level=77,
+        )
+        resolver = FakeResolver(
+            memory,
+            type_classes={
+                DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA: dictionary_class,
+                INT32_TYPE_INFO_RVA: int32_class,
+                INT64_TYPE_INFO_RVA: int64_class,
+                STRING_TYPE_INFO_RVA: string_class,
+            },
+        )
+
+        identity = _read_chinh_phuc_room_property_identity(resolver, dictionary)
+
+        self.assertEqual(identity.enemy_pet_id, 1436)
+        self.assertEqual(identity.enemy_pet_level, 77)
+        self.assertIsNone(identity.enemy_pet_name)
+        self.assertIn("enemyPetId", identity.keys)
+
+    def test_b6_room_properties_reject_wrong_boxed_value_class(self) -> None:
+        memory = FakeMemory()
+        dictionary = self.BASE + 0x1000
+        entries = self.BASE + 0x2000
+        dictionary_class = self.BASE + 0x3000
+        array_class = self.BASE + 0x4000
+        string_class = self.BASE + 0x5000
+        int32_class = self.BASE + 0x6000
+        int64_class = self.BASE + 0x6080
+        map_room_properties(
+            memory,
+            dictionary,
+            entries,
+            dictionary_class=dictionary_class,
+            array_class=array_class,
+            string_class=string_class,
+            int32_class=int32_class + 0x100,
+            int64_class=int64_class + 0x100,
+            enemy_pet_id=1436,
+            enemy_pet_level=77,
+        )
+        resolver = FakeResolver(
+            memory,
+            type_classes={
+                DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA: dictionary_class,
+                INT32_TYPE_INFO_RVA: int32_class,
+                INT64_TYPE_INFO_RVA: int64_class,
+                STRING_TYPE_INFO_RVA: string_class,
+            },
+        )
+
+        with self.assertRaisesRegex(LayoutValidationError, "not System.Int32/System.Int64"):
+            _read_chinh_phuc_room_property_identity(resolver, dictionary)
+
+    def test_b6_exact_ws_room_properties_override_visible_island_layer(self) -> None:
+        memory = FakeMemory()
+        manager = self.BASE + 0x10000
+        manager_native = self.BASE + 0x11000
+        button = self.BASE + 0x12000
+        button_native = self.BASE + 0x13000
+        ws = self.BASE + 0x14000
+        chat = self.BASE + 0x15000
+        dictionary = self.BASE + 0x16000
+        entries = self.BASE + 0x17000
+        dictionary_class = self.BASE + 0x18000
+        array_class = self.BASE + 0x19000
+        string_class = self.BASE + 0x1A000
+        int32_class = self.BASE + 0x1B000
+        int64_class = self.BASE + 0x1B080
+        room_id_string = self.BASE + 0x1C000
+        room_type_string = self.BASE + 0x1D000
+        owner_string = self.BASE + 0x1E000
+        local_string = self.BASE + 0x1F000
+
+        manager_raw = bytearray(0x150)
+        struct.pack_into("<Q", manager_raw, 0x10, manager_native)
+        struct.pack_into("<Q", manager_raw, 0x28, button)
+        memory.map(manager, manager_raw)
+        memory.map(manager_native, b"\x01")
+        button_raw = bytearray(0xE9)
+        struct.pack_into("<Q", button_raw, 0x10, button_native)
+        button_raw[0xD8] = 1
+        button_raw[0xE8] = 1
+        memory.map(button, button_raw)
+        memory.map(button_native, b"\x01")
+
+        map_string(memory, room_id_string, "Coop_667444", string_class)
+        map_string(memory, room_type_string, "ChinhPhuc", string_class)
+        map_string(memory, owner_string, "Di Lăng Lão Tổ", string_class)
+        map_string(memory, local_string, "Di Lăng Lão Tổ", string_class)
+        ws_raw = bytearray(0xD0)
+        struct.pack_into("<Q", ws_raw, 0x10, room_id_string)
+        struct.pack_into("<Q", ws_raw, 0x18, room_type_string)
+        struct.pack_into("<Q", ws_raw, 0x20, owner_string)
+        struct.pack_into("<Q", ws_raw, 0x38, dictionary)
+        memory.map(ws, ws_raw)
+        chat_raw = bytearray(0x38)
+        struct.pack_into("<Q", chat_raw, 0x30, local_string)
+        memory.map(chat, chat_raw)
+        map_room_properties(
+            memory,
+            dictionary,
+            entries,
+            dictionary_class=dictionary_class,
+            array_class=array_class,
+            string_class=string_class,
+            int32_class=int32_class,
+            int64_class=int64_class,
+            use_int64=True,
+            enemy_pet_id=1436,
+            enemy_pet_level=77,
+        )
+        resolver = FakeResolver(
+            memory,
+            type_classes={
+                DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA: dictionary_class,
+                INT32_TYPE_INFO_RVA: int32_class,
+                INT64_TYPE_INFO_RVA: int64_class,
+                STRING_TYPE_INFO_RVA: string_class,
+            },
+            singleton=SimpleNamespace(resolved=True, instance=chat),
+        )
+
+        def static_instance(_resolver: object, rva: int, **_kwargs: object) -> int:
+            if rva == MANAGER_ROOM_TYPE_INFO_RVA:
+                return manager
+            if rva == WS_ROOM_SERVICE_TYPE_INFO_RVA:
+                return ws
+            raise AssertionError(f"unexpected type-info RVA {rva:#x}")
+
+        with (
+            patch.object(lobby_runtime_module, "_static_instance", side_effect=static_instance),
+            patch.object(
+                lobby_runtime_module,
+                "_read_room_start_state",
+                return_value=(None, None, None, RoomStartPhase.IDLE, False, ()),
+            ),
+        ):
+            snapshot, candidates = read_chinh_phuc_room(resolver)
+
+        self.assertTrue(snapshot.clean, snapshot.reasons)
+        self.assertIsNone(snapshot.room_data)
+        self.assertEqual(snapshot.enemy_pet_id, 1436)
+        self.assertEqual(snapshot.enemy_pet_level, 77)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].identity.source, "WsRoomService.Properties")
+        self.assertIsNone(candidates[0].identity.boss_name)
 
     def test_b5_static_instance_can_use_nonzero_static_field_slot(self) -> None:
         memory = FakeMemory()

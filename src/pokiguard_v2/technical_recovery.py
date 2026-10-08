@@ -28,7 +28,7 @@ from .board_diagnostics import (
     game_state_payload,
 )
 from .combat_lifecycle import CombatLifecycleState
-from .opening_snapshot import is_transport_board_source
+from .opening_snapshot import is_ack_attested_current_board_source
 from .state import (
     CombatSessionKey,
     GameOwnedIdleStatus,
@@ -190,6 +190,7 @@ class TechnicalFailureReason(str, Enum):
     LOCAL_PLAYER_LEFT_ACTIVE_COMBAT = "LOCAL_PLAYER_LEFT_ACTIVE_COMBAT"
     LATE_MANDATORY_RESET = "LATE_MANDATORY_RESET"
     ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT = "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT"
+    UNCONFIRMED_SWAP_DELIVERY = "UNCONFIRMED_SWAP_DELIVERY"
 
 
 class RecoveryTriggerSource(str, Enum):
@@ -204,6 +205,9 @@ class RecoveryTriggerSource(str, Enum):
     PRODUCTION_BOARD_LEFT_ACTOR_SET = "PRODUCTION_BOARD_LEFT_ACTOR_SET"
     PRODUCTION_LATE_MANDATORY_RESET = "PRODUCTION_LATE_MANDATORY_RESET"
     PRODUCTION_ENTRY_OPENING_TIMEOUT = "PRODUCTION_ENTRY_OPENING_TIMEOUT"
+    PRODUCTION_UNCONFIRMED_SWAP_DELIVERY = (
+        "PRODUCTION_UNCONFIRMED_SWAP_DELIVERY"
+    )
     TEST_ONLY = "TEST_ONLY"
 
 
@@ -1251,6 +1255,75 @@ class TechnicalRecoveryDispatcher:
             )
         )
 
+    def dispatch_unconfirmed_swap_delivery(
+        self,
+        state: GameState,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        source_turn: int,
+        source_srv_seq: int,
+        source_board_hash: str,
+        local_move_sequence_before: int | None,
+        current_turn: int,
+        current_local_move_sequence: int | None,
+        input_was_sent: bool,
+        response_or_ack_timeout: bool,
+        timeout_reason: str,
+        evidence_source: str = (
+            "physically sent SWAP reached terminal response/ACK timeout"
+        ),
+    ) -> bool:
+        """Recover after one sent SWAP has no exact consuming transition.
+
+        Continuing on the next local turn after this signature can apply later
+        policy decisions to a client whose first tap expired or remained
+        selected. Recovery is therefore armed at the first proven delivery
+        ambiguity instead of allowing a three-idle ejection sequence.
+        """
+
+        battle = state.battle
+        exact = bool(
+            input_was_sent
+            and response_or_ack_timeout
+            and timeout_reason
+            and match_id
+            and session_key.match_id == match_id
+            and state.phase is GamePhase.COMBAT
+            and battle.combat_lifecycle is CombatLifecycleState.ACTIVE
+            and battle.session_key == session_key
+            and battle.match_id == match_id
+            and source_turn > 0
+            and current_turn >= source_turn
+            and source_srv_seq >= 0
+            and bool(source_board_hash)
+            and local_move_sequence_before is not None
+            and current_local_move_sequence == local_move_sequence_before
+        )
+        if not exact:
+            return False
+        failed = FailedSessionEvidence(
+            session_key=session_key,
+            match_id=match_id,
+            board_instance=session_key.board_instance,
+            lifecycle_epoch=session_key.lifecycle_epoch,
+            turn=source_turn,
+            srv_seq=source_srv_seq,
+            board_hash=source_board_hash,
+        )
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.UNCONFIRMED_SWAP_DELIVERY,
+                source=(
+                    RecoveryTriggerSource.PRODUCTION_UNCONFIRMED_SWAP_DELIVERY
+                ),
+                failed_session=failed,
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
     def dispatch_active_combat_progress_stalled(
         self,
         state: GameState,
@@ -1415,9 +1488,7 @@ class TechnicalRecoveryDispatcher:
             and local_move_sequence == 0
             and srv_seq > 0
             and bool(board_hash)
-            and is_transport_board_source(
-                board_source, event_type="MATCH_MOVE_RES"
-            )
+            and is_ack_attested_current_board_source(board_source)
         )
         if not exact:
             return False

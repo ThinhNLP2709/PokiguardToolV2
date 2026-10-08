@@ -12,6 +12,7 @@ from pokiguard_v2.autonomous_control import (
     AutonomousGuard,
     AutonomousSource,
     AutonomousStatus,
+    ConsumedSwapBoardGuard,
     ConsumingTurnRegistry,
     PendingAutonomousAction,
     SwapAcceptanceStatus,
@@ -965,6 +966,62 @@ class AutonomousGuardTests(unittest.TestCase):
             ),
             "TIMER_AT_OR_BELOW_ACTION_FLOOR",
         )
+
+    def test_consumed_swap_board_is_blocked_on_a_later_turn(self) -> None:
+        state = self._state(fusion_used=True, turn=3)
+        decision = BasicPolicyEngine().decide(state)
+        self.assertIs(decision.action, PolicyAction.SWAP)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision),
+            1.0,
+            state.player.mana,
+            None,
+        )
+        guard = ConsumedSwapBoardGuard()
+
+        guard.observe(pending)
+        later = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_number=5,
+                local_move_sequence=1,
+            ),
+        )
+
+        blocked = guard.blocking_source(later)
+        self.assertIsNotNone(blocked)
+        self.assertEqual(blocked.source_turn, 3)
+
+    def test_consumed_swap_guard_allows_a_fresh_board_and_new_session(self) -> None:
+        state = self._state(fusion_used=True, turn=3)
+        decision = BasicPolicyEngine().decide(state)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision),
+            1.0,
+            state.player.mana,
+            None,
+        )
+        guard = ConsumedSwapBoardGuard()
+        guard.observe(pending)
+
+        fresh = replace(
+            state,
+            battle=replace(
+                state.battle,
+                turn_number=5,
+                board_hash="f" * 64,
+                local_move_sequence=1,
+            ),
+        )
+        self.assertIsNone(guard.blocking_source(fresh))
+
+        guard.begin_session()
+        stale_shape = replace(
+            state,
+            battle=replace(state.battle, turn_number=5),
+        )
+        self.assertIsNone(guard.blocking_source(stale_shape))
 
     def test_identity_is_single_use_and_pause_is_immediate(self) -> None:
         state = self._state(fusion_used=False)

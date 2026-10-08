@@ -28,6 +28,8 @@ class GameLocationTests(unittest.TestCase):
 
     def test_current_versioned_name_is_supported(self) -> None:
         self.assertTrue(is_supported_game_executable_name("Pokiguard-1.7.4.exe"))
+        self.assertTrue(is_supported_game_executable_name("PetPuzzle-1.7.4.exe"))
+        self.assertTrue(is_supported_game_executable_name("PETPUZZLE-2.0.EXE"))
         self.assertTrue(is_supported_game_executable_name("POKIGUARD-2.0.EXE"))
         self.assertFalse(is_supported_game_executable_name("PokiguardToolV2.exe"))
 
@@ -41,10 +43,17 @@ class GameLocationTests(unittest.TestCase):
         self.assertEqual((1, 10, 0), selected.version)
 
     def test_direct_executable_path_is_accepted(self) -> None:
-        executable = self.root / "Pokiguard-1.7.4.exe"
+        executable = self.root / "PetPuzzle-1.7.4.exe"
         executable.write_bytes(b"MZ")
         selected = resolve_game_executable(executable)
         self.assertEqual(executable.resolve(), selected.executable)
+
+    def test_stale_old_launcher_path_migrates_within_same_install_folder(self) -> None:
+        current = self.root / "PetPuzzle-1.7.4.exe"
+        current.write_bytes(b"MZ")
+        selected = resolve_game_executable(self.root / "Pokiguard-1.7.4.exe")
+        self.assertEqual(self.root.resolve(), selected.location)
+        self.assertEqual(current.resolve(), selected.executable)
 
     def test_folder_without_game_executable_fails_closed(self) -> None:
         with self.assertRaises(GameLocationError) as context:
@@ -96,11 +105,11 @@ class GameLocationTests(unittest.TestCase):
             validate_supported_game_assembly(game_assembly)
         self.assertEqual("GAME_BUILD_INCOMPATIBLE", context.exception.reason)
 
-    def test_only_reverse_verified_b5_layout_hash_is_enabled(self) -> None:
+    def test_only_reverse_verified_b6_layout_hash_is_enabled(self) -> None:
         self.assertEqual(
             SUPPORTED_GAME_ASSEMBLY_SHA256,
             frozenset(
-                {"e2a2457128b4f412eae302ac5314350f0c18529c12716b4ebdb36281d923f9e9"}
+                {"72d10a43fbfdab705e2db7caca1cc2b998b0b8581d56946dc545d87c720ec063"}
             ),
         )
 

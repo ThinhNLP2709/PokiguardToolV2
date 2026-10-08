@@ -9,6 +9,7 @@ from typing import Any
 
 from .state import CombatSessionKey, GamePhase, GameState
 from .combat_lifecycle import CombatLifecycleState
+from .opening_snapshot import PRISTINE_NATIVE_OPENING_BOARD_SOURCE
 from .sequence_desync import SequenceDesyncState
 
 
@@ -126,10 +127,14 @@ class ActionabilityGate:
                 stateSession=battle.session_key,
                 currentSession=context.current_session,
             )
+        opening_source_authoritative = bool(
+            "ChatMessageDTO.MATCH_START.matchPayload.board" in battle.sources
+            or PRISTINE_NATIVE_OPENING_BOARD_SOURCE in battle.sources
+        )
         opening_authoritative = bool(
             battle.srv_seq is not None
             and 0 <= battle.srv_seq <= 10_000_000
-            and "ChatMessageDTO.MATCH_START.matchPayload.board" in battle.sources
+            and opening_source_authoritative
             and battle.local_move_sequence == 0
             and battle.last_move_sequence in (None, -1, 0)
             and battle.turn_number in (0, 1)

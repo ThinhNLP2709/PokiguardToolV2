@@ -29,6 +29,7 @@ from tools.farm_cycle import (
     _combat_args,
     _final_invariants,
     _is_detached_chinh_phuc_room_candidate,
+    _is_owner_free_general_hub_candidate,
     _is_owner_free_chinh_phuc_map_candidate,
     _is_transient_chinh_phuc_room_rehydration,
     _read_lobby_runtime_with_provider_fallback,
@@ -39,6 +40,14 @@ from tools.farm_cycle import (
 
 
 MATCH_START_SOURCE = "ChatMessageDTO.MATCH_START.matchPayload.board"
+NATIVE_OPENING_SOURCE = (
+    "Board.allDots->GameObject.components->Dot.PoolTag+"
+    "MatchService._ackedSeqs"
+)
+PRISTINE_NATIVE_OPENING_SOURCE = (
+    "Board.allDots->GameObject.components->Dot.PoolTag+"
+    "PristineOpeningGeneration"
+)
 
 
 def session(epoch: int, board: int, match_id: str) -> CombatSessionKey:
@@ -67,6 +76,56 @@ def opening(key: CombatSessionKey, **changes: object) -> OpeningEvidence:
 
 
 class FarmCycleTests(unittest.TestCase):
+    def test_opening_accepts_exact_ack_attested_native_first_turn(self) -> None:
+        key = session(1, 0x1000, "M_native")
+        evidence = opening(
+            key,
+            source=NATIVE_OPENING_SOURCE,
+            fresh_dto=False,
+        )
+
+        self.assertTrue(evidence.valid())
+
+    def test_native_opening_requires_exact_source_and_non_dto_provenance(self) -> None:
+        key = session(1, 0x1000, "M_native")
+
+        self.assertFalse(
+            opening(
+                key,
+                source=NATIVE_OPENING_SOURCE,
+                fresh_dto=True,
+            ).valid()
+        )
+        self.assertFalse(
+            opening(
+                key,
+                source="Board.allDots->GameObject.components->Dot.PoolTag",
+                fresh_dto=False,
+            ).valid()
+        )
+
+    def test_opening_accepts_exact_pristine_native_first_turn(self) -> None:
+        key = session(1, 0x1000, "M_pristine_native")
+
+        self.assertTrue(
+            opening(
+                key,
+                source=PRISTINE_NATIVE_OPENING_SOURCE,
+                fresh_dto=False,
+            ).valid()
+        )
+
+    def test_pristine_native_opening_requires_non_dto_provenance(self) -> None:
+        key = session(1, 0x1000, "M_pristine_native")
+
+        self.assertFalse(
+            opening(
+                key,
+                source=PRISTINE_NATIVE_OPENING_SOURCE,
+                fresh_dto=True,
+            ).valid()
+        )
+
     def test_detached_room_shell_candidate_requires_exact_pet_and_no_owner(self) -> None:
         lobby = SimpleNamespace(
             state=BossLobbyState.LOBBY_OTHER,
@@ -233,6 +292,100 @@ class FarmCycleTests(unittest.TestCase):
         self.assertEqual(result.reason, "CHINH_PHUC_MAP_CANDIDATE")
         self.assertEqual(result.stable_frames, 2)
         self.assertIs(result.lobby, lobby)
+
+    def test_wait_lobby_surfaces_stable_owner_free_game_lobby(self) -> None:
+        lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="GAME_LOBBY",
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                owner_username=None,
+                is_host=False,
+            ),
+            world_boss=SimpleNamespace(clean_for_game_lobby=True),
+        )
+        self.assertTrue(
+            _is_owner_free_general_hub_candidate(
+                lobby, no_combat_owner=True
+            )
+        )
+        process = SimpleNamespace(is_running=lambda: True)
+        provider = SimpleNamespace(current_session_key=None)
+        hotkeys = SimpleNamespace(poll=lambda: (False, False))
+        with patch(
+            "tools.farm_cycle._read_lobby_runtime_with_provider_fallback",
+            return_value=lobby,
+        ), patch("tools.farm_cycle.time.sleep"):
+            result = _wait_boss_lobby(
+                process,
+                provider,
+                FarmTarget(boss_id="1436"),
+                timeout=1.0,
+                interval=0.01,
+                hotkeys=hotkeys,
+            )
+
+        self.assertEqual(result.reason, "GENERAL_HUB_CANDIDATE")
+        self.assertEqual(result.stable_frames, 2)
+        self.assertIs(result.lobby, lobby)
+
+    def test_post_target_wait_ignores_map_transition_and_surfaces_room_shell(self) -> None:
+        map_lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="CHINH_PHUC_ISLAND",
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                room_data=0x20000001000,
+                enemy_pet_id=1289,
+                button_start=0x20000002000,
+                button_native=0x10000002000,
+                button_interactable=True,
+                is_host=False,
+            ),
+            world_boss=SimpleNamespace(clean_for_chinh_phuc_map=True),
+        )
+        shell_lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                room_data=0x20000001000,
+                enemy_pet_id=1289,
+                button_start=0x20000002000,
+                button_native=0x10000002000,
+                button_interactable=True,
+                is_host=False,
+            ),
+            world_boss=SimpleNamespace(clean_for_chinh_phuc_map=False),
+        )
+        process = SimpleNamespace(is_running=lambda: True)
+        provider = SimpleNamespace(current_session_key=None)
+        hotkeys = SimpleNamespace(poll=lambda: (False, False))
+        samples = iter((map_lobby, map_lobby, shell_lobby, shell_lobby))
+        with patch(
+            "tools.farm_cycle._read_lobby_runtime_with_provider_fallback",
+            side_effect=lambda *_args: next(samples),
+        ), patch("tools.farm_cycle.time.sleep"):
+            result = _wait_boss_lobby(
+                process,
+                provider,
+                FarmTarget(boss_id="1289"),
+                timeout=1.0,
+                interval=0.01,
+                hotkeys=hotkeys,
+                wait_through_target_missing=True,
+                wait_through_map_candidate=True,
+            )
+
+        self.assertEqual(result.reason, "DETACHED_ROOM_SHELL_CANDIDATE")
+        self.assertEqual(result.stable_frames, 2)
+        self.assertIs(result.lobby, shell_lobby)
 
     def test_production_combat_uses_restored_four_second_floor(self) -> None:
         args = SimpleNamespace(

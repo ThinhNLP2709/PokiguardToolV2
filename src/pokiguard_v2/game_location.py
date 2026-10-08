@@ -1,7 +1,7 @@
-"""Validated game-install location selection for versioned Pokiguard builds.
+"""Validated game-install selection for supported Pokiguard/PetPuzzle builds.
 
 The launcher name is not stable: current releases use names such as
-``Pokiguard-1.7.4.exe``.  The UI persists the exact executable selected by the
+``PetPuzzle-1.7.4.exe``.  The UI persists the exact executable selected by the
 operator. Directory resolution remains only as a backward-compatible migration
 for preferences written before exact-path selection was introduced.
 """
@@ -15,16 +15,16 @@ import re
 
 
 _VERSIONED_NAME = re.compile(
-    r"^pokiguard-(?P<version>\d+(?:\.\d+)*)\.exe$",
+    r"^(?:pokiguard|petpuzzle)-(?P<version>\d+(?:\.\d+)*)\.exe$",
     re.IGNORECASE,
 )
-_LEGACY_NAME = "pokiguard.exe"
+_LEGACY_NAMES = frozenset({"pokiguard.exe", "petpuzzle.exe"})
 
-# Runtime layouts are verified only for the exact current 1.7.4-b5 binary.
+# Runtime layouts are verified only for the exact current 1.7.4-b6 binary.
 # Future executable names may still resolve in Settings, but attachment must
 # fail closed until their GameAssembly fingerprint is reverse-verified.
 SUPPORTED_GAME_ASSEMBLY_SHA256 = frozenset(
-    {"e2a2457128b4f412eae302ac5314350f0c18529c12716b4ebdb36281d923f9e9"}
+    {"72d10a43fbfdab705e2db7caca1cc2b998b0b8581d56946dc545d87c720ec063"}
 )
 
 
@@ -47,7 +47,7 @@ def is_supported_game_executable_name(name: str) -> bool:
     """Accept the retired legacy name and current versioned launcher names."""
 
     normalized = str(name).strip().casefold()
-    return normalized == _LEGACY_NAME or _VERSIONED_NAME.fullmatch(normalized) is not None
+    return normalized in _LEGACY_NAMES or _VERSIONED_NAME.fullmatch(normalized) is not None
 
 
 def _version_for_name(name: str) -> tuple[int, ...]:
@@ -66,7 +66,8 @@ def _validate_install_pair(executable: Path) -> None:
     if not is_supported_game_executable_name(executable.name):
         raise GameLocationError(
             "GAME_EXECUTABLE_NAME_UNSUPPORTED",
-            "expected Pokiguard-<version>.exe in the selected game folder",
+            "expected PetPuzzle-<version>.exe or Pokiguard-<version>.exe "
+            "in the selected game folder",
         )
     game_assembly = executable.parent / "GameAssembly.dll"
     if not game_assembly.is_file():
@@ -111,7 +112,7 @@ def resolve_game_executable(location: str | Path) -> GameExecutableSelection:
     if not raw:
         raise GameLocationError(
             "GAME_LOCATION_REQUIRED",
-            "select the folder containing Pokiguard-<version>.exe",
+            "select the folder containing PetPuzzle-<version>.exe",
         )
     selected = Path(raw).expanduser().resolve()
     if selected.is_file():
@@ -121,6 +122,16 @@ def resolve_game_executable(location: str | Path) -> GameExecutableSelection:
             selected,
             _version_for_name(selected.name),
         )
+    # A saved exact launcher path can become stale when an update renames the
+    # product (Pokiguard -> PetPuzzle).  Migrate only a syntactically supported
+    # missing launcher to another verified launcher in the same existing
+    # directory.  The GameAssembly hash gate still decides compatibility.
+    if (
+        not selected.exists()
+        and is_supported_game_executable_name(selected.name)
+        and selected.parent.is_dir()
+    ):
+        selected = selected.parent
     if not selected.is_dir():
         raise GameLocationError(
             "GAME_LOCATION_NOT_FOUND",
@@ -135,7 +146,7 @@ def resolve_game_executable(location: str | Path) -> GameExecutableSelection:
     if not candidates:
         raise GameLocationError(
             "GAME_EXECUTABLE_NOT_FOUND",
-            f"no Pokiguard-<version>.exe found in {selected}",
+            f"no supported PetPuzzle/Pokiguard executable found in {selected}",
         )
     executable = max(
         candidates,

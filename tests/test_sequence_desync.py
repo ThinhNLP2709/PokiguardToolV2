@@ -1065,8 +1065,72 @@ class RuntimeRegionLearningTests(unittest.TestCase):
             result = monitor.prime_regions()
 
         self.assertEqual(monitor._learned_regions, {hit_region, batch_region})
+        self.assertEqual(monitor._chat_message_regions, {hit_region})
+        self.assertEqual(monitor._batch_regions, {batch_region})
         self.assertEqual(result.learned_regions, 2)
         self.assertEqual(result.message_hits, 1)
+
+    def test_entry_scan_uses_only_chat_message_regions(self) -> None:
+        dto_region = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        batch_region = MemoryRegion(0x4000, 0x1000, 0x04, 0x20000)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor.chunk_mib = 2
+        monitor.full_rescan_interval = 999
+        monitor.minimum_scan_seconds = 0.0
+        monitor.tracker = Mock()
+        monitor.events = Mock()
+        monitor._dto_class = 0xABC
+        monitor._batch_class = 0xDEF
+        monitor._learned_regions = {dto_region, batch_region}
+        monitor._chat_message_regions = {dto_region}
+        monitor._batch_regions = {batch_region}
+        monitor._seen = set()
+        monitor._scans = 0
+        monitor._last_scan = 0.0
+        monitor._current_match_start = None
+        monitor._last_gap_scan_identity = None
+        monitor._last_gap_scan_stage = 0
+        monitor._periodic_full_pending = False
+        runtime = SimpleNamespace(
+            match_id="M_fixture",
+            turn=1,
+            current_player="happi",
+            local_username="happi",
+            local_move_sequence=0,
+            last_move_sequence=0,
+            highest_acked_sequence=1,
+        )
+        scan = QwordScanResult({"chat_message": ()}, 0, 0x1000, 0)
+
+        with (
+            patch(
+                "tools.sequence_desync_runtime.read_match_runtime",
+                return_value=(0x1234, runtime),
+            ),
+            patch(
+                "tools.sequence_desync_runtime._regions",
+                return_value=(dto_region, batch_region),
+            ),
+            patch(
+                "tools.sequence_desync_runtime.scan_aligned_qwords",
+                return_value=scan,
+            ) as scanner,
+        ):
+            observation = monitor.poll(
+                session_key=(1,),
+                match_id="M_fixture",
+                turn=1,
+                srv_seq=1,
+                timestamp="now",
+                allow_full_scan=False,
+                prefer_chat_message_regions=True,
+            )
+
+        self.assertEqual(tuple(scanner.call_args.args[1]), (dto_region,))
+        self.assertEqual(scanner.call_args.args[2], {"chat_message": 0xABC})
+        self.assertEqual(observation.scan_bytes_read, 0x1000)
 
     def test_entry_region_prime_reuses_live_process_evidence_without_scan(self) -> None:
         old = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
@@ -1106,6 +1170,29 @@ class RuntimeRegionLearningTests(unittest.TestCase):
 
         self.assertIs(result, expected)
         self.assertEqual(monitor._learned_regions, set())
+        monitor.prime_regions.assert_called_once_with()
+
+    def test_entry_region_prime_rescans_when_only_batch_region_survives(self) -> None:
+        old_dto = MemoryRegion(0x1000, 0x1000, 0x04, 0x20000)
+        live_batch = MemoryRegion(0x9000, 0x1000, 0x04, 0x20000)
+        expected = SimpleNamespace(scanned_bytes=123)
+        monitor = RuntimeSequenceMonitor.__new__(RuntimeSequenceMonitor)
+        monitor.target = SimpleNamespace(memory=object())
+        monitor.max_region_mib = 8
+        monitor._dto_class = 0xABC
+        monitor._learned_regions = {old_dto, live_batch}
+        monitor._chat_message_regions = {old_dto}
+        monitor._batch_regions = {live_batch}
+        monitor.prime_regions = Mock(return_value=expected)
+
+        with patch(
+            "tools.sequence_desync_runtime._regions", return_value=(live_batch,)
+        ):
+            result = monitor.ensure_regions_primed()
+
+        self.assertIs(result, expected)
+        self.assertEqual(monitor._chat_message_regions, set())
+        self.assertEqual(monitor._batch_regions, {live_batch})
         monitor.prime_regions.assert_called_once_with()
 
     def test_entry_region_prime_can_be_interrupted_by_emergency_stop(self) -> None:

@@ -48,6 +48,7 @@ class FakeQteBackend:
         self.guard_active = False
         self.qte_input_guard_mode = "CURSOR_CONFINE"
         self.focus_calls: list[int] = []
+        self.guard_active_during_focus_calls: list[bool] = []
         self.focus_failures_remaining = 0
         self.cursor_calls: list[tuple[int, int]] = []
         self.guard_calls: list[str] = []
@@ -80,6 +81,7 @@ class FakeQteBackend:
 
     def restore_and_foreground(self, hwnd: int) -> bool:
         self.focus_calls.append(hwnd)
+        self.guard_active_during_focus_calls.append(self.guard_active)
         if self.focus_failures_remaining > 0:
             self.focus_failures_remaining -= 1
             return False
@@ -145,6 +147,36 @@ def armed(
 
 
 class BoundedForegroundQteLeaseTests(unittest.TestCase):
+    def test_click_only_post_action_settle_holds_guard_and_cursor(self) -> None:
+        backend = FakeQteBackend()
+        clock = FakeClock()
+        events: list[tuple[str, dict]] = []
+        lease = armed(
+            backend,
+            clock,
+            post_mouse_action_settle_seconds=0.30,
+            event_sink=lambda event, fields: events.append((event, fields)),
+        )
+        self.assertTrue(lease.acquire(preflight=lambda: True).acquired)
+        backend.cursor = (700, 500)
+        before = clock.value
+
+        settled = lease.settle_after_mouse_action("NO_ACTION_CARD_CLICK_SENT")
+
+        self.assertTrue(settled)
+        self.assertAlmostEqual(clock.value - before, 0.30, places=9)
+        self.assertTrue(backend.guard_active)
+        self.assertEqual(backend.foreground, 5)
+        self.assertEqual(backend.cursor, (700, 500))
+        self.assertEqual(
+            [event for event, _fields in events][-2:],
+            [
+                "foreground_qte_post_mouse_action_settle_started",
+                "foreground_qte_post_mouse_action_settle_finished",
+            ],
+        )
+        self.assertTrue(lease.release("TEST_COMPLETE").released)
+
     def test_acquire_holds_session_then_release_restores_desktop(self) -> None:
         backend = FakeQteBackend()
         clock = FakeClock()
@@ -160,6 +192,7 @@ class BoundedForegroundQteLeaseTests(unittest.TestCase):
         self.assertTrue(lease.active)
         self.assertEqual(backend.foreground, 5)
         self.assertTrue(backend.guard_active)
+        self.assertEqual(backend.guard_active_during_focus_calls, [True])
 
         backend.cursor = (700, 500)
         released = lease.release("QTE_PERFECT")
@@ -368,11 +401,11 @@ class BoundedForegroundQteLeaseTests(unittest.TestCase):
             ["acquire", "release", "acquire", "release"],
         )
 
-    def test_final_preflight_failure_after_guard_is_not_retried(self) -> None:
+    def test_final_preflight_failure_before_guard_sends_no_takeover(self) -> None:
         backend = FakeQteBackend()
         clock = FakeClock()
         events: list[tuple[str, dict]] = []
-        preflight_results = iter((True, True, False))
+        preflight_results = iter((True, False))
         lease = armed(
             backend,
             clock,
@@ -384,20 +417,20 @@ class BoundedForegroundQteLeaseTests(unittest.TestCase):
 
         self.assertEqual(result.status, QteLeaseStatus.STALE_ACTION)
         self.assertFalse(lease.active)
-        self.assertEqual(backend.guard_calls, ["acquire", "release"])
+        self.assertEqual(backend.guard_calls, [])
+        self.assertEqual(backend.focus_calls, [])
         self.assertFalse(
             any(
                 event == "foreground_qte_focus_takeover_retry"
                 for event, _fields in events
             )
         )
-        failed = next(
-            fields
-            for event, fields in events
-            if event == "foreground_qte_acquire_validation_failed"
+        self.assertFalse(
+            any(
+                event == "foreground_qte_acquire_validation_failed"
+                for event, _fields in events
+            )
         )
-        self.assertFalse(failed["preflightCurrent"])
-        self.assertFalse(failed["inputSent"])
 
     def test_held_mouse_times_out_without_focus_takeover(self) -> None:
         backend = FakeQteBackend()

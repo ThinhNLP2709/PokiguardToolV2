@@ -15,6 +15,7 @@ from pokiguard_v2.board_diagnostics import (
     game_state_payload,
     write_diagnostic_artifact,
 )
+from pokiguard_v2.opening_snapshot import PRISTINE_NATIVE_OPENING_BOARD_SOURCE
 from tools.replay_board_state import replay
 from tests.test_basic_policy import combat_state, no_sword_or_mana_board
 from tests.test_board_simulator import cyclic_board, fixture_board
@@ -75,6 +76,23 @@ class BoardDiagnosticTests(unittest.TestCase):
                 ),
             ),
         )
+        self.assertTrue(analyze_game_state(opening).dead_board)
+
+    def test_exact_pristine_native_opening_can_prove_dead_board_without_ack(self) -> None:
+        state = current_state(cyclic_board())
+        opening = replace(
+            state,
+            battle=replace(
+                state.battle,
+                srv_seq=0,
+                acknowledged=False,
+                turn_number=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+                sources=(PRISTINE_NATIVE_OPENING_BOARD_SOURCE,),
+            ),
+        )
+
         self.assertTrue(analyze_game_state(opening).dead_board)
 
     def test_cells_store_runtime_and_screen_coordinates(self) -> None:

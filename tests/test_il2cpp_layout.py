@@ -13,6 +13,7 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.il2cpp_external import (
+    BOARD_WS_APPLIER_PREFAB_BY_TAG_OFFSET,
     BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET,
     BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET,
     MemoryRegion,
@@ -245,6 +246,7 @@ class MemoryScanTests(unittest.TestCase):
         array = 0x0000055000000000
         array_class = 0x0000056000000000
         batch = 0x0000057000000000
+        prefab_by_tag = 0x0000059000000000
         for pointer in (board_ws_class, queue_class, array_class):
             memory.map(pointer, bytearray(8))
 
@@ -253,10 +255,14 @@ class MemoryScanTests(unittest.TestCase):
         struct.pack_into("<Q", ws_raw, 0x10, 0x0000058000000000)
         struct.pack_into("<Q", ws_raw, 0x20, board)
         struct.pack_into(
+            "<Q", ws_raw, BOARD_WS_APPLIER_PREFAB_BY_TAG_OFFSET, prefab_by_tag
+        )
+        struct.pack_into(
             "<Q", ws_raw, BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET, queue
         )
         ws_raw[BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET] = 1
         memory.map(board_ws, ws_raw)
+        memory.map(prefab_by_tag, bytearray(0x30))
 
         queue_raw = bytearray(0x30)
         struct.pack_into("<Q", queue_raw, 0, queue_class)
@@ -277,6 +283,7 @@ class MemoryScanTests(unittest.TestCase):
         )
         observed = read_pending_queue(memory, owner.queue)
         self.assertTrue(owner.render_running)
+        self.assertEqual(owner.prefab_by_tag, prefab_by_tag)
         self.assertEqual(observed.batch_addresses, (batch,))
         self.assertEqual((observed.head, observed.tail, observed.size), (1, 2, 1))
 

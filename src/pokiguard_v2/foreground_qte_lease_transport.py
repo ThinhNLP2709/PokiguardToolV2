@@ -171,6 +171,7 @@ class BoundedForegroundQteLease:
         poll_interval_seconds: float = 0.025,
         focus_timeout_seconds: float = 0.75,
         focus_settle_seconds: float = 0.20,
+        post_mouse_action_settle_seconds: float = 0.0,
         focus_request_attempts: int = 3,
         focus_takeover_attempts: int = 3,
         maximum_duration_seconds: float = 20.0,
@@ -185,6 +186,10 @@ class BoundedForegroundQteLease:
             raise ValueError("focus_timeout_seconds must be between 0.10 and 2.0")
         if not 0.0 <= focus_settle_seconds <= 1.0:
             raise ValueError("focus_settle_seconds must be between 0 and 1.0")
+        if not 0.0 <= post_mouse_action_settle_seconds <= 1.0:
+            raise ValueError(
+                "post_mouse_action_settle_seconds must be between 0 and 1.0"
+            )
         if not 1 <= focus_request_attempts <= 5:
             raise ValueError("focus_request_attempts must be between 1 and 5")
         if not 1 <= focus_takeover_attempts <= 5:
@@ -201,6 +206,9 @@ class BoundedForegroundQteLease:
         self.poll_interval_seconds = float(poll_interval_seconds)
         self.focus_timeout_seconds = float(focus_timeout_seconds)
         self.focus_settle_seconds = float(focus_settle_seconds)
+        self.post_mouse_action_settle_seconds = float(
+            post_mouse_action_settle_seconds
+        )
         self.focus_request_attempts = int(focus_request_attempts)
         self.focus_takeover_attempts = int(focus_takeover_attempts)
         self.maximum_duration_seconds = float(maximum_duration_seconds)
@@ -344,6 +352,35 @@ class BoundedForegroundQteLease:
 
             foreground_before = self.backend.foreground_window()
             cursor_before = self.backend.cursor_pos()
+
+            # The complete QTE action is already prepared and validated above.
+            # Acquire both physical-input guards before taking foreground so a
+            # key or mouse event from the operator cannot be delivered to the
+            # game during the focus handoff. No provider poll, screenshot, or
+            # locator work is allowed after this boundary.
+            guard_acquired = self.backend.acquire_qte_input_guard()
+            if not guard_acquired:
+                return self._acquire_result(
+                    QteLeaseStatus.INPUT_GUARD_FAILED,
+                    "bounded QTE physical-input guard was not acquired",
+                    identity,
+                    foreground_before,
+                    self.backend.foreground_window(),
+                    cursor_before,
+                    total_idle_wait,
+                )
+
+            # Mark the lease active immediately after guard acquisition so all
+            # later focus/validation failures use the single release path and
+            # cannot strand a mouse or keyboard guard.
+            with self._lock:
+                self._active = True
+                self._foreground_before = foreground_before
+                self._cursor_before = cursor_before
+                self._started_at = self.monotonic()
+                self._mouse_released_for_qte = False
+                self._cursor_restored_during_qte = None
+
             requested = foreground_before == binding.window.hwnd
             attempts = 0
             if not requested:
@@ -372,40 +409,25 @@ class BoundedForegroundQteLease:
                         self.sleeper(self.poll_interval_seconds)
             total_focus_requests += attempts
             foreground_after = self.backend.foreground_window()
-            if not requested or foreground_after != binding.window.hwnd:
+            if foreground_after != binding.window.hwnd:
+                cleanup = self.release("FOCUS_ACQUIRE_FAILED")
                 return self._acquire_result(
-                    QteLeaseStatus.FOCUS_ACQUIRE_FAILED,
-                    "Windows did not grant foreground ownership",
-                    identity,
-                    foreground_before,
-                    foreground_after,
-                    cursor_before,
-                    total_idle_wait,
-                )
-
-            guard_acquired = self.backend.acquire_qte_input_guard()
-            if not guard_acquired:
-                self._restore_focus(foreground_before, binding.window.hwnd)
-                return self._acquire_result(
-                    QteLeaseStatus.INPUT_GUARD_FAILED,
-                    "bounded QTE physical-input guard was not acquired",
+                    (
+                        QteLeaseStatus.FOCUS_ACQUIRE_FAILED
+                        if cleanup.released
+                        else QteLeaseStatus.RELEASE_INCOMPLETE
+                    ),
+                    (
+                        "Windows did not grant foreground ownership"
+                        if cleanup.released
+                        else "focus acquisition failed and input guard did not release"
+                    ),
                     identity,
                     foreground_before,
                     self.backend.foreground_window(),
                     cursor_before,
                     total_idle_wait,
                 )
-
-            # From this point the wrapper owns physical input. Mark the session
-            # active before the final settle so every rejection uses the same
-            # release path and cannot strand a partially acquired guard.
-            with self._lock:
-                self._active = True
-                self._foreground_before = foreground_before
-                self._cursor_before = cursor_before
-                self._started_at = self.monotonic()
-                self._mouse_released_for_qte = False
-                self._cursor_restored_during_qte = None
 
             if self.focus_settle_seconds:
                 self.sleeper(self.focus_settle_seconds)
@@ -417,7 +439,6 @@ class BoundedForegroundQteLease:
                 failure is None
                 and not stopped
                 and guard_active
-                and self._safe_preflight(preflight)
             )
             valid = bool(
                 failure is None
@@ -646,6 +667,69 @@ class BoundedForegroundQteLease:
                 jsonable(result),
             )
             return result
+
+    def settle_after_mouse_action(
+        self,
+        reason: str = "MOUSE_ACTION_SENT",
+    ) -> bool:
+        """Hold the exact cursor/focus guard after a sent mouse action.
+
+        Unity can sample pointer-up and the current cursor position on the next
+        rendered frame.  A click-only skill has no following QTE stage to keep
+        the lease alive, so production supplies a short bounded settle here.
+        This method performs no memory reads, screenshots or new input.
+        """
+
+        seconds = self.post_mouse_action_settle_seconds
+        with self._lock:
+            binding = self._current_binding()
+            identity = self._identity
+            active = self._active
+        started = self.monotonic()
+        self.event_sink(
+            "foreground_qte_post_mouse_action_settle_started",
+            {
+                "actionIdentity": identity,
+                "reason": reason,
+                "seconds": seconds,
+                "guardActive": self.backend.qte_input_guard_active(),
+            },
+        )
+        deadline = started + seconds
+        settled = active
+        while settled and self.monotonic() < deadline:
+            settled = bool(
+                not self.stop_requested()
+                and binding is not None
+                and _binding_problem(self.backend, binding) is None
+                and self.backend.foreground_window() == binding.window.hwnd
+                and self.backend.qte_input_guard_active()
+            )
+            if not settled:
+                break
+            remaining = max(0.0, deadline - self.monotonic())
+            if remaining:
+                self.sleeper(min(self.poll_interval_seconds, remaining))
+        settled = bool(
+            settled
+            and not self.stop_requested()
+            and binding is not None
+            and _binding_problem(self.backend, binding) is None
+            and self.backend.foreground_window() == binding.window.hwnd
+            and self.backend.qte_input_guard_active()
+        )
+        self.event_sink(
+            "foreground_qte_post_mouse_action_settle_finished",
+            {
+                "actionIdentity": identity,
+                "reason": reason,
+                "configuredSeconds": seconds,
+                "elapsedSeconds": max(0.0, self.monotonic() - started),
+                "accepted": settled,
+                "guardActive": self.backend.qte_input_guard_active(),
+            },
+        )
+        return settled
 
     def retain_mouse_for_keyboard_phase(
         self,

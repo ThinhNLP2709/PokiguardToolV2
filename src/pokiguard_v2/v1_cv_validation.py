@@ -52,7 +52,7 @@ class V1CvValidator:
             step_x=float(config.get("board_step_x", 0.0393)),
             step_y=float(config.get("board_step_y", 0.0787)),
         )
-        self.window_title = str(config.get("window_title", "PokiguardOnlines"))
+        self.window_title = str(config.get("window_title", "Pet Puzzle"))
         self._find_window = win32.find_window
         self._capture = win32.WindowCapture()
         self._analyzer = vision.VisionAnalyzer(

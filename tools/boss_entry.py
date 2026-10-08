@@ -102,7 +102,8 @@ from pokiguard_v2.opening_snapshot import (  # noqa: E402
     JVALUE_TYPE_INFO_RVA,
     NewtonsoftClasses,
     OpeningBoardSnapshot,
-    is_transport_board_source,
+    is_ack_attested_current_board_source,
+    is_pristine_native_opening_board_source,
     read_match_payload_board_snapshot,
     read_match_start_opening_snapshot,
 )
@@ -192,9 +193,7 @@ def _entry_opening_timeout_recovery_required(
         and current.get("localMoveSequence") == 0
         and int(current.get("srvSeq") or 0) > 0
         and bool(current.get("boardHash"))
-        and is_transport_board_source(
-            current.get("boardSource"), event_type="MATCH_MOVE_RES"
-        )
+        and is_ack_attested_current_board_source(current.get("boardSource"))
         and entry_clicks in {1, 2}
         and gameplay_inputs == 0
     )
@@ -377,7 +376,7 @@ def _send_one_entry_retry(
                 executor=runtime.executor,
                 binding=runtime.binding,
                 button_address=ready.resolution.candidate.entry_control_address,
-                require_foreground=True,
+                require_foreground=False,
             )
         except RuntimeError:
             return False
@@ -440,7 +439,7 @@ def _send_one_entry_retry(
             action_identity=f"BOSS_START_RETRY:{ready.attempt.digest()}",
             action=send_retry_once,
             preflight=lambda: runtime.provider.current_session_key is None,
-            post_focus_preflight=final_retry_preflight,
+            final_pre_takeover_preflight=final_retry_preflight,
             expected_cursor_after=session.expected_cursor_for_normalized_point(
                 second_location.normalized_point
             ),
@@ -693,6 +692,46 @@ def _capture_proof(
     return capture, location, signature
 
 
+def _capture_proof_with_retry(
+    *,
+    target: Any,
+    executor: ForegroundClickExecutor,
+    binding: Any,
+    button_address: int | None,
+    require_foreground: bool,
+    attempts: int = 3,
+    delay_seconds: float = 0.05,
+) -> tuple[ClientRgbCapture, Any, str]:
+    """Retry a transient Unity geometry sample without sending input.
+
+    The Button/RectTransform graph can legitimately move for one sample just
+    after the result screen returns to the same boss room.  NativeCardUiReader
+    reports that race as a validation failure so callers never consume mixed
+    geometry.  Entry may reread the complete proof a few times; exhaustion is
+    still a zero-input preflight rejection.
+    """
+
+    if attempts < 1:
+        raise ValueError("capture proof attempts must be positive")
+    last_error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            return _capture_proof(
+                target=target,
+                executor=executor,
+                binding=binding,
+                button_address=button_address,
+                require_foreground=require_foreground,
+            )
+        except RuntimeError as exc:
+            last_error = exc
+            if attempt + 1 < attempts:
+                time.sleep(max(0.0, delay_seconds))
+    if last_error is None:  # pragma: no cover - guarded by attempts >= 1
+        raise AssertionError("capture proof retry ended without a result")
+    raise last_error
+
+
 def _pinned_mouse_active(runtime: SharedEntryRuntime) -> bool:
     session = runtime.pinned_input_session
     return bool(session is not None and getattr(session, "active", False))
@@ -724,9 +763,9 @@ def _entry_input_rejection_stop_reason(
     click: Any,
     entry_lease_error: str | None,
     entry_lease_result: Any,
-    post_focus_preflight_stop_reason: str | None,
+    final_pre_takeover_preflight_stop_reason: str | None,
 ) -> str:
-    """Preserve a proven zero-input post-focus preflight rejection.
+    """Preserve a proven zero-input final pre-takeover rejection.
 
     The pinned lease deliberately collapses every rejected callback to
     ``STALE_ACTION``.  Boss entry still needs the callback's narrower reason
@@ -742,12 +781,12 @@ def _entry_input_rejection_stop_reason(
     if entry_lease_error is not None:
         return "PINNED_ENTRY_LEASE_REJECTED"
     if (
-        post_focus_preflight_stop_reason is not None
+        final_pre_takeover_preflight_stop_reason is not None
         and entry_lease_result is not None
         and entry_lease_result.status is LeaseStatus.STALE_ACTION
         and not bool(getattr(entry_lease_result, "action_attempted", False))
     ):
-        return post_focus_preflight_stop_reason
+        return final_pre_takeover_preflight_stop_reason
     return "FARM_ENTRY_CAPABILITY_DENIED"
 
 
@@ -1142,7 +1181,7 @@ def _ensure_required_attack_card(
             action_identity=attack_card_action_identity,
             action=send_attack_card_once,
             preflight=lambda: provider.current_session_key is None,
-            post_focus_preflight=final_attack_card_preflight,
+            final_pre_takeover_preflight=final_attack_card_preflight,
             expected_cursor_after=session.expected_cursor_for_normalized_point(
                 second_location.normalized_point
             ),
@@ -1735,12 +1774,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         # take several seconds; paying that cost after clicking can miss
         # MATCH_START and therefore the mandatory first local turn.
         #
-        # In pinned mode this work must run *inside* the entry mouse lease.
-        # Otherwise the game is pinned but the user's mouse remains free for
-        # the entire cold scan, allowing the exact game geometry to move before
-        # the Start click is armed. The lease's post-focus preflight already
-        # runs after exclusive mouse ownership, so it is the correct bounded
-        # place to prime and then reread the exact room/button.
+        # This is read-only preparation, not part of the Phase 4 input lease.
+        # Keep it outside the mouse/keyboard guard so pinned mode preserves the
+        # Phase 3 ordering: finish transport preparation and resolve the exact
+        # button first, then acquire focus/input authority only for the final
+        # bounded click. The later exact-window and room/button preflight still
+        # rejects any geometry or runtime change before input is sent.
         transport_prime = None
 
         def ensure_entry_transport_ready(*, guarded_by_entry_lease: bool) -> bool:
@@ -1766,14 +1805,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             )
             return True
 
-        if _pinned_mouse_active(runtime):
-            _write(
-                log,
-                "entry_transport_regions_deferred",
-                timing="post_focus_preflight",
-                exclusiveMouseRequired=True,
-            )
-        elif not ensure_entry_transport_ready(guarded_by_entry_lease=False):
+        if not ensure_entry_transport_ready(guarded_by_entry_lease=False):
             result.update(status="STOPPED", stopReason="F9_EMERGENCY_STOP")
             _write(log, "entry_stopped", reason=result["stopReason"])
             _beep("stop", beep_enabled)
@@ -1838,13 +1870,36 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             current_loadout.cards,
             sources_agree=current_loadout.sources_agree,
         )
-        capture, location, signature = _capture_proof(
-            target=target,
-            executor=executor,
-            binding=binding,
-            button_address=ready.resolution.candidate.entry_control_address,
-            require_foreground=_proof_requires_foreground(runtime),
-        )
+        try:
+            capture, location, signature = _capture_proof_with_retry(
+                target=target,
+                executor=executor,
+                binding=binding,
+                button_address=ready.resolution.candidate.entry_control_address,
+                require_foreground=_proof_requires_foreground(runtime),
+            )
+        except RuntimeError as exc:
+            # This is a zero-input preflight failure.  Surface the existing
+            # reroutable reason instead of escaping BossEntry and collapsing
+            # the entire long farm into FARM_RUN_INTERNAL_INVARIANT.
+            result.update(
+                status="STOPPED",
+                stopReason="ENTRY_PREFLIGHT_BUTTON_CHANGED",
+            )
+            _write(
+                log,
+                "entry_preflight_button_unstable",
+                reason=str(exc),
+                proofAttempts=3,
+                entryInputSent=False,
+            )
+            _write(log, "entry_stopped", reason=result["stopReason"])
+            _beep("stop", beep_enabled)
+            summary_path.write_text(
+                json.dumps(_jsonable(result), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            return 2
         if signature != ready.signature:
             result.update(status="STOPPED", stopReason="ENTRY_PREFLIGHT_BUTTON_CHANGED")
             _write(log, "entry_stopped", reason=result["stopReason"])
@@ -1879,13 +1934,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         click = None
         entry_lease_result = None
         entry_lease_error: str | None = None
-        post_focus_preflight_stop_reason: str | None = None
+        final_pre_takeover_preflight_stop_reason: str | None = None
 
         def final_entry_lease_preflight() -> bool:
-            nonlocal post_focus_preflight_stop_reason
-            post_focus_preflight_stop_reason = None
-            if not ensure_entry_transport_ready(guarded_by_entry_lease=True):
-                post_focus_preflight_stop_reason = (
+            nonlocal final_pre_takeover_preflight_stop_reason
+            final_pre_takeover_preflight_stop_reason = None
+            # Transport priming must already be complete before Phase 4 takes
+            # physical input ownership. This call is therefore a constant-time
+            # assertion over the cached result, never a heap scan.
+            if not ensure_entry_transport_ready(guarded_by_entry_lease=False):
+                final_pre_takeover_preflight_stop_reason = (
                     "F9_EMERGENCY_STOP"
                     if _entry_emergency_requested(runtime, False)
                     else "ENTRY_PREFLIGHT_TRANSPORT_UNAVAILABLE"
@@ -1893,7 +1951,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 return False
             fresh_poll = provider.poll()
             if fresh_poll.combat_lifecycle is None:
-                post_focus_preflight_stop_reason = (
+                final_pre_takeover_preflight_stop_reason = (
                     "ENTRY_PREFLIGHT_RUNTIME_UNAVAILABLE"
                 )
                 return False
@@ -1904,7 +1962,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             if not _entry_preflight_runtime_valid(
                 fresh_lobby, fresh_resolution, ready
             ):
-                post_focus_preflight_stop_reason = (
+                final_pre_takeover_preflight_stop_reason = (
                     "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
                 )
                 return False
@@ -1914,10 +1972,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     executor=executor,
                     binding=binding,
                     button_address=ready.resolution.candidate.entry_control_address,
-                    require_foreground=True,
+                    require_foreground=False,
                 )
             except RuntimeError:
-                post_focus_preflight_stop_reason = (
+                final_pre_takeover_preflight_stop_reason = (
                     "ENTRY_PREFLIGHT_BUTTON_CHANGED"
                 )
                 return False
@@ -1927,7 +1985,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 and provider.current_session_key is None
             )
             if not valid:
-                post_focus_preflight_stop_reason = (
+                final_pre_takeover_preflight_stop_reason = (
                     "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
                     if provider.current_session_key is not None
                     else "ENTRY_PREFLIGHT_BUTTON_CHANGED"
@@ -1991,7 +2049,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     action_identity=f"BOSS_START:{ready.attempt.digest()}",
                     action=send_entry_once,
                     preflight=lambda: provider.current_session_key is None,
-                    post_focus_preflight=final_entry_lease_preflight,
+                    final_pre_takeover_preflight=final_entry_lease_preflight,
                     expected_cursor_after=(
                         session.expected_cursor_for_normalized_point(
                             location.normalized_point
@@ -2035,8 +2093,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     click=click,
                     entry_lease_error=entry_lease_error,
                     entry_lease_result=entry_lease_result,
-                    post_focus_preflight_stop_reason=(
-                        post_focus_preflight_stop_reason
+                    final_pre_takeover_preflight_stop_reason=(
+                        final_pre_takeover_preflight_stop_reason
                     ),
                 ),
             )
@@ -2046,7 +2104,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 reason=result["stopReason"],
                 leaseError=entry_lease_error,
                 postFocusPreflightReason=(
-                    post_focus_preflight_stop_reason
+                    final_pre_takeover_preflight_stop_reason
                 ),
                 actionAttempted=(
                     getattr(entry_lease_result, "action_attempted", None)
@@ -2121,6 +2179,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         dispatcher_armed_match_id: str | None = None
         opening_offer_pending_confirmation = False
         opening_confirmation_skip_logged = False
+        opening_native_fast_path_logged = False
         last_provider_status = None
         latest_current_board_evidence: dict[str, Any] | None = None
 
@@ -2299,9 +2358,60 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     )
 
             monitor_session = active_session or pre_session
+            published_native_opening = bool(
+                poll.publish
+                and poll.state is not None
+                and poll.reason in {
+                    "stable_ack_attested_dto",
+                    "stable_native_opening_board",
+                }
+                and poll.state.battle.is_first_local_turn is True
+                and poll.state.battle.local_move_sequence == 0
+                and any(
+                    is_ack_attested_current_board_source(source)
+                    or is_pristine_native_opening_board_source(source)
+                    for source in poll.state.battle.sources
+                )
+            )
+            provider_diagnostics = provider.scan_diagnostics
+            pristine_opening_transport_deferred = bool(
+                active_session is not None
+                and poll.session_key == active_session
+                and (
+                    poll.reason == "awaiting_match_start_opening_dto"
+                    or (
+                        poll.reason == "awaiting_stability_confirmation"
+                        and int(
+                            provider_diagnostics.get(
+                                "nativeDotBoardsAccepted", 0
+                            )
+                            or 0
+                        )
+                        > 0
+                        and provider_diagnostics.get("lastAcceptedSeq") is None
+                    )
+                )
+            )
+            if (
+                pristine_opening_transport_deferred
+                and not opening_native_fast_path_logged
+            ):
+                opening_native_fast_path_logged = True
+                _write(
+                    log,
+                    "entry_opening_native_fast_path",
+                    session=active_session,
+                    providerReason=poll.reason,
+                    transportScanDeferred=True,
+                    nativeDotBoardsAccepted=provider_diagnostics.get(
+                        "nativeDotBoardsAccepted", 0
+                    ),
+                )
             if (
                 monitor_session is not None
                 and new_match_id is not None
+                and not published_native_opening
+                and not pristine_opening_transport_deferred
                 and not (
                     active_session is not None
                     and opening_offer_pending_confirmation
@@ -2319,6 +2429,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     allow_gap_full_escalation=False,
                     allow_full_scan=False,
                     max_scan_bytes=ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES,
+                    prefer_chat_message_regions=True,
                 )
                 for message in _retryable_board_messages(
                     observation, offered_messages
@@ -2504,6 +2615,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                         max_scan_bytes=(
                             ACTIVE_COMBAT_TRANSPORT_SCAN_BUDGET_BYTES
                         ),
+                        prefer_chat_message_regions=True,
                     )
                     _write(
                         log,
@@ -2593,13 +2705,24 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 )
 
             if poll.publish and poll.state is not None:
+                current_cells = tuple(
+                    cell for row in poll.state.board.cells for cell in row
+                )
+                current_unique_coordinates = len(
+                    {(cell.row, cell.col) for cell in current_cells}
+                )
+                current_gem_types_valid = all(
+                    cell.gem is not GemType.UNKNOWN for cell in current_cells
+                )
+                current_multipliers_valid = all(
+                    cell.multiplier in EVIDENCED_MULTIPLIERS
+                    for cell in current_cells
+                )
                 board_source = next(
                     (
                         source
                         for source in poll.state.battle.sources
-                        if is_transport_board_source(
-                            source, event_type="MATCH_MOVE_RES"
-                        )
+                        if is_ack_attested_current_board_source(source)
                     ),
                     None,
                 )
@@ -2612,6 +2735,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     "srvSeq": poll.state.battle.srv_seq,
                     "boardHash": poll.state.battle.board_hash,
                     "boardSource": board_source,
+                    "isLocalTurn": poll.state.battle.is_local_turn,
+                    "completeCells": len(current_cells),
+                    "uniqueCoordinates": current_unique_coordinates,
+                    "stableConfirmations": poll.confirmations,
+                    "productionReady": poll.state.board.production_ready,
+                    "gemTypesValid": current_gem_types_valid,
+                    "multipliersValid": current_multipliers_valid,
                 }
                 _write(
                     log,
@@ -2658,12 +2788,29 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
 
             if (
                 poll.publish
-                and poll.reason == "stable_match_start_opening_dto"
+                and poll.reason in {
+                    "stable_match_start_opening_dto",
+                    "stable_native_opening_board",
+                    "stable_ack_attested_dto",
+                }
                 and poll.state is not None
                 and active_session is not None
             ):
                 game_state = poll.state
-                source_ok = "ChatMessageDTO.MATCH_START.matchPayload.board" in game_state.battle.sources
+                match_start_source_ok = (
+                    "ChatMessageDTO.MATCH_START.matchPayload.board"
+                    in game_state.battle.sources
+                )
+                native_source = next(
+                    (
+                        source
+                        for source in game_state.battle.sources
+                        if is_ack_attested_current_board_source(source)
+                        or is_pristine_native_opening_board_source(source)
+                    ),
+                    None,
+                )
+                source_ok = bool(match_start_source_ok or native_source)
                 cells = tuple(cell for row in game_state.board.cells for cell in row)
                 unique_coordinates = len({(cell.row, cell.col) for cell in cells})
                 gem_types_valid = all(cell.gem is not GemType.UNKNOWN for cell in cells)
@@ -2728,11 +2875,15 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     openingUniqueCoordinates=unique_coordinates,
                     openingGemTypesValid=gem_types_valid,
                     openingMultipliersValid=multipliers_valid,
-                    openingFreshDto=source_ok,
+                    openingFreshDto=match_start_source_ok,
                     firstLocalTurn=True,
                     localMoveSequence=game_state.battle.local_move_sequence,
                     stableConfirmations=poll.confirmations,
-                    openingSource="ChatMessageDTO.MATCH_START.matchPayload.board",
+                    openingSource=(
+                        "ChatMessageDTO.MATCH_START.matchPayload.board"
+                        if match_start_source_ok
+                        else native_source
+                    ),
                     openingProductionReady=game_state.board.production_ready,
                     turnTimeRemainingSeconds=(
                         game_state.battle.turn_time_remaining_seconds

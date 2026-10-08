@@ -25,6 +25,7 @@ from .basic_policy import (
 from .board_simulator import MoveEvaluation, evaluate_all_moves
 from .combat_lifecycle import CombatLifecycleState
 from .live_state import runtime_row_to_screen_row, screen_row_to_runtime_row
+from .opening_snapshot import PRISTINE_NATIVE_OPENING_BOARD_SOURCE
 from .pet_skill_shadow import PetSkillCapability
 from .state import (
     BattleState,
@@ -230,7 +231,10 @@ def _safe_resource_counts(
 def _dead_board_gate(state: GameState, legal_count: int) -> bool | None:
     battle = state.battle
     opening_authoritative = bool(
-        "ChatMessageDTO.MATCH_START.matchPayload.board" in battle.sources
+        (
+            "ChatMessageDTO.MATCH_START.matchPayload.board" in battle.sources
+            or PRISTINE_NATIVE_OPENING_BOARD_SOURCE in battle.sources
+        )
         and battle.local_move_sequence == 0
         and battle.last_move_sequence in (None, -1, 0)
         and battle.turn_number in (0, 1)

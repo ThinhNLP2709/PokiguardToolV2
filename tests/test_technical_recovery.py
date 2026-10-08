@@ -18,6 +18,7 @@ for import_path in (str(ROOT), str(SRC_ROOT)):
 
 from pokiguard_v2.board_diagnostics import analyze_game_state, diagnostic_board_hash
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
+from pokiguard_v2.opening_snapshot import PRISTINE_NATIVE_OPENING_BOARD_SOURCE
 from pokiguard_v2.sequence_desync import SequenceDesyncSource, SequenceDesyncState
 from pokiguard_v2.state import (
     BattleState,
@@ -197,6 +198,80 @@ class RecoveredHandoffGuardTests(unittest.TestCase):
         self.assertEqual(evidence["polls"], 3)
         self.assertEqual(evidence["cleanStateSamples"], 2)
         self.assertIsNone(evidence["highestAckedSequence"])
+
+    def test_guard_keeps_valid_entry_when_timer_drops_during_ack_guard(self) -> None:
+        opening = self.opening_state()
+        state = replace(
+            opening,
+            battle=replace(opening.battle, turn_time_remaining_seconds=2),
+        )
+
+        class Provider:
+            current_session_key = self.session
+            metrics = SimpleNamespace(highest_acked_sequence=None)
+            scan_diagnostics = {"effectiveAckedSequence": None}
+
+            @staticmethod
+            def poll():
+                return SimpleNamespace(state=state, reason="duplicate_state")
+
+        ticks = iter((0.0, 0.1, 0.2, 0.3))
+        with (
+            mock.patch(
+                "tools.technical_recovery.time.monotonic",
+                side_effect=lambda: next(ticks),
+            ),
+            mock.patch("tools.technical_recovery.time.sleep"),
+        ):
+            accepted, evidence = _guard_recovered_handoff(
+                Provider(),
+                self.session,
+                interval=0.02,
+                duration=0.3,
+                opening_timer_safe=True,
+            )
+
+        self.assertTrue(accepted, evidence)
+        self.assertTrue(evidence["openingTimerSafeAtEntry"])
+        self.assertFalse(evidence["timerSafeAtGuardEnd"])
+        self.assertTrue(evidence["waitForNextLocalTurn"])
+
+    def test_guard_rejects_low_timer_without_actionable_entry_proof(self) -> None:
+        opening = self.opening_state()
+        state = replace(
+            opening,
+            battle=replace(opening.battle, turn_time_remaining_seconds=2),
+        )
+
+        class Provider:
+            current_session_key = self.session
+            metrics = SimpleNamespace(highest_acked_sequence=None)
+            scan_diagnostics = {"effectiveAckedSequence": None}
+
+            @staticmethod
+            def poll():
+                return SimpleNamespace(state=state, reason="duplicate_state")
+
+        ticks = iter((0.0, 0.1, 0.2, 0.3))
+        with (
+            mock.patch(
+                "tools.technical_recovery.time.monotonic",
+                side_effect=lambda: next(ticks),
+            ),
+            mock.patch("tools.technical_recovery.time.sleep"),
+        ):
+            accepted, evidence = _guard_recovered_handoff(
+                Provider(),
+                self.session,
+                interval=0.02,
+                duration=0.3,
+            )
+
+        self.assertFalse(accepted)
+        self.assertEqual(
+            evidence["reason"], "RECOVERY_HANDOFF_NOT_STABLY_ACTIONABLE"
+        )
+        self.assertFalse(evidence["waitForNextLocalTurn"])
 
     def test_guard_persistent_dirty_ack_waits_bounded_window_then_rejects(self) -> None:
         state = self.opening_state()
@@ -441,6 +516,65 @@ def active_state(
     )
 
 
+class UnconfirmedSwapRecoveryTests(unittest.TestCase):
+    def test_exact_sent_swap_timeout_arms_recovery(self) -> None:
+        session = CombatSessionKey(24, 0x20000024000, "match-swap-timeout")
+        state = active_state(session=session)
+        coordinator = TechnicalRecoveryCoordinator()
+
+        accepted = TechnicalRecoveryDispatcher(
+            coordinator
+        ).dispatch_unconfirmed_swap_delivery(
+            state,
+            session_key=session,
+            match_id=session.match_id,
+            source_turn=state.battle.turn_number,
+            source_srv_seq=state.battle.srv_seq,
+            source_board_hash=state.battle.board_hash,
+            local_move_sequence_before=8,
+            current_turn=state.battle.turn_number,
+            current_local_move_sequence=8,
+            input_was_sent=True,
+            response_or_ack_timeout=True,
+            timeout_reason="INSUFFICIENT_SAFE_TURN_TIME",
+        )
+
+        self.assertTrue(accepted)
+        self.assertEqual(
+            coordinator.trigger.reason.value,  # type: ignore[union-attr]
+            "UNCONFIRMED_SWAP_DELIVERY",
+        )
+        self.assertEqual(
+            coordinator.trigger.source.value,  # type: ignore[union-attr]
+            "PRODUCTION_UNCONFIRMED_SWAP_DELIVERY",
+        )
+
+    def test_advanced_local_sequence_rejects_unconfirmed_swap_recovery(self) -> None:
+        session = CombatSessionKey(24, 0x20000024000, "match-swap-accepted")
+        state = active_state(session=session)
+        coordinator = TechnicalRecoveryCoordinator()
+
+        accepted = TechnicalRecoveryDispatcher(
+            coordinator
+        ).dispatch_unconfirmed_swap_delivery(
+            state,
+            session_key=session,
+            match_id=session.match_id,
+            source_turn=state.battle.turn_number,
+            source_srv_seq=state.battle.srv_seq,
+            source_board_hash=state.battle.board_hash,
+            local_move_sequence_before=8,
+            current_turn=state.battle.turn_number + 1,
+            current_local_move_sequence=9,
+            input_was_sent=True,
+            response_or_ack_timeout=True,
+            timeout_reason="RESPONSE_DEADLINE_EXPIRED",
+        )
+
+        self.assertFalse(accepted)
+        self.assertEqual(coordinator.state, TechnicalRecoveryState.IDLE)
+
+
 class ActiveCombatProgressWatchdogTests(unittest.TestCase):
     def setUp(self) -> None:
         self.session = CombatSessionKey(23, 0x1F4335C7540, "M_ef4e8a78")
@@ -607,6 +741,14 @@ class LiveRecoveryPreflightTests(unittest.TestCase):
         )
         self.assertTrue(accepted_b2)
 
+        accepted_live_b6, _ = dispatch(
+            board_source=(
+                "Board.allDots->GameObject.components->Dot.PoolTag+"
+                "MatchService._ackedSeqs"
+            )
+        )
+        self.assertTrue(accepted_live_b6)
+
         for changes in (
             {"provider_session": CombatSessionKey(15, 0x22220008, "M_other")},
             {"match_id": "M_other"},
@@ -621,6 +763,11 @@ class LiveRecoveryPreflightTests(unittest.TestCase):
             {
                 "board_source": (
                     "ChatMessageDTO.MATCH_START.matchPayload.board"
+                )
+            },
+            {
+                "board_source": (
+                    "Board.allDots->GameObject.components->Dot.PoolTag"
                 )
             },
         ):
@@ -856,6 +1003,65 @@ class LiveRecoveryPreflightTests(unittest.TestCase):
                     rejected_coordinator.state,
                     TechnicalRecoveryState.IDLE,
                 )
+
+    def test_pristine_native_first_turn_deadline_arms_exit_recovery(self) -> None:
+        session = CombatSessionKey(15, 0x28863B16000, "M_44764ffe")
+        base = active_state(session=session)
+        opening = replace(
+            base,
+            battle=replace(
+                base.battle,
+                srv_seq=0,
+                turn_number=1,
+                sources=(PRISTINE_NATIVE_OPENING_BOARD_SOURCE,),
+                acknowledged=False,
+                local_move_sequence=0,
+                last_move_sequence=None,
+                board_current_state=1,
+                board_has_destroyed_this_turn=False,
+                board_is_processing_ui=False,
+                board_is_game_over=False,
+                board_modal_open=False,
+                board_is_resuming=False,
+                match_over=False,
+                deferred_game_over=False,
+                start_gate_paused=False,
+                clock_paused=False,
+                connection_ready=True,
+                reconnecting=False,
+                match_resyncing=False,
+                presentation_busy=False,
+                local_username="happi",
+            ),
+        )
+        coordinator = TechnicalRecoveryCoordinator()
+
+        accepted = TechnicalRecoveryDispatcher(
+            coordinator
+        ).dispatch_controller_stalled_active_combat(
+            opening,
+            session_key=session,
+            match_id=session.match_id,
+            turn=1,
+            remaining_seconds=0,
+            warning_seconds=1,
+            game_foreground=True,
+            window_valid=True,
+            controller_running=True,
+            pending_action=False,
+            consuming_action_sent=False,
+            authoritative_pass_wait_active=False,
+            evolve_wait_active=False,
+            sequence_desync=None,
+        )
+
+        self.assertTrue(accepted)
+        self.assertTrue(coordinator.recovery_pending)
+        self.assertTrue(coordinator.gameplay_locked)
+        self.assertEqual(
+            coordinator.trigger.reason.value,  # type: ignore[union-attr]
+            "CONTROLLER_STALLED_ACTIVE_COMBAT",
+        )
 
     def test_active_combat_progress_stall_dispatches_on_either_turn_owner(self) -> None:
         session = CombatSessionKey(23, 0x1F4335C7540, "M_ef4e8a78")

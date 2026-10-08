@@ -772,5 +772,27 @@ def evaluate_all_moves(board: BoardState) -> tuple[MoveEvaluation, ...]:
     return tuple(values)
 
 
+def resolve_known_swap_result(
+    source: SimulatedBoard,
+    move: SwapMove,
+) -> SimulatedBoard | None:
+    """Resolve one known swap on an already simulated board.
+
+    This is intentionally refill-agnostic: UNKNOWN cells never match and no
+    off-board gem is invented.  Policy code uses it to measure how much of a
+    known setup survives each deterministic opponent reply.
+    """
+
+    grid = [
+        [_CellValue(cell.gem, cell.multiplier) for cell in row]
+        for row in source
+    ]
+    resolved = _resolve_known_reply(grid, move)
+    if resolved is None:
+        return None
+    _direct, _cascade, _rounds, result = resolved
+    return _freeze(result)
+
+
 def board_sword_danger_regions(board: BoardState) -> tuple[SwordDangerRegion, ...]:
     return _danger_regions(_copy_grid(board))

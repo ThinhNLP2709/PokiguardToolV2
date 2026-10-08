@@ -55,9 +55,17 @@ class LayoutValidationError(ExternalReadError):
 def _read_exact(memory: MemoryReader, address: int, size: int) -> bytes:
     if not is_canonical_user_pointer(address) or size <= 0:
         raise LayoutValidationError("invalid read range")
-    if not memory.is_readable(address, size):
+    if (
+        not getattr(memory, "read_validates_range", False)
+        and not memory.is_readable(address, size)
+    ):
         raise LayoutValidationError(f"unreadable range 0x{address:X}+0x{size:X}")
-    raw = memory.read(address, size)
+    try:
+        raw = memory.read(address, size)
+    except (KeyError, OSError, ValueError) as exc:
+        raise LayoutValidationError(
+            f"unreadable range 0x{address:X}+0x{size:X}"
+        ) from exc
     if len(raw) != size:
         raise LayoutValidationError(f"short read at 0x{address:X}")
     return raw
@@ -119,10 +127,13 @@ def observe_rectangular_reference_array(
     reasons: list[str] = []
     bounds: ArrayBoundsObservation | None = None
 
-    if not is_canonical_user_pointer(class_pointer) or not memory.is_readable(
-        class_pointer, 8
-    ):
+    if not is_canonical_user_pointer(class_pointer):
         reasons.append("array class pointer is invalid")
+    else:
+        try:
+            _read_exact(memory, class_pointer, 8)
+        except ExternalReadError:
+            reasons.append("array class pointer is invalid")
     if bounds_pointer == 0:
         reasons.append("rectangular array bounds pointer is null")
     elif not is_canonical_user_pointer(bounds_pointer):
@@ -225,10 +236,9 @@ def read_il2cpp_string(
     header = _read_exact(memory, pointer, IL2CPP_STRING_DATA_OFFSET)
     class_pointer = struct.unpack_from("<Q", header, 0)[0]
     length = struct.unpack_from("<i", header, IL2CPP_STRING_LENGTH_OFFSET)[0]
-    if not is_canonical_user_pointer(class_pointer) or not memory.is_readable(
-        class_pointer, 8
-    ):
+    if not is_canonical_user_pointer(class_pointer):
         raise LayoutValidationError("string class pointer is invalid")
+    _read_exact(memory, class_pointer, 8)
     if length < 0 or length > max_length:
         raise LayoutValidationError(
             f"string length {length} is outside allowed range 0..{max_length}"

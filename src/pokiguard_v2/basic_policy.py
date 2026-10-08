@@ -11,10 +11,12 @@ from enum import Enum
 
 from .board_simulator import (
     MoveEvaluation,
+    SimulatedBoard,
     SwapMove,
     SwordHoldEvaluation,
     evaluate_all_moves,
     evaluate_sword_hold,
+    resolve_known_swap_result,
 )
 from .demon_aegis import (
     DemonAegisMoveEvaluation,
@@ -26,6 +28,7 @@ from .gameplay_profile import (
     MainPetType,
     PetSkillFireCondition,
 )
+from .mega_icarus import MEGA_ICARUS_SEAL_CELLS, seal_condition_count
 from .pet_skill_shadow import (
     PetSkillCapability,
     PetSkillCapabilityStatus,
@@ -62,6 +65,7 @@ class PlayStyle(str, Enum):
     CAREFUL = "careful"
     SKILL_RUSH = "skill_rush"
     DEMON_AEGIS_FARM = "demon_aegis_farm"
+    MEGA_ICARUS_SPAM_SKILL = "mega_icarus_spam_skill"
 
 
 class ManaPriority(str, Enum):
@@ -86,6 +90,7 @@ class PolicyAction(str, Enum):
 
 class SkillRushFireTrigger(str, Enum):
     CONDITION_READY = "SKILL_RUSH_FIRE_CONDITION_READY"
+    MEGA_ICARUS_SURVIVAL_HEAL = "MEGA_ICARUS_SURVIVAL_HEAL"
 
 
 class SkillRushSetupFallbackType(str, Enum):
@@ -225,6 +230,25 @@ class PolicyConfig:
 
     @property
     def pet_skill_profile(self) -> bool:
+        if self.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+            skill_sources = int(self.main_pet is MainPetType.MEGA) + int(
+                self.evolution is EvolutionTarget.MEGA
+            )
+            return bool(
+                self.damage_card is DamageCardMode.PET_SKILL
+                and skill_sources == 1
+                and (
+                    (
+                        self.main_pet is MainPetType.MEGA
+                        and self.evolution
+                        in {EvolutionTarget.NONE, EvolutionTarget.NORMAL}
+                    )
+                    or (
+                        self.main_pet is MainPetType.NORMAL
+                        and self.evolution is EvolutionTarget.MEGA
+                    )
+                )
+            )
         skill_sources = int(self.main_pet is MainPetType.LEGENDARY) + int(
             self.evolution is EvolutionTarget.LEGENDARY
         )
@@ -235,6 +259,12 @@ class PolicyConfig:
 
     @property
     def pet_skill_waits_for_evolution(self) -> bool:
+        if self.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+            return bool(
+                self.damage_card is DamageCardMode.PET_SKILL
+                and self.main_pet is MainPetType.NORMAL
+                and self.evolution is EvolutionTarget.MEGA
+            )
         return bool(
             self.damage_card is DamageCardMode.PET_SKILL
             and self.main_pet is not MainPetType.LEGENDARY
@@ -346,6 +376,8 @@ class DecisionTrace:
     selected_known_gem_count: int | None
     selected_known_gem_effective_count: int | None
     selected_fire_condition_ready: bool | None
+    fire_condition_scope: str
+    skill_source: str | None
     # Backward-compatible derived Sword diagnostics for historical readers.
     configured_sword_threshold: int | None
     sword_threshold_ready: bool | None
@@ -405,6 +437,8 @@ class SkillRushPolicyContext:
     selected_known_gem_count: int | None = None
     selected_known_gem_effective_count: int | None = None
     selected_fire_condition_ready: bool | None = None
+    fire_condition_scope: str = "FULL_BOARD"
+    skill_source: str | None = None
     configured_sword_threshold: int | None = None
     sword_threshold_ready: bool | None = None
     fire_trigger: SkillRushFireTrigger | None = None
@@ -487,6 +521,126 @@ def _known_result_gem_effective_count(
         for cell in row
         if cell.gem is gem_type
     )
+
+
+def _known_result_seal_gem_counts(
+    value: MoveEvaluation,
+    gem_type: GemType,
+) -> tuple[int, int]:
+    """Return physical/effective known result values inside Icarus' seal."""
+
+    matched = tuple(
+        value.result[row][col]
+        for row, col in MEGA_ICARUS_SEAL_CELLS
+        if value.result[row][col].gem is gem_type
+    )
+    return len(matched), sum(cell.multiplier or 1 for cell in matched)
+
+
+def _simulated_seal_gem_counts(
+    board: SimulatedBoard,
+    gem_type: GemType,
+) -> tuple[int, int]:
+    matched = tuple(
+        board[row][col]
+        for row, col in MEGA_ICARUS_SEAL_CELLS
+        if board[row][col].gem is gem_type
+    )
+    return len(matched), sum(cell.multiplier or 1 for cell in matched)
+
+
+def _mega_icarus_durable_seal_effective(
+    value: MoveEvaluation,
+    gem_type: GemType,
+) -> int:
+    """Known seal value surviving the worst deterministic boss Sword reply."""
+
+    _physical, after = _known_result_seal_gem_counts(value, gem_type)
+    concrete_replies_match_summary = bool(
+        len(value.sword_replies) == value.sword_risk.opponent_sword_replies
+        and max(
+            (reply.sword_effective for reply in value.sword_replies),
+            default=0,
+        )
+        == value.sword_risk.opponent_sword_reply_effective_max
+    )
+    reply_results = (
+        tuple(
+            result
+            for reply in value.sword_replies
+            if (result := resolve_known_swap_result(value.result, reply.move))
+            is not None
+        )
+        if concrete_replies_match_summary
+        else ()
+    )
+    if reply_results:
+        return min(
+            _simulated_seal_gem_counts(result, gem_type)[1]
+            for result in reply_results
+        )
+
+    # Synthetic policy fixtures may provide a risk summary without concrete
+    # SwordReply objects. Keep those tests conservative instead of treating a
+    # declared reply as harmless. Production simulator output always carries
+    # the matching reply objects.
+    if value.sword_risk.opponent_sword_replies > 0:
+        return max(
+            0,
+            after - value.sword_risk.opponent_sword_reply_effective_max,
+        )
+    return after
+
+
+def _mega_icarus_pass_baseline(
+    board: BoardState,
+    evaluations: tuple[MoveEvaluation, ...],
+    gem_type: GemType,
+) -> tuple[int, int, int]:
+    """Return (seal floor, largest Sword take, Sword reply count) for PASS.
+
+    Passing hands the unchanged board to the boss. Every currently legal move
+    that consumes Sword is therefore a deterministic boss reply candidate.
+    """
+
+    current = sum(
+        board.cells[row][col].multiplier
+        for row, col in MEGA_ICARUS_SEAL_CELLS
+        if board.cells[row][col].gem is gem_type
+    )
+    sword_moves = tuple(value for value in evaluations if value.sword_effective > 0)
+    if not sword_moves:
+        return current, 0, 0
+    return (
+        min(
+            _known_result_seal_gem_counts(value, gem_type)[1]
+            for value in sword_moves
+        ),
+        max(value.sword_effective for value in sword_moves),
+        len(sword_moves),
+    )
+
+
+def _mega_icarus_seal_turnover(value: MoveEvaluation) -> tuple[int, int]:
+    """Count known seal cells refreshed or shifted by a setup move."""
+
+    cleared = {
+        cell
+        for round_cells in value.clear_rounds
+        for cell in round_cells
+    }
+    cleared_in_seal = len(cleared.intersection(MEGA_ICARUS_SEAL_CELLS))
+    max_clear_row_by_column: dict[int, int] = {}
+    for row, col in cleared:
+        max_clear_row_by_column[col] = max(
+            row,
+            max_clear_row_by_column.get(col, -1),
+        )
+    gravity_affected_seal = sum(
+        col in max_clear_row_by_column and row <= max_clear_row_by_column[col]
+        for row, col in MEGA_ICARUS_SEAL_CELLS
+    )
+    return gravity_affected_seal, cleared_in_seal
 
 
 def _skill_rush_board_metrics(
@@ -815,6 +969,8 @@ class BasicPolicyEngine:
             selected_fire_condition_ready=(
                 rush_trace.selected_fire_condition_ready
             ),
+            fire_condition_scope=rush_trace.fire_condition_scope,
+            skill_source=rush_trace.skill_source,
             configured_sword_threshold=rush_trace.configured_sword_threshold,
             sword_threshold_ready=rush_trace.sword_threshold_ready,
             skill_fire_trigger=(
@@ -1028,15 +1184,79 @@ class BasicPolicyEngine:
         value: MoveEvaluation,
         board: BoardState,
         fire_gem_type: GemType | None,
+        *,
+        seal_scoped: bool = False,
     ) -> tuple[object, ...]:
-        """Keep the configured count gem before applying ordinary setup ties."""
+        """Keep the configured count gem before applying ordinary setup ties.
 
-        return (
-            (
+        Skill Rush retains its multiplier-weighted full-board rank. Mega
+        Icarus also ranks multiplier-weighted value first, but only inside its
+        fixed seal; physical cells remain the deterministic second tie-break.
+        """
+
+        if fire_gem_type is not None and seal_scoped:
+            physical, effective = _known_result_seal_gem_counts(
+                value, fire_gem_type
+            )
+            gravity_affected, cleared_in_seal = _mega_icarus_seal_turnover(value)
+            condition_rank: tuple[object, ...] = (
+                -_mega_icarus_durable_seal_effective(value, fire_gem_type),
+                -effective,
+                -physical,
+                -gravity_affected,
+                -cleared_in_seal,
+            )
+        else:
+            condition_rank = (
                 -_known_result_gem_effective_count(value, fire_gem_type)
                 if fire_gem_type is not None
-                else 0
-            ),
+                else 0,
+            )
+
+        return (
+            *condition_rank,
+            *cls._skill_rush_setup_rank(value, board),
+        )
+
+    @classmethod
+    def _mega_icarus_unsafe_setup_rank(
+        cls,
+        value: MoveEvaluation,
+        board: BoardState,
+        fire_gem_type: GemType | None,
+    ) -> tuple[object, ...]:
+        """Limit boss Sword gain before ranking Icarus seal progress.
+
+        This rank is used only when no setup move can leave the boss without
+        a Sword reply. It prevents a high apparent seal count from winning
+        while gifting a larger immediate Sword match to the boss.
+        """
+
+        risk = value.sword_risk
+        physical, effective = (
+            _known_result_seal_gem_counts(value, fire_gem_type)
+            if fire_gem_type is not None
+            else (0, 0)
+        )
+        durable_effective = (
+            _mega_icarus_durable_seal_effective(value, fire_gem_type)
+            if fire_gem_type is not None
+            else 0
+        )
+        gravity_affected, cleared_in_seal = _mega_icarus_seal_turnover(value)
+        return (
+            -durable_effective,
+            risk.opponent_sword_reply_effective_max,
+            risk.indirect_sword_effective_max,
+            risk.opponent_sword_replies + risk.indirect_sword_replies,
+            value.unknown_exposure.refill_sword_auto_match_effective_max,
+            value.unknown_exposure.refill_sword_auto_match_completions,
+            risk.unknown_sword_effective_max,
+            risk.unknown_sword_completions,
+            -effective,
+            -physical,
+            -gravity_affected,
+            -cleared_in_seal,
             *cls._skill_rush_setup_rank(value, board),
         )
 
@@ -1086,6 +1306,52 @@ class BasicPolicyEngine:
             value.sword_risk.danger_score,
             -value.cascade_rounds,
             value.unknown_exposure.cells,
+            value.move,
+        )
+
+    @staticmethod
+    def _mega_icarus_survival_sword_rank(
+        value: MoveEvaluation,
+    ) -> tuple[object, ...]:
+        """Remove every known boss Sword reply before maximizing Sword gain."""
+
+        risk = value.sword_risk
+        return (
+            risk.opponent_sword_reply_effective_max,
+            risk.opponent_sword_replies,
+            risk.indirect_sword_effective_max,
+            risk.indirect_sword_replies,
+            -value.sword_effective,
+            risk.danger_score,
+            value.unknown_exposure.cells,
+            not value.horizontal,
+            not value.calculable,
+            value.move,
+        )
+
+    @staticmethod
+    def _mega_icarus_survival_support_rank(
+        value: MoveEvaluation,
+    ) -> tuple[object, ...]:
+        """Apply the critical-HP fallback order: Health, Shield, Drain, safe."""
+
+        health = value.total.effective(GemType.HEALTH)
+        shield = value.total.effective(GemType.SHIELD)
+        drain = value.total.effective(GemType.DRAIN)
+        risk = value.sword_risk
+        return (
+            health <= 0,
+            -health,
+            shield <= 0,
+            -shield,
+            drain <= 0,
+            -drain,
+            risk.opponent_sword_reply_effective_max,
+            risk.opponent_sword_replies,
+            risk.danger_score,
+            value.unknown_exposure.cells,
+            not value.horizontal,
+            not value.calculable,
             value.move,
         )
 
@@ -1379,6 +1645,31 @@ class BasicPolicyEngine:
                     "PASS is forbidden; selected the lowest-risk non-Sword move "
                     "to prevent a third consecutive idle"
                 )
+            elif mandatory and evaluations:
+                selected = min(
+                    evaluations,
+                    key=lambda value: (
+                        value.total.effective(GemType.SWORD),
+                        value.total.cells(GemType.SWORD),
+                        value.sword_risk.danger_score,
+                        value.unknown_exposure.cells,
+                        value.move,
+                    ),
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "DEMON_AEGIS_MANDATORY_SWORD",
+                    (
+                        "PASS is forbidden and every legal move consumes Sword; "
+                        "selected the least-consuming legal move to prevent a "
+                        "third consecutive idle"
+                    ),
+                    failures,
+                    evaluations,
+                    selected=selected,
+                    candidate_count=len(evaluations),
+                )
             else:
                 return self._decision(
                     state,
@@ -1424,9 +1715,18 @@ class BasicPolicyEngine:
         player = state.player
         player_mana = player.mana if player is not None else None
         player_rage = player.power if player is not None else None
+        mega_icarus = self.config.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
         skill_source_pending_evolution = bool(
             self.config.pet_skill_waits_for_evolution
             and (state.fusion is None or not state.fusion.used)
+        )
+        configured_evolution_pending = bool(
+            mega_icarus
+            and self.config.evolution is not EvolutionTarget.NONE
+            and (state.fusion is None or not state.fusion.used)
+        )
+        evolution_pending_before_skill = bool(
+            skill_source_pending_evolution or configured_evolution_pending
         )
         # A Legendary evolution does not expose its Pet Skill card until the
         # non-consuming Evolution action succeeds.  Before that transition,
@@ -1438,7 +1738,7 @@ class BasicPolicyEngine:
         required_mana = (
             state.fusion.mana_cost
             if (
-                skill_source_pending_evolution
+                evolution_pending_before_skill
                 and state.fusion is not None
                 and state.fusion.mana_cost is not None
                 and state.fusion.mana_cost > 0
@@ -1447,7 +1747,7 @@ class BasicPolicyEngine:
         )
         required_rage = (
             0
-            if skill_source_pending_evolution and required_mana is not None
+            if evolution_pending_before_skill and required_mana is not None
             else capability.effective_power_cost if capability else None
         )
         missing_mana = (
@@ -1501,6 +1801,16 @@ class BasicPolicyEngine:
                 failures,
                 no_candidates,
                 blocker="SKILL_RUSH_PROFILE_NOT_IMPLEMENTED",
+            )
+        if mega_icarus and not self.config.pet_skill_profile:
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "CONFIG",
+                "MEGA_ICARUS requires exactly one Mega Pet Skill source",
+                failures,
+                no_candidates,
+                blocker="MEGA_ICARUS_PROFILE_NOT_IMPLEMENTED",
             )
         if (
             self.config.play_style is PlayStyle.DEMON_AEGIS_FARM
@@ -1602,13 +1912,22 @@ class BasicPolicyEngine:
         )
         fire_condition = self.config.pet_skill_fire_condition
         fire_gem_type = _FIRE_CONDITION_GEM_TYPE.get(fire_condition)
+        seal_count = (
+            seal_condition_count(state.board, fire_condition)
+            if mega_icarus and fire_gem_type is not None
+            else None
+        )
         selected_known_gem_count = (
-            _known_gem_count(state.board, fire_gem_type)
+            seal_count.physical
+            if seal_count is not None
+            else _known_gem_count(state.board, fire_gem_type)
             if fire_gem_type is not None
             else None
         )
         selected_known_gem_effective_count = (
-            _known_gem_effective_count(state.board, fire_gem_type)
+            seal_count.effective
+            if seal_count is not None
+            else _known_gem_effective_count(state.board, fire_gem_type)
             if fire_gem_type is not None
             else None
         )
@@ -1633,7 +1952,8 @@ class BasicPolicyEngine:
             else None
         )
         relative_finisher = bool(
-            successful_pet_skills > 0
+            self.config.play_style is PlayStyle.SKILL_RUSH
+            and successful_pet_skills > 0
             and boss_hp_current is not None
             and boss_hp_current > 0
             and boss_hp_ratio is not None
@@ -1658,6 +1978,17 @@ class BasicPolicyEngine:
                 selected_known_gem_effective_count
             ),
             selected_fire_condition_ready=selected_fire_condition_ready,
+            fire_condition_scope=(
+                "MEGA_ICARUS_SEAL_30" if mega_icarus else "FULL_BOARD"
+            ),
+            skill_source=(
+                "EVOLUTION_TARGET"
+                if self.config.main_pet is MainPetType.NORMAL
+                and self.config.evolution is EvolutionTarget.MEGA
+                else "MAIN_PET"
+                if mega_icarus
+                else None
+            ),
             configured_sword_threshold=configured_sword_threshold,
             sword_threshold_ready=sword_threshold_ready,
             successful_pet_skills=successful_pet_skills,
@@ -1719,8 +2050,184 @@ class BasicPolicyEngine:
             }
         )
 
+        mega_icarus_survival = bool(
+            mega_icarus
+            and player_hp_ratio is not None
+            and player_hp_ratio <= SKILL_RUSH_SURVIVAL_HP_RATIO
+        )
+        mega_icarus_survival_evaluations: tuple[MoveEvaluation, ...] | None = None
+        if mega_icarus_survival:
+            survival_skill_ready = bool(
+                self.config.damage_card is DamageCardMode.PET_SKILL
+                and self.config.pet_skill_profile
+                and not evolution_pending_before_skill
+                and capability is not None
+                and capability.current
+                and capability.session_key == state.battle.session_key
+                and capability.skill_family
+                is PetSkillFamily.MEGA_ICARUS_CLICK_ONLY
+                and required_mana is not None
+                and required_mana > 0
+                and required_rage is not None
+                and required_rage >= 0
+                and player_mana is not None
+                and player_rage is not None
+                and ready is True
+                and capability.live_card_actionable is True
+            )
+            if survival_skill_ready:
+                self._skill_trace = replace(self._skill_trace, candidate=True)
+                self._skill_rush_trace = replace(
+                    self._skill_rush_trace,
+                    fire_trigger=SkillRushFireTrigger.MEGA_ICARUS_SURVIVAL_HEAL,
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.PET_SKILL,
+                    "MEGA_ICARUS_SURVIVAL_SKILL",
+                    (
+                        "Player HP is at or below 30% and the current Mega "
+                        "Icarus skill is ready/actionable; fired it before every "
+                        "Sword, Health, Shield, Drain or safe-board fallback to "
+                        "heal and clear the seal; "
+                        f"playerHpRatio={player_hp_ratio}, "
+                        f"selectedSealEffective={selected_known_gem_effective_count}, "
+                        f"configuredValue={self.config.pet_skill_fire_value}"
+                    ),
+                    failures,
+                    no_candidates,
+                    skill=capability,
+                    candidate_count=1,
+                )
+
+            mega_icarus_survival_evaluations = evaluate_all_moves(state.board)
+            survival_sword_moves = tuple(
+                value
+                for value in mega_icarus_survival_evaluations
+                if value.sword_effective > 0
+            )
+            if survival_sword_moves:
+                zero_reply_sword_moves = tuple(
+                    value
+                    for value in survival_sword_moves
+                    if value.sword_risk.opponent_sword_replies == 0
+                    and value.sword_risk.opponent_sword_reply_effective_max == 0
+                )
+                if zero_reply_sword_moves:
+                    selected = min(
+                        zero_reply_sword_moves,
+                        key=self._mega_icarus_survival_sword_rank,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.SWAP,
+                        "MEGA_ICARUS_SURVIVAL_SWORD",
+                        (
+                            "Player HP is at or below 30%; consumed Sword while "
+                            "the simulated result removes every known boss Sword "
+                            "reply; "
+                            f"playerHpRatio={player_hp_ratio}, "
+                            f"swordEffective={selected.sword_effective}, "
+                            "bossSwordRepliesAfter=0"
+                        ),
+                        failures,
+                        mega_icarus_survival_evaluations,
+                        selected=selected,
+                        skill=capability,
+                        candidate_count=len(zero_reply_sword_moves),
+                    )
+
+                sword_break_moves = tuple(
+                    value
+                    for value in mega_icarus_survival_evaluations
+                    if value.sword_effective == 0
+                    and value.sword_risk.opponent_sword_replies == 0
+                    and value.sword_risk.opponent_sword_reply_effective_max == 0
+                )
+                if sword_break_moves:
+                    selected = min(
+                        sword_break_moves,
+                        key=self._mega_icarus_survival_support_rank,
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.SWAP,
+                        "MEGA_ICARUS_SURVIVAL_SWORD_BREAK",
+                        (
+                            "Every available Sword match leaves another known "
+                            "Sword reply for the boss; selected a non-Sword move "
+                            "whose simulated result breaks all known Sword replies "
+                            "before applying Health/Shield/Drain ties; "
+                            f"playerHpRatio={player_hp_ratio}"
+                        ),
+                        failures,
+                        mega_icarus_survival_evaluations,
+                        selected=selected,
+                        skill=capability,
+                        candidate_count=len(sword_break_moves),
+                    )
+
+                selected = min(
+                    survival_sword_moves,
+                    key=self._mega_icarus_survival_sword_rank,
+                )
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    "MEGA_ICARUS_SURVIVAL_SWORD_UNAVOIDABLE_RISK",
+                    (
+                        "Player HP is at or below 30%, but no legal move removes "
+                        "every known boss Sword reply; consumed the Sword line "
+                        "that leaves the smallest effective reply; "
+                        f"playerHpRatio={player_hp_ratio}, "
+                        f"swordEffective={selected.sword_effective}, "
+                        "bossSwordReplyEffectiveMax="
+                        f"{selected.sword_risk.opponent_sword_reply_effective_max}"
+                    ),
+                    failures,
+                    mega_icarus_survival_evaluations,
+                    selected=selected,
+                    skill=capability,
+                    candidate_count=len(survival_sword_moves),
+                )
+
+            survival_safe_moves = tuple(
+                value
+                for value in mega_icarus_survival_evaluations
+                if value.sword_risk.safe and value.sword_effective == 0
+            )
+            if survival_safe_moves:
+                selected = min(
+                    survival_safe_moves,
+                    key=self._mega_icarus_survival_support_rank,
+                )
+                if selected.total.effective(GemType.HEALTH) > 0:
+                    support = "HEALTH"
+                elif selected.total.effective(GemType.SHIELD) > 0:
+                    support = "SHIELD"
+                elif selected.total.effective(GemType.DRAIN) > 0:
+                    support = "DRAIN"
+                else:
+                    support = "SAFE"
+                return self._decision(
+                    state,
+                    PolicyAction.SWAP,
+                    f"MEGA_ICARUS_SURVIVAL_{support}",
+                    (
+                        "Player HP is at or below 30%, the ready skill and Sword "
+                        "defenses are unavailable; selected the first available "
+                        "safe fallback in Health > Shield > Drain > other order; "
+                        f"playerHpRatio={player_hp_ratio}, support={support}"
+                    ),
+                    failures,
+                    mega_icarus_survival_evaluations,
+                    selected=selected,
+                    skill=capability,
+                    candidate_count=len(survival_safe_moves),
+                )
+
         rush_fire_trigger: SkillRushFireTrigger | None = None
-        skill_waiting_for_evolution = skill_source_pending_evolution
+        skill_waiting_for_evolution = evolution_pending_before_skill
         if (
             self.config.damage_card is DamageCardMode.PET_SKILL
             and skill_waiting_for_evolution
@@ -1773,7 +2280,12 @@ class BasicPolicyEngine:
                     no_candidates,
                     blocker="PET_SKILL_CAPABILITY_UNAVAILABLE",
                 )
-            if capability.skill_family is not PetSkillFamily.AUTOMATIC_DOT_DESTRUCTION:
+            accepted_family = (
+                PetSkillFamily.MEGA_ICARUS_CLICK_ONLY
+                if mega_icarus
+                else PetSkillFamily.AUTOMATIC_DOT_DESTRUCTION
+            )
+            if capability.skill_family is not accepted_family:
                 return self._decision(
                     state,
                     PolicyAction.NONE,
@@ -1787,7 +2299,7 @@ class BasicPolicyEngine:
                 required_mana is None
                 or required_mana <= 0
                 or required_rage is None
-                or required_rage <= 0
+                or (required_rage < 0 if mega_icarus else required_rage <= 0)
             ):
                 return self._decision(
                     state,
@@ -1821,7 +2333,11 @@ class BasicPolicyEngine:
             if (
                 ready
                 and capability.live_card_actionable
-                and self.config.play_style is not PlayStyle.SKILL_RUSH
+                and self.config.play_style
+                not in {
+                    PlayStyle.SKILL_RUSH,
+                    PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+                }
             ):
                 self._skill_trace = PetSkillPolicyContext(
                     **{**self._skill_trace.__dict__, "candidate": True}
@@ -1829,7 +2345,11 @@ class BasicPolicyEngine:
                 return self._decision(
                     state,
                     PolicyAction.PET_SKILL,
-                    "STEP_1_PET_SKILL",
+                    (
+                        "MEGA_ICARUS_FIRE"
+                        if mega_icarus
+                        else "STEP_1_PET_SKILL"
+                    ),
                     (
                         f"Current skill {capability.skill_card_id} is actionable and "
                         f"Mana/Rage {player_mana}/{player_rage} satisfy "
@@ -1840,9 +2360,12 @@ class BasicPolicyEngine:
                     skill=capability,
                     candidate_count=1,
                 )
-            if self.config.play_style is PlayStyle.SKILL_RUSH and ready:
+            if self.config.play_style in {
+                PlayStyle.SKILL_RUSH,
+                PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+            } and ready:
                 failures.append(
-                    "STEP_1_PET_SKILL: SKILL_RUSH readiness is known; defer to "
+                    "STEP_1_PET_SKILL: strategic readiness is known; defer to "
                     "the configured normal Pet Skill fire condition"
                 )
             else:
@@ -1853,7 +2376,10 @@ class BasicPolicyEngine:
                 )
 
         if (
-            self.config.play_style is PlayStyle.SKILL_RUSH
+            self.config.play_style in {
+                PlayStyle.SKILL_RUSH,
+                PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+            }
             and self.config.pet_skill_profile
         ):
             rush_fire_trigger = _skill_rush_fire_trigger(
@@ -1916,11 +2442,16 @@ class BasicPolicyEngine:
                 return self._decision(
                     state,
                     PolicyAction.PET_SKILL,
-                    "STEP_1_PET_SKILL",
+                    (
+                        "MEGA_ICARUS_FIRE"
+                        if mega_icarus
+                        else "STEP_1_PET_SKILL"
+                    ),
                     (
                         f"Current skill {capability.skill_card_id} is actionable; "
                         f"Mana/Rage {player_mana}/{player_rage} satisfy "
-                        f"{required_mana}/{required_rage}; final SKILL_RUSH fire "
+                        f"{required_mana}/{required_rage}; final "
+                        f"{'MEGA_ICARUS' if mega_icarus else 'SKILL_RUSH'} fire "
                         f"trigger={rush_fire_trigger.value}, condition={fire_condition.value}, "
                         f"selectedGem={fire_gem_type.value if fire_gem_type else None}, "
                         f"knownEffectiveCount={selected_known_gem_effective_count}, "
@@ -1933,7 +2464,11 @@ class BasicPolicyEngine:
                     candidate_count=1,
                 )
 
-        evaluations = evaluate_all_moves(state.board)
+        evaluations = (
+            mega_icarus_survival_evaluations
+            if mega_icarus_survival_evaluations is not None
+            else evaluate_all_moves(state.board)
+        )
         if not evaluations:
             if (
                 self.config.play_style is PlayStyle.SKILL_RUSH
@@ -1980,7 +2515,10 @@ class BasicPolicyEngine:
             )
 
         if (
-            self.config.play_style is PlayStyle.SKILL_RUSH
+            self.config.play_style in {
+                PlayStyle.SKILL_RUSH,
+                PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+            }
             and self.config.pet_skill_profile
         ):
             rush_attack_cards = tuple(
@@ -2083,7 +2621,8 @@ class BasicPolicyEngine:
                     (
                         f"Current skill {capability.skill_card_id} is actionable; "
                         f"Mana/Rage {player_mana}/{player_rage} satisfy "
-                        f"{required_mana}/{required_rage}; final SKILL_RUSH fire "
+                        f"{required_mana}/{required_rage}; final "
+                        f"{'MEGA_ICARUS' if mega_icarus else 'SKILL_RUSH'} fire "
                         f"condition={rush_fire_trigger.value}, bossRatio={boss_hp_ratio}, "
                         f"knownSwordEffective={known_sword_effective_count}, "
                         f"knownSwordCells={known_sword_count}"
@@ -2275,7 +2814,11 @@ class BasicPolicyEngine:
                             return self._decision(
                                 state,
                                 PolicyAction.PASS,
-                                "SKILL_RUSH_RESOURCE_PASS",
+                                (
+                                    "MEGA_ICARUS_RESOURCE_PASS"
+                                    if mega_icarus
+                                    else "SKILL_RUSH_RESOURCE_PASS"
+                                ),
                                 (
                                     "No safe resource/protection action and no "
                                     "Shield/Health survival action exists; used the "
@@ -2301,7 +2844,11 @@ class BasicPolicyEngine:
                             return self._decision(
                                 state,
                                 PolicyAction.PASS,
-                                "SKILL_RUSH_RESOURCE_PASS",
+                                (
+                                    "MEGA_ICARUS_RESOURCE_PASS"
+                                    if mega_icarus
+                                    else "SKILL_RUSH_RESOURCE_PASS"
+                                ),
                                 (
                                     "Every legal move consumes Sword; used the "
                                     "last-resort authoritative PASS"
@@ -2314,7 +2861,11 @@ class BasicPolicyEngine:
                             return self._decision(
                                 state,
                                 PolicyAction.NONE,
-                                "SKILL_RUSH_SWORD_PRESERVATION_BLOCKED",
+                                (
+                                    "MEGA_ICARUS_SWORD_PRESERVATION_BLOCKED"
+                                    if mega_icarus
+                                    else "SKILL_RUSH_SWORD_PRESERVATION_BLOCKED"
+                                ),
                                 (
                                     "Every legal move consumes known Sword and PASS "
                                     "is unavailable; fail closed"
@@ -2322,7 +2873,11 @@ class BasicPolicyEngine:
                                 failures,
                                 evaluations,
                                 skill=capability,
-                                blocker="SKILL_RUSH_ONLY_SWORD_MOVES",
+                                blocker=(
+                                    "MEGA_ICARUS_ONLY_SWORD_MOVES"
+                                    if mega_icarus
+                                    else "SKILL_RUSH_ONLY_SWORD_MOVES"
+                                ),
                             )
 
                 selected_trace = _candidate_trace(
@@ -2335,6 +2890,8 @@ class BasicPolicyEngine:
                 )
                 if selected_trace.known_sword_consumed != 0:
                     raise AssertionError("Skill Rush resource stage consumed Sword")
+                if mega_icarus:
+                    step = step.replace("SKILL_RUSH", "MEGA_ICARUS", 1)
                 return self._decision(
                     state,
                     PolicyAction.SWAP,
@@ -2376,10 +2933,186 @@ class BasicPolicyEngine:
                 for value, trace in setup_traces
                 if trace.known_sword_consumed == 0
                 and (
+                    mega_icarus
+                    or
                     fire_gem_type is None
                     or value.total.cells(fire_gem_type) == 0
                 )
             )
+            if mega_icarus:
+                mega_safe_setup_moves = tuple(
+                    value
+                    for value, trace in condition_preserving_setup
+                    if value.sword_risk.safe
+                    and trace.refill_sword_auto_match_completions == 0
+                )
+                mega_setup_moves = tuple(
+                    value for value, _trace in condition_preserving_setup
+                )
+                if mega_setup_moves:
+                    durable_ready_moves = tuple(
+                        value
+                        for value in mega_setup_moves
+                        if fire_gem_type is not None
+                        and self.config.pet_skill_fire_value is not None
+                        and _mega_icarus_durable_seal_effective(
+                            value,
+                            fire_gem_type,
+                        )
+                        >= self.config.pet_skill_fire_value
+                        and value.unknown_exposure.refill_sword_auto_match_completions
+                        == 0
+                    )
+                    if durable_ready_moves:
+                        selected = min(
+                            durable_ready_moves,
+                            key=lambda value: self._skill_rush_condition_setup_rank(
+                                value,
+                                state.board,
+                                fire_gem_type,
+                                seal_scoped=True,
+                            ),
+                        )
+                        setup_safety = "DURABLE_THRESHOLD"
+                    elif mega_safe_setup_moves:
+                        selected = min(
+                            mega_safe_setup_moves,
+                            key=lambda value: self._skill_rush_condition_setup_rank(
+                                value,
+                                state.board,
+                                fire_gem_type,
+                                seal_scoped=True,
+                            ),
+                        )
+                        setup_safety = "SWORD_SAFE"
+                    else:
+                        selected = min(
+                            mega_setup_moves,
+                            key=lambda value: self._mega_icarus_unsafe_setup_rank(
+                                value,
+                                state.board,
+                                fire_gem_type,
+                            ),
+                        )
+                        setup_safety = "MINIMUM_BOSS_SWORD_REPLY"
+                    result_physical, result_effective = (
+                        _known_result_seal_gem_counts(selected, fire_gem_type)
+                        if fire_gem_type is not None
+                        else (0, 0)
+                    )
+                    durable_effective = (
+                        _mega_icarus_durable_seal_effective(
+                            selected,
+                            fire_gem_type,
+                        )
+                        if fire_gem_type is not None
+                        else 0
+                    )
+                    pass_floor, pass_sword_max, pass_reply_count = (
+                        _mega_icarus_pass_baseline(
+                            state.board,
+                            evaluations,
+                            fire_gem_type,
+                        )
+                        if fire_gem_type is not None
+                        else (0, 0, 0)
+                    )
+                    selected_risk = selected.sword_risk
+                    selected_protection_rank = (
+                        -durable_effective,
+                        selected_risk.opponent_sword_reply_effective_max,
+                        selected_risk.opponent_sword_replies,
+                        selected_risk.indirect_sword_effective_max,
+                        selected_risk.unknown_sword_effective_max,
+                        selected_risk.unknown_sword_completions,
+                    )
+                    pass_protection_rank = (
+                        -pass_floor,
+                        pass_sword_max,
+                        pass_reply_count,
+                        0,
+                        0,
+                        0,
+                    )
+                    if (
+                        skill_rush_pass_allowed
+                        and pass_protection_rank < selected_protection_rank
+                    ):
+                        return self._decision(
+                            state,
+                            PolicyAction.PASS,
+                            "MEGA_ICARUS_SETUP_PASS",
+                            (
+                                "PASS preserves more multiplier-weighted condition "
+                                "value through the boss turn than the best available "
+                                "non-Sword setup; "
+                                f"selectedSetupSafety={setup_safety}, "
+                                f"selectedSealAfter={result_effective}, "
+                                f"selectedSealFloor={durable_effective}, "
+                                "selectedBossSwordMax="
+                                f"{selected_risk.opponent_sword_reply_effective_max}, "
+                                f"passSealFloor={pass_floor}, "
+                                f"passBossSwordMax={pass_sword_max}, "
+                                f"passBossSwordReplies={pass_reply_count}"
+                            ),
+                            failures,
+                            evaluations,
+                            skill=capability,
+                            candidate_count=len(mega_setup_moves),
+                        )
+                    gravity_affected, cleared_in_seal = (
+                        _mega_icarus_seal_turnover(selected)
+                    )
+                    return self._decision(
+                        state,
+                        PolicyAction.SWAP,
+                        "MEGA_ICARUS_BOARD_SETUP",
+                        (
+                            "Setup never consumes known Sword; preferred a move with "
+                            "no boss Sword reply, or otherwise minimized the boss's "
+                            "effective Sword gain before ranking multiplier-weighted "
+                            "condition gems inside the 30-cell seal; "
+                            f"setupSafety={setup_safety}, "
+                            f"sealPhysicalAfter={result_physical}, "
+                            f"sealEffectiveAfter={result_effective}, "
+                            f"sealEffectiveAfterWorstBossReply={durable_effective}, "
+                            f"passSealFloor={pass_floor}, "
+                            f"passBossSwordMax={pass_sword_max}, "
+                            f"sealGravityAffected={gravity_affected}, "
+                            f"sealCleared={cleared_in_seal}"
+                        ),
+                        failures,
+                        evaluations,
+                        selected=selected,
+                        skill=capability,
+                        candidate_count=(
+                            len(durable_ready_moves)
+                            if durable_ready_moves
+                            else len(mega_safe_setup_moves)
+                            if mega_safe_setup_moves
+                            else len(mega_setup_moves)
+                        ),
+                    )
+                if skill_rush_pass_allowed:
+                    return self._decision(
+                        state,
+                        PolicyAction.PASS,
+                        "MEGA_ICARUS_SETUP_PASS",
+                        "Every legal setup consumes Sword; used the bounded authoritative PASS",
+                        failures,
+                        evaluations,
+                        skill=capability,
+                    )
+                return self._decision(
+                    state,
+                    PolicyAction.NONE,
+                    "MEGA_ICARUS_SWORD_PRESERVATION_BLOCKED",
+                    "Every legal setup consumes Sword and PASS is unavailable; fail closed",
+                    failures,
+                    evaluations,
+                    skill=capability,
+                    blocker="MEGA_ICARUS_ONLY_SWORD_MOVES",
+                )
             isolated_setup_moves = tuple(
                 value
                 for value, trace in condition_preserving_setup
@@ -2429,9 +3162,14 @@ class BasicPolicyEngine:
                     isolated_setup_moves,
                     key=lambda value: self._skill_rush_condition_setup_rank(
                         value, state.board, fire_gem_type
+                        , seal_scoped=mega_icarus
                     ),
                 )
-                policy_step = "SKILL_RUSH_BOARD_SETUP"
+                policy_step = (
+                    "MEGA_ICARUS_BOARD_SETUP"
+                    if mega_icarus
+                    else "SKILL_RUSH_BOARD_SETUP"
+                )
                 why = (
                     "Selected a proven Sword-safe, Sword-preserving setup at least "
                     "two cells from known Sword while preserving the configured "
@@ -2458,6 +3196,7 @@ class BasicPolicyEngine:
                         safe_distance_relaxed_moves,
                         key=lambda value: self._skill_rush_condition_setup_rank(
                             value, state.board, fire_gem_type
+                            , seal_scoped=mega_icarus
                         ),
                     )
                     fallback_type = SkillRushSetupFallbackType.RELAXED_DISTANCE
@@ -2466,6 +3205,7 @@ class BasicPolicyEngine:
                         safe_board_turnover_moves,
                         key=lambda value: self._skill_rush_condition_setup_rank(
                             value, state.board, fire_gem_type
+                            , seal_scoped=mega_icarus
                         ),
                     )
                     fallback_type = SkillRushSetupFallbackType.BOARD_TURNOVER
@@ -2477,7 +3217,11 @@ class BasicPolicyEngine:
                         return self._decision(
                             state,
                             PolicyAction.PASS,
-                            "SKILL_RUSH_SETUP_PASS",
+                            (
+                                "MEGA_ICARUS_SETUP_PASS"
+                                if mega_icarus
+                                else "SKILL_RUSH_SETUP_PASS"
+                            ),
                             (
                                 "The configured board threshold is not ready and no "
                                 "safe setup preserves Sword plus the selected condition "
@@ -2491,7 +3235,11 @@ class BasicPolicyEngine:
                         return self._decision(
                             state,
                             PolicyAction.NONE,
-                            "SKILL_RUSH_SWORD_PRESERVATION_BLOCKED",
+                            (
+                                "MEGA_ICARUS_SWORD_PRESERVATION_BLOCKED"
+                                if mega_icarus
+                                else "SKILL_RUSH_SWORD_PRESERVATION_BLOCKED"
+                            ),
                             (
                                 "Every legal move consumes Sword or the configured "
                                 "condition gem, and PASS is unavailable; fail closed"
@@ -2499,7 +3247,11 @@ class BasicPolicyEngine:
                             failures,
                             evaluations,
                             skill=capability,
-                            blocker="SKILL_RUSH_ONLY_SETUP_CONSUMING_MOVES",
+                            blocker=(
+                                "MEGA_ICARUS_ONLY_SETUP_CONSUMING_MOVES"
+                                if mega_icarus
+                                else "SKILL_RUSH_ONLY_SETUP_CONSUMING_MOVES"
+                            ),
                         )
                     selected = min(
                         preserving_moves,
@@ -2513,6 +3265,8 @@ class BasicPolicyEngine:
                 if selected_trace.known_sword_consumed != 0:
                     raise AssertionError("Skill Rush setup consumed Sword")
                 if (
+                    not mega_icarus
+                    and
                     fire_gem_type is not None
                     and selected.total.cells(fire_gem_type) != 0
                 ):
@@ -2526,7 +3280,11 @@ class BasicPolicyEngine:
                     ),
                     setup_fallback_type=fallback_type,
                 )
-                policy_step = "SKILL_RUSH_SETUP_RELAXED"
+                policy_step = (
+                    "MEGA_ICARUS_SETUP_RELAXED"
+                    if mega_icarus
+                    else "SKILL_RUSH_SETUP_RELAXED"
+                )
                 why = (
                     "Preferred Sword-safe distance-two setup is blocked; "
                     f"selected deterministic {fallback_type.value} board action, "

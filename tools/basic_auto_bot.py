@@ -34,6 +34,7 @@ from pokiguard_v2.autonomous_control import (  # noqa: E402
     AutonomousActionIdentity,
     AutonomousGuard,
     AutonomousStatus,
+    ConsumedSwapBoardGuard,
     ConsumingTurnRegistry,
     PendingAutonomousAction,
     SwapAcceptanceStatus,
@@ -317,14 +318,13 @@ def _pinned_board_selection_gate_foreground(
     config: InputDeliveryConfig,
     observed_foreground: bool | None,
 ) -> bool | None:
-    """Allow input-free SWAP preparation to reach the bounded focus lease.
+    """Allow input-free gameplay preparation to reach the bounded focus lease.
 
     The ordinary foreground route must still fail closed at ActionabilityGate.
     Beta keeps the exact game HWND visible and may acquire foreground, so its
-    policy/board preparation is allowed while another application owns focus.
-    This helper is used only for the initial input-free selection gate and the
-    fresh gate of an already-selected SWAP. Every actual click still requires
-    the lease to acquire the exact HWND and rerun its final runtime preflight.
+    policy/board/card preparation is allowed while another application owns
+    focus. Every actual click still requires the lease to lock input, acquire
+    the exact HWND, then recheck the binding, focus and stop guards.
     """
 
     if observed_foreground is True:
@@ -445,6 +445,7 @@ def _dispatch_technical_recovery(
     analysis: Any | None = None,
     actionability_evidence: dict[str, Any] | None = None,
     unconfirmed_pass_evidence: dict[str, Any] | None = None,
+    unconfirmed_swap_evidence: dict[str, Any] | None = None,
     controller_stall_evidence: dict[str, Any] | None = None,
     active_combat_progress_stall: ActiveCombatProgressStall | None = None,
     active_combat_progress_evidence: dict[str, Any] | None = None,
@@ -528,6 +529,17 @@ def _dispatch_technical_recovery(
             dispatcher.dispatch_late_mandatory_reset(
                 state,
                 **late_mandatory_reset_evidence,
+            )
+        )
+    if (
+        reason == "UNCONFIRMED_SWAP_DELIVERY"
+        and state is not None
+        and unconfirmed_swap_evidence is not None
+    ):
+        return bool(
+            dispatcher.dispatch_unconfirmed_swap_delivery(
+                state,
+                **unconfirmed_swap_evidence,
             )
         )
     return False
@@ -883,6 +895,7 @@ class Counters:
     pet_skill_immediate_kills: int = 0
     skill_rush_sword_threshold_fires: int = 0
     skill_rush_fire_condition_fires: int = 0
+    mega_icarus_survival_skill_fires: int = 0
     skill_rush_setup_blocked_fires: int = 0
     skill_rush_setup_blocked_states: int = 0
     skill_rush_setup_relaxed_actions: int = 0
@@ -1415,6 +1428,30 @@ def _must_pause_for_no_safe_move(
             "DEMON_AEGIS_SETUP_RISK_ACCEPTED",
             "DEMON_AEGIS_SURVIVAL",
             "DEMON_AEGIS_MANDATORY",
+            "DEMON_AEGIS_MANDATORY_SWORD",
+        }
+    )
+    mega_icarus_no_safe_fallback = bool(
+        decision.action is PolicyAction.SWAP
+        and decision.move is not None
+        and decision.trace.play_style
+        == PlayStyle.MEGA_ICARUS_SPAM_SKILL.value
+        and decision.trace.policy_step
+        in {
+            "MEGA_ICARUS_RESOURCE_PROGRESS",
+            "MEGA_ICARUS_RESOURCE_RISK_ACCEPTED",
+            "MEGA_ICARUS_SURVIVAL_RISK_ACCEPTED",
+            "MEGA_ICARUS_RESOURCE_MANDATORY",
+            "MEGA_ICARUS_LEGAL_FALLBACK",
+            "MEGA_ICARUS_BOARD_SETUP",
+            "MEGA_ICARUS_SETUP_RELAXED",
+            "MEGA_ICARUS_SURVIVAL_SWORD",
+            "MEGA_ICARUS_SURVIVAL_SWORD_BREAK",
+            "MEGA_ICARUS_SURVIVAL_SWORD_UNAVOIDABLE_RISK",
+            "MEGA_ICARUS_SURVIVAL_HEALTH",
+            "MEGA_ICARUS_SURVIVAL_SHIELD",
+            "MEGA_ICARUS_SURVIVAL_DRAIN",
+            "MEGA_ICARUS_SURVIVAL_SAFE",
         }
     )
     return bool(
@@ -1423,6 +1460,7 @@ def _must_pause_for_no_safe_move(
         and first_local_turn is not True
         and not skill_rush_no_safe_fallback
         and not demon_aegis_no_safe_fallback
+        and not mega_icarus_no_safe_fallback
         and not (
             decision.action is PolicyAction.SWAP
             and (
@@ -2046,6 +2084,8 @@ def _record_policy_observation(
                 counters.skill_rush_sword_threshold_fires += 1
         elif trigger == "SETUP_BLOCKED":
             counters.skill_rush_setup_blocked_fires += 1
+        elif trigger == "MEGA_ICARUS_SURVIVAL_HEAL":
+            counters.mega_icarus_survival_skill_fires += 1
         if decision.trace.finisher_action == "SECOND_PET_SKILL":
             counters.skill_rush_second_pet_skill += 1
     if decision.trace.setup_blocked:
@@ -3668,6 +3708,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         post_evolve_settle_logged = False
         terminal_evolve_activity_turns: set[tuple[Any, int]] = set()
         unconfirmed_action_turns: set[tuple[Any, int]] = set()
+        consumed_swap_board_guard = ConsumedSwapBoardGuard()
         evolve_only_turn_wait: EvolveOnlyTurnWait | None = None
         optional_card_suppressions: dict[
             tuple[Any, int], set[PolicyAction]
@@ -4084,6 +4125,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
 
             accepted = guard.complete_pending()
             if swap_accepted:
+                consumed_swap_board_guard.observe(accepted)
                 executor.note_swap_acknowledged(
                     max(0.0, time.monotonic() - accepted.sent_at)
                 )
@@ -4405,6 +4447,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         mandatory_cached_board_fastpath_polls = 0
                     absorbed_transport_regions = monitor.absorb_region_hints(
                         provider.transport_region_hints
+                    )
+                    monitor.absorb_chat_message_region_hints(
+                        provider.chat_message_region_hints
                     )
                     if absorbed_transport_regions:
                         _write(
@@ -5044,6 +5089,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 post_evolve_settle_logged = False
                 terminal_evolve_activity_turns.clear()
                 unconfirmed_action_turns.clear()
+                consumed_swap_board_guard.begin_session()
                 evolve_only_turn_wait = None
                 optional_card_suppressions.clear()
                 direct_pass_result_turn = None
@@ -6385,9 +6431,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     terminal_result = ActionResultKind.ACTION_ABORTED_STATE_CHANGED
                     counters.action_aborted_due_lifecycle += 1
                     if pending_at_end.identity.action is PolicyAction.SWAP:
-                        executor.note_swap_unconfirmed(
-                            "COMBAT_ENDED_WITH_UNCONFIRMED_SWAP"
-                        )
                         counters.swap_aborted_due_lifecycle += 1
                         sequence_status = classify_swap_acceptance(
                             pending_at_end,
@@ -6415,6 +6458,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         action=pending_at_end,
                         reason="COMBAT_LIFECYCLE_ENDED",
                     )
+                # A match-ending swap can end combat before its exact ACK is
+                # correlated. Do not carry that ambiguity into the next match
+                # as SEVERE_LAG click pacing.
+                executor.reset_swap_pacing_after_combat()
                 # Prefer terminal PlayerStats captured from the current
                 # POSTMATCH ownership chain.  Fall back to the last ACTIVE
                 # state only when the terminal read is unavailable; that path
@@ -6856,6 +6903,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         pending.identity.source.turn,
                     )
                     unconfirmed_action_turns.add(turn_key)
+                    consumed_swap_board_guard.observe(pending)
                     if pending.consumes_turn:
                         # Keep the consuming transition tracker alive.  It may
                         # still prove that the original input was accepted, or
@@ -6948,6 +6996,79 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         zeroInputWaitReason=evolve_wait_reason,
                         idleReadiness=timeout_idle_readiness,
                     )
+                    if pending.identity.action is PolicyAction.SWAP:
+                        current_local_move_sequence = (
+                            raw_runtime.local_move_sequence
+                            if raw_runtime is not None
+                            else (
+                                state.battle.local_move_sequence
+                                if state is not None
+                                else None
+                            )
+                        )
+                        recovery_dispatched = _dispatch_technical_recovery(
+                            runtime,
+                            reason="UNCONFIRMED_SWAP_DELIVERY",
+                            state=state,
+                            unconfirmed_swap_evidence={
+                                "session_key": pending.identity.source.session,
+                                "match_id": (
+                                    pending.identity.source.session.match_id
+                                ),
+                                "source_turn": pending.identity.source.turn,
+                                "source_srv_seq": pending.identity.source.srv_seq,
+                                "source_board_hash": (
+                                    pending.identity.source.board_hash
+                                ),
+                                "local_move_sequence_before": (
+                                    pending.local_move_sequence_before
+                                ),
+                                "current_turn": (
+                                    timeout_turn
+                                    if timeout_turn is not None
+                                    else pending.identity.source.turn
+                                ),
+                                "current_local_move_sequence": (
+                                    current_local_move_sequence
+                                ),
+                                "input_was_sent": True,
+                                "response_or_ack_timeout": True,
+                                "timeout_reason": wait_plan.reason,
+                            },
+                        )
+                        if recovery_dispatched:
+                            guard.require_recovery()
+                            stop_reason = "UNCONFIRMED_SWAP_DELIVERY"
+                            _write(
+                                log,
+                                "technical_recovery_handoff",
+                                reason=stop_reason,
+                                action=pending,
+                                timeoutPlan=wait_plan,
+                                currentTurn=timeout_turn,
+                                currentLocalMoveSequence=(
+                                    current_local_move_sequence
+                                ),
+                                gameplayInputDisabled=True,
+                                automaticUiOwnedByOuterCoordinator=True,
+                            )
+                            _beep("recovery", not args.no_beep)
+                            break
+                        if runtime.technical_recovery_dispatcher is not None:
+                            guard.pause(automatic=True)
+                            stop_reason = (
+                                "UNCONFIRMED_SWAP_DELIVERY_PREFLIGHT_REJECTED"
+                            )
+                            _write(
+                                log,
+                                "farm_safe_stop_immediate",
+                                reason=stop_reason,
+                                action=pending,
+                                timeoutPlan=wait_plan,
+                                gameplayInputDisabled=True,
+                                failClosed=True,
+                            )
+                            break
                     if start_evolve_wait:
                         evolve_only_turn_wait = EvolveOnlyTurnWait(
                             session=pending.identity.source.session,
@@ -7184,6 +7305,23 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 time.sleep(args.interval)
                 continue
 
+            consumed_swap_source = consumed_swap_board_guard.blocking_source(state)
+            if consumed_swap_source is not None:
+                guard.pause(automatic=True)
+                stop_reason = "STALE_BOARD_AFTER_SWAP"
+                _write(
+                    log,
+                    "auto_pause",
+                    reason=stop_reason,
+                    consumedSource=consumed_swap_source,
+                    currentTurn=state.battle.turn_number,
+                    currentLocalMoveSequence=state.battle.local_move_sequence,
+                    inputSent=False,
+                    repeatedSwapPrevented=True,
+                )
+                _beep("pause", not args.no_beep)
+                continue
+
             current_idle_session = _idle_session_id(state.battle.session_key)
             if (
                 direct_pass_result_turn is not None
@@ -7418,6 +7556,50 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     srvSeq=state.battle.srv_seq,
                     boardHash=state.battle.board_hash,
                 )
+                if (
+                    decision.trace.play_style
+                    == PlayStyle.MEGA_ICARUS_SPAM_SKILL.value
+                ):
+                    mega_stage = (
+                        "fire"
+                        if decision.trace.policy_step == "MEGA_ICARUS_FIRE"
+                        else "survival"
+                        if decision.trace.policy_step.startswith(
+                            "MEGA_ICARUS_SURVIVAL_"
+                        )
+                        else "resource"
+                        if "RESOURCE" in decision.trace.policy_step
+                        or decision.trace.policy_step
+                        == "MEGA_ICARUS_LEGAL_FALLBACK"
+                        else "setup"
+                    )
+                    _write(
+                        log,
+                        f"mega_icarus_{mega_stage}",
+                        session=state.battle.session_key,
+                        matchId=state.battle.match_id,
+                        sourceTurn=state.battle.turn_number,
+                        policyStep=decision.trace.policy_step,
+                        action=decision.action,
+                        selectedCondition=decision.trace.pet_skill_fire_condition,
+                        selectedGem=decision.trace.selected_fire_gem_type,
+                        conditionScope=decision.trace.fire_condition_scope,
+                        sealPhysicalCount=decision.trace.selected_known_gem_count,
+                        sealEffectiveCount=(
+                            decision.trace.selected_known_gem_effective_count
+                        ),
+                        threshold=decision.trace.pet_skill_fire_value,
+                        requiredMana=decision.trace.required_mana,
+                        requiredRage=decision.trace.required_rage,
+                        currentMana=decision.trace.current_mana,
+                        currentRage=decision.trace.current_rage,
+                        missingMana=decision.trace.missing_mana,
+                        missingRage=decision.trace.missing_rage,
+                        skillSource=decision.trace.skill_source,
+                        skillCardId=decision.skill_card_id,
+                        selectedMove=decision.move,
+                        reason=decision.trace.why_selected,
+                    )
                 if (
                     decision.trace.play_style == PlayStyle.SKILL_RUSH.value
                     and decision.trace.pet_skill_success_count_current_match > 0
@@ -9733,18 +9915,29 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 input_authorized = True
                 click = None
                 card_lease_result = None
+                card_preflight_failure: str | None = None
 
                 def final_card_preflight() -> bool:
+                    nonlocal card_preflight_failure
+                    card_preflight_failure = None
                     final_poll = provider.poll()
                     final_state = final_poll.state
-                    if final_state is None or not identity.source.matches(final_state):
+                    if final_state is None:
+                        card_preflight_failure = "CURRENT_STATE_UNAVAILABLE"
+                        return False
+                    if not identity.source.matches(final_state):
+                        card_preflight_failure = "ACTION_SOURCE_CHANGED"
                         return False
                     final_window = executor.window_status(binding)
+                    final_gate_foreground = _pinned_board_selection_gate_foreground(
+                        input_delivery_config,
+                        final_window.foreground,
+                    )
                     final_gate = ActionabilityGate.evaluate(
                         final_state,
                         GateContext(
                             provider.current_session_key,
-                            final_window.foreground,
+                            final_gate_foreground,
                             final_window.valid,
                             sequence_desync=monitor.tracker.state,
                             allow_opening_board_only=True,
@@ -9752,6 +9945,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         ),
                     )
                     if not final_gate.actionable:
+                        card_preflight_failure = (
+                            f"ACTIONABILITY_GATE:{final_gate.reason}"
+                        )
                         return False
                     if decision.action is PolicyAction.EVOLVE:
                         final_fusion = final_state.fusion
@@ -9762,6 +9958,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             and final_fusion.ui_slot_count == slot_count
                             and final_fusion.mana_cost == pending_action.mana_cost
                         ):
+                            card_preflight_failure = "FUSION_STATE_CHANGED"
                             return False
                     else:
                         final_card = next(
@@ -9785,6 +9982,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             and final_state.player.mana is not None
                             and final_state.player.mana >= pending_action.mana_cost
                         ):
+                            card_preflight_failure = "ATTACK_CARD_STATE_CHANGED"
                             return False
                     final_capture = capture_client_rgb(target.pid)
                     if locate_confirm_leave(
@@ -9792,6 +9990,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         final_capture.width,
                         final_capture.height,
                     ).found:
+                        card_preflight_failure = "LEAVE_MODAL_VISIBLE"
                         return False
                     final_locator = locate_gameplay_control(
                         final_capture.rgb,
@@ -9801,11 +10000,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         slot_index=slot_index,
                         slot_count=slot_count,
                     )
-                    return bool(
+                    accepted = bool(
                         final_locator.found
                         and final_locator.normalized_point
                         == locator.normalized_point
                     )
+                    if not accepted:
+                        card_preflight_failure = "UI_CONTROL_CHANGED"
+                    return accepted
 
                 def send_card_once() -> bool:
                     nonlocal farm_card_ok, farm_card_permit
@@ -9868,7 +10070,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             lambda: provider.current_session_key
                             == fresh.battle.session_key
                         ),
-                        post_focus_preflight=final_card_preflight,
+                        final_pre_takeover_preflight=final_card_preflight,
                         expected_cursor_after=(
                             board_lease_session.expected_cursor_for_normalized_point(
                                 locator.normalized_point
@@ -9883,6 +10085,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         delivery=card_lease_result,
                         click=click,
                         farmPermitAccepted=farm_card_ok,
+                        preflightFailure=card_preflight_failure,
                         noBlindRetry=True,
                     )
                     sent_ok = card_lease_result.action_succeeded
@@ -10075,6 +10278,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     counters.skill_rush_sword_threshold_fires
                 ),
                 "SETUP_BLOCKED": counters.skill_rush_setup_blocked_fires,
+                "MEGA_ICARUS_SURVIVAL_HEAL": (
+                    counters.mega_icarus_survival_skill_fires
+                ),
             },
             skillRushSetupBlockedStates=(
                 counters.skill_rush_setup_blocked_states

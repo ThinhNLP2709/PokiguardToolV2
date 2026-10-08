@@ -1,9 +1,11 @@
 """Read-only DTO-first state provider for the current hashed build.
 
-Publishable boards must be tied to the current match's persistent render-ACK
-set and current presentation. A complete same-sequence DTO remains preferred;
-when the supported build acknowledges an ops-only response, the provider can instead decode all
-64 exact current Dot components through Board.allDots without a heap scan.
+Publishable post-opening boards must be tied to the current match's persistent
+render-ACK set and current presentation. A complete same-sequence DTO remains
+preferred. During the untouched first local turn, where the ACK set can still
+be empty, the provider may instead validate the exact active session and all
+64 current Dot components across repeated stable samples. The same bounded Dot
+walk also reconstructs acknowledged ops-only responses without a heap scan.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import struct
+import time
 from typing import Any, Protocol
 
 from .acked_sequences import AckedSequenceSnapshot, read_acked_sequences
@@ -48,6 +51,7 @@ from .il2cpp_external import (
     CHAT_SERVICE_USERNAME_OFFSET,
     BOARD_WS_APPLIER_BOARD_OFFSET,
     BOARD_WS_APPLIER_BOOTSTRAPPED_MATCH_ID_OFFSET,
+    BOARD_WS_APPLIER_PREFAB_BY_TAG_OFFSET,
     BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET,
     BOARD_WS_APPLIER_RENDER_RUNNING_OFFSET,
     BOARD_WS_APPLIER_TYPE_INFO_RVA,
@@ -117,7 +121,13 @@ from .memory_scan import (
     validate_dot_pointer_hits,
 )
 from .player_stats import read_active_participants, read_match_local_actor_number
-from .opening_snapshot import OpeningBoardSnapshot, is_transport_board_source
+from .opening_snapshot import (
+    ACK_ATTESTED_LIVE_BOARD_SOURCE,
+    PRISTINE_NATIVE_OPENING_BOARD_SOURCE,
+    OpeningBoardSnapshot,
+    is_transport_board_source,
+)
+from .pet_skill_shadow import PET_SKILL_ELEMENT_TYPES
 from .state import (
     BattleState,
     BoardStateProvider,
@@ -147,7 +157,6 @@ OWNER_ADDRESS_MISS_GRACE_POLLS = 4
 # direct-owner publication window. Retry 12 proved that two polls followed by
 # learned-region miss + next-poll full fallback consumed the 14-second turn.
 DIRECT_OWNER_BATCH_GRACE_POLLS = 1
-PET_SKILL_ELEMENT_TYPES = frozenset({"ATTACK_LEGEND", "ATTACK_LEGEND_"})
 
 
 def _blocking_board_modal_open(board: Any) -> bool:
@@ -551,13 +560,41 @@ def _match_start_opening_has_priority(
 
     Card/UI and ACK-heap discovery can take seconds.  The authoritative
     MATCH_START/Newtonsoft object is shorter-lived, so a newly bound session
-    with no local action must return to its external transport scanner before
-    any broad candidate scan.  Once the opening was offered (or the game has
-    already advanced), normal provider discovery resumes.
+    with no local action reserves the window for either that DTO or the
+    bounded current Board.allDots reconstruction.  No broad candidate scan is
+    allowed until one succeeds or the game advances.
     """
 
     return bool(
         not opening_snapshot_available
+        and turn in (0, 1)
+        and local_move_sequence == 0
+        and last_move_sequence in (None, -1, 0)
+    )
+
+
+def _pristine_native_opening_generation_allowed(
+    *,
+    match_start_opening_pending: bool,
+    effective_acked_highest: int | None,
+    is_local_turn: bool | None,
+    turn: int,
+    local_move_sequence: int,
+    last_move_sequence: int | None,
+) -> bool:
+    """Allow a native opening only before either side has advanced combat.
+
+    The game can expose no ACK at all for the complete opening turn.  In that
+    narrow state the current active session, local-turn identity and untouched
+    move generation replace the otherwise mandatory ACK witness.  Full Dot
+    ownership, presentation-idle and repeated stability checks are still
+    required by the caller before publication.
+    """
+
+    return bool(
+        match_start_opening_pending
+        and effective_acked_highest is None
+        and is_local_turn is True
         and turn in (0, 1)
         and local_move_sequence == 0
         and last_move_sequence in (None, -1, 0)
@@ -641,6 +678,8 @@ class ProviderMetrics:
     native_dot_board_reads: int = 0
     native_dot_boards_accepted: int = 0
     native_dot_board_rejections: int = 0
+    native_dot_board_last_seconds: float = 0.0
+    native_dot_board_max_seconds: float = 0.0
     extended_fusion_ui_scans: int = 0
     extended_fusion_ui_bytes: int = 0
     extended_card_ui_scans: int = 0
@@ -657,6 +696,7 @@ class BoardWsObservation:
     queue: int
     render_running: bool
     bootstrapped_match_id: str | None
+    prefab_by_tag: int = 0
 
 
 @dataclass(frozen=True)
@@ -777,6 +817,7 @@ def _combat_type_info_blocker(
     batch_class: int | None,
     board_ws_class: int | None,
     opening_snapshot_available: bool,
+    native_opening_fallback_available: bool = False,
 ) -> str | None:
     """Return the exact type-info gate that prevents a safe publication.
 
@@ -788,7 +829,11 @@ def _combat_type_info_blocker(
 
     if board_ws_class is None:
         return "board_ws_type_info_not_initialized"
-    if batch_class is None and not opening_snapshot_available:
+    if (
+        batch_class is None
+        and not opening_snapshot_available
+        and not native_opening_fallback_available
+    ):
         return "combat_batch_type_info_not_initialized"
     return None
 
@@ -935,6 +980,34 @@ def _select_latest_identity(
     return max(owned, key=lambda identity: identity[0])
 
 
+def _prefer_exact_transport_or_current_live(
+    eligible: list[tuple[int, int, str]],
+    *,
+    acknowledged_highest: int,
+    transport_attested: set[tuple[int, int, str]],
+    live_board_attested: set[tuple[int, int, str]],
+    live_board_generations: dict[tuple[int, int, str], tuple[int, int]],
+    current_generation: tuple[int, int] | None,
+) -> list[tuple[int, int, str]]:
+    """Prefer the exact server response board, retaining native fallback."""
+
+    exact_transport = [
+        identity
+        for identity in eligible
+        if identity[1] == acknowledged_highest
+        and identity in transport_attested
+    ]
+    if exact_transport:
+        return exact_transport
+    current_live = [
+        identity
+        for identity in eligible
+        if identity in live_board_attested
+        and live_board_generations.get(identity) == current_generation
+    ]
+    return current_live or eligible
+
+
 def _next_direct_owner_grace(
     *,
     acked_highest: int | None,
@@ -1063,6 +1136,47 @@ def sequence_rejection_reason(
     return None
 
 
+def _attested_board_is_current_for_generation(
+    identity: tuple[int, int, str],
+    *,
+    live_board_attested: set[tuple[int, int, str]],
+    live_board_generations: dict[tuple[int, int, str], tuple[int, int]],
+    current_generation: tuple[int, int],
+) -> bool:
+    """Treat a native live board as current only in its sampled generation."""
+
+    return bool(
+        identity not in live_board_attested
+        or live_board_generations.get(identity) == current_generation
+    )
+
+
+def _same_ack_live_generation_advanced(
+    *,
+    selected: tuple[int, int, str],
+    live_board_attested: set[tuple[int, int, str]],
+    live_board_generations: dict[tuple[int, int, str], tuple[int, int]],
+    current_generation: tuple[int, int],
+    last_sequence: int | None,
+    current_sequence: int,
+    last_turn: int | None,
+    current_turn: int,
+    last_local_move_sequence: int | None,
+    current_local_move_sequence: int,
+) -> bool:
+    """Prove a fresh allDots sample supersedes one frozen ACK watermark."""
+
+    return bool(
+        selected in live_board_attested
+        and live_board_generations.get(selected) == current_generation
+        and last_sequence == current_sequence
+        and (
+            last_turn != current_turn
+            or last_local_move_sequence != current_local_move_sequence
+        )
+    )
+
+
 def dot_crosscheck(
     batch: CombatBatchSnapshot, dots: DotCandidateResult
 ) -> RenderCrosscheck:
@@ -1104,6 +1218,9 @@ def read_board_ws_candidate(
     queue_pointer = struct.unpack_from(
         "<Q", raw, BOARD_WS_APPLIER_PENDING_BATCHES_OFFSET
     )[0]
+    prefab_by_tag_pointer = struct.unpack_from(
+        "<Q", raw, BOARD_WS_APPLIER_PREFAB_BY_TAG_OFFSET
+    )[0]
     match_id_pointer = struct.unpack_from(
         "<Q", raw, BOARD_WS_APPLIER_BOOTSTRAPPED_MATCH_ID_OFFSET
     )[0]
@@ -1116,6 +1233,10 @@ def read_board_ws_candidate(
         queue_pointer, 0x30
     ):
         raise LayoutValidationError("BoardWsApplier queue is invalid")
+    if not is_canonical_user_pointer(
+        prefab_by_tag_pointer
+    ) or not memory.is_readable(prefab_by_tag_pointer, 0x30):
+        raise LayoutValidationError("BoardWsApplier prefab table is invalid")
     if render_raw not in (0, 1):
         raise LayoutValidationError("BoardWsApplier render flag is invalid")
     match_id = (
@@ -1124,7 +1245,11 @@ def read_board_ws_candidate(
         else None
     )
     return BoardWsObservation(
-        address, queue_pointer, bool(render_raw), match_id or None
+        address,
+        queue_pointer,
+        bool(render_raw),
+        match_id or None,
+        prefab_by_tag_pointer,
     )
 
 
@@ -1319,6 +1444,54 @@ def _canonical_fusion(
     )
 
 
+def _resolve_native_fusion_control(
+    memory: Any,
+    reader: NativeCardUiReader,
+    hand: NativeCardHand,
+    *,
+    expected_class: int,
+    expected_bound_pet_ids: tuple[int, ...],
+) -> tuple[MemoryFusionUiState | None, int | None]:
+    """Resolve Fusion from exact current-hand component ownership.
+
+    PetPuzzle b6 can place the Evolution control beside an already-present
+    Mega skill card.  The ordinary selected-card list is empty in that route,
+    so strip cardinality alone cannot name the Evolution slot.  Walk only the
+    current ``Board.cardsInHand`` GameObjects, require one exact
+    ``FusionCardUI`` component plus its current-pet identity and Button owner,
+    and otherwise fail closed.
+    """
+
+    candidates: list[tuple[MemoryFusionUiState, int]] = []
+    for slot, entry in enumerate(hand.visible):
+        component = reader.find_game_object_component(
+            entry.game_object,
+            "FusionCardUI",
+        )
+        if component is None:
+            continue
+        validated = validate_fusion_card_ui_hits(
+            memory,
+            (component,),
+            expected_class=expected_class,
+            expected_bound_pet_ids=expected_bound_pet_ids,
+        )
+        if len(validated) != 1:
+            continue
+        candidate = validated[0]
+        reader.validate_button_owner(
+            candidate.address,
+            candidate.button,
+            entry,
+        )
+        candidates.append((candidate, slot))
+    if len(candidates) > 1:
+        raise LayoutValidationError(
+            "native_card_ui: current FusionCardUI is ambiguous"
+        )
+    return candidates[0] if candidates else (None, None)
+
+
 class MemoryBoardStateProvider(BoardStateProvider):
     """Stateful lobby-to-combat provider with currentness and dedup guards."""
 
@@ -1370,6 +1543,10 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._transport_attested: set[tuple[int, int, str]] = set()
         self._runtime_heap_attested: set[tuple[int, int, str]] = set()
         self._live_board_attested: set[tuple[int, int, str]] = set()
+        self._live_board_generations: dict[
+            tuple[int, int, str], tuple[int, int]
+        ] = {}
+        self._last_native_board_generation: tuple[int, int] | None = None
         self._ack_attested: set[tuple[int, int, str]] = set()
         self._lobby_batch_baseline: set[tuple[int, int, str]] = set()
         self._session_batch_baseline: set[tuple[int, int, str]] = set()
@@ -2283,6 +2460,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._transport_attested.clear()
         self._runtime_heap_attested.clear()
         self._live_board_attested.clear()
+        self._live_board_generations.clear()
+        self._last_native_board_generation = None
         self._ack_attested.clear()
         self._batch_scan_miss_seq = None
         self._ack_heap_region_cursor = 0
@@ -2368,6 +2547,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._transport_attested.clear()
         self._runtime_heap_attested.clear()
         self._live_board_attested.clear()
+        self._live_board_generations.clear()
+        self._last_native_board_generation = None
         self._ack_attested.clear()
         self._batch_scan_miss_seq = None
         self._optional_ui_region_cursor = 0
@@ -3515,26 +3696,19 @@ class MemoryBoardStateProvider(BoardStateProvider):
             self._opening_snapshot is not None
             and self._opening_snapshot.match_id == match_id
         )
-        if _match_start_opening_has_priority(
+        match_start_opening_pending = _match_start_opening_has_priority(
             opening_snapshot_available=opening_snapshot_available,
             turn=int(turn),
             local_move_sequence=action_before.local_move_sequence,
             last_move_sequence=action_before.last_move_sequence,
-        ):
-            self.metrics.unstable_skips += 1
-            self._gate.observe(("await_match_start_opening", session_key), False)
-            return ProviderPoll(
-                None,
-                False,
-                "awaiting_match_start_opening_dto",
-                lifecycle,
-                session_key=session_key,
-                combat_lifecycle=lifecycle_observation,
-            )
+        )
         type_info_blocker = _combat_type_info_blocker(
             batch_class=self._batch_class,
             board_ws_class=self._board_ws_class,
             opening_snapshot_available=opening_snapshot_available,
+            native_opening_fallback_available=bool(
+                match_start_opening_pending and self._dot_class is not None
+            ),
         )
         if type_info_blocker is not None:
             self._gate.observe(("type_info_unavailable",), False)
@@ -3673,9 +3847,13 @@ class MemoryBoardStateProvider(BoardStateProvider):
         # exhausting the ordinary-card heap scan budget after evolution.
         native_hand: NativeCardHand | None = None
         native_candidates: tuple[MemoryCardState, ...] = ()
+        native_fusion_slot: int | None = None
+        native_hand_discovery_expected = bool(
+            pet_skill_ui_discovery_expected or fusion_ui_discovery_expected
+        )
         if pet_skill_ui_discovery_expected and board.is_using_legend_card:
             self._native_card_reason = "suspended_during_skill_execution"
-        if (pet_skill_ui_discovery_expected and not opening_board_action_priority
+        if (native_hand_discovery_expected and not opening_board_action_priority
                 and not board.is_using_legend_card
                 and self._card_ui_class is not None and board.active is not None):
             try:
@@ -3697,8 +3875,27 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     self._native_card_reader.validate_button_owner(
                         candidate.address, candidate.button, entry
                     )
+                if fusion_ui_discovery_expected and self._fusion_ui_class is not None:
+                    expected_fusion_pet_ids = _expected_fusion_ui_pet_ids(
+                        memory_fusion
+                    )
+                    native_fusion_ui, native_fusion_slot = (
+                        _resolve_native_fusion_control(
+                            self.target.memory,
+                            self._native_card_reader,
+                            native_hand,
+                            expected_class=int(self._fusion_ui_class),
+                            expected_bound_pet_ids=expected_fusion_pet_ids,
+                        )
+                    )
+                    if native_fusion_ui is not None:
+                        self._fusion_ui_addresses = {native_fusion_ui.address}
                 self._card_addresses = {card.address for card in native_candidates}
-                self._native_card_reason = "current_hand_components_handles_validated"
+                self._native_card_reason = (
+                    "current_hand_card_and_fusion_components_validated"
+                    if native_fusion_slot is not None
+                    else "current_hand_components_handles_validated"
+                )
             except (ExternalReadError, OSError, LayoutValidationError, ValueError) as exc:
                 native_hand = None
                 native_candidates = ()
@@ -4480,11 +4677,39 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 ack_values,
             )
         )
-        if effective_acked_highest is not None:
-            have_highest = any(
-                identity[1] == effective_acked_highest
-                and (not recovery_ack_isolated or identity in current_session_strong)
-                for identity in self._ack_attested
+        native_board_generation = (
+            int(turn),
+            int(action_before.local_move_sequence),
+        )
+        native_opening_identity: tuple[int, int, str] | None = None
+        native_opening_authoritative = False
+        pristine_native_opening_ready = (
+            _pristine_native_opening_generation_allowed(
+                match_start_opening_pending=match_start_opening_pending,
+                effective_acked_highest=effective_acked_highest,
+                is_local_turn=is_local_turn_hint,
+                turn=int(turn),
+                local_move_sequence=action_before.local_move_sequence,
+                last_move_sequence=action_before.last_move_sequence,
+            )
+        )
+        if effective_acked_highest is not None or pristine_native_opening_ready:
+            have_highest = bool(
+                effective_acked_highest is not None
+                and any(
+                    identity[1] == effective_acked_highest
+                    and (
+                        not recovery_ack_isolated
+                        or identity in current_session_strong
+                    )
+                    and _attested_board_is_current_for_generation(
+                        identity,
+                        live_board_attested=self._live_board_attested,
+                        live_board_generations=self._live_board_generations,
+                        current_generation=native_board_generation,
+                    )
+                    for identity in self._ack_attested
+                )
             )
             # The supported build acknowledges every rendered combat response, including
             # responses whose payload contains only incremental ``ops`` and no
@@ -4495,9 +4720,16 @@ class MemoryBoardStateProvider(BoardStateProvider):
             # This path is bounded to 64 current GameObjects and performs no
             # heap scan or engine call.
             native_dot_ready = bool(
-                not have_highest
+                (
+                    not have_highest
+                    or self._last_native_board_generation
+                    != native_board_generation
+                )
                 and not recovery_ack_isolated
-                and not opening_board_action_priority
+                and (
+                    not opening_board_action_priority
+                    or match_start_opening_pending
+                )
                 and self._dot_class is not None
                 and array_before is not None
                 and array_before.layout_verified
@@ -4513,6 +4745,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
             if native_dot_ready:
                 self.metrics.native_dot_board_reads += 1
+                native_dot_started = time.perf_counter()
                 try:
                     if self._native_card_reader is None:
                         self._native_card_reader = NativeCardUiReader(
@@ -4523,6 +4756,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         board.board_instance,
                         tuple(int(value) for value in array_before.elements),
                         int(self._dot_class),
+                        valid_owners[0][0].prefab_by_tag,
                     )
                     native_rejections = dto_rejection_reasons(native_board.cells)
                     if native_rejections:
@@ -4541,24 +4775,69 @@ class MemoryBoardStateProvider(BoardStateProvider):
                         raise LayoutValidationError(
                             "ACK set changed during native Dot board read"
                         )
+                    native_opening_authoritative = bool(
+                        pristine_native_opening_ready
+                        and effective_acked_highest is None
+                        and acked_after_native.highest is None
+                    )
+                    if native_opening_authoritative:
+                        native_sequence = 0
+                    elif effective_acked_highest is not None:
+                        native_sequence = int(effective_acked_highest)
+                    else:  # pragma: no cover - narrowed by the predicates
+                        raise LayoutValidationError(
+                            "native board has neither opening nor ACK authority"
+                        )
+                    native_source = (
+                        PRISTINE_NATIVE_OPENING_BOARD_SOURCE
+                        if native_opening_authoritative
+                        else ACK_ATTESTED_LIVE_BOARD_SOURCE
+                    )
                     live_batch = CombatBatchSnapshot(
                         board.all_dots,
-                        effective_acked_highest,
+                        native_sequence,
                         board.all_dots,
                         native_board.cells,
                     )
                     live_identity = self._register(
                         live_batch,
-                        "Board.allDots->GameObject.components->Dot.PoolTag+"
-                        "MatchService._ackedSeqs",
+                        native_source,
                     )
+                    # A stable ACK is a presentation watermark.  Once the
+                    # game-owned turn/move generation advances, an older live
+                    # reconstruction at that same watermark is no longer a
+                    # current board witness and must not win selection again.
+                    superseded_live = {
+                        identity
+                        for identity in self._live_board_attested
+                        if identity != live_identity
+                        and (
+                            identity[1] == effective_acked_highest
+                            or (
+                                native_opening_authoritative
+                                and self._live_board_generations.get(identity)
+                                == native_board_generation
+                            )
+                        )
+                    }
+                    self._live_board_attested.difference_update(superseded_live)
+                    self._ack_attested.difference_update(superseded_live)
                     self._live_board_attested.add(live_identity)
-                    self._ack_attested.add(live_identity)
+                    self._live_board_generations[live_identity] = (
+                        native_board_generation
+                    )
+                    self._last_native_board_generation = native_board_generation
+                    if native_opening_authoritative:
+                        native_opening_identity = live_identity
+                    else:
+                        self._ack_attested.add(live_identity)
                     current_session_strong.add(live_identity)
                     have_highest = True
                     self.metrics.native_dot_boards_accepted += 1
                     self._native_dot_reason = (
-                        "current_settled_board_owned_and_ack_stable"
+                        "pristine_opening_board_owned_and_generation_stable"
+                        if native_opening_authoritative
+                        else "current_settled_board_owned_and_ack_stable"
                     )
                 except (
                     ExternalReadError,
@@ -4570,8 +4849,38 @@ class MemoryBoardStateProvider(BoardStateProvider):
                     self.metrics.native_dot_board_rejections += 1
                     self._native_dot_reason = str(exc)
                     rejection_details.append(f"nativeDot:{exc}")
+                finally:
+                    native_dot_seconds = max(
+                        0.0,
+                        time.perf_counter() - native_dot_started,
+                    )
+                    self.metrics.native_dot_board_last_seconds = native_dot_seconds
+                    self.metrics.native_dot_board_max_seconds = max(
+                        self.metrics.native_dot_board_max_seconds,
+                        native_dot_seconds,
+                    )
             elif not have_highest:
                 self._native_dot_reason = "presentation_not_ready_for_native_board"
+
+            if match_start_opening_pending and not have_highest:
+                # MATCH_START remains preferred, but its Newtonsoft wrapper is
+                # short-lived and is not guaranteed to survive until the Board
+                # session binds.  Give the external transport sampler another
+                # prompt poll without entering any broad ACK heap scan.  The
+                # only alternative accepted above is the bounded, current
+                # Board.allDots ownership walk under an unchanged ACK set.
+                self.metrics.unstable_skips += 1
+                self._gate.observe(
+                    ("await_match_start_or_native_opening", session_key), False
+                )
+                return ProviderPoll(
+                    None,
+                    False,
+                    "awaiting_match_start_opening_dto",
+                    lifecycle,
+                    session_key=session_key,
+                    combat_lifecycle=lifecycle_observation,
+                )
 
             if not have_highest and self._batch_class is None:
                 self._gate.observe(("batch_type_info_unavailable",), False)
@@ -4725,6 +5034,24 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 self._retain_validated_learned_regions(
                     "batch", self._batch_addresses
                 )
+
+        if (
+            match_start_opening_pending
+            and effective_acked_highest is None
+            and not native_opening_authoritative
+        ):
+            self.metrics.unstable_skips += 1
+            self._gate.observe(
+                ("await_match_start_or_opening_ack", session_key), False
+            )
+            return ProviderPoll(
+                None,
+                False,
+                "awaiting_match_start_opening_dto",
+                lifecycle,
+                session_key=session_key,
+                combat_lifecycle=lifecycle_observation,
+            )
 
         card_candidates: tuple[MemoryCardState, ...] = ()
         if self._card_ui_class is not None and board.active is not None:
@@ -4916,12 +5243,18 @@ class MemoryBoardStateProvider(BoardStateProvider):
             memory_fusion,
             fusion_ui,
             ui_slot=(
-                card_layout.fusion_slot
+                native_fusion_slot
+                if native_fusion_slot is not None and fusion_ui is not None
+                else card_layout.fusion_slot
                 if card_layout.resolved
                 else None
             ),
             ui_slot_count=(
-                card_layout.slot_count
+                len(native_hand.visible)
+                if native_fusion_slot is not None
+                and native_hand is not None
+                and fusion_ui is not None
+                else card_layout.slot_count
                 if card_layout.resolved
                 else None
             ),
@@ -4976,6 +5309,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 "ChatMessageDTO.MATCH_START.matchPayload.board",
             )
             eligible = [opening_identity]
+        elif native_opening_authoritative and native_opening_identity is not None:
+            eligible = [native_opening_identity]
         else:
             eligible_identities = (
                 self._ack_attested & current_session_strong
@@ -4994,6 +5329,14 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 )
                 and not dto_rejection_reasons(self._tracked[identity].cells)
             ]
+            eligible = _prefer_exact_transport_or_current_live(
+                eligible,
+                acknowledged_highest=effective_acked_highest,
+                transport_attested=self._transport_attested,
+                live_board_attested=self._live_board_attested,
+                live_board_generations=self._live_board_generations,
+                current_generation=native_board_generation,
+            )
         if rejection_details:
             self.metrics.dto_rejections += len(rejection_details)
         if not eligible:
@@ -5011,7 +5354,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
             )
 
         highest = max(identity[1] for identity in eligible)
-        if not opening_authoritative and highest != effective_acked_highest:
+        if (
+            not opening_authoritative
+            and not native_opening_authoritative
+            and highest != effective_acked_highest
+        ):
             self.metrics.unstable_skips += 1
             self._gate.observe(("acked_batch_lag",), False)
             return ProviderPoll(
@@ -5063,6 +5410,23 @@ class MemoryBoardStateProvider(BoardStateProvider):
             highest,
             selected[2],
         )
+        live_generation_advanced = _same_ack_live_generation_advanced(
+            selected=selected,
+            live_board_attested=self._live_board_attested,
+            live_board_generations=self._live_board_generations,
+            current_generation=native_board_generation,
+            last_sequence=self._last_accepted_seq,
+            current_sequence=highest,
+            last_turn=self._last_accepted_turn,
+            current_turn=int(turn),
+            last_local_move_sequence=self._last_accepted_local_move_sequence,
+            current_local_move_sequence=action_before.local_move_sequence,
+        )
+        if live_generation_advanced and sequence_reason in {
+            "duplicate_sequence",
+            "sequence_hash_changed",
+        }:
+            sequence_reason = None
         if sequence_reason == "stale_sequence":
             self.metrics.stale_skips += 1
             self._gate.observe(("stale",), False)
@@ -5173,7 +5537,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 self.metrics.ack_reads += 1
                 native_ack_stable = bool(
                     acked_after == acked
-                    and selected[1] in acked_after.sequences
+                    and (
+                        acked_after.highest is None
+                        if native_opening_authoritative
+                        else selected[1] in acked_after.sequences
+                    )
                 )
         except (ExternalReadError, OSError, LayoutValidationError):
             board_after = None
@@ -5375,7 +5743,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 sources=tuple(sorted(self._sources[selected])),
                 session_key=session_key,
                 match_id=match_id,
-                acknowledged=not opening_authoritative,
+                acknowledged=not (
+                    opening_authoritative or native_opening_authoritative
+                ),
                 latest=True,
                 is_board_ready=board.is_board_ready,
                 is_cascade_running=board.is_cascade_running,
@@ -5469,7 +5839,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 session_key,
                 tuple(rejection_details),
             )
-        if self._last_accepted_seq is not None and highest <= self._last_accepted_seq:
+        if (
+            self._last_accepted_seq is not None
+            and highest <= self._last_accepted_seq
+            and not live_generation_advanced
+        ):
             self.metrics.duplicate_skips += 1
             return ProviderPoll(
                 state,
@@ -5499,6 +5873,8 @@ class MemoryBoardStateProvider(BoardStateProvider):
             (
                 "stable_match_start_opening_dto"
                 if opening_authoritative
+                else "stable_native_opening_board"
+                if native_opening_authoritative
                 else "stable_ack_attested_dto"
             ),
             lifecycle,
@@ -5695,6 +6071,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "transportAttestedBatches": len(self._transport_attested),
             "runtimeHeapAttestedBatches": len(self._runtime_heap_attested),
             "liveBoardAttestedBatches": len(self._live_board_attested),
+            "lastNativeBoardGeneration": self._last_native_board_generation,
             "ackAttestedBatches": len(self._ack_attested),
             "lobbyBaselineBatches": len(self._lobby_batch_baseline),
             "sessionBaselineBatches": len(self._session_batch_baseline),
@@ -5751,6 +6128,14 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "nativeDotBoardReads": self.metrics.native_dot_board_reads,
             "nativeDotBoardsAccepted": self.metrics.native_dot_boards_accepted,
             "nativeDotBoardRejections": self.metrics.native_dot_board_rejections,
+            "nativeDotBoardLastSeconds": round(
+                self.metrics.native_dot_board_last_seconds,
+                6,
+            ),
+            "nativeDotBoardMaxSeconds": round(
+                self.metrics.native_dot_board_max_seconds,
+                6,
+            ),
             "livePetSkillCardIdentity": tuple(
                 sorted(
                     (

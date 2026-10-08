@@ -121,13 +121,40 @@ def _locate_current_wide_result(
         <= transform.viewport_width * 0.16
         and transform.viewport_height * 0.035
         <= item[3] - item[1]
-        <= transform.viewport_height * 0.10
+        # The four supported 2:1 profiles share normalized UI geometry.  At
+        # 960x480 the live blue glow can join the button body into one 61-pixel
+        # component (12.7% of the viewport), while live 800x400, 1120x560 and
+        # 1280x640 frames remain inside the same normalized envelope.  The
+        # previous 10% ceiling therefore rejected a real "Đồng ý" control on
+        # one supported profile before its independent near-white label proof
+        # ran.  Keep the lower/width/position gates and label-density proof,
+        # while applying one scale-independent bound to every profile.
+        <= transform.viewport_height * 0.14
     ]
     if len(banners) != 1 or len(buttons) != 1:
         return None
 
     banner = banners[0]
     button = buttons[0]
+    # During the reward animation, the glowing blue floor beneath the gift can
+    # form a centered component with almost exactly the same dimensions as the
+    # later confirmation button.  Shape and position alone therefore granted a
+    # false click before "Đồng ý" existed.  The real control also contains a
+    # dense near-white text label; require that independent visual anchor before
+    # authorizing the one-shot postmatch input.
+    label_pixels = 0
+    for y in range(button[1], button[3]):
+        row = y * width * 3
+        for x in range(button[0], button[2]):
+            offset = row + x * 3
+            red, green, blue = rgb[offset : offset + 3]
+            if red >= 210 and green >= 210 and blue >= 210:
+                label_pixels += 1
+    button_area = max(1, (button[2] - button[0]) * (button[3] - button[1]))
+    minimum_label_pixels = max(40, round(button_area * 0.04))
+    if label_pixels < minimum_label_pixels:
+        return None
+
     banner_point = (
         (banner[0] + banner[2]) / 2 / width,
         (banner[1] + banner[3]) / 2 / height,
@@ -160,6 +187,8 @@ def _locate_current_wide_result(
             "buttonPixels": button[4],
             "buttonWidth": button[2] - button[0],
             "buttonHeight": button[3] - button[1],
+            "buttonLabelPixels": label_pixels,
+            "minimumButtonLabelPixels": minimum_label_pixels,
         },
     )
 

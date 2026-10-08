@@ -46,12 +46,26 @@ class PetSkillCostSource(str, Enum):
 class PetSkillFamily(str, Enum):
     AUTOMATIC_DOT_DESTRUCTION = "AUTOMATIC_DOT_DESTRUCTION"
     DOT_QTE_OTHER = "DOT_QTE_OTHER"
+    MEGA_ICARUS_CLICK_ONLY = "MEGA_ICARUS_CLICK_ONLY"
     UNKNOWN = "UNKNOWN"
 
 
 class PetSkillTargetMode(str, Enum):
     AUTOMATIC = "AUTOMATIC"
     UNKNOWN = "UNKNOWN"
+
+
+PET_SKILL_ELEMENT_TYPES = frozenset(
+    {
+        "ATTACK_LEGEND",
+        "ATTACK_LEGEND_",
+        # Older fixtures and current PetPuzzle b6 use different names for
+        # the same Mega Icarus click-only card family.  Keep both aliases so
+        # CardUI discovery and capability resolution cannot drift apart.
+        "MEGA1",
+        "MEGA_ICARUS",
+    }
+)
 
 
 class QteDirection(str, Enum):
@@ -183,6 +197,8 @@ def pet_skill_family(element_type: str | None) -> tuple[PetSkillFamily, PetSkill
         )
     if value == "ATTACK_LEGEND":
         return PetSkillFamily.DOT_QTE_OTHER, PetSkillTargetMode.UNKNOWN
+    if value in {"MEGA1", "MEGA_ICARUS"}:
+        return PetSkillFamily.MEGA_ICARUS_CLICK_ONLY, PetSkillTargetMode.AUTOMATIC
     return PetSkillFamily.UNKNOWN, PetSkillTargetMode.UNKNOWN
 
 
@@ -198,7 +214,7 @@ def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
     """
 
     family, _ = pet_skill_family(card.element_type)
-    proven_shape = (
+    qte_shape = (
         family in {
             PetSkillFamily.AUTOMATIC_DOT_DESTRUCTION,
             PetSkillFamily.DOT_QTE_OTHER,
@@ -206,8 +222,25 @@ def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
         and card.mana_cost == 0
         and card.power_cost == 0
     )
-    mana = card.condition_use if proven_shape and card.condition_use > 0 else None
-    power = card.power if proven_shape and card.power > 0 else None
+    mega_icarus_shape = bool(
+        family is PetSkillFamily.MEGA_ICARUS_CLICK_ONLY
+        and card.mana_cost == 0
+        and card.power_cost == 0
+    )
+    mana = (
+        card.condition_use
+        if (qte_shape or mega_icarus_shape) and card.condition_use > 0
+        else None
+    )
+    # Mega cards may legitimately require no Rage. Preserve live zero as a
+    # known requirement instead of converting it into an unknown cost.
+    power = (
+        card.power
+        if mega_icarus_shape and card.power >= 0
+        else card.power
+        if qte_shape and card.power > 0
+        else None
+    )
     evidence: list[str] = []
     if mana is not None:
         evidence.append(f"{card.element_type}:conditionUse_is_mana_cost")

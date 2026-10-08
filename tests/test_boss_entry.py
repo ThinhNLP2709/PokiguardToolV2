@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from pokiguard_v2.boss_entry import (
     BossCandidate,
@@ -26,6 +27,7 @@ from tools.boss_entry import (
     ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS,
     ATTACK_CARD_SELECTION_VERIFY_WINDOW_SECONDS,
     _attack_toggle_visuals_stable,
+    _capture_proof_with_retry,
     _entry_opening_timeout_recovery_required,
     _entry_emergency_requested,
     _entry_input_rejection_stop_reason,
@@ -40,6 +42,43 @@ from tools.boss_entry import (
 
 
 V1_SCREENSHOTS = Path(r"D:\PokiguardAuto\GameScreenShoot")
+
+
+class EntryGeometryRetryTests(unittest.TestCase):
+    def test_atomic_preflight_retries_one_transient_geometry_sample(self) -> None:
+        expected = (object(), object(), "stable-signature")
+        with patch(
+            "tools.boss_entry._capture_proof",
+            side_effect=[RuntimeError("geometry changed during read"), expected],
+        ) as capture, patch("tools.boss_entry.time.sleep") as sleep:
+            actual = _capture_proof_with_retry(
+                target=object(),
+                executor=object(),  # type: ignore[arg-type]
+                binding=object(),
+                button_address=0x1234,
+                require_foreground=False,
+            )
+
+        self.assertEqual(actual, expected)
+        self.assertEqual(capture.call_count, 2)
+        sleep.assert_called_once_with(0.05)
+
+    def test_atomic_preflight_exhaustion_remains_a_runtime_rejection(self) -> None:
+        with patch(
+            "tools.boss_entry._capture_proof",
+            side_effect=RuntimeError("geometry still moving"),
+        ) as capture, patch("tools.boss_entry.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "still moving"):
+                _capture_proof_with_retry(
+                    target=object(),
+                    executor=object(),  # type: ignore[arg-type]
+                    binding=object(),
+                    button_address=0x1234,
+                    require_foreground=False,
+                )
+
+        self.assertEqual(capture.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
 
 
 def candidate(index: int, boss_id: str, name: str) -> BossCandidate:
@@ -173,7 +212,7 @@ class BossEntryLoggingTests(unittest.TestCase):
                 click=None,
                 entry_lease_error=None,
                 entry_lease_result=lease,
-                post_focus_preflight_stop_reason=(
+                final_pre_takeover_preflight_stop_reason=(
                     "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
                 ),
             ),
@@ -189,7 +228,7 @@ class BossEntryLoggingTests(unittest.TestCase):
             "authorized": True,
             "emergency_requested": False,
             "click": None,
-            "post_focus_preflight_stop_reason": (
+            "final_pre_takeover_preflight_stop_reason": (
                 "ENTRY_PREFLIGHT_RUNTIME_CHANGED"
             ),
         }
@@ -324,6 +363,20 @@ class BossEntryLoggingTests(unittest.TestCase):
                 current={
                     **exact,
                     "boardSource": (
+                        "Board.allDots->GameObject.components->Dot.PoolTag+"
+                        "MatchService._ackedSeqs"
+                    ),
+                },
+                entry_clicks=1,
+                gameplay_inputs=0,
+            )
+        )
+        self.assertTrue(
+            _entry_opening_timeout_recovery_required(
+                active_session=active,
+                current={
+                    **exact,
+                    "boardSource": (
                         "ChatMessageDTO.MATCH_MOVE_RES."
                         "preBoard+raw.matchPayload.srvSeq"
                     ),
@@ -343,6 +396,14 @@ class BossEntryLoggingTests(unittest.TestCase):
                 "current": {
                     **exact,
                     "boardSource": "ChatMessageDTO.MATCH_START.matchPayload.board",
+                }
+            },
+            {
+                "current": {
+                    **exact,
+                    "boardSource": (
+                        "Board.allDots->GameObject.components->Dot.PoolTag"
+                    ),
                 }
             },
             {"entry_clicks": 0},
@@ -720,6 +781,51 @@ class BossEntryButtonLocatorTests(unittest.TestCase):
         )
         self.assertFalse(rejected.found)
         self.assertEqual(rejected.reason, "room_shell_start_control_missing")
+
+    def test_current_detached_room_shell_accepts_red_ready_and_top_right_exit(self) -> None:
+        width, height = 1000, 500
+        ready_rect = (0.70, 0.80, 0.92, 0.92)
+        rgb = bytearray(bytes((10, 20, 45)) * width * height)
+
+        def paint(x: int, y: int, color: tuple[int, int, int]) -> None:
+            offset = (y * width + x) * 3
+            rgb[offset : offset + 3] = bytes(color)
+
+        for y in range(round(height * ready_rect[1]), round(height * ready_rect[3])):
+            for x in range(round(width * ready_rect[0]), round(width * ready_rect[2])):
+                paint(x, y, (220, 45, 35))
+        for y in range(round(height * 0.84), round(height * 0.88)):
+            for x in range(round(width * 0.78), round(width * 0.86)):
+                paint(x, y, (245, 245, 235))
+
+        center_x, center_y = round(width * 0.965), round(height * 0.07)
+        radius_x, radius_y = round(width * 0.028), round(height * 0.045)
+        for y in range(center_y - radius_y, center_y + radius_y + 1):
+            for x in range(center_x - radius_x, center_x + radius_x + 1):
+                if (
+                    ((x - center_x) / radius_x) ** 2
+                    + ((y - center_y) / radius_y) ** 2
+                    <= 1.0
+                ):
+                    paint(x, y, (35, 205, 245))
+        for delta in range(-10, 11):
+            for thickness in range(-2, 3):
+                paint(center_x + delta, center_y + delta + thickness, (245, 245, 245))
+                paint(center_x + delta, center_y - delta + thickness, (245, 245, 245))
+
+        located = locate_detached_chinh_phuc_room_shell_exit(
+            bytes(rgb),
+            width,
+            height,
+            expected_start_rect=ready_rect,
+        )
+        self.assertTrue(located.found, located)
+        self.assertEqual(
+            located.reason, "single_room_start_plus_top_right_circular_exit"
+        )
+        self.assertEqual(located.metrics["exitLayout"], "TOP_RIGHT_VIEWPORT")
+        self.assertAlmostEqual(located.normalized_point[0], 0.965, delta=0.015)  # type: ignore[index]
+        self.assertAlmostEqual(located.normalized_point[1], 0.07, delta=0.015)  # type: ignore[index]
 
     @unittest.skipUnless(
         (V1_SCREENSHOTS / "waiting_room.png").exists(),

@@ -1,4 +1,4 @@
-"""Read-only IL2CPP boss-lobby graph for the verified Pokiguard build.
+"""Read-only IL2CPP boss-lobby graph for the verified PetPuzzle build.
 
 Every type-info RVA and field offset below is backed by the local Cpp2IL
 DiffableCs/ISIL output.  No method is invoked and target memory is never
@@ -35,10 +35,10 @@ from .native_card_ui import NativeCardUiReader
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
-MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x3695CB8
-MANAGER_ROOM_TYPE_INFO_RVA = 0x36954C8
-WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x36AB988
-ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x36746D0
+MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x36C4718
+MANAGER_ROOM_TYPE_INFO_RVA = 0x36C3FC0
+WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x36D7B08
+ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x36A0A30
 
 # b5 inserted ``KnownUserLevel`` before ``ManagerQuangTruong.Instance``.
 MANAGER_QUANG_TRUONG_INSTANCE_STATIC_OFFSET = 0x08
@@ -66,7 +66,7 @@ MANAGER_BOSS_PANEL_WORLD_OFFSET = 0x30
 
 # UIPanelManager (Assembly-CSharp).  The managed open-order count is the
 # read-only counterpart of the final AnyPanelOpen check in IsHubViewActive.
-UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x3695D80
+UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x36C47E0
 UI_PANEL_MANAGER_OPEN_ORDER_OFFSET = 0x30
 
 # ManagerRoom (Assembly-CSharp).
@@ -108,6 +108,27 @@ WS_CURRENT_ROOM_ID_OFFSET = 0x10
 WS_CURRENT_ROOM_TYPE_OFFSET = 0x18
 WS_OWNER_USERNAME_OFFSET = 0x20
 WS_PROPERTIES_OFFSET = 0x38
+
+# ``WsRoomService.Properties`` is the authoritative room-property snapshot in
+# b6. A host room can keep this dictionary while ``ManagerRoom.roomData`` is
+# null; ManagerRoom.BuildInitialBossProps/SetEnemyPetFromProps use the exact
+# keys below. The type-info RVAs come from the b6 Il2CppInspector output.
+DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA = 0x36C4108
+INT32_TYPE_INFO_RVA = 0x36C3FE8
+INT64_TYPE_INFO_RVA = 0x36C4C20
+STRING_TYPE_INFO_RVA = 0x36C38A0
+DICTIONARY_ENTRIES_OFFSET = 0x18
+DICTIONARY_COUNT_OFFSET = 0x20
+DICTIONARY_FREE_COUNT_OFFSET = 0x28
+DICTIONARY_VERSION_OFFSET = 0x2C
+DICTIONARY_ENTRY_SIZE = 0x18
+DICTIONARY_ENTRY_HASH_OFFSET = 0x00
+DICTIONARY_ENTRY_KEY_OFFSET = 0x08
+DICTIONARY_ENTRY_VALUE_OFFSET = 0x10
+ARRAY_LENGTH_OFFSET = 0x18
+ARRAY_DATA_OFFSET = 0x20
+BOXED_VALUE_OFFSET = 0x10
+MAX_ROOM_PROPERTY_SLOTS = 64
 
 # ManagerBoss / BossItem / WorldBossDTO.
 MANAGER_BOSS_ITEMS_OFFSET = 0x70
@@ -216,6 +237,16 @@ class ChinhPhucRoomSnapshot:
 
 
 @dataclass(frozen=True)
+class ChinhPhucRoomPropertyIdentity:
+    """Boss identity decoded from the exact current-room property dictionary."""
+
+    enemy_pet_id: int | None
+    enemy_pet_level: int | None
+    enemy_pet_name: str | None
+    keys: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class WorldBossListSnapshot:
     manager_quang_truong: int | None
     panel_boss: int | None
@@ -262,6 +293,154 @@ def _read_string(resolver: object, base: int, offset: int) -> str | None:
         return None
     value = read_il2cpp_string(resolver.memory, pointer, max_length=256)
     return value or None
+
+
+def _read_exact(resolver: object, address: int, size: int) -> bytes:
+    if (
+        size <= 0
+        or not is_canonical_user_pointer(address)
+        or not resolver.memory.is_readable(address, size)
+    ):
+        raise LayoutValidationError("room-property range is unreadable")
+    raw = resolver.memory.read(address, size)
+    if len(raw) != size:
+        raise LayoutValidationError("short room-property read")
+    return raw
+
+
+def _read_chinh_phuc_room_property_identity(
+    resolver: object,
+    dictionary: int,
+) -> ChinhPhucRoomPropertyIdentity:
+    """Read the b6 ``Dictionary<string, object>`` without invoking game code.
+
+    Every structural pointer and decoded value is type checked. A changing
+    header, duplicate key, wrong boxed type or implausible shape is a hard
+    validation error, so an island layer cannot be promoted from stale memory.
+    """
+
+    dictionary_class = resolver.resolve_type_info_class(
+        DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA
+    )
+    int32_class = resolver.resolve_type_info_class(INT32_TYPE_INFO_RVA)
+    int64_class = resolver.resolve_type_info_class(INT64_TYPE_INFO_RVA)
+    string_class = resolver.resolve_type_info_class(STRING_TYPE_INFO_RVA)
+    if not all((dictionary_class, int32_class, int64_class, string_class)):
+        raise LayoutValidationError("room-property type-info is unavailable")
+
+    header_before = _read_exact(resolver, dictionary, 0x30)
+    if struct.unpack_from("<Q", header_before, 0)[0] != dictionary_class:
+        raise LayoutValidationError("room-property dictionary class mismatch")
+    entries = struct.unpack_from(
+        "<Q", header_before, DICTIONARY_ENTRIES_OFFSET
+    )[0]
+    count = struct.unpack_from("<i", header_before, DICTIONARY_COUNT_OFFSET)[0]
+    free_count = struct.unpack_from(
+        "<i", header_before, DICTIONARY_FREE_COUNT_OFFSET
+    )[0]
+    version = struct.unpack_from(
+        "<i", header_before, DICTIONARY_VERSION_OFFSET
+    )[0]
+    if (
+        not 0 <= count <= MAX_ROOM_PROPERTY_SLOTS
+        or not 0 <= free_count <= count
+        or version < 0
+    ):
+        raise LayoutValidationError("room-property dictionary shape is implausible")
+    if count == 0:
+        return ChinhPhucRoomPropertyIdentity(None, None, None, ())
+    if not is_canonical_user_pointer(entries):
+        raise LayoutValidationError("room-property entries pointer is invalid")
+
+    raw_entries = _read_exact(
+        resolver,
+        entries,
+        ARRAY_DATA_OFFSET + count * DICTIONARY_ENTRY_SIZE,
+    )
+    array_class, _monitor, bounds, capacity = struct.unpack_from(
+        "<4Q", raw_entries, 0
+    )
+    if (
+        not is_canonical_user_pointer(array_class)
+        or bounds != 0
+        or not count <= capacity <= MAX_ROOM_PROPERTY_SLOTS * 4
+    ):
+        raise LayoutValidationError("room-property backing array shape is invalid")
+
+    wanted: dict[str, int] = {}
+    seen: set[str] = set()
+    live_entries = 0
+    for index in range(count):
+        entry = ARRAY_DATA_OFFSET + index * DICTIONARY_ENTRY_SIZE
+        hash_code = struct.unpack_from(
+            "<i", raw_entries, entry + DICTIONARY_ENTRY_HASH_OFFSET
+        )[0]
+        if hash_code < 0:
+            continue
+        live_entries += 1
+        key_pointer = struct.unpack_from(
+            "<Q", raw_entries, entry + DICTIONARY_ENTRY_KEY_OFFSET
+        )[0]
+        value_pointer = struct.unpack_from(
+            "<Q", raw_entries, entry + DICTIONARY_ENTRY_VALUE_OFFSET
+        )[0]
+        if not (
+            is_canonical_user_pointer(key_pointer)
+            and is_canonical_user_pointer(value_pointer)
+        ):
+            raise LayoutValidationError("room-property entry pointer is invalid")
+        if struct.unpack("<Q", _read_exact(resolver, key_pointer, 8))[0] != string_class:
+            raise LayoutValidationError("room-property key is not System.String")
+        key = read_il2cpp_string(resolver.memory, key_pointer, max_length=64)
+        if not key or key in seen:
+            raise LayoutValidationError("room-property key is empty or duplicated")
+        seen.add(key)
+        if key in {"enemyPetId", "enemyPetLevel", "enemyPetName"}:
+            wanted[key] = value_pointer
+
+    if live_entries != count - free_count:
+        raise LayoutValidationError("room-property live entry count mismatch")
+    if _read_exact(resolver, dictionary, 0x30) != header_before:
+        raise LayoutValidationError("room-property dictionary changed during read")
+
+    def boxed_int(key: str) -> int | None:
+        pointer = wanted.get(key)
+        if pointer is None:
+            return None
+        raw = _read_exact(resolver, pointer, BOXED_VALUE_OFFSET + 8)
+        value_class = struct.unpack_from("<Q", raw, 0)[0]
+        if value_class == int32_class:
+            return struct.unpack_from("<i", raw, BOXED_VALUE_OFFSET)[0]
+        if value_class == int64_class:
+            value = struct.unpack_from("<q", raw, BOXED_VALUE_OFFSET)[0]
+            if not -(2**31) <= value < 2**31:
+                raise LayoutValidationError(
+                    f"room-property {key} Int64 is outside Int32 range"
+                )
+            return int(value)
+        raise LayoutValidationError(
+            f"room-property {key} is not System.Int32/System.Int64"
+        )
+
+    enemy_name = None
+    name_pointer = wanted.get("enemyPetName")
+    if name_pointer is not None:
+        if struct.unpack("<Q", _read_exact(resolver, name_pointer, 8))[0] != string_class:
+            raise LayoutValidationError(
+                "room-property enemyPetName is not System.String"
+            )
+        enemy_name = read_il2cpp_string(
+            resolver.memory,
+            name_pointer,
+            max_length=256,
+        ) or None
+
+    return ChinhPhucRoomPropertyIdentity(
+        boxed_int("enemyPetId"),
+        boxed_int("enemyPetLevel"),
+        enemy_name,
+        tuple(sorted(seen)),
+    )
 
 
 def _static_instance(
@@ -513,9 +692,7 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
                     reasons.append("ButtonStart is not interactable")
             if opening is not False:
                 reasons.append("ManagerRoom opening flow already pending")
-            if room_data is None or not resolver.memory.is_readable(room_data, 0x58):
-                reasons.append("ManagerRoom.roomData unavailable")
-            else:
+            if room_data is not None and resolver.memory.is_readable(room_data, 0x58):
                 room_dto_id = resolver.read_i32(room_data + ROOM_ID_OFFSET)
                 room_name = _read_string(resolver, room_data, ROOM_NAME_OFFSET)
                 local_pet_id = resolver.read_i32(room_data + ROOM_LOCAL_PET_ID_OFFSET)
@@ -524,6 +701,8 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
                 enemy_name = _read_string(resolver, room_data, ROOM_ENEMY_PET_NAME_OFFSET)
                 if enemy_pet_id <= 0 or not enemy_name:
                     reasons.append("RoomDTO target identity is invalid")
+            elif room_data is not None:
+                reasons.append("ManagerRoom.roomData range is invalid")
     except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
         reasons.append(f"ManagerRoom read error: {exc}")
 
@@ -566,6 +745,42 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
     except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
         reasons.append(f"WsRoomService read error: {exc}")
 
+    identity_source = "ManagerRoom.roomData"
+    if room_data is None:
+        # b6 can keep the authoritative boss identity only in the exact active
+        # WsRoomService room. Accept that source only after all independent
+        # membership invariants above have been proven.
+        if (
+            ws is not None
+            and room_id
+            and room_type == "ChinhPhuc"
+            and is_host is True
+            and properties is not None
+        ):
+            try:
+                property_identity = _read_chinh_phuc_room_property_identity(
+                    resolver,
+                    properties,
+                )
+                if (
+                    property_identity.enemy_pet_id is None
+                    or property_identity.enemy_pet_id <= 0
+                    or property_identity.enemy_pet_level is None
+                    or property_identity.enemy_pet_level <= 0
+                ):
+                    reasons.append(
+                        "current room properties do not contain a valid boss identity"
+                    )
+                else:
+                    enemy_pet_id = property_identity.enemy_pet_id
+                    enemy_level = property_identity.enemy_pet_level
+                    enemy_name = property_identity.enemy_pet_name
+                    identity_source = "WsRoomService.Properties"
+            except (ExternalReadError, LayoutValidationError, OSError, ValueError) as exc:
+                reasons.append(f"current room properties are invalid: {exc}")
+        else:
+            reasons.append("ManagerRoom.roomData unavailable")
+
     clean = not reasons
     snapshot = ChinhPhucRoomSnapshot(
         manager_room,
@@ -601,7 +816,7 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
         tuple(reasons),
     )
     candidates: tuple[BossCandidate, ...] = ()
-    if enemy_pet_id is not None and enemy_pet_id > 0 and enemy_name:
+    if enemy_pet_id is not None and enemy_pet_id > 0:
         candidates = (
             BossCandidate(
                 0,
@@ -610,15 +825,23 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
                     enemy_name,
                     room_id=room_id,
                     pet_id=enemy_pet_id,
-                    source="ManagerRoom.roomData",
+                    source=identity_source,
                 ),
                 TargetSelectionState.SELECTED,
                 clean,
                 clean,
                 entry_control_address=button,
                 evidence=(
-                    "RoomDTO.enemyPetId@+0x38",
-                    "RoomDTO.nameEnemyPetId@+0x40",
+                    (
+                        "RoomDTO.enemyPetId@+0x38"
+                        if identity_source == "ManagerRoom.roomData"
+                        else "WsRoomService.Properties['enemyPetId']"
+                    ),
+                    (
+                        "RoomDTO.nameEnemyPetId@+0x40"
+                        if identity_source == "ManagerRoom.roomData"
+                        else "WsRoomService.Properties['enemyPetLevel']"
+                    ),
                     "ManagerRoom.ButtonStart@+0x28",
                     "WsRoomService.CurrentRoomType='ChinhPhuc'",
                 ),

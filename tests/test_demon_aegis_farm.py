@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from pokiguard_v2.basic_policy import (
     BasicPolicyEngine,
@@ -11,7 +12,11 @@ from pokiguard_v2.basic_policy import (
     PolicyAction,
     PolicyConfig,
 )
-from pokiguard_v2.board_simulator import SwapMove, simulate_move
+from pokiguard_v2.board_simulator import (
+    SwapMove,
+    evaluate_all_moves,
+    simulate_move,
+)
 from pokiguard_v2.demon_aegis import evaluate_demon_aegis_move
 from pokiguard_v2.gameplay_profile import (
     DamageCardMode,
@@ -20,8 +25,14 @@ from pokiguard_v2.gameplay_profile import (
     PetSkillFireCondition,
 )
 from pokiguard_v2.pet_configuration import GameplayConfig
-from pokiguard_v2.state import BoardState, CellState, GemType
+from pokiguard_v2.state import (
+    BoardState,
+    CellState,
+    GameOwnedIdleStatus,
+    GemType,
+)
 from tests.test_basic_policy import combat_state
+from tests.test_board_simulator import fixture_board
 from tools.farm_cycle import _combat_args
 from tools.farm_run import build_parser as build_farm_parser
 
@@ -150,6 +161,40 @@ class DemonAegisFarmTests(unittest.TestCase):
         )
         self.assertEqual(selected.total.cells(GemType.SWORD), 0)
         self.assertNotEqual(decision.trace.policy_step, "DEMON_AEGIS_PASSIVE_FIRE")
+
+    def test_mandatory_turn_uses_least_consuming_sword_when_it_is_only_move(self) -> None:
+        board = fixture_board()
+        sword_move = next(
+            value
+            for value in evaluate_all_moves(board)
+            if value.total.cells(GemType.SWORD) > 0
+        )
+        state = combat_state(board=board)
+        state = replace(
+            state,
+            battle=replace(
+                state.battle,
+                consecutive_passes=2,
+                consecutive_pass_threshold=3,
+                consecutive_pass_source="authoritative_fixture",
+                consecutive_pass_status=(
+                    GameOwnedIdleStatus.PASS_FORBIDDEN_MANDATORY_ACTION
+                ),
+            ),
+        )
+
+        with patch(
+            "pokiguard_v2.basic_policy.evaluate_all_moves",
+            return_value=(sword_move,),
+        ):
+            decision = demon_policy(threshold=4).decide(state)
+
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.move, sword_move.move)
+        self.assertEqual(
+            decision.trace.policy_step,
+            "DEMON_AEGIS_MANDATORY_SWORD",
+        )
 
     def test_profile_is_fixed_to_regular_pet_none_and_passive(self) -> None:
         accepted = GameplayConfig(

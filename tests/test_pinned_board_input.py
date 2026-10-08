@@ -53,6 +53,7 @@ class FakeBackend:
         self.topmost = False
         self.block_calls: list[bool] = []
         self.focus_calls: list[int] = []
+        self.input_pressed = False
 
     def window_pid(self, _hwnd: int) -> int | None:
         return self.pid
@@ -99,7 +100,7 @@ class FakeBackend:
         return 2.0
 
     def any_input_pressed(self) -> bool:
-        return False
+        return self.input_pressed
 
     def any_pointer_button_pressed(self) -> bool:
         return False
@@ -141,6 +142,50 @@ def session(
 
 
 class PinnedForegroundBoardSessionTests(unittest.TestCase):
+    def test_production_defaults_hold_final_gem_for_three_tenths(self) -> None:
+        self.assertEqual(PinnedBoardLeaseSettings().post_action_settle_seconds, 0.30)
+
+    def test_board_takeover_waits_until_held_keyboard_input_is_released(self) -> None:
+        backend = FakeBackend()
+        backend.input_pressed = True
+        clock = FakeClock()
+        sleeps = 0
+
+        def release_key_then_sleep(seconds: float) -> None:
+            nonlocal sleeps
+            sleeps += 1
+            backend.input_pressed = False
+            clock.sleep(seconds)
+
+        board = PinnedForegroundBoardSession(
+            config=InputDeliveryConfig(
+                InputDeliveryMode.PINNED_FOREGROUND_LEASE_BETA
+            ),
+            binding=binding(backend),
+            backend=backend,
+            stop_requested=lambda: False,
+            settings=PinnedBoardLeaseSettings(
+                required_idle_seconds=0.20,
+                idle_timeout_seconds=0.75,
+                focus_settle_seconds=0.0,
+                post_action_settle_seconds=0.0,
+            ),
+            sleeper=release_key_then_sleep,
+            monotonic=clock.monotonic,
+        )
+        board.start()
+
+        result = board.execute_swap(
+            action_identity="match:typing:swap:1",
+            action=lambda: True,
+            preflight=lambda: True,
+            expected_cursor_after=backend.cursor,
+        )
+
+        self.assertEqual(result.status, LeaseStatus.COMPLETE)
+        self.assertGreaterEqual(sleeps, 1)
+        self.assertEqual(backend.focus_calls[0], 5)
+
     def test_pure_origin_move_between_actions_rebases_next_mouse_lease(self) -> None:
         backend = FakeBackend()
         clock = FakeClock()
@@ -399,7 +444,7 @@ class PinnedForegroundBoardSessionTests(unittest.TestCase):
         )
 
         self.assertEqual(result.status, LeaseStatus.COMPLETE)
-        self.assertGreaterEqual(preflights, 3)
+        self.assertEqual(preflights, 2)
         self.assertEqual(backend.block_calls, [True, False])
         self.assertEqual(backend.focus_calls, [5, 99])
         self.assertEqual(backend.cursor, (40, 50))
@@ -466,12 +511,12 @@ class PinnedForegroundBoardSessionTests(unittest.TestCase):
         self.assertEqual(retries[0]["nextAttempt"], 2)
         self.assertFalse(retries[0]["inputSent"])
 
-    def test_post_focus_stale_preflight_sends_zero_and_releases_guard(self) -> None:
+    def test_pre_takeover_stale_preflight_sends_zero_without_guard(self) -> None:
         backend = FakeBackend()
         clock = FakeClock()
         board = session(backend, clock)
         board.start()
-        answers = iter((True, True, False))
+        answers = iter((True, False))
         actions = 0
 
         def action() -> bool:
@@ -488,7 +533,7 @@ class PinnedForegroundBoardSessionTests(unittest.TestCase):
 
         self.assertEqual(result.status, LeaseStatus.STALE_ACTION)
         self.assertEqual(actions, 0)
-        self.assertEqual(backend.block_calls, [True, False])
+        self.assertEqual(backend.block_calls, [])
 
     def test_stop_before_lease_is_zero_input(self) -> None:
         backend = FakeBackend()

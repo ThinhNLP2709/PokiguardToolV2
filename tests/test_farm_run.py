@@ -12,6 +12,7 @@ from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState
 from pokiguard_v2.farm_cycle import OpeningEvidence
 from pokiguard_v2.farm_run import (
+    ActiveCombatHandoffEvidence,
     FarmInputDomain,
     FarmRun,
     FarmRunArtifactWriter,
@@ -47,6 +48,7 @@ from tools.farm_run import (
     _ControllerMemorySampler,
     _discover_chinh_phuc_map_target_for_lobby,
     _confirm_postmatch,
+    _active_combat_handoff_evidence,
     _detached_shell_exit_runtime_proven,
     _entry_preflight_runtime_changed_before_start,
     _exact_target_room_restored,
@@ -313,6 +315,13 @@ class ChinhPhucMapSnapshotTests(unittest.TestCase):
         self.assertFalse(
             _owner_free_general_hub_snapshot(
                 lobby, control, current_session=object()
+            )
+        )
+        lobby.branch = "GAME_LOBBY"
+        lobby.world_boss.clean_for_game_lobby = True
+        self.assertTrue(
+            _owner_free_general_hub_snapshot(
+                lobby, control, current_session=None
             )
         )
 
@@ -756,10 +765,10 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
                 action,
                 preflight,
                 expected_cursor_after,
-                post_focus_preflight=None,
+                final_pre_takeover_preflight=None,
             ):
                 executor.foreground = True
-                accepted = preflight() and bool(post_focus_preflight())
+                accepted = preflight() and bool(final_pre_takeover_preflight())
                 succeeded = action() if accepted else False
                 executor.foreground = False
                 return SimpleNamespace(
@@ -931,6 +940,127 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
             ],
         )
 
+    def test_direct_game_lobby_ejection_returns_to_exact_pet_room(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"))
+        self.assertTrue(
+            run.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=False,
+                detached_room_shell=False,
+                general_hub=True,
+                no_combat_owner=True,
+            )
+        )
+        hub_lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="GAME_LOBBY",
+        )
+        hub_lobby.world_boss.clean_for_game_lobby = True
+        map_lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch=None,
+        )
+        map_lobby.chinh_phuc.enemy_pet_id = 1289
+        initial = LobbyWaitResult(
+            False,
+            BossLobbyState.LOBBY_OTHER,
+            None,
+            "GENERAL_HUB_CANDIDATE",
+            hub_lobby,
+            2,
+        )
+        hub = HubChinhPhucControl(
+            0x20000001000,
+            0x20000002000,
+            0x10000002000,
+            False,
+            0x20000003000,
+            0x10000003000,
+            True,
+            True,
+            True,
+            (0.65, 0.70, 0.76, 0.86),
+            0x10000004000,
+            2.0,
+            True,
+            (),
+        )
+        hub_location = HubControlLocation(
+            True,
+            (0.705, 0.78),
+            (0.65, 0.70, 0.76, 0.86),
+            "exact_manager_button_native_geometry",
+            {},
+        )
+        runtime = self.target()
+        capture = SimpleNamespace(width=1280, height=640, rgb=b"")
+        process = SimpleNamespace(
+            pid=123, resolver=object(), is_running=lambda: True
+        )
+        provider = SimpleNamespace(current_session_key=None)
+        executor = SimpleNamespace(
+            window_status=lambda _binding: SimpleNamespace(
+                valid=True, foreground=True
+            ),
+            send_normalized_point=lambda _binding, _point: ClickPointResult(
+                ClickStatus.SENT
+            ),
+        )
+        expected = LobbyWaitResult(
+            True,
+            BossLobbyState.BOSS_LOBBY,
+            object(),
+            "READY",
+            map_lobby,
+            2,
+        )
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "tools.farm_run._restore_bound_game_foreground", return_value=True
+        ), patch("tools.farm_run.time.sleep"), patch(
+            "tools.farm_run._read_lobby_runtime_with_provider_fallback",
+            side_effect=[hub_lobby, hub_lobby, hub_lobby, hub_lobby]
+            + [map_lobby] * 8,
+        ), patch(
+            "tools.farm_run.read_hub_chinh_phuc_control", return_value=hub
+        ), patch(
+            "tools.farm_run.capture_client_rgb", return_value=capture
+        ), patch(
+            "tools.farm_run.locate_hub_chinh_phuc_control",
+            return_value=hub_location,
+        ), patch(
+            "tools.farm_run.discover_chinh_phuc_map_target",
+            side_effect=[runtime] * 8,
+        ), patch(
+            "tools.farm_run._wait_boss_lobby", return_value=expected
+        ), patch("tools.farm_run.write_png_rgb"):
+            observed = _return_from_chinh_phuc_map(
+                run=run,
+                process=process,
+                provider=provider,
+                target=FarmTarget(boss_id="1289", boss_name="Starburst"),
+                initial=initial,
+                binding=object(),
+                executor=executor,
+                directory=Path(directory),
+                interval=0.0,
+                timeout=5.0,
+                hotkeys=SimpleNamespace(poll=lambda: (False, False)),
+                control_hotkeys=None,
+            )
+
+        self.assertIs(observed, expected)
+        domains = [record.domain for record in run.input_records if record.sent]
+        self.assertEqual(
+            domains[-2:],
+            [
+                FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
+                FarmInputDomain.BOSS_TARGET_SELECT,
+            ],
+        )
+        self.assertNotIn(FarmInputDomain.BOSS_ROOM_SHELL_EXIT, domains)
+
     def test_pinned_detached_hub_map_route_reacquires_each_dynamic_transition(self) -> None:
         run = start_run()
         enter(run, session(1))
@@ -1021,11 +1151,12 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
                 action,
                 preflight,
                 expected_cursor_after,
-                post_focus_preflight=None,
+                final_pre_takeover_preflight=None,
             ):
                 executor.foreground = True
                 accepted = preflight() and (
-                    post_focus_preflight is None or post_focus_preflight()
+                    final_pre_takeover_preflight is None
+                    or final_pre_takeover_preflight()
                 )
                 succeeded = action() if accepted else False
                 self.calls.append((domain, action_identity, accepted))
@@ -1173,13 +1304,14 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
                 action,
                 preflight,
                 expected_cursor_after,
-                post_focus_preflight=None,
+                final_pre_takeover_preflight=None,
             ):
                 self.calls.append(action_identity)
                 self.asserted_domain = domain
                 executor.foreground = True
                 accepted = preflight() and (
-                    post_focus_preflight is None or post_focus_preflight()
+                    final_pre_takeover_preflight is None
+                    or final_pre_takeover_preflight()
                 )
                 succeeded = action() if accepted else False
                 executor.foreground = False
@@ -1291,6 +1423,18 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         # result-room X path. Current ManagerChinhPhuc + active panel own the
         # target association and must allow the exact Starburst selection.
         runtime = self.target(selected_pet_id=650)
+        island_target = SimpleNamespace(
+            clean=True,
+            pet_id=1289,
+            group_id=3,
+            group_index=2,
+            manager_address=0x20000005000,
+            button_address=0x20000006000,
+            button_native=0x10000006000,
+            button_viewport_rect=(0.20, 0.20, 0.40, 0.40),
+            button_root_transform=0x10000007000,
+            viewport_point=(0.30, 0.30),
+        )
         capture = SimpleNamespace(width=1280, height=640, rgb=b"")
         no_shell = SimpleNamespace(found=False, normalized_point=None)
         process = SimpleNamespace(pid=123, is_running=lambda: True)
@@ -1331,6 +1475,9 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         ), patch(
             "tools.farm_run._read_lobby_runtime_with_provider_fallback",
             side_effect=([map_lobby] * 16) + ([island_lobby] * 3),
+        ), patch(
+            "tools.farm_run.discover_chinh_phuc_island_target",
+            return_value=island_target,
         ), patch(
             "tools.farm_run.discover_chinh_phuc_map_target",
             side_effect=[runtime, runtime, runtime],
@@ -1373,6 +1520,96 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         ]
         self.assertEqual(len(target_inputs), 1)
         self.assertTrue(target_inputs[0].sent)
+
+    def test_visible_room_shell_overrides_stale_active_island_panel(self) -> None:
+        """Regression for run e954: the room canvas can cover an active map."""
+
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="CHINH_PHUC_ISLAND",
+            clean_for_chinh_phuc_map=True,
+        )
+        lobby.chinh_phuc.room_data = 0x20000001000
+        lobby.chinh_phuc.enemy_pet_id = 1289
+        lobby.chinh_phuc.button_start = 0x20000002000
+        lobby.chinh_phuc.button_native = 0x10000002000
+        lobby.chinh_phuc.button_interactable = True
+        lobby.world_boss.manager_chinh_phuc = 0x20000005000
+        lobby.world_boss.chinh_phuc_active_panel_index = 2
+        initial = LobbyWaitResult(
+            False,
+            BossLobbyState.LOBBY_OTHER,
+            None,
+            "CHINH_PHUC_MAP_CANDIDATE",
+            lobby,
+            2,
+        )
+        runtime = self.target()
+        capture = SimpleNamespace(width=1280, height=640, rgb=b"")
+        shell = SimpleNamespace(found=True, normalized_point=(0.95, 0.07))
+        process = SimpleNamespace(pid=123, is_running=lambda: True)
+        provider = SimpleNamespace(current_session_key=None)
+        executor = SimpleNamespace(
+            window_status=lambda _binding: SimpleNamespace(
+                valid=True, foreground=True
+            ),
+            move_normalized_point=lambda _binding, _point: ClickStatus.SENT,
+            send_normalized_point=lambda _binding, _point: ClickPointResult(
+                ClickStatus.SENT
+            ),
+        )
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "tools.farm_run._restore_bound_game_foreground", return_value=True
+        ), patch("tools.farm_run.time.sleep"), patch(
+            "tools.farm_run.capture_client_rgb", return_value=capture
+        ), patch(
+            "tools.farm_run.locate_detached_chinh_phuc_room_shell_exit",
+            return_value=shell,
+        ), patch(
+            "tools.farm_run._read_lobby_runtime_with_provider_fallback",
+            return_value=lobby,
+        ), patch(
+            "tools.farm_run.discover_chinh_phuc_map_target",
+            return_value=runtime,
+        ) as discover, patch(
+            "tools.farm_run._settle_detached_room_shell_exit",
+            return_value=None,
+        ) as settle, patch("tools.farm_run.write_png_rgb"):
+            observed = _return_from_chinh_phuc_map(
+                run=run,
+                process=process,
+                provider=provider,
+                target=FarmTarget(boss_id="1289", boss_name="Starburst"),
+                initial=initial,
+                binding=object(),
+                executor=executor,  # type: ignore[arg-type]
+                directory=Path(directory),
+                interval=0.0,
+                timeout=5.0,
+                hotkeys=SimpleNamespace(poll=lambda: (False, False)),
+            )
+
+        self.assertIsNone(observed)
+        self.assertGreaterEqual(discover.call_count, 2)
+        settle.assert_called_once()
+        self.assertTrue(settle.call_args.kwargs["allow_map_backed_shell"])
+        shell_inputs = [
+            item
+            for item in run.input_records
+            if item.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+        ]
+        self.assertEqual(len(shell_inputs), 1)
+        self.assertTrue(shell_inputs[0].sent)
+        self.assertFalse(
+            any(
+                item.domain is FarmInputDomain.BOSS_TARGET_SELECT
+                for item in run.input_records
+            )
+        )
 
     def test_detached_shell_closes_before_any_map_runtime_scan(self) -> None:
         run = start_run()
@@ -1567,11 +1804,11 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
                 action,
                 preflight,
                 expected_cursor_after,
-                post_focus_preflight=None,
+                final_pre_takeover_preflight=None,
             ):
                 self.asserted_domain = domain
                 executor.foreground = True
-                self.post_focus_proven = bool(post_focus_preflight())
+                self.post_focus_proven = bool(final_pre_takeover_preflight())
                 succeeded = preflight() and self.post_focus_proven and action()
                 executor.foreground = False
                 return SimpleNamespace(
@@ -1661,6 +1898,28 @@ def opening(key: CombatSessionKey, *, hash_digit: str | None = None) -> OpeningE
         first_local_turn=True,
         local_move_sequence=0,
         stable_confirmations=3,
+    )
+
+
+def active_handoff(key: CombatSessionKey) -> ActiveCombatHandoffEvidence:
+    return ActiveCombatHandoffEvidence(
+        session=key,
+        match_id=key.match_id,
+        board_hash="a" * 64,
+        complete_cells=64,
+        unique_coordinates=64,
+        source=(
+            "Board.allDots->GameObject.components->Dot.PoolTag+"
+            "MatchService._ackedSeqs"
+        ),
+        current_board_attested=True,
+        turn_number=3,
+        first_local_turn=False,
+        local_move_sequence=0,
+        srv_seq=6,
+        stable_confirmations=2,
+        entry_clicks=1,
+        gameplay_inputs=0,
     )
 
 
@@ -1816,31 +2075,40 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
         class Provider:
             def __init__(self) -> None:
                 self.polls = 0
+                self.lifecycle = CombatLifecycleState.POSTMATCH
 
             def poll(self) -> SimpleNamespace:
                 self.polls += 1
                 return SimpleNamespace(
                     combat_lifecycle=SimpleNamespace(
-                        state=CombatLifecycleState.POSTMATCH
+                        state=self.lifecycle
                     ),
                     state=None,
                 )
 
         class Executor:
-            def __init__(self) -> None:
+            def __init__(self, provider: Provider) -> None:
+                self.provider = provider
                 self.points: list[tuple[float, float]] = []
+                self.settle_cursor: list[bool] = []
 
             def window_status(self, _binding: object) -> SimpleNamespace:
                 return SimpleNamespace(valid=True, foreground=True)
 
             def send_normalized_point(
-                self, _binding: object, point: tuple[float, float]
+                self,
+                _binding: object,
+                point: tuple[float, float],
+                *,
+                settle_cursor: bool = False,
             ) -> ClickPointResult:
                 self.points.append(point)
+                self.settle_cursor.append(settle_cursor)
+                self.provider.lifecycle = CombatLifecycleState.LOBBY
                 return ClickPointResult(ClickStatus.SENT)
 
         provider = Provider()
-        executor = Executor()
+        executor = Executor(provider)
         capture = SimpleNamespace(width=800, height=450, rgb=bytes(800 * 450 * 3))
         location = PostmatchUiLocation(
             PostmatchControl.RESULT_CONFIRM,
@@ -1876,9 +2144,10 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
             )
 
         self.assertTrue(confirmed)
-        self.assertEqual(provider.polls, 2)
+        self.assertEqual(provider.polls, 3)
         self.assertEqual(sleeps, [0.12, 0.12])
         self.assertEqual(len(executor.points), 1)
+        self.assertEqual(executor.settle_cursor, [True])
         self.assertAlmostEqual(executor.points[0][0], 0.4984375)
         self.assertAlmostEqual(executor.points[0][1], 0.90078125)
         self.assertEqual(run.snapshot().total_postmatch_inputs, 1)
@@ -1892,28 +2161,37 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
         class Provider:
             def __init__(self) -> None:
                 self.polls = 0
+                self.lifecycle = CombatLifecycleState.POSTMATCH
 
             def poll(self) -> SimpleNamespace:
                 self.polls += 1
                 return SimpleNamespace(
                     combat_lifecycle=SimpleNamespace(
-                        state=CombatLifecycleState.POSTMATCH
+                        state=self.lifecycle
                     ),
                     state=None,
                 )
 
         class Executor:
-            def __init__(self) -> None:
+            def __init__(self, provider: Provider) -> None:
+                self.provider = provider
                 self.foreground = False
                 self.points: list[tuple[float, float]] = []
+                self.settle_cursor: list[bool] = []
 
             def window_status(self, _binding: object) -> SimpleNamespace:
                 return SimpleNamespace(valid=True, foreground=self.foreground)
 
             def send_normalized_point(
-                self, _binding: object, point: tuple[float, float]
+                self,
+                _binding: object,
+                point: tuple[float, float],
+                *,
+                settle_cursor: bool = False,
             ) -> ClickPointResult:
                 self.points.append(point)
+                self.settle_cursor.append(settle_cursor)
+                self.provider.lifecycle = CombatLifecycleState.LOBBY
                 return ClickPointResult(ClickStatus.SENT)
 
         class PinnedSession:
@@ -1933,14 +2211,15 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
                 action,
                 preflight,
                 expected_cursor_after,
-                post_focus_preflight=None,
+                final_pre_takeover_preflight=None,
             ):
                 self.domain = domain
                 self.executor.foreground = True
                 self.asserted_identity = action_identity
                 self.asserted_cursor = expected_cursor_after
                 self.asserted_preflight = preflight() and (
-                    post_focus_preflight is None or post_focus_preflight()
+                    final_pre_takeover_preflight is None
+                    or final_pre_takeover_preflight()
                 )
                 if self.asserted_preflight:
                     self.action_calls += 1
@@ -1953,7 +2232,7 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
                 )
 
         provider = Provider()
-        executor = Executor()
+        executor = Executor(provider)
         pinned = PinnedSession(executor)
         capture = SimpleNamespace(width=800, height=450, rgb=bytes(800 * 450 * 3))
         location = PostmatchUiLocation(
@@ -1989,11 +2268,99 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
         self.assertEqual(pinned.domain, InputDeliveryDomain.POSTMATCH_CONFIRM)
         self.assertTrue(pinned.asserted_preflight)
         self.assertEqual(pinned.action_calls, 1)
-        self.assertEqual(provider.polls, 3)
+        self.assertEqual(provider.polls, 4)
         self.assertEqual(len(executor.points), 1)
+        self.assertEqual(executor.settle_cursor, [True])
         self.assertAlmostEqual(executor.points[0][0], 0.4984375)
         self.assertAlmostEqual(executor.points[0][1], 0.90078125)
         self.assertEqual(run.snapshot().total_postmatch_inputs, 1)
+
+    def test_same_stable_postmatch_control_retries_exactly_once(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+
+        class Provider:
+            def __init__(self) -> None:
+                self.polls = 0
+
+            def poll(self) -> SimpleNamespace:
+                self.polls += 1
+                return SimpleNamespace(
+                    combat_lifecycle=SimpleNamespace(
+                        state=CombatLifecycleState.POSTMATCH
+                    ),
+                    state=None,
+                )
+
+        class Executor:
+            def __init__(self) -> None:
+                self.points: list[tuple[float, float]] = []
+                self.settle_cursor: list[bool] = []
+
+            def window_status(self, _binding: object) -> SimpleNamespace:
+                return SimpleNamespace(valid=True, foreground=True)
+
+            def send_normalized_point(
+                self,
+                _binding: object,
+                point: tuple[float, float],
+                *,
+                settle_cursor: bool = False,
+            ) -> ClickPointResult:
+                self.points.append(point)
+                self.settle_cursor.append(settle_cursor)
+                return ClickPointResult(ClickStatus.SENT)
+
+        provider = Provider()
+        executor = Executor()
+        capture = SimpleNamespace(width=800, height=450, rgb=bytes(800 * 450 * 3))
+        location = PostmatchUiLocation(
+            PostmatchControl.RESULT_CONFIRM,
+            True,
+            (0.4984375, 0.90078125),
+            0.98,
+            "stable test result control",
+        )
+        sleeps: list[float] = []
+
+        with (
+            patch("tools.farm_run.capture_client_rgb", return_value=capture),
+            patch("tools.farm_run.locate_result_confirm", return_value=location),
+            patch("tools.farm_run.write_png_rgb"),
+        ):
+            confirmed, _ui_result, _ui_text = _confirm_postmatch(
+                run=run,
+                process=SimpleNamespace(pid=123, is_running=lambda: True),
+                provider=provider,  # type: ignore[arg-type]
+                binding=object(),
+                executor=executor,  # type: ignore[arg-type]
+                directory=Path("unused"),
+                interval=0.12,
+                ui_timeout=3.0,
+                hotkeys=SimpleNamespace(poll=lambda: (False, False)),  # type: ignore[arg-type]
+                sleeper=sleeps.append,
+            )
+
+        self.assertTrue(confirmed)
+        self.assertEqual(provider.polls, 4)
+        self.assertEqual(sleeps, [0.12, 0.12, 0.35])
+        self.assertEqual(len(executor.points), 2)
+        self.assertEqual(executor.settle_cursor, [True, True])
+        self.assertEqual(run.snapshot().total_postmatch_inputs, 2)
+        self.assertEqual(
+            [record.domain for record in run.input_records[-2:]],
+            [
+                FarmInputDomain.POSTMATCH_CONFIRM,
+                FarmInputDomain.POSTMATCH_CONFIRM_RETRY,
+            ],
+        )
+        self.assertIsNone(run.reserve_postmatch(foreground=True, retry=True))
+        self.assertEqual(
+            run.stop_reason,
+            FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+        )
 
 
 class FarmRunBoundaryTests(unittest.TestCase):
@@ -2170,7 +2537,7 @@ class FarmRunBoundaryTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            (False, True),
+            (False, True, False),
             _farm_room_ejection_sources(
                 candidate,
                 target_boss_id="1289",
@@ -2199,7 +2566,7 @@ class FarmRunBoundaryTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            (True, False),
+            (True, False, False),
             _farm_room_ejection_sources(
                 island_candidate,
                 target_boss_id="1289",
@@ -2209,6 +2576,47 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertIsNone(
             _postmatch_reentry_source(
                 island_candidate, target_pet_id=1289, current_session=object()
+            )
+        )
+
+    def test_postmatch_reentry_accepts_proven_general_hub(self) -> None:
+        lobby = SimpleNamespace(
+            state=BossLobbyState.LOBBY_OTHER,
+            branch="GAME_LOBBY",
+            combat_lifecycle=SimpleNamespace(state=CombatLifecycleState.LOBBY),
+            chinh_phuc=SimpleNamespace(
+                current_room_id=None,
+                current_room_type=None,
+                owner_username=None,
+                is_host=False,
+            ),
+            world_boss=SimpleNamespace(clean_for_game_lobby=True),
+        )
+        candidate = LobbyWaitResult(
+            False,
+            BossLobbyState.LOBBY_OTHER,
+            None,
+            "GENERAL_HUB_CANDIDATE",
+            lobby,
+            2,
+        )
+        self.assertEqual(
+            "GENERAL_HUB",
+            _postmatch_reentry_source(
+                candidate, target_pet_id=1436, current_session=None
+            ),
+        )
+        self.assertEqual(
+            (False, False, True),
+            _farm_room_ejection_sources(
+                candidate,
+                target_boss_id="1436",
+                current_session=None,
+            ),
+        )
+        self.assertIsNone(
+            _postmatch_reentry_source(
+                candidate, target_pet_id=1436, current_session=object()
             )
         )
 
@@ -2254,7 +2662,7 @@ class FarmRunBoundaryTests(unittest.TestCase):
             _world_map_ejection_proven(world_map, current_session=None)
         )
         self.assertEqual(
-            (True, False),
+            (True, False, False),
             _farm_room_ejection_sources(
                 world_map,
                 target_boss_id="1289",
@@ -2300,6 +2708,24 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertEqual(1, snapshot.technical_aborts)
         self.assertEqual(1, snapshot.technical_recoveries)
         self.assertEqual(FarmRunState.RESOLVE_TARGET, snapshot.state)
+
+    def test_direct_general_hub_ejection_can_open_chinh_phuc_once(self) -> None:
+        run = start_run(FarmRunLimits(3, 2, 5))
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"))
+        self.assertTrue(
+            run.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=False,
+                detached_room_shell=False,
+                general_hub=True,
+                no_combat_owner=True,
+            )
+        )
+        permit = run.reserve_hub_chinh_phuc_open(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(run.complete_hub_chinh_phuc_open(permit, sent=True))
+        self.assertIsNone(run.reserve_hub_chinh_phuc_open(foreground=True))
 
     def test_failed_recovery_fallback_accepts_one_audited_prior_reentry(self) -> None:
         run = start_run(FarmRunLimits(3, 2, 5))
@@ -2509,6 +2935,53 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertTrue(records[0].sent)
         self.assertEqual(run.snapshot().total_lobby_inputs, 2)
 
+    def test_one_island_select_precedes_boss_target_during_map_reentry(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"))
+        self.assertTrue(
+            run.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=False,
+                general_hub=True,
+                no_combat_owner=True,
+            )
+        )
+        island = run.reserve_island_select(foreground=True)
+        self.assertIsNotNone(island)
+        self.assertTrue(
+            run.complete_island_select(
+                island,  # type: ignore[arg-type]
+                sent=True,
+                detail="configured island group=5",
+            )
+        )
+        target = run.reserve_target_select(foreground=True)
+        self.assertIsNotNone(target)
+        self.assertTrue(
+            run.complete_target_select(
+                target,  # type: ignore[arg-type]
+                sent=True,
+                detail="exact pet 1289",
+            )
+        )
+        self.assertEqual(
+            [
+                item.domain
+                for item in run.input_records
+                if item.domain
+                in {
+                    FarmInputDomain.BOSS_ISLAND_SELECT,
+                    FarmInputDomain.BOSS_TARGET_SELECT,
+                }
+            ],
+            [
+                FarmInputDomain.BOSS_ISLAND_SELECT,
+                FarmInputDomain.BOSS_TARGET_SELECT,
+            ],
+        )
+        self.assertEqual(run.snapshot().total_lobby_inputs, 3)
+
     def test_one_detached_room_shell_exit_can_precede_exact_target_select(self) -> None:
         run = start_run()
         enter(run, session(1))
@@ -2637,6 +3110,39 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertIsNone(run.reserve_target_select(foreground=True))
         self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
 
+    def test_one_shell_exit_allows_one_bounded_target_retry(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+
+        first = run.reserve_target_select(foreground=True)
+        self.assertIsNotNone(first)
+        self.assertTrue(run.complete_target_select(first, sent=True))  # type: ignore[arg-type]
+        shell = run.reserve_room_shell_exit(foreground=True)
+        self.assertIsNotNone(shell)
+        self.assertTrue(run.complete_room_shell_exit(shell, sent=True))  # type: ignore[arg-type]
+        second = run.reserve_target_select(
+            foreground=True,
+            direct_map_after_shell_exit=True,
+        )
+        self.assertIsNotNone(second)
+        self.assertTrue(run.complete_target_select(second, sent=True))  # type: ignore[arg-type]
+
+        self.assertIsNone(
+            run.reserve_target_select(
+                foreground=True,
+                direct_map_after_shell_exit=True,
+            )
+        )
+        self.assertEqual(run.stop_reason, FarmRunStopReason.RETURN_LOBBY_TIMEOUT)
+        targets = [
+            record
+            for record in run.input_records
+            if record.domain is FarmInputDomain.BOSS_TARGET_SELECT
+        ]
+        self.assertEqual(len(targets), 2)
+
     def test_session_and_match_id_must_both_be_unique(self) -> None:
         run = start_run()
         first = session(1)
@@ -2749,6 +3255,122 @@ class FarmRunBoundaryTests(unittest.TestCase):
 
 
 class RecoveryResumeTests(unittest.TestCase):
+    def test_slow_load_can_handoff_untouched_ack_attested_current_board(self) -> None:
+        run = start_run(FarmRunLimits(3, 1, 5))
+        key = session(1)
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        permit = capability.reserve(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            capability.complete(permit, sent=True, detail="Start:SENT")  # type: ignore[arg-type]
+        )
+        self.assertTrue(run.accept_session(key))
+
+        self.assertTrue(run.accept_active_combat_handoff(active_handoff(key)))
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.state, FarmRunState.COMBAT_ACTIVE)
+        self.assertEqual(snapshot.match_attempts, 1)
+        self.assertEqual(snapshot.technical_aborts, 0)
+        self.assertEqual(snapshot.total_gameplay_inputs, 0)
+        self.assertEqual(snapshot.safety.nonzero(), {})
+        self.assertEqual(
+            snapshot.events[-1].event,
+            "combat_current_board_handoff_ready",
+        )
+
+    def test_current_board_handoff_rejects_nonzero_move_sequence(self) -> None:
+        run = start_run(FarmRunLimits(3, 1, 5))
+        key = session(1)
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        permit = capability.reserve(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(
+            capability.complete(permit, sent=True, detail="Start:SENT")  # type: ignore[arg-type]
+        )
+        self.assertTrue(run.accept_session(key))
+
+        self.assertFalse(
+            run.accept_active_combat_handoff(
+                replace(active_handoff(key), local_move_sequence=1)
+            )
+        )
+        self.assertEqual(run.state, FarmRunState.SAFE_STOP)
+        self.assertEqual(
+            run.stop_reason,
+            FarmRunStopReason.OPENING_INVARIANT_FAILED,
+        )
+
+    def test_live_timeout_payload_parses_as_current_board_handoff(self) -> None:
+        key = session(1)
+        evidence = _active_combat_handoff_evidence(
+            {
+                "status": "RECOVERY_REQUIRED",
+                "stopReason": "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT",
+                "entryClicks": 1,
+                "gameplayInputs": 0,
+                "activeCombatTimeoutEvidence": {
+                    "session": {
+                        "lifecycle_epoch": key.lifecycle_epoch,
+                        "board_instance": key.board_instance,
+                        "match_id": key.match_id,
+                    },
+                    "matchId": key.match_id,
+                    "turn": 3,
+                    "firstLocalTurn": False,
+                    "localMoveSequence": 0,
+                    "srvSeq": 6,
+                    "boardHash": "b" * 64,
+                    "boardSource": (
+                        "Board.allDots->GameObject.components->Dot.PoolTag+"
+                        "MatchService._ackedSeqs"
+                    ),
+                    "completeCells": 64,
+                    "uniqueCoordinates": 64,
+                    "stableConfirmations": 2,
+                    "productionReady": True,
+                    "gemTypesValid": True,
+                    "multipliersValid": True,
+                },
+            }
+        )
+        self.assertIsNotNone(evidence)
+        self.assertTrue(evidence.valid())  # type: ignore[union-attr]
+        self.assertEqual(evidence.session, key)  # type: ignore[union-attr]
+
+    def test_current_board_handoff_requires_explicit_nonopening_turn(self) -> None:
+        key = session(1)
+        payload = {
+            "status": "RECOVERY_REQUIRED",
+            "stopReason": "ENTRY_OPENING_TIMEOUT_ACTIVE_COMBAT",
+            "entryClicks": 1,
+            "gameplayInputs": 0,
+            "activeCombatTimeoutEvidence": {
+                "session": {
+                    "lifecycle_epoch": key.lifecycle_epoch,
+                    "board_instance": key.board_instance,
+                    "match_id": key.match_id,
+                },
+                "matchId": key.match_id,
+                "turn": 3,
+                "localMoveSequence": 0,
+                "srvSeq": 6,
+                "boardHash": "b" * 64,
+                "boardSource": (
+                    "Board.allDots->GameObject.components->Dot.PoolTag+"
+                    "MatchService._ackedSeqs"
+                ),
+                "completeCells": 64,
+                "uniqueCoordinates": 64,
+                "stableConfirmations": 2,
+                "productionReady": True,
+                "gemTypesValid": True,
+                "multipliersValid": True,
+            },
+        }
+        self.assertIsNone(_active_combat_handoff_evidence(payload))
+
     def test_missed_opening_can_abort_only_untouched_wait_opening_attempt(self) -> None:
         run = start_run(FarmRunLimits(3, 1, 5))
         key = session(1)

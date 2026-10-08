@@ -284,8 +284,16 @@ def _guard_recovered_handoff(
     *,
     interval: float,
     duration: float = RECOVERED_HANDOFF_GUARD_SECONDS,
+    opening_timer_safe: bool = False,
 ) -> tuple[bool, dict[str, Any]]:
-    """Keep gameplay locked briefly while the new ACK epoch settles."""
+    """Keep gameplay locked briefly while the new ACK epoch settles.
+
+    Entry already proves that the recovered opening was actionable before this
+    bounded guard starts. The timer may legitimately cross the normal action
+    floor while the ACK epoch is being observed. That must not turn an
+    otherwise pristine recovered match into an unattended safe-stop: gameplay
+    will reread the live state and wait for the next local turn when needed.
+    """
 
     deadline = time.monotonic() + max(0.0, duration)
     clean_state_samples = 0
@@ -343,7 +351,7 @@ def _guard_recovered_handoff(
         time.sleep(max(0.02, interval))
 
     final_ack = provider.metrics.highest_acked_sequence
-    timer_safe = bool(last_timer is not None and last_timer > 4)
+    timer_safe_now = bool(last_timer is not None and last_timer > 4)
     isolation_probe = getattr(provider, "recovery_ack_epoch_isolated_for", None)
     final_isolated = bool(
         callable(isolation_probe) and isolation_probe(expected_session)
@@ -353,7 +361,12 @@ def _guard_recovered_handoff(
         (final_ack is None and not ack_epoch_dirty)
         or (final_isolated and ack_epoch_isolated)
     )
-    accepted = clean_state_samples >= 2 and timer_safe and ack_epoch_clean
+    timer_was_safely_accepted = bool(opening_timer_safe or timer_safe_now)
+    accepted = (
+        clean_state_samples >= 2
+        and timer_was_safely_accepted
+        and ack_epoch_clean
+    )
     terminal_reason = None
     if not ack_epoch_clean:
         terminal_reason = "RECOVERY_ACK_EPOCH_NOT_RESET"
@@ -372,6 +385,9 @@ def _guard_recovered_handoff(
             else None
         ),
         "turnTimeRemainingSeconds": last_timer,
+        "openingTimerSafeAtEntry": bool(opening_timer_safe),
+        "timerSafeAtGuardEnd": timer_safe_now,
+        "waitForNextLocalTurn": bool(accepted and not timer_safe_now),
         "guardSeconds": max(0.0, duration),
     }
 
@@ -1318,7 +1334,7 @@ def _run_live(
                 ),
                 action=send_exit_once,
                 preflight=lambda: coordinator.trigger is not None,
-                post_focus_preflight=final_exit_preflight,
+                final_pre_takeover_preflight=final_exit_preflight,
                 expected_cursor_after=(
                     pinned_session.expected_cursor_for_normalized_point(
                         exit_location.normalized_point
@@ -1490,7 +1506,7 @@ def _run_live(
                 ),
                 action=send_confirm_once,
                 preflight=lambda: coordinator.trigger is not None,
-                post_focus_preflight=final_confirm_preflight,
+                final_pre_takeover_preflight=final_confirm_preflight,
                 expected_cursor_after=(
                     pinned_session.expected_cursor_for_normalized_point(
                         confirm_location.normalized_point
@@ -1880,6 +1896,7 @@ def _run_live(
             provider,
             new_session,
             interval=args.interval,
+            opening_timer_safe=bool(opening is not None and opening.timer_safe),
         )
         artifacts.event(
             "recovery_handoff_guard",

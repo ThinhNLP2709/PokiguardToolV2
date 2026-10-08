@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from pokiguard_v2.memory_board_provider import (
     ActionRuntimeSignals,
@@ -18,6 +18,7 @@ from pokiguard_v2.memory_board_provider import (
     _drop_session_volatile_learned_regions,
     _durable_non_board_fusion_transition,
     _attack_card_ui_discovery_expected,
+    _attested_board_is_current_for_generation,
     _extended_card_scan_relevant,
     _extended_fusion_scan_relevant,
     _expected_fusion_ui_pet_ids,
@@ -32,12 +33,16 @@ from pokiguard_v2.memory_board_provider import (
     _owner_batches_confirmed_by_ack,
     _pet_skill_ui_discovery_expected,
     _presentation_idle_for_publication,
+    _prefer_exact_transport_or_current_live,
     _region_size_band,
     _regions_with_address_neighbors,
+    _resolve_native_fusion_control,
     _recovered_ack_epoch_view,
     _rotating_region_byte_window,
     _rotating_region_window,
     _select_latest_identity,
+    _pristine_native_opening_generation_allowed,
+    _same_ack_live_generation_advanced,
 )
 from pokiguard_v2.combat_cards import CardDataState
 from pokiguard_v2.actionability import ActionabilityGate, GateContext
@@ -126,6 +131,70 @@ class BlockingBoardModalTests(unittest.TestCase):
 
 
 class ExtendedFusionUiScanTests(unittest.TestCase):
+    def test_b6_native_hand_resolves_one_exact_fusion_component_and_slot(self) -> None:
+        first = SimpleNamespace(game_object=0x20000001000)
+        second = SimpleNamespace(game_object=0x20000002000)
+        hand = SimpleNamespace(visible=(first, second))
+        reader = Mock()
+        reader.find_game_object_component.side_effect = (0x20000003000, None)
+        fusion_ui = SimpleNamespace(
+            address=0x20000003000,
+            button=0x20000004000,
+        )
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.validate_fusion_card_ui_hits",
+            return_value=(fusion_ui,),
+        ) as validate:
+            observed = _resolve_native_fusion_control(
+                object(),
+                reader,
+                hand,
+                expected_class=0x20000005000,
+                expected_bound_pet_ids=(1627,),
+            )
+
+        self.assertEqual(observed, (fusion_ui, 0))
+        validate.assert_called_once_with(
+            ANY,
+            (0x20000003000,),
+            expected_class=0x20000005000,
+            expected_bound_pet_ids=(1627,),
+        )
+        reader.validate_button_owner.assert_called_once_with(
+            fusion_ui.address,
+            fusion_ui.button,
+            first,
+        )
+
+    def test_b6_native_hand_rejects_ambiguous_fusion_components(self) -> None:
+        entries = (
+            SimpleNamespace(game_object=0x20000001000),
+            SimpleNamespace(game_object=0x20000002000),
+        )
+        hand = SimpleNamespace(visible=entries)
+        reader = Mock()
+        reader.find_game_object_component.side_effect = (
+            0x20000003000,
+            0x20000004000,
+        )
+        candidates = (
+            SimpleNamespace(address=0x20000003000, button=0x20000005000),
+            SimpleNamespace(address=0x20000004000, button=0x20000006000),
+        )
+
+        with patch(
+            "pokiguard_v2.memory_board_provider.validate_fusion_card_ui_hits",
+            side_effect=((candidates[0],), (candidates[1],)),
+        ), self.assertRaisesRegex(LayoutValidationError, "ambiguous"):
+            _resolve_native_fusion_control(
+                object(),
+                reader,
+                hand,
+                expected_class=0x20000007000,
+                expected_bound_pet_ids=(1627,),
+            )
+
     def test_pet_skill_discovery_uses_durable_fusion_success_not_optional_pointer(self) -> None:
         self.assertTrue(
             _pet_skill_ui_discovery_expected(
@@ -145,7 +214,22 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
     def test_pet_skill_control_refresh_reads_hand_after_latched_legend_flag(self) -> None:
         self._assert_pet_skill_control_refresh(legend_flag=True)
 
-    def _assert_pet_skill_control_refresh(self, *, legend_flag: bool) -> None:
+    def test_petpuzzle_b6_main_mega_card_refresh_does_not_require_fusion(self) -> None:
+        self._assert_pet_skill_control_refresh(
+            legend_flag=False,
+            element_type="MEGA_ICARUS",
+            fusion_used=False,
+            require_fusion_success=False,
+        )
+
+    def _assert_pet_skill_control_refresh(
+        self,
+        *,
+        legend_flag: bool,
+        element_type: str = "ATTACK_LEGEND_",
+        fusion_used: bool = True,
+        require_fusion_success: bool = True,
+    ) -> None:
         session = CombatSessionKey(1, 0x20000001000, "M_A")
         board = SimpleNamespace(
             accepted=True,
@@ -153,15 +237,16 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             active=0x20000002000,
             is_using_legend_card=legend_flag,
         )
+        card_data_address = 0x20000003000
         fusion = SimpleNamespace(
-            used_successfully=True,
-            skill_card=0x20000003000,
+            used_successfully=fusion_used,
+            skill_card=card_data_address if fusion_used else None,
         )
         candidate = SimpleNamespace(
             address=0x20000004000,
             button=0x20000005000,
-            card_data=fusion.skill_card,
-            element_type="ATTACK_LEGEND_",
+            card_data=card_data_address,
+            element_type=element_type,
         )
         canonical = SimpleNamespace(card_id=7)
         entry = object()
@@ -203,7 +288,10 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
                 return_value=canonical,
             ) as canonicalize,
         ):
-            cards = provider.refresh_pet_skill_cards(session)
+            cards = provider.refresh_pet_skill_cards(
+                session,
+                require_fusion_success=require_fusion_success,
+            )
 
         self.assertEqual(cards, (canonical,))
         self.assertEqual(provider.observed_pet_skill_cards, (canonical,))
@@ -1147,6 +1235,16 @@ class CombatTypeInfoGateTests(unittest.TestCase):
             "combat_batch_type_info_not_initialized",
         )
 
+    def test_pristine_native_opening_can_bootstrap_without_batch_type(self) -> None:
+        self.assertIsNone(
+            _combat_type_info_blocker(
+                batch_class=None,
+                board_ws_class=0x3000,
+                opening_snapshot_available=False,
+                native_opening_fallback_available=True,
+            )
+        )
+
     def test_missing_board_ws_always_fails_closed(self) -> None:
         self.assertEqual(
             _combat_type_info_blocker(
@@ -1156,6 +1254,44 @@ class CombatTypeInfoGateTests(unittest.TestCase):
             ),
             "board_ws_type_info_not_initialized",
         )
+
+
+class PristineNativeOpeningGenerationTests(unittest.TestCase):
+    def test_exact_untouched_first_local_turn_can_replace_missing_match_start(self) -> None:
+        self.assertTrue(
+            _pristine_native_opening_generation_allowed(
+                match_start_opening_pending=True,
+                effective_acked_highest=None,
+                is_local_turn=True,
+                turn=1,
+                local_move_sequence=0,
+                last_move_sequence=None,
+            )
+        )
+
+    def test_any_advanced_or_unowned_generation_remains_rejected(self) -> None:
+        baseline = {
+            "match_start_opening_pending": True,
+            "effective_acked_highest": None,
+            "is_local_turn": True,
+            "turn": 1,
+            "local_move_sequence": 0,
+            "last_move_sequence": None,
+        }
+        for changes in (
+            {"match_start_opening_pending": False},
+            {"effective_acked_highest": 1},
+            {"is_local_turn": False},
+            {"is_local_turn": None},
+            {"turn": 2},
+            {"local_move_sequence": 1},
+            {"last_move_sequence": 1},
+        ):
+            with self.subTest(changes=changes):
+                values = {**baseline, **changes}
+                self.assertFalse(
+                    _pristine_native_opening_generation_allowed(**values)
+                )
 
 
 class PresentationIdleGateTests(unittest.TestCase):
@@ -1307,6 +1443,90 @@ class OwnerAckPromotionTests(unittest.TestCase):
                 {transport},
             ),
             transport,
+        )
+
+    def test_exact_transport_board_outranks_conflicting_current_live_board(self) -> None:
+        transport = (0x2000, 71, "server-board")
+        native = (0x3000, 71, "presentation-board")
+
+        selected = _prefer_exact_transport_or_current_live(
+            [native, transport],
+            acknowledged_highest=71,
+            transport_attested={transport},
+            live_board_attested={native},
+            live_board_generations={native: (9, 4)},
+            current_generation=(9, 4),
+        )
+
+        self.assertEqual(selected, [transport])
+
+    def test_current_live_board_remains_fallback_without_transport_dto(self) -> None:
+        native = (0x3000, 71, "presentation-board")
+        retained = (0x4000, 69, "retained-board")
+
+        selected = _prefer_exact_transport_or_current_live(
+            [retained, native],
+            acknowledged_highest=71,
+            transport_attested=set(),
+            live_board_attested={native},
+            live_board_generations={native: (9, 4)},
+            current_generation=(9, 4),
+        )
+
+        self.assertEqual(selected, [native])
+
+    def test_native_live_board_expires_when_turn_move_generation_advances(self) -> None:
+        identity = (0x2000, 49, "board-a")
+        live = {identity}
+        generations = {identity: (3, 0)}
+
+        self.assertTrue(
+            _attested_board_is_current_for_generation(
+                identity,
+                live_board_attested=live,
+                live_board_generations=generations,
+                current_generation=(3, 0),
+            )
+        )
+        self.assertFalse(
+            _attested_board_is_current_for_generation(
+                identity,
+                live_board_attested=live,
+                live_board_generations=generations,
+                current_generation=(5, 1),
+            )
+        )
+
+    def test_fresh_native_generation_can_replace_same_ack_board_hash(self) -> None:
+        identity = (0x2000, 49, "board-b")
+
+        self.assertTrue(
+            _same_ack_live_generation_advanced(
+                selected=identity,
+                live_board_attested={identity},
+                live_board_generations={identity: (5, 1)},
+                current_generation=(5, 1),
+                last_sequence=49,
+                current_sequence=49,
+                last_turn=3,
+                current_turn=5,
+                last_local_move_sequence=0,
+                current_local_move_sequence=1,
+            )
+        )
+        self.assertFalse(
+            _same_ack_live_generation_advanced(
+                selected=identity,
+                live_board_attested={identity},
+                live_board_generations={identity: (3, 0)},
+                current_generation=(5, 1),
+                last_sequence=49,
+                current_sequence=49,
+                last_turn=3,
+                current_turn=5,
+                last_local_move_sequence=0,
+                current_local_move_sequence=1,
+            )
         )
 
     def test_raw_runtime_heap_batch_cannot_be_bound_by_reused_ack_alone(self) -> None:

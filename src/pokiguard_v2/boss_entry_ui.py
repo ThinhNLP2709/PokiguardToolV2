@@ -372,9 +372,11 @@ def locate_detached_chinh_phuc_room_shell_exit(
 
     The circular ``X`` also exists on the real island map, so it is never
     sufficient by itself.  This proof first requires the unique lower-room
-    cyan Start/Ready control, then locates one cyan circular close control in
-    the top-left ROI with a substantial white cross/highlight.  Runtime room
-    ownership and target identity are checked separately by ``farm_run``.
+    Start/Ready control, then locates one cyan circular close control with a
+    substantial white cross/highlight.  The legacy room places that control
+    on the reference-canvas left; the current room shell places it on the
+    full-viewport right.  Runtime room ownership and target identity are
+    checked separately by ``farm_run``.
     """
 
     start = locate_chinh_phuc_start(
@@ -394,52 +396,93 @@ def locate_detached_chinh_phuc_room_shell_exit(
             metrics={"startReason": start.reason},
         )
     transform = transform_for_capture(rgb, width, height)
-    components = _cyan_components(
-        rgb,
-        width,
-        height,
-        transform.rect((0.045, 0.005, 0.175, 0.16)),
+    layouts = (
+        (
+            "TOP_LEFT_REFERENCE",
+            transform.rect((0.045, 0.005, 0.175, 0.16)),
+            (0.070, 0.135, 0.035, 0.105),
+            "REFERENCE",
+        ),
+        (
+            "TOP_RIGHT_VIEWPORT",
+            transform.viewport_rect((0.90, 0.0, 1.0, 0.17)),
+            (0.935, 0.995, 0.025, 0.125),
+            "VIEWPORT",
+        ),
     )
-    candidates: list[EntryButtonCandidate] = []
-    for left, top, right, bottom, cyan_pixels in components:
-        rect = (left / width, top / height, right / width, bottom / height)
-        center = ((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2)
-        reference_left, reference_top = transform.reference_point((rect[0], rect[1]))
-        reference_right, reference_bottom = transform.reference_point((rect[2], rect[3]))
-        reference_center = transform.reference_point(center)
-        span_x = reference_right - reference_left
-        span_y = reference_bottom - reference_top
-        if not (
-            0.040 <= span_x <= 0.085
-            and 0.070 <= span_y <= 0.135
-            and 0.070 <= reference_center[0] <= 0.135
-            and 0.035 <= reference_center[1] <= 0.105
-        ):
-            continue
-        white_pixels = 0
-        for y in range(top, bottom):
-            for x in range(left, right):
-                red, green, blue = _pixel(rgb, width, x, y)
-                if (
-                    red >= 205
-                    and green >= 205
-                    and blue >= 205
-                    and max(red, green, blue) - min(red, green, blue) <= 50
-                ):
-                    white_pixels += 1
-        minimum_cyan = max(240, round(transform.canvas_area * 0.0008))
-        minimum_white = max(90, round(transform.canvas_area * 0.0002))
-        if cyan_pixels < minimum_cyan or white_pixels < minimum_white:
-            continue
-        confidence = min(
-            0.99,
-            0.88
-            + min(0.06, cyan_pixels / max(1, transform.canvas_area) * 30)
-            + min(0.04, white_pixels / max(1, transform.canvas_area) * 45),
-        )
-        candidates.append(
-            EntryButtonCandidate(rect, center, cyan_pixels, white_pixels, confidence)
-        )
+    located: list[tuple[EntryButtonCandidate, str]] = []
+    for layout, search_box, center_bounds, coordinate_space in layouts:
+        components = _cyan_components(rgb, width, height, search_box)
+        for left, top, right, bottom, cyan_pixels in components:
+            rect = (left / width, top / height, right / width, bottom / height)
+            center = ((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2)
+            if coordinate_space == "REFERENCE":
+                space_left, space_top = transform.reference_point(
+                    (rect[0], rect[1])
+                )
+                space_right, space_bottom = transform.reference_point(
+                    (rect[2], rect[3])
+                )
+                space_center = transform.reference_point(center)
+            else:
+                space_left = (
+                    rect[0] * width - transform.viewport_left
+                ) / transform.viewport_width
+                space_right = (
+                    rect[2] * width - transform.viewport_left
+                ) / transform.viewport_width
+                space_top = (
+                    rect[1] * height - transform.viewport_top
+                ) / transform.viewport_height
+                space_bottom = (
+                    rect[3] * height - transform.viewport_top
+                ) / transform.viewport_height
+                space_center = (
+                    (center[0] * width - transform.viewport_left)
+                    / transform.viewport_width,
+                    (center[1] * height - transform.viewport_top)
+                    / transform.viewport_height,
+                )
+            span_x = space_right - space_left
+            span_y = space_bottom - space_top
+            min_x, max_x, min_y, max_y = center_bounds
+            if not (
+                0.035 <= span_x <= 0.085
+                and 0.065 <= span_y <= 0.140
+                and min_x <= space_center[0] <= max_x
+                and min_y <= space_center[1] <= max_y
+            ):
+                continue
+            white_pixels = 0
+            for y in range(top, bottom):
+                for x in range(left, right):
+                    red, green, blue = _pixel(rgb, width, x, y)
+                    if (
+                        red >= 205
+                        and green >= 205
+                        and blue >= 205
+                        and max(red, green, blue) - min(red, green, blue) <= 50
+                    ):
+                        white_pixels += 1
+            minimum_cyan = max(240, round(transform.canvas_area * 0.0008))
+            minimum_white = max(90, round(transform.canvas_area * 0.0002))
+            if cyan_pixels < minimum_cyan or white_pixels < minimum_white:
+                continue
+            confidence = min(
+                0.99,
+                0.88
+                + min(0.06, cyan_pixels / max(1, transform.canvas_area) * 30)
+                + min(0.04, white_pixels / max(1, transform.canvas_area) * 45),
+            )
+            located.append(
+                (
+                    EntryButtonCandidate(
+                        rect, center, cyan_pixels, white_pixels, confidence
+                    ),
+                    layout,
+                )
+            )
+    candidates = [candidate for candidate, _layout in located]
     if len(candidates) != 1:
         return EntryUiLocation(
             BossEntryControl.CHINH_PHUC_ROOM_SHELL_EXIT,
@@ -451,20 +494,24 @@ def locate_detached_chinh_phuc_room_shell_exit(
             tuple(candidates),
             {"candidateCount": len(candidates), "startReason": start.reason},
         )
-    candidate = candidates[0]
+    candidate, layout = located[0]
+    layout_reason = (
+        "top_left" if layout == "TOP_LEFT_REFERENCE" else "top_right"
+    )
     return EntryUiLocation(
         BossEntryControl.CHINH_PHUC_ROOM_SHELL_EXIT,
         True,
         candidate.normalized_point,
         candidate.normalized_rect,
         candidate.confidence,
-        "single_room_start_plus_top_left_circular_exit",
+        f"single_room_start_plus_{layout_reason}_circular_exit",
         (candidate,),
         {
             "candidateCount": 1,
             "cyanPixels": candidate.cyan_pixels,
             "whitePixels": candidate.warm_or_white_pixels,
             "startReason": start.reason,
+            "exitLayout": layout,
         },
     )
 

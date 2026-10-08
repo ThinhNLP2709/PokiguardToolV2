@@ -212,6 +212,12 @@ class RuntimeSequenceMonitor:
             WS_COMBAT_BATCH_TYPE_INFO_RVA
         )
         self._learned_regions: set[Any] = set()
+        # Keep the two transport allocation families separate as well as in
+        # the shared gameplay cache.  Boss entry only needs the short-lived
+        # ChatMessageDTO that carries MATCH_START; scanning the much broader
+        # WsCombatBatch cache there can consume most of the opening turn.
+        self._chat_message_regions: set[Any] = set()
+        self._batch_regions: set[Any] = set()
         self._seen: set[tuple[Any, ...]] = set()
         self._scans = 0
         self._last_scan = 0.0
@@ -270,6 +276,28 @@ class RuntimeSequenceMonitor:
             added += 1
         return added
 
+    def absorb_chat_message_region_hints(self, regions: Iterable[Any]) -> int:
+        """Retain provider-proven ChatMessageDTO regions for entry scans.
+
+        The regions remain hints only. ``poll`` still requires the exact
+        class pointer, current MatchId and structurally valid payload before
+        exposing a message.
+        """
+
+        chat_regions = getattr(self, "_chat_message_regions", set())
+        added = 0
+        for region in regions:
+            if any(
+                region.base < learned.end and learned.base < region.end
+                for learned in chat_regions
+            ):
+                continue
+            chat_regions.add(region)
+            added += 1
+        self._chat_message_regions = chat_regions
+        self.absorb_region_hints(regions)
+        return added
+
     def prime_regions(
         self,
         *,
@@ -320,11 +348,14 @@ class RuntimeSequenceMonitor:
             progress=stop_progress if stop_requested is not None else None,
         )
         hits = scan.matches.get("chat_message", ())
-        learned = regions_containing_addresses(
-            all_regions,
-            tuple(hits) + tuple(scan.matches.get("batch", ())),
+        message_regions = regions_containing_addresses(all_regions, hits)
+        batch_regions = regions_containing_addresses(
+            all_regions, scan.matches.get("batch", ())
         )
-        self._learned_regions.update(learned)
+        self._chat_message_regions = set(message_regions)
+        self._batch_regions = set(batch_regions)
+        self._learned_regions.update(message_regions)
+        self._learned_regions.update(batch_regions)
         return RuntimeRegionPrime(
             True,
             len(all_regions),
@@ -352,9 +383,25 @@ class RuntimeSequenceMonitor:
 
         started = time.perf_counter()
         current = _regions(self.target, self.max_region_mib)
+        has_dedicated_message_evidence = hasattr(
+            self, "_chat_message_regions"
+        )
         live_learned = _current_learned_regions(current, self._learned_regions)
         self._learned_regions = set(live_learned)
-        if live_learned:
+        self._chat_message_regions = set(
+            _current_learned_regions(
+                current, getattr(self, "_chat_message_regions", ())
+            )
+        )
+        self._batch_regions = set(
+            _current_learned_regions(current, getattr(self, "_batch_regions", ()))
+        )
+        live_entry_evidence = (
+            tuple(self._chat_message_regions)
+            if has_dedicated_message_evidence
+            else live_learned
+        )
+        if live_entry_evidence:
             return RuntimeRegionPrime(
                 self._dto_class is not None,
                 len(current),
@@ -490,6 +537,7 @@ class RuntimeSequenceMonitor:
         allow_gap_full_escalation: bool = False,
         allow_full_scan: bool = True,
         max_scan_bytes: int | None = None,
+        prefer_chat_message_regions: bool = False,
         available_board_sequences: Iterable[int] = (),
         offered_board_message_addresses: Iterable[int] = (),
     ) -> RuntimeSequenceObservation:
@@ -515,10 +563,30 @@ class RuntimeSequenceMonitor:
 
         self._scans += 1
         all_regions = _regions(self.target, self.max_region_mib)
+        has_dedicated_message_evidence = hasattr(
+            self, "_chat_message_regions"
+        )
         current_learned = _current_learned_regions(
             all_regions, self._learned_regions
         )
         self._learned_regions = set(current_learned)
+        current_chat_regions = _current_learned_regions(
+            all_regions, getattr(self, "_chat_message_regions", ())
+        )
+        self._chat_message_regions = set(current_chat_regions)
+        current_batch_regions = _current_learned_regions(
+            all_regions, getattr(self, "_batch_regions", ())
+        )
+        self._batch_regions = set(current_batch_regions)
+        scan_evidence = (
+            (
+                current_chat_regions
+                if has_dedicated_message_evidence
+                else current_learned
+            )
+            if prefer_chat_message_regions
+            else current_learned
+        )
         gap_scan_identity = _transport_gap_scan_identity(
             runtime,
             published_srv_seq=srv_seq,
@@ -569,7 +637,7 @@ class RuntimeSequenceMonitor:
             allow_full_scan
             and (
                 effective_force_full_scan
-                or not self._learned_regions
+                or not scan_evidence
                 or gap_full_escalation
             )
         )
@@ -583,7 +651,7 @@ class RuntimeSequenceMonitor:
             else "LOCAL_TURN_ACK_GAP_BOUNDED"
             if gap_refresh
             else "NO_LIVE_LEARNED_REGIONS"
-            if not self._learned_regions
+            if not scan_evidence
             else "PERIODIC_REFRESH"
             if periodic_refresh
             else "LEARNED_REGIONS_WITH_NEIGHBORS"
@@ -613,12 +681,12 @@ class RuntimeSequenceMonitor:
             # the one bounded->full escalation below.
             selected = (
                 _learned_regions_with_allocator_neighbors(
-                    all_regions, current_learned
+                    all_regions, scan_evidence
                 )
-                or current_learned
+                or scan_evidence
             )
         else:
-            selected = current_learned
+            selected = scan_evidence
         if not full and max_scan_bytes is not None:
             selected, self._bounded_region_cursor = (
                 _rotating_regions_within_byte_budget(
@@ -630,7 +698,7 @@ class RuntimeSequenceMonitor:
         scan_started = time.perf_counter()
         needles = {"chat_message": int(self._dto_class)}
         batch_class = getattr(self, "_batch_class", None)
-        if batch_class is not None:
+        if batch_class is not None and not prefer_chat_message_regions:
             # Search WsCombatBatch in the same bytes already required for DTO
             # sequence monitoring.  This adds no second memory traversal and
             # retains exact structural + MatchService ACK validation downstream.
@@ -644,11 +712,11 @@ class RuntimeSequenceMonitor:
         scan_elapsed = time.perf_counter() - scan_started
         scan_region_count = len(selected)
         scan_bytes_read = scan.bytes_read
-        self._learned_regions.update(
-            regions_containing_addresses(
-                all_regions, scan.matches.get("chat_message", ())
-            )
+        newly_seen_message_regions = regions_containing_addresses(
+            all_regions, scan.matches.get("chat_message", ())
         )
+        self._chat_message_regions.update(newly_seen_message_regions)
+        self._learned_regions.update(newly_seen_message_regions)
         decoded: dict[int, ServerMessage] = {}
         batch_hits = set(scan.matches.get("batch", ()))
         for address in scan.matches.get("chat_message", ()):
@@ -699,12 +767,12 @@ class RuntimeSequenceMonitor:
             scan_region_count += len(all_regions)
             scan_bytes_read += full_scan.bytes_read
             batch_hits.update(full_scan.matches.get("batch", ()))
-            self._learned_regions.update(
-                regions_containing_addresses(
-                    all_regions,
-                    full_scan.matches.get("chat_message", ()),
-                )
+            full_message_regions = regions_containing_addresses(
+                all_regions,
+                full_scan.matches.get("chat_message", ()),
             )
+            self._chat_message_regions.update(full_message_regions)
+            self._learned_regions.update(full_message_regions)
             for address in full_scan.matches.get("chat_message", ()):
                 if address in decoded:
                     continue
@@ -724,9 +792,11 @@ class RuntimeSequenceMonitor:
         # WsCombatBatch regions are process-lifetime scan evidence just like
         # ChatMessageDTO regions. Retaining both makes the next ACK refresh a
         # learned-region scan instead of another 400-600 MiB full heap scan.
-        self._learned_regions.update(
-            regions_containing_addresses(all_regions, batch_hits)
+        newly_seen_batch_regions = regions_containing_addresses(
+            all_regions, batch_hits
         )
+        self._batch_regions.update(newly_seen_batch_regions)
+        self._learned_regions.update(newly_seen_batch_regions)
 
         combat_batches: tuple[CombatBatchSnapshot, ...] = ()
         if batch_class is not None and batch_hits:
