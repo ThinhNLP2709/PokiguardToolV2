@@ -22,6 +22,7 @@ from .basic_policy import (
 from .pet_configuration import (
     AuditionMode, MainPetType, EvolutionTarget, DamageCardMode, MAIN_PET_LABELS,
     EVOLUTION_LABELS, DAMAGE_LABELS, AUDITION_LABELS, PLAY_STYLE_LABELS,
+    GAME_MODE_LABELS, GameMode,
     PET_SKILL_FIRE_CONDITION_LABELS, PetSkillFireCondition,
     DESKTOP_EVOLUTION_OPTIONS, DESKTOP_MAIN_PET_OPTIONS,
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
@@ -46,6 +47,12 @@ from .desktop_preferences import (
 )
 from .input_delivery import InputDeliveryMode
 from .game_window_size import GameWindowSizeProfile
+from .farm_run_storage import (
+    FarmRunStorageUsage,
+    clear_farm_runs,
+    format_byte_size,
+    scan_farm_runs,
+)
 from .version import APP_BUILD, APP_TITLE, APP_VERSION
 from .win32_input import BoardInputMode
 
@@ -59,6 +66,7 @@ VISIBLE_RUNTIME_ROWS = (
 DESKTOP_TAB_TITLES = ("Điều khiển", "Tùy chọn", "Cài đặt", "Chẩn đoán / Nhật ký")
 PREFERENCE_TABLE_ROWS = (
     "Lối chơi",
+    "Chế độ chơi",
     "Độ thông minh",
     "Pet của tôi",
     "Tiến hóa",
@@ -69,7 +77,11 @@ PREFERENCE_TABLE_ROWS = (
     "Chế độ thao tác",
     "Kích thước cửa sổ game",
 )
-SETTINGS_TABLE_ROWS = ("Tệp chạy trò chơi", "Âm báo của tool")
+SETTINGS_TABLE_ROWS = (
+    "Tệp chạy trò chơi",
+    "Âm báo của tool",
+    "Log farm_runs",
+)
 INITIAL_FOCUS_TARGET = "notebook"
 BACKGROUND_UNFOCUS_WIDGET_CLASSES = frozenset(
     {"Tk", "TFrame", "TLabelframe", "TLabel", "Frame", "Label"}
@@ -178,6 +190,15 @@ def pet_skill_fire_condition_from_display(value: str) -> PetSkillFireCondition:
         if value == label:
             return condition
     return PetSkillFireCondition(value)
+
+
+def game_mode_from_display(value: str) -> GameMode:
+    """Map the visible play-mode label to its stable machine value."""
+
+    for mode, label in GAME_MODE_LABELS.items():
+        if value == label:
+            return mode
+    return GameMode(value)
 
 
 def audition_mode_from_display(value: str) -> AuditionMode:
@@ -723,6 +744,11 @@ class DesktopViewModel:
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
             "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi yêu cầu Cơ bản, Thẻ skill của pet và đúng một nguồn skill pet.",
             "DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED": "Demon Aegis Farm yêu cầu Pet thường, Không tiến hóa, Nội tại pet và điều kiện Kiếm đủ.",
+            "BU_WIN_LOADOUT_INVALID": "Bú win yêu cầu Pet thường, Không tiến hóa và Thẻ sát thương Không có.",
+            "BU_WIN_PROFILE_NOT_IMPLEMENTED": "Bú win yêu cầu chế độ Coop, Pet thường, Không tiến hóa và Thẻ sát thương Không có.",
+            "BU_WIN_REQUIRES_COOP": "Lối chơi Bú win chỉ chạy ở chế độ Coop.",
+            "COOP_REQUIRES_BU_WIN": "Chế độ Coop hiện chỉ dùng với lối chơi Bú win.",
+            "NO_DAMAGE_CARD_REQUIRES_BU_WIN": "Thẻ sát thương Không có hiện chỉ dùng với lối chơi Bú win.",
             "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM": "Nội tại pet hiện chỉ dùng được với lối chơi Demon Aegis Farm.",
             "PET_PASSIVE_PROFILE_INVALID": "Nội tại pet yêu cầu Pet thường và Không tiến hóa.",
             "MEGA_ICARUS_LOADOUT_INVALID": "Mega Icarus yêu cầu Mega + Không tiến hóa/Tiến hóa pet thường, hoặc Pet thường + Tiến hóa pet Mega.",
@@ -915,6 +941,7 @@ class DesktopApplication:
         game_window_size_changed: (
             Callable[[GameWindowSizeProfile], bool] | None
         ) = None,
+        farm_runs_root: Path | None = None,
         auto_close_seconds: float = 0.0,
     ) -> None:
         import tkinter as tk
@@ -927,6 +954,19 @@ class DesktopApplication:
         self.preference_warnings = preference_warnings
         self.game_location_changed = game_location_changed
         self.game_window_size_changed = game_window_size_changed
+        self._farm_runs_root = (
+            Path(farm_runs_root).expanduser().resolve(strict=False)
+            if farm_runs_root is not None
+            else None
+        )
+        self._farm_runs_usage = FarmRunStorageUsage()
+        self._farm_runs_busy = False
+        self._farm_runs_active_operation: str | None = None
+        self._farm_runs_operation_id = 0
+        self._farm_runs_result_lock = threading.Lock()
+        self._farm_runs_result: (
+            tuple[int, str, FarmRunStorageUsage | None, Exception | None] | None
+        ) = None
         self.auto_close_seconds = max(0.0, float(auto_close_seconds))
         self.render_ticks = 0
         self.handled_ui_errors = 0
@@ -1013,6 +1053,7 @@ class DesktopApplication:
 
         config = view_model.control_plane.snapshot().config
         self.play_style = tk.StringVar(value=PLAY_STYLE_LABELS[config.play_style])
+        self.game_mode = tk.StringVar(value=GAME_MODE_LABELS[config.game_mode])
         self.main_pet = tk.StringVar(value=config.main_pet.value)
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
@@ -1050,6 +1091,14 @@ class DesktopApplication:
         self.tool_sound_enabled = tk.BooleanVar(
             value=config.tool_sound_enabled
         )
+        self.farm_runs_usage_var = tk.StringVar(
+            value=(
+                "Đang tính dung lượng..."
+                if self._farm_runs_root is not None
+                else "KHÔNG KHẢ DỤNG"
+            )
+        )
+        self.farm_runs_feedback_var = tk.StringVar(value="")
         self.boss_id = tk.StringVar(value=config.normalized_boss_id or "")
         self.boss_name = tk.StringVar(value=config.normalized_boss_name or "")
         self.target_matches = tk.StringVar(value=str(config.target_completed_matches))
@@ -1099,6 +1148,17 @@ class DesktopApplication:
         )
         preference_field(
             row=1,
+            label="Chế độ chơi",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.game_mode,
+                values=tuple(GAME_MODE_LABELS.values()),
+                state="disabled",
+            ),
+            editable_state="disabled",
+        )
+        preference_field(
+            row=2,
             label="Độ thông minh",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1109,11 +1169,11 @@ class DesktopApplication:
             editable_state="disabled",
         )
         for row, label, name, variable, labels, visible, supported in (
-            (2, "Pet của tôi", "main_pet", self.main_pet, MAIN_PET_LABELS,
+            (3, "Pet của tôi", "main_pet", self.main_pet, MAIN_PET_LABELS,
              DESKTOP_MAIN_PET_OPTIONS, SUPPORTED_MAIN_PETS),
-            (3, "Tiến hóa", "evolution", self.evolution, EVOLUTION_LABELS,
+            (4, "Tiến hóa", "evolution", self.evolution, EVOLUTION_LABELS,
              DESKTOP_EVOLUTION_OPTIONS, SUPPORTED_EVOLUTIONS),
-            (4, "Thẻ sát thương", "damage_card", self.damage_card, DAMAGE_LABELS,
+            (5, "Thẻ sát thương", "damage_card", self.damage_card, DAMAGE_LABELS,
              tuple(DamageCardMode), frozenset(DamageCardMode)),
         ):
             ttk.Label(preferences_frame, text=f"{label}:").grid(
@@ -1132,10 +1192,10 @@ class DesktopApplication:
             preferences_frame, text="Điều kiện ra skill:"
         )
         self.pet_skill_fire_label.grid(
-            row=5, column=0, sticky=tk.W, padx=(0, 12), pady=5
+            row=6, column=0, sticky=tk.W, padx=(0, 12), pady=5
         )
         self.pet_skill_fire_cell = ttk.Frame(preferences_frame)
-        self.pet_skill_fire_cell.grid(row=5, column=1, sticky=tk.EW, pady=5)
+        self.pet_skill_fire_cell.grid(row=6, column=1, sticky=tk.EW, pady=5)
         self.pet_skill_fire_cell.columnconfigure(0, weight=3)
         self.pet_skill_fire_cell.columnconfigure(1, weight=1)
         self.pet_skill_fire_condition_widget = ttk.Combobox(
@@ -1163,7 +1223,7 @@ class DesktopApplication:
             )
         )
         self.audition_label, self.audition_widget = preference_field(
-            row=6,
+            row=7,
             label="Hành động skill",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1185,10 +1245,10 @@ class DesktopApplication:
             wraplength=390,
         )
         self.audition_help.grid(
-            row=7, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=8, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
         preference_field(
-            row=8,
+            row=9,
             label="Cách đi bàn cờ",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1199,7 +1259,7 @@ class DesktopApplication:
             editable_state="readonly",
         )
         _, self.input_delivery_widget = preference_field(
-            row=9,
+            row=10,
             label="Chế độ thao tác",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1215,10 +1275,10 @@ class DesktopApplication:
             wraplength=390,
         )
         self.input_delivery_help.grid(
-            row=10, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=11, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
         _, self.game_window_size_widget = preference_field(
-            row=11,
+            row=12,
             label="Kích thước cửa sổ game",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1234,7 +1294,7 @@ class DesktopApplication:
             wraplength=410,
         )
         self.game_window_size_help.grid(
-            row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=13, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
 
         def horizontal_field(
@@ -1273,13 +1333,13 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=13, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=14, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
         )
         ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
-                  wraplength=390).grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=5)
+                  wraplength=390).grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.load_checkpoint_preferences_button = ttk.Button(
             preferences_frame, text="Nạp tùy chọn từ checkpoint", command=self._load_checkpoint_preferences)
-        self.load_checkpoint_preferences_button.grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.load_checkpoint_preferences_button.grid(row=16, column=0, columnspan=2, sticky=tk.W, pady=5)
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
@@ -1340,6 +1400,41 @@ class DesktopApplication:
         self.tool_sound_widget.grid(
             row=3, column=1, columnspan=2, sticky=tk.W, pady=8
         )
+        ttk.Label(settings_frame, text="Log farm_runs:").grid(
+            row=4, column=0, sticky=tk.NW, padx=(0, 12), pady=(8, 5)
+        )
+        farm_runs_cell = ttk.Frame(settings_frame)
+        farm_runs_cell.grid(
+            row=4, column=1, columnspan=2, sticky=tk.EW, pady=(8, 5)
+        )
+        farm_runs_cell.columnconfigure(0, weight=1)
+        ttk.Label(
+            farm_runs_cell,
+            textvariable=self.farm_runs_usage_var,
+            wraplength=300,
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W)
+        self.farm_runs_refresh_button = ttk.Button(
+            farm_runs_cell,
+            text="Làm mới",
+            command=self._refresh_farm_runs_usage,
+        )
+        self.farm_runs_refresh_button.grid(
+            row=1, column=0, sticky=tk.W, pady=(6, 0)
+        )
+        self.farm_runs_clear_button = ttk.Button(
+            farm_runs_cell,
+            text="Xóa toàn bộ",
+            command=self._confirm_clear_farm_runs,
+        )
+        self.farm_runs_clear_button.grid(
+            row=1, column=1, sticky=tk.W, padx=(8, 0), pady=(6, 0)
+        )
+        ttk.Label(
+            farm_runs_cell,
+            textvariable=self.farm_runs_feedback_var,
+            foreground="#8a4b08",
+            wraplength=300,
+        ).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
         self._config_widgets.extend(
             (
                 (self.game_location_entry, "normal"),
@@ -1498,6 +1593,7 @@ class DesktopApplication:
         # Keep initial activation neutral. Entry widgets remain mouse-editable,
         # but Target matches must not receive an unsolicited caret/selection.
         root.after_idle(notebook.focus_set)
+        self._refresh_farm_runs_usage()
 
     def _handle_background_click(self, event: Any) -> None:
         """Move focus off Entry/Combobox only when true background is clicked."""
@@ -1520,6 +1616,8 @@ class DesktopApplication:
         # limit and pet fields that it asserts.
         if hasattr(self, "play_style"):
             self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
+        if hasattr(self, "game_mode"):
+            self.game_mode.set(GAME_MODE_LABELS[config.game_mode])
         if hasattr(self, "intelligence"):
             self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])
         if hasattr(self, "board_input_mode"):
@@ -1639,6 +1737,142 @@ class DesktopApplication:
                 error=f"{type(exc).__name__}: {exc}",
             )
 
+    def _set_farm_runs_buttons(self, *, controller_active: bool | None = None) -> None:
+        """Keep destructive log maintenance outside an active farm run."""
+
+        if controller_active is None:
+            controller_active = self.view_model.control_plane.snapshot().controller.active
+        available = self._farm_runs_root is not None
+        self.farm_runs_refresh_button.configure(
+            state="normal" if available and not self._farm_runs_busy else "disabled"
+        )
+        self.farm_runs_clear_button.configure(
+            state=(
+                "normal"
+                if available and not self._farm_runs_busy and not controller_active
+                else "disabled"
+            )
+        )
+
+    def _start_farm_runs_operation(self, operation: str) -> None:
+        root = self._farm_runs_root
+        if root is None:
+            self.farm_runs_usage_var.set("KHÔNG KHẢ DỤNG")
+            return
+        if self._farm_runs_busy:
+            return
+
+        self._farm_runs_busy = True
+        self._farm_runs_active_operation = operation
+        self._farm_runs_operation_id += 1
+        operation_id = self._farm_runs_operation_id
+        if operation == "clear":
+            self.farm_runs_feedback_var.set("Đang xóa log farm_runs...")
+        else:
+            self.farm_runs_usage_var.set("Đang tính dung lượng...")
+            self.farm_runs_feedback_var.set("")
+        self._set_farm_runs_buttons()
+
+        def worker() -> None:
+            usage: FarmRunStorageUsage | None = None
+            error: Exception | None = None
+            try:
+                if operation == "clear":
+                    usage = clear_farm_runs(root)
+                else:
+                    usage = scan_farm_runs(root)
+            except Exception as exc:
+                error = exc
+            with self._farm_runs_result_lock:
+                self._farm_runs_result = (operation_id, operation, usage, error)
+
+        threading.Thread(
+            target=worker,
+            name=f"PokiguardFarmRuns{operation.title()}",
+            daemon=True,
+        ).start()
+
+    def _refresh_farm_runs_usage(self) -> None:
+        self._start_farm_runs_operation("scan")
+
+    def _confirm_clear_farm_runs(self) -> None:
+        from tkinter import messagebox
+
+        snapshot = self.view_model.control_plane.snapshot()
+        if snapshot.controller.active:
+            self.farm_runs_feedback_var.set(
+                "Hãy dừng FarmRunner trước khi xóa log."
+            )
+            return
+        if self._farm_runs_root is None or self._farm_runs_busy:
+            return
+        confirmed = messagebox.askyesno(
+            APP_TITLE,
+            (
+                "Xóa toàn bộ log trong farm_runs?\n\n"
+                f"Dung lượng hiện tại: {format_byte_size(self._farm_runs_usage.total_bytes)} "
+                f"({self._farm_runs_usage.file_count} tệp).\n\n"
+                "Thao tác này không thể hoàn tác."
+            ),
+            parent=self.root,
+        )
+        if not confirmed:
+            self.farm_runs_feedback_var.set("Đã hủy xóa log.")
+            return
+        # Recheck after the modal confirmation in case a run started while
+        # the operator was deciding.
+        if self.view_model.control_plane.snapshot().controller.active:
+            self.farm_runs_feedback_var.set(
+                "Không thể xóa vì FarmRunner vừa bắt đầu chạy."
+            )
+            return
+        self._start_farm_runs_operation("clear")
+
+    def _consume_farm_runs_result(self, *, controller_active: bool) -> None:
+        with self._farm_runs_result_lock:
+            result = self._farm_runs_result
+            self._farm_runs_result = None
+        if result is None:
+            self._set_farm_runs_buttons(controller_active=controller_active)
+            return
+        operation_id, operation, usage, error = result
+        if operation_id != self._farm_runs_operation_id:
+            return
+
+        self._farm_runs_busy = False
+        self._farm_runs_active_operation = None
+        if error is not None:
+            self.farm_runs_usage_var.set("KHÔNG THỂ ĐỌC DUNG LƯỢNG")
+            self.farm_runs_feedback_var.set(f"Lỗi quản lý log: {error}")
+            self.event_log.write(
+                "farm_runs_storage_error",
+                operation=operation,
+                error=f"{type(error).__name__}: {error}",
+                operatorMessage="Không thể quản lý log farm_runs.",
+            )
+        elif usage is not None and operation == "clear":
+            self._farm_runs_usage = FarmRunStorageUsage()
+            self.farm_runs_usage_var.set("0 B (0 tệp)")
+            self.farm_runs_feedback_var.set(
+                f"Đã xóa {usage.file_count} tệp, giải phóng "
+                f"{format_byte_size(usage.total_bytes)}."
+            )
+            self.event_log.write(
+                "farm_runs_cleared",
+                deletedBytes=usage.total_bytes,
+                deletedFiles=usage.file_count,
+                deletedDirectories=usage.directory_count,
+                root=str(self._farm_runs_root),
+                operatorMessage="Đã xóa toàn bộ log trong farm_runs.",
+            )
+        elif usage is not None:
+            self._farm_runs_usage = usage
+            self.farm_runs_usage_var.set(
+                f"{format_byte_size(usage.total_bytes)} "
+                f"({usage.file_count} tệp, {usage.directory_count} thư mục)"
+            )
+        self._set_farm_runs_buttons(controller_active=controller_active)
+
     def _choose_game_executable(self) -> None:
         from tkinter import filedialog
 
@@ -1719,6 +1953,7 @@ class DesktopApplication:
     def _draft_fields(self) -> dict[str, str]:
         return {
             "play_style": play_style_from_display(self.play_style.get()).value,
+            "game_mode": game_mode_from_display(self.game_mode.get()).value,
             "main_pet": self.main_pet.get(),
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
@@ -1765,6 +2000,7 @@ class DesktopApplication:
         self._updating_pet_fields = True
         self._updating_fire_fields = True
         try:
+            self.game_mode.set(GAME_MODE_LABELS[config.game_mode])
             for name in ("main_pet", "evolution", "damage_card"):
                 getattr(self, name).set(getattr(config, name).value)
             self.audition_mode.set(AUDITION_LABELS[config.audition_mode])
@@ -1797,6 +2033,7 @@ class DesktopApplication:
             self.tool_sound_enabled.set(config.tool_sound_enabled)
             self._display_pet_config(config)
             self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
+            self.game_mode.set(GAME_MODE_LABELS[config.game_mode])
             self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])
             self.board_input_mode.set(BOARD_INPUT_LABELS[config.board_input_mode])
             self.target_matches.set(str(config.target_completed_matches))
@@ -1822,6 +2059,7 @@ class DesktopApplication:
         mega_icarus = (
             profile.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
         )
+        bu_win = profile.play_style is PlayStyle.BU_WIN
         main_pet = MainPetType(self.main_pet.get())
         for value in DESKTOP_MAIN_PET_OPTIONS:
             button = self._pet_option_widgets.get(("main_pet", value.value))
@@ -1831,6 +2069,7 @@ class DesktopApplication:
                         "normal"
                         if editable
                         and not demon
+                        and not bu_win
                         and (
                             (mega_icarus and value in {
                                 MainPetType.NORMAL,
@@ -1849,6 +2088,7 @@ class DesktopApplication:
                         "normal"
                         if editable
                         and not demon
+                        and not bu_win
                         and (
                             (
                                 mega_icarus
@@ -1887,8 +2127,9 @@ class DesktopApplication:
                 and (
                     (demon and value is DamageCardMode.PET_PASSIVE)
                     or (mega_icarus and value is DamageCardMode.PET_SKILL)
+                    or (bu_win and value is DamageCardMode.NONE)
                     or (
-                        not demon and not mega_icarus
+                        not demon and not mega_icarus and not bu_win
                         and (
                             value is DamageCardMode.DEFAULT_ATTACK
                             or (
@@ -2031,7 +2272,11 @@ class DesktopApplication:
         try:
             main_pet = MainPetType(self.main_pet.get())
             style = play_style_from_display(self.play_style.get())
-            if style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+            if style is PlayStyle.BU_WIN:
+                main_pet = MainPetType.NORMAL
+                evolution = EvolutionTarget.NONE
+                normalized = DamageCardMode.NONE
+            elif style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
                 if main_pet is MainPetType.NORMAL:
                     evolution = EvolutionTarget.MEGA
                 else:
@@ -2091,6 +2336,7 @@ class DesktopApplication:
             self._updating_fire_fields = True
             try:
                 if style is PlayStyle.DEMON_AEGIS_FARM:
+                    self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
                     self.main_pet.set(MainPetType.NORMAL.value)
                     self.evolution.set(EvolutionTarget.NONE.value)
                     self.damage_card.set(DamageCardMode.PET_PASSIVE.value)
@@ -2106,6 +2352,7 @@ class DesktopApplication:
                         DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT
                     )
                 elif style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+                    self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
                     self.main_pet.set(MainPetType.MEGA.value)
                     self.evolution.set(EvolutionTarget.NONE.value)
                     self.damage_card.set(DamageCardMode.PET_SKILL.value)
@@ -2123,19 +2370,37 @@ class DesktopApplication:
                     self._last_valid_pet_skill_fire_value = (
                         PET_SKILL_FIRE_VALUE_DEFAULT
                     )
+                elif style is PlayStyle.BU_WIN:
+                    self.game_mode.set(GAME_MODE_LABELS[GameMode.COOP])
+                    self.main_pet.set(MainPetType.NORMAL.value)
+                    self.evolution.set(EvolutionTarget.NONE.value)
+                    self.damage_card.set(DamageCardMode.NONE.value)
+                    self.audition_mode.set(
+                        AUDITION_LABELS[AuditionMode.NO_ACTION]
+                    )
+                    self.pet_skill_fire_condition.set(
+                        PET_SKILL_FIRE_CONDITION_LABELS[
+                            PetSkillFireCondition.SKILL_COST_READY
+                        ]
+                    )
+                    self.pet_skill_fire_value.set("")
                 elif (
                     self.damage_card.get() == DamageCardMode.PET_PASSIVE.value
+                    or self.damage_card.get() == DamageCardMode.NONE.value
                     or self.main_pet.get() == MainPetType.MEGA.value
                     or self.evolution.get() == EvolutionTarget.MEGA.value
                     or self.audition_mode.get()
                     == AUDITION_LABELS[AuditionMode.NO_ACTION]
                 ):
+                    self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
                     self.main_pet.set(MainPetType.NORMAL.value)
                     self.evolution.set(EvolutionTarget.NORMAL.value)
                     self.damage_card.set(DamageCardMode.DEFAULT_ATTACK.value)
                     self.audition_mode.set(
                         AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION]
                     )
+                else:
+                    self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
             finally:
                 self._updating_fire_fields = False
                 self._updating_pet_fields = False
@@ -2169,6 +2434,11 @@ class DesktopApplication:
         )
 
     def _start_farm(self) -> None:
+        if self._farm_runs_active_operation == "clear":
+            self.command_feedback.set(
+                "Đang xóa log farm_runs; hãy chờ thao tác hoàn tất rồi bắt đầu."
+            )
+            return
         try:
             self._apply_game_location(persist=False)
             config = self.view_model.apply_draft(**self._draft_fields())
@@ -2187,6 +2457,11 @@ class DesktopApplication:
             self.event_log.write("start_farm_rejected", error=str(exc))
 
     def _resume_checkpoint(self) -> None:
+        if self._farm_runs_active_operation == "clear":
+            self.command_feedback.set(
+                "Đang xóa log farm_runs; hãy chờ thao tác hoàn tất rồi tiếp tục."
+            )
+            return
         try:
             self._apply_game_location(persist=False)
             config = self.view_model.apply_draft(**self._draft_fields())
@@ -2462,6 +2737,9 @@ class DesktopApplication:
             self.error_var.set(presentation.error)
             self.refreshed_var.set(presentation.refreshed)
             snapshot = self.view_model.control_plane.snapshot()
+            self._consume_farm_runs_result(
+                controller_active=snapshot.controller.active
+            )
             controls = snapshot.controls
             close_pending = self._close_coordinator.intent is not CloseIntent.NONE
             if snapshot.controller.active and self._locked_run_limits is not None:
@@ -2503,6 +2781,7 @@ class DesktopApplication:
                 and draft_valid
                 and profile_reason is None
                 and not close_pending
+                and self._farm_runs_active_operation != "clear"
             )
             self.start_button.configure(
                 state="normal" if start_actionable else "disabled"
@@ -2515,6 +2794,7 @@ class DesktopApplication:
                     and draft_valid
                     and profile_reason is None
                     and not close_pending
+                    and self._farm_runs_active_operation != "clear"
                     else "disabled"
                 )
             )

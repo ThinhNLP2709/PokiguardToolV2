@@ -4142,3 +4142,25 @@ transport decoder, rendered-Dot fallback and all board-evidence tools now use
 that domain. The maximum multiplier-weighted configuration value is 448.
 Focused multiplier regressions pass 75/75; full regression passes 1589/1589;
 `compileall` and `git diff --check` pass. A live retry remains required.
+
+## Release v1.2.4 — operational soak accepted (2026-10-09)
+
+Version `v1.2.4` is accepted as operationally stable after operator-confirmed
+overnight runs of 600 and 200 matches completed without a mid-run stop. The
+release hardens post-Start room ejection recovery, bounds ambiguous SWAP
+delivery to one probable pass before recovery on the second distinct timeout,
+makes two-click board input the default, suppresses routine packaged PNG logs,
+and adds bounded `farm_runs` storage controls.
+
+The first v1.2.4 package exposed a latent missing import only when a retained
+runtime batch appeared after 17 completed matches. Run
+`548e553664d347e38aa569b77ae28950` proved the opening SWAP was acknowledged;
+`board_state_hash` then raised `NameError` while offering the transient batch.
+The canonical helper is now imported and the exact offer/hash/deduplicate path
+has a regression test. Full regression is **1759/1759 PASS**, packaging tests
+are **15/15 PASS**, and packaged self-check exits `0`.
+
+The new Coop `Bú win` configuration and policy are offline-test complete but
+have **not** received live acceptance. See
+[the v1.2.4 release report](v1.2.4_release_report.md) for the scope, evidence,
+artifact hash and explicit limitation.

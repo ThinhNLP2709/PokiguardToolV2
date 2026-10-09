@@ -22,7 +22,7 @@ from .basic_policy import (
     PlayStyle,
 )
 from .pet_configuration import GameplayConfig, MainPetType, EvolutionTarget, DamageCardMode
-from .gameplay_profile import AuditionMode, PetSkillFireCondition
+from .gameplay_profile import AuditionMode, GameMode, PetSkillFireCondition
 from .boss_entry import FarmTarget
 from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
 from .farm_run import FarmRunLimits
@@ -124,7 +124,8 @@ class DesktopConfig(GameplayConfig):
         target_completed_matches: str,
         max_technical_recoveries: str,
         max_match_attempts: str,
-        board_input_mode: str = BoardInputMode.DRAG.value,
+        board_input_mode: str = BoardInputMode.TWO_CLICK.value,
+        game_mode: str = GameMode.SOLO.value,
         main_pet: str = MainPetType.NORMAL.value,
         evolution: str = EvolutionTarget.NORMAL.value,
         damage_card: str = DamageCardMode.DEFAULT_ATTACK.value,
@@ -172,6 +173,7 @@ class DesktopConfig(GameplayConfig):
             fire_value = None
         return cls(
             play_style=PlayStyle(play_style),
+            game_mode=GameMode(game_mode),
             main_pet=MainPetType(main_pet),
             evolution=EvolutionTarget(evolution),
             damage_card=damage,

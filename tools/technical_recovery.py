@@ -85,7 +85,7 @@ from pokiguard_v2.win32_input import (  # noqa: E402
 )
 from pokiguard_v2.win32_screenshot import (  # noqa: E402
     capture_client_rgb,
-    write_png_rgb,
+    write_recovery_png_rgb,
 )
 from tools import boss_entry  # noqa: E402
 from tools.farm_cycle import _wait_boss_lobby  # noqa: E402
@@ -611,7 +611,7 @@ def _run_stage_a(args: Namespace) -> int:
 def _save_current_capture(pid: int, path: Path) -> bool:
     try:
         capture = capture_client_rgb(pid)
-        write_png_rgb(path, capture.width, capture.height, capture.rgb)
+        write_recovery_png_rgb(path, capture.width, capture.height, capture.rgb)
         return path.is_file() and path.stat().st_size > 0
     except (OSError, RuntimeError, ValueError):
         return False
@@ -1843,6 +1843,7 @@ def _run_live(
             require_attack_card=getattr(
                 shared_runtime, "require_attack_card", True
             ),
+            coop_mode=(getattr(args, "game_mode", "solo") == "coop"),
             pinned_input_session=getattr(
                 shared_runtime, "pinned_input_session", None
             ),

@@ -26,9 +26,15 @@ class EvolutionTarget(str, Enum):
 
 
 class DamageCardMode(str, Enum):
+    NONE = "none"
     DEFAULT_ATTACK = "default_attack"
     PET_SKILL = "pet_skill"
     PET_PASSIVE = "pet_passive"
+
+
+class GameMode(str, Enum):
+    SOLO = "solo"
+    COOP = "coop"
 
 
 class PetSkillFireCondition(str, Enum):
@@ -66,6 +72,7 @@ __all__ = [
     "AuditionMode",
     "DamageCardMode",
     "EvolutionTarget",
+    "GameMode",
     "MainPetType",
     "PetSkillFireCondition",
 ]

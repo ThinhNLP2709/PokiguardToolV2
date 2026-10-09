@@ -655,6 +655,8 @@ class DesktopFarmControllerManager:
             str(config.max_match_attempts),
             "--play-style",
             config.play_style.value,
+            "--game-mode",
+            config.game_mode.value,
             "--main-pet",
             config.main_pet.value,
             "--evolution-target",

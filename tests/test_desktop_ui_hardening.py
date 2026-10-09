@@ -247,8 +247,8 @@ class BoundedOperatorLogTests(unittest.TestCase):
 class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
-        self.assertEqual("v1.2.3", APP_VERSION)
-        self.assertEqual("Tool PokiguardV2 - v1.2.3", APP_TITLE)
+        self.assertEqual("v1.2.4", APP_VERSION)
+        self.assertEqual("Tool PokiguardV2 - v1.2.4", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(
@@ -344,7 +344,7 @@ class CompactPresentationContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "Lối chơi", "Độ thông minh", "Pet của tôi", "Tiến hóa",
+                "Lối chơi", "Chế độ chơi", "Độ thông minh", "Pet của tôi", "Tiến hóa",
                 "Thẻ sát thương",
                 "Điều kiện ra skill",
                 "Hành động skill", "Cách đi bàn cờ",
@@ -354,7 +354,7 @@ class CompactPresentationContractTests(unittest.TestCase):
             PREFERENCE_TABLE_ROWS,
         )
         self.assertEqual(
-            ("Tệp chạy trò chơi", "Âm báo của tool"),
+            ("Tệp chạy trò chơi", "Âm báo của tool", "Log farm_runs"),
             SETTINGS_TABLE_ROWS,
         )
         self.assertEqual("notebook", INITIAL_FOCUS_TARGET)

@@ -145,6 +145,9 @@ class SharedEntryRuntime:
     require_attack_card: bool = True
     pinned_input_session: Any | None = None
     emergency_stop_requested: Any | None = None
+    # In Coop the same control is a Ready toggle.  A second click can cancel
+    # readiness, so entry waits for the host instead of using the Solo retry.
+    coop_mode: bool = False
 
 
 def _retryable_board_messages(
@@ -2163,7 +2166,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         state = _transition(log, state, BossEntryState.WAIT_ENTERING_COMBAT)
 
         entry_started = time.monotonic()
-        entry_deadline = entry_started + args.entry_timeout
+        entry_deadline = entry_started + (
+            max(args.entry_timeout, args.lobby_timeout)
+            if runtime.coop_mode
+            else args.entry_timeout
+        )
         opening_deadline: float | None = None
         entering_seen = False
         new_match_id: str | None = None
@@ -2192,7 +2199,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             now = time.monotonic()
             if active_session is None and now >= entry_deadline:
                 if (
-                    result["entryClicks"] == 1
+                    not runtime.coop_mode
+                    and result["entryClicks"] == 1
                     and result["entryRetryClicks"] == 0
                 ):
                     retry_sent, retry_reason = _send_one_entry_retry(
@@ -2207,6 +2215,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     if retry_sent:
                         entry_deadline = time.monotonic() + args.entry_timeout
                         continue
+                    result["entryRetryRejectedReason"] = retry_reason
                     _write(log, "entry_retry_not_sent", reason=retry_reason)
                     if retry_reason == "F9_EMERGENCY_STOP":
                         result.update(
@@ -2214,7 +2223,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                             stopReason="F9_EMERGENCY_STOP",
                         )
                         break
-                result.update(status="STOPPED", stopReason="ENTRY_TIMEOUT_NEW_SESSION")
+                result.update(
+                    status="STOPPED",
+                    stopReason=(
+                        "COOP_READY_WAIT_TIMEOUT_NEW_SESSION"
+                        if runtime.coop_mode
+                        else "ENTRY_TIMEOUT_NEW_SESSION"
+                    ),
+                )
                 _write(log, "entry_stopped", reason=result["stopReason"])
                 break
             if active_session is not None and opening_deadline is not None and now >= opening_deadline:

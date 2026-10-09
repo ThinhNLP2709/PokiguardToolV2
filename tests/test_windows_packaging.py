@@ -149,8 +149,8 @@ class WindowsPackagingTests(unittest.TestCase):
         script = (ROOT / "scripts" / "build_windows.ps1").read_text(encoding="utf-8")
         self.assertIn("from pokiguard_v2.version import APP_VERSION", script)
         self.assertNotIn(f"APP_BUILD = {APP_BUILD}", script)
-        self.assertEqual(APP_VERSION, "v1.2.3")
-        self.assertEqual(APP_TITLE, "Tool PokiguardV2 - v1.2.3")
+        self.assertEqual(APP_VERSION, "v1.2.4")
+        self.assertEqual(APP_TITLE, "Tool PokiguardV2 - v1.2.4")
 
 
 if __name__ == "__main__":

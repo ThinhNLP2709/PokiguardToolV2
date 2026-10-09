@@ -66,6 +66,7 @@ class PlayStyle(str, Enum):
     SKILL_RUSH = "skill_rush"
     DEMON_AEGIS_FARM = "demon_aegis_farm"
     MEGA_ICARUS_SPAM_SKILL = "mega_icarus_spam_skill"
+    BU_WIN = "bu_win"
 
 
 class ManaPriority(str, Enum):
@@ -279,6 +280,15 @@ class PolicyConfig:
             and self.evolution is EvolutionTarget.NONE
             and self.damage_card is DamageCardMode.PET_PASSIVE
             and self.pet_skill_fire_condition is PetSkillFireCondition.SWORD_COUNT
+        )
+
+    @property
+    def bu_win_profile(self) -> bool:
+        return bool(
+            self.play_style is PlayStyle.BU_WIN
+            and self.main_pet is MainPetType.NORMAL
+            and self.evolution is EvolutionTarget.NONE
+            and self.damage_card is DamageCardMode.NONE
         )
 
     @property
@@ -1062,6 +1072,43 @@ class BasicPolicyEngine:
             value.move,
         )
 
+    @staticmethod
+    def _bu_win_rank(
+        value: MoveEvaluation,
+        board: BoardState,
+    ) -> tuple[object, ...]:
+        """Feed the boss Sword while spending the least useful local value.
+
+        Every item in ``evaluate_all_moves`` is already a proven legal,
+        match-producing adjacent swap.  This strategy therefore never needs
+        PASS and cannot accumulate three idle turns while the local Pet is
+        alive.
+        """
+
+        trace = _candidate_trace(value, board=board)
+        risk = value.sword_risk
+        disposable = sum(
+            value.total.effective(gem)
+            for gem in (GemType.DRAIN, GemType.HEALTH, GemType.SHIELD)
+        )
+        useful = sum(
+            value.total.effective(gem)
+            for gem in (GemType.MANA, GemType.RAGE)
+        )
+        return (
+            trace.known_sword_consumed > 0,
+            trace.known_sword_consumed,
+            -risk.opponent_sword_reply_effective_max,
+            -risk.indirect_sword_effective_max,
+            -(risk.opponent_sword_replies + risk.indirect_sword_replies),
+            -disposable,
+            useful,
+            value.unknown_exposure.cells,
+            not value.calculable,
+            not value.horizontal,
+            value.move,
+        )
+
     def _pet_skill_resource_rank(self, value: MoveEvaluation) -> tuple[object, ...]:
         context = self._skill_trace
         trace = _candidate_trace(
@@ -1828,6 +1875,19 @@ class BasicPolicyEngine:
                 no_candidates,
                 blocker="DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED",
             )
+        if (
+            self.config.play_style is PlayStyle.BU_WIN
+            and not self.config.bu_win_profile
+        ):
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "CONFIG",
+                "BU_WIN requires BASIC + regular Pet + no evolution + no damage card",
+                failures,
+                no_candidates,
+                blocker="BU_WIN_PROFILE_NOT_IMPLEMENTED",
+            )
         if state.phase is not GamePhase.COMBAT or state.board is None:
             return self._decision(
                 state,
@@ -2502,6 +2562,32 @@ class BasicPolicyEngine:
                 failures,
                 evaluations,
                 blocker="EXIT_IS_PROPOSAL_ONLY",
+            )
+
+        if self.config.play_style is PlayStyle.BU_WIN:
+            selected = min(
+                evaluations,
+                key=lambda value: self._bu_win_rank(value, state.board),
+            )
+            selected_trace = _candidate_trace(selected, board=state.board)
+            return self._decision(
+                state,
+                PolicyAction.SWAP,
+                "BU_WIN_FEED_BOSS",
+                (
+                    "Selected a proven legal swap that preserves local Sword, "
+                    "maximizes the known Sword reply left for the boss, then "
+                    "prefers Drain/Health/Shield over Mana/Rage; "
+                    f"knownSwordConsumed={selected_trace.known_sword_consumed}, "
+                    "bossSwordReplyEffectiveMax="
+                    f"{selected.sword_risk.opponent_sword_reply_effective_max}, "
+                    "indirectBossSwordEffectiveMax="
+                    f"{selected.sword_risk.indirect_sword_effective_max}"
+                ),
+                failures,
+                evaluations,
+                selected=selected,
+                candidate_count=len(evaluations),
             )
 
         if self.config.play_style is PlayStyle.DEMON_AEGIS_FARM:

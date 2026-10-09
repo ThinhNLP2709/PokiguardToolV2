@@ -46,6 +46,9 @@ from pokiguard_v2.desktop_ui import (  # noqa: E402
 )
 from pokiguard_v2.memory_board_provider import MemoryProviderConfig  # noqa: E402
 from pokiguard_v2.game_window_size import GameWindowSizeProfile  # noqa: E402
+from pokiguard_v2.win32_screenshot import (  # noqa: E402
+    configure_diagnostic_image_writes,
+)
 from tools.runtime_common import (  # noqa: E402
     attach_target,
     configure_game_location,
@@ -99,6 +102,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--preferences",
         type=Path,
         help="JSON tùy chọn vận hành có phiên bản (không phải checkpoint farm)",
+    )
+    parser.add_argument(
+        "--save-diagnostic-images",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
     return parser
 
@@ -158,6 +166,12 @@ class _EvidenceSink:
 def run(args: argparse.Namespace) -> int:
     _validate_args(args)
     paths = current_app_paths()
+    # Normal runs keep visual captures in RAM only. A source developer may
+    # explicitly opt into PNG evidence; frozen releases always stay image-free
+    # so long farms cannot consume gigabytes of user storage.
+    configure_diagnostic_image_writes(
+        enabled=bool(args.save_diagnostic_images and not paths.frozen)
+    )
     paths.ensure_writable_directories()
     artifact_dir = (
         args.artifacts.resolve()
@@ -307,6 +321,7 @@ def run(args: argparse.Namespace) -> int:
             ),
             game_location_changed=apply_game_location,
             game_window_size_changed=apply_game_window_size,
+            farm_runs_root=paths.farm_runs,
             auto_close_seconds=args.smoke_seconds,
         )
         result = app.run()

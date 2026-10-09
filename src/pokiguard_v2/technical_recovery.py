@@ -1324,6 +1324,78 @@ class TechnicalRecoveryDispatcher:
             )
         )
 
+    def dispatch_repeated_unconfirmed_swap_delivery(
+        self,
+        *,
+        session_key: CombatSessionKey,
+        match_id: str,
+        first_source_turn: int,
+        first_source_srv_seq: int,
+        first_source_board_hash: str,
+        source_turn: int,
+        source_srv_seq: int,
+        source_board_hash: str,
+        local_move_sequence_before: int | None,
+        current_match_id: str | None,
+        current_turn: int | None,
+        current_local_move_sequence: int | None,
+        sent_swap_timeouts: int,
+        evidence_source: str = (
+            "two physically sent SWAPs on distinct local turns reached "
+            "terminal response/ACK timeout"
+        ),
+    ) -> bool:
+        """Recover before a possible third idle after two ambiguous SWAPs.
+
+        This path intentionally uses the direct MatchService identity and move
+        sequence instead of requiring a newly publishable Board.  The failure
+        being handled can itself prevent the provider from publishing that
+        Board; requiring one here caused the old first-timeout safe-stop.  Both
+        immutable source boards remain part of the evidence and are captured
+        by the gameplay log/recovery artifact before any recovery input.
+        """
+
+        exact = bool(
+            sent_swap_timeouts == 2
+            and match_id
+            and session_key.match_id == match_id
+            and current_match_id == match_id
+            and first_source_turn > 0
+            and source_turn > first_source_turn
+            and (source_turn - first_source_turn) >= 2
+            and first_source_srv_seq >= 0
+            and source_srv_seq >= 0
+            and bool(first_source_board_hash)
+            and bool(source_board_hash)
+            and local_move_sequence_before is not None
+            and current_turn is not None
+            and current_turn >= source_turn
+            and current_local_move_sequence == local_move_sequence_before
+        )
+        if not exact:
+            return False
+        failed = FailedSessionEvidence(
+            session_key=session_key,
+            match_id=match_id,
+            board_instance=session_key.board_instance,
+            lifecycle_epoch=session_key.lifecycle_epoch,
+            turn=source_turn,
+            srv_seq=source_srv_seq,
+            board_hash=source_board_hash,
+        )
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.UNCONFIRMED_SWAP_DELIVERY,
+                source=(
+                    RecoveryTriggerSource.PRODUCTION_UNCONFIRMED_SWAP_DELIVERY
+                ),
+                failed_session=failed,
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
     def dispatch_active_combat_progress_stalled(
         self,
         state: GameState,

@@ -40,6 +40,7 @@ from pokiguard_v2.autonomous_control import (  # noqa: E402
     SwapAcceptanceStatus,
     TurnTransitionKind,
     TurnTransitionTracker,
+    UnconfirmedSwapPassTracker,
     classify_swap_acceptance,
     direct_runtime_proves_cast_accepted,
     direct_runtime_proves_swap_accepted,
@@ -81,6 +82,7 @@ from pokiguard_v2.game_owned_idle import (  # noqa: E402
     ResetConfidence,
     apply_idle_readiness_to_state,
 )
+from pokiguard_v2.live_state import board_state_hash  # noqa: E402
 from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryBoardStateProvider,
     MemoryProviderConfig,
@@ -143,7 +145,11 @@ from pokiguard_v2.win32_input import (  # noqa: E402
     find_window_for_pid,
     map_swap_to_pixels,
 )
-from pokiguard_v2.win32_screenshot import capture_client_png, capture_client_rgb  # noqa: E402
+from pokiguard_v2.win32_screenshot import (  # noqa: E402
+    capture_client_png,
+    capture_client_recovery_png,
+    capture_client_rgb,
+)
 from tools.idle_state_watch import ServerMessage, read_match_runtime  # noqa: E402
 from tools.dispatcher_qte_result_tap import DispatcherTransportTap  # noqa: E402
 from tools.process_probe import ProcessProbeError  # noqa: E402
@@ -157,6 +163,7 @@ from pokiguard_v2.gameplay_profile import (  # noqa: E402
     AuditionMode,
     DamageCardMode,
     EvolutionTarget,
+    GameMode,
     MainPetType,
     PetSkillFireCondition,
 )
@@ -446,6 +453,7 @@ def _dispatch_technical_recovery(
     actionability_evidence: dict[str, Any] | None = None,
     unconfirmed_pass_evidence: dict[str, Any] | None = None,
     unconfirmed_swap_evidence: dict[str, Any] | None = None,
+    repeated_unconfirmed_swap_evidence: dict[str, Any] | None = None,
     controller_stall_evidence: dict[str, Any] | None = None,
     active_combat_progress_stall: ActiveCombatProgressStall | None = None,
     active_combat_progress_evidence: dict[str, Any] | None = None,
@@ -529,6 +537,15 @@ def _dispatch_technical_recovery(
             dispatcher.dispatch_late_mandatory_reset(
                 state,
                 **late_mandatory_reset_evidence,
+            )
+        )
+    if (
+        reason == "UNCONFIRMED_SWAP_DELIVERY"
+        and repeated_unconfirmed_swap_evidence is not None
+    ):
+        return bool(
+            dispatcher.dispatch_repeated_unconfirmed_swap_delivery(
+                **repeated_unconfirmed_swap_evidence,
             )
         )
     if (
@@ -1870,6 +1887,26 @@ def _local_turn_action_deadline_reached(
     return (session, int(turn)) not in consuming_action_turns
 
 
+def _bu_win_waits_for_teammates(
+    play_style: str,
+    state: GameState | None,
+) -> bool:
+    """Keep observing Coop after the local Pet dies.
+
+    The match still belongs to the teammate at this point.  Local-turn
+    watchdog/recovery must stay idle until the ordinary terminal lifecycle
+    and result confirmation complete the round.
+    """
+
+    return bool(
+        play_style == PlayStyle.BU_WIN.value
+        and state is not None
+        and state.player is not None
+        and state.player.hp is not None
+        and state.player.hp <= 0
+    )
+
+
 def _local_turn_deadline_warning_seconds(
     minimum_action_time: int,
     *,
@@ -2775,6 +2812,7 @@ def _terminal_artifact(
     target: Any,
     state: GameState,
     policy: BasicPolicyEngine,
+    recovery_evidence: bool = False,
 ) -> str | None:
     try:
         analysis = analyze_game_state(state, policy_engine=policy)
@@ -2783,11 +2821,72 @@ def _terminal_artifact(
             event=event,
             state=state,
             analysis=analysis,
-            screenshot_capture=lambda path: capture_client_png(target.pid, path),
+            screenshot_capture=(
+                (lambda path: capture_client_recovery_png(target.pid, path))
+                if recovery_evidence
+                else (lambda path: capture_client_png(target.pid, path))
+            ),
         )
         return str(artifact.directory)
     except (FileExistsError, OSError, RuntimeError, ValueError):
         return None
+
+
+def _recovery_evidence_root(log_path: Path) -> Path:
+    """Place combat evidence in the FarmRun recovery tree when available."""
+
+    attempt_directory = log_path.parent
+    matches_directory = attempt_directory.parent
+    if (
+        attempt_directory.name.startswith("attempt_")
+        and matches_directory.name == "matches"
+    ):
+        return matches_directory.parent / "recoveries" / "pre_recovery"
+    return attempt_directory / "recoveries" / "pre_recovery"
+
+
+def _write_repeated_unconfirmed_swap_artifact(
+    *,
+    log_path: Path,
+    target: Any,
+    state: GameState | None,
+    policy: BasicPolicyEngine,
+    attempts: tuple[Any, ...],
+    runtime: Any | None,
+) -> str | None:
+    """Persist the two source boards and live window before recovery input."""
+
+    if state is None or state.board is None:
+        return None
+    artifact_path = _terminal_artifact(
+        root=_recovery_evidence_root(log_path),
+        event="REPEATED_UNCONFIRMED_SWAP",
+        target=target,
+        state=state,
+        policy=policy,
+        recovery_evidence=True,
+    )
+    if artifact_path is None:
+        return None
+    directory = Path(artifact_path)
+    try:
+        (directory / "unconfirmed_swaps.json").write_text(
+            json.dumps(
+                {
+                    "schema": "pokiguard.repeated_unconfirmed_swap.v1",
+                    "attempts": _jsonable(attempts),
+                    "directRuntime": _jsonable(runtime),
+                    "recoveryInputSent": False,
+                    "causalityClaim": None,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:
+        return artifact_path
+    return artifact_path
 
 
 def _card_diagnostics(state: GameState) -> dict[str, Any]:
@@ -3042,6 +3141,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--watch", action="store_true", required=True)
     parser.add_argument("--play-style", choices=[value.value for value in PlayStyle], default="simple")
+    parser.add_argument(
+        "--game-mode",
+        choices=[value.value for value in GameMode],
+        default=GameMode.SOLO.value,
+    )
     parser.add_argument("--mana-priority", choices=[value.value for value in ManaPriority], default="evolution")
     parser.add_argument("--main-pet", choices=[value.value for value in MainPetType])
     parser.add_argument("--evolution-target", choices=[value.value for value in EvolutionTarget])
@@ -3319,6 +3423,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     if canonical_profile:
         gameplay = GameplayConfig(
             play_style=PlayStyle(args.play_style),
+            game_mode=GameMode(getattr(args, "game_mode", GameMode.SOLO.value)),
             intelligence=Intelligence.BASIC,
             main_pet=MainPetType(args.main_pet),
             evolution=EvolutionTarget(args.evolution_target),
@@ -3709,6 +3814,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         terminal_evolve_activity_turns: set[tuple[Any, int]] = set()
         unconfirmed_action_turns: set[tuple[Any, int]] = set()
         consumed_swap_board_guard = ConsumedSwapBoardGuard()
+        unconfirmed_swap_passes = UnconfirmedSwapPassTracker()
         evolve_only_turn_wait: EvolveOnlyTurnWait | None = None
         optional_card_suppressions: dict[
             tuple[Any, int], set[PolicyAction]
@@ -3719,6 +3825,21 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         successful_pet_skill_turns_by_session: dict[Any, list[int]] = {}
         active_progress_watchdog = ActiveCombatProgressWatchdog()
         dispatcher_ready_sessions: set[Any] = set()
+
+        def reset_unconfirmed_swap_passes_after_acceptance(
+            accepted: PendingAutonomousAction,
+        ) -> None:
+            if unconfirmed_swap_passes.reset_after_accepted_activity(
+                accepted.identity.source.session
+            ):
+                _write(
+                    log,
+                    "unconfirmed_swap_pass_cycle_reset",
+                    acceptedAction=accepted.identity.action,
+                    acceptedSource=accepted.identity.source,
+                    reason="PROVEN_CONSUMING_ACTIVITY",
+                    localIdleMutation=False,
+                )
 
         def offer_dispatcher_boards_now(session: Any) -> None:
             dispatcher_tap.configure_runtime_owners(
@@ -4004,6 +4125,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 return False
 
             accepted = guard.complete_pending()
+            reset_unconfirmed_swap_passes_after_acceptance(accepted)
             counters.cast_accepted += 1
             accepted_cast_turns.add(
                 (accepted.identity.source.session, accepted.identity.source.turn)
@@ -4124,6 +4246,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 return try_complete_b4_cast(pending, runtime)
 
             accepted = guard.complete_pending()
+            reset_unconfirmed_swap_passes_after_acceptance(accepted)
             if swap_accepted:
                 consumed_swap_board_guard.observe(accepted)
                 executor.note_swap_acknowledged(
@@ -5090,6 +5213,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 terminal_evolve_activity_turns.clear()
                 unconfirmed_action_turns.clear()
                 consumed_swap_board_guard.begin_session()
+                unconfirmed_swap_passes.begin_session(active_session)
                 evolve_only_turn_wait = None
                 optional_card_suppressions.clear()
                 direct_pass_result_turn = None
@@ -6041,6 +6165,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             accepted_consuming_actions = (
                 counters.swap_acknowledged + counters.cast_accepted
             )
+            bu_win_dead_wait = _bu_win_waits_for_teammates(
+                getattr(args, "play_style", ""),
+                last_state,
+            )
             progress_window = executor.window_status(binding)
             progress_state = last_state
             progress_state_exact = bool(
@@ -6098,6 +6226,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     and guard.status is AutonomousStatus.RUNNING
                     and guard.pending is None
                     and accepted_consuming_actions >= 1
+                    and not bu_win_dead_wait
                     and not (
                         pass_coordinator is not None
                         and pass_coordinator.gameplay_locked
@@ -6212,7 +6341,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     p3_mandatory_reset_pending and state is None
                 ),
             )
-            if _local_turn_action_deadline_reached(
+            if not bu_win_dead_wait and _local_turn_action_deadline_reached(
                 session=active_session,
                 turn=deadline_turn,
                 match_id=deadline_match_id,
@@ -6800,7 +6929,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         )
                     )
                     if accepted:
-                        guard.complete_pending()
+                        accepted_action = guard.complete_pending()
+                        reset_unconfirmed_swap_passes_after_acceptance(
+                            accepted_action
+                        )
                         counters.cast_accepted += 1
                         _write(log, "action_result", result=ActionResultKind.CAST_ACCEPTED, action=pending, response=pending.response_evidence, sameTurnSwapBlocked=True)
                         response = pending.response_evidence
@@ -6884,7 +7016,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     guard.complete_pending()
                     counters.expired_actions += 1
                     counters.action_response_timeouts += 1
+                    unconfirmed_swap_update = None
                     if pending.identity.action is PolicyAction.SWAP:
+                        unconfirmed_swap_update = (
+                            unconfirmed_swap_passes.observe_timeout(pending)
+                        )
                         executor.note_swap_unconfirmed(
                             "SWAP_RESPONSE_OR_ACK_TIMEOUT"
                         )
@@ -6903,7 +7039,6 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         pending.identity.source.turn,
                     )
                     unconfirmed_action_turns.add(turn_key)
-                    consumed_swap_board_guard.observe(pending)
                     if pending.consumes_turn:
                         # Keep the consuming transition tracker alive.  It may
                         # still prove that the original input was accepted, or
@@ -6978,6 +7113,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             timeout_reason=wait_plan.reason,
                         )
                     )
+                    unconfirmed_swap_recovery_required = bool(
+                        unconfirmed_swap_update is not None
+                        and (
+                            unconfirmed_swap_update.recovery_required
+                            or pending.mandatory_after_idle_2
+                        )
+                    )
                     _write(
                         log,
                         "action_result",
@@ -6995,47 +7137,182 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         zeroInputWaitEligible=start_evolve_wait,
                         zeroInputWaitReason=evolve_wait_reason,
                         idleReadiness=timeout_idle_readiness,
+                        probablePassIndex=(
+                            unconfirmed_swap_update.pass_index
+                            if unconfirmed_swap_update is not None
+                            else None
+                        ),
+                        probablePassOnly=(
+                            unconfirmed_swap_update is not None
+                            and not unconfirmed_swap_update.recovery_required
+                        ),
+                        repeatedUnconfirmedSwapRecoveryRequired=(
+                            unconfirmed_swap_recovery_required
+                        ),
+                        mandatoryIdleResetActionUnconfirmed=(
+                            pending.mandatory_after_idle_2
+                        ),
                     )
                     if pending.identity.action is PolicyAction.SWAP:
+                        assert unconfirmed_swap_update is not None
                         current_local_move_sequence = (
                             raw_runtime.local_move_sequence
                             if raw_runtime is not None
+                            and raw_runtime.local_move_sequence is not None
                             else (
                                 state.battle.local_move_sequence
                                 if state is not None
                                 else None
                             )
                         )
-                        recovery_dispatched = _dispatch_technical_recovery(
-                            runtime,
-                            reason="UNCONFIRMED_SWAP_DELIVERY",
-                            state=state,
-                            unconfirmed_swap_evidence={
-                                "session_key": pending.identity.source.session,
-                                "match_id": (
-                                    pending.identity.source.session.match_id
+                        if not unconfirmed_swap_recovery_required:
+                            _write(
+                                log,
+                                "unconfirmed_swap_probable_pass_recorded",
+                                action=pending,
+                                probablePassIndex=(
+                                    unconfirmed_swap_update.pass_index
                                 ),
-                                "source_turn": pending.identity.source.turn,
-                                "source_srv_seq": pending.identity.source.srv_seq,
-                                "source_board_hash": (
-                                    pending.identity.source.board_hash
-                                ),
-                                "local_move_sequence_before": (
-                                    pending.local_move_sequence_before
-                                ),
-                                "current_turn": (
-                                    timeout_turn
-                                    if timeout_turn is not None
-                                    else pending.identity.source.turn
-                                ),
-                                "current_local_move_sequence": (
-                                    current_local_move_sequence
-                                ),
-                                "input_was_sent": True,
-                                "response_or_ack_timeout": True,
-                                "timeout_reason": wait_plan.reason,
-                            },
+                                records=unconfirmed_swap_update.records,
+                                sameTurnInputSuppressed=True,
+                                waitForProvenOpponentAndNextLocalTurn=True,
+                                nextAttemptRequiresFreshActionability=True,
+                                authoritativeIdleCounterMutated=False,
+                                recoveryDeferredUntilSecondTimeout=True,
+                            )
+                            time.sleep(args.interval)
+                            continue
+                        recovery_state = state
+                        if (
+                            recovery_state is None
+                            or recovery_state.battle.session_key
+                            != pending.identity.source.session
+                        ):
+                            recovery_state = (
+                                last_state
+                                if last_state is not None
+                                and last_state.battle.session_key
+                                == pending.identity.source.session
+                                else None
+                            )
+                        recovery_artifact = (
+                            _write_repeated_unconfirmed_swap_artifact(
+                                log_path=log_path,
+                                target=target,
+                                state=recovery_state,
+                                policy=policy,
+                                attempts=unconfirmed_swap_update.records,
+                                runtime=raw_runtime,
+                            )
                         )
+                        if unconfirmed_swap_update.recovery_required:
+                            first_unconfirmed = (
+                                unconfirmed_swap_update.records[0]
+                            )
+                            recovery_dispatched = _dispatch_technical_recovery(
+                                runtime,
+                                reason="UNCONFIRMED_SWAP_DELIVERY",
+                                state=recovery_state,
+                                repeated_unconfirmed_swap_evidence={
+                                    "session_key": (
+                                        pending.identity.source.session
+                                    ),
+                                    "match_id": (
+                                        pending.identity.source.session.match_id
+                                    ),
+                                    "first_source_turn": (
+                                        first_unconfirmed.source_turn
+                                    ),
+                                    "first_source_srv_seq": (
+                                        first_unconfirmed.source_srv_seq
+                                    ),
+                                    "first_source_board_hash": (
+                                        first_unconfirmed.source_board_hash
+                                    ),
+                                    "source_turn": (
+                                        pending.identity.source.turn
+                                    ),
+                                    "source_srv_seq": (
+                                        pending.identity.source.srv_seq
+                                    ),
+                                    "source_board_hash": (
+                                        pending.identity.source.board_hash
+                                    ),
+                                    "local_move_sequence_before": (
+                                        pending.local_move_sequence_before
+                                    ),
+                                    "current_match_id": (
+                                        raw_runtime.match_id
+                                        if raw_runtime is not None
+                                        and raw_runtime.match_id
+                                        else (
+                                            recovery_state.battle.match_id
+                                            if recovery_state is not None
+                                            else None
+                                        )
+                                    ),
+                                    "current_turn": (
+                                        timeout_turn
+                                        if timeout_turn is not None
+                                        else (
+                                            recovery_state.battle.turn_number
+                                            if recovery_state is not None
+                                            else None
+                                        )
+                                    ),
+                                    "current_local_move_sequence": (
+                                        current_local_move_sequence
+                                    ),
+                                    "sent_swap_timeouts": (
+                                        unconfirmed_swap_update.pass_index
+                                    ),
+                                    "evidence_source": (
+                                        "two distinct local-turn SWAP timeouts; "
+                                        f"pre-recovery artifact={recovery_artifact}"
+                                    ),
+                                },
+                            )
+                        else:
+                            recovery_dispatched = _dispatch_technical_recovery(
+                                runtime,
+                                reason="UNCONFIRMED_SWAP_DELIVERY",
+                                state=recovery_state,
+                                unconfirmed_swap_evidence={
+                                    "session_key": (
+                                        pending.identity.source.session
+                                    ),
+                                    "match_id": (
+                                        pending.identity.source.session.match_id
+                                    ),
+                                    "source_turn": (
+                                        pending.identity.source.turn
+                                    ),
+                                    "source_srv_seq": (
+                                        pending.identity.source.srv_seq
+                                    ),
+                                    "source_board_hash": (
+                                        pending.identity.source.board_hash
+                                    ),
+                                    "local_move_sequence_before": (
+                                        pending.local_move_sequence_before
+                                    ),
+                                    "current_turn": (
+                                        timeout_turn
+                                        if timeout_turn is not None
+                                        else pending.identity.source.turn
+                                    ),
+                                    "current_local_move_sequence": (
+                                        current_local_move_sequence
+                                    ),
+                                    "input_was_sent": True,
+                                    "response_or_ack_timeout": True,
+                                    "timeout_reason": wait_plan.reason,
+                                    "evidence_source": (
+                                        "mandatory idle-reset SWAP timed out; "
+                                        f"pre-recovery artifact={recovery_artifact}"
+                                    ),
+                                },
+                            )
                         if recovery_dispatched:
                             guard.require_recovery()
                             stop_reason = "UNCONFIRMED_SWAP_DELIVERY"
@@ -7049,6 +7326,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 currentLocalMoveSequence=(
                                     current_local_move_sequence
                                 ),
+                                probablePassCount=(
+                                    unconfirmed_swap_update.pass_index
+                                ),
+                                recoveryArtifact=recovery_artifact,
                                 gameplayInputDisabled=True,
                                 automaticUiOwnedByOuterCoordinator=True,
                             )
@@ -7057,7 +7338,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         if runtime.technical_recovery_dispatcher is not None:
                             guard.pause(automatic=True)
                             stop_reason = (
-                                "UNCONFIRMED_SWAP_DELIVERY_PREFLIGHT_REJECTED"
+                                "REPEATED_UNCONFIRMED_SWAP_RECOVERY_PREFLIGHT_REJECTED"
                             )
                             _write(
                                 log,
@@ -9153,7 +9434,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     time.sleep(args.interval)
                     continue
                 guard.begin(pending_action)
-                guard.complete_pending()
+                accepted_skill = guard.complete_pending()
+                reset_unconfirmed_swap_passes_after_acceptance(accepted_skill)
                 opening_fast_action_pending = False
                 _record_sent_input_safety(counters, fresh)
                 counters.pet_skill_attempts += 1

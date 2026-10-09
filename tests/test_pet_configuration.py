@@ -113,7 +113,7 @@ class PetConfigurationTests(unittest.TestCase):
         self.assertEqual([v.value for v in Evo], ["none", "normal", "legendary", "evolved", "mega"])
         self.assertEqual(
             [v.value for v in Damage],
-            ["default_attack", "pet_skill", "pet_passive"],
+            ["none", "default_attack", "pet_skill", "pet_passive"],
         )
         self.assertEqual(
             [v.value for v in AuditionMode],

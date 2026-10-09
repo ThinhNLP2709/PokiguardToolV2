@@ -24,6 +24,7 @@ from .gameplay_profile import (
     AuditionMode,
     DamageCardMode,
     EvolutionTarget,
+    GameMode,
     MainPetType,
     PetSkillFireCondition,
 )
@@ -55,6 +56,7 @@ EVOLUTION_LABELS = {
     EvolutionTarget.MEGA: "Tiến hóa pet Mega",
 }
 DAMAGE_LABELS = {
+    DamageCardMode.NONE: "Không có",
     DamageCardMode.DEFAULT_ATTACK: "Thẻ chưởng mặc định",
     DamageCardMode.PET_SKILL: "Thẻ skill của pet",
     DamageCardMode.PET_PASSIVE: "Nội tại pet",
@@ -78,6 +80,11 @@ PLAY_STYLE_LABELS = {
     PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
     PlayStyle.DEMON_AEGIS_FARM: "Demon Aegis Farm",
     PlayStyle.MEGA_ICARUS_SPAM_SKILL: "Mega Icarus (Spam Skill)",
+    PlayStyle.BU_WIN: "Bú win",
+}
+GAME_MODE_LABELS = {
+    GameMode.SOLO: "Đơn",
+    GameMode.COOP: "Coop",
 }
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
@@ -154,6 +161,23 @@ def loadout_capability(
     )
     if play_style is not None:
         play_style = PlayStyle(play_style)
+    if play_style is PlayStyle.BU_WIN:
+        valid = bool(
+            main_pet is MainPetType.NORMAL
+            and evolution is EvolutionTarget.NONE
+            and damage_card is DamageCardMode.NONE
+        )
+        return PetLoadoutCapability(
+            main_pet=main_pet,
+            evolution=evolution,
+            skill_sources=(),
+            source_status=SkillSourceStatus.NO_SKILL,
+            option_supported=valid,
+            config_valid=valid,
+            pet_skill_selectable=False,
+            farm_policy_supported=valid,
+            blocker_reason=None if valid else "BU_WIN_LOADOUT_INVALID",
+        )
     if play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
         matrix_valid = bool(
             (
@@ -274,12 +298,13 @@ def normalize_evolution(
 @dataclass(frozen=True)
 class GameplayConfig:
     play_style: PlayStyle = PlayStyle.SIMPLE
+    game_mode: GameMode = GameMode.SOLO
     intelligence: Intelligence = Intelligence.BASIC
     main_pet: MainPetType = MainPetType.NORMAL
     evolution: EvolutionTarget = EvolutionTarget.NORMAL
     damage_card: DamageCardMode = DamageCardMode.DEFAULT_ATTACK
     audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION
-    board_input_mode: BoardInputMode = BoardInputMode.DRAG
+    board_input_mode: BoardInputMode = BoardInputMode.TWO_CLICK
     cast_when_boss_hp_below: int = 30_000
     cast_mana_stockpile: int = 480
     rage_target: int = 100
@@ -287,7 +312,8 @@ class GameplayConfig:
     pet_skill_fire_value: int | None = PET_SKILL_FIRE_VALUE_DEFAULT
 
     def __post_init__(self) -> None:
-        for name, enum in (("play_style", PlayStyle), ("intelligence", Intelligence),
+        for name, enum in (("play_style", PlayStyle), ("game_mode", GameMode),
+                           ("intelligence", Intelligence),
                            ("main_pet", MainPetType), ("evolution", EvolutionTarget),
                            ("damage_card", DamageCardMode), ("audition_mode", AuditionMode),
                            ("pet_skill_fire_condition", PetSkillFireCondition),
@@ -297,10 +323,18 @@ class GameplayConfig:
         if self.intelligence is not Intelligence.BASIC:
             raise ValueError("REASONING is not implemented")
         if (
-            self.play_style is not PlayStyle.MEGA_ICARUS_SPAM_SKILL
+            self.play_style not in {
+                PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+                PlayStyle.BU_WIN,
+            }
             and self.audition_mode is AuditionMode.NO_ACTION
         ):
             raise ValueError("NO_ACTION_REQUIRES_MEGA_ICARUS")
+        if self.play_style is PlayStyle.BU_WIN:
+            if self.game_mode is not GameMode.COOP:
+                raise ValueError("BU_WIN_REQUIRES_COOP")
+        elif self.game_mode is not GameMode.SOLO:
+            raise ValueError("COOP_REQUIRES_BU_WIN")
         if not self.capability.config_valid:
             raise ValueError(self.capability.blocker_reason)
         for name in ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target"):
@@ -336,6 +370,16 @@ class GameplayConfig:
 
     @property
     def farm_policy_blocker_reason(self) -> str | None:
+        if self.play_style is PlayStyle.BU_WIN:
+            if not (
+                self.game_mode is GameMode.COOP
+                and self.main_pet is MainPetType.NORMAL
+                and self.evolution is EvolutionTarget.NONE
+                and self.damage_card is DamageCardMode.NONE
+                and self.intelligence is Intelligence.BASIC
+            ):
+                return "BU_WIN_PROFILE_NOT_IMPLEMENTED"
+            return self.capability.blocker_reason
         if self.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
             return self.capability.blocker_reason
         if self.play_style is PlayStyle.SKILL_RUSH and not (
@@ -359,6 +403,8 @@ class GameplayConfig:
             and self.damage_card is DamageCardMode.PET_PASSIVE
         ):
             return "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM"
+        if self.damage_card is DamageCardMode.NONE:
+            return "NO_DAMAGE_CARD_REQUIRES_BU_WIN"
         if not self.capability.farm_policy_supported:
             return self.capability.blocker_reason or "FARM_PROFILE_NOT_IMPLEMENTED"
         return None
@@ -412,15 +458,19 @@ class GameplayConfig:
             fire_value = None
         audition_default = (
             AuditionMode.NO_ACTION.value
-            if play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
+            if play_style in {
+                PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+                PlayStyle.BU_WIN,
+            }
             else AuditionMode.V3_TWO_DIRECTION.value
         )
         return cls(**pet_fields, play_style=play_style,
+                   game_mode=GameMode(raw.get("game_mode", "solo")),
                    intelligence=Intelligence(raw.get("intelligence", "basic")),
                    audition_mode=AuditionMode(
                        raw.get("audition_mode", audition_default)
                     ),
-                    board_input_mode=BoardInputMode(raw.get("board_input_mode", "drag")),
+                    board_input_mode=BoardInputMode(raw.get("board_input_mode", "two_click")),
                     pet_skill_fire_condition=condition,
                     pet_skill_fire_value=fire_value,
                     **{name: raw.get(name, getattr(cls(), name)) for name in
@@ -482,6 +532,11 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
 
 def add_pet_arguments(parser: Any) -> None:
     parser.add_argument(
+        "--game-mode",
+        choices=[value.value for value in GameMode],
+        default=GameMode.SOLO.value,
+    )
+    parser.add_argument(
         "--main-pet", choices=[value.value for value in DESKTOP_MAIN_PET_OPTIONS]
     )
     parser.add_argument(
@@ -518,7 +573,7 @@ def gameplay_config_from_args(args: Any) -> GameplayConfig:
         raise ValueError("--mana-priority conflicts with canonical Pet flags")
     raw = GameplayConfig().to_dict()
     raw.update({k: v for k, v in new.items() if v is not None})
-    for name in ("play_style", "intelligence", "audition_mode", "board_input_mode", "cast_when_boss_hp_below",
+    for name in ("play_style", "game_mode", "intelligence", "audition_mode", "board_input_mode", "cast_when_boss_hp_below",
                  "cast_mana_stockpile", "rage_target", "pet_skill_fire_condition",
                  "pet_skill_fire_value"):
         if hasattr(args, name):

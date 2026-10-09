@@ -58,7 +58,7 @@ from pokiguard_v2.pet_configuration import (  # noqa: E402
     basic_policy_config,
     gameplay_config_from_args,
 )
-from pokiguard_v2.gameplay_profile import DamageCardMode  # noqa: E402
+from pokiguard_v2.gameplay_profile import DamageCardMode, GameMode  # noqa: E402
 from pokiguard_v2.live_state import EVIDENCED_MULTIPLIERS  # noqa: E402
 from pokiguard_v2.state import GemType  # noqa: E402
 from pokiguard_v2.win32_input import (  # noqa: E402
@@ -218,6 +218,7 @@ def _resolve_pass_stage(args: Namespace) -> str:
         return "DISABLED"
     gameplay = gameplay_config_from_args(args)
     if gameplay.damage_card in {
+        DamageCardMode.NONE,
         DamageCardMode.PET_SKILL,
         DamageCardMode.PET_PASSIVE,
     }:
@@ -235,6 +236,7 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
     return Namespace(
         watch=True,
         play_style=getattr(args, "play_style", "simple"),
+        game_mode=getattr(args, "game_mode", GameMode.SOLO.value),
         mana_priority=(
             "evolution" if gameplay.evolution.value != "none" else "attack"
         ),

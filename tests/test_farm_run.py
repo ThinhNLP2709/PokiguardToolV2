@@ -50,6 +50,7 @@ from tools.farm_run import (
     _confirm_postmatch,
     _active_combat_handoff_evidence,
     _detached_shell_exit_runtime_proven,
+    _entry_postclick_room_ejection_probe_required,
     _entry_preflight_runtime_changed_before_start,
     _exact_target_room_restored,
     _failed_recovery_fallback_allowed,
@@ -2364,6 +2365,120 @@ class PostmatchConfirmationTimingTests(unittest.TestCase):
 
 
 class FarmRunBoundaryTests(unittest.TestCase):
+    def test_entry_postclick_room_ejection_probe_requires_exact_live_evidence(self) -> None:
+        clean = {
+            "status": "STOPPED",
+            "stopReason": "ENTRY_TIMEOUT_NEW_SESSION",
+            "entryRetryRejectedReason": "ENTRY_RETRY_RUNTIME_CHANGED",
+            "entryClicks": 1,
+            "entryRetryClicks": 0,
+            "gameplayInputs": 0,
+        }
+        self.assertTrue(_entry_postclick_room_ejection_probe_required(clean))
+
+        mutations = {
+            "status": "PASS",
+            "stopReason": "ENTRY_INPUT_FAILED",
+            "entryRetryRejectedReason": "ENTRY_RETRY_BUTTON_CHANGED",
+            "entryClicks": 0,
+            "entryRetryClicks": 1,
+            "gameplayInputs": 1,
+        }
+        for field, value in mutations.items():
+            with self.subTest(field=field):
+                changed = dict(clean)
+                changed[field] = value
+                self.assertFalse(
+                    _entry_postclick_room_ejection_probe_required(changed)
+                )
+
+    def test_proven_postclick_room_ejection_enters_existing_recovery_path(self) -> None:
+        run = start_run(FarmRunLimits(3, 1, 5))
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        permit = capability.reserve(foreground=True)
+        self.assertIsNotNone(permit)
+        self.assertTrue(capability.complete(permit, sent=True))  # type: ignore[arg-type]
+
+        self.assertTrue(
+            run.observe_entry_room_ejection(
+                target_boss_id="1289",
+                exact_world_map=True,
+                no_combat_owner=True,
+            )
+        )
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.state, FarmRunState.RECOVERY_PENDING)
+        self.assertEqual(snapshot.match_attempts, 0)
+        self.assertEqual(snapshot.total_lobby_inputs, 1)
+        self.assertEqual(snapshot.total_gameplay_inputs, 0)
+        self.assertEqual(snapshot.technical_recoveries, 0)
+        self.assertIsNone(snapshot.stop_reason)
+        self.assertEqual(snapshot.events[-1].event, "entry_room_ejection_proven")
+
+        self.assertTrue(
+            run.begin_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_world_map=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertTrue(
+            run.complete_ejected_map_reentry(
+                target_boss_id="1289",
+                exact_target_room=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertTrue(run.observe_return_lobby(BossLobbyState.BOSS_LOBBY))
+        snapshot = run.snapshot()
+        self.assertEqual(snapshot.state, FarmRunState.RESOLVE_TARGET)
+        self.assertEqual(snapshot.match_attempts, 0)
+        self.assertEqual(snapshot.technical_recoveries, 1)
+        self.assertIsNone(snapshot.stop_reason)
+
+    def test_postclick_room_ejection_rejects_retry_or_ambiguous_origin(self) -> None:
+        run = start_run()
+        self.assertTrue(run.target_resolved())
+        capability = FarmRunEntryCapability(run)
+        first = capability.reserve(foreground=True)
+        self.assertIsNotNone(first)
+        self.assertTrue(capability.complete(first, sent=True))  # type: ignore[arg-type]
+        retry = capability.reserve_retry(
+            foreground=True,
+            exact_same_target=True,
+            no_combat_owner=True,
+            stable_same_button=True,
+        )
+        self.assertIsNotNone(retry)
+        self.assertTrue(capability.complete_retry(retry, sent=True))  # type: ignore[arg-type]
+        self.assertFalse(
+            run.observe_entry_room_ejection(
+                target_boss_id="1289",
+                exact_world_map=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertEqual(run.state, FarmRunState.ENTRY_PENDING)
+
+        clean = start_run()
+        self.assertTrue(clean.target_resolved())
+        clean_capability = FarmRunEntryCapability(clean)
+        clean_first = clean_capability.reserve(foreground=True)
+        self.assertIsNotNone(clean_first)
+        self.assertTrue(
+            clean_capability.complete(clean_first, sent=True)  # type: ignore[arg-type]
+        )
+        self.assertFalse(
+            clean.observe_entry_room_ejection(
+                target_boss_id="1289",
+                exact_world_map=True,
+                general_hub=True,
+                no_combat_owner=True,
+            )
+        )
+        self.assertEqual(clean.state, FarmRunState.ENTRY_PENDING)
+
     def test_entry_preflight_reroute_requires_zero_start_and_gameplay_input(self) -> None:
         for reason in (
             "ENTRY_PREFLIGHT_RUNTIME_CHANGED",

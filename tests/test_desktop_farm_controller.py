@@ -485,7 +485,7 @@ class DesktopFarmControllerTests(unittest.TestCase):
         self.assertIsNone(args.mana_priority)
         self.assertEqual(args.evolution_target, "none")
         self.assertEqual(args.audition_mode, "audition_v2")
-        self.assertEqual(args.board_input_mode, "drag")
+        self.assertEqual(args.board_input_mode, "two_click")
         self.assertEqual(args.input_delivery_mode, "foreground")
         self.assertEqual(args.target_matches, 4)
         # The legacy CLI field remains parse-compatible but the desktop no

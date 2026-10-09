@@ -932,6 +932,91 @@ class FarmRun:
         )
         return True
 
+    def observe_entry_room_ejection(
+        self,
+        *,
+        target_boss_id: str,
+        exact_world_map: bool,
+        detached_room_shell: bool = False,
+        general_hub: bool = False,
+        no_combat_owner: bool,
+    ) -> bool:
+        """Accept a proven map transition after Start created no session.
+
+        One Start input was already sent, but no match, retry, or gameplay
+        action exists.  This state is eligible only for the existing bounded
+        exact-pet room re-entry path; it never grants gameplay authority.
+        """
+
+        expected_id = str(self.target.boss_id or "").strip()
+        attempt_index = self.match_attempts + 1
+        first_entries = [
+            record
+            for record in self.input_records
+            if record.domain is FarmInputDomain.BOSS_ENTRY
+            and record.attempt_index == attempt_index
+            and record.sent
+        ]
+        retry_entries = [
+            record
+            for record in self.input_records
+            if record.domain is FarmInputDomain.BOSS_ENTRY_RETRY
+            and record.attempt_index == attempt_index
+            and record.sent
+        ]
+        gameplay_inputs = [
+            record
+            for record in self.input_records
+            if record.domain.gameplay
+            and record.attempt_index == attempt_index
+            and record.sent
+        ]
+        if (
+            self.state is not FarmRunState.ENTRY_PENDING
+            or self._pending is not None
+            or self.current_session is not None
+            or len(first_entries) != 1
+            or retry_entries
+            or gameplay_inputs
+            or int(bool(exact_world_map))
+            + int(bool(detached_room_shell))
+            + int(bool(general_hub))
+            != 1
+            or not no_combat_owner
+            or not expected_id
+            or str(target_boss_id).strip() != expected_id
+        ):
+            return self._reject(
+                "entry_room_ejection_proof_rejected",
+                observedState=self.state,
+                expectedBossId=expected_id,
+                observedBossId=str(target_boss_id).strip(),
+                firstEntryInputs=len(first_entries),
+                retryEntryInputs=len(retry_entries),
+                gameplayInputs=len(gameplay_inputs),
+                exactWorldMap=exact_world_map,
+                detachedRoomShell=detached_room_shell,
+                generalHub=general_hub,
+                noCombatOwner=no_combat_owner,
+            )
+        self._transition(
+            FarmRunState.RECOVERY_PENDING,
+            "entry_room_ejection_proven",
+            targetBossId=expected_id,
+            pendingAttempt=attempt_index,
+            matchAttemptCounted=False,
+            origin=(
+                "GENERAL_HUB"
+                if general_hub
+                else (
+                    "DETACHED_ROOM_SHELL"
+                    if detached_room_shell
+                    else "CHINH_PHUC_MAP"
+                )
+            ),
+        )
+        return True
+
     def reserve_entry(self, *, foreground: bool) -> FarmInputPermit | None:
         if self.stopped:
             self.safety.input_after_farm_stop += 1

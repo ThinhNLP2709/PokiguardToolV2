@@ -100,6 +100,98 @@ class ConsumedSwapBoardGuard:
         return source
 
 
+@dataclass(frozen=True)
+class UnconfirmedSwapPassRecord:
+    """One sent SWAP that reached the bounded timeout without an ACK.
+
+    This is deliberately local diagnostic state, not a mutation of the
+    server-owned AFK counter.  The controller uses it only to avoid stopping
+    after the first ambiguous input and to recover before a possible third
+    zero-input turn.
+    """
+
+    session: CombatSessionKey
+    source_turn: int
+    source_srv_seq: int
+    source_board_hash: str
+    target: tuple[Any, ...]
+    local_move_sequence_before: int | None
+    sent_at: float
+
+
+@dataclass(frozen=True)
+class UnconfirmedSwapPassUpdate:
+    pass_index: int
+    duplicate_turn: bool
+    recovery_required: bool
+    records: tuple[UnconfirmedSwapPassRecord, ...]
+
+
+class UnconfirmedSwapPassTracker:
+    """Bound repeated unconfirmed SWAPs to two distinct local turns.
+
+    The first timeout is treated conservatively as a probable game-owned
+    pass.  It permits one fresh policy attempt only after the ordinary turn
+    transition tracker has proved the intervening boss turn.  A second
+    timeout in the same combat session requires exit/re-entry recovery.
+    """
+
+    def __init__(self) -> None:
+        self._session: CombatSessionKey | None = None
+        self._records: list[UnconfirmedSwapPassRecord] = []
+
+    @property
+    def records(self) -> tuple[UnconfirmedSwapPassRecord, ...]:
+        return tuple(self._records)
+
+    @property
+    def count(self) -> int:
+        return len(self._records)
+
+    def begin_session(self, session: CombatSessionKey | None = None) -> None:
+        self._session = session
+        self._records.clear()
+
+    def reset_after_accepted_activity(self, session: CombatSessionKey) -> bool:
+        if self._session != session or not self._records:
+            return False
+        self._records.clear()
+        return True
+
+    def observe_timeout(
+        self, pending: "PendingAutonomousAction"
+    ) -> UnconfirmedSwapPassUpdate:
+        if pending.identity.action is not PolicyAction.SWAP:
+            raise ValueError("unconfirmed SWAP tracker requires a SWAP action")
+        source = pending.identity.source
+        if self._session != source.session:
+            self.begin_session(source.session)
+        for index, existing in enumerate(self._records, start=1):
+            if existing.source_turn == source.turn:
+                return UnconfirmedSwapPassUpdate(
+                    index,
+                    True,
+                    False,
+                    self.records,
+                )
+        record = UnconfirmedSwapPassRecord(
+            session=source.session,
+            source_turn=source.turn,
+            source_srv_seq=source.srv_seq,
+            source_board_hash=source.board_hash,
+            target=pending.identity.target,
+            local_move_sequence_before=pending.local_move_sequence_before,
+            sent_at=pending.sent_at,
+        )
+        self._records.append(record)
+        return UnconfirmedSwapPassUpdate(
+            len(self._records),
+            False,
+            len(self._records) >= 2,
+            self.records,
+        )
+
+
 def _critical_state_fingerprint(state: GameState) -> str:
     """Hash gameplay-relevant state while deliberately excluding timer ticks."""
 
@@ -798,8 +890,12 @@ __all__ = [
     "AutonomousSource",
     "AutonomousStatus",
     "SwapAcceptanceStatus",
+    "ConsumedSwapBoardGuard",
     "ConsumingTurnRegistry",
     "PendingAutonomousAction",
+    "UnconfirmedSwapPassRecord",
+    "UnconfirmedSwapPassTracker",
+    "UnconfirmedSwapPassUpdate",
     "classify_swap_acceptance",
     "direct_runtime_proves_cast_accepted",
     "direct_runtime_proves_swap_accepted",

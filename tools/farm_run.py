@@ -143,6 +143,7 @@ from pokiguard_v2.pet_configuration import (
     requires_attack_card_preparation,
 )
 from pokiguard_v2.basic_policy import PlayStyle
+from pokiguard_v2.gameplay_profile import GameMode
 
 
 _PHASE4B2_INPUT_DELIVERY_ENV = "POKIGUARD_PHASE4B2_INPUT_DELIVERY_MODE"
@@ -266,7 +267,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--board-input-mode",
         choices=tuple(value.value for value in BoardInputMode),
-        default=BoardInputMode.DRAG.value,
+        default=BoardInputMode.TWO_CLICK.value,
         help="adjacent board swap gesture; UI/card controls always use clicks",
     )
     parser.add_argument(
@@ -420,6 +421,7 @@ def _recovery_args(args: Namespace, artifacts: Path, *, test_only: bool) -> Name
         watch_production=not test_only,
         boss_id=args.boss_id,
         boss_name=args.boss_name,
+        game_mode=getattr(args, "game_mode", GameMode.SOLO.value),
         sequence_fixture=None,
         artifacts=artifacts,
         interval=args.interval,
@@ -663,6 +665,28 @@ def _entry_preflight_runtime_changed_before_start(
     )
 
 
+def _entry_postclick_room_ejection_probe_required(
+    result: dict[str, Any] | None,
+) -> bool:
+    """Defer one post-Start timeout only long enough to prove room ejection.
+
+    This does not authorize navigation.  The caller must still obtain two
+    stable owner-free map/island frames and pass the existing exact-pet
+    re-entry checks before any additional input is possible.
+    """
+
+    return bool(
+        result is not None
+        and result.get("status") == "STOPPED"
+        and result.get("stopReason") == "ENTRY_TIMEOUT_NEW_SESSION"
+        and result.get("entryRetryRejectedReason")
+        == "ENTRY_RETRY_RUNTIME_CHANGED"
+        and int(result.get("entryClicks") or 0) == 1
+        and int(result.get("entryRetryClicks") or 0) == 0
+        and int(result.get("gameplayInputs") or 0) == 0
+    )
+
+
 def _active_combat_handoff_evidence(
     result: dict[str, Any],
 ) -> ActiveCombatHandoffEvidence | None:
@@ -754,6 +778,9 @@ def _run_entry(
         require_attack_card=requires_attack_card_preparation(
             run.snapshot().gameplay_config
         ),
+        coop_mode=(
+            run.snapshot().gameplay_config.game_mode is GameMode.COOP
+        ),
         pinned_input_session=pinned_input_session,
         emergency_stop_requested=(
             pinned_input_session.stop_requested
@@ -774,6 +801,12 @@ def _run_entry(
             # BossEntry rejected the stale room before reserving/sending Start.
             # The caller owns the bounded lobby/map re-router; do not turn this
             # zero-input navigation race into a terminal farm failure here.
+            return None, result
+        if _entry_postclick_room_ejection_probe_required(result):
+            # Live v1.2.3 run 4abfeb... attempt 240 proved that Unity can
+            # discard the room after Start without ever creating a combat
+            # session.  The outer farm loop owns the existing bounded map
+            # re-entry path and will independently re-prove the visible state.
             return None, result
         if result.get("status") == "RECOVERY_REQUIRED" and result.get(
             "stopReason"
@@ -4560,7 +4593,7 @@ def _run_live(
                         if not entry_preflight_reroute_pending:
                             raise RuntimeError(
                                 "match artifact directory already exists outside "
-                                "an entry-preflight navigation reroute"
+                                "a proven entry navigation reroute"
                             )
                     else:
                         match_directory.mkdir(parents=True, exist_ok=False)
@@ -4587,6 +4620,128 @@ def _run_live(
                     )
                     _notify_run_observer(observer, run, "ENTRY_RETURNED")
                     if opening is None:
+                        if _entry_postclick_room_ejection_probe_required(
+                            entry_result
+                        ):
+                            returned = _wait_boss_lobby(
+                                process,
+                                provider,
+                                target,
+                                args.return_lobby_timeout,
+                                args.interval,
+                                hotkeys,
+                                control_hotkeys,
+                                transient_room_grace_seconds=min(
+                                    20.0, args.return_lobby_timeout * 0.5
+                                ),
+                            )
+                            (
+                                exact_world_map,
+                                detached_room_shell,
+                                general_hub,
+                            ) = _farm_room_ejection_sources(
+                                returned,
+                                target_boss_id=str(
+                                    target.boss_id or ""
+                                ).strip(),
+                                current_session=provider.current_session_key,
+                            )
+                            writer.event(
+                                "entry_timeout_room_ejection_probe",
+                                attemptIndex=run.match_attempts + 1,
+                                entry=entry_result,
+                                result=returned,
+                                exactWorldMap=exact_world_map,
+                                detachedRoomShell=detached_room_shell,
+                                generalHub=general_hub,
+                                startInputsSent=int(
+                                    entry_result.get("entryClicks") or 0
+                                ),
+                                gameplayInputsSent=int(
+                                    entry_result.get("gameplayInputs") or 0
+                                ),
+                            )
+                            if not (
+                                exact_world_map
+                                or detached_room_shell
+                                or general_hub
+                            ):
+                                if not run.stopped:
+                                    reason = (
+                                        FarmRunStopReason.EMERGENCY_STOP
+                                        if returned.reason == "F9_EMERGENCY_STOP"
+                                        else FarmRunStopReason.ENTRY_TIMEOUT
+                                    )
+                                    run.safe_stop(
+                                        reason,
+                                        entry=entry_result,
+                                        roomEjectionProbe=returned,
+                                    )
+                                continue
+                            if not run.observe_entry_room_ejection(
+                                target_boss_id=str(
+                                    target.boss_id or ""
+                                ).strip(),
+                                exact_world_map=exact_world_map,
+                                detached_room_shell=detached_room_shell,
+                                general_hub=general_hub,
+                                no_combat_owner=(
+                                    provider.current_session_key is None
+                                ),
+                            ):
+                                if not run.stopped:
+                                    run.safe_stop(
+                                        FarmRunStopReason.ENTRY_TIMEOUT,
+                                        entry=entry_result,
+                                        detail=(
+                                            "post-Start room ejection state "
+                                            "transition rejected"
+                                        ),
+                                    )
+                                continue
+                            restored = _restore_ejected_farm_room(
+                                run=run,
+                                args=args,
+                                process=process,
+                                provider=provider,
+                                target=target,
+                                initial=returned,
+                                binding=binding,
+                                executor=executor,
+                                directory=match_directory,
+                                hotkeys=hotkeys,
+                                control_hotkeys=control_hotkeys,
+                                writer=writer,
+                                pinned_input_session=pinned_input_session,
+                            )
+                            if restored:
+                                # No match attempt was created, so the next
+                                # bounded entry reuses attempt_NNN while
+                                # _run_entry preserves the first entry proof
+                                # in its existing artifact directory.
+                                entry_preflight_reroute_pending = bool(
+                                    not run.stopped
+                                    and run.state is FarmRunState.RESOLVE_TARGET
+                                )
+                                memory.sample()
+                                _notify_run_observer(
+                                    observer,
+                                    run,
+                                    "ENTRY_TIMEOUT_MAP_REENTRY_COMPLETE",
+                                )
+                                if controlled_run:
+                                    _persist_checkpoint(
+                                        run, writer, finalized_status=None
+                                    )
+                            elif not run.stopped:
+                                run.safe_stop(
+                                    FarmRunStopReason.RECOVERY_FAILED,
+                                    detail=(
+                                        "post-Start room ejection did not "
+                                        "restore exact pet room"
+                                    ),
+                                )
+                            continue
                         if _entry_preflight_runtime_changed_before_start(
                             entry_result
                         ):

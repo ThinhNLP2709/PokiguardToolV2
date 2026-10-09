@@ -574,6 +574,59 @@ class UnconfirmedSwapRecoveryTests(unittest.TestCase):
         self.assertFalse(accepted)
         self.assertEqual(coordinator.state, TechnicalRecoveryState.IDLE)
 
+    def test_two_distinct_unconfirmed_local_turns_arm_recovery_without_board_publish(self) -> None:
+        session = CombatSessionKey(24, 0x20000024000, "match-two-timeouts")
+        coordinator = TechnicalRecoveryCoordinator()
+
+        accepted = TechnicalRecoveryDispatcher(
+            coordinator
+        ).dispatch_repeated_unconfirmed_swap_delivery(
+            session_key=session,
+            match_id=session.match_id,
+            first_source_turn=1,
+            first_source_srv_seq=0,
+            first_source_board_hash="a" * 64,
+            source_turn=3,
+            source_srv_seq=0,
+            source_board_hash="b" * 64,
+            local_move_sequence_before=0,
+            current_match_id=session.match_id,
+            current_turn=3,
+            current_local_move_sequence=0,
+            sent_swap_timeouts=2,
+        )
+
+        self.assertTrue(accepted)
+        self.assertEqual(
+            coordinator.trigger.reason.value,  # type: ignore[union-attr]
+            "UNCONFIRMED_SWAP_DELIVERY",
+        )
+
+    def test_repeated_unconfirmed_swap_requires_distinct_local_turns(self) -> None:
+        session = CombatSessionKey(24, 0x20000024000, "match-same-turn")
+        coordinator = TechnicalRecoveryCoordinator()
+
+        accepted = TechnicalRecoveryDispatcher(
+            coordinator
+        ).dispatch_repeated_unconfirmed_swap_delivery(
+            session_key=session,
+            match_id=session.match_id,
+            first_source_turn=1,
+            first_source_srv_seq=0,
+            first_source_board_hash="a" * 64,
+            source_turn=1,
+            source_srv_seq=0,
+            source_board_hash="a" * 64,
+            local_move_sequence_before=0,
+            current_match_id=session.match_id,
+            current_turn=1,
+            current_local_move_sequence=0,
+            sent_swap_timeouts=2,
+        )
+
+        self.assertFalse(accepted)
+        self.assertEqual(coordinator.state, TechnicalRecoveryState.IDLE)
+
 
 class ActiveCombatProgressWatchdogTests(unittest.TestCase):
     def setUp(self) -> None:

@@ -8,6 +8,7 @@ import tempfile
 import time
 import tkinter as tk
 import unittest
+from unittest.mock import patch
 
 from pokiguard_v2.boss_entry import FarmTarget
 from pokiguard_v2.basic_policy import PlayStyle
@@ -35,6 +36,7 @@ from pokiguard_v2.pet_configuration import (
     PLAY_STYLE_LABELS,
     PetSkillFireCondition,
 )
+from pokiguard_v2.gameplay_profile import GameMode
 from tests.test_desktop_farm_controller import _BlockingRunner, _Runtime
 
 
@@ -58,7 +60,8 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.store = DesktopPreferenceStore(self.directory / "preferences.json")
         self.app = DesktopApplication(self.root, self.vm,
             event_log=DesktopEventLog(self.directory / "events.jsonl"),
-            preference_store=self.store, game_location="fixture.exe")
+            preference_store=self.store, game_location="fixture.exe",
+            farm_runs_root=self.directory / "farm_runs")
         self.app._render()
         self.root.update_idletasks()
 
@@ -76,6 +79,42 @@ class PetConfigurationTkTests(unittest.TestCase):
 
     def button(self, name, value):
         return self.app._pet_option_widgets[name, value]
+
+    def settle_farm_runs_operation(self) -> None:
+        deadline = time.monotonic() + 2.0
+        while self.app._farm_runs_busy and time.monotonic() < deadline:
+            self.app._consume_farm_runs_result(controller_active=False)
+            time.sleep(0.01)
+        self.app._consume_farm_runs_result(controller_active=False)
+        self.assertFalse(self.app._farm_runs_busy)
+
+    def test_settings_reports_and_clears_all_farm_run_logs(self):
+        self.settle_farm_runs_operation()
+        nested = self.directory / "farm_runs" / "run-test" / "matches"
+        nested.mkdir(parents=True)
+        (nested / "events.jsonl").write_bytes(b"x" * 1536)
+
+        self.app._refresh_farm_runs_usage()
+        self.settle_farm_runs_operation()
+
+        self.assertIn("1.5 KB", self.app.farm_runs_usage_var.get())
+        self.assertIn("1 tệp", self.app.farm_runs_usage_var.get())
+        with patch("tkinter.messagebox.askyesno", return_value=True):
+            self.app._confirm_clear_farm_runs()
+        self.settle_farm_runs_operation()
+
+        self.assertEqual("0 B (0 tệp)", self.app.farm_runs_usage_var.get())
+        self.assertEqual([], list((self.directory / "farm_runs").iterdir()))
+        self.assertIn("Đã xóa 1 tệp", self.app.farm_runs_feedback_var.get())
+
+    def test_farm_cannot_start_while_log_clear_is_in_progress(self):
+        self.settle_farm_runs_operation()
+        self.app._farm_runs_active_operation = "clear"
+
+        self.app._start_farm()
+
+        self.assertEqual([], self.runner.launches)
+        self.assertIn("Đang xóa log farm_runs", self.app.command_feedback.get())
 
     def test_canonical_fields_remove_redundant_evolved_choices(self):
         self.assertNotIn("ManaPriority", PREFERENCE_TABLE_ROWS)
@@ -133,7 +172,7 @@ class PetConfigurationTkTests(unittest.TestCase):
             self.app.load_checkpoint_preferences_button.grid_info()["row"]
         )
 
-        self.assertEqual(delivery_row, 9)
+        self.assertEqual(delivery_row, 10)
         self.assertGreater(validate_row, delivery_row)
         self.assertGreater(checkpoint_row, validate_row)
 
@@ -148,6 +187,24 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertTrue(skill.instate(["disabled"]))
         self.assertEqual(self.app.damage_card.get(), "default_attack")
         self.assertEqual(self.plane.snapshot().config.damage_card, DamageCardMode.DEFAULT_ATTACK)
+
+    def test_bu_win_applies_fixed_coop_profile_and_hides_skill_fields(self):
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.BU_WIN])
+        self.root.update_idletasks()
+
+        self.assertEqual(self.app.game_mode.get(), "Coop")
+        self.assertEqual(self.app.main_pet.get(), MainPetType.NORMAL.value)
+        self.assertEqual(self.app.evolution.get(), EvolutionTarget.NONE.value)
+        self.assertEqual(self.app.damage_card.get(), DamageCardMode.NONE.value)
+        self.assertTrue(
+            self.button("damage_card", DamageCardMode.NONE.value).instate(
+                ["!disabled"]
+            )
+        )
+        self.assertEqual(self.app.pet_skill_fire_cell.winfo_manager(), "")
+        config = DesktopConfig.from_strings(**self.app._draft_fields())
+        self.assertIs(config.game_mode, GameMode.COOP)
+        self.assertTrue(config.farm_policy_supported)
 
     def test_pet_skill_only_rows_hide_show_and_preserve_values(self):
         hidden = (
@@ -199,7 +256,7 @@ class PetConfigurationTkTests(unittest.TestCase):
             self.app.pet_skill_fire_cell,
         )
         outer_grid = self.app.pet_skill_fire_cell.grid_info()
-        self.assertEqual((int(outer_grid["row"]), int(outer_grid["column"])), (5, 1))
+        self.assertEqual((int(outer_grid["row"]), int(outer_grid["column"])), (6, 1))
         self.assertEqual(
             tuple(self.app.pet_skill_fire_condition_widget.cget("values")),
             (

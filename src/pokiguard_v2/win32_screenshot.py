@@ -1,4 +1,10 @@
-"""Dependency-free Windows client-area screenshot capture for audit artifacts."""
+"""Dependency-free Windows client-area capture and optional PNG diagnostics.
+
+Runtime UI recognition consumes :class:`ClientRgbCapture` objects in memory.
+Writing those pixels to disk is a separate developer-only diagnostic concern.
+Keeping the two concerns separate lets packaged farming retain every visual
+preflight without accumulating multi-gigabyte PNG logs.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +15,27 @@ from pathlib import Path
 import struct
 import zlib
 from dataclasses import dataclass
+
+
+_DIAGNOSTIC_IMAGE_WRITES_ENABLED = True
+
+
+def configure_diagnostic_image_writes(*, enabled: bool) -> None:
+    """Enable or disable diagnostic PNG persistence for this process.
+
+    This does not disable ``capture_client_rgb`` and therefore cannot change
+    Start, recovery, postmatch, card, or overlay recognition. Desktop UI
+    startup sets the policy once before FarmRunner can start.
+    """
+
+    global _DIAGNOSTIC_IMAGE_WRITES_ENABLED
+    _DIAGNOSTIC_IMAGE_WRITES_ENABLED = bool(enabled)
+
+
+def diagnostic_image_writes_enabled() -> bool:
+    """Return the current process-wide diagnostic persistence policy."""
+
+    return _DIAGNOSTIC_IMAGE_WRITES_ENABLED
 
 
 class POINT(ctypes.Structure):
@@ -60,7 +87,7 @@ def _png_chunk(kind: bytes, payload: bytes) -> bytes:
     )
 
 
-def write_png_rgb(path: Path, width: int, height: int, rgb: bytes) -> None:
+def _write_png_rgb_bytes(path: Path, width: int, height: int, rgb: bytes) -> None:
     if width <= 0 or height <= 0 or len(rgb) != width * height * 3:
         raise ValueError("RGB buffer dimensions are invalid")
     stride = width * 3
@@ -75,6 +102,30 @@ def write_png_rgb(path: Path, width: int, height: int, rgb: bytes) -> None:
         + _png_chunk(b"IEND", b"")
     )
     path.write_bytes(png)
+
+
+def write_png_rgb(path: Path, width: int, height: int, rgb: bytes) -> None:
+    """Persist an ordinary developer diagnostic image when enabled."""
+
+    if width <= 0 or height <= 0 or len(rgb) != width * height * 3:
+        raise ValueError("RGB buffer dimensions are invalid")
+    if not _DIAGNOSTIC_IMAGE_WRITES_ENABLED:
+        return
+    _write_png_rgb_bytes(path, width, height, rgb)
+
+
+def write_recovery_png_rgb(
+    path: Path, width: int, height: int, rgb: bytes
+) -> None:
+    """Persist one exceptional pre-recovery image in packaged runs too.
+
+    Routine PNG logging remains disabled in packaged releases. A bounded
+    recovery image is different: it is the evidence needed to diagnose the
+    rare state that caused automatic exit/re-entry and is written only when a
+    recovery has already been armed.
+    """
+
+    _write_png_rgb_bytes(path, width, height, rgb)
 
 
 def _client_window(pid: int) -> tuple[int, str, int, int, int, int]:
@@ -375,11 +426,32 @@ def capture_client_png(pid: int, path: Path) -> dict[str, object]:
     }
 
 
+def capture_client_recovery_png(pid: int, path: Path) -> dict[str, object]:
+    """Capture one bounded recovery-evidence PNG regardless of dev mode."""
+
+    capture = capture_client_rgb(pid)
+    write_recovery_png_rgb(path, capture.width, capture.height, capture.rgb)
+    return {
+        "windowTitle": capture.title,
+        "clientRegion": {
+            "left": capture.left,
+            "top": capture.top,
+            "width": capture.width,
+            "height": capture.height,
+        },
+        "recoveryEvidence": True,
+    }
+
+
 __all__ = [
     "ClientRgbCapture",
     "PngRgbImage",
     "capture_client_png",
+    "capture_client_recovery_png",
     "capture_client_rgb",
+    "configure_diagnostic_image_writes",
+    "diagnostic_image_writes_enabled",
     "read_png_rgb",
+    "write_recovery_png_rgb",
     "write_png_rgb",
 ]

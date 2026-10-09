@@ -18,6 +18,7 @@ from pokiguard_v2.autonomous_control import (
     SwapAcceptanceStatus,
     TurnTransitionKind,
     TurnTransitionTracker,
+    UnconfirmedSwapPassTracker,
     direct_runtime_proves_cast_accepted,
     direct_runtime_proves_swap_accepted,
     direct_runtime_swap_preflight_failure,
@@ -100,6 +101,7 @@ from tools.basic_auto_bot import (
     _evolve_only_turn_wait_status,
     _evolve_terminal_touches_turn,
     _dispatcher_runtime_observation_for_controller,
+    _offer_dispatcher_runtime_batches,
     _offer_dispatcher_transport_boards,
     _policy_none_stop_reason,
     _policy_branch,
@@ -295,6 +297,44 @@ class AutonomousGuardTests(unittest.TestCase):
         provider.offer_transport_board_snapshot.assert_called_once_with(
             snapshot,
             event_type="MATCH_MOVE_RES",
+        )
+
+    def test_dispatcher_runtime_batch_offer_hashes_and_deduplicates(self) -> None:
+        cells = tuple(
+            SimpleNamespace(row=row, col=col, tag="vang", multiplier=1)
+            for row in range(8)
+            for col in range(8)
+        )
+        batch = SimpleNamespace(address=0x3000, sequence=6, cells=cells)
+        tap = Mock()
+        tap.runtime_batches.return_value = (
+            ("BoardWsApplier._pendingBatches", batch),
+        )
+        provider = Mock()
+        provider.offer_transient_runtime_batch.return_value = True
+        offered: set[tuple[str, int, int, str]] = set()
+
+        first = _offer_dispatcher_runtime_batches(
+            tap,
+            provider,
+            match_id="M_A",
+            offered=offered,
+        )
+        second = _offer_dispatcher_runtime_batches(
+            tap,
+            provider,
+            match_id="M_A",
+            offered=offered,
+        )
+
+        self.assertEqual(
+            first,
+            (("BoardWsApplier._pendingBatches", batch, True),),
+        )
+        self.assertEqual(second, ())
+        provider.offer_transient_runtime_batch.assert_called_once_with(
+            batch,
+            source="BoardWsApplier._pendingBatches",
         )
 
     def test_idle_owner_rejection_does_not_require_cache_invalidation(self) -> None:
@@ -1022,6 +1062,61 @@ class AutonomousGuardTests(unittest.TestCase):
             battle=replace(state.battle, turn_number=5),
         )
         self.assertIsNone(guard.blocking_source(stale_shape))
+
+    def test_unconfirmed_swap_waits_once_then_requires_recovery(self) -> None:
+        first_state = self._state(fusion_used=True, turn=1)
+        first_decision = BasicPolicyEngine().decide(first_state)
+        first = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(first_state, first_decision),
+            1.0,
+            first_state.player.mana,
+            None,
+            local_move_sequence_before=0,
+        )
+        tracker = UnconfirmedSwapPassTracker()
+        tracker.begin_session(first_state.battle.session_key)
+
+        first_update = tracker.observe_timeout(first)
+        self.assertEqual(first_update.pass_index, 1)
+        self.assertFalse(first_update.recovery_required)
+
+        second_state = replace(
+            first_state,
+            battle=replace(first_state.battle, turn_number=3),
+        )
+        second_decision = BasicPolicyEngine().decide(second_state)
+        second = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(second_state, second_decision),
+            20.0,
+            second_state.player.mana,
+            None,
+            local_move_sequence_before=0,
+        )
+        second_update = tracker.observe_timeout(second)
+        self.assertEqual(second_update.pass_index, 2)
+        self.assertTrue(second_update.recovery_required)
+        self.assertEqual(
+            tuple(record.source_turn for record in second_update.records),
+            (1, 3),
+        )
+
+    def test_unconfirmed_swap_duplicate_turn_does_not_consume_second_pass(self) -> None:
+        state = self._state(fusion_used=True, turn=1)
+        decision = BasicPolicyEngine().decide(state)
+        pending = PendingAutonomousAction(
+            AutonomousActionIdentity.from_decision(state, decision),
+            1.0,
+            state.player.mana,
+            None,
+        )
+        tracker = UnconfirmedSwapPassTracker()
+
+        tracker.observe_timeout(pending)
+        duplicate = tracker.observe_timeout(pending)
+
+        self.assertTrue(duplicate.duplicate_turn)
+        self.assertEqual(duplicate.pass_index, 1)
+        self.assertFalse(duplicate.recovery_required)
 
     def test_identity_is_single_use_and_pause_is_immediate(self) -> None:
         state = self._state(fusion_used=False)

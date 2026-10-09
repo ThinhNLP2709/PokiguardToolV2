@@ -72,6 +72,7 @@ class DesktopPreferenceStore:
             )
             config = DesktopConfig.from_strings(
                 play_style=str(config_raw.get("play_style", "")),
+                game_mode=gameplay.game_mode.value,
                 main_pet=gameplay.main_pet.value,
                 evolution=gameplay.evolution.value,
                 damage_card=gameplay.damage_card.value,
