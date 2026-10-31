@@ -192,15 +192,16 @@ class Fixture:
         element = self.string("ATTACK_LEGEND_")
         skill = self.string("ATTACK_LEGEND_")
         name = self.string("Legendary Pet Skill")
-        card = bytearray(0x9C)
+        card = bytearray(0xA8)
         struct.pack_into("<Q", card, 0, self.CARD_CLASS)
         struct.pack_into("<qq", card, 0x10, 9001, skill_card_id)
         struct.pack_into("<Q", card, 0x20, name)
         struct.pack_into("<Q", card, 0x30, element)
         struct.pack_into("<Q", card, 0x78, skill)
-        struct.pack_into("<iii", card, 0x80, mana_cost, power_cost, 2)
-        card[0x8C] = 1
-        struct.pack_into("<iii", card, 0x90, 12, 8, 4)
+        struct.pack_into("<ii", card, 0x80, mana_cost, power_cost)
+        struct.pack_into("<i", card, 0x94, 2)
+        card[0x98] = 1
+        struct.pack_into("<iii", card, 0x9C, 12, 8, 4)
         self.memory.map(self.CARD, card)
 
     def map_server(

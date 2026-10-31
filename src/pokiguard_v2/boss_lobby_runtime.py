@@ -35,10 +35,10 @@ from .native_card_ui import NativeCardUiReader
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
-MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x36C4718
-MANAGER_ROOM_TYPE_INFO_RVA = 0x36C3FC0
-WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x36D7B08
-ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x36A0A30
+MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x3DC2480
+MANAGER_ROOM_TYPE_INFO_RVA = 0x3DC19F8
+WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x3DB8EF8
+ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x3D96550
 
 # b5 inserted ``KnownUserLevel`` before ``ManagerQuangTruong.Instance``.
 MANAGER_QUANG_TRUONG_INSTANCE_STATIC_OFFSET = 0x08
@@ -53,7 +53,7 @@ MQT_LOADING_PANEL_OFFSET = 0x2D0
 MQT_LOADING_ROOM_OFFSET = 0x2D8
 MQT_HUB_ONLY_BLOCKERS_OFFSET = 0x388
 MQT_PANEL_MASTER_LOBBY_OFFSET = 0x390
-MQT_MANAGER_BOSS_OFFSET = 0x3E0
+MQT_MANAGER_BOSS_OFFSET = 0x3E8
 
 # ManagerChinhPhuc (Assembly-CSharp). The component is resolved from the
 # already-owned panelChinhPhuc GameObject, so no heap scan is required.
@@ -66,7 +66,7 @@ MANAGER_BOSS_PANEL_WORLD_OFFSET = 0x30
 
 # UIPanelManager (Assembly-CSharp).  The managed open-order count is the
 # read-only counterpart of the final AnyPanelOpen check in IsHubViewActive.
-UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x36C47E0
+UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x3DC2550
 UI_PANEL_MANAGER_OPEN_ORDER_OFFSET = 0x30
 
 # ManagerRoom (Assembly-CSharp).
@@ -113,10 +113,10 @@ WS_PROPERTIES_OFFSET = 0x38
 # b6. A host room can keep this dictionary while ``ManagerRoom.roomData`` is
 # null; ManagerRoom.BuildInitialBossProps/SetEnemyPetFromProps use the exact
 # keys below. The type-info RVAs come from the b6 Il2CppInspector output.
-DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA = 0x36C4108
-INT32_TYPE_INFO_RVA = 0x36C3FE8
-INT64_TYPE_INFO_RVA = 0x36C4C20
-STRING_TYPE_INFO_RVA = 0x36C38A0
+DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA = 0x3DAE940
+INT32_TYPE_INFO_RVA = 0x3DC1A20
+INT64_TYPE_INFO_RVA = 0x3DC2AF0
+STRING_TYPE_INFO_RVA = 0x3DC12F0
 DICTIONARY_ENTRIES_OFFSET = 0x18
 DICTIONARY_COUNT_OFFSET = 0x20
 DICTIONARY_FREE_COUNT_OFFSET = 0x28
@@ -650,7 +650,9 @@ def _read_room_start_state(
     return view, refs, state, phase, my_ready, tuple(reasons)
 
 
-def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple[BossCandidate, ...]]:
+def read_chinh_phuc_room(
+    resolver: object, *, allow_guest_room: bool = False
+) -> tuple[ChinhPhucRoomSnapshot, tuple[BossCandidate, ...]]:
     reasons: list[str] = []
     manager_room = manager_native = None
     room_panel = button = button_native = loading = room_data = None
@@ -738,7 +740,10 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
                 is_host = owner.casefold() == local_username.casefold()
             else:
                 is_host = False
-            if is_host is not True:
+            guest_member = bool(
+                allow_guest_room and is_host is False and owner and local_username
+            )
+            if is_host is not True and not guest_member:
                 reasons.append("local user is not the room host")
             if properties is None:
                 reasons.append("current room properties are unavailable")
@@ -754,7 +759,10 @@ def read_chinh_phuc_room(resolver: object) -> tuple[ChinhPhucRoomSnapshot, tuple
             ws is not None
             and room_id
             and room_type == "ChinhPhuc"
-            and is_host is True
+            and (
+                is_host is True
+                or (allow_guest_room and is_host is False and owner and local_username)
+            )
             and properties is not None
         ):
             try:
@@ -1199,8 +1207,14 @@ def read_world_boss_list(resolver: object) -> tuple[WorldBossListSnapshot, tuple
 def read_boss_lobby_runtime(
     resolver: object,
     combat_lifecycle: CombatLifecycleObservation,
+    *,
+    allow_guest_room: bool = False,
 ) -> BossLobbyRuntimeSnapshot:
-    chinh, chinh_candidates = read_chinh_phuc_room(resolver)
+    chinh, chinh_candidates = (
+        read_chinh_phuc_room(resolver, allow_guest_room=True)
+        if allow_guest_room
+        else read_chinh_phuc_room(resolver)
+    )
     world, world_candidates = read_world_boss_list(resolver)
     lifecycle = combat_lifecycle.state
     branch: str | None = None

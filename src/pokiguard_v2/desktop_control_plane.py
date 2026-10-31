@@ -22,7 +22,7 @@ from .basic_policy import (
     PlayStyle,
 )
 from .pet_configuration import GameplayConfig, MainPetType, EvolutionTarget, DamageCardMode
-from .gameplay_profile import AuditionMode, GameMode, PetSkillFireCondition
+from .gameplay_profile import AuditionMode, GameMode, PetSkillFireCondition, DemonTargetGem
 from .boss_entry import FarmTarget
 from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
 from .farm_run import FarmRunLimits
@@ -38,6 +38,8 @@ from .game_window_size import (
     GameWindowSizeProfile,
 )
 from .win32_input import BoardInputMode
+from .reasoning_settings import AISettings
+from .input_randomization import InputRandomization
 
 
 def utc_timestamp() -> str:
@@ -64,9 +66,15 @@ class DesktopConfig(GameplayConfig):
         DEFAULT_GAME_WINDOW_SIZE_PROFILE
     )
     tool_sound_enabled: bool = True
+    ai: AISettings = AISettings()
+    input_randomization: InputRandomization = InputRandomization()
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        if type(self.input_randomization) is not InputRandomization:
+            raise ValueError("input_randomization must be InputRandomization")
+        if type(self.ai) is not AISettings:
+            raise ValueError("ai must be AISettings")
         if not isinstance(self.input_delivery_mode, InputDeliveryMode):
             raise ValueError("input_delivery_mode must be InputDeliveryMode")
         if not isinstance(self.game_window_size_profile, GameWindowSizeProfile):
@@ -82,6 +90,11 @@ class DesktopConfig(GameplayConfig):
             self.max_technical_recoveries,
             self.max_match_attempts,
         )
+
+    def to_dict(self):
+        # AI intent belongs to desktop preferences, never gameplay/checkpoint authority.
+        return {**super().to_dict(), "ai": self.ai.to_dict(),
+                "input_randomization":self.input_randomization.to_dict()}
 
     @property
     def gameplay_config(self) -> GameplayConfig:
@@ -135,9 +148,18 @@ class DesktopConfig(GameplayConfig):
         rage_target: str = "100",
         pet_skill_fire_condition: str = PetSkillFireCondition.SWORD_COUNT.value,
         pet_skill_fire_value: str | None = "10",
+        demon_target_gem: str = DemonTargetGem.SHIELD.value,
         input_delivery_mode: str = InputDeliveryMode.FOREGROUND.value,
         game_window_size_profile: str = DEFAULT_GAME_WINDOW_SIZE_PROFILE.value,
         tool_sound_enabled: str = "true",
+        ai_shadow_enabled: str = "false",
+        ai_budget_ms: str = "4000",
+        ai_reasoning_enabled: str = "false",
+        random_reaction_min: str = "0",
+        random_reaction_max: str = "1",
+        random_inter_click_min: str = "0",
+        random_inter_click_max: str = "1.5",
+        random_coordinate_percent: str = "10",
     ) -> "DesktopConfig":
         normalized_sound = str(tool_sound_enabled).strip().lower()
         if normalized_sound not in {"true", "false"}:
@@ -183,6 +205,7 @@ class DesktopConfig(GameplayConfig):
             rage_target=int(rage_target),
             pet_skill_fire_condition=condition,
             pet_skill_fire_value=fire_value,
+            demon_target_gem=DemonTargetGem(demon_target_gem),
             intelligence=Intelligence(intelligence),
             board_input_mode=BoardInputMode(board_input_mode),
             boss_id=boss_id,
@@ -195,6 +218,13 @@ class DesktopConfig(GameplayConfig):
                 game_window_size_profile
             ),
             tool_sound_enabled=normalized_sound == "true",
+            ai=AISettings.from_strings(ai_shadow_enabled, ai_budget_ms, ai_reasoning_enabled),
+            input_randomization=InputRandomization.from_strings(
+                reaction_min_seconds=random_reaction_min,
+                reaction_max_seconds=random_reaction_max,
+                inter_click_min_seconds=random_inter_click_min,
+                inter_click_max_seconds=random_inter_click_max,
+                coordinate_max_percent=random_coordinate_percent),
         )
 
 
@@ -218,6 +248,7 @@ class RuntimeObservation:
     target_candidates: tuple[tuple[str | None, str | None], ...] = ()
     lobby_branch: str | None = None
     current_room_id: str | None = None
+    room_is_host: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -528,8 +559,19 @@ class DesktopControlPlane:
             return f"UNSUPPORTED_ARCHITECTURE:{runtime.architecture or 'UNKNOWN'}"
         if snapshot.health != "OK":
             return f"BACKEND_NOT_HEALTHY:{snapshot.health}"
+        if snapshot.config.play_style is PlayStyle.DINOSAUR:
+            if runtime.lifecycle != "ACTIVE_COMBAT":
+                return f"START_REQUIRES_ACTIVE_COMBAT:{runtime.lifecycle}"
+            if not runtime.match_id or not runtime.match_id.strip():
+                return "CURRENT_COMBAT_MATCH_ID_NOT_PROVEN"
+            return None
         if runtime.lifecycle != "BOSS_LOBBY":
             return f"START_REQUIRES_BOSS_LOBBY:{runtime.lifecycle}"
+        if runtime.room_is_host is False and not (
+            snapshot.config.play_style is PlayStyle.BU_WIN
+            and snapshot.config.game_mode is GameMode.COOP
+        ):
+            return "GUEST_ROOM_REQUIRES_BU_WIN_COOP"
         return None
 
     @staticmethod
@@ -544,6 +586,11 @@ class DesktopControlPlane:
         """
 
         runtime = snapshot.runtime
+        if snapshot.config.play_style is PlayStyle.DINOSAUR:
+            # Operator selects the current combat; no boss room, map target or
+            # stale target from a previous farm session is an entry authority.
+            return replace(snapshot.config.without_target(),
+                           target_completed_matches=1, max_match_attempts=1), None
         if runtime.lobby_branch != "CHINH_PHUC_ROOM":
             return None, "CURRENT_BOSS_ROOM_NOT_PROVEN"
         target_id = runtime.target_id.strip() if runtime.target_id else None
@@ -583,9 +630,14 @@ class DesktopControlPlane:
             return reason
         assert pinned is not None
         assert self._controller is not None
+        if pinned.play_style is PlayStyle.DINOSAUR:
+            return self._controller.launch_rejection_reason(
+                pinned, expected_match_id=snapshot.runtime.match_id)
         return self._controller.launch_rejection_reason(pinned)
 
     def _resume_preflight(self, snapshot: ControlPlaneSnapshot) -> str | None:
+        if snapshot.config.play_style is PlayStyle.DINOSAUR:
+            return "DINOSAUR_CURRENT_COMBAT_ONLY"
         if snapshot.config.farm_policy_blocker_reason is not None:
             return snapshot.config.farm_policy_blocker_reason
         reason = self._runtime_command_preflight(snapshot)
@@ -666,10 +718,16 @@ class DesktopControlPlane:
                 )
             self._snapshot = replace(self._snapshot, config=pinned)
             assert self._controller is not None
-            result = self._controller.start(
-                pinned,
-                game_pid=self._snapshot.runtime.pid,
-            )
+            if pinned.play_style is PlayStyle.DINOSAUR:
+                result = self._controller.start(
+                    pinned, game_pid=self._snapshot.runtime.pid,
+                    expected_match_id=self._snapshot.runtime.match_id,
+                )
+            else:
+                result = self._controller.start(
+                    pinned,
+                    game_pid=self._snapshot.runtime.pid,
+                )
             self._publish_controller()
             return result
 
@@ -945,6 +1003,11 @@ class DesktopControlPlane:
             if self._closed:
                 return
             self._closed = True
+        cleanup = getattr(self._controller, 'wait_reasoning_cleanup', None)
+        if cleanup is not None and not cleanup(5.0):
+            with self._lock:
+                self._closed = False
+            raise RuntimeError('UI_REASONING_CLEANUP_TIMEOUT')
         self._runtime.close()
 
 

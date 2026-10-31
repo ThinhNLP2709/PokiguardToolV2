@@ -128,6 +128,16 @@ def write_recovery_png_rgb(
     _write_png_rgb_bytes(path, width, height, rgb)
 
 
+def write_failure_png_rgb(path: Path, width: int, height: int, rgb: bytes) -> None:
+    """Persist bounded failure evidence even when routine PNGs are disabled.
+
+    Callers own the per-attempt cap and must catch storage errors so evidence
+    persistence cannot replace the original runtime outcome.
+    """
+
+    _write_png_rgb_bytes(path, width, height, rgb)
+
+
 def _client_window(pid: int) -> tuple[int, str, int, int, int, int]:
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     user32.EnumWindows.argtypes = [ctypes.c_void_p, wintypes.LPARAM]
@@ -453,5 +463,6 @@ __all__ = [
     "diagnostic_image_writes_enabled",
     "read_png_rgb",
     "write_recovery_png_rgb",
+    "write_failure_png_rgb",
     "write_png_rgb",
 ]

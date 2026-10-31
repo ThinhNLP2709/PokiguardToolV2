@@ -23,6 +23,7 @@ from .basic_policy import (
 from .gameplay_profile import (
     AuditionMode,
     DamageCardMode,
+    DemonTargetGem,
     EvolutionTarget,
     GameMode,
     MainPetType,
@@ -76,15 +77,23 @@ PET_SKILL_FIRE_CONDITION_LABELS = {
 }
 PLAY_STYLE_LABELS = {
     PlayStyle.SIMPLE: "Đơn giản",
+    PlayStyle.DINOSAUR: "Khủng long",
     PlayStyle.CAREFUL: "Cẩn trọng",
     PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
-    PlayStyle.DEMON_AEGIS_FARM: "Demon Aegis Farm",
+    PlayStyle.DEMON_AEGIS_FARM: "Demon Farm",
     PlayStyle.MEGA_ICARUS_SPAM_SKILL: "Mega Icarus (Spam Skill)",
     PlayStyle.BU_WIN: "Bú win",
 }
 GAME_MODE_LABELS = {
     GameMode.SOLO: "Đơn",
     GameMode.COOP: "Coop",
+}
+DEMON_TARGET_GEM_LABELS = {
+    DemonTargetGem.SHIELD: "Khiên",
+    DemonTargetGem.HEALTH: "Máu",
+    DemonTargetGem.MANA: "Mana",
+    DemonTargetGem.DRAIN: "Hút",
+    DemonTargetGem.RAGE: "Nộ",
 }
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
@@ -310,6 +319,7 @@ class GameplayConfig:
     rage_target: int = 100
     pet_skill_fire_condition: PetSkillFireCondition = PetSkillFireCondition.SWORD_COUNT
     pet_skill_fire_value: int | None = PET_SKILL_FIRE_VALUE_DEFAULT
+    demon_target_gem: DemonTargetGem = DemonTargetGem.SHIELD
 
     def __post_init__(self) -> None:
         for name, enum in (("play_style", PlayStyle), ("game_mode", GameMode),
@@ -317,6 +327,7 @@ class GameplayConfig:
                            ("main_pet", MainPetType), ("evolution", EvolutionTarget),
                            ("damage_card", DamageCardMode), ("audition_mode", AuditionMode),
                            ("pet_skill_fire_condition", PetSkillFireCondition),
+                           ("demon_target_gem", DemonTargetGem),
                            ("board_input_mode", BoardInputMode)):
             if not isinstance(getattr(self, name), enum):
                 raise ValueError(f"{name} must be {enum.__name__}")
@@ -473,6 +484,7 @@ class GameplayConfig:
                     board_input_mode=BoardInputMode(raw.get("board_input_mode", "two_click")),
                     pet_skill_fire_condition=condition,
                     pet_skill_fire_value=fire_value,
+                    demon_target_gem=DemonTargetGem(raw.get("demon_target_gem", "shield")),
                     **{name: raw.get(name, getattr(cls(), name)) for name in
                        ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target",
                        )})
@@ -499,6 +511,7 @@ def basic_policy_config(config: GameplayConfig) -> PolicyConfig:
         rage_target=config.rage_target,
         pet_skill_fire_condition=config.pet_skill_fire_condition,
         pet_skill_fire_value=config.pet_skill_fire_value,
+        demon_target_gem=config.demon_target_gem,
     )
 
 
@@ -527,10 +540,13 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
         rage_target=config.rage_target,
         pet_skill_fire_condition=config.pet_skill_fire_condition,
         pet_skill_fire_value=config.pet_skill_fire_value,
+        demon_target_gem=config.demon_target_gem,
     )
 
 
 def add_pet_arguments(parser: Any) -> None:
+    parser.add_argument("--demon-target-gem", choices=[v.value for v in DemonTargetGem],
+                        default=DemonTargetGem.SHIELD.value)
     parser.add_argument(
         "--game-mode",
         choices=[value.value for value in GameMode],
@@ -575,7 +591,7 @@ def gameplay_config_from_args(args: Any) -> GameplayConfig:
     raw.update({k: v for k, v in new.items() if v is not None})
     for name in ("play_style", "game_mode", "intelligence", "audition_mode", "board_input_mode", "cast_when_boss_hp_below",
                  "cast_mana_stockpile", "rage_target", "pet_skill_fire_condition",
-                 "pet_skill_fire_value"):
+                 "pet_skill_fire_value", "demon_target_gem"):
         if hasattr(args, name):
             raw[name] = getattr(args, name)
     if raw.get("pet_skill_fire_condition") == PetSkillFireCondition.SKILL_COST_READY.value:

@@ -255,6 +255,7 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         rage_target=getattr(args, "rage_target", 100),
         pet_skill_fire_condition=gameplay.pet_skill_fire_condition.value,
         pet_skill_fire_value=gameplay.pet_skill_fire_value,
+        demon_target_gem=gameplay.demon_target_gem.value,
         interval=args.interval,
         action_timeout=9.0,
         matches=1,
@@ -419,9 +420,52 @@ def _is_owner_free_general_hub_candidate(
     )
 
 
+def _failed_chinh_phuc_room_bootstrap_key(
+    lobby: Any, *, no_combat_owner: bool,
+) -> tuple[Any, ...] | None:
+    """Candidate only: local WS room retained while its entire DTO is absent.
+
+    Attempt87 on 2026-10-24 proved this after result confirmation. It cannot
+    authorize input alone: the postmatch caller also needs a sent reward
+    confirmation, native Start geometry and stable room-only visual proof.
+    """
+    chinh = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(lobby, "combat_lifecycle", None)
+    if not (
+        no_combat_owner
+        and getattr(lobby, "state", None) is BossLobbyState.LOBBY_OTHER
+        and getattr(lobby, "branch", None) in {None, "CHINH_PHUC_MAP", "CHINH_PHUC_ISLAND"}
+        and getattr(lifecycle, "state", None) is CombatLifecycleState.LOBBY
+        and getattr(getattr(lifecycle, "signals", None), "read_errors", None) == ()
+        and chinh is not None
+        and getattr(chinh, "clean", None) is False
+        and getattr(chinh, "reasons", None) == (
+            "current room properties do not contain a valid boss identity",)
+        and getattr(chinh, "room_data", None) is None
+        and all(getattr(chinh, name, None) is None for name in (
+            "enemy_pet_id", "enemy_pet_level", "enemy_pet_name", "room_dto_id"))
+        and bool(getattr(chinh, "current_room_id", None))
+        and getattr(chinh, "current_room_type", None) == "ChinhPhuc"
+        and getattr(chinh, "is_host", None) is True
+        and bool(getattr(chinh, "local_username", None))
+        and getattr(chinh, "owner_username", None) == chinh.local_username
+        and getattr(chinh, "is_opening_flow", None) is False
+        and getattr(chinh, "button_interactable", None) is True
+        and getattr(chinh, "button_groups_allow", None) is True
+        and all(getattr(chinh, name, None) for name in (
+            "manager_room", "manager_room_native", "room_panel", "button_start", "button_native"))
+    ):
+        return None
+    return (chinh.manager_room, chinh.manager_room_native, chinh.room_panel,
+            chinh.current_room_id, chinh.owner_username,
+            chinh.button_start, chinh.button_native)
+
+
 def _read_lobby_runtime_with_provider_fallback(
     process: Any,
     provider: MemoryBoardStateProvider,
+    *,
+    allow_guest_room: bool = False,
 ) -> Any | None:
     """Read lobby state even when the board provider fails after teardown.
 
@@ -449,6 +493,10 @@ def _read_lobby_runtime_with_provider_fallback(
             or lifecycle.signals.read_errors
         ):
             return None
+    if allow_guest_room:
+        return read_boss_lobby_runtime(
+            process.resolver, lifecycle, allow_guest_room=True
+        )
     return read_boss_lobby_runtime(process.resolver, lifecycle)
 
 
@@ -464,6 +512,10 @@ def _wait_boss_lobby(
     wait_through_target_missing: bool = False,
     wait_through_map_candidate: bool = False,
     transient_room_grace_seconds: float = 0.0,
+    allow_guest_room: bool = False,
+    expected_room_id: str | None = None,
+    expected_room_owner: str | None = None,
+    outside_modal_handler: Any = None,
 ) -> LobbyWaitResult:
     deadline = time.monotonic() + timeout
     stable_key = None
@@ -476,6 +528,9 @@ def _wait_boss_lobby(
     general_hub_key: tuple[Any, ...] | None = None
     general_hub_count = 0
     last_lobby: Any | None = None
+    failed_bootstrap_key = None
+    failed_bootstrap_since: float | None = None
+    failed_bootstrap_count = 0
     try:
         target_pet_id = int(target.boss_id or "")
     except (TypeError, ValueError):
@@ -490,12 +545,43 @@ def _wait_boss_lobby(
         _f8_edge, f9_edge = hotkeys.poll()
         if f9_edge or external_f9:
             return LobbyWaitResult(False, last_state, None, "F9_EMERGENCY_STOP", stable_frames=stable_count)
-        lobby = _read_lobby_runtime_with_provider_fallback(process, provider)
+        lobby = (
+            _read_lobby_runtime_with_provider_fallback(
+                process, provider, allow_guest_room=True
+            )
+            if allow_guest_room
+            else _read_lobby_runtime_with_provider_fallback(process, provider)
+        )
         if lobby is None:
             time.sleep(interval)
             continue
+        if outside_modal_handler is not None:
+            modal_status = outside_modal_handler(lobby)
+            if modal_status == "BLOCKED":
+                return LobbyWaitResult(False, lobby.state, None,
+                                       "HEALTH_REMINDER_BLOCKED", lobby)
+            if modal_status == "DISMISSED":
+                stable_key, stable_count = None, 0
+                detached_shell_key, detached_shell_count = None, 0
+                general_hub_key, general_hub_count = None, 0
+                # Reclassify the uncovered surface, never reuse the covered room.
+                continue
         last_lobby = lobby
         last_state = lobby.state
+        bootstrap_key = _failed_chinh_phuc_room_bootstrap_key(
+            lobby, no_combat_owner=provider.current_session_key is None)
+        if bootstrap_key is not None and transient_room_grace_seconds > 0:
+            now = time.monotonic()
+            if bootstrap_key != failed_bootstrap_key:
+                failed_bootstrap_key, failed_bootstrap_since = bootstrap_key, now
+                failed_bootstrap_count = 0
+            failed_bootstrap_count += 1
+            if (failed_bootstrap_count >= 2
+                    and now - failed_bootstrap_since >= transient_room_grace_seconds):
+                return LobbyWaitResult(False, lobby.state, None,
+                    "ROOM_BOOTSTRAP_FAILED_CANDIDATE", lobby, failed_bootstrap_count)
+        else:
+            failed_bootstrap_key, failed_bootstrap_since, failed_bootstrap_count = None, None, 0
         if lobby.state is not BossLobbyState.BOSS_LOBBY:
             stable_key, stable_count = None, 0
             no_combat_owner = provider.current_session_key is None
@@ -657,6 +743,14 @@ def _wait_boss_lobby(
                     continue
                 return LobbyWaitResult(False, lobby.state, resolution.status, resolution.status.value, lobby, stable_count)
             transient_room_missing_since = None
+            if expected_room_id is not None and (
+                lobby.chinh_phuc.current_room_id != expected_room_id
+                or lobby.chinh_phuc.owner_username != expected_room_owner
+            ):
+                return LobbyWaitResult(
+                    False, lobby.state, resolution.status, "COOP_ROOM_CHANGED",
+                    lobby, stable_count,
+                )
             if resolution.candidate is None or not resolution.candidate.available:
                 return LobbyWaitResult(False, lobby.state, resolution.status, "TARGET_NOT_AVAILABLE", lobby, stable_count)
             return LobbyWaitResult(True, lobby.state, resolution.status, "BOSS_LOBBY_READY", lobby, stable_count)

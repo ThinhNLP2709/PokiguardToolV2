@@ -396,7 +396,7 @@ class ChinhPhucMapTests(unittest.TestCase):
         self.assertEqual(metadata.group_id, 6)
         self.assertEqual(metadata.group_name, "Tam giới Tinh")
         self.assertEqual(metadata.island_name, "Đảo rồng")
-        self.assertEqual(CHINH_PHUC_ISLAND_DISPLAY_NAMES[18], "Đảo Liên Minh")
+        self.assertEqual(CHINH_PHUC_ISLAND_DISPLAY_NAMES[18], "Khế Ước")
 
     def test_badge_locator_fails_closed_for_invalid_or_unsupported_capture(self) -> None:
         invalid = locate_hunt_order_badge(b"", 1280, 710, 8)

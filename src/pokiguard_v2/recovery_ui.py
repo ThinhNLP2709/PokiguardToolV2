@@ -123,7 +123,11 @@ def locate_exit_back(rgb: bytes, width: int, height: int) -> RecoveryUiLocation:
 
 
 def locate_confirm_leave(rgb: bytes, width: int, height: int) -> RecoveryUiLocation:
-    """Locate the left of two orange buttons in the leave-confirm modal."""
+    """Locate two filled, labelled buttons, not merely two orange gem groups.
+
+    This remains visual proof, not OCR/native modal ownership. The central
+    label check deliberately excludes the bright button rim and gem borders.
+    """
 
     transform = transform_for_capture(rgb, width, height)
     components = _mask_components(
@@ -179,6 +183,37 @@ def locate_confirm_leave(rgb: bytes, width: int, height: int) -> RecoveryUiLocat
             "orange_components_do_not_match_leave_modal_layout",
             {"leftWidth": left_w, "rightWidth": right_w, "verticalDelta": abs(left_center[1] - right_center[1])},
         )
+    appearance: dict[str, float | int | str] = {}
+    for name, item in (("left", left), ("right", right)):
+        x0, y0, x1, y1, pixels = item
+        button_w, button_h = x1-x0, y1-y0
+        fill = pixels / (button_w*button_h)
+        aspect = button_w / button_h
+        appearance[f"{name}Fill"] = round(fill, 4)
+        appearance[f"{name}Aspect"] = round(aspect, 4)
+        if not (fill >= 0.60 and 2.0 <= aspect <= 5.5):
+            return RecoveryUiLocation(
+                RecoveryControl.CONFIRM_LEAVE, False, None, 0.0,
+                "orange_pair_is_not_filled_button_bodies", appearance,
+            )
+        label = _mask_components(
+            rgb, width, height,
+            ((x0 + button_w*0.15)/width, (y0 + button_h*0.20)/height,
+             (x1 - button_w*0.15)/width, (y1 - button_h*0.20)/height),
+            lambda r, g, b: min(r, g, b) >= 200 and max(r, g, b)-min(r, g, b) <= 55,
+        )
+        # Several separate text strokes are present on BOTH real controls.
+        # A white border, Sword blade or single multiplier is insufficient.
+        glyphs = [c for c in label if c[4] >= max(3, round(button_w*button_h*0.0005))
+                  and c[3]-c[1] >= max(3, button_h*0.12)]
+        label_pixels = sum(c[4] for c in glyphs)
+        appearance[f"{name}LabelComponents"] = len(glyphs)
+        appearance[f"{name}LabelPixels"] = label_pixels
+        if len(glyphs) < 3 or label_pixels < max(12, button_w*button_h*0.008):
+            return RecoveryUiLocation(
+                RecoveryControl.CONFIRM_LEAVE, False, None, 0.0,
+                "orange_pair_has_no_two_button_labels", appearance,
+            )
     point = (left_center[0] / width, left_center[1] / height)
     reference_point = transform.reference_point(point)
     if not (
@@ -199,7 +234,7 @@ def locate_confirm_leave(rgb: bytes, width: int, height: int) -> RecoveryUiLocat
         point,
         0.96,
         "left_of_two_symmetric_orange_leave_modal_buttons",
-        {"orangeComponents": 2, "leftPixels": left[4], "rightPixels": right[4]},
+        {"orangeComponents": 2, "leftPixels": left[4], "rightPixels": right[4], **appearance},
     )
 
 

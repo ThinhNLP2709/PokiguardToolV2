@@ -34,6 +34,7 @@ from pokiguard_v2.pet_configuration import (
     DESKTOP_EVOLUTION_OPTIONS, DESKTOP_MAIN_PET_OPTIONS,
     GameplayConfig, MainPetType, PET_SKILL_FIRE_CONDITION_LABELS,
     PLAY_STYLE_LABELS,
+    DEMON_TARGET_GEM_LABELS, DemonTargetGem,
     PetSkillFireCondition,
 )
 from pokiguard_v2.gameplay_profile import GameMode
@@ -41,6 +42,92 @@ from tests.test_desktop_farm_controller import _BlockingRunner, _Runtime
 
 
 class PetConfigurationTkTests(unittest.TestCase):
+    def test_demon_target_only_shown_for_demon_and_all_choices_save(self):
+        self.assertEqual(self.app.demon_target_gem_widget.winfo_manager(), '')
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+        self.assertEqual(self.app.demon_target_gem_widget.winfo_manager(), 'grid')
+        self.assertEqual(self.app.demon_target_gem_label.cget('text'), 'Viên mục tiêu:')
+        self.assertIn('tổng sau nhân x2/x3',self.app.profile_notice_var.get())
+        self.assertIn('tối thiểu 2 ô',self.app.profile_notice_var.get())
+        self.assertEqual(tuple(self.app.demon_target_gem_widget.cget('values')), tuple(DEMON_TARGET_GEM_LABELS.values()))
+        for target,label in DEMON_TARGET_GEM_LABELS.items():
+            self.app.demon_target_gem.set(label)
+            self.app._validate_draft()
+            self.assertIs(self.store.load().config.demon_target_gem,target)
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SIMPLE])
+        self.assertEqual(self.app.demon_target_gem_widget.winfo_manager(), '')
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+        self.assertEqual(self.app.demon_target_gem.get(), 'Nộ')
+
+    def test_active_demon_run_locks_target_and_passes_it_to_launch(self):
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+        self.app.demon_target_gem.set('Mana')
+        self.app._start_farm()
+        self.assertTrue(self.runner.entered.wait(1))
+        self.assertIs(self.runner.launches[0].config.demon_target_gem,DemonTargetGem.MANA)
+        self.app._render()
+        self.assertTrue(self.app.demon_target_gem_widget.instate(['disabled']))
+        self.app.demon_target_gem.set('Hút')
+        self.assertEqual(self.app.demon_target_gem.get(),'Mana')
+
+    def test_direct_mega_to_demon_can_save_and_start_without_basic(self):
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.MEGA_ICARUS_SPAM_SKILL])
+        self.assertIs(self.plane.snapshot().config.audition_mode, AuditionMode.NO_ACTION)
+
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+
+        valid, reason = self.app._draft_validity()
+        self.assertTrue(valid, reason)
+        config = self.plane.snapshot().config
+        self.assertIs(config.play_style, PlayStyle.DEMON_AEGIS_FARM)
+        self.assertEqual((config.main_pet, config.evolution, config.damage_card),
+                         (MainPetType.NORMAL, EvolutionTarget.NONE, DamageCardMode.PET_PASSIVE))
+        self.assertIs(config.audition_mode, AuditionMode.V3_TWO_DIRECTION)
+        self.assertEqual(self.app.audition_widget.winfo_manager(), "")
+        self.app._validate_draft()
+        loaded = self.store.load()
+        self.assertTrue(loaded.loaded)
+        self.assertEqual(loaded.config.gameplay_config, config.gameplay_config)
+        self.app._start_farm()
+        self.assertTrue(self.runner.entered.wait(1))
+        self.assertEqual(len(self.runner.launches), 1)
+        self.assertEqual(self.runner.launches[0].config.gameplay_config, config.gameplay_config)
+
+    def test_direct_bu_win_to_demon_drops_hidden_no_action_mode(self):
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.BU_WIN])
+        self.assertIs(self.plane.snapshot().config.audition_mode, AuditionMode.NO_ACTION)
+
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+
+        valid, reason = self.app._draft_validity()
+        self.assertTrue(valid, reason)
+        config = self.plane.snapshot().config
+        self.assertIs(config.play_style, PlayStyle.DEMON_AEGIS_FARM)
+        self.assertIs(config.game_mode, GameMode.SOLO)
+        self.assertIs(config.audition_mode, AuditionMode.V3_TWO_DIRECTION)
+        self.assertIs(config.damage_card, DamageCardMode.PET_PASSIVE)
+        self.app._validate_draft()
+        self.assertEqual(self.store.load().config.gameplay_config, config.gameplay_config)
+
+    def test_repeated_mega_demon_switches_commit_the_displayed_profile(self):
+        for _ in range(3):
+            for style in (PlayStyle.MEGA_ICARUS_SPAM_SKILL, PlayStyle.DEMON_AEGIS_FARM):
+                with self.subTest(style=style):
+                    self.app.play_style.set(PLAY_STYLE_LABELS[style])
+                    valid, reason = self.app._draft_validity()
+                    self.assertTrue(valid, reason)
+                    self.assertIs(self.plane.snapshot().config.play_style, style)
+                    self.assertIs(self.plane.snapshot().config.audition_mode,
+                                  AuditionMode.NO_ACTION if style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
+                                  else AuditionMode.V3_TWO_DIRECTION)
+
+    def test_switch_to_demon_preserves_an_existing_valid_audition_preference(self):
+        self.app.audition_mode.set(AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION])
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+        valid, reason = self.app._draft_validity()
+        self.assertTrue(valid, reason)
+        self.assertIs(self.plane.snapshot().config.audition_mode, AuditionMode.V2_FOUR_DIRECTION)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.directory = Path(self.tmp.name)
@@ -172,7 +259,7 @@ class PetConfigurationTkTests(unittest.TestCase):
             self.app.load_checkpoint_preferences_button.grid_info()["row"]
         )
 
-        self.assertEqual(delivery_row, 10)
+        self.assertEqual(delivery_row, 11)
         self.assertGreater(validate_row, delivery_row)
         self.assertGreater(checkpoint_row, validate_row)
 
@@ -256,7 +343,7 @@ class PetConfigurationTkTests(unittest.TestCase):
             self.app.pet_skill_fire_cell,
         )
         outer_grid = self.app.pet_skill_fire_cell.grid_info()
-        self.assertEqual((int(outer_grid["row"]), int(outer_grid["column"])), (6, 1))
+        self.assertEqual((int(outer_grid["row"]), int(outer_grid["column"])), (7, 1))
         self.assertEqual(
             tuple(self.app.pet_skill_fire_condition_widget.cget("values")),
             (

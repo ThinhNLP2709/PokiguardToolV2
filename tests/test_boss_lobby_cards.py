@@ -111,7 +111,7 @@ def map_card_data(
     element_address = address + 0x2000
     map_string(memory, name_address, name, string_klass)
     map_string(memory, element_address, element_type, string_klass)
-    raw = bytearray(0x9C)
+    raw = bytearray(0xA8)
     struct.pack_into("<Q", raw, 0, klass)
     struct.pack_into("<qq", raw, 0x10, data_id, card_id)
     struct.pack_into("<Q", raw, 0x20, name_address)
@@ -355,6 +355,13 @@ class BossLobbyCardTests(unittest.TestCase):
             ),
         ):
             snapshot, candidates = read_chinh_phuc_room(resolver)
+            map_string(memory, local_string, "guest-account", string_class)
+            blocked_guest, blocked_candidates = read_chinh_phuc_room(resolver)
+            guest, guest_candidates = read_chinh_phuc_room(
+                resolver, allow_guest_room=True
+            )
+            map_string(memory, owner_string, "", string_class)
+            unknown_owner, _ = read_chinh_phuc_room(resolver, allow_guest_room=True)
 
         self.assertTrue(snapshot.clean, snapshot.reasons)
         self.assertIsNone(snapshot.room_data)
@@ -363,6 +370,13 @@ class BossLobbyCardTests(unittest.TestCase):
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0].identity.source, "WsRoomService.Properties")
         self.assertIsNone(candidates[0].identity.boss_name)
+        self.assertFalse(blocked_guest.clean)
+        self.assertFalse(blocked_candidates)
+        self.assertIn("local user is not the room host", blocked_guest.reasons)
+        self.assertTrue(guest.clean, guest.reasons)
+        self.assertFalse(guest.is_host)
+        self.assertEqual(guest_candidates[0].identity.boss_id, "1436")
+        self.assertFalse(unknown_owner.clean)
 
     def test_b5_static_instance_can_use_nonzero_static_field_slot(self) -> None:
         memory = FakeMemory()
@@ -453,6 +467,16 @@ class BossLobbyCardTests(unittest.TestCase):
         self.assertIn(
             "RoomStartState already marks the local user ready", observed[5]
         )
+        # The same control becomes ReadyOff once ready. Neither its title
+        # nor an enabled Button authorizes a second entry click.
+        for phase in (RoomStartPhase.READY_WAIT, RoomStartPhase.IDLE):
+            struct.pack_into("<i", raw_state, ROOM_START_PHASE_OFFSET, phase)
+            memory.map(state, raw_state)
+            with patch.object(lobby_runtime_module, "_static_instance", return_value=view):
+                ready = _read_room_start_state(resolver, button)
+            self.assertIn(
+                "RoomStartState already marks the local user ready", ready[5]
+            )
 
     def test_preentry_loadout_reads_both_sources_and_finds_attack(self) -> None:
         memory = FakeMemory()

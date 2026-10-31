@@ -345,6 +345,7 @@ class PinnedForegroundMouseSession:
             drag_overshoot_fraction=source.drag_overshoot_fraction,
             sleeper=source.sleeper,
             swap_pacer=source.swap_pacer,
+            randomization=source.randomization,
         )
 
     def execute_swap(

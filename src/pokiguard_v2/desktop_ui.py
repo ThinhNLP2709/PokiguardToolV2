@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import json
 from pathlib import Path
@@ -27,6 +27,7 @@ from .pet_configuration import (
     DESKTOP_EVOLUTION_OPTIONS, DESKTOP_MAIN_PET_OPTIONS,
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
     normalize_damage, normalize_evolution,
+    DEMON_TARGET_GEM_LABELS, DemonTargetGem,
 )
 from .desktop_control_plane import (
     ControlPlaneSnapshot,
@@ -55,6 +56,8 @@ from .farm_run_storage import (
 )
 from .version import APP_BUILD, APP_TITLE, APP_VERSION
 from .win32_input import BoardInputMode
+from .reasoning_settings import AISettings, AIStatus
+from .input_randomization import InputRandomization
 
 
 VISIBLE_RUNTIME_ROWS = (
@@ -63,7 +66,7 @@ VISIBLE_RUNTIME_ROWS = (
     ("Mục tiêu hiện tại", "runtime_target"),
 )
 
-DESKTOP_TAB_TITLES = ("Điều khiển", "Tùy chọn", "Cài đặt", "Chẩn đoán / Nhật ký")
+DESKTOP_TAB_TITLES = ("Điều khiển", "Tùy chọn", "AI", "Cài đặt", "Chẩn đoán / Nhật ký")
 PREFERENCE_TABLE_ROWS = (
     "Lối chơi",
     "Chế độ chơi",
@@ -71,6 +74,7 @@ PREFERENCE_TABLE_ROWS = (
     "Pet của tôi",
     "Tiến hóa",
     "Thẻ sát thương",
+    "Viên mục tiêu",
     "Điều kiện ra skill",
     "Hành động skill",
     "Cách đi bàn cờ",
@@ -81,6 +85,9 @@ SETTINGS_TABLE_ROWS = (
     "Tệp chạy trò chơi",
     "Âm báo của tool",
     "Log farm_runs",
+    "Random trước nước đi",
+    "Random thêm giữa hai click",
+    "Lệch tọa độ tối đa",
 )
 INITIAL_FOCUS_TARGET = "notebook"
 BACKGROUND_UNFOCUS_WIDGET_CLASSES = frozenset(
@@ -156,6 +163,74 @@ CLOSE_INTENT_LABELS = {
 }
 
 
+AI_SELECTION_HELP = (
+    "Suy luận thử nghiệm cho Demon Farm ăn Khiên, cấu hình đã nghiệm thu. "
+    "Ngoài phạm vi hoặc lỗi suy luận, tool dùng Cơ bản qua kiểm tra an toàn hiện có."
+)
+AI_SHADOW_HELP = (
+    "Shadow chỉ quan sát và ghi chẩn đoán riêng, không đổi nước đi. "
+    "Mặc định tắt. Lỗi AI hoặc mất log vẫn để Cơ bản tiếp tục."
+)
+AI_BUDGET_HELP = (
+    "50–6000 ms, mặc định 4000 ms; suy luận hiện dùng tối đa 4000 ms. Đây là trần xử lý, "
+    "không phải thời gian chờ thêm trước khi đi nước."
+)
+
+
+def ai_status_text(status: AIStatus) -> str:
+    if status.reason.startswith('UI_REASONING_'):
+        reasons = {
+            'UI_REASONING_READY':'Suy luận đang hoạt động',
+            'UI_REASONING_COMPLETED':'Đã suy luận xong; vẫn kiểm tra nước đi trước khi gửi',
+            'UI_REASONING_WAITING_COMBAT':'Chờ vào trận',
+            'UI_REASONING_WAITING_TURN':'Chờ lượt có đủ dữ liệu',
+            'UI_REASONING_STOPPED':'Suy luận đã dừng và đóng tài nguyên',
+            'UI_REASONING_CLEANUP_PENDING':'Đang đóng worker trước; dùng Cơ bản',
+            'UI_REASONING_PROFILE_MISSING':'Chưa có cấu hình suy luận đã nghiệm thu; dùng Cơ bản',
+            'UI_REASONING_CONFIG_UNSUPPORTED':'Cấu hình này chưa hỗ trợ suy luận; dùng Cơ bản',
+            'UI_REASONING_TARGET_UNSUPPORTED':'Boss này chưa nghiệm thu suy luận; dùng Cơ bản',
+            'UI_REASONING_COHORT_CHANGED':'Tài khoản/đồ/dữ liệu khác cấu hình đã nghiệm thu; dùng Cơ bản',
+        }
+        return (f"{'Phiên đã dừng. ' if status.state == 'STOPPED' else ''}"
+            f"{reasons.get(status.reason, 'Suy luận chưa sẵn sàng; dùng Cơ bản')} ({status.reason})\n"
+            f"Đã xử lý {status.observation} lượt; ghi {status.written}; bỏ {status.dropped}; "
+            f"đợi ghi {status.queued}; lỗi {status.faults}.\n"
+            "Cơ bản luôn là phương án dự phòng khi còn hợp lệ.")
+    states = {"OFF": "ĐÃ TẮT", "WAITING": "ĐANG CHỜ", "SHADOW": "ĐANG QUAN SÁT",
+              "UNSUPPORTED": "CHƯA HỖ TRỢ", "DEGRADED": "CHẨN ĐOÁN SUY GIẢM",
+              "STOPPED": "ĐÃ DỪNG"}
+    reasons = {
+        "SHADOW_DISABLED": "Shadow đang tắt",
+        "WAITING_PUBLICATION": "Chờ dữ liệu từ Cơ bản",
+        "WAITING_COMBAT_SETUP": "Chờ vào trận",
+        "COOP_SHADOW_NOT_ACCEPTED": "Shadow chưa hỗ trợ Coop",
+        "SHADOW_FACTORY_UNAVAILABLE": "Worker/log trước chưa sẵn sàng; giữ Cơ bản",
+        "DIAGNOSTICS_DEGRADED": "Chẩn đoán suy giảm; giữ Cơ bản",
+        "NON_SWAP_SOURCE_NOT_FULLY_PUBLISHED": "Thiếu nguồn skill/thẻ; giữ Cơ bản",
+        "SHADOW_RATE_LIMITED": "Bỏ lượt quan sát vượt giới hạn; giữ Cơ bản",
+    }
+    reason = reasons.get(status.reason, "Cơ bản vẫn chọn nước; mã chẩn đoán")
+    return (f"{states.get(status.state, status.state)} — {reason} ({status.reason})\n"
+            f"Quyền chọn nước: Cơ bản. Override chiến thuật: chưa áp dụng.\n"
+            f"Đề xuất shadow: {status.suggestion or 'chưa có'}.\n"
+            f"Bộ đếm tạm thời của lần quan sát {status.observation}: "
+            f"đã ghi {status.written}; bỏ {status.dropped}; "
+            f"đợi ghi {status.queued}; lỗi {status.faults}; thiếu dữ liệu {status.unsupported}; "
+            f"giới hạn lượt {status.skipped}.\n"
+            f"Cấu hình: {status.config_id[:16] or 'chưa khóa cho lượt chạy'}")
+
+
+def ai_capability_text(profile: PlayStyle) -> str:
+    if profile is PlayStyle.DEMON_AEGIS_FARM:
+        return ('Suy luận thử nghiệm: Khiên, pet thường/không tiến hóa/nội tại, '
+            '4 Kiếm hiệu dụng, Solo Lieyun77 và tài khoản/đồ đã nghiệm thu. '
+            'Cấu hình hoặc dữ liệu khác dùng Cơ bản.')
+    if profile is PlayStyle.BU_WIN:
+        return "Bú win / Coop: shadow chưa được kiểm chứng; giữ Cơ bản và không tạo worker."
+    return ("Shadow thử nghiệm: chỉ SWAP có đủ dữ liệu xuất bản. "
+            "Skill/thẻ và mô hình game còn thiếu sẽ được báo chưa hỗ trợ; Cơ bản vẫn xử lý.")
+
+
 def background_click_clears_entry_focus(widget_class: str) -> bool:
     """Return whether a pointer click represents non-interactive whitespace."""
 
@@ -190,6 +265,13 @@ def pet_skill_fire_condition_from_display(value: str) -> PetSkillFireCondition:
         if value == label:
             return condition
     return PetSkillFireCondition(value)
+
+
+def demon_target_gem_from_display(value: str) -> DemonTargetGem:
+    for gem, label in DEMON_TARGET_GEM_LABELS.items():
+        if value == label:
+            return gem
+    return DemonTargetGem(value)
 
 
 def game_mode_from_display(value: str) -> GameMode:
@@ -257,6 +339,23 @@ def controller_state_text(value: str) -> str:
     """Translate a controller state for display without changing its enum."""
 
     return CONTROLLER_STATE_LABELS.get(value, value)
+
+
+def controller_stop_text(controller: DesktopControllerSnapshot) -> str:
+    reason = controller.last_stop_detail or controller.last_stop_reason
+    messages = {
+        "ATTACK_CARD_TOGGLE_UNPROVEN": (
+            "Chưa xác nhận được nút chọn thẻ Tấn công. Kiểm tra thẻ trong phòng boss; "
+            "xem ảnh lỗi và Nhật ký để biết chi tiết."
+        ),
+        "ATTACK_CARD_SELECTION_AMBIGUOUS": "Không xác định được duy nhất thẻ Tấn công cần chọn.",
+        "ATTACK_CARD_SELECTION_UNCONFIRMED": "Chưa xác nhận được thẻ Tấn công sau khi chọn.",
+        "ATTACK_CARD_RUNTIME_CHANGED": "Phòng hoặc thẻ Tấn công đã thay đổi trong lúc kiểm tra.",
+        "ATTACK_CARD_FOREGROUND_LOST": "Cửa sổ game mất tiêu điểm khi kiểm tra thẻ Tấn công.",
+        "FARM_TARGET_COMPLETED": "Đã hoàn thành mục tiêu của lượt chạy.",
+        "STOPPED_GRACEFULLY": "Đã dừng sau trận theo yêu cầu.",
+    }
+    return messages.get(reason, f"Lượt chạy đã dừng: {reason or 'xem Nhật ký'}." )
 
 
 def match_energy_text(controller: DesktopControllerSnapshot) -> str:
@@ -508,6 +607,8 @@ class DesktopEventLog:
                     f"lỗiBộĐiềuKhiển={controller.last_error}; "
                     if controller.last_error else ""
                 )
+                + (f"lý do dừng={controller_stop_text(controller)}; "
+                   if not controller.active and controller.last_stop_reason else "")
                 + (f"lỗi={snapshot.last_error}; " if snapshot.last_error else "")
                 + f"{lifecycle_text(runtime.lifecycle)}; "
                 f"bộ điều khiển={controller_state_text(controller.state.value)}; "
@@ -743,13 +844,14 @@ class DesktopViewModel:
             "PET_SKILL_AUDITION_V3_NOT_IMPLEMENTED": "Thẻ skill của pet: Audition V3 chưa có tích hợp gameplay an toàn cho bản game hiện tại.",
             "PET_SKILL_SOURCE_SELECTION_UNDEFINED": "Có nhiều nguồn skill pet; quy tắc chọn nguồn chưa được xác định.",
             "SKILL_RUSH_PROFILE_NOT_IMPLEMENTED": "Chịu đấm ăn xôi yêu cầu Cơ bản, Thẻ skill của pet và đúng một nguồn skill pet.",
-            "DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED": "Demon Aegis Farm yêu cầu Pet thường, Không tiến hóa, Nội tại pet và điều kiện Kiếm đủ.",
+            "DEMON_AEGIS_PROFILE_NOT_IMPLEMENTED": "Demon Farm yêu cầu Pet thường, Không tiến hóa, Nội tại pet và điều kiện Kiếm đủ.",
             "BU_WIN_LOADOUT_INVALID": "Bú win yêu cầu Pet thường, Không tiến hóa và Thẻ sát thương Không có.",
             "BU_WIN_PROFILE_NOT_IMPLEMENTED": "Bú win yêu cầu chế độ Coop, Pet thường, Không tiến hóa và Thẻ sát thương Không có.",
             "BU_WIN_REQUIRES_COOP": "Lối chơi Bú win chỉ chạy ở chế độ Coop.",
             "COOP_REQUIRES_BU_WIN": "Chế độ Coop hiện chỉ dùng với lối chơi Bú win.",
+            "GUEST_ROOM_REQUIRES_BU_WIN_COOP": "Phòng người khác chỉ được farm bằng lối chơi Bú win ở chế độ Coop.",
             "NO_DAMAGE_CARD_REQUIRES_BU_WIN": "Thẻ sát thương Không có hiện chỉ dùng với lối chơi Bú win.",
-            "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM": "Nội tại pet hiện chỉ dùng được với lối chơi Demon Aegis Farm.",
+            "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM": "Nội tại pet hiện chỉ dùng được với lối chơi Demon Farm.",
             "PET_PASSIVE_PROFILE_INVALID": "Nội tại pet yêu cầu Pet thường và Không tiến hóa.",
             "MEGA_ICARUS_LOADOUT_INVALID": "Mega Icarus yêu cầu Mega + Không tiến hóa/Tiến hóa pet thường, hoặc Pet thường + Tiến hóa pet Mega.",
             "MEGA_ICARUS_REQUIRES_PET_SKILL": "Mega Icarus yêu cầu Thẻ skill của pet.",
@@ -773,6 +875,9 @@ class DesktopViewModel:
             "UNSUPPORTED_ARCHITECTURE": "Kiến trúc của trò chơi không được hỗ trợ.",
             "BACKEND_NOT_HEALTHY": "Hệ thống nền chưa ở trạng thái có thể thao tác.",
             "START_REQUIRES_BOSS_LOBBY": "Đang chờ đúng phòng chờ boss.",
+            "START_REQUIRES_ACTIVE_COMBAT": "Khủng long: hãy vào trận rồi bấm Bắt đầu; đánh xong trận hiện tại sẽ dừng.",
+            "CURRENT_COMBAT_MATCH_ID_NOT_PROVEN": "Đang chờ xác định phiên trận hiện tại.",
+            "DINOSAUR_CURRENT_COMBAT_ONLY": "Khủng long chỉ đánh trận hiện tại; vào trận rồi bấm Bắt đầu, không dùng checkpoint phòng boss.",
             "CURRENT_BOSS_ROOM_NOT_PROVEN": (
                 "Hãy mở đúng phòng boss của pet; bản đồ boss chưa thể thao tác."
             ),
@@ -889,12 +994,18 @@ class DesktopViewModel:
             operator_guidance = controller.last_error or (
                 "FarmRunner đã dừng do lỗi; hãy xem Chẩn đoán / Nhật ký."
             )
+        elif controller.state is DesktopControllerState.STOPPED and controller.last_stop_reason:
+            operator_status = "ĐÃ DỪNG"
+            operator_guidance = controller_stop_text(controller)
         elif stale:
             operator_status = "DỮ LIỆU TRẠNG THÁI ĐÃ CŨ"
             operator_guidance = "Dữ liệu trạng thái đã cũ; mọi thao tác khởi chạy đều bị khóa."
         elif controls.start.actionable:
             operator_status = "SẴN SÀNG"
             operator_guidance = (
+                "Khủng long: Bắt đầu sẽ đánh trận hiện tại bằng lối Đơn giản; "
+                "xong trận sẽ dừng. Không cần phòng boss."
+            ) if snapshot.config.play_style is PlayStyle.DINOSAUR else (
                 "Đúng phòng pet hiện tại và cấu hình có giới hạn đã sẵn sàng; "
                 "Bắt đầu sẽ ghim mục tiêu của phòng này."
             )
@@ -996,10 +1107,11 @@ class DesktopApplication:
         notebook.pack(fill=tk.BOTH, expand=True)
         outer = ttk.Frame(notebook, padding=14)
         preferences_outer = ttk.Frame(notebook, padding=14)
+        ai_outer = ttk.Frame(notebook, padding=14)
         settings_outer = ttk.Frame(notebook, padding=14)
         diagnostics_outer = ttk.Frame(notebook, padding=14)
         for page, tab_title in zip(
-            (outer, preferences_outer, settings_outer, diagnostics_outer),
+            (outer, preferences_outer, ai_outer, settings_outer, diagnostics_outer),
             DESKTOP_TAB_TITLES,
         ):
             notebook.add(page, text=tab_title)
@@ -1057,6 +1169,7 @@ class DesktopApplication:
         self.main_pet = tk.StringVar(value=config.main_pet.value)
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
+        self.demon_target_gem = tk.StringVar(value=DEMON_TARGET_GEM_LABELS[config.demon_target_gem])
         self.audition_mode = tk.StringVar(value=AUDITION_LABELS[config.audition_mode])
         self.pet_skill_fire_condition = tk.StringVar(
             value=PET_SKILL_FIRE_CONDITION_LABELS[
@@ -1080,7 +1193,8 @@ class DesktopApplication:
         self._updating_play_style = False
         self._pet_option_widgets: dict[tuple[str, str], Any] = {}
         self.profile_notice_var = tk.StringVar()
-        self.intelligence = tk.StringVar(value=INTELLIGENCE_LABELS[Intelligence.BASIC])
+        self.intelligence = tk.StringVar(value=INTELLIGENCE_LABELS[
+            Intelligence.REASONING if config.ai.reasoning_enabled else Intelligence.BASIC])
         self.board_input_mode = tk.StringVar(value=BOARD_INPUT_LABELS[config.board_input_mode])
         self.input_delivery_mode = tk.StringVar(
             value=INPUT_DELIVERY_LABELS[config.input_delivery_mode]
@@ -1091,6 +1205,11 @@ class DesktopApplication:
         self.tool_sound_enabled = tk.BooleanVar(
             value=config.tool_sound_enabled
         )
+        self.randomization_vars = {
+            name:tk.StringVar(value=f"{value:g}")
+            for name,value in config.input_randomization.to_dict().items()
+        }
+        self.randomization_feedback = tk.StringVar(value="")
         self.farm_runs_usage_var = tk.StringVar(
             value=(
                 "Đang tính dung lượng..."
@@ -1108,6 +1227,46 @@ class DesktopApplication:
             value=game_executable or "CHƯA XÁC ĐỊNH"
         )
         self._config_widgets: list[tuple[Any, str]] = []
+        self.ai_shadow_enabled = tk.BooleanVar(value=config.ai.shadow_enabled)
+        self.ai_budget_ms = tk.StringVar(value=str(config.ai.budget_ms))
+        self.ai_status_var = tk.StringVar(value=ai_status_text(view_model.control_plane.snapshot().controller.ai_status))
+        self.ai_capability_var = tk.StringVar(value=ai_capability_text(config.play_style))
+        self.ai_feedback_var = tk.StringVar(value="")
+        ai_frame = ttk.LabelFrame(ai_outer, text="AI / Suy luận", padding=12)
+        ai_frame.pack(fill=tk.X)
+        self.ai_basic_widget = ttk.Radiobutton(
+            ai_frame, text="Cơ bản (mặc định)", variable=self.intelligence,
+            value=INTELLIGENCE_LABELS[Intelligence.BASIC], command=self._ai_mode_selected)
+        self.ai_basic_widget.pack(anchor=tk.W)
+        self._config_widgets.append((self.ai_basic_widget, 'normal'))
+        self.ai_reasoning_widget = ttk.Radiobutton(
+            ai_frame, text="Suy luận Demon Farm — Khiên (thử nghiệm)", variable=self.intelligence,
+            value=INTELLIGENCE_LABELS[Intelligence.REASONING], state="disabled",command=self._ai_mode_selected)
+        self.ai_reasoning_widget.pack(anchor=tk.W)
+        self._config_widgets.append((self.ai_reasoning_widget, 'disabled'))
+        ttk.Label(ai_frame, text=AI_SELECTION_HELP, wraplength=400).pack(anchor=tk.W, pady=(4, 12))
+        self.ai_shadow_widget = ttk.Checkbutton(
+            ai_frame, text="Bật chẩn đoán shadow thử nghiệm", variable=self.ai_shadow_enabled)
+        self.ai_shadow_widget.pack(anchor=tk.W)
+        self._config_widgets.append((self.ai_shadow_widget, "normal"))
+        ttk.Label(ai_frame, text=AI_SHADOW_HELP, wraplength=400).pack(anchor=tk.W, pady=(4, 10))
+        ttk.Label(ai_frame, text="Ngân sách xử lý tối đa (ms):").pack(anchor=tk.W)
+        self.ai_budget_widget = ttk.Entry(
+            ai_frame, textvariable=self.ai_budget_ms, validate="key",
+            validatecommand=(root.register(decimal_digits_or_empty), "%P"))
+        self.ai_budget_widget.pack(fill=tk.X, pady=4)
+        self._config_widgets.append((self.ai_budget_widget, "normal"))
+        ttk.Label(ai_frame, text=AI_BUDGET_HELP, wraplength=400).pack(anchor=tk.W)
+        ttk.Label(ai_frame, textvariable=self.ai_capability_var, wraplength=400).pack(anchor=tk.W, pady=10)
+        self.ai_save_widget = ttk.Button(ai_frame, text="Lưu cấu hình AI", command=self._save_ai_settings)
+        self.ai_save_widget.pack(anchor=tk.W, pady=6)
+        self._config_widgets.append((self.ai_save_widget, "normal"))
+        ttk.Label(ai_frame, text="Cấu hình được khóa khi Bắt đầu/Tiếp tục và chỉ đổi khi đã dừng.",
+                  wraplength=400).pack(anchor=tk.W)
+        ttk.Label(ai_frame, textvariable=self.ai_feedback_var, wraplength=400).pack(anchor=tk.W, pady=6)
+        ai_status_frame = ttk.LabelFrame(ai_outer, text="Trạng thái / Chẩn đoán", padding=12)
+        ai_status_frame.pack(fill=tk.X, pady=10)
+        ttk.Label(ai_status_frame, textvariable=self.ai_status_var, wraplength=400).pack(anchor=tk.W)
 
         preferences_frame = ttk.LabelFrame(
             preferences_outer, text="Tùy chọn cách chơi", padding=12
@@ -1188,14 +1347,25 @@ class DesktopApplication:
                 button.pack(anchor=tk.W)
                 self._pet_option_widgets[name, value.value] = button
                 self._config_widgets.append((button, state))
+        self.demon_target_gem_label, self.demon_target_gem_widget = preference_field(
+            row=6,
+            label="Viên mục tiêu",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.demon_target_gem,
+                values=tuple(DEMON_TARGET_GEM_LABELS.values()),
+                state="readonly",
+            ),
+            editable_state="readonly",
+        )
         self.pet_skill_fire_label = ttk.Label(
             preferences_frame, text="Điều kiện ra skill:"
         )
         self.pet_skill_fire_label.grid(
-            row=6, column=0, sticky=tk.W, padx=(0, 12), pady=5
+            row=7, column=0, sticky=tk.W, padx=(0, 12), pady=5
         )
         self.pet_skill_fire_cell = ttk.Frame(preferences_frame)
-        self.pet_skill_fire_cell.grid(row=6, column=1, sticky=tk.EW, pady=5)
+        self.pet_skill_fire_cell.grid(row=7, column=1, sticky=tk.EW, pady=5)
         self.pet_skill_fire_cell.columnconfigure(0, weight=3)
         self.pet_skill_fire_cell.columnconfigure(1, weight=1)
         self.pet_skill_fire_condition_widget = ttk.Combobox(
@@ -1223,7 +1393,7 @@ class DesktopApplication:
             )
         )
         self.audition_label, self.audition_widget = preference_field(
-            row=7,
+            row=8,
             label="Hành động skill",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1245,10 +1415,10 @@ class DesktopApplication:
             wraplength=390,
         )
         self.audition_help.grid(
-            row=8, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=9, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
         preference_field(
-            row=9,
+            row=10,
             label="Cách đi bàn cờ",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1259,7 +1429,7 @@ class DesktopApplication:
             editable_state="readonly",
         )
         _, self.input_delivery_widget = preference_field(
-            row=10,
+            row=11,
             label="Chế độ thao tác",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1275,10 +1445,10 @@ class DesktopApplication:
             wraplength=390,
         )
         self.input_delivery_help.grid(
-            row=11, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
         _, self.game_window_size_widget = preference_field(
-            row=12,
+            row=13,
             label="Kích thước cửa sổ game",
             widget=ttk.Combobox(
                 preferences_frame,
@@ -1294,7 +1464,7 @@ class DesktopApplication:
             wraplength=410,
         )
         self.game_window_size_help.grid(
-            row=13, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
+            row=14, column=0, columnspan=2, sticky=tk.W, pady=(0, 5)
         )
 
         def horizontal_field(
@@ -1333,16 +1503,17 @@ class DesktopApplication:
             command=self._validate_draft,
         )
         self.validate_button.grid(
-            row=14, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
+            row=15, column=0, columnspan=2, sticky=tk.W, pady=(10, 2)
         )
         ttk.Label(preferences_frame, textvariable=self.profile_notice_var,
-                  wraplength=390).grid(row=15, column=0, columnspan=2, sticky=tk.W, pady=5)
+                  wraplength=390).grid(row=16, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.load_checkpoint_preferences_button = ttk.Button(
             preferences_frame, text="Nạp tùy chọn từ checkpoint", command=self._load_checkpoint_preferences)
-        self.load_checkpoint_preferences_button.grid(row=16, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.load_checkpoint_preferences_button.grid(row=17, column=0, columnspan=2, sticky=tk.W, pady=5)
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
+        self.demon_target_gem.trace_add("write", self._demon_target_gem_changed)
         self.pet_skill_fire_condition.trace_add(
             "write", self._pet_skill_fire_condition_changed
         )
@@ -1443,6 +1614,41 @@ class DesktopApplication:
                 (self.tool_sound_widget, "normal"),
             )
         )
+
+        random_frame = ttk.LabelFrame(settings_outer,text="Random đi bàn cờ",padding=10)
+        random_frame.pack(fill=tk.X,pady=(10,0))
+        ttk.Label(random_frame,text="Min").grid(row=0,column=1)
+        ttk.Label(random_frame,text="Max").grid(row=0,column=2)
+        self.randomization_widgets = []
+        for row,label,prefix in (
+            (1,"Trước nước đi (giây)","reaction"),
+            (2,"Thêm giữa 2 click (giây)","inter_click"),
+        ):
+            ttk.Label(random_frame,text=label).grid(row=row,column=0,sticky=tk.W,pady=4,padx=(0,10))
+            for column,end in ((1,'min'),(2,'max')):
+                widget=ttk.Entry(random_frame,width=8,
+                    textvariable=self.randomization_vars[f'{prefix}_{end}_seconds'])
+                widget.grid(row=row,column=column,padx=4,pady=4)
+                self.randomization_widgets.append(widget)
+                self._config_widgets.append((widget,'normal'))
+        ttk.Label(random_frame,text="Lệch tọa độ tối đa (% viên)").grid(row=3,column=0,sticky=tk.W,pady=4)
+        coordinate=ttk.Entry(random_frame,width=8,
+            textvariable=self.randomization_vars['coordinate_max_percent'])
+        coordinate.grid(row=3,column=1,padx=4,pady=4)
+        self.randomization_widgets.append(coordinate)
+        self._config_widgets.append((coordinate,'normal'))
+        ttk.Label(random_frame,wraplength=400,text=(
+            "Max = 0: tắt random của mục đó, không dùng Min. "
+            "Trước nước: 0–1 giây; thêm giữa click: 0–1,5 giây; tọa độ: 0–10%. "
+            "Giữ độ trễ cơ sở; có thể rút ngắn để kịp lượt. "
+            "Nước suy luận hợp lệ không cộng random thời gian."
+        )).grid(row=4,column=0,columnspan=3,sticky=tk.W,pady=(5,4))
+        self.randomization_save=ttk.Button(random_frame,text="Lưu random",
+                                           command=self._save_input_randomization)
+        self.randomization_save.grid(row=5,column=0,sticky=tk.W,pady=4)
+        self._config_widgets.append((self.randomization_save,'normal'))
+        ttk.Label(random_frame,textvariable=self.randomization_feedback,wraplength=400).grid(
+            row=6,column=0,columnspan=3,sticky=tk.W)
 
         control_frame = ttk.LabelFrame(
             outer, text="Điều khiển FarmRunner có giới hạn", padding=10
@@ -1632,7 +1838,11 @@ class DesktopApplication:
             )
         if hasattr(self, "tool_sound_enabled"):
             self.tool_sound_enabled.set(config.tool_sound_enabled)
+        if hasattr(self,"randomization_vars"):
+            self._display_input_randomization(config)
         self._display_pet_config(config)
+        if hasattr(self, "ai_shadow_enabled"):
+            self._display_ai_config(config)
         self._set_config_editable(False)
         self.start_button.configure(state="disabled")
         self.resume_button.configure(state="disabled")
@@ -1950,13 +2160,63 @@ class DesktopApplication:
                 "draft_config_rejected", error=f"{type(exc).__name__}: {exc}"
             )
 
+    def _display_ai_config(self, config: DesktopConfig) -> None:
+        if hasattr(self, "ai_shadow_enabled"):
+            self.ai_shadow_enabled.set(config.ai.shadow_enabled)
+            self.ai_budget_ms.set(str(config.ai.budget_ms))
+        if hasattr(self, 'intelligence'):
+            self.intelligence.set(INTELLIGENCE_LABELS[
+                Intelligence.REASONING if config.ai.reasoning_enabled else Intelligence.BASIC])
+
+    def _ai_mode_selected(self) -> None:
+        reasoning = intelligence_from_display(self.intelligence.get()) is Intelligence.REASONING
+        if reasoning:
+            self.ai_shadow_enabled.set(False)
+        self.ai_shadow_widget.configure(state='disabled' if reasoning else 'normal')
+
+    def _display_input_randomization(self,config: DesktopConfig) -> None:
+        if hasattr(self,'randomization_vars'):
+            for name,value in config.input_randomization.to_dict().items():
+                self.randomization_vars[name].set(f'{value:g}')
+
+    def _save_input_randomization(self) -> None:
+        try:
+            randomization=InputRandomization.from_strings(
+                **{k:v.get() for k,v in self.randomization_vars.items()})
+            current=self.view_model.control_plane.snapshot().config
+            config=replace(current,input_randomization=randomization)
+            self.view_model.control_plane.update_config(config)
+            warning=self._persist_preferences(config)
+            self.randomization_feedback.set('Đã lưu; áp dụng khi Bắt đầu/Tiếp tục.'+
+                (f' Cảnh báo: {warning}' if warning else ''))
+            self.event_log.write('input_randomization_saved',inputRandomization=randomization.to_dict())
+        except Exception as exc:
+            self.randomization_feedback.set(f'Chưa lưu random: {exc}')
+
+    def _save_ai_settings(self) -> None:
+        try:
+            reasoning = intelligence_from_display(self.intelligence.get()) is Intelligence.REASONING
+            ai = AISettings.from_strings("true" if self.ai_shadow_enabled.get() and not reasoning else "false",
+                                         self.ai_budget_ms.get(), "true" if reasoning else "false")
+            config = replace(self.view_model.control_plane.snapshot().config, ai=ai)
+            self.view_model.control_plane.update_config(config)
+            warning = self._persist_preferences(config)
+            self.ai_feedback_var.set("Đã lưu; áp dụng khi Bắt đầu/Tiếp tục." +
+                                     (f" Cảnh báo: {warning}" if warning else ""))
+            self.event_log.write("ai_draft_saved", ai=ai.to_dict())
+        except Exception as exc:
+            self.ai_feedback_var.set(f"Chưa lưu cấu hình AI: {exc}")
+            self.event_log.write("ai_draft_rejected", error=str(exc))
+
     def _draft_fields(self) -> dict[str, str]:
+        reasoning = intelligence_from_display(self.intelligence.get()) is Intelligence.REASONING
         return {
             "play_style": play_style_from_display(self.play_style.get()).value,
             "game_mode": game_mode_from_display(self.game_mode.get()).value,
             "main_pet": self.main_pet.get(),
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
+            "demon_target_gem": demon_target_gem_from_display(self.demon_target_gem.get()).value,
             "audition_mode": audition_mode_from_display(
                 self.audition_mode.get()
             ).value,
@@ -1966,9 +2226,7 @@ class DesktopApplication:
                 ).value
             ),
             "pet_skill_fire_value": self.pet_skill_fire_value.get(),
-            "intelligence": intelligence_from_display(
-                self.intelligence.get()
-            ).value,
+            "intelligence": Intelligence.BASIC.value,
             "board_input_mode": board_input_mode_from_display(
                 self.board_input_mode.get()
             ).value,
@@ -1983,6 +2241,17 @@ class DesktopApplication:
             "tool_sound_enabled": (
                 "true" if self.tool_sound_enabled.get() else "false"
             ),
+            "ai_shadow_enabled": ("true" if self.ai_shadow_enabled.get() else "false")
+                if hasattr(self, "ai_shadow_enabled") else "false",
+            "ai_budget_ms": self.ai_budget_ms.get() if hasattr(self, "ai_budget_ms") else "4000",
+            "ai_reasoning_enabled": "true" if reasoning else "false",
+            **({
+                'random_reaction_min':self.randomization_vars['reaction_min_seconds'].get(),
+                'random_reaction_max':self.randomization_vars['reaction_max_seconds'].get(),
+                'random_inter_click_min':self.randomization_vars['inter_click_min_seconds'].get(),
+                'random_inter_click_max':self.randomization_vars['inter_click_max_seconds'].get(),
+                'random_coordinate_percent':self.randomization_vars['coordinate_max_percent'].get(),
+            } if hasattr(self,'randomization_vars') else {}),
             "boss_id": self.boss_id.get(),
             "boss_name": self.boss_name.get(),
             "target_completed_matches": self.target_matches.get(),
@@ -2004,6 +2273,7 @@ class DesktopApplication:
             for name in ("main_pet", "evolution", "damage_card"):
                 getattr(self, name).set(getattr(config, name).value)
             self.audition_mode.set(AUDITION_LABELS[config.audition_mode])
+            self.demon_target_gem.set(DEMON_TARGET_GEM_LABELS[config.demon_target_gem])
             self.pet_skill_fire_condition.set(
                 PET_SKILL_FIRE_CONDITION_LABELS[
                     config.pet_skill_fire_condition
@@ -2032,9 +2302,10 @@ class DesktopApplication:
             )
             self.tool_sound_enabled.set(config.tool_sound_enabled)
             self._display_pet_config(config)
+            self._display_input_randomization(config)
             self.play_style.set(PLAY_STYLE_LABELS[config.play_style])
             self.game_mode.set(GAME_MODE_LABELS[config.game_mode])
-            self.intelligence.set(INTELLIGENCE_LABELS[config.intelligence])
+            self._display_ai_config(config)
             self.board_input_mode.set(BOARD_INPUT_LABELS[config.board_input_mode])
             self.target_matches.set(str(config.target_completed_matches))
             self.max_attempts.set(str(config.max_match_attempts))
@@ -2143,7 +2414,10 @@ class DesktopApplication:
             button.configure(state="normal" if enabled else "disabled")
         self.profile_notice_var.set(
             self.view_model.reason_text(blocker)
-            if blocker else "Cấu hình tương thích với lối chơi Cơ bản hiện tại.")
+            if blocker else (
+                "Demon Farm: Kiếm đủ tính tổng sau nhân x2/x3; tối thiểu 2 ô Kiếm thực tế."
+                if demon else "Cấu hình tương thích với lối chơi Cơ bản hiện tại."
+            ))
         self._sync_pet_skill_fields()
 
     def _sync_pet_skill_fields(self) -> None:
@@ -2183,6 +2457,11 @@ class DesktopApplication:
             play_style_from_display(self.play_style.get())
             is PlayStyle.MEGA_ICARUS_SPAM_SKILL
         )
+        for widget in (self.demon_target_gem_label, self.demon_target_gem_widget):
+            if demon:
+                widget.grid()
+            else:
+                widget.grid_remove()
         self.pet_skill_fire_condition_widget.configure(
             values=(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT],)
             if demon
@@ -2262,6 +2541,18 @@ class DesktopApplication:
             ):
                 self._last_valid_pet_skill_fire_value = numeric
 
+    def _demon_target_gem_changed(self, *_args: Any) -> None:
+        if self._updating_pet_fields:
+            return
+        snapshot = self.view_model.control_plane.snapshot()
+        if snapshot.controller.active:
+            self._display_pet_config(snapshot.config)
+            return
+        try:
+            self.view_model.apply_draft(**self._draft_fields())
+        except (TypeError, ValueError):
+            return
+
     def _pet_selection_changed(self, *_args: Any) -> None:
         if self._updating_pet_fields:
             return
@@ -2340,6 +2631,10 @@ class DesktopApplication:
                     self.main_pet.set(MainPetType.NORMAL.value)
                     self.evolution.set(EvolutionTarget.NONE.value)
                     self.damage_card.set(DamageCardMode.PET_PASSIVE.value)
+                    # Hidden audition state still participates in canonical
+                    # validation. Drop the Mega/Bu win-only value atomically.
+                    if self.audition_mode.get() == AUDITION_LABELS[AuditionMode.NO_ACTION]:
+                        self.audition_mode.set(AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION])
                     self.pet_skill_fire_condition.set(
                         PET_SKILL_FIRE_CONDITION_LABELS[
                             PetSkillFireCondition.SWORD_COUNT
@@ -2749,6 +3044,7 @@ class DesktopApplication:
                 self.target_matches.set(self._locked_run_limits[0])
                 self.max_attempts.set(self._locked_run_limits[1])
                 self._display_pet_config(snapshot.config)
+                self._display_ai_config(snapshot.config)
             elif not snapshot.controller.active:
                 self._locked_run_limits = None
             if (
@@ -2769,10 +3065,10 @@ class DesktopApplication:
                 self.boss_name.set("")
             draft_valid, draft_error = self._draft_validity()
             profile_reason = None
+            ai_draft = None
             if draft_valid:
-                profile_reason = DesktopConfig.from_strings(
-                    **self._draft_fields()
-                ).farm_policy_blocker_reason
+                ai_draft = DesktopConfig.from_strings(**self._draft_fields())
+                profile_reason = ai_draft.farm_policy_blocker_reason
             config_editable = controls.config_editable and not close_pending
             self._set_config_editable(config_editable)
             start_actionable = bool(
@@ -2828,6 +3124,22 @@ class DesktopApplication:
             else:
                 reason_text = self.view_model.reason_text(controls.start.reason)
             self.control_reason_var.set(reason_text)
+            self.ai_status_var.set(ai_status_text(snapshot.controller.ai_status))
+            try:
+                ai_profile = play_style_from_display(self.play_style.get())
+            except ValueError:
+                ai_profile = snapshot.config.play_style
+            self.ai_capability_var.set(ai_capability_text(ai_profile))
+            from .reasoning_ui_scope import ui_reasoning_scope_reason
+            try:
+                # Shadow is cleared when the operator selects reasoning.
+                ai_eligible = ai_draft is not None and ui_reasoning_scope_reason(replace(ai_draft,
+                    ai=replace(ai_draft.ai,shadow_enabled=False))) is None
+            except (ValueError,TypeError):
+                ai_eligible = False
+            self.ai_reasoning_widget.configure(state='normal' if config_editable and ai_eligible else 'disabled')
+            self.ai_shadow_widget.configure(state='normal' if config_editable and
+                intelligence_from_display(self.intelligence.get()) is Intelligence.BASIC else 'disabled')
             self._render_operator_log()
 
             close_observation = self._close_coordinator.observe(snapshot)

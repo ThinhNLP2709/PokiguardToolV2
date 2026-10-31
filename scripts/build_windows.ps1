@@ -76,6 +76,12 @@ if (-not $SkipFocusedTests) {
 }
 
 $spec = Join-Path $projectRoot 'packaging\PokiguardToolV2.spec'
+$identityRoot = Join-Path $output 'identity'
+& $python (Join-Path $projectRoot 'scripts\create_package_build.py') $identityRoot
+if ($LASTEXITCODE -ne 0) {
+    throw 'Creating the package identity failed.'
+}
+$env:POKIGUARD_PACKAGE_IDENTITY = $identityRoot
 & $python -m PyInstaller --noconfirm --clean --workpath $work --distpath $dist $spec
 if ($LASTEXITCODE -ne 0) {
     throw 'PyInstaller build failed.'
@@ -96,7 +102,16 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Creating the deterministic package archive failed.'
 }
 
-$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+# Reuse the required Python runtime: Get-FileHash is absent on some Windows
+# PowerShell installations even when packaging itself completed successfully.
+$hash = & $python -c "import hashlib, pathlib, sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())" $archive
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($hash)) {
+    throw 'Computing the package SHA-256 failed.'
+}
+$hash = $hash.Trim().ToLowerInvariant()
+if ($hash -notmatch '^[0-9a-f]{64}$') {
+    throw 'The package SHA-256 is invalid.'
+}
 Write-Output "APP_VERSION=$version"
 Write-Output "PACKAGE_DIRECTORY=$packageDirectory"
 Write-Output "EXECUTABLE=$executable"

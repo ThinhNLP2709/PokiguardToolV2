@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import os
+from pathlib import Path
 import struct
 from typing import Iterable
 
@@ -43,11 +44,12 @@ MANAGER_CHINH_PHUC_BUTTONS_OFFSET = 0x30
 # ChinhPhucDataService is a persistent singleton that owns the same server data
 # even when the island panel is not visible.  Reading it avoids the bounded
 # native Button scan used by the re-entry executor.
-CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x369B7E8
+CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x3D921B8
 CHINH_PHUC_DATA_SERVICE_DATA_OFFSET = 0x20
-# Display-only mapping carried forward from the unchanged b5 data model: each server
-# ``GroupDTO.id`` matches the serialized ``btnIsland{id}`` label.  This map is
-# never navigation authority; unknown IDs simply omit the island label.
+# Display-only server GroupDTO IDs, verified against b6 live data and scene labels.
+# Server IDs are not serialized btnIsland numbers: the final three islands use
+# group IDs 18/20/25 but controls 17/18/19. Navigation still uses group_index.
+# Unknown IDs use the server group name without guessing an island number.
 CHINH_PHUC_ISLAND_DISPLAY_NAMES = {
     1: "Mộc tinh",
     2: "Hỏa tinh",
@@ -65,8 +67,9 @@ CHINH_PHUC_ISLAND_DISPLAY_NAMES = {
     14: "Thời gian",
     15: "Băng giá",
     16: "Thần Giới",
-    17: "Khế Ước",
-    18: "Đảo Liên Minh",
+    18: "Khế Ước",
+    20: "Đảo Liên Minh",
+    25: "Đảo Liên Minh II",
 }
 GROUP_ID_OFFSET = 0x10
 GROUP_NAME_OFFSET = 0x18
@@ -94,7 +97,7 @@ PET_CLICK_REQUIRED_ATTACK_TEXT_OFFSET = 0x30
 PET_CLICK_MANAGER_OFFSET = 0x38
 PET_CLICK_CLOSURE_SIZE = 0x40
 
-PLAYER_PREFS_PATH = r"Software\Pokiguard\PokiguardOnlines"
+PLAYER_PREFS_PATH = r"Software\Pet Puzzle\Pet Puzzle"
 # Live 1.7.4-b4 evidence places ManagerChinhPhuc and its target Button in one
 # 16 MiB private writable allocation.  Runtime-anchored discovery may cover
 # this exact allocation, while the legacy unanchored fallback keeps its
@@ -289,16 +292,51 @@ def _prefixed_dword(values: Iterable[tuple[str, object]], prefix: str) -> int | 
     return matches[0] if len(set(matches)) == 1 else None
 
 
-def read_chinh_phuc_player_prefs() -> ChinhPhucPlayerPrefs:
+def _player_prefs_path(target: object | None) -> tuple[str | None, tuple[str, ...]]:
+    """Bind PlayerPrefs to the attached installation's Unity company/product.
+
+    Never fall back to another product's registry when the current product is
+    missing. An old Pokiguard key can remain populated after the rename.
+    """
+
+    executable = getattr(target, "game_executable", None)
+    assembly_path = getattr(getattr(target, "game_assembly", None), "path", None)
+    if executable is None and assembly_path is None:
+        return PLAYER_PREFS_PATH, ()
+    if executable is not None:
+        executable = Path(executable)
+        app_info = executable.parent / (executable.stem + "_Data") / "app.info"
+    else:
+        # Older RuntimeTarget clients expose only GameAssembly.dll's location.
+        candidates = tuple(Path(assembly_path).parent.glob("*_Data/app.info"))
+        if len(candidates) != 1:
+            return None, ("PlayerPrefs app.info unavailable or ambiguous for attached game",)
+        app_info = candidates[0]
+    try:
+        identity = app_info.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError) as exc:
+        return None, (f"PlayerPrefs app.info read failed: {exc}",)
+    if len(identity) < 2:
+        return None, ("PlayerPrefs app.info company/product incomplete",)
+    company, product = (value.strip() for value in identity[:2])
+    if any(not value or any(char in value for char in "\\/\x00") for value in (company, product)):
+        return None, ("PlayerPrefs app.info company/product invalid",)
+    return rf"Software\{company}\{product}", ()
+
+
+def read_chinh_phuc_player_prefs(target: object | None = None) -> ChinhPhucPlayerPrefs:
     """Read only the PlayerPrefs keys evidenced by ManagerQuangTruong ISIL."""
 
+    source, source_reasons = _player_prefs_path(target)
+    if source is None:
+        return ChinhPhucPlayerPrefs(None, None, None, None, "UNRESOLVED", source_reasons)
     if os.name != "nt":
-        return ChinhPhucPlayerPrefs(None, None, None, None, PLAYER_PREFS_PATH, ("not Windows",))
+        return ChinhPhucPlayerPrefs(None, None, None, None, source, ("not Windows",))
     import winreg  # Windows-only stdlib
 
     reasons: list[str] = []
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, PLAYER_PREFS_PATH, 0, winreg.KEY_READ) as key:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, source, 0, winreg.KEY_READ) as key:
             values: list[tuple[str, object]] = []
             index = 0
             while True:
@@ -314,7 +352,7 @@ def read_chinh_phuc_player_prefs() -> ChinhPhucPlayerPrefs:
             None,
             None,
             None,
-            PLAYER_PREFS_PATH,
+            source,
             (f"PlayerPrefs read failed: {exc}",),
         )
 
@@ -335,7 +373,7 @@ def read_chinh_phuc_player_prefs() -> ChinhPhucPlayerPrefs:
         selected_group,
         active_panel,
         return_panel,
-        PLAYER_PREFS_PATH,
+        source,
         tuple(reasons),
     )
 
@@ -383,7 +421,11 @@ def _find_pet_in_groups(
                     group_index=group_index,
                     pet_index=pet_index,
                     locked=locked,
-                    island_name=CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id),
+                    island_name=(
+                        CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id)
+                        or group_name
+                        or None
+                    ),
                     group_pet_count=len(pets),
                 )
             )
@@ -453,7 +495,7 @@ def read_chinh_phuc_island_metadata(
             group_id=group_id,
             group_name=group_name,
             group_index=group_index,
-            island_name=CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id),
+            island_name=CHINH_PHUC_ISLAND_DISPLAY_NAMES.get(group_id) or group_name,
         )
     except (ExternalReadError, LayoutValidationError, OSError, ValueError):
         return None
@@ -581,7 +623,7 @@ def _manager_panel_map_target(
     walk therefore resolves the boss hitbox instead of the numbered badge.
     """
 
-    prefs = read_chinh_phuc_player_prefs()
+    prefs = read_chinh_phuc_player_prefs(target)
     reasons: list[str] = []
     if active_panel_index != pet.group_index:
         reasons.append("live active panel does not match target cached-data group")
@@ -867,7 +909,7 @@ def discover_chinh_phuc_map_target(
     group_name = pet.group_name
     pet_name = pet.pet_name
     dto_locked = pet.locked
-    prefs = read_chinh_phuc_player_prefs()
+    prefs = read_chinh_phuc_player_prefs(target)
     # When the visible map supplies its live ManagerChinhPhuc and active panel,
     # those two read-only values are current authority. Unity PlayerPrefs can
     # legitimately retain a previous pet/island after the result-room X path;

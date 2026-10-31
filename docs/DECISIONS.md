@@ -7,6 +7,20 @@ Technical implementation and acceptance status are in
 [CURRENT_STATE.md](CURRENT_STATE.md). Workspace/safety precedence begins with
 [AGENTS.md](../AGENTS.md).
 
+## Khủng long: rule người dùng chốt ngày26/10/2026
+
+- Người dùng tự vào trận Khủng long, rồi Start trong tool; không yêu cầu boss lobby.
+- Mọi lượt chưa gửi nước mà không đủ thời gian phải chờ lượt sau, đọc lại bàn
+  và tiếp tục. Không giới hạn ở lượt đầu, không tự Stop chỉ vì hết giờ hoặc vì
+  đã có các nước đi/lượt bỏ qua trước đó. Không tạo input/PASS/ACK giả.
+- Tiếp tục chơi trong đúng trận đã ghim. Khi có bằng chứng WIN đáng tin cậy của
+  trận đó thì dừng ngay; không đợi unload scene, bảng thưởng, xác nhận hoặc lobby.
+- Không áp hạn mức200thao tác hay timeout35giây chờ board riêng cho Khủng long.
+  Stop của người dùng, kiểm tra phiên/process và input/ACK chưa rõ vẫn có hiệu lực.
+- Không áp ngoại lệ này cho các lối chơi boss farm khác.
+
+Implementation/verification: [Dinosaur rule26/10](dinosaur_rule_20261026.md).
+
 ## Product Goal
 
 PokiguardToolV2 automates Pokiguard gameplay through:
@@ -40,6 +54,86 @@ future task:
 
 Gameplay input is normal Windows user input only. `PokiguardAuto` is reference
 only, and `pc` is strictly read only, as defined in `AGENTS.md`.
+
+## Phase 5A.1 REASONING product contract (user direction 2026-10-09)
+
+**Technical status 31/10/2026:** [Phase5 closeout](phase5/FINAL_REPORT.md)
+completes the declared R1 roadmap; product requirements below are preserved.
+Guarded source pilots and an exact Demon/Shield lab package now exist. Ordinary
+UI REASONING remains disabled, BASIC stays default, and efficacy is INCONCLUSIVE.
+The v1.2.4/spec-only statements below describe that historical baseline.
+The user's later decision-budget clarification permits bounded waiting within
+the existing decision step, without extra game reads/captures; see
+[EXECUTION_CONTRACT section3](phase5/EXECUTION_CONTRACT.md#3-flow-không-đổi).
+
+REASONING is now defined as product/spec intent. It remains **unimplemented**
+in the v1.2.4 runtime. This documentation step does not enable the existing
+placeholder or implement its future fallback.
+
+REASONING supplements the selected PlayStyle: retain its objective and BASIC
+baseline while comparing actions using the current situation, supported boss
+reply analysis and explicitly labelled uncertainty. Tactical settings are
+references, not universal action locks. Setup/fire thresholds, Sword retention,
+resource priorities and tactical HP/emergency order may be reconsidered with
+evidence. The override must explain why it serves the profile, and must not
+rewrite operator preferences or silently select another PlayStyle/loadout.
+
+Actual action legality, runtime costs/cooldowns/actionability, exact skill/card
+source, authoritative turn/PASS restrictions, state freshness/ownership,
+input authority, deadlines and execution/transition contracts remain hard.
+The configured Evolution/loadout intent and accepted shared Evolution path are
+preserved. An unmet seal target must not alone force Mega Icarus to keep setup
+when another legal action has better supported protection value. A survival
+proxy is not proof of lethal damage, and local survival is not a universal
+objective for Coop Bú win.
+
+Keep v1.2.4 BASIC decisions/hotfixes and operational flow unchanged: memory
+read/poll/capture order, provider ownership, lifecycle/navigation, action/QTE/
+click-only executors, input mode/leases, ACK/retries, accounting and Stop.
+The planner consumes immutable state already supplied by this flow, with no
+provider/process/capture/input authority or extra reread/wait loop.
+
+For future integration, prepare the BASIC incumbent before using a proposal.
+Planner/worker/logging failure or timeout falls back to that baseline only
+before dispatch and only while valid under the existing preflight. Invalid
+state retains the existing fail-closed gate. Once physical input is sent,
+pending/ACK/recovery ownership remains unchanged; no replacement BASIC input.
+AI errors must not create a PASS, idle reset or technical game recovery.
+
+Diagnostics must be bounded and must not block action/Stop. A separate sink is
+preferred only after proving that it does not slow action compared with shared
+events; otherwise use the common event namespace with filtering/export.
+BASIC stays the default. REASONING acceptance is scoped opt-in, not automatic
+promotion of existing users. Coop Bú win still requires its own baseline live
+evidence. No global-optimum or no-loss guarantee is implied.
+
+Technical contract: [REASONING policy](reasoning_gameplay_policy.md) and
+[5A.1](phase5/specs/5a1_baseline_reasoning_contract.md).
+Implementation/acceptance pointer: [Phase 5 STATUS](phase5/STATUS.md).
+The BASIC tactical rules below keep their accepted semantics; this section
+defines the separate future REASONING decision branch.
+
+## Phase 5A.2 adaptive resource and opponent planning (2026-10-09)
+
+The user's Demon Farm example defines a general REASONING requirement across
+PlayStyles. Tactical counts are references. For the user's account/context,
+three physical Swords can be sufficient with enough Rage despite a personal
+setting of four; the joint example is three Swords plus five plain Rage gems.
+Plain Rage=20 points and Mana=30 points are user-provided calibration inputs,
+with units/scope/provenance. They do not change BASIC defaults or prove a
+universal damage formula, multiplier rule or same-burst effect ordering.
+
+Evaluate our root action, the boss reply and our accessible continuation.
+Creating a Shield match is not retained setup if the boss consumes it. The
+nominal boss model is Sword-first/max-Sword, with all maximum ties retained;
+secondary priorities and refill/effect coverage remain explicit uncertainties.
+Sword bait may preserve Shield, but boss threat and adverse alternatives must
+be considered. Do not convert the example into a rigid three-plus-five rule.
+
+Specification: [5A.2 features/utility](phase5/specs/5a2_features_utility_and_profiles.md)
+and [scenario matrix](phase5/specs/5a2_scenario_matrix.md). Utility constants are
+PROPOSED; no runtime implementation or acceptance is implied. The Phase5A.1
+flow, hard gates, valid BASIC fallback and default remain unchanged.
 
 ## Phase 3C.1 BASIC Pet Skill policy (approved scope 2026-09-12)
 
@@ -486,8 +580,10 @@ These fields describe operator intent. They do not equip a pet, choose an
 inventory item, navigate the Pet UI, prove current resources, or replace the
 runtime `PetSkillCapability` that validates the current CardUI and QTE.
 
-`BASIC` is defined. `REASONING` is intentionally undefined and not
-implemented. An agent must not invent REASONING behavior.
+`BASIC` is defined and implemented. REASONING product intent is defined by
+Phase 5A.1 above and [REASONING policy](reasoning_gameplay_policy.md); runtime
+implementation and acceptance remain pending. Do not invent features/effects
+outside that contract or treat documentation as implemented capability.
 
 ## Gem Definitions
 

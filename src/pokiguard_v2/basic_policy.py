@@ -19,11 +19,13 @@ from .board_simulator import (
     resolve_known_swap_result,
 )
 from .demon_aegis import (
+    DEMON_MINIMUM_SWORD_CELLS,
     DemonAegisMoveEvaluation,
     evaluate_demon_aegis_move,
 )
 from .gameplay_profile import (
     DamageCardMode,
+    DemonTargetGem,
     EvolutionTarget,
     MainPetType,
     PetSkillFireCondition,
@@ -62,6 +64,7 @@ SKILL_RUSH_SURVIVAL_HP_RATIO = 0.30
 
 class PlayStyle(str, Enum):
     SIMPLE = "simple"
+    DINOSAUR = "dinosaur"
     CAREFUL = "careful"
     SKILL_RUSH = "skill_rush"
     DEMON_AEGIS_FARM = "demon_aegis_farm"
@@ -169,6 +172,7 @@ class PolicyConfig:
     # over multiplier-weighted board value. b5 supports 64 cells up to x7.
     pet_skill_fire_condition: PetSkillFireCondition = PetSkillFireCondition.SWORD_COUNT
     pet_skill_fire_value: int | None = PET_SKILL_FIRE_VALUE_DEFAULT
+    demon_target_gem: DemonTargetGem = DemonTargetGem.SHIELD
 
     def __post_init__(self) -> None:
         for name, enum_type in (
@@ -178,6 +182,7 @@ class PolicyConfig:
             ("evolution", EvolutionTarget),
             ("damage_card", DamageCardMode),
             ("pet_skill_fire_condition", PetSkillFireCondition),
+            ("demon_target_gem", DemonTargetGem),
         ):
             if not isinstance(getattr(self, name), enum_type):
                 raise ValueError(f"{name} must be {enum_type.__name__}")
@@ -1519,15 +1524,16 @@ class BasicPolicyEngine:
     @staticmethod
     def _demon_aegis_fire_rank(
         item: tuple[MoveEvaluation, DemonAegisMoveEvaluation],
+        *, target_gem: GemType = GemType.SHIELD,
     ) -> tuple[object, ...]:
         value, passive = item
         return (
-            -passive.sword_cells,
             -passive.sword_effective,
+            -passive.sword_cells,
             not value.sword_risk.safe,
             value.sword_risk.danger_score,
             -len(passive.blast_cells),
-            -value.total.effective(GemType.SHIELD),
+            -value.total.effective(target_gem),
             value.unknown_exposure.cells,
             value.move,
         )
@@ -1537,18 +1543,19 @@ class BasicPolicyEngine:
         item: tuple[MoveEvaluation, DemonAegisMoveEvaluation],
         *,
         threshold: int,
+        target_gem: GemType = GemType.SHIELD,
     ) -> tuple[object, ...]:
         value, passive = item
-        result_shields = _known_result_gem_count(value, GemType.SHIELD)
+        result_targets = _known_result_gem_count(value, target_gem)
         drain = value.total.effective(GemType.DRAIN)
         shield = value.total.effective(GemType.SHIELD)
         health = value.total.effective(GemType.HEALTH)
         return (
-            passive.next_best_sword_cells < threshold,
-            -passive.next_best_sword_cells,
+            passive.next_best_sword_effective < threshold,
             -passive.next_best_sword_effective,
+            -passive.next_best_sword_cells,
             passive.activates_passive,
-            -result_shields,
+            -result_targets,
             drain <= 0,
             -drain,
             shield <= 0,
@@ -1572,9 +1579,10 @@ class BasicPolicyEngine:
         pass_allowed: bool,
         mandatory: bool,
     ) -> PolicyDecision:
-        """Choose a Shield passive trigger or a bounded one-turn setup move."""
+        """Choose the configured passive trigger or a bounded setup move."""
 
         assert state.board is not None
+        target_gem = GemType(self.config.demon_target_gem.value)
         threshold = self.config.pet_skill_fire_value
         if threshold is None:
             return self._decision(
@@ -1588,7 +1596,7 @@ class BasicPolicyEngine:
             )
 
         evaluated = tuple(
-            (value, evaluate_demon_aegis_move(state.board, value))
+            (value, evaluate_demon_aegis_move(state.board, value, target_gem=target_gem))
             for value in evaluations
             # An ordinary Sword match or known Sword cascade is never an
             # accepted Demon Aegis action. Swords may be removed only by the
@@ -1599,22 +1607,23 @@ class BasicPolicyEngine:
             item
             for item in evaluated
             if item[1].activates_passive
-            and item[1].sword_cells >= threshold
+            and item[1].sword_effective >= threshold
+            and item[1].sword_cells >= DEMON_MINIMUM_SWORD_CELLS
         )
         if fire_candidates:
             selected, passive = min(
                 fire_candidates,
-                key=self._demon_aegis_fire_rank,
+                key=lambda item: self._demon_aegis_fire_rank(item, target_gem=target_gem),
             )
             return self._decision(
                 state,
                 PolicyAction.SWAP,
                 "DEMON_AEGIS_PASSIVE_FIRE",
                 (
-                    "Matched Shield to activate Demon Aegis; "
-                    f"blastSwordCells={passive.sword_cells} >= {threshold}, "
-                    f"blastSwordEffective={passive.sword_effective}, "
-                    f"shieldMatchCells={passive.shield_match_cells}, "
+                    f"Matched {target_gem.value} to activate Demon Farm; "
+                    f"blastSwordEffective={passive.sword_effective} >= {threshold}, "
+                    f"blastSwordCells={passive.sword_cells} >= {DEMON_MINIMUM_SWORD_CELLS}, "
+                    f"targetGem={target_gem.value}, targetMatchCells={passive.target_match_cells}, "
                     f"blastCellCount={len(passive.blast_cells)}"
                 ),
                 failures,
@@ -1624,16 +1633,15 @@ class BasicPolicyEngine:
             )
 
         failures.append(
-            "DEMON_AEGIS_PASSIVE_FIRE: no Shield match has at least "
-            f"{threshold} known Sword cells in its perpendicular blast zone"
+            f"DEMON_AEGIS_PASSIVE_FIRE: no {target_gem.value} match has at least "
+            f"{threshold} effective Sword units and {DEMON_MINIMUM_SWORD_CELLS} physical Sword cells in its perpendicular blast zone"
         )
         healthy = bool(
             player_hp_ratio is not None
             and player_hp_ratio > SKILL_RUSH_SURVIVAL_HP_RATIO
         )
         safe = tuple(item for item in evaluated if item[0].sword_risk.safe)
-        # Do not spend a non-qualifying Shield activation while a setup move is
-        # available. Its Shield lines are the scarce resource for the passive.
+        # Preserve the selected trigger until its blast meets the Sword goal.
         safe_setup = tuple(item for item in safe if not item[1].activates_passive)
         any_setup = tuple(item for item in evaluated if not item[1].activates_passive)
 
@@ -1643,11 +1651,11 @@ class BasicPolicyEngine:
         if safe_setup:
             pool = safe_setup
             step = "DEMON_AEGIS_SETUP"
-            why = "Selected a Sword-safe move that preserves Shield activation for setup"
+            why = f"Selected a Sword-safe move that preserves {target_gem.value} activation for setup"
         elif safe:
             pool = safe
             step = "DEMON_AEGIS_SETUP"
-            why = "Only a sub-threshold Shield activation is Sword-safe; used the best safe fallback"
+            why = f"Only a sub-threshold {target_gem.value} activation is Sword-safe; used the best safe fallback"
         elif healthy and any_setup:
             pool = any_setup
             step = "DEMON_AEGIS_SETUP_RISK_ACCEPTED"
@@ -1733,6 +1741,7 @@ class BasicPolicyEngine:
             key=lambda item: self._demon_aegis_setup_rank(
                 item,
                 threshold=threshold,
+                target_gem=target_gem,
             ),
         )
         return self._decision(
@@ -1740,7 +1749,7 @@ class BasicPolicyEngine:
             PolicyAction.SWAP,
             step,
             (
-                f"{why}; nextBestBlastSwordCells={passive.next_best_sword_cells}, "
+                f"{why}; targetGem={target_gem.value}, nextBestBlastSwordCells={passive.next_best_sword_cells}, "
                 f"nextBestBlastSwordEffective={passive.next_best_sword_effective}, "
                 f"playerHpRatio={player_hp_ratio}, mandatory={mandatory}"
             ),
@@ -1897,6 +1906,21 @@ class BasicPolicyEngine:
                 failures,
                 no_candidates,
                 blocker="NOT_STABLE_COMBAT",
+            )
+        if (
+            self.config.bu_win_profile
+            and state.player is not None
+            and state.player.hp is not None
+            and state.player.hp <= 0
+        ):
+            return self._decision(
+                state,
+                PolicyAction.NONE,
+                "BU_WIN_WAIT_TEAMMATES",
+                "Local pet is dead; wait for the team's terminal result",
+                failures,
+                no_candidates,
+                blocker="BU_WIN_LOCAL_PET_DEAD",
             )
         if state.battle.is_local_turn is not True or state.battle.client_move_allowed is not True:
             return self._decision(

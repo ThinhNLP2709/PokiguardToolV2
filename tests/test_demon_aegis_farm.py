@@ -122,14 +122,14 @@ class DemonAegisFarmTests(unittest.TestCase):
         self.assertEqual(passive.sword_cells, 3)
         self.assertEqual(passive.sword_effective, 6)
 
-    def test_policy_fires_passive_at_inclusive_three_sword_threshold(self) -> None:
+    def test_policy_fires_passive_at_inclusive_effective_sword_threshold(self) -> None:
         board = passive_board()
         decision = demon_policy().decide(combat_state(board=board))
 
         self.assertEqual(decision.action, PolicyAction.SWAP)
         self.assertEqual(decision.move, TARGET_MOVE)
         self.assertEqual(decision.trace.policy_step, "DEMON_AEGIS_PASSIVE_FIRE")
-        self.assertIn("blastSwordCells=3 >= 3", decision.trace.why_selected)
+        self.assertIn("blastSwordEffective=6 >= 3", decision.trace.why_selected)
 
     def test_vertical_shield_match_clears_three_full_rows(self) -> None:
         board = vertical_passive_board()
@@ -160,7 +160,7 @@ class DemonAegisFarmTests(unittest.TestCase):
             if value is not None
         )
         self.assertEqual(selected.total.cells(GemType.SWORD), 0)
-        self.assertNotEqual(decision.trace.policy_step, "DEMON_AEGIS_PASSIVE_FIRE")
+        self.assertEqual(decision.trace.policy_step, "DEMON_AEGIS_PASSIVE_FIRE")
 
     def test_mandatory_turn_uses_least_consuming_sword_when_it_is_only_move(self) -> None:
         board = fixture_board()

@@ -204,8 +204,16 @@ class MemoryProviderConfig:
     ack_heap_region_mib: int | None = None
     extended_fusion_ui_region_mib: int | None = None
     extended_card_ui_region_mib: int | None = None
+    coop_mode: bool = False
+    # Explicit current-combat controller only. Ordinary farm and status readers
+    # retain the clean-lobby baseline requirement and its historical behavior.
+    active_combat_start: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.active_combat_start) is not bool:
+            raise ValueError("active_combat_start must be bool")
+        if self.active_combat_start and self.require_lobby_start:
+            raise ValueError("active_combat_start requires require_lobby_start=False")
         if not 1 <= self.max_region_mib <= 32:
             raise ValueError("max_region_mib must be between 1 and 32")
         if not 1 <= self.chunk_mib <= 16:
@@ -1632,6 +1640,13 @@ class MemoryBoardStateProvider(BoardStateProvider):
         self._last_dot_anchor_bytes = 0
         if board is None:
             self._refresh_lobby_baseline()
+        elif self.config.active_combat_start:
+            # There is no pre-match observation to fingerprint here. Never scan
+            # the live board into a pretend lobby baseline. Current-session
+            # owner/transport/native board, ACK and two-sample checks below
+            # still establish freshness before anything is published.
+            self._lobby_baseline_ready = True
+            self._needs_lobby_baseline = False
 
     def _refresh_type_info(self) -> bool:
         """Resolve combat-only classes lazily after Unity initializes them.
@@ -3507,6 +3522,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 and terminal_session is not None
             ):
                 observed_terminal = capture_terminal_snapshot(
+                    coop_mode=self.config.coop_mode,
                     session_key=terminal_session,
                     timestamp=utc_timestamp(),
                     active_state=prior_state,
@@ -4681,6 +4697,22 @@ class MemoryBoardStateProvider(BoardStateProvider):
             int(turn),
             int(action_before.local_move_sequence),
         )
+        if self.config.active_combat_start and not recovery_ack_isolated:
+            # A sparse-ops response may have no full transport DTO. Retain the
+            # already validated native board as a current-session witness for
+            # the second stability sample. Otherwise the stricter mid-combat
+            # intersection forgets it on every poll and waits forever for a DTO.
+            # Session cleanup clears these caches; a new turn/move generation
+            # or missing ACK cannot inherit this witness. Recovery ACK epoch
+            # selection above deliberately keeps its independent transport rule.
+            current_session_strong.update(
+                identity
+                for identity in self._live_board_attested
+                if identity in self._tracked
+                and identity[1] in ack_values
+                and self._live_board_generations.get(identity)
+                == native_board_generation
+            )
         native_opening_identity: tuple[int, int, str] | None = None
         native_opening_authoritative = False
         pristine_native_opening_ready = (
@@ -5314,7 +5346,7 @@ class MemoryBoardStateProvider(BoardStateProvider):
         else:
             eligible_identities = (
                 self._ack_attested & current_session_strong
-                if recovery_ack_isolated
+                if recovery_ack_isolated or self.config.active_combat_start
                 else self._ack_attested
             )
             eligible = [

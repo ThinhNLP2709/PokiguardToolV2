@@ -1,8 +1,8 @@
-"""Pure board geometry for the Demon Aegis passive.
+"""Pure board geometry for the operator-selected Demon Farm trigger.
 
 The passive is evaluated only from the current read-only 8x8 board.  A
-horizontal Shield match clears every column passing through a matched Shield;
-a vertical Shield match clears every corresponding row.  This module proposes
+horizontal target match clears every column passing through a matched target;
+a vertical target match clears every corresponding row. This module proposes
 no input and deliberately gives UNKNOWN cells no Sword credit.
 """
 
@@ -13,9 +13,11 @@ from typing import Iterable, Protocol
 
 from .board_simulator import MoveEvaluation, SimulatedBoard, SwapMove
 from .state import BoardState, GemType
+from .gameplay_profile import DemonTargetGem
 
 
 Cell = tuple[int, int]
+DEMON_MINIMUM_SWORD_CELLS = 2
 
 
 class _GemCell(Protocol):
@@ -28,7 +30,7 @@ class DemonAegisMoveEvaluation:
     """Known passive result for one legal ordinary board move."""
 
     move: SwapMove
-    shield_match_cells: tuple[Cell, ...]
+    target_match_cells: tuple[Cell, ...]
     blast_cells: tuple[Cell, ...]
     sword_cells: int
     sword_effective: int
@@ -37,7 +39,12 @@ class DemonAegisMoveEvaluation:
 
     @property
     def activates_passive(self) -> bool:
-        return bool(self.shield_match_cells)
+        return bool(self.target_match_cells)
+
+    @property
+    def shield_match_cells(self) -> tuple[Cell, ...]:
+        """Legacy accessor for historical Shield-only callers."""
+        return self.target_match_cells
 
 
 def _candidate_swaps() -> Iterable[SwapMove]:
@@ -64,19 +71,20 @@ def _swapped_grid(
     return grid
 
 
-def _shield_runs_through(
+def _target_runs_through(
     grid: list[list[_GemCell]],
     cell: Cell,
+    target_gem: GemType,
 ) -> tuple[tuple[Cell, ...], tuple[Cell, ...]]:
     row, col = cell
-    if grid[row][col].gem is not GemType.SHIELD:
+    if grid[row][col].gem is not target_gem:
         return (), ()
 
     left = col
-    while left > 0 and grid[row][left - 1].gem is GemType.SHIELD:
+    while left > 0 and grid[row][left - 1].gem is target_gem:
         left -= 1
     right = col
-    while right < 7 and grid[row][right + 1].gem is GemType.SHIELD:
+    while right < 7 and grid[row][right + 1].gem is target_gem:
         right += 1
     horizontal = (
         tuple((row, value) for value in range(left, right + 1))
@@ -85,10 +93,10 @@ def _shield_runs_through(
     )
 
     top = row
-    while top > 0 and grid[top - 1][col].gem is GemType.SHIELD:
+    while top > 0 and grid[top - 1][col].gem is target_gem:
         top -= 1
     bottom = row
-    while bottom < 7 and grid[bottom + 1][col].gem is GemType.SHIELD:
+    while bottom < 7 and grid[bottom + 1][col].gem is target_gem:
         bottom += 1
     vertical = (
         tuple((value, col) for value in range(top, bottom + 1))
@@ -101,20 +109,21 @@ def _shield_runs_through(
 def _passive_geometry(
     board: BoardState | SimulatedBoard,
     move: SwapMove,
+    target_gem: GemType,
 ) -> tuple[tuple[Cell, ...], tuple[Cell, ...], int, int]:
     grid = _swapped_grid(board, move)
     horizontal_cells: set[Cell] = set()
     vertical_cells: set[Cell] = set()
     for cell in (move.first, move.second):
-        horizontal, vertical = _shield_runs_through(grid, cell)
+        horizontal, vertical = _target_runs_through(grid, cell, target_gem)
         horizontal_cells.update(horizontal)
         vertical_cells.update(vertical)
     matched = horizontal_cells | vertical_cells
     if not matched:
         return (), (), 0, 0
 
-    # Each Shield in a horizontal match clears its complete column.  Each
-    # Shield in a vertical match clears its complete row.  Cross matches apply
+    # Each target in a horizontal match clears its complete column. Each
+    # target in a vertical match clears its complete row. Cross matches apply
     # both effects; the union prevents double-counting their intersection.
     blast: set[Cell] = set()
     for _row, col in horizontal_cells:
@@ -135,7 +144,7 @@ def _passive_geometry(
     )
 
 
-def _best_next_activation(board: SimulatedBoard) -> tuple[int, int]:
+def _best_next_activation(board: SimulatedBoard, target_gem: GemType) -> tuple[int, int]:
     best = (0, 0)
     for move in _candidate_swaps():
         first = board[move.first[0]][move.first[1]]
@@ -147,10 +156,10 @@ def _best_next_activation(board: SimulatedBoard) -> tuple[int, int]:
         ):
             continue
         matched, _blast, sword_cells, sword_effective = _passive_geometry(
-            board, move
+            board, move, target_gem
         )
-        if matched:
-            best = max(best, (sword_cells, sword_effective))
+        if matched and sword_cells >= DEMON_MINIMUM_SWORD_CELLS:
+            best = max(best, (sword_cells, sword_effective), key=lambda value: (value[1], value[0]))
     return best
 
 
@@ -159,18 +168,21 @@ def evaluate_demon_aegis_move(
     value: MoveEvaluation,
     *,
     include_next_turn: bool = True,
+    target_gem: GemType = GemType.SHIELD,
 ) -> DemonAegisMoveEvaluation:
+    if not isinstance(target_gem, GemType) or target_gem.value not in {v.value for v in DemonTargetGem}:
+        raise ValueError("Demon target must be Shield, Health, Mana, Drain or Rage")
     matched, blast, sword_cells, sword_effective = _passive_geometry(
-        board, value.move
+        board, value.move, target_gem
     )
     next_cells, next_effective = (
-        _best_next_activation(value.result)
+        _best_next_activation(value.result, target_gem)
         if include_next_turn and not matched
         else (0, 0)
     )
     return DemonAegisMoveEvaluation(
         move=value.move,
-        shield_match_cells=matched,
+        target_match_cells=matched,
         blast_cells=blast,
         sword_cells=sword_cells,
         sword_effective=sword_effective,
@@ -179,4 +191,4 @@ def evaluate_demon_aegis_move(
     )
 
 
-__all__ = ["DemonAegisMoveEvaluation", "evaluate_demon_aegis_move"]
+__all__ = ["DEMON_MINIMUM_SWORD_CELLS", "DemonAegisMoveEvaluation", "evaluate_demon_aegis_move"]

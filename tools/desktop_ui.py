@@ -108,10 +108,29 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=argparse.SUPPRESS,
     )
+    parser.add_argument('--basic-calibration-request', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--basic-calibration-sha256', help=argparse.SUPPRESS)
+    parser.add_argument('--operational-pilot-request', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--operational-pilot-sha256', help=argparse.SUPPRESS)
+    parser.add_argument('--packaged-acceptance-request', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--packaged-acceptance-sha256', help=argparse.SUPPRESS)
     return parser
 
 
 def _validate_args(args: argparse.Namespace) -> None:
+    packaged=getattr(args,'packaged_acceptance_request',None)
+    package_sha=getattr(args,'packaged_acceptance_sha256',None)
+    if (packaged is None) != (package_sha is None):
+        raise ValueError('packaged acceptance request and SHA must be supplied together')
+    if packaged is not None and (args.offline or getattr(args,'basic_calibration_request',None)
+            or getattr(args,'operational_pilot_request',None)):
+        raise ValueError('packaged acceptance cannot mix with source pilot/offline mode')
+    request=getattr(args,'operational_pilot_request',None)
+    sha=getattr(args,'operational_pilot_sha256',None)
+    if (request is None) != (sha is None):
+        raise ValueError('operational request and SHA must be supplied together')
+    if request is not None and (args.offline or getattr(args,'basic_calibration_request',None) is not None):
+        raise ValueError('explicit source-only operational request; no offline/mixed activation')
     if not 0.25 <= args.poll_interval <= 60.0:
         raise ValueError("--poll-interval phải nằm trong khoảng 0.25 đến 60 giây")
     if not 0.0 <= args.smoke_seconds <= 86_400.0:
@@ -204,6 +223,60 @@ def run(args: argparse.Namespace) -> int:
         if configured_selection is not None
         else preference_load.game_location
     )
+    calibration = None
+    if getattr(args, 'basic_calibration_request', None) is not None:
+        try:
+            if paths.frozen or args.offline:
+                raise ValueError('source-only native BASIC measurement; no frozen/offline activation')
+            from pokiguard_v2.reasoning_calibration import BasicCalibrationActivation
+            from tools.runtime_common import configured_game_executable
+            from dataclasses import replace
+            calibration = BasicCalibrationActivation(args.basic_calibration_request,
+                args.basic_calibration_sha256, root=paths.source_root,
+                directory=artifact_dir / 'basic_calibration',
+                game_executable=lambda: (s.executable if (s := configured_game_executable()) else None))
+            preference_load = replace(preference_load, config=calibration.config)
+        except Exception as exc:
+            event_log.write('CALIBRATION_REJECTED', reason=f'{type(exc).__name__}: {exc}')
+        # Explicit measurement sessions never write ordinary preferences, even on failure.
+        preference_store = DesktopPreferenceStore(artifact_dir / 'session_preferences.json')
+    if getattr(args,'operational_pilot_request',None) is not None:
+        # Private preferences for both success and rejection; never auto-Start.
+        preference_store = DesktopPreferenceStore(artifact_dir / 'session_preferences.json')
+        try:
+            if paths.frozen:
+                raise ValueError('operational pilot requires source-only explicit request')
+            from dataclasses import replace
+            from pokiguard_v2.reasoning_operational_launch import OperationalPilotLaunch
+            from tools.runtime_common import configured_game_executable
+            calibration = OperationalPilotLaunch(args.operational_pilot_request,
+                args.operational_pilot_sha256,root=paths.source_root,
+                directory=artifact_dir/'operational_pilot',
+                game_executable=lambda: (s.executable if (s:=configured_game_executable()) else None))
+            preference_load = replace(preference_load,config=calibration.config)
+            event_log.write('OPERATIONAL_PILOT_PREPARED',reason='WAITING_MANUAL_START; RETAIN_BASIC_IS_VALID')
+        except Exception as exc:
+            event_log.write('OPERATIONAL_PILOT_REJECTED',reason=f'{type(exc).__name__}: {exc}')
+            event_log.close()
+            return 2  # Refuse explicit invalid launch before runtime/Tk creation.
+    if getattr(args,'packaged_acceptance_request',None) is not None:
+        preference_store = DesktopPreferenceStore(artifact_dir/'session_preferences.json')
+        try:
+            if not paths.frozen:
+                raise ValueError('packaged acceptance requires exact frozen artifact')
+            from dataclasses import replace
+            from pokiguard_v2.packaged_reasoning import PackagedAcceptanceLaunch
+            from tools.runtime_common import configured_game_executable
+            calibration=PackagedAcceptanceLaunch(args.packaged_acceptance_request,args.packaged_acceptance_sha256,
+                paths=paths,directory=artifact_dir/'packaged_acceptance',
+                game_executable=lambda:(s.executable if (s:=configured_game_executable()) else None))
+            preference_load=replace(preference_load,config=calibration.config)
+            event_log.write('PACKAGED_ACCEPTANCE_PREPARED',reason='WAITING_MANUAL_START',
+                operatorMessage='Phiên nghiệm thu 2 trận đã sẵn sàng; chờ Bắt đầu trong tool.')
+        except Exception as exc:
+            event_log.write('PACKAGED_ACCEPTANCE_REJECTED',reason=f'{type(exc).__name__}: {exc}')
+            event_log.close()
+            return 2
     runtime = (
         StaticUnavailableRuntimeProvider()
         if args.offline
@@ -233,6 +306,8 @@ def run(args: argparse.Namespace) -> int:
         reset_evidence=args.reset_evidence or paths.reset_evidence,
         artifacts_root=paths.farm_runs,
         data_root=paths.data_root,
+        **({} if calibration is None else dict(reasoning_session_factory=calibration,
+                                               calibration_gate=calibration)),
     )
     control_plane = DesktopControlPlane(
         runtime,

@@ -182,6 +182,7 @@ class ActiveCombatProgressWatchdog:
 
 
 class TechnicalFailureReason(str, Enum):
+    PET_SKILL_CONTROL_UNAVAILABLE = "PET_SKILL_CONTROL_UNAVAILABLE"
     SEQUENCE_DESYNC = "SEQUENCE_DESYNC"
     DEAD_BOARD_NO_REFRESH = "DEAD_BOARD_NO_REFRESH"
     ACTIONABILITY_STATE_LOST = "ACTIONABILITY_STATE_LOST"
@@ -194,6 +195,7 @@ class TechnicalFailureReason(str, Enum):
 
 
 class RecoveryTriggerSource(str, Enum):
+    PRODUCTION_PET_SKILL_CONTROL = "PRODUCTION_PET_SKILL_CONTROL"
     PRODUCTION_SEQUENCE_GUARD = "PRODUCTION_SEQUENCE_GUARD"
     PRODUCTION_DEAD_BOARD_DIAGNOSTIC = "PRODUCTION_DEAD_BOARD_DIAGNOSTIC"
     PRODUCTION_ACTIONABILITY_DEADLINE = "PRODUCTION_ACTIONABILITY_DEADLINE"
@@ -997,6 +999,53 @@ class TechnicalRecoveryDispatcher:
                 trigger_id=uuid4().hex,
                 reason=TechnicalFailureReason.DEAD_BOARD_NO_REFRESH,
                 source=RecoveryTriggerSource.PRODUCTION_DEAD_BOARD_DIAGNOSTIC,
+                failed_session=failed_session_from_state(state),
+                detected_at=utc_timestamp(),
+                evidence_source=evidence_source,
+            )
+        )
+
+    def dispatch_pet_skill_control_unavailable(
+        self,
+        state: GameState,
+        *,
+        blocker: str,
+        warmup_seconds: float,
+        pending_action: bool,
+        evidence_source: str,
+    ) -> bool:
+        """Return an unusable skill profile to its room, without retrying it."""
+        battle = state.battle
+        session = battle.session_key
+        if not (
+            blocker in {
+                "PET_SKILL_CAPABILITY_UNAVAILABLE",
+                "PET_SKILL_ACTIONABILITY_UNKNOWN",
+            }
+            and 2.0 <= warmup_seconds < 300.0
+            and not pending_action
+            and state.phase is GamePhase.COMBAT
+            and battle.combat_lifecycle is CombatLifecycleState.ACTIVE
+            and session is not None
+            and battle.match_id == session.match_id
+            and battle.board_instance == session.board_instance
+            and battle.is_local_turn is True
+            and battle.local_has_left_match is not True
+            and not battle.match_over
+            and not battle.deferred_game_over
+            and battle.current_turn_player
+            and battle.local_username
+            and battle.current_turn_player.casefold() == battle.local_username.casefold()
+            and state.board is not None
+            and state.board.production_ready
+            and evidence_source
+        ):
+            return False
+        return self.coordinator.trigger_recovery(
+            RecoveryTrigger(
+                trigger_id=uuid4().hex,
+                reason=TechnicalFailureReason.PET_SKILL_CONTROL_UNAVAILABLE,
+                source=RecoveryTriggerSource.PRODUCTION_PET_SKILL_CONTROL,
                 failed_session=failed_session_from_state(state),
                 detected_at=utc_timestamp(),
                 evidence_source=evidence_source,

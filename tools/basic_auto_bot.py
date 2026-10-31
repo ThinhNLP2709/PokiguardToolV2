@@ -110,6 +110,10 @@ from pokiguard_v2.recovery_ui import (  # noqa: E402
     locate_confirm_leave,
     locate_exit_back,
 )
+from pokiguard_v2.win32_screenshot import write_failure_png_rgb  # noqa: E402
+from pokiguard_v2.input_randomization import (  # noqa: E402
+    InputRandomization,add_randomization_argument,randomization_from_args,
+)
 from pokiguard_v2.sequence_desync import (  # noqa: E402
     RecoveryLifecycleState,
     RecoveryStateMachine,
@@ -161,6 +165,7 @@ from tools.sequence_desync_runtime import (  # noqa: E402
 )
 from pokiguard_v2.gameplay_profile import (  # noqa: E402
     AuditionMode,
+    DemonTargetGem,
     DamageCardMode,
     EvolutionTarget,
     GameMode,
@@ -184,6 +189,7 @@ from pokiguard_v2.pet_configuration import (  # noqa: E402
     GameplayConfig,
     basic_policy_config,
 )
+from pokiguard_v2.dinosaur_session import confirmed_dinosaur_win, missed_turn_can_wait  # noqa: E402
 from pokiguard_v2.pet_skill_shadow import (  # noqa: E402
     PetSkillCapability,
     PetSkillCapabilityProvider,
@@ -266,6 +272,21 @@ def _current_pet_skill_capability(
             if session is not None
         ),
     )
+
+
+def _pet_skill_failure_diagnostics(provider: Any, capability: Any) -> dict[str, Any]:
+    """Project cached discovery evidence only; never perform an extra read."""
+    status = getattr(capability, "status", None)
+    return {
+        "capabilityStatus": getattr(status, "value", status),
+        "capabilitySource": getattr(capability, "source", None),
+        "capabilityReason": getattr(capability, "stale_reason", None),
+        "nativeDiscoveryReason": provider.scan_diagnostics.get("nativeCardDiscoveryReason"),
+        "currentSkillCards": [
+            {"cardId": card.card_id, "elementType": card.element_type}
+            for card in provider.observed_pet_skill_cards[:16]
+        ],
+    }
 
 
 def _reserve_farm_gameplay(
@@ -459,6 +480,7 @@ def _dispatch_technical_recovery(
     active_combat_progress_evidence: dict[str, Any] | None = None,
     local_player_left_evidence: dict[str, Any] | None = None,
     late_mandatory_reset_evidence: dict[str, Any] | None = None,
+    pet_skill_failure_evidence: dict[str, Any] | None = None,
 ) -> bool:
     """Dispatch only bounded, evidence-validated production technical reasons.
 
@@ -470,6 +492,14 @@ def _dispatch_technical_recovery(
     dispatcher = runtime.technical_recovery_dispatcher
     if dispatcher is None:
         return False
+    if (
+        reason == "PET_SKILL_CONTROL_UNAVAILABLE"
+        and state is not None
+        and pet_skill_failure_evidence is not None
+    ):
+        return bool(dispatcher.dispatch_pet_skill_control_unavailable(
+            state, **pet_skill_failure_evidence
+        ))
     if reason == "SEQUENCE_DESYNC" and desync is not None:
         return bool(dispatcher.dispatch_sequence_desync(desync, state=state))
     if (
@@ -1471,6 +1501,18 @@ def _must_pause_for_no_safe_move(
             "MEGA_ICARUS_SURVIVAL_SAFE",
         }
     )
+    # Bú win deliberately leaves Sword for the boss so the local Pet dies.
+    # "No safe move" here measures Sword exposure, not swap legality. Its
+    # named policy branch selects from proven match-producing swaps; applying
+    # the ordinary survival pause would stop a healthy Coop farm instead.
+    # Keep the exemption tied to that exact swap branch. Fresh state, local
+    # ownership, mapping, deadline and input/ACK guards still run normally.
+    bu_win_feed_boss = bool(
+        decision.action is PolicyAction.SWAP
+        and decision.move is not None
+        and decision.trace.play_style == PlayStyle.BU_WIN.value
+        and decision.trace.policy_step == "BU_WIN_FEED_BOSS"
+    )
     return bool(
         legal_move_count > 0
         and safe_move_count == 0
@@ -1478,6 +1520,7 @@ def _must_pause_for_no_safe_move(
         and not skill_rush_no_safe_fallback
         and not demon_aegis_no_safe_fallback
         and not mega_icarus_no_safe_fallback
+        and not bu_win_feed_boss
         and not (
             decision.action is PolicyAction.SWAP
             and (
@@ -2316,6 +2359,8 @@ def _attempt_classification(
     *,
     pass_stage: str = "B3",
 ) -> str:
+    if stop_reason == 'DINOSAUR_WIN_CONFIRMED':
+        return 'DINOSAUR_CURRENT_WIN'
     if stop_reason.startswith("B4_CAST_ACCEPTED"):
         unsafe = (
             counters.duplicate_inputs
@@ -3093,6 +3138,25 @@ def _mandatory_candidate_fields(analysis: Any) -> tuple[dict[str, Any], ...]:
     return tuple(candidates)
 
 
+def _leave_modal_failure_image(capture: Any, log_path: str | Path, stage: str) -> dict[str, Any]:
+    """Keep the already-captured blocking frame; at most three fixed files.
+
+    No extra capture or routine image writes. Storage failure cannot replace
+    the guard's decision to withhold input. The caller has already cancelled
+    the unsent action before persisting this exceptional diagnostic.
+    """
+    path = None
+    try:
+        if stage not in {"swap", "cast", "card_final"}:
+            raise ValueError("invalid leave modal evidence stage")
+        path = Path(log_path).with_name(f"leave_modal_{stage}.png")
+        write_failure_png_rgb(path, capture.width, capture.height, capture.rgb)
+        return {"path": str(path), "saved": True}
+    except Exception as exc:  # evidence must not bypass a blocked action
+        return {"path": str(path) if path is not None else None, "saved": False,
+                "errorType": type(exc).__name__, "error": str(exc)}
+
+
 def _manual_recovery_step(
     *,
     recovery: RecoveryStateMachine,
@@ -3139,6 +3203,7 @@ def _manual_recovery_step(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_randomization_argument(parser)
     parser.add_argument("--watch", action="store_true", required=True)
     parser.add_argument("--play-style", choices=[value.value for value in PlayStyle], default="simple")
     parser.add_argument(
@@ -3202,6 +3267,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=PET_SKILL_FIRE_VALUE_DEFAULT,
         help="inclusive board-gem count threshold; ignored for skill_cost_ready",
     )
+    parser.add_argument("--demon-target-gem", choices=[v.value for v in DemonTargetGem],
+                        default=DemonTargetGem.SHIELD.value)
     parser.add_argument("--interval", type=float, default=0.10)
     parser.add_argument("--action-timeout", type=float, default=9.0)
     parser.add_argument("--matches", type=int, default=1)
@@ -3303,7 +3370,10 @@ def _validate_args(args: argparse.Namespace) -> None:
         )
     if not phase2d4_bounded_handoff and args.max_turn_actions != 0:
         raise ValueError("Stage B3/B4/B5 requires --max-turn-actions 0 (disabled)")
-    if not 50 <= args.max_total_input_actions <= 1000:
+    if not (
+        args.play_style == PlayStyle.DINOSAUR.value
+        and args.max_total_input_actions == 0
+    ) and not 50 <= args.max_total_input_actions <= 1000:
         raise ValueError(
             "Stage B3/B4/B5 --max-total-input-actions safety ceiling must be between 50 and 1000"
         )
@@ -3349,7 +3419,7 @@ def _create_shared_combat_runtime(
     args: argparse.Namespace,
     v1_config: dict[str, Any],
 ) -> SharedCombatRuntime:
-    """Create the legacy CLI-owned runtime once, from a clean lobby."""
+    """Create one runtime; only Dinosaur explicitly allows current-combat start."""
 
     backend = NativeWin32Backend()
     binding = find_window_for_pid(target.pid, backend)
@@ -3360,14 +3430,17 @@ def _create_shared_combat_runtime(
             v1_config.get("cursor_settle_seconds", 0.06)
         ),
         input_mode=BoardInputMode(args.board_input_mode),
+        randomization=randomization_from_args(args),
     )
     provider = MemoryBoardStateProvider(
         target,
         MemoryProviderConfig(
+            coop_mode=args.play_style == PlayStyle.BU_WIN.value,
             max_region_mib=args.max_region_mib,
             chunk_mib=args.chunk_mib,
             required_confirmations=2,
-            require_lobby_start=True,
+            require_lobby_start=args.play_style != PlayStyle.DINOSAUR.value,
+            active_combat_start=args.play_style == PlayStyle.DINOSAUR.value,
             # Dispatcher callbacks and the shared runtime monitor already
             # retain exact current-match boards. Repeating a multi-MiB ACK
             # heap scan in this process can starve the 2 ms callback tap and
@@ -3407,7 +3480,9 @@ def _create_shared_combat_runtime(
     )
 
 
-def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None) -> int:
+def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None,
+        shadow_adapter: Any | None = None, selection_adapter: Any | None = None,
+        swap_timing_adapter: Any | None = None) -> int:
     _validate_args(args)
 
     if (
@@ -3422,6 +3497,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     )
     if canonical_profile:
         gameplay = GameplayConfig(
+            demon_target_gem=DemonTargetGem(getattr(args, "demon_target_gem", "shield")),
             play_style=PlayStyle(args.play_style),
             game_mode=GameMode(getattr(args, "game_mode", GameMode.SOLO.value)),
             intelligence=Intelligence.BASIC,
@@ -3465,6 +3541,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
     else:
         configured_mana_priority = ManaPriority(args.mana_priority)
         policy_config = PolicyConfig(
+            demon_target_gem=DemonTargetGem(getattr(args, "demon_target_gem", "shield")),
             play_style=PlayStyle(args.play_style),
             mana_priority=configured_mana_priority,
             intelligence=Intelligence.BASIC,
@@ -3544,7 +3621,31 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         DispatcherTransportTap(target) as dispatcher_tap,
         ExitStack() as input_delivery_stack,
     ):
+        if shadow_adapter is not None:
+            from pokiguard_v2.reasoning_shadow import attach_shadow_log, stop_shadow_safely
+            log = attach_shadow_log(log, shadow_adapter, policy.config)
+            input_delivery_stack.callback(stop_shadow_safely, shadow_adapter)
         runtime = shared_runtime or _create_shared_combat_runtime(target, args, v1_config)
+        if selection_adapter is not None:
+            from pokiguard_v2.reasoning_selection import (
+                OFFLINE_CONTEXT, revalidate_safely, select_safely, stop_safely,
+            )
+            # C4 exercises the real controller with native surfaces replaced.
+            # D1-P1 adds an explicitly injected, calibrated pilot capability.
+            # Ordinary UI remains BASIC until calibration/live readiness.
+            selection_context = (
+                OFFLINE_CONTEXT
+                if shared_runtime is not None and target.pid == 0
+                else "PRODUCTION_GATED"
+            )
+            from pokiguard_v2.reasoning_pilot import PilotSelectionBridge, observe_pilot_safely
+            if type(selection_adapter) is PilotSelectionBridge:
+                selection_context = selection_adapter.controller_context(
+                    target_pid=target.pid, shared_runtime=shared_runtime is not None)
+            input_delivery_stack.callback(stop_safely, selection_adapter)
+        if swap_timing_adapter is not None:
+            from pokiguard_v2.reasoning_swap_timing import timing_safely
+            input_delivery_stack.callback(timing_safely, swap_timing_adapter, "stop")
         binding = runtime.binding
         executor = runtime.executor
         provider = runtime.provider
@@ -3599,6 +3700,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     drag_overshoot_fraction=executor.drag_overshoot_fraction,
                     sleeper=executor.sleeper,
                     swap_pacer=executor.swap_pacer,
+                    randomization=getattr(executor,'randomization',InputRandomization()),
                 )
                 board_lease_session = PinnedForegroundBoardSession(
                     config=input_delivery_config,
@@ -3653,10 +3755,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         except (OSError, RuntimeError, ValueError):
             lobby_runtime_match_id = None
         calibration = BoardCalibration(
-            float(v1_config.get("board_first_center_x", 0.3620)),
-            float(v1_config.get("board_first_center_y", 0.1625)),
-            float(v1_config.get("board_step_x", 0.0393)),
-            float(v1_config.get("board_step_y", 0.0787)),
+            float(v1_config.get("board_first_center_x", BoardCalibration.first_center_x)),
+            float(v1_config.get("board_first_center_y", BoardCalibration.first_center_y)),
+            float(v1_config.get("board_step_x", BoardCalibration.step_x)),
+            float(v1_config.get("board_step_y", BoardCalibration.step_y)),
         )
         calibration.validate()
         _write(
@@ -3682,6 +3784,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             pid=target.pid,
             gameAssemblyBase=hex_pointer(target.game_assembly.base),
             config=vars(args),
+            inputRandomization=getattr(executor,'randomization',InputRandomization()).to_dict(),
             allowedActions=(
                 ["SWAP", "CAST", "PASS"]
                 if pass_stage == "B4"
@@ -3771,6 +3874,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         turn_transitions = TurnTransitionTracker()
         opening_ready_logged: set[Any] = set()
         opening_board_only_logged: set[Any] = set()
+        dinosaur_missed_turns: set[tuple[Any, int]] = set()
         transport_offered_messages: set[int] = set()
         transport_board_decode_attempts: dict[int, int] = {}
         dispatcher_offered_boards: set[tuple[str, int, int, int]] = set()
@@ -3790,6 +3894,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         lifecycle_timeline: list[dict[str, Any]] = []
         full_combat_result = "NOT_COMPLETED"
         terminal_combat_snapshot: TerminalCombatSnapshot | None = None
+        bu_win_wait_logged_session: CombatSessionKey | None = None
         session_cleared = False
         combat_ended = False
         postmatch_observation_deadline: float | None = None
@@ -4833,6 +4938,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 and not turn_transitions.opponent_seen
                 and fast_transition_deadline is not None
                 and time.monotonic() < fast_transition_deadline
+                and not (args.play_style == PlayStyle.DINOSAUR.value and any(
+                    message.event_type == 'MATCH_GAME_OVER'
+                    and message.match_id == active_session.match_id for message in early_messages))
             ):
                 try:
                     _service, fast_runtime = read_match_runtime(target)
@@ -4944,6 +5052,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
                     _beep("pause", not args.no_beep)
 
+            if selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge:
+                selection_observed_ns = time.perf_counter_ns()
+            if swap_timing_adapter is not None:
+                timing_safely(swap_timing_adapter, "observe_start")
             poll = _provider_poll_for_controller(
                 provider,
                 pass_wait_locked=bool(
@@ -4958,6 +5070,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     else None
                 ),
             )
+            if selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge:
+                observe_pilot_safely(selection_adapter, poll.state, policy.config,
+                    observed_ns=selection_observed_ns, read_end_ns=time.perf_counter_ns(),
+                    context=selection_context)
+            if swap_timing_adapter is not None:
+                timing_safely(swap_timing_adapter, "observe_end", state=poll.state)
             provider_status = (
                 poll.reason,
                 poll.lifecycle_event,
@@ -5442,6 +5560,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 ):
                     winner = dict(message.payload_strings).get("winner")
                     terminal_observation = capture_terminal_snapshot(
+                        coop_mode=args.play_style == PlayStyle.BU_WIN.value,
                         session_key=active_session,
                         timestamp=utc_timestamp(),
                         active_state=last_state,
@@ -5777,6 +5896,49 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         stop_reason = terminal.result.value
                         _beep("pause", not args.no_beep)
                         acceptance_stop_requested = True
+
+            if args.play_style == PlayStyle.DINOSAUR.value and active_session is not None:
+                if (state is not None and state.battle.session_key == active_session
+                        and state.battle.match_id == active_session.match_id
+                        and ((state.player is not None and state.player.hp == 0)
+                             or any(p.is_boss is True and p.hp == 0 for p in state.opponents))):
+                    terminal_combat_snapshot = merge_terminal_snapshots(
+                        terminal_combat_snapshot,
+                        capture_terminal_snapshot(session_key=active_session,
+                            timestamp=utc_timestamp(),active_state=state,
+                            terminal_participants=state.participants,
+                            local_username=state.battle.local_username,captured_before_cleanup=True))
+                if confirmed_dinosaur_win(terminal_combat_snapshot,active_session):
+                    ended_session=active_session
+                    pending_at_win=guard.stop()
+                    if pending_at_win is not None:
+                        counters.action_aborted_due_lifecycle += 1
+                        if pending_at_win.identity.action is PolicyAction.SWAP:
+                            counters.swap_aborted_due_lifecycle += 1
+                        _write(log,'action_result',result=ActionResultKind.ACTION_ABORTED_STATE_CHANGED,
+                               action=pending_at_win,reason='DINOSAUR_WIN_CONFIRMED',
+                               exactActionAckClaimed=False)
+                    executor.reset_swap_pacing_after_combat()
+                    monitor.end_session(ended_session)
+                    ended_idle_session=_idle_session_id(ended_session)
+                    if ended_idle_session is not None:
+                        idle_cache.end_session(ended_idle_session)
+                    if pass_coordinator is not None:
+                        pass_coordinator.clear_session()
+                    dispatcher_tap.disarm()
+                    active_session=None
+                    turn_transitions.clear()
+                    counters.sessions_completed += 1
+                    session_cleared=True
+                    combat_ended=True
+                    stop_reason='DINOSAUR_WIN_CONFIRMED'
+                    full_combat_result='WIN'
+                    _write(log,'dinosaur_win_confirmed',session=ended_session,
+                           terminalCombatSnapshot=terminal_combat_snapshot,
+                           pendingAtWin=pending_at_win,sessionCleared=True,
+                           automaticInputDisabled=True,postmatchWaitRequired=False,
+                           rewardClickRequired=False)
+                    break
 
             if acceptance_stop_requested:
                 break
@@ -6353,6 +6515,25 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 pending=guard.pending,
                 consuming_action_turns=consuming_action_turns,
             ):
+                if missed_turn_can_wait(
+                    play_style=args.play_style, turn=deadline_turn,
+                    local_move_sequence=(raw_runtime.local_move_sequence
+                        if raw_runtime is not None else
+                        state.battle.local_move_sequence if state is not None else None),
+                    sent_consuming_inputs=counters.turn_consuming_actions_total,
+                    pending=guard.pending,
+                    mandatory_reset=p3_mandatory_reset_pending,
+                ):
+                    key = (active_session, int(deadline_turn))
+                    if key not in dinosaur_missed_turns:
+                        dinosaur_missed_turns.add(key)
+                        _write(log, "dinosaur_missed_turn_wait_next_turn",
+                               session=active_session, turn=deadline_turn,
+                               remaining=deadline_remaining, providerReason=poll.reason,
+                               inputSent=False, automaticPass=False,
+                               currentBoardRereadRequired=True)
+                    time.sleep(args.interval)
+                    continue
                 diagnostics = provider.scan_diagnostics
                 recovery_dispatched = bool(
                     raw_runtime is not None
@@ -6597,6 +6778,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 # correctly remains UNKNOWN unless death was already visible.
                 if terminal_combat_snapshot is None and ended_session is not None:
                     terminal_combat_snapshot = capture_terminal_snapshot(
+                        coop_mode=args.play_style == PlayStyle.BU_WIN.value,
                         session_key=ended_session,
                         timestamp=utc_timestamp(),
                         active_state=last_state,
@@ -7733,6 +7915,18 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             PolicyAction.CAST,
                         ],
                     )
+            if _bu_win_waits_for_teammates(args.play_style, state):
+                if bu_win_wait_logged_session != state.battle.session_key:
+                    bu_win_wait_logged_session = state.battle.session_key
+                    _write(
+                        log,
+                        "bu_win_wait_teammates",
+                        session=state.battle.session_key,
+                        turn=state.battle.turn_number,
+                        inputSent=False,
+                    )
+                time.sleep(args.interval)
+                continue
             policy_state = _without_optional_card_actions(
                 state, suppressed_optional_actions
             )
@@ -7786,6 +7980,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         turn=policy_state.battle.turn_number,
                         elapsed=round(warmup_elapsed, 3),
                         blocker=basic_decision.trace.blocker,
+                        petSkillDiagnostics=_pet_skill_failure_diagnostics(
+                            provider, pet_skill_capability
+                        ),
                         inputSent=False,
                     )
                     time.sleep(args.interval)
@@ -7819,6 +8016,40 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     originalDecision=basic_decision,
                     forcedDecision=decision,
                 )
+            selection_receipt = None
+            if selection_adapter is not None:
+                from pokiguard_v2.reasoning_full_actions import publish_context_safely
+                publish_context_safely(selection_adapter, state, policy.config, basic_decision,
+                    pet_skill_capability, skill_rush_match_context, guard.input_allowed and gate.actionable,
+                    pass_owner_allowed=pass_coordinator is not None and not p3_mandatory_reset_pending)
+                selection_adapter.native_policy_guard = lambda proposed, legal=analysis.legal_match_producing_moves, safe=analysis.safe_move_count, first=state.battle.is_first_local_turn: _must_pause_for_no_safe_move(
+                    proposed, legal_move_count=legal, safe_move_count=safe, first_local_turn=first)
+            if (selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge
+                    and selection_adapter.decision_budget and decision == basic_decision):
+                from pokiguard_v2.reasoning_pilot import await_pilot_safely
+                budget_result = await_pilot_safely(selection_adapter, state, basic_decision, policy.config,
+                    context=selection_context, stop_requested=lambda: hotkeys.emergency_stop_requested()
+                        or _farm_emergency_requested(shared_runtime))
+                if budget_result == "STOPPED":
+                    aborted = guard.stop()
+                    stop_reason = "EMERGENCY_STOP"
+                    _write(log, "emergency_stop", key="F9", pending=aborted, checkpoint="REASONING_DECISION")
+                    break
+            if selection_adapter is not None and decision == basic_decision:
+                selection = select_safely(
+                    selection_adapter, state, basic_decision, policy.config,
+                    now_ns=time.perf_counter_ns(), input_allowed=guard.input_allowed,
+                    context=selection_context,
+                )
+                decision, selection_receipt = selection.decision, selection.receipt
+            if swap_timing_adapter is not None:
+                timing_safely(swap_timing_adapter, "decision", state=state, config=policy.config,
+                    input_parameters=dict(cursor_settle_seconds=getattr(executor, "cursor_settle_seconds", None),
+                        mouse_button_hold_seconds=getattr(getattr(executor, "backend", None), "mouse_button_hold_seconds", None)),
+                    selection=None if selection_receipt is None else dict(job_id=selection_receipt.job.job_id,
+                        generation=selection_receipt.job.generation, deadline_ns=selection_receipt.job.deadline_ns),
+                    budget=(selection_adapter.budget_receipts[-1] if selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge
+                        and selection_adapter.budget_receipts else None))
             observed_branch = _record_policy_observation(
                 counters,
                 observed_policy_sources,
@@ -8294,15 +8525,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 state.battle.client_move_allowed,
                 tuple(sorted(action.value for action in suppressed_optional_actions)),
             )
-            signature = (
-                decision.action,
-                (
-                    decision.move,
-                    decision.card_object_address,
-                    decision.skill_session_key,
-                    decision.skill_card_id,
-                ),
-            )
+            # Compare the existing action-specific input identity. Skill
+            # metadata on a SWAP explains the policy, but is not its target.
+            signature_identity = AutonomousActionIdentity.from_decision(state, decision)
+            signature = (signature_identity.action, signature_identity.target)
             previous = source_decisions.get(decision_key)
             if previous is not None and previous != signature:
                 guard.pause(automatic=True)
@@ -8479,6 +8705,20 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     pass_coordinator=pass_coordinator,
                     idle_readiness=fresh_pass_readiness,
                 )
+                if selection_receipt is not None:
+                    from pokiguard_v2.reasoning_full_actions import publish_context_safely
+                    publish_context_safely(selection_adapter, fresh_pass, policy.config, fresh_basic_decision,
+                        fresh_pass_capability, _current_skill_rush_match_context(fresh_pass,
+                            successful_pet_skill_turns_by_session), guard.input_allowed and fresh_pass_gate.actionable,
+                        pass_owner_allowed=pass_coordinator is not None and not p3_mandatory_reset_pending)
+                    failure = revalidate_safely(selection_adapter, selection_receipt, fresh_pass,
+                        fresh_basic_decision, policy.config, now_ns=time.perf_counter_ns(),
+                        input_allowed=guard.input_allowed, context=selection_context, final=True,
+                        final_remaining_seconds=fresh_pass.battle.turn_time_remaining_seconds)
+                    if failure is not None:
+                        _write(log, "reasoning_pass_veto", reason=failure, inputSent=False)
+                        continue
+                    fresh_pass_decision = decision
                 if not fresh_pass_gate.actionable:
                     _write(
                         log,
@@ -8756,6 +8996,48 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     counters.policy_no_safe_move += 1
                 else:
                     counters.undefined_policy += 1
+                if (
+                    reason in {
+                        "PET_SKILL_CAPABILITY_UNAVAILABLE",
+                        "PET_SKILL_ACTIONABILITY_UNKNOWN",
+                    }
+                    and policy.config.pet_skill_profile
+                ):
+                    diagnosis = _pet_skill_failure_diagnostics(provider, pet_skill_capability)
+                    warmup_seconds = time.monotonic() - pet_skill_warmups.get(
+                        optional_turn_key, time.monotonic()
+                    )
+                    dispatched = False
+                    if (
+                        runtime.gameplay_capability is not None
+                        and args.game_mode == GameMode.SOLO.value
+                    ):
+                        dispatched = _dispatch_technical_recovery(
+                            runtime,
+                            reason="PET_SKILL_CONTROL_UNAVAILABLE",
+                            state=state,
+                            pet_skill_failure_evidence={
+                                "blocker": reason,
+                                "warmup_seconds": warmup_seconds,
+                                "pending_action": guard.pending is not None,
+                                "evidence_source": (
+                                    f"{reason};{diagnosis['capabilityStatus']};"
+                                    f"{diagnosis['nativeDiscoveryReason']}"
+                                ),
+                            },
+                        )
+                    if dispatched:
+                        guard.require_recovery()
+                        recovery.manual_test_required()
+                        stop_reason = reason
+                        _write(
+                            log, "pet_skill_control_return_to_room",
+                            reason=reason, petSkillDiagnostics=diagnosis,
+                            technicalRecoveryHandoff=True, gameplayInputSent=False,
+                            recoveryReentryPermitted=False,
+                        )
+                        continue
+                    fields["petSkillDiagnostics"] = diagnosis
                 if _farm_owned_pass_unknown_can_wait_for_recovery(
                     reason=reason,
                     farm_owned=runtime.gameplay_capability is not None,
@@ -8967,12 +9249,75 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     successful_pet_skill_turns_by_session,
                 ),
             )
+            if swap_timing_adapter is not None:
+                timing_safely(swap_timing_adapter, "checkpoint", name="fresh")
+            selection_baseline = fresh_decision
+            if selection_adapter is not None:
+                from pokiguard_v2.reasoning_full_actions import publish_context_safely
+                publish_context_safely(selection_adapter, fresh, policy.config, fresh_decision,
+                    fresh_pet_skill_capability, _current_skill_rush_match_context(fresh,
+                        successful_pet_skill_turns_by_session), guard.input_allowed and fresh_gate.actionable,
+                    pass_owner_allowed=pass_coordinator is not None and not p3_mandatory_reset_pending)
+            if (selection_receipt is None and selection_adapter is not None
+                    and type(selection_adapter) is PilotSelectionBridge
+                    and selection_adapter.warm_worker
+                    and decision == basic_decision
+                    and getattr(selection_adapter.pilot_authority, 'action_profile', None) is None):
+                # A result missed at the initial root can be eligible at this
+                # already-existing fresh checkpoint. Never wait or reread for it.
+                late_selection = select_safely(
+                    selection_adapter, state, basic_decision, policy.config,
+                    now_ns=time.perf_counter_ns(), input_allowed=guard.input_allowed,
+                    context=selection_context,
+                )
+                if late_selection.receipt is not None:
+                    _cancel_unsent(guard, identity)
+                    decision, selection_receipt = late_selection.decision, late_selection.receipt
+                    identity = AutonomousActionIdentity.from_decision(
+                        fresh, decision, attempt=evolve_attempts + 1,
+                    )
+                    if not guard.reserve(identity):
+                        counters.duplicate_actions_blocked += 1
+                        _write(log, "action_duplicate_blocked", identity=identity)
+                        time.sleep(args.interval)
+                        continue
+                    _write(log, "action_identity_created", identity=identity,
+                           selectionLateRoot=True, selectedDecision=decision)
+            if selection_receipt is not None:
+                selection_failure = revalidate_safely(
+                    selection_adapter, selection_receipt, fresh, fresh_decision, policy.config,
+                    now_ns=time.perf_counter_ns(), input_allowed=guard.input_allowed,
+                    context=selection_context,
+                )
+                if selection_failure is None:
+                    # Same source + prepared legality proof; a different BASIC
+                    # heuristic choice is not an action-legality constraint.
+                    fresh_decision = decision
+                else:
+                    if getattr(selection_adapter.pilot_authority, 'action_profile', None) is not None:
+                        _cancel_unsent(guard, identity)
+                        _write(log, "reasoning_family_veto", reason=selection_failure, inputSent=False)
+                        continue
+                    # Before any input/consuming-turn reservation, rebind the
+                    # existing guard to the freshly computed BASIC incumbent.
+                    _cancel_unsent(guard, identity)
+                    decision, selection_receipt = fresh_decision, None
+                    identity = AutonomousActionIdentity.from_decision(
+                        fresh, decision, attempt=evolve_attempts + 1,
+                    )
+                    if not guard.reserve(identity):
+                        counters.duplicate_actions_blocked += 1
+                        _write(log, "action_duplicate_blocked", identity=identity)
+                        time.sleep(args.interval)
+                        continue
+                    _write(log, "action_identity_created", identity=identity,
+                           selectionFallback=selection_failure, freshDecision=fresh_decision)
+            fresh_identity = AutonomousActionIdentity.from_decision(
+                fresh, fresh_decision, attempt=evolve_attempts + 1,
+            )
             if (
-                fresh_decision.action is not decision.action
-                or fresh_decision.move != decision.move
-                or fresh_decision.card_object_address != decision.card_object_address
-                or fresh_decision.skill_card_id != decision.skill_card_id
-                or fresh_decision.skill_session_key != decision.skill_session_key
+                fresh_identity.action is not identity.action
+                or fresh_identity.target != identity.target
             ):
                 counters.expired_actions += 1
                 _cancel_unsent(guard, identity)
@@ -9120,6 +9465,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             if decision.action is PolicyAction.PET_SKILL:
                 from tools.pet_skill_action import run_embedded_policy_action
 
+                if selection_receipt is not None:
+                    failure = revalidate_safely(selection_adapter, selection_receipt, fresh,
+                        selection_baseline, policy.config, now_ns=time.perf_counter_ns(),
+                        input_allowed=guard.input_allowed, context=selection_context, final=True,
+                        final_remaining_seconds=fresh.battle.turn_time_remaining_seconds)
+                    if failure is not None:
+                        _cancel_unsent(guard, identity)
+                        _write(log, "reasoning_skill_veto", reason=failure, inputSent=False)
+                        continue
+
                 if (
                     decision.skill_card_id is None
                     or decision.skill_session_key != fresh.battle.session_key
@@ -9261,6 +9616,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
 
                 def execute_pet_skill_once() -> Any:
+                    if swap_timing_adapter is not None:
+                        timing_safely(swap_timing_adapter, "skill_start",
+                            match_id=fresh.battle.match_id, turn=fresh.battle.turn_number,
+                            source_hash=identity.source.critical_state_hash,
+                            skill_card_id=decision.skill_card_id)
                     hook = run_embedded_policy_action(
                         target=target,
                         provider=provider,
@@ -9301,6 +9661,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         interval=0.025,
                         timeout=20.0,
                     )
+                    if swap_timing_adapter is not None:
+                        timing_safely(swap_timing_adapter, "skill_finish", result=hook.result)
                     dispatch_context["hook"] = hook
                     return hook.result
 
@@ -9543,9 +9905,13 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         reason="LEAVE_MODAL_VISIBLE_BEFORE_GAMEPLAY_CLICK",
                         modal=leave_modal,
                         autoPaused=True,
+                        diagnosticImage=_leave_modal_failure_image(capture, args.log, "swap"),
                     )
                     continue
-                plan = map_swap_to_pixels(decision.move.first, decision.move.second, calibration, fresh_window.geometry, virtual_screen=backend.virtual_screen())
+                plan = map_swap_to_pixels(
+                    decision.move.first,decision.move.second,calibration,fresh_window.geometry,
+                    virtual_screen=backend.virtual_screen(),
+                    coordinate_jitter_fraction=getattr(executor,'randomization',InputRandomization()).coordinate_fraction)
                 if hotkeys.emergency_stop_requested() or _farm_emergency_requested(
                     shared_runtime
                 ):
@@ -9569,8 +9935,15 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
 
                 def read_final_swap_preflight() -> bool:
                     nonlocal pre_input_runtime, pre_input_failure
+                    if swap_timing_adapter is not None:
+                        timing_safely(swap_timing_adapter, "checkpoint", name="final")
+                    if swap_timing_adapter is not None and board_lease_session is None:
+                        timing_safely(swap_timing_adapter, "start", state=fresh, config=policy.config,
+                            input_mode="foreground", source_hash=identity.source.critical_state_hash)
                     try:
                         _service, observed_runtime = read_match_runtime(target)
+                        if swap_timing_adapter is not None:
+                            timing_read_end_ns = time.perf_counter_ns()
                         failure = direct_runtime_swap_preflight_failure(
                             pending_action,
                             match_id=observed_runtime.match_id,
@@ -9583,6 +9956,20 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                             ),
                             minimum_action_time=args.minimum_action_time,
                         )
+                        if failure is None and selection_receipt is not None and swap_timing_adapter is not None:
+                            from pokiguard_v2.reasoning_swap_timing import operational_preflight_failure
+                            failure = operational_preflight_failure(swap_timing_adapter,
+                                read_end_ns=timing_read_end_ns,
+                                input_parameters=dict(cursor_settle_seconds=getattr(executor, "cursor_settle_seconds", None),
+                                    mouse_button_hold_seconds=getattr(getattr(executor, "backend", None), "mouse_button_hold_seconds", None)))
+                        if failure is None and selection_receipt is not None:
+                            failure = revalidate_safely(
+                                selection_adapter, selection_receipt, fresh,
+                                selection_baseline, policy.config,
+                                now_ns=time.perf_counter_ns(), input_allowed=guard.input_allowed,
+                                context=selection_context, final=True,
+                                final_remaining_seconds=observed_runtime.remaining,
+                            )
                     except (OSError, RuntimeError, ValueError) as exc:
                         observed_runtime = None
                         failure = (
@@ -9590,6 +9977,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         )
                     pre_input_runtime = observed_runtime
                     pre_input_failure = failure
+                    if swap_timing_adapter is not None:
+                        timing_safely(swap_timing_adapter, "preflight",
+                            remaining=None if observed_runtime is None else observed_runtime.remaining,
+                            failure=failure, read_end_ns=(timing_read_end_ns
+                                if observed_runtime is not None else time.perf_counter_ns()))
                     return failure is None
 
                 if board_lease_session is None:
@@ -9680,15 +10072,21 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                 remaining_seconds=(
                                     fresh.battle.turn_time_remaining_seconds
                                 ),
+                                **({"reasoned": True} if selection_receipt is not None else {}),
                             ),
                         )
                     except Exception:
+                        if swap_timing_adapter is not None:
+                            timing_safely(swap_timing_adapter, "finish", result=None, status="EXECUTOR_EXCEPTION")
                         _cancel_farm_gameplay(
                             runtime,
                             farm_swap_permit,
                             detail="SWAP executor raised before result",
                         )
                         raise
+                    if swap_timing_adapter is not None:
+                        timing_safely(swap_timing_adapter, "finish", result=click,
+                                      status="RETURNED" if input_authorized else "INPUT_NOT_AUTHORIZED")
                     if input_authorized and click is not None:
                         farm_swap_completed = _complete_farm_gameplay(
                             runtime,
@@ -10083,6 +10481,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         reason="LEAVE_MODAL_VISIBLE_BEFORE_GAMEPLAY_CLICK",
                         modal=leave_modal,
                         autoPaused=True,
+                        diagnosticImage=_leave_modal_failure_image(capture, args.log, "cast"),
                     )
                     continue
                 locator = locate_gameplay_control(
@@ -10273,6 +10672,12 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         final_capture.height,
                     ).found:
                         card_preflight_failure = "LEAVE_MODAL_VISIBLE"
+                        _write(
+                            log, "leave_modal_final_preflight_blocked",
+                            diagnosticImage=_leave_modal_failure_image(
+                                final_capture, args.log, "card_final"
+                            ),
+                        )
                         return False
                     final_locator = locate_gameplay_control(
                         final_capture.rgb,

@@ -171,6 +171,7 @@ class ReadOnlyGameStatusProvider:
         target_candidates: tuple[tuple[str | None, str | None], ...] = ()
         lobby_branch = None
         current_room_id = None
+        room_is_host = None
         reason = poll.reason
         error = None
         if lifecycle_observation is not None:
@@ -184,11 +185,13 @@ class ReadOnlyGameStatusProvider:
             }:
                 try:
                     lobby = read_boss_lobby_runtime(
-                        self._target.resolver, lifecycle_observation
+                        self._target.resolver, lifecycle_observation,
+                        allow_guest_room=True,
                     )
                     lifecycle = lobby.state.value
                     lobby_branch = lobby.branch
                     current_room_id = lobby.chinh_phuc.current_room_id
+                    room_is_host = getattr(lobby.chinh_phuc, "is_host", None)
                     reason = "; ".join(lobby.reasons) or poll.reason
                     target_candidates = tuple(
                         (
@@ -347,6 +350,7 @@ class ReadOnlyGameStatusProvider:
             target_candidates=target_candidates,
             lobby_branch=lobby_branch,
             current_room_id=current_room_id,
+            room_is_host=room_is_host,
         )
 
     def close(self) -> None:

@@ -22,6 +22,7 @@ from .farm_checkpoint import (
     ResumeDecision,
 )
 from .pet_configuration import GameplayConfig
+from .gameplay_profile import GameMode
 from .input_delivery import InputDeliveryMode
 from .farm_control import FarmControlState, GracefulStopController
 from .farm_cycle import OpeningEvidence
@@ -93,6 +94,7 @@ class FarmRunState(str, Enum):
 
 
 class FarmRunStopReason(str, Enum):
+    HEALTH_REMINDER_BLOCKED = "HEALTH_REMINDER_BLOCKED"
     FARM_TARGET_COMPLETED = "FARM_TARGET_COMPLETED"
     FARM_START_STATE_INVALID = "FARM_START_STATE_INVALID"
     TARGET_RESOLUTION_FAILED = "TARGET_RESOLUTION_FAILED"
@@ -135,6 +137,7 @@ class MatchResult(str, Enum):
 
 
 class FarmInputDomain(str, Enum):
+    BOSS_HEALTH_REMINDER_DISMISS = "BOSS_HEALTH_REMINDER_DISMISS"
     BOSS_ROOM_SHELL_EXIT = "BOSS_ROOM_SHELL_EXIT"
     BOSS_ROOM_SHELL_CONFIRM = "BOSS_ROOM_SHELL_CONFIRM"
     BOSS_HUB_CHINH_PHUC_OPEN = "BOSS_HUB_CHINH_PHUC_OPEN"
@@ -400,6 +403,7 @@ class FarmRun:
     """Single-owner, bounded multi-match state and capability ledger."""
 
     _TECHNICAL_REASONS = {
+        "PET_SKILL_CONTROL_UNAVAILABLE",
         "SEQUENCE_DESYNC",
         "DEAD_BOARD_NO_REFRESH",
         "ACTIONABILITY_STATE_LOST",
@@ -462,6 +466,7 @@ class FarmRun:
         self._test_only_recovery_required = False
         self._ejected_map_reentry_pending = False
         self._ejected_map_reentry_origin: str | None = None
+        self._dismissed_health_reminders: set[str] = set()
         self._control = control
         self.continuation_of = continuation_of
         self.checkpoint_seq = 0
@@ -653,8 +658,15 @@ class FarmRun:
             finalized_status=finalized_status,
         )
 
-    def record_technical_exit(self, records: Any) -> bool:
-        """Graceful stop during recovery: exit to lobby, never re-enter."""
+    def record_technical_exit(
+        self, records: Any, *, failure_reason: str | None = None
+    ) -> bool:
+        """Record a verified lobby exit, preserving user-stop versus fault."""
+        if failure_reason is not None and (
+            failure_reason != "PET_SKILL_CONTROL_UNAVAILABLE"
+            or self.state is not FarmRunState.RECOVERY_ACTIVE
+        ):
+            return self._reject("fault_exit_out_of_order", reason=failure_reason)
         exits = confirms = reentries = 0
         domain_map = {
             "RECOVERY_EXIT": FarmInputDomain.RECOVERY_EXIT,
@@ -696,6 +708,14 @@ class FarmRun:
             )
             return False
         self.technical_exits += 1
+        if failure_reason is not None:
+            self.safe_stop(
+                FarmRunStopReason.COMBAT_SAFE_STOP,
+                detail=failure_reason,
+                returnedBossLobby=True,
+                recoveryReentrySent=False,
+            )
+            return True
         if self._control is not None:
             self._control.suppress_recovery_reentry()
             self._control.stop_at_lobby()
@@ -727,6 +747,7 @@ class FarmRun:
             for r in self.input_records
             if r.domain
             in {
+                FarmInputDomain.BOSS_HEALTH_REMINDER_DISMISS,
                 FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
                 FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
                 FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
@@ -1291,6 +1312,12 @@ class FarmRun:
         test_only_recovery: bool = False,
     ) -> bool:
         valid_for_gameplay = opening.valid()
+        waiting_coop_opening = bool(
+            not recovered
+            and not test_only_recovery
+            and self._gameplay_config.game_mode is GameMode.COOP
+            and opening.valid_coop_waiting_opening()
+        )
         valid_only_for_test_recovery = bool(
             test_only_recovery
             and not recovered
@@ -1301,7 +1328,10 @@ class FarmRun:
             self.state is not FarmRunState.WAIT_OPENING
             or self.current_session is None
             or opening.session != self.current_session
-            or not (valid_for_gameplay or valid_only_for_test_recovery)
+            or not (
+                valid_for_gameplay or valid_only_for_test_recovery
+                or waiting_coop_opening
+            )
         ):
             self.safe_stop(FarmRunStopReason.OPENING_INVARIANT_FAILED, opening=opening)
             return False
@@ -1319,10 +1349,13 @@ class FarmRun:
                 (
                     "combat_opening_ready_for_test_only_recovery"
                     if test_only_recovery
+                    else "coop_opening_ready_waiting_local_turn"
+                    if waiting_coop_opening
                     else "combat_opening_ready"
                 ),
                 opening=opening,
-                gameplayPermitted=(not test_only_recovery),
+                gameplayPermitted=(not test_only_recovery and not waiting_coop_opening),
+                awaitingLocalTurn=waiting_coop_opening,
                 timerSafeForGameplay=valid_for_gameplay,
             )
         return True
@@ -1833,6 +1866,39 @@ class FarmRun:
             return False
         return True
 
+    def reserve_health_reminder_dismiss(
+        self, *, identity: str, foreground: bool, outside_combat: bool,
+    ) -> FarmInputPermit | None:
+        if self.stopped:
+            return None
+        if (self.state not in {FarmRunState.WAIT_INITIAL_BOSS_LOBBY,
+                              FarmRunState.RESOLVE_TARGET, FarmRunState.ENTRY_READY,
+                              FarmRunState.WAIT_BOSS_LOBBY}
+                or self.current_session is not None or self._pending is not None
+                or not foreground or not outside_combat or not identity
+                or identity in self._dismissed_health_reminders):
+            return None
+        self._dismissed_health_reminders.add(identity)
+        permit = FarmInputPermit(uuid4().hex, FarmInputDomain.BOSS_HEALTH_REMINDER_DISMISS,
+                                 None, self.match_attempts)
+        self._pending = permit
+        self._event("health_reminder_dismiss_reserved", identity=identity)
+        return permit
+
+    def complete_health_reminder_dismiss(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = "",
+    ) -> bool:
+        if (permit != self._pending
+                or permit.domain is not FarmInputDomain.BOSS_HEALTH_REMINDER_DISMISS):
+            self.safe_stop(FarmRunStopReason.HEALTH_REMINDER_BLOCKED,
+                           detail="health reminder capability mismatch")
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.HEALTH_REMINDER_BLOCKED, detail=detail)
+        return sent
+
     def reserve_target_select(
         self,
         *,
@@ -2022,13 +2088,13 @@ class FarmRun:
         return True
 
     def reserve_hub_chinh_phuc_open(
-        self, *, foreground: bool
+        self, *, foreground: bool, general_hub_proven: bool = False
     ) -> FarmInputPermit | None:
         """Reserve one exact ManagerQuangTruong Chinh Phuc Button click.
 
-        This is available after either a direct, proven general-hub ejection or
-        after the current match lost its room and one detached-shell close was
-        sent. Runtime and UI geometry proof remain the caller's responsibility.
+        This is available after a proven general-hub ejection, a confirmed
+        normal postmatch that returned directly to the hub, or one detached
+        shell close. Runtime and UI geometry proof belong to the caller.
         """
 
         if self.stopped:
@@ -2052,8 +2118,21 @@ class FarmRun:
             self._ejected_map_reentry_pending
             and self._ejected_map_reentry_origin == "GENERAL_HUB"
         )
+        confirmed_postmatch_hub = bool(
+            general_hub_proven
+            and self.current_session is None
+            and self.attempts
+            and self.attempts[-1].normal_postmatch
+            and self.attempts[-1].end_timestamp is not None
+            and any(
+                record.domain is FarmInputDomain.POSTMATCH_CONFIRM
+                and record.attempt_index == self.match_attempts
+                and record.sent
+                for record in self.input_records
+            )
+        )
         valid_origin = bool(
-            (direct_general_hub and len(shell_exits) == 0)
+            ((direct_general_hub or confirmed_postmatch_hub) and len(shell_exits) == 0)
             or (not direct_general_hub and len(shell_exits) == 1)
         )
         if not valid_origin or any(
@@ -2081,7 +2160,15 @@ class FarmRun:
             self.match_attempts,
         )
         self._pending = permit
-        self._event("boss_hub_chinh_phuc_open_reserved", attemptIndex=self.match_attempts)
+        self._event(
+            "boss_hub_chinh_phuc_open_reserved",
+            attemptIndex=self.match_attempts,
+            origin=(
+                "DETACHED_SHELL_EXIT" if shell_exits
+                else "GENERAL_HUB_EJECTION" if direct_general_hub
+                else "CONFIRMED_POSTMATCH_HUB"
+            ),
+        )
         return permit
 
     def complete_hub_chinh_phuc_open(

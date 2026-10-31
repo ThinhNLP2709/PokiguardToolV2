@@ -1,4 +1,4 @@
-"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b6 card strip.
+"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b12 card strip.
 
 No heap scan and no engine invocation. Offsets below are native-code verified,
 not Cpp2IL managed-field offsets; see docs/phase3b3_native_card_evidence.md.
@@ -34,7 +34,9 @@ _MAX_DOT_PREFAB_ENTRIES = 16
 
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
-_COMPONENT_GO_ICALL = 0x38D7AE8
+# Component.get_gameObject at RVA 0x3136170 reads this exact icall cache.
+# UnityPlayer is byte-identical to b6; its code/layout signatures stay valid.
+_COMPONENT_GO_ICALL = 0x3FE1650
 _COMPONENT_GO_RVA = 0x1067390
 _NATIVE_SIGNATURES = (
     (0x1067396, "488b5928"),  # Component -> GameObject +28
@@ -54,8 +56,8 @@ _NATIVE_SIGNATURES = (
     (0xB5AB4E, "8b4338"),  # Canvas renderMode
 )
 _UNMARSHAL_SIGNATURE = (
-    0x138561F,
-    "4885db7433f6c301740d488bcbe87f6ee8fe488bd8eb03488b1b",
+    0x19740BF,
+    '4885db7433f6c301740d488bcbe8df888afe488bd8eb03488b1b',
 )
 
 

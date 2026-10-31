@@ -19,12 +19,16 @@ PRODUCTION_INPUT_CALIBRATION: Mapping[str, Any] = MappingProxyType(
         # but allow the first tap to be rendered before selecting its neighbour.
         "click_delay_seconds": 0.35,
         "cursor_settle_seconds": 0.06,
-        # Pokiguard 1.7.4 live 1280x640 DotsArea evidence: grid boundaries
-        # x=438..840 and y=79..481, with about 50.25 px between centres.
-        "board_first_center_x": 0.3620,
-        "board_first_center_y": 0.1625,
-        "board_step_x": 0.0393,
-        "board_step_y": 0.0787,
+        # PetPuzzle 1.7.4.9 MatchHudV2, canonical 1280x640 client:
+        # opening-frame centres are approximately (430.5, 59.5), with
+        # 59.75 px pitch. Board.ComputeEvenGridCellLayout/GetCellBaseWorldPosition
+        # confirm an even 8x8 grid; these are client pixels, not world units.
+        # Divide by w-1/h-1 to match map_swap_to_pixels, including its scaling.
+        # Evidence: docs/artifacts/game_1_7_4_9_20261020/board_mapping_fix_20261021/.
+        "board_first_center_x": 430.5 / 1279,
+        "board_first_center_y": 59.5 / 639,
+        "board_step_x": 59.75 / 1279,
+        "board_step_y": 59.75 / 639,
     }
 )
 

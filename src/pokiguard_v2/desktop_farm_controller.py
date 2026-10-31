@@ -14,7 +14,8 @@ import threading
 import time
 from typing import Any, Callable
 
-from .basic_policy import Intelligence
+from .basic_policy import Intelligence, PlayStyle
+from .reasoning_settings import AIStatus
 from .pet_configuration import FarmPolicyUnavailable
 from .boss_entry import FarmTarget
 from .controller_lease import AutomationControllerLease
@@ -97,6 +98,7 @@ class DesktopControllerSnapshot:
     emergency_stop_acknowledged_at: str | None = None
     checkpoint_path: str | None = None
     last_stop_reason: str | None = None
+    last_stop_detail: str | None = None
     last_error: str | None = None
     exit_code: int | None = None
     foreground_handoff: str = "NOT_REQUESTED"
@@ -106,6 +108,7 @@ class DesktopControllerSnapshot:
     current_match_turns: int = 0
     total_energy_used: int = 0
     updated_at: str = ""
+    ai_status: AIStatus = AIStatus()
     safety: ControllerSafetyEvidence = ControllerSafetyEvidence()
 
 
@@ -114,6 +117,7 @@ class ControllerLaunch:
     config: Any
     checkpoint_path: Path | None
     game_pid: int | None = None
+    expected_match_id: str | None = None
 
 
 Runner = Callable[
@@ -134,8 +138,13 @@ class DesktopFarmControllerManager:
         reset_evidence: Path | None = None,
         artifacts_root: Path | None = None,
         data_root: Path | None = None,
+        reasoning_session_factory: Callable | None = None,
+        calibration_gate: Any | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
+        self._reasoning_session_factory = reasoning_session_factory
+        self._calibration_gate = calibration_gate
+        self._ui_reasoning_session = None
         self.data_root = (data_root or self.project_root).resolve()
         self.reset_evidence = (
             reset_evidence
@@ -213,6 +222,14 @@ class DesktopFarmControllerManager:
         config.gameplay_config.require_farm_policy()
         BoardInputMode(config.board_input_mode)
         InputDeliveryMode(config.input_delivery_mode)
+        if config.play_style is PlayStyle.DINOSAUR:
+            if launch.checkpoint_path is not None:
+                raise ValueError("DINOSAUR_CURRENT_COMBAT_ONLY")
+            if not launch.expected_match_id or not launch.expected_match_id.strip():
+                raise ValueError("CURRENT_COMBAT_MATCH_ID_NOT_PROVEN")
+            if config.target_completed_matches != 1 or config.max_match_attempts != 1:
+                raise ValueError("DINOSAUR_CURRENT_COMBAT_ONLY")
+            return
         target = FarmTarget(
             config.normalized_boss_id,
             config.normalized_boss_name,
@@ -241,8 +258,9 @@ class DesktopFarmControllerManager:
                 "checkpoint is not resumable with the current UI configuration",
             )
 
-    def start(self, config: Any, *, game_pid: int | None = None) -> ControllerCommandResult:
-        return self._start(ControllerLaunch(config, None, game_pid))
+    def start(self, config: Any, *, game_pid: int | None = None,
+              expected_match_id: str | None = None) -> ControllerCommandResult:
+        return self._start(ControllerLaunch(config, None, game_pid, expected_match_id))
 
     def resume(
         self,
@@ -259,6 +277,7 @@ class DesktopFarmControllerManager:
         self,
         config: Any,
         checkpoint_path: Path | None = None,
+        *, expected_match_id: str | None = None,
     ) -> str | None:
         """Run the same canonical launch validation used by the command path."""
 
@@ -267,12 +286,15 @@ class DesktopFarmControllerManager:
                 ControllerLaunch(
                     config,
                     checkpoint_path.resolve() if checkpoint_path is not None else None,
+                    expected_match_id=expected_match_id,
                 )
             )
             if not self.reset_evidence.is_file():
                 raise FileNotFoundError(
                     f"reset evidence not found: {self.reset_evidence}"
                 )
+            if self._calibration_gate is not None:
+                self._calibration_gate.validate_launch(config, checkpoint_path)
         except (FarmPolicyUnavailable, CheckpointError) as exc:
             return exc.reason
         except (FileNotFoundError, TypeError, ValueError) as exc:
@@ -283,6 +305,7 @@ class DesktopFarmControllerManager:
         reason = self.launch_rejection_reason(
             launch.config,
             launch.checkpoint_path,
+            expected_match_id=launch.expected_match_id,
         )
         if reason is not None:
             with self._lock:
@@ -298,6 +321,11 @@ class DesktopFarmControllerManager:
                 )
                 self._snapshot = replace(self._snapshot, safety=safety)
                 return self._result(False, "CONTROLLER_ALREADY_ACTIVE")
+            if self._calibration_gate is not None:
+                try:
+                    self._calibration_gate.claim(launch.config, launch.checkpoint_path)
+                except Exception as exc:
+                    return self._result(False, f"CALIBRATION_REJECTED: {type(exc).__name__}: {exc}")
             generation = self._snapshot.generation + 1
             edges = FarmControlHotkeyEdges()
             safety = replace(
@@ -319,6 +347,8 @@ class DesktopFarmControllerManager:
                 generation=generation,
                 state=DesktopControllerState.STARTING,
                 active=True,
+                ai_status=(AIStatus("WAITING", "WAITING_COMBAT_SETUP")
+                           if launch.config.ai.shadow_enabled else AIStatus()),
                 target_completed_matches=launch.config.target_completed_matches,
                 checkpoint_path=(
                     str(launch.checkpoint_path)
@@ -402,6 +432,8 @@ class DesktopFarmControllerManager:
                     else DesktopControllerState.STOPPED
                 ),
                 active=False,
+                ai_status=(replace(self._snapshot.ai_status, state="STOPPED",selection_authority=False)
+                           if launch.config.ai.shadow_enabled or launch.config.ai.reasoning_enabled else AIStatus()),
                 exit_code=exit_code,
                 last_error=error,
                 emergency_stop_acknowledged_at=(
@@ -418,6 +450,25 @@ class DesktopFarmControllerManager:
 
     def _observe(self, generation: int, source: Any, phase: str) -> None:
         """Immediately copy backend primitives; never retain mutable run data."""
+
+        if phase == "AI_STATUS":
+            # Observer-thread display update only. Never wait behind a UI/Stop lock.
+            if type(source) is not AIStatus or not self._lock.acquire(False):
+                return False
+            try:
+                if generation != self._snapshot.generation or not self._snapshot.active:
+                    return False
+                session = self._ui_reasoning_session
+                if source.selection_authority and (session is None or
+                        source.config_id != session.intent.config_id or
+                        not source.reason.startswith('UI_REASONING_')):
+                    return False
+                if source.observation < self._snapshot.ai_status.observation:
+                    return False
+                self._snapshot = replace(self._snapshot, ai_status=source)
+                return True
+            finally:
+                self._lock.release()
 
         with self._lock:
             if generation != self._snapshot.generation:
@@ -446,6 +497,17 @@ class DesktopFarmControllerManager:
                 if current_attempt is not None
                 else 0
             )
+            stop_detail = None
+            if source.stop_reason is not None:
+                for event in reversed(getattr(source, "events", ())):
+                    entry = event.detail.get("entry", {})
+                    if isinstance(entry, dict) and entry.get("stopReason"):
+                        stop_detail = str(entry["stopReason"])
+                        break
+                    if (getattr(getattr(source, "gameplay_config", None), "play_style", None)
+                            is PlayStyle.DINOSAUR and isinstance(event.detail.get("detail"), str)):
+                        stop_detail = event.detail["detail"]
+                        break
             self._snapshot = replace(
                 self._snapshot,
                 state=state,
@@ -471,10 +533,12 @@ class DesktopFarmControllerManager:
                 ),
                 checkpoint_path=str(
                     self.artifacts_root / str(source.farm_run_id) / "checkpoint.json"
-                ),
+                ) if getattr(getattr(source, "gameplay_config", None), "play_style", None)
+                    is not PlayStyle.DINOSAUR else None,
                 last_stop_reason=(
                     source.stop_reason.value if source.stop_reason is not None else None
                 ),
+                last_stop_detail=stop_detail,
                 completed_match_turns=completed_match_turns,
                 current_match_turns=current_match_turns,
                 total_energy_used=sum(
@@ -635,6 +699,11 @@ class DesktopFarmControllerManager:
         thread.join(timeout_seconds)
         return not thread.is_alive()
 
+    def wait_reasoning_cleanup(self, timeout_seconds: float = 5.0) -> bool:
+        """Background UI shutdown only; Stop/action paths never call this."""
+        session = self._ui_reasoning_session
+        return session is None or session.wait_closed(timeout_seconds)
+
     def _run_production(
         self,
         launch: ControllerLaunch,
@@ -642,6 +711,14 @@ class DesktopFarmControllerManager:
         observer: Callable[[Any, str], None],
     ) -> int:
         launch.config.gameplay_config.require_farm_policy()
+        if launch.config.play_style is PlayStyle.DINOSAUR:
+            from tools.dinosaur_run import run as run_dinosaur
+            return run_dinosaur(
+                launch.config, expected_match_id=launch.expected_match_id,
+                expected_pid=launch.game_pid, reset_evidence=self.reset_evidence,
+                artifacts_root=self.artifacts_root, control_edges=edges,
+                observer=observer,
+            )
         from tools import farm_run as farm_run_tool
 
         config = launch.config
@@ -673,6 +750,8 @@ class DesktopFarmControllerManager:
             str(config.rage_target),
             "--pet-skill-fire-condition",
             config.pet_skill_fire_condition.value,
+            "--demon-target-gem",
+            config.demon_target_gem.value,
             "--board-input-mode",
             config.board_input_mode.value,
             "--input-delivery-mode",
@@ -686,6 +765,10 @@ class DesktopFarmControllerManager:
             argv.extend(
                 ["--pet-skill-fire-value", str(config.pet_skill_fire_value)]
             )
+        from .input_randomization import InputRandomization
+        if config.input_randomization != InputRandomization():
+            import json
+            argv.extend(['--input-randomization',json.dumps(config.input_randomization.to_dict())])
         if not config.tool_sound_enabled:
             argv.append("--no-beep")
         if config.normalized_boss_id is None:
@@ -704,7 +787,80 @@ class DesktopFarmControllerManager:
         # equality and exact runtime resolution.
         args.boss_id = config.normalized_boss_id
         args.boss_name = config.normalized_boss_name
-        return farm_run_tool.run(args, control_edges=edges, observer=observer)
+        if self._reasoning_session_factory is not None:
+            reasoning_session = None
+            try:
+                reasoning_session = self._reasoning_session_factory(config)
+            except Exception as exc:
+                try:
+                    observer(AIStatus("DEGRADED", f"PILOT_SETUP_{type(exc).__name__}"), "AI_STATUS")
+                except Exception:
+                    pass
+            if reasoning_session is not None:
+                try:
+                    return farm_run_tool.run(args, control_edges=edges, observer=observer,
+                                             reasoning_session=reasoning_session)
+                finally:
+                    try:
+                        reasoning_session.stop()  # Signal only, never wait/drain here.
+                    except Exception:
+                        pass
+        if config.ai.reasoning_enabled:
+            # Normal UI opt-in is separate from historical one-shot pilots.
+            # Any setup/profile fault still invokes this exact BASIC FarmRunner.
+            session = None
+            if self._reasoning_session_factory is None:
+                try:
+                    previous = self._ui_reasoning_session
+                    if previous is not None and (not previous.closed.is_set() or previous.cleanup_ok is not True):
+                        observer(AIStatus('DEGRADED', 'UI_REASONING_CLEANUP_PENDING'), 'AI_STATUS')
+                    else:
+                        from .app_paths import current_app_paths
+                        from .reasoning_ui_session import create_ui_reasoning_session
+                        from tools.runtime_common import configured_game_executable
+                        import uuid
+                        selection = configured_game_executable()
+                        if selection is None:
+                            observer(AIStatus('UNSUPPORTED', 'UI_REASONING_GAME_LOCATION_REQUIRED'), 'AI_STATUS')
+                        else:
+                            paths = replace(current_app_paths(),source_root=self.project_root,data_root=self.data_root)
+                            session = create_ui_reasoning_session(config,paths=paths,
+                                game_executable=selection.executable,
+                                directory=self.artifacts_root/'reasoning'/('ui_'+uuid.uuid4().hex),observer=observer)
+                            self._ui_reasoning_session = session
+                except Exception as exc:
+                    try:
+                        observer(AIStatus('DEGRADED', 'UI_REASONING_SETUP_'+type(exc).__name__), 'AI_STATUS')
+                    except Exception:
+                        pass
+            if session is None:
+                return farm_run_tool.run(args,control_edges=edges,observer=observer)
+            try:
+                return farm_run_tool.run(args,control_edges=edges,observer=observer,reasoning_session=session)
+            finally:
+                try:
+                    session.stop()
+                except Exception:
+                    pass
+        if not config.ai.shadow_enabled:
+            return farm_run_tool.run(args, control_edges=edges, observer=observer)
+        session = None
+        try:
+            from .reasoning_settings import RunShadowSession
+            session = RunShadowSession(config, directory=self.artifacts_root / "reasoning",
+                                       observer=observer)
+        except Exception as exc:
+            try:
+                observer(AIStatus("DEGRADED", f"SHADOW_CONFIG_{type(exc).__name__}"), "AI_STATUS")
+            except Exception:
+                pass
+        if session is None:
+            return farm_run_tool.run(args, control_edges=edges, observer=observer)
+        try:
+            return farm_run_tool.run(args, control_edges=edges, observer=observer,
+                                     shadow_session=session)
+        finally:
+            session.stop()  # Signal only; never drain/join on FarmRunner teardown.
 
 
 __all__ = [

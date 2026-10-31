@@ -92,7 +92,8 @@ def _run_packaging_self_check(paths: AppPaths) -> int:
     """
 
     from pokiguard_v2.reset_evidence_store import load_reset_capabilities
-    from tools import basic_auto_bot, boss_entry, farm_cycle, farm_run, technical_recovery
+    from tools import basic_auto_bot, boss_entry, dinosaur_run, farm_cycle, farm_run, technical_recovery
+    from pokiguard_v2 import dinosaur_session, input_randomization
 
     capabilities = load_reset_capabilities(paths.reset_evidence)
     calibrations = sorted(
@@ -108,6 +109,9 @@ def _run_packaging_self_check(paths: AppPaths) -> int:
         "packaged_self_check_passed",
         importedModules=[
             basic_auto_bot.__name__,
+            dinosaur_run.__name__,
+            dinosaur_session.__name__,
+            input_randomization.__name__,
             boss_entry.__name__,
             farm_cycle.__name__,
             farm_run.__name__,
@@ -143,6 +147,9 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
         # packaging does not add subprocess or worker recursion.
         if tuple(argv or ()) == (PACKAGING_SELF_CHECK_ARG,):
             exit_code = _run_packaging_self_check(resolved)
+        elif tuple(argv or ()) == ('--packaged-reasoning-self-check',):
+            from pokiguard_v2.packaged_verification import run
+            exit_code = run(resolved)
         else:
             from tools.desktop_ui import main as desktop_main
 

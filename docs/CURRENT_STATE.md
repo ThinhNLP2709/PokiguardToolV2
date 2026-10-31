@@ -1,10 +1,471 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-09-22 (Asia/Saigon)**.
+Canonical technical handoff as of **2026-10-31 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
 technical state; use linked phase reports for detailed evidence.
+
+## Checkpoint1.3.0 — 2026-11-01
+
+Theo yêu cầu user, push code/build1.3.0 để chốt hiện trạng trước khi mở rộng.
+[Bản build và phạm vi](v1.3.0_release_report.md),
+[yêu cầu AI chung sau checkpoint](phase5/NEXT_REASONING_SCOPE.md).
+1.3.0 chưa là AI chung; suy luận vẫn chỉ scope DemonShield đã kiểm. Protected
+runtime132modules+entry giữ nguyên so với UI live; version và admission metadata
+được kiểm offline, không relabel live cũ hay tự thêm trận.127test PASS.
+
+<!-- F2_CLOSED_20261031 -->
+## UI suy luận sau closeout — CLOSED PASS 2026-11-01
+
+User chọn mở bật/tắt suy luận trong UI, trước mắt chỉ Demon Farm ăn Khiên đã
+nghiệm thu. Bản thử riêng đã PASS, BASIC mặc định/fallback; scope vẫn
+Solo/Lieyun77/Demon thường/nội tại Khiên/4Kiếm hiệu dụng, đúng account/đồ/stats/
+gameb12/host. [Báo cáo và evidence UI](phase5/ui_reasoning_delivery_20261031.md).
+Cap live mới2 đã đóng:1BASIC+1UI-R,2WIN/confirm/về phòng;6Rcompleted
+retention,5RnonterminalACK+1strongterminal,31AIrecords/0loss,1workerreaped.
+3controller-tail soft flags dùng tối đa23.5472ms trong sharedguard250ms,
+0guard exhaustion/aggregate reserve overrun/AI fault. Source375files
+`4d07f02e…`, EXE`29692934…`, ZIP`fcf29a1a…`; fullhash/evidence trong báo cáo.
+Không còn live bắt buộc cho task UI. Chưa release/version bump; F1/F2 và cap
+cũ bên dưới giữ origin. Không suy hiệu quả vượt BASIC hoặc mở profile mới.
+
+## Phase5 CLOSED — docs handoff 2026-10-31
+
+**ROADMAP COMPLETE — STOP**, no mandatory next prompt. [Final report](phase5/FINAL_REPORT.md),
+[user guide](phase5/USER_GUIDE.md), [rollback](phase5/ROLLBACK.md),
+[F2 report](phase5/reports/5f2_report.md). BASICdefault/efficacyINCONCLUSIVE.
+
+Exact F1testZIPv1.2.10 SHA `2a7c74d4a8236a2a58404d8ef057be2c44d141fe0cf90d1d6d75533109fd6515`,
+source370Pythonfiles `f0aeab76e40ffc12fa11692702119d181bc8e869ae44033f7624ec80d1a8018b`.
+Package acceptance only experimental labR1DemonShieldSWAP, currentb12/Solo/
+Lieyun77/normal/Shield4/floor2/account-loadout-stats pin. Ordinary UI reasoning
+selection remains disabled; historical Simple/Careful/HT7/Mega source pilots
+retain their scopes. Coop/Búwin/DinosaurR and shadowCoop, R2/models unsupported.
+
+F1cap4closed/4WIN/confirm/return,2BASIC+2R,2completed retention,2workers reaped,
+12AIrecords/0loss,0observed read/input-safety/timeout/PASS/abort/recovery.
+E2cap25closed, E1comparison20closed/efficacyINCONCLUSIVE; do not pool cohorts.
+NativeU/actualenergyUNKNOWN, paired addedCPU/memoryNOT_MEASURED; reasoned
+package next-turnACK/skill/QTE/live emergency/reentry remainNOT_OBSERVED.
+
+F2:documentation only, runtime unchanged, no live/test execution or game/tool
+launch; no build/version/commit/push/tag/release.9oldZIPs preserved. Source
+hashes matched F1 on entry and after documentation edits; no code/GAME/V1 writes.
+No active batch or permission to reopen E1/E2/F1 or optional model. Current
+closure matrix takes precedence over ACTIVE/PENDING history below.
+## Historical E2 closure / F1 selection — 2026-10-31
+
+[Closed25attempt source soak](phase5/artifacts/5e2_live_20261029/closure_20261031/REPORT.md):
+PASS STRONG scoped technical reliability, Solo Lieyun77/DemonShield4,5BASIC+20R,
+25/25WIN/confirm/return.47Ractions/27ACK/20proved terminal exclusions,
+46retention+1override:175preexistingRage/3Sword, exact dispatch/WINsame turn7.
+Zero read/input-safety/timeout/PASS/abort/recovery.20workers reaped,255AIrows/0loss,
+no AI breaker;14component excesses fit sharedguard, not faults. Source7421293d…
+unchanged this turn. Live latency/resources descriptive, paired added CPU/memory
+NOT_MEASURED; offline490fault/30min resources retain their scope, no authority repin.
+Cap25 exhausted, batch closed. Next5F.1 selected only, NOT_EXECUTED; no build/version/
+Git/release. BASIC default/efficacyINCONCLUSIVE, current scope limited as [frozen](phase5/artifacts/5e2_live_20261029/closure_20261031/PACKAGING_SCOPE.md).
+Earlier active/reopen notes below are historical, not authority to restart E2.
+
+## E2 unstarted session reopened — 2026-10-31
+
+User requested reopening. Old20REASONING requestcb218f3b… expired unclaimed,
+zeroStart/input/combat session; no reasoning slot consumed. Keep5BASIC/20R
+remaining, totalcap25. Fresh request2030f300…/UI13340/resource observer23080,
+same source7421293d…/b12/config/native review. [Current launch pointer](phase5/artifacts/5e2_live_20261029/current_reopen.json).
+IDLE/manualStart; game initially at ThapNhiTinh map, operator must enter
+Lieyun77/DemonShield room before Start. No code/build/old-evidence mutation.
+
+## Phase5E.2 BASIC5 complete / REASONING20 ready — 2026-10-30
+
+[Current handoff](phase5/artifacts/5e2_live_20261029/REASONING20_HANDOFF.md):
+all5BASIC WIN/confirm/return,9SWAP/4ACK/5proved terminal exclusions; zero read/
+input-safety/timeout/PASS/abort/recovery. Source7421293d… adds E2-only native
+admission plus two setup dispatch branches/test;363oldPythonfiles byte-exact.
+10new tests/9negative gates/100selector cyclesPASS;15legacy events reproduced.
+UI PID25348 waiting manual Start for20REASONING slots6–25, new requestcb218f3b…,
+zero claim/input at preparation. Own-tool observer PID12104 bounded2h, no game
+reads/captures/input. Native source782aba… sealed; no old authority repin.
+Cap25,5consumed,20remaining; E2 not yetPASS, no package/version change.
+
+## Phase5E.2 bounded live activated — 2026-10-29
+
+Update: [BASIC3 native review](phase5/artifacts/5e2_live_20261029/BASIC3_REVIEW.md)
+is closed:3/3WIN,5SWAP/2ACK/3proved terminal exclusions,3confirm/return,
+zero read/input-safety/timeout/PASS/abort/recovery. Collector5/5written/zero loss;
+H127.3942ms/I2359.0343ms samplemax2ACK, UUNKNOWN. Ledger3/25; next BASIC2
+slots4–5/manual Start, then E2-specific20REASONING admission still pending.
+
+User requests25attempts exactly: BASIC5+REASONING20. [Current live allocation](phase5/artifacts/5e2_live_20261029/RUNBOOK.md)
+binds source782aba…/b12; historical offline evidence remains dbbe59…. Only
+postmatch locator/test differ; R1/runner/diagnostics/controller/input unchanged.
+Read-only preflight confirms Solo/host Lieyun1436/lv77; operator confirms normal
+Demon Aegis/Shield/same gear. First source UI session measures BASIC slots1–3
+within5control, cap3/manual Start/AI-shadowOFF. Remaining BASIC slots4–5 then
+E2-specific native review/admission before REASONING slots6–25. Runtime combat
+pet/loadout binding and H/I/U remain pending; room DTO identity is provisional.
+No old E1 request/claim, automatic Start, computer-use, extra attempts or build.
+
+## Defeat result confirmation source fix — 2026-10-29
+
+[Native loss-modal diagnosis/fix](postmatch_loss_detection_fix_20261029.md):
+latest MegaBASIC/Lienor run147ef… completed3/3combats(1WIN/1UNKNOWN/1LOSS),
+then POSTMATCH_UI_AMBIGUOUS after30.75s. Loss PNG has green Đồng ý but older
+arena proof required victory ice wings. Add separate purple-horn/metal-crest/
+title proof, keep panel/4gold corners/unique labelled button/stability/preflight.
+168testsPASS,365AST/compile;363oldPythonfiles unchanged. Only1runtime locator
+plus1test added;2nativePNG fixtures pinned. Source782aba5054d9…; no live/build/
+restart/Start or checkpoint edits. E2 measured source remains dbbe59…; only UI
+maintenance drift, no R1/deadline/log/controller/input changes or authority repin.
+E2 draft remains inert; refresh source binding before same25attempt live gate.
+
+## Phase5E.2 offline complete / live pending — 2026-10-29
+
+[E2report](phase5/reports/5e2_report.md): target_gem TypeError repaired in
+offline refinement;4new/33existing refinement checks PASS.490fault trials,
+30min/900jobs warm R1 resource soak,100cycle selector and600disabled
+BASIC probes PASS.364AST/compile;362oldPythonfiles unchanged.46modules/980cases
+include50legacy failure/error events, all reproduced before E2; no unexplained
+new failure. Sourcedbbe59fbdf79…; BASIC/flow/reader/input/QTE/ACK
+unchanged. Live0; inert25attempt draft(5B+20R), native b12 timing/admission
+pending. E1closed/inconclusive remains; next same5E2 live, notF1. No UI/attach/
+input/request/claim/build/version or old authority repin.
+
+## Mega SWAP false policy pause — 2026-10-28
+
+[Native1/10 stop diagnosed and source fixed](mega_swap_identity_fix_20261028.md):
+Lienor2217/MegaBASIC, turn143 same HEALTH SWAP but skill metadata null→22;
+fresh comparison cancelled, next root falsely flagged nondeterministic and
+AUTO_PAUSED. Stop23:05:33 precedes first outside-room UI23:06:28; post-stop
+AFK events are not captured. Reuse existing action-specific input identity at
+two controller comparisons, retain policy/diagnostics/real-change guards.
+9regressionPASS, oldcontroller reproduces2failures;467related tests with only
+2preexisting failing methods/6events reproduced before fix.363AST/compile,
+360oldPythonfiles unchanged, only1runtime+1fixture changed and1test added.
+No live retest/version/build/restart; existing1.2.10ZIP unchanged and lacks fix.
+Phase5E1 remains closed; reasoning next5E2 unchanged.
+
+## v1.2.10 Windows package — 2026-10-27
+
+[Release1.2.10](v1.2.10_release_report.md): user-requested patch bump/build,
+includes exact PetPuzzle b12 profile plus Dinosaur continuity and current
+wait/until-WIN rule.87prebuild tests PASS; build script15overlapping focused
+tests PASS;362AST/compile checks, ZIP integrity,130embedded source checks and
+isolated extracted EXE self-check PASS.994entries/14,773,382bytes, ZIP SHA
+7249a3e5711ba319f733f43c8b23c9a5f59857889f01dcb4e3da314261e065c5.
+Source86edc6a7…; version step changes only version and2label tests,359other
+Python files unchanged. All8old ZIPs preserved; no game attach/input/UI or
+existing-session restart. New EXE native gameplay/Dino/soak remain unaccepted;
+no historical timing/source authority repin.
+
+## Dinosaur user rule: wait any unsent turn, stop at WIN — 2026-10-26
+
+[Current user-defined rule](dinosaur_rule_20261026.md): every expired unsent
+Dinosaur turn waits for a fresh next turn, regardless of prior input/idle
+count. Remove default35s startup wait and200input cap for this profile only.
+Strong same-session WIN stops immediately while scene can still be ACTIVE;
+no postmatch/reward/lobby wait or click. Pending action is closed without
+inventing an ACK. Dedicated early-win validation; ordinary farm validator,
+policy/provider/native/random/QTE untouched.31Dinosaur/529related tests PASS;
+362AST/compile PASS,357old Python files byte-identical, only3runtime files
+and2test files changed. Sourceb17b12a8…; no live retest, build or authority repin.
+
+## Dinosaur native-board continuity repair — 2026-10-26
+
+[External Dino log diagnosed and source repaired](dinosaur_native_board_fix_20261026.md):
+17local turns,9SWAP/9ACK,8unacted turns, final deadline stop atturn33/ACK67
+while lastAccepted65. Midcombat provider forgot a validated native witness on
+its second stability poll. Restore only tracked/ACK-bound/current-generation
+native witnesses in active_combat_start, outside isolated recovery ACK epochs.
+All existing ownership/ACK/two-sample/action guards remain. Real-provider
+regression failed before fix and passes after;12new cases/397related tests PASS.
+Only1runtime block added,360old Python files unchanged;362AST/compile PASS.
+Source7f782069…; no live Dino retest/version/build or timing authority repin.
+B12 BASIC1 observed1/1WIN/2SWAP and consistent WIN UI, but room return/re-entry
+ended FOREGROUND_LOST after reward; not full B1 acceptance. Existing UI untouched.
+
+## PetPuzzle1.7.4-b12 source compatibility — 2026-10-26
+
+[b12 compatibility](petpuzzle_b12_compatibility_report.md): exact GA51eaeff7…,
+39TypeInfos remapped,257read-field candidates/28library layouts unchanged,
+Component.gameObject cache/unmarshal replaced,17UnityPlayer signatures PASS.
+Only7runtime modules change reviewed constants; gameplay/flow/input/QTE/random
+and Dinosaur stay unchanged.289focused tests PASS. Readonly PID17288 recognized
+Lieyun77 host room in3samples; native Start ownership/active/geometry PASS.
+Combat board/ACK/result/return/re-entry remain unobserved; bounded B1/B2 live
+acceptance required. Historical timing/source authority is not rebound.
+Existing1.2.9ZIP stays unchanged with b10 profile; no new build/version yet.
+Full147module/2683case run is not all green:168superseded profile assertions,
+55events reproduced on360pre-task sources,1async receipt failure whose unchanged
+47test module repeat PASSed on current and baseline. Existing refinement
+target_gem caller TypeError remains recorded for the reasoning main flow.
+Source447d3cf5…;361AST/compile PASS,350old Python files byte-identical.
+Detailed classification is recorded in the linked report/artifacts.
+
+## v1.2.9 packaged for external live testing — 2026-10-25
+
+[Release1.2.9](v1.2.9_release_report.md) built at user request to hand off live
+testing. Includes Dinosaur, configurable random, leave-modal recognition and
+postmatch/health-reminder repairs since1.2.8.57release tests PASS;360AST parses;
+ZIP integrity,130embedded module/source checks and isolated extracted EXE
+self-check PASS, no game attach/input/UI/Start/Resume.994ZIPentries,14,772,239bytes,
+SHA256 `9da47aa30b41731f4fc503f99cc7161f1df8ad577e64f9b021a546127ed481b6`.
+Native Dinosaur/packaged gameplay and soak200 acceptance remain unproven; do
+not promote older timing/source evidence. Existing live session untouched.
+
+## Dinosaur current-combat play style — 2026-10-25
+
+[Khủng long source implementation](dinosaur_mode_20261025.md): same BASIC
+policy as SIMPLE, explicit healthy ACTIVE_COMBAT Start with pinned PID/match,
+current-session board/ACK proof and two stable samples. No boss entry/lobby
+or automatic re-entry; one existing combat then stop. Missing the untouched
+opening deadline waits for a fresh next-turn board; pending/sent consuming
+inputs and all later safety guards remain strict. F6/F9 and diagnostics kept.
+22/22Dinosaur tests PASS; broad1051/1054PASS with3legacy failures reproduced on
+pre-task source, no unexpected failures;360Python AST parses. Verification/logs
+are linked in the report; native Dinosaur test still
+pending. Existing soak200 UI/process untouched, no version/package or old
+reasoning calibration repin. New UI session required after current test ends.
+
+## Health reminder during postmatch transition — 2026-10-25
+
+[False stop repaired](health_reminder_transition_fix_20261025.md): soak200
+stopped71/200 after reward while LEAVING_COMBAT; popup singleton class mismatch
+was misclassified as modal failure. Defer before reading popup until existing
+outside-combat proof; keep eligible-lobby verification and real-popup dismissal.
+769/769related tests PASS,4new cases,357AST parse PASS; sourceffe076ad….
+71WIN/198local turns/198SWAP,0PASS, all safety counters0; soak interrupted,
+not live acceptance. Checkpoint untouched, no version/build or authority repin.
+
+## Postmatch bootstrap-failure re-entry — 2026-10-24
+
+[Independent client log replay](external_user_log_review_20261024.md): runf8fb…
+also stopped9/500 after reward with the same retained-WS/null-DTO shape. Source
+fix handles its pinned re-entry;133focused tests PASS. One unacted turn in
+match9 occurred during board wait/reconnect, then combat resumed and WIN;
+no in-combat controller stop. Runtime unchanged in this follow-up, only fixture/
+test/docs added. Source48b73af8…; packaged/live client retest still pending.
+
+[Source repair, offline PASS](postmatch_bootstrap_reentry_fix_20261024.md): after
+confirmed Solo result, route the proven retained WS room with null RoomDTO/boss
+identity through existing shell exit and exact-target navigation. Keep normal
+rehydration grace; require native Start geometry, stable room-only frames and
+atomic room key. Handle reconnecting during proof without closing a healthy
+room.758/758related tests PASS including18 new cases;357Python AST parse PASS.
+Only2runtime files changed;354existing Python files preserved. Source5fbfcd84…;
+live pending, no version/package or historical timing authority change.
+
+## Input randomization settings — 2026-10-24
+
+[Configurable random input](input_randomization_settings_20261024.md): Settings
+now exposes separate Min/Max reaction and added inter-click delay, plus maximum
+coordinate offset. Max=0 disables that random time; coordinate=0 uses gem centers.
+Defaults retain the prior 0–1s/0–1.5s/10% behavior and timing safety envelope.
+Preferences, production CLI and pinned executors carry the immutable config;
+valid reasoned actions still skip temporal randomization. No game-input live
+test, version bump, package rebuild or historical timing authority rebound.
+690/690 related regression tests PASS, including12 new cases;356Python AST parse
+PASS. Source fingerprint9dd81a8e…;344existing Python files unchanged.
+
+## Leave-confirm guard maintenance — 2026-10-24
+
+[Source repair, BASIC smoke PASS](leave_modal_guard_fix_20261024.md): require filled
+orange buttons with interior labels; keep bounded blocking frames on SWAP/CAST/
+final-card preflight, including when routine PNGs are disabled.598 related tests
+PASS;9 targeted controller/image cases PASS after final path hardening. Normal
+controller flow unchanged apart from exceptional evidence. Source35472bdbc51…;
+v1.2.8 ZIP unchanged, no build/version bump, no Phase5 timing authority rebound.
+Original attempt96 image missing; static-board reconstruction did not reproduce
+the incident. BASIC3 farm e4cd1134… completed3/3WIN,7SWAP/4ACK/3terminal,
+0PASS/read error/safety fault/recovery,3confirm/return and target Stop. Actual
+PlayReminder dismissal/positive leave guard/failure-frame live remain NOT_OBSERVED.
+
+## Maintenance release v1.2.8 — 2026-10-23
+
+[Windows x64 release](v1.2.8_release_report.md): 180-minute health-reminder
+handling outside combat, with existing exact-target farm re-entry. Latest
+Lieyun 77 BASIC run won 3/3 with two successful map-to-room returns; actual
+reminder popup click was not observed live. 459 focused regression tests PASS,
+ZIP/127 embedded runtime modules/extracted EXE self-check PASS. No automatic
+island-map scrolling yet. Phase 5 reasoning work is unchanged by this release.
+
+## Phase 5 — 5C.4 scoped offline complete (2026-10-11)
+
+[C4 report](phase5/reports/5c4_report.md): **PASS STRONG offline**.
+2006/2006full regression,27C4 tests,41/41qualification gates. Guarded completed
+R1 SWAP proposals for Simple/Careful can pass existing controller/preflight/
+executor/ACK under explicit native fakes. DefaultNone BASIC traces match the
+archived controller; no added reads/captures/waits. Fresh failure uses fresh
+BASIC before input; pending/ACK/Stop retain ownership. Production selection
+stays gated, shadow defaultOFF; all other profiles/R2/live reserves unsupported.
+255/257parent Python files unchanged, only optional controller seam and test
+fixture/audit helper changed;3new Python files. Source fingerprint260files:
+`81a71fed954e1d95829c13f760cd9d31cb3f844b174eee27cf135e27ab28b92a`.
+No live/build/version/Git mutation. Next **C3 live closure on current source**,
+not activated; D1 blocked by that gate. Bú win live retest deferred separately.
+STOP5C.4.
+
+## Phase 5 — 5C.3 parent evidence, live pending (2026-10-11)
+
+Nhánh phụ Bú win ngày 2026-10-11 có [sửa opening Coop và ảnh lỗi](bu_win_runtime_fix_20261011.md).
+Sáu runtime files có binding trước/sau riêng. Evidence C3 bên dưới là lịch sử
+của snapshot V3, không tự chứng nhận source sau sửa; cần live test lại nhánh phụ.
+Full regression sau sửa: 1979/1979 PASS, gồm 13 ca mới.
+Không triển khai C4 trong lượt sửa này, không build hoặc đổi version.
+
+[C3 report](phase5/reports/5c3_report.md): **PASS_OFFLINE_LIVE_PENDING**.
+1966/1966regression; full-controller SWAP/ACK/Stop/stale/wrong-turn/pending parity,
+fault/Stop timings, native added-software latency and30min integrated
+CPU/RAM/growth/zero-loss acceptance.248existing C3 sources byte-preserved,
+6new offline tool/test files. Native IO wall stalls retained and unbounded;
+V1 PARTIAL history archived. Only isolated AI log filename fix +source audit update;
+gameplay/provider/capture/input/UI/version byte-preserved. Shadow defaultOFF, BASIC authority; R2/selection gated.
+Next5C.4 OFFLINE ONLY, selected/not executed; STOPC3.
+[Live runbook](phase5/research/5c3_measurement_return_plan.md):0attempts,
+pending; C3 live closure required before D1. No live/build/Git mutation.
+Bú win stays a small parallel branch.
+
+## Phase 5 — 5C.2 complete (2026-10-10, OFFLINE_UI)
+
+[C2 report](phase5/reports/5c2_report.md): AI tab, old preference compatibility,
+immutable Start/Resume intent and optional shadow setup. BASIC selection remains;
+shadow defaults OFF, REASONING selection gated. 1,954/1,954tests PASS including
+29 C2 cases/6 actual Tk UI tests;14source audit gates PASS.239existing sources
+byte-preserved, combat controller byte-preserved; no new provider/capture/poll.
+Source/releasev1.2.5 preserved, no live/build/version/Git mutation. Full-app/live
+parity and overhead remain C3. Next5C.3 SELECTED/NOT_EXECUTED; STOP5C.2.
+[STATUS](phase5/STATUS.md) is current. Bú win stays a small parallel branch.
+
+## Phase 5 — 5C.1 complete (2026-10-10, offline shadow seam)
+
+[C1 report](phase5/reports/5c1_report.md) closes opt-in publication observer:
+1,925/1,925full tests,26 C1 tests, nonwaiting admission timings and rate-capped
+separate logger qualification. BASIC keeps selection/input authority; defaultNone,
+no UI activation, no new provider/capture/poll calls or gameplay-writer changes.
+Only optional controller setup hook;241 existing Python sources byte-preserved.
+Existing v1.2.5 release/source remains, historical baselinev1.2.4. No game attach,
+live input or new build. NextC2 selected/not executed; STOPC1.
+Full controller/live parity, runtime reserves, efficacy and R2 promotion remain
+pending/gated. [STATUS](phase5/STATUS.md) is the current pointer. Bú win stays a
+small parallel branch when the operator reports testing.
+
+## Release v1.2.5 — room recovery package (2026-10-10)
+
+The user requested the verified room-recovery candidate as **v1.2.5**. Source
+version, UI title and ZIP name now agree. This packaging step changes no
+gameplay/recovery logic from the preceding candidate. 35/35 version/UI/packaging
+tests pass, clean build and frozen no-input self-check pass, and ZIP integrity
+passes. The payload's preceding full suite passed 1,872/1,872; VM live room
+recovery acceptance remains pending. Existing v1.2.4 artifacts remain unchanged.
+See [release artifact and SHA-256](v1.2.5_release_report.md) and
+[room-recovery evidence](petpuzzle_room_reentry_fix_20261010.md).
+At package creation Phase 5B.3 was paused; reasoning is not enabled in this package.
+
+## Phase 5B.3 bounded structural refinement — 2026-10-09 (offline only)
+
+[5B.3 report](phase5/reports/5b3_report.md) closes bounded root→boss→own analysis:
+all nominal Sword ties/unknown secondary priority, conditional retained Shield,
+threat/pressure and UNKNOWN dependency stress.114/114 focused tests,8 ablation
+cases/80 paired timings, max998.958ms refinement in tested strata;20 node-cap
+stops.27 geometry-only archived traces/23 forecast matches/23 later-state chains,
+0 actual boss action labels. No counterfactual efficacy or end-to-end deadline proof.
+
+[Capability manifest](phase5/capability_manifest.md) leaves R2 game promotion
+DISABLED. Returned action remains completed bound R1; invalid state/source
+discards incumbent usability. Actual boss/refill/effect/survival evidence pending.
+Existing runtime/BASIC/solver/provider/capture/executor/QTE/ACK/lifecycle source
+unchanged; only3 new offline source/tool/test files plus fixture/docs/artifacts.
+No game attach/input/worker/production wiring/build/release. Next5B.4 selected,
+not executed. [STATUS](phase5/STATUS.md) owns current pointer; dated reports below
+retain their milestone scope.
+
+## Phase 5B.2 adaptive utility — 2026-10-09 (offline only)
+
+[5B.2 report](phase5/reports/5b2_report.md) closes pure one-step adaptive utility:
+all legal roots/incumbent, scoped resource/certificate/effect evidence, continuous
+context weights, utility bounds, deterministic total order and robust retention.
+81/81 focused B2/B1/core tests,24 CLI +1 targeted synthetic scenario records,
+540 offline timing samples; max346.685ms in the tested strata.27 B1 records
+retain baseline because model/legality capabilities are missing. No efficacy or
+end-to-end deadline claim; [coverage](phase5/research/5b2_coverage_and_inputs.md).
+
+Only3 new offline source/tool/test files and docs/artifacts this step. Existing
+runtime/BASIC/solver/provider/capture/executor/QTE/ACK/lifecycle unchanged,
+9/9 B1 hashed code/data files preserved. No game attach/input/production wiring,
+worker/build/release. Boss-contested Shield setup/bait/followup unmodeled; H0.
+Next5B.3 selected, not executed. [STATUS](phase5/STATUS.md) owns current pointer;
+dated reports below retain their original milestone statements.
+
+## Phase 5B.1 snapshot/replay — 2026-10-09 (offline only)
+
+[5B.1 report](phase5/reports/5b1_report.md) closes pure immutable schemas,
+file-only replay/attribution/event codec and [dataset](phase5/datasets/README.md).
+26 historical roots in3 matches plus1 synthetic mechanics fixture replay;
+26/26 ordinary resource references and23/23 applicable forecasts match,
+23 next-observation links;49/49 focused tests pass.
+
+Only new offline modules/tool/test and dataset/docs added. Existing runtime
+source, BASIC policy/solver, providers/captures/executors/UI/ACK/lifecycle remain
+unchanged; no production wiring, game attach/input, build or live. Exact boss
+action/terminal attribution remains missing; this is not utility/refinement,
+new fallback, flow parity, latency SLO or efficacy acceptance. Next5B.2 is
+offline utility planning, not executed. [STATUS](phase5/STATUS.md) owns current
+pointer; dated A reports below retain original milestone statements.
+
+## Phase 5A.3 acceptance protocol — 2026-10-09 (docs only)
+
+[5A.3 report](phase5/reports/5a3_report.md) closes the documentation milestone:
+[telemetry/deadline/SLO](phase5/specs/5a3_telemetry_deadline_acceptance.md) and
+[bounded pilots/efficacy/soak](phase5/specs/5a3_bounded_live_protocols.md).
+Event correlation, bounded diagnostics, absolute budget/reserves, calibration
+gates, fault matrix, all-attempt metrics and proposed CI/margins are specified.
+Historical Demon lost-setup evidence is linked with exact boss action UNKNOWN.
+
+No runtime/source changes, code audit, test/build/game attach/live in this step.
+Numerical targets remain PROPOSED; BASIC v1.2.4 and operational flow unchanged.
+Reasoning/fallback/latency/model/efficacy remain unimplemented/unmeasured.
+Next5B.1 is the first offline implementation step, not executed or authorized
+by this pointer. Current STOP/next are in [STATUS](phase5/STATUS.md); dated
+5A.1/5A.2 history below retains its original next-step statements.
+
+## Phase 5A.2 adaptive specification — 2026-10-09 (docs only)
+
+[5A.2 report](phase5/reports/5a2_report.md) closes the documentation milestone:
+[features/utility/profiles](phase5/specs/5a2_features_utility_and_profiles.md)
+and [50 scenario designs](phase5/specs/5a2_scenario_matrix.md). Immutable semantic
+schemas, scoped user calibration (Rage20/Mana30, conditional Demon3+5),
+post-boss setup, Sword bait/ties, context adaptation and baseline comparison
+are defined; numerical weights/margins remain PROPOSED for offline tuning.
+
+All six PlayStyles are covered. User calibration/model predictions are separate
+from runtime/reverse-verified or observed outcomes. BASIC v1.2.4 defaults,
+hotfixes and operational flow are unchanged; no source code/gameplay inspection,
+test/build/live execution in this step. REASONING runtime/fallback remains
+unimplemented and latency/efficacy unmeasured. Next is 5A.3 DOCS, not executed;
+actual progress and STOP are in [STATUS](phase5/STATUS.md).
+
+## Phase 5A.1 contract update — 2026-10-09 (docs only)
+
+The baseline for Phase 5 is v1.2.4 at
+`c646acfa5e895732bbdade553f9d7bd61171cd29`; see its
+[release report](v1.2.4_release_report.md) for operator-confirmed 600 + 200 match
+operational soak and the separate Bú win baseline live gap. This step adds no
+code, runtime inspection, game input or test/build execution.
+
+REASONING product/spec intent is now defined in
+[DECISIONS](DECISIONS.md), [REASONING policy](reasoning_gameplay_policy.md) and
+[5A.1](phase5/specs/5a1_baseline_reasoning_contract.md): PlayStyle objectives are
+retained, tactical settings are advisory, and operational read/capture/action/
+ACK flow stays unchanged. Planner failures must retain a valid BASIC decision
+before dispatch, without bypassing state gates or replacing sent input.
+
+Runtime REASONING, its new fallback, latency/flow parity and gameplay benefit
+remain unimplemented/unmeasured. Current Phase 5 progress is in
+[STATUS](phase5/STATUS.md); 5A.1 report is
+[here](phase5/reports/5a1_report.md). Older runtime/controller statuses and phase
+snapshots below remain dated evidence; they are not observations of the current
+game/tool process in this docs-only step.
 
 ## Source-of-Truth Hierarchy
 
@@ -2604,9 +3065,10 @@ ManaPriority: EVOLUTION | ATTACK
 Intelligence: BASIC | REASONING
 ```
 
-`BASIC` is implemented/accepted. `REASONING` is represented but intentionally
-undefined/not implemented; it returns `NONE / REASONING_NOT_IMPLEMENTED`.
-Never invent REASONING behavior. See [BASIC policy](basic_gameplay_policy.md).
+`BASIC` is implemented/accepted. Runtime REASONING remains the documented
+`NONE / REASONING_NOT_IMPLEMENTED` placeholder. Phase 5A.1 now defines product
+intent in [REASONING policy](reasoning_gameplay_policy.md); implementation and
+acceptance remain pending. See [BASIC policy](basic_gameplay_policy.md).
 Its old PASS-disabled/undefined-fallback notes are superseded by
 [Phase 2C.2C](phase2c2c_report.md) and the latest
 [Phase 2C.2B/B5 report](phase2c2b_report.md).
@@ -2875,7 +3337,8 @@ frozen startup/single-instance behavior and production bundle/resource checks.
 - Ordinary Attack/Fusion card layout is dynamic and accepted. A missing Attack
   card or evolution pet disables that card action only. Pet-specific skill-card
   click layout/use remains intentionally deferred.
-- `REASONING` is undefined/not implemented.
+- `REASONING` runtime is not implemented; Phase 5A.1 defines its product/spec
+  contract only. No new fallback or gameplay benefit has been runtime-accepted.
 - CAST reset **UNKNOWN**; EVOLVE reset **UNKNOWN**.
 - B5 natural full-cycle PASS coverage `NOT_OBSERVED`; controlled 2C.2C proves
   the complete SWAP reset cycle, while B5 retry 2 proves its dangerous half.
@@ -3381,6 +3844,10 @@ accepted FarmRun documented in [Phase 2E.3 report](phase2e3_report.md).
 
 ## Next Phase
 
+This section records the historical Phase 2 closeout. The current Phase 5
+pointer is [STATUS](phase5/STATUS.md); Phase 5A.1 defines REASONING intent without
+runtime implementation.
+
 **Phase 2F.2 is PASS STRONG. Finite BASIC scope is COMPLETE.**
 
 ```text
@@ -3394,8 +3861,9 @@ There is no next phase in the current roadmap. Infinite farming, process
 relaunch/login, internet recovery, target
 rotation, pet-specific skill-card use, mid-combat checkpoint resume, and
 navigation from the general game lobby through Chinh Phuc islands remain
-outside current scope unless explicitly approved. REASONING remains undefined
-and unsupported.
+outside that historical scope unless explicitly approved. REASONING was
+unsupported at that closeout; its Phase 5 product contract is now defined,
+while runtime implementation remains pending.
 
 ## Update Policy for Future Phases
 

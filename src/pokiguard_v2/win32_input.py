@@ -12,6 +12,9 @@ import time
 import random
 from typing import Callable, Protocol
 
+from .runtime_calibration import PRODUCTION_INPUT_CALIBRATION
+from .input_randomization import InputRandomization
+
 Cell = tuple[int, int]
 VK_F7 = 0x76
 VK_F8 = 0x77
@@ -35,6 +38,7 @@ NATIVE_MOUSE_BUTTON_HOLD_SECONDS = 0.075
 DEFAULT_SWAP_DRAG_DURATION_SECONDS = 0.10
 DEFAULT_SWAP_DRAG_STEPS = 3
 DEFAULT_SWAP_DRAG_OVERSHOOT_FRACTION = 0.35
+BOARD_CENTER_JITTER_FRACTION = 0.10
 MAX_TAP_SELECTION_INTER_CLICK_DELAY_SECONDS = 1.85
 
 
@@ -55,10 +59,10 @@ class ClientGeometry:
 
 @dataclass(frozen=True)
 class BoardCalibration:
-    first_center_x: float = 0.3620
-    first_center_y: float = 0.1625
-    step_x: float = 0.0393
-    step_y: float = 0.0787
+    first_center_x: float = PRODUCTION_INPUT_CALIBRATION["board_first_center_x"]
+    first_center_y: float = PRODUCTION_INPUT_CALIBRATION["board_first_center_y"]
+    step_x: float = PRODUCTION_INPUT_CALIBRATION["board_step_x"]
+    step_y: float = PRODUCTION_INPUT_CALIBRATION["board_step_y"]
 
     def normalized_center(self, cell: Cell) -> tuple[float, float]:
         row, col = validate_cell(cell)
@@ -148,7 +152,12 @@ def map_swap_to_pixels(
     geometry: ClientGeometry,
     *,
     virtual_screen: tuple[int, int, int, int] | None = None,
+    coordinate_jitter_fraction: float = BOARD_CENTER_JITTER_FRACTION,
 ) -> CoordinatePlan:
+    if not (isinstance(coordinate_jitter_fraction,(int,float))
+            and not isinstance(coordinate_jitter_fraction,bool)
+            and 0 <= coordinate_jitter_fraction <= BOARD_CENTER_JITTER_FRACTION):
+        raise CoordinateSafetyError("coordinate jitter must be between 0 and 10% of a cell")
     first, second = validate_adjacent_swap(first, second)
     calibration.validate()
     if geometry.width < 640 or geometry.height < 360:
@@ -156,18 +165,15 @@ def map_swap_to_pixels(
 
     def point(cell: Cell) -> PixelPoint:
         norm_x, norm_y = calibration.normalized_center(cell)
-        # =================================================================
-        # ĐOẠN CODE MỚI: Thêm sai số ngẫu nhiên (jitter) ±20%
-        # calibration.step_x và step_y chính là kích thước chiều ngang/dọc của 1 ô
-        # random từ -0.2 đến 0.2 nghĩa là lệch tối đa 20% từ tâm ra rìa,
-        # đảm bảo luôn nằm gọn vùng an toàn giữa viên đá (30% - 70% của ô)
-        # =================================================================
-        jitter_x = random.uniform(-0.2, 0.2) * calibration.step_x
-        jitter_y = random.uniform(-0.2, 0.2) * calibration.step_y
+        # Operator rule: independently jitter each endpoint by at most 10%
+        # of one cell's width/height around that cell's own centre.
+        jitter_x = (random.uniform(-coordinate_jitter_fraction,coordinate_jitter_fraction)
+                    if coordinate_jitter_fraction else 0.0) * calibration.step_x
+        jitter_y = (random.uniform(-coordinate_jitter_fraction,coordinate_jitter_fraction)
+                    if coordinate_jitter_fraction else 0.0) * calibration.step_y
 
         norm_x += jitter_x
         norm_y += jitter_y
-        # =================================================================
 
         if not (0.0 <= norm_x <= 1.0 and 0.0 <= norm_y <= 1.0):
             raise CoordinateSafetyError("cell center is outside the client")
@@ -445,7 +451,11 @@ class ForegroundClickExecutor:
         drag_overshoot_fraction: float = DEFAULT_SWAP_DRAG_OVERSHOOT_FRACTION,
         sleeper: Callable[[float], None] = time.sleep,
         swap_pacer: AdaptiveSwapPacer | None = None,
+        randomization: InputRandomization = InputRandomization(),
     ) -> None:
+        if type(randomization) is not InputRandomization:
+            raise ValueError("randomization must be InputRandomization")
+        self.randomization = randomization
         if not 0.05 <= click_delay_seconds <= 1.0:
             raise ValueError("click delay must be between 0.05 and 1.0 seconds")
         if not 0.0 <= cursor_settle_seconds <= 0.25:
@@ -557,17 +567,21 @@ class ForegroundClickExecutor:
         *,
         remaining_seconds: float | None = None,
         stop_requested: Callable[[], bool] | None = None,
+        reasoned: bool = False,
     ) -> ClickPairResult:
         pacing = self.swap_pacer.decision(remaining_seconds=remaining_seconds)
         # ==============================================================
         # ĐỘ TRỄ PHẢN XẠ: Từ lúc chốt tọa độ đến lúc thực sự di chuyển chuột
         # ==============================================================
-        reaction_delay = random.uniform(0.0, 1.0)
+        reaction_delay = 0.0 if reasoned else self.randomization.sample(
+            self.randomization.reaction_min_seconds,
+            self.randomization.reaction_max_seconds,random.uniform)
         if remaining_seconds is not None:
             safe_reaction = max(0.0, float(remaining_seconds) - pacing.delay_seconds - 1.25)
             reaction_delay = min(reaction_delay, safe_reaction)
 
-        self.sleeper(reaction_delay)
+        if not reasoned:
+            self.sleeper(reaction_delay)
         # ==============================================================
         if stop_requested is not None and stop_requested():
             return ClickPairResult(
@@ -607,7 +621,9 @@ class ForegroundClickExecutor:
                 getattr(self.backend, "mouse_button_hold_seconds", None),
                 BoardInputMode.TWO_CLICK.value,
             )
-        random_jitter = random.uniform(0.0, 1.5)
+        random_jitter = 0.0 if reasoned else self.randomization.sample(
+            self.randomization.inter_click_min_seconds,
+            self.randomization.inter_click_max_seconds,random.uniform)
         # Dot clears a tap selection after 3.5 seconds in the b6 client.
         # Keep the randomized spacing comfortably below that timeout even
         # when adaptive pacing has entered a degraded mode.

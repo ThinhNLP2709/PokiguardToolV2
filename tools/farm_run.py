@@ -27,8 +27,10 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
+from pokiguard_v2.input_randomization import add_randomization_argument,randomization_from_args  # noqa: E402
 from pokiguard_v2.board_diagnostics import analyze_game_state  # noqa: E402
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget  # noqa: E402
+from pokiguard_v2.boss_lobby_runtime import _unknown_lifecycle_has_no_positive_combat  # noqa: E402
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.chinh_phuc_map import (  # noqa: E402
     discover_chinh_phuc_island_target,
@@ -83,6 +85,10 @@ from pokiguard_v2.memory_board_provider import (  # noqa: E402
     MemoryProviderConfig,
 )
 from pokiguard_v2.native_card_ui import NativeCardUiReader  # noqa: E402
+from pokiguard_v2.play_reminder import (  # noqa: E402
+    locate_play_reminder_confirm, read_play_reminder_control,
+    same_clean_play_reminder,
+)
 from pokiguard_v2.input_delivery import (  # noqa: E402
     ExactWindowBinding,
     InputDeliveryConfig,
@@ -118,12 +124,15 @@ from pokiguard_v2.win32_input import (  # noqa: E402
     NativeWin32Backend,
     find_window_for_pid,
 )
-from pokiguard_v2.win32_screenshot import capture_client_rgb, write_png_rgb  # noqa: E402
+from pokiguard_v2.win32_screenshot import (  # noqa: E402
+    capture_client_rgb, write_png_rgb, write_failure_png_rgb,
+)
 from tools import basic_auto_bot, boss_entry, technical_recovery  # noqa: E402
 from tools.farm_cycle import (  # noqa: E402
     LobbyWaitResult,
     _combat_args,
     _entry_args,
+    _failed_chinh_phuc_room_bootstrap_key,
     _is_detached_chinh_phuc_room_candidate,
     _last_event,
     _read_lobby_runtime_with_provider_fallback,
@@ -147,6 +156,12 @@ from pokiguard_v2.gameplay_profile import GameMode
 
 
 _PHASE4B2_INPUT_DELIVERY_ENV = "POKIGUARD_PHASE4B2_INPUT_DELIVERY_MODE"
+
+# b6 MatchService sets _matchOver before its presentation coroutine waits up
+# to GameOverRenderWaitMaxSec (30s).  Bú win can therefore receive terminal
+# state while the local client still replays a teammate's skill.  This is a
+# one-time allowance, separate from the existing result-confirm UI budget.
+_BU_WIN_TERMINAL_PRESENTATION_GRACE_SECONDS = 30.0
 
 
 def _source_selected_input_delivery_config(
@@ -183,6 +198,7 @@ def _source_selected_input_delivery_config(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    add_randomization_argument(parser)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument(
         "--stage-a-replay",
@@ -312,7 +328,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=30.0,
         help=(
             "bounded wait for the stable Thang/Thua result modal after the "
-            "authoritative combat lifecycle has ended"
+            "authoritative combat lifecycle has ended; Bu win allows an "
+            "additional bounded 30s for pending client presentation"
         ),
     )
     parser.add_argument("--return-lobby-timeout", type=float, default=90.0)
@@ -751,6 +768,7 @@ def _run_entry(
     control_hotkeys: Any | None = None,
     test_only_recovery: bool = False,
     pinned_input_session: PinnedForegroundMouseSession | None = None,
+    outside_modal_handler: Any = None,
 ) -> tuple[
     OpeningEvidence | ActiveCombatHandoffEvidence | None,
     dict[str, Any] | None,
@@ -782,6 +800,7 @@ def _run_entry(
             run.snapshot().gameplay_config.game_mode is GameMode.COOP
         ),
         pinned_input_session=pinned_input_session,
+        outside_modal_handler=outside_modal_handler,
         emergency_stop_requested=(
             pinned_input_session.stop_requested
             if pinned_input_session is not None
@@ -871,6 +890,8 @@ def _run_entry(
                 unique_coordinates=int(result["openingUniqueCoordinates"]),
                 source=str(result["openingSource"]),
                 first_local_turn=result["firstLocalTurn"] is True,
+                is_local_turn=result.get("isLocalTurn"),
+                turn_number=result.get("turnNumber"),
                 local_move_sequence=int(result["localMoveSequence"]),
                 stable_confirmations=int(result["stableConfirmations"]),
                 production_ready=result["openingProductionReady"] is True,
@@ -1024,6 +1045,45 @@ def _execute_controlled_input(
     return control_hotkeys.execute_if_authorized(operation)
 
 
+def _save_postmatch_failure_evidence(
+    directory: Path, *, reason: str, samples: int, elapsed: float,
+    first_capture: Any, last_capture: Any, locations: Sequence[Any],
+    wait_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Reuse captured pixels; at most two PNGs and one JSON per failed attempt."""
+
+    evidence: dict[str, Any] = {
+        "schema": "postmatch_failure_v1", "reason": reason,
+        "samples": samples, "elapsedSeconds": round(elapsed, 3),
+        "recentLocations": [asdict(item) for item in locations[-3:]],
+        "images": [], "errors": [],
+    }
+    if wait_context is not None:
+        evidence["waitContext"] = wait_context
+    for name, capture in (
+        ("postmatch_wait_frame_first.png", first_capture),
+        ("postmatch_wait_frame_last.png", last_capture),
+    ):
+        if capture is None:
+            continue
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            write_failure_png_rgb(directory / name, capture.width, capture.height, capture.rgb)
+            evidence["images"].append({
+                "file": name, "width": capture.width, "height": capture.height,
+            })
+        except (OSError, RuntimeError, ValueError) as exc:
+            evidence["errors"].append(f"{name}: {str(exc)[:300]}")
+    path = directory / "postmatch_failure.json"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        evidence["metadataPath"] = str(path)
+    except (OSError, RuntimeError, ValueError) as exc:
+        evidence["errors"].append(f"postmatch_failure.json: {str(exc)[:300]}")
+    return evidence
+
+
 def _confirm_postmatch(
     *,
     run: FarmRun,
@@ -1038,6 +1098,8 @@ def _confirm_postmatch(
     control_hotkeys: Any = None,
     pinned_input_session: PinnedForegroundMouseSession | None = None,
     sleeper: Callable[[float], None] = time.sleep,
+    event_sink: Callable[[str, dict[str, Any]], None] | None = None,
+    outside_modal_handler: Any = None,
 ) -> tuple[bool, TerminalResult, str | None]:
     # Combat ownership becomes POSTMATCH before Unity finishes the terminal
     # animation.  In particular, the LOSS modal can materialize several
@@ -1047,12 +1109,52 @@ def _confirm_postmatch(
     locations = []
     captures = []
     ui_observations: list[tuple[TerminalResult, str | None]] = []
-    deadline = time.monotonic() + ui_timeout
+    started_at = time.monotonic()
+    config = run.snapshot().gameplay_config
+    presentation_grace = (
+        _BU_WIN_TERMINAL_PRESENTATION_GRACE_SECONDS
+        if config.game_mode is GameMode.COOP and config.play_style is PlayStyle.BU_WIN
+        else 0.0
+    )
+    base_deadline = started_at + ui_timeout
+    hard_deadline = base_deadline + presentation_grace
+    deadline = hard_deadline
+    first_confirm_at = None
+    grace_revalidated = False
+    wait_stage = "PRESENTATION_PENDING"
     proof = prove_stable_result_confirm((), required_frames=3)
     sample_number = 0
     first_wait_frame_written = False
     last_location = None
     last_capture = None
+    first_wait_capture = None
+
+    def wait_context() -> dict[str, Any]:
+        return {
+            "stage": wait_stage,
+            "uiTimeoutSeconds": ui_timeout,
+            "presentationGraceSeconds": presentation_grace,
+            "hardTimeoutSeconds": ui_timeout + presentation_grace,
+            "activeDeadlineSeconds": round(deadline - started_at, 3),
+            "firstConfirmVisibleSeconds": (
+                round(first_confirm_at - started_at, 3)
+                if first_confirm_at is not None else None
+            ),
+            "graceRevalidated": grace_revalidated,
+        }
+
+    def record_wait(phase: str) -> None:
+        if event_sink is not None:
+            event_sink("postmatch_confirm_wait", {
+                **wait_context(), "phase": phase,
+                "elapsedSeconds": round(time.monotonic() - started_at, 3),
+                "samples": sample_number,
+                "lastLocationReason": getattr(last_location, "reason", None),
+                "lastWideReason": (
+                    last_location.metrics.get("wideReason")
+                    if last_location is not None else None
+                ),
+            })
 
     # Confirm authoritative POSTMATCH once before visual sampling.  Repeating
     # the comparatively heavy provider poll for every screenshot used to add
@@ -1066,6 +1168,15 @@ def _confirm_postmatch(
         else CombatLifecycleState.UNKNOWN
     )
     if initial_lifecycle is not CombatLifecycleState.POSTMATCH:
+        if (initial_lifecycle in {CombatLifecycleState.LOBBY, CombatLifecycleState.STALE_SERVER_MATCH}
+                and outside_modal_handler is not None):
+            outside = _read_lobby_runtime_with_provider_fallback(process, provider)
+            if outside_modal_handler(outside) == "DISMISSED":
+                # The strong terminal result was already persisted/accounted.
+                # This is an outside-match reminder, never a reward-confirm click.
+                run._event("postmatch_already_outside_with_health_reminder",
+                           rewardConfirmSent=False, resultUiObserved=False)
+                return True, TerminalResult.UNKNOWN, None
         run.safe_stop(
             FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
             detail=f"postmatch lifecycle changed to {initial_lifecycle.value}",
@@ -1074,9 +1185,10 @@ def _confirm_postmatch(
     if initial.state is not None and initial.state.terminal_snapshot is not None:
         snapshot = initial.state.terminal_snapshot
         ui_observations.append((snapshot.ui_result, snapshot.ui_text))
+    initial_session = getattr(provider, "current_session_key", None)
+    record_wait("STARTED")
 
     while process.is_running() and time.monotonic() < deadline:
-        sample_number += 1
         external_stop = False
         if control_hotkeys is not None:
             # Latch only; the postmatch confirmation must still complete.
@@ -1085,9 +1197,47 @@ def _confirm_postmatch(
         if stop or external_stop:
             run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
             return False, TerminalResult.UNKNOWN, None
+        if (
+            presentation_grace > 0
+            and not grace_revalidated
+            and time.monotonic() >= base_deadline
+        ):
+            # The ordinary wait expired while the client was still presenting
+            # combat/rewards.  Validate ownership once before spending the
+            # extra allowance; never resume gameplay from terminal state.
+            pending = provider.poll()
+            pending_lifecycle = (
+                pending.combat_lifecycle.state
+                if pending.combat_lifecycle is not None
+                else CombatLifecycleState.UNKNOWN
+            )
+            current_session = getattr(provider, "current_session_key", None)
+            if (
+                pending_lifecycle is not CombatLifecycleState.POSTMATCH
+                or (initial_session is not None and current_session != initial_session)
+            ):
+                detail = f"postmatch ownership changed during presentation wait: {pending_lifecycle.value}"
+                record_wait("OWNERSHIP_CHANGED")
+                evidence = _save_postmatch_failure_evidence(
+                    directory, reason=detail, samples=sample_number,
+                    elapsed=time.monotonic() - started_at,
+                    first_capture=first_wait_capture, last_capture=last_capture,
+                    locations=locations, wait_context=wait_context(),
+                )
+                run.safe_stop(
+                    FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+                    detail=detail, failureEvidence=evidence,
+                )
+                return False, TerminalResult.UNKNOWN, None
+            grace_revalidated = True
+            record_wait("PRESENTATION_GRACE")
+            if time.monotonic() >= deadline:
+                break
+        sample_number += 1
         capture = capture_client_rgb(process.pid)
         last_capture = capture
         if not first_wait_frame_written:
+            first_wait_capture = capture
             write_png_rgb(
                 directory / "postmatch_wait_frame_first.png",
                 capture.width,
@@ -1096,32 +1246,64 @@ def _confirm_postmatch(
             )
             first_wait_frame_written = True
         last_location = locate_result_confirm(capture.rgb, capture.width, capture.height)
+        if (
+            last_location.found and last_location.normalized_point is not None
+            and last_location.confidence >= 0.95
+        ):
+            wait_stage = "STABILIZING_CONFIRM"
+            if first_confirm_at is None:
+                first_confirm_at = time.monotonic()
+                if presentation_grace > 0:
+                    # Once a real button appears, allow the usual UI proof
+                    # budget, capped by the original absolute limit.  Missing
+                    # or moving frames can never restart either timer.
+                    deadline = min(hard_deadline, first_confirm_at + ui_timeout)
+                record_wait("CONFIRM_VISIBLE")
+        elif first_confirm_at is None:
+            wait_stage = (
+                "RESULT_REVEAL_PENDING"
+                if last_location.metrics.get("wideBannerCandidates") == 1
+                or last_location.metrics.get("panelCandidates") == 1
+                else "PRESENTATION_PENDING"
+            )
         locations.append(last_location)
         captures.append(capture)
         locations = locations[-3:]
         captures = captures[-3:]
         proof = prove_stable_result_confirm(locations, required_frames=3)
-        if proof.proven:
+        if proof.proven and time.monotonic() < deadline:
+            break
+        # A slow capture/detector must not authorize a proof obtained after
+        # the absolute wait budget, even when its pixels look valid.
+        if time.monotonic() >= deadline:
+            proof = prove_stable_result_confirm((), required_frames=3)
             break
         remaining = deadline - time.monotonic()
         if remaining > 0:
             sleeper(min(max(interval, 0.08), remaining))
 
     if not proof.proven or proof.normalized_point is None:
-        if last_capture is not None:
-            write_png_rgb(
-                directory / "postmatch_wait_frame_last.png",
-                last_capture.width,
-                last_capture.height,
-                last_capture.rgb,
-            )
         detail = (
-            f"postmatch modal not stable within {ui_timeout:.1f}s; "
+            f"postmatch modal not stable within {ui_timeout + presentation_grace:.1f}s "
+            f"(ui={ui_timeout:.1f}s, presentationGrace={presentation_grace:.1f}s); "
             f"samples={sample_number}; "
-            f"last={getattr(last_location, 'reason', proof.reason)}"
+            f"stage={wait_stage}; "
+            f"last={getattr(last_location, 'reason', proof.reason)}; "
+            f"wide={getattr(last_location, 'metrics', {}).get('wideReason')}"
         )
-        run.safe_stop(FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS, detail=detail)
+        record_wait("FAILED")
+        evidence = _save_postmatch_failure_evidence(
+            directory, reason=detail, samples=sample_number,
+            elapsed=time.monotonic() - started_at,
+            first_capture=first_wait_capture, last_capture=last_capture,
+            locations=locations, wait_context=wait_context(),
+        )
+        run.safe_stop(
+            FarmRunStopReason.POSTMATCH_UI_AMBIGUOUS,
+            detail=detail, failureEvidence=evidence,
+        )
         return False, TerminalResult.UNKNOWN, None
+    record_wait("CONFIRM_STABLE")
     for frame_number, capture in enumerate(captures[-3:], start=1):
         write_png_rgb(
             directory / f"postmatch_result_frame_{frame_number}.png",
@@ -1194,6 +1376,14 @@ def _confirm_postmatch(
             required_frames=3,
         )
         accepted = refreshed_proof.proven
+        if not accepted:
+            _save_postmatch_failure_evidence(
+                directory, reason="postmatch_final_preflight:" + refreshed_proof.reason,
+                samples=sample_number, elapsed=time.monotonic() - started_at,
+                first_capture=first_wait_capture, last_capture=fresh_capture,
+                locations=[*locations[-2:], fresh_location],
+                wait_context=wait_context(),
+            )
         event_sink = getattr(pinned_input_session, "event_sink", None)
         if callable(event_sink):
             event_sink(
@@ -1612,6 +1802,202 @@ def _runtime_room_start_rect(
     return geometry.viewport_rect if geometry.active else None
 
 
+def _health_reminder_outside_combat(run: FarmRun, provider: Any, lobby: Any) -> bool:
+    lifecycle = getattr(lobby, "combat_lifecycle", None)
+    if lifecycle is None:
+        return False
+    # Preserve the existing exact-room exception for uninitialized combat
+    # statics. UNKNOWN alone never authorizes an acknowledgment click.
+    outside = lifecycle.state in {CombatLifecycleState.LOBBY, CombatLifecycleState.STALE_SERVER_MATCH}
+    if lifecycle.state is CombatLifecycleState.UNKNOWN:
+        outside = bool(
+            getattr(lobby, "state", None) is BossLobbyState.BOSS_LOBBY
+            and getattr(lobby, "branch", None) == "CHINH_PHUC_ROOM"
+            and getattr(getattr(lobby, "chinh_phuc", None), "clean", False) is True
+            and _unknown_lifecycle_has_no_positive_combat(lifecycle)
+        )
+    return bool(
+        run.current_session is None
+        and provider.current_session_key is None
+        and outside
+        and not lifecycle.signals.read_errors
+        and getattr(lobby, "state", None) in {BossLobbyState.BOSS_LOBBY, BossLobbyState.LOBBY_OTHER}
+    )
+
+
+def _dismiss_play_reminder(**kwargs: Any) -> str:
+    try:
+        return _dismiss_play_reminder_checked(**kwargs)
+    except Exception as exc:
+        # Modal handling owns no combat capability. A read/capture/input fault
+        # cannot authorize continuing through the still-covered UI.
+        run = kwargs["run"]
+        run._event("health_reminder_error", errorType=type(exc).__name__, error=str(exc))
+        run.safe_stop(FarmRunStopReason.HEALTH_REMINDER_BLOCKED, detail=str(exc))
+        return "BLOCKED"
+
+
+def _dismiss_play_reminder_checked(
+    *, run: FarmRun, process: Any, provider: Any, lobby: Any,
+    binding: Any, executor: Any, directory: Path, hotkeys: Any,
+    control_hotkeys: Any = None, pinned_input_session: Any = None,
+) -> str:
+    """One exact normal click outside combat, then verify Canvas was hidden.
+
+    ABSENT has no capture/input/focus side effects. DISMISSED requires the
+    caller to reread the uncovered room/map through its existing router.
+    """
+    if run.stopped:
+        return "BLOCKED"
+    if not _health_reminder_outside_combat(run, provider, lobby):
+        # Hub reload tears down singleton instances while LEAVING_COMBAT.
+        # A read error there is not proof of a modal and must not kill the
+        # return waiter. Let its existing lifecycle/deadline/F9 checks run.
+        # No popup read, focus, capture or input is authorized by DEFERRED.
+        return "DEFERRED"
+    first = read_play_reminder_control(process)
+    if first.clean and first.open is False:
+        return "ABSENT"
+
+    def blocked(reason: str) -> str:
+        run._event("health_reminder_blocked", reason=reason, control=first)
+        run.safe_stop(FarmRunStopReason.HEALTH_REMINDER_BLOCKED, detail=reason)
+        return "BLOCKED"
+
+    def emergency() -> bool:
+        _unused, f9 = hotkeys.poll()
+        if f9 or _control_emergency_requested(control_hotkeys):
+            run.safe_stop(FarmRunStopReason.EMERGENCY_STOP,
+                          detail="F9 during health reminder dismissal")
+            return True
+        return run.stopped
+
+    if emergency():
+        return "BLOCKED"
+    if not first.clean and _health_reminder_outside_combat(run, provider, lobby):
+        # Show/Build can overlap one poll before Unity has settled the new
+        # RectTransforms. Bounded read-only retries do not authorize any input.
+        run._event("health_reminder_proof_wait", control=first)
+        proof_deadline = time.monotonic() + 2.0
+        while not first.clean and process.is_running() and time.monotonic() < proof_deadline:
+            if emergency():
+                return "BLOCKED"
+            time.sleep(0.1)
+            first = read_play_reminder_control(process)
+        if first.clean and first.open is False:
+            return "ABSENT"
+    if not first.clean or first.open is not True:
+        return blocked("health reminder read is ambiguous: " + "; ".join(first.reasons))
+    if not _health_reminder_outside_combat(run, provider, lobby):
+        return blocked("health reminder cannot authorize input without owner-free LOBBY")
+    run._event("health_reminder_detected", control=first, branch=lobby.branch,
+               target=run.target, attemptIndex=run.match_attempts)
+    if pinned_input_session is None and not _restore_bound_game_foreground(binding, executor):
+        return blocked("health reminder exact game foreground unavailable")
+    # Show() animates _board with LeanTween.scale(...).setEaseOutBack(). Wait
+    # for two matching native rectangles before taking the visual proof.
+    stable_deadline = time.monotonic() + 2.0
+    stable = False
+    while process.is_running() and time.monotonic() < stable_deadline:
+        if emergency():
+            return "BLOCKED"
+        time.sleep(0.1)
+        following = read_play_reminder_control(process)
+        if following.clean and following.open is False:
+            run._event("health_reminder_closed_externally", identity=first.identity)
+            return "DISMISSED"
+        if same_clean_play_reminder(first, following):
+            first = following
+            stable = True
+            break
+        first = following
+    if not stable:
+        return blocked("health reminder opening layout did not stabilize")
+    capture = capture_client_rgb(process.pid)
+    location = locate_play_reminder_confirm(capture.rgb, capture.width, capture.height, first)
+    image_path = directory / f"health_reminder_{run.match_attempts:04d}_{first.generation}_before.png"
+    write_png_rgb(image_path, capture.width, capture.height, capture.rgb)
+    if not location.found or location.normalized_point is None:
+        write_failure_png_rgb(image_path, capture.width, capture.height, capture.rgb)
+        return blocked(location.reason)
+
+    def fresh_preflight() -> bool:
+        if emergency():
+            return False
+        fresh_lobby = _read_lobby_runtime_with_provider_fallback(
+            process, provider,
+            **({"allow_guest_room": True} if run.snapshot().gameplay_config.game_mode is GameMode.COOP else {}),
+        )
+        control = read_play_reminder_control(process)
+        fresh = capture_client_rgb(process.pid)
+        spot = locate_play_reminder_confirm(fresh.rgb, fresh.width, fresh.height, control)
+        accepted = bool(
+            _health_reminder_outside_combat(run, provider, fresh_lobby)
+            and same_clean_play_reminder(first, control)
+            and _stable_visual_proof(capture, location, fresh, spot)
+        )
+        if not accepted:
+            run._event("health_reminder_preflight_rejected", control=control, location=spot,
+                       lifecycle=getattr(fresh_lobby, "combat_lifecycle", None),
+                       providerSession=provider.current_session_key)
+        return accepted
+
+    def send_once() -> bool:
+        if not fresh_preflight() or emergency():
+            return False
+        status = executor.window_status(binding)
+        permit = run.reserve_health_reminder_dismiss(
+            identity=first.identity, foreground=status.valid and status.foreground is True,
+            outside_combat=True,
+        )
+        if permit is None:
+            return False
+        authorized, click = _execute_controlled_input(
+            control_hotkeys,
+            lambda: executor.send_normalized_point(binding, location.normalized_point),
+        )
+        if not authorized:
+            run.safe_stop(FarmRunStopReason.EMERGENCY_STOP)
+        sent = authorized and click is not None and click.sent
+        run.complete_health_reminder_dismiss(permit, sent=bool(sent),
+                                            detail="Poki.Health.PlayReminder.btnOk:" + (
+                                                click.status.value if click is not None else "NO_CLICK"))
+        return bool(sent)
+
+    if pinned_input_session is not None:
+        lease = pinned_input_session.execute_mouse(
+            domain=InputDeliveryDomain.NAVIGATION_RECOVERY,
+            action_identity=f"HEALTH_REMINDER:{run.farm_run_id}:{first.identity}",
+            action=send_once, preflight=lambda: not run.stopped,
+            final_pre_takeover_preflight=fresh_preflight,
+            expected_cursor_after=pinned_input_session.expected_cursor_for_normalized_point(
+                location.normalized_point),
+        )
+        sent = lease.action_succeeded and lease.status is LeaseStatus.COMPLETE
+        if not sent:
+            run._event("health_reminder_lease_rejected", leaseStatus=lease.status.value,
+                       reason=lease.reason)
+    else:
+        sent = send_once()
+    if not sent:
+        return blocked("health reminder fresh proof/input failed; no blind retry")
+    run._event("health_reminder_dismiss_sent", identity=first.identity, point=location.normalized_point)
+    deadline = time.monotonic() + 3.0
+    while process.is_running() and time.monotonic() < deadline:
+        if emergency():
+            return "BLOCKED"
+        closed = read_play_reminder_control(process)
+        if closed.clean and closed.open is False:
+            run._event("health_reminder_closed", identity=first.identity,
+                       nextAction="REREAD_EXISTING_LOBBY_TARGET_ROUTER")
+            return "DISMISSED"
+        time.sleep(0.1)
+    failed = capture_client_rgb(process.pid)
+    write_failure_png_rgb(directory / "health_reminder_not_closed.png", failed.width,
+                          failed.height, failed.rgb)
+    return blocked("health reminder still open after one click; no blind retry")
+
+
 def _navigation_action_identity(
     run: FarmRun,
     action: str,
@@ -1833,6 +2219,7 @@ def _detached_shell_exit_runtime_proven(
     first_map_target: Any | None,
     current_map_target: Any | None,
     allow_map_backed_shell: bool = False,
+    failed_bootstrap_key: tuple[Any, ...] | None = None,
 ) -> bool:
     """Authorize only the shell-exit step when map objects are not loaded yet.
 
@@ -1844,6 +2231,12 @@ def _detached_shell_exit_runtime_proven(
     visual frames are required separately by the caller.
     """
 
+    if failed_bootstrap_key is not None:
+        return bool(
+            first_map_target is None and current_map_target is None
+            and _failed_chinh_phuc_room_bootstrap_key(
+                lobby, no_combat_owner=current_session is None) == failed_bootstrap_key
+        )
     detached_runtime = _is_detached_chinh_phuc_room_candidate(
         lobby,
         target_pet_id=pet_id,
@@ -1865,8 +2258,10 @@ def _detached_shell_exit_runtime_proven(
                 return False
             if getattr(target, "pet_id", None) != pet_id:
                 return False
-            prefs = getattr(target, "prefs", None)
-            if getattr(prefs, "selected_pet_id", None) != pet_id:
+            # PlayerPrefs can be absent on a fresh profile or still describe
+            # the previous room. The exact stale enemy/no-owner proof owns
+            # this exit; current map evidence must agree when it is loaded.
+            if map_backed_runtime and not _map_target_matches_lobby(target, lobby, pet_id):
                 return False
     if first_map_target is not None and current_map_target is not None:
         return _same_clean_chinh_phuc_map_target(
@@ -1926,6 +2321,14 @@ def _postmatch_reentry_source(
     lobby = initial.lobby
     if lobby is None or current_session is not None:
         return None
+    if getattr(getattr(lobby, "combat_lifecycle", None), "state", None) not in {
+        CombatLifecycleState.LOBBY,
+        CombatLifecycleState.STALE_SERVER_MATCH,
+    }:
+        return None
+    if (initial.reason in {"ROOM_BOOTSTRAP_FAILED_CANDIDATE", "BOSS_LOBBY_TIMEOUT"}
+            and _failed_chinh_phuc_room_bootstrap_key(lobby, no_combat_owner=True) is not None):
+        return "FAILED_ROOM_BOOTSTRAP"
     if (
         initial.reason == "GENERAL_HUB_CANDIDATE"
         and lobby.state is BossLobbyState.LOBBY_OTHER
@@ -2063,6 +2466,7 @@ def _settle_detached_room_shell_exit(
     max_region_mib: int = 8,
     chunk_mib: int = 2,
     allow_map_backed_shell: bool = False,
+    failed_bootstrap_key: tuple[Any, ...] | None = None,
 ) -> tuple[str, Any | None] | None:
     """Prove either direct map navigation or one stable leave confirmation."""
 
@@ -2143,6 +2547,7 @@ def _settle_detached_room_shell_exit(
                 first_map_target=None,
                 current_map_target=None,
                 allow_map_backed_shell=allow_map_backed_shell,
+                failed_bootstrap_key=failed_bootstrap_key,
             ):
                 run._event(  # noqa: SLF001
                     "chinh_phuc_room_shell_confirm_rejected",
@@ -2176,6 +2581,7 @@ def _settle_detached_room_shell_exit(
                         first_map_target=None,
                         current_map_target=None,
                         allow_map_backed_shell=allow_map_backed_shell,
+                        failed_bootstrap_key=failed_bootstrap_key,
                     )
                     and _stable_visual_proof(
                         capture,
@@ -2245,7 +2651,9 @@ def _settle_detached_room_shell_exit(
                     and lease_result.status is LeaseStatus.COMPLETE
                 )
             else:
-                sent_ok = send_confirm_once()
+                sent_ok = bool(
+                    (failed_bootstrap_key is None or fresh_confirm_preflight())
+                    and send_confirm_once())
             authorized = bool(click_context["authorized"])
             click = click_context["click"]
             if not authorized:
@@ -2481,7 +2889,8 @@ def _open_chinh_phuc_from_general_hub(
             return False
         status = executor.window_status(binding)
         permit = run.reserve_hub_chinh_phuc_open(
-            foreground=status.valid and status.foreground is True
+            foreground=status.valid and status.foreground is True,
+            general_hub_proven=True,
         )
         if permit is None:
             return False
@@ -2574,6 +2983,7 @@ def _return_from_chinh_phuc_map(
     pinned_input_session: PinnedForegroundMouseSession | None = None,
     max_region_mib: int = 8,
     chunk_mib: int = 2,
+    outside_modal_handler: Any = None,
 ) -> LobbyWaitResult | None:
     """Select the same pet when a result returns to its Chinh Phuc map.
 
@@ -2586,6 +2996,20 @@ def _return_from_chinh_phuc_map(
     """
 
     lobby = initial.lobby
+
+    def handle_map_modal(current_lobby: Any) -> str:
+        return outside_modal_handler(current_lobby) if outside_modal_handler is not None else "ABSENT"
+
+    modal_status = handle_map_modal(lobby)
+    if modal_status == "BLOCKED":
+        return LobbyWaitResult(False, lobby.state, None, "HEALTH_REMINDER_BLOCKED", lobby)
+    if modal_status == "DISMISSED":
+        # The modal may have appeared after the caller's previous lobby wait.
+        refreshed = _read_lobby_runtime_with_provider_fallback(process, provider)
+        if refreshed is None:
+            return None
+        lobby = refreshed
+        initial = LobbyWaitResult(False, lobby.state, None, initial.reason, lobby)
     try:
         pet_id = int(target.boss_id or "")
     except ValueError:
@@ -2597,6 +3021,32 @@ def _return_from_chinh_phuc_map(
     )
     if reentry_source is None:
         return None
+
+    failed_bootstrap_key = None
+    if reentry_source == "FAILED_ROOM_BOOTSTRAP":
+        # Missing DTO cannot attest the boss. Only a completed, confirmed Solo
+        # attempt permits closing this exact failed local room. Target selection
+        # remains a separate native proof after the room has actually closed.
+        confirmed_postmatch = bool(
+            run.state is FarmRunState.WAIT_BOSS_LOBBY
+            and run.current_session is None
+            and run.target == target
+            and run.snapshot().gameplay_config.game_mode is GameMode.SOLO
+            and run.attempts and run.attempts[-1].normal_postmatch
+            and run.attempts[-1].end_timestamp is not None
+            and any(record.domain is FarmInputDomain.POSTMATCH_CONFIRM
+                    and record.attempt_index == run.match_attempts and record.sent
+                    for record in run.input_records))
+        if not confirmed_postmatch:
+            run._event("postmatch_bootstrap_reentry_rejected",
+                       reason="completed Solo attempt and sent reward confirmation required")
+            return None
+        failed_bootstrap_key = _failed_chinh_phuc_room_bootstrap_key(
+            lobby, no_combat_owner=provider.current_session_key is None)
+        if failed_bootstrap_key is None:
+            return None
+        run._event("postmatch_bootstrap_reentry_started", attemptIndex=run.match_attempts,
+                   failedRoomKey=failed_bootstrap_key, targetBossId=target.boss_id)
 
     external_f9 = _control_emergency_requested(control_hotkeys)
     _unused, f9 = hotkeys.poll()
@@ -2733,6 +3183,13 @@ def _return_from_chinh_phuc_map(
             current_map_lobby = _read_lobby_runtime_with_provider_fallback(
                 process, provider
             )
+            modal_status = handle_map_modal(current_map_lobby)
+            if modal_status == "BLOCKED":
+                return LobbyWaitResult(False, lobby.state, None, "HEALTH_REMINDER_BLOCKED", lobby)
+            if modal_status == "DISMISSED":
+                previous_runtime = None
+                runtime_stable_count = 0
+                continue
             runtime_probe_count += 1
             if (
                 current_map_lobby is None
@@ -2930,6 +3387,10 @@ def _return_from_chinh_phuc_map(
 
         proof_deadline = time.monotonic() + max(1.0, timeout)
         room_start_rect = _runtime_room_start_rect(process, lobby)
+        if failed_bootstrap_key is not None and room_start_rect is None:
+            run._event("postmatch_bootstrap_reentry_rejected",
+                       reason="native room Start geometry unavailable")
+            return None
         time.sleep(max(interval, 0.18))
         first_capture = capture_client_rgb(process.pid)
         first_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
@@ -3027,6 +3488,7 @@ def _return_from_chinh_phuc_map(
             first_map_target=first_runtime,
             current_map_target=None,
             allow_map_backed_shell=map_backed_shell_probe,
+            failed_bootstrap_key=failed_bootstrap_key,
         )
         if not shell_runtime_stable:
             run._event(  # noqa: SLF001
@@ -3068,7 +3530,10 @@ def _return_from_chinh_phuc_map(
                     first_map_target=first_runtime,
                     current_map_target=None,
                     allow_map_backed_shell=map_backed_shell_probe,
+                    failed_bootstrap_key=failed_bootstrap_key,
                 )
+                and (failed_bootstrap_key is None
+                     or _runtime_room_start_rect(process, fresh_lobby) == room_start_rect)
                 and _stable_visual_proof(
                     second_capture,
                     second_shell_exit,
@@ -3137,7 +3602,9 @@ def _return_from_chinh_phuc_map(
                 and shell_lease.status is LeaseStatus.COMPLETE
             )
         else:
-            shell_sent = send_shell_exit_once()
+            shell_sent = bool(
+                (failed_bootstrap_key is None or fresh_shell_exit_preflight())
+                and send_shell_exit_once())
         authorized = bool(shell_context["authorized"])
         shell_click = shell_context["click"]
         if not authorized:
@@ -3189,6 +3656,7 @@ def _return_from_chinh_phuc_map(
             max_region_mib=max_region_mib,
             chunk_mib=chunk_mib,
             allow_map_backed_shell=map_backed_shell_probe,
+            failed_bootstrap_key=failed_bootstrap_key,
         )
         if shell_transition_result is None:
             return None
@@ -3581,7 +4049,110 @@ def _return_from_chinh_phuc_map(
             10.0,
             max(2.0, timeout * 0.20),
         ),
+        outside_modal_handler=handle_map_modal,
     )
+
+
+def _recover_postmatch_boss_lobby(
+    *,
+    run: FarmRun,
+    process: Any,
+    provider: MemoryBoardStateProvider,
+    target: FarmTarget,
+    initial: LobbyWaitResult,
+    allow_reentry: bool,
+    writer: Any,
+    binding: Any,
+    executor: ForegroundClickExecutor,
+    directory: Path,
+    interval: float,
+    timeout: float,
+    hotkeys: HotkeyEdges,
+    control_hotkeys: Any = None,
+    pinned_input_session: PinnedForegroundMouseSession | None = None,
+    max_region_mib: int = 8,
+    chunk_mib: int = 2,
+    outside_modal_handler: Any = None,
+) -> LobbyWaitResult:
+    """After result confirmation, recover every proven missing-room origin.
+
+    A map or general hub is not the boss room, even when its UI is healthy.
+    Use the same classifier as the navigation route rather than maintaining a
+    second reason allowlist that can silently omit a supported origin.
+    """
+
+    returned = initial
+    if not allow_reentry:
+        return returned
+    try:
+        pet_id = int(target.boss_id or "")
+    except ValueError:
+        return returned
+    # Two existing bounded passes cover map -> detached shell -> correct room.
+    for reentry_pass in range(1, 3):
+        if returned.ready or run.stopped:
+            break
+        source = _postmatch_reentry_source(
+            returned,
+            target_pet_id=pet_id,
+            current_session=provider.current_session_key,
+        )
+        if source is None:
+            break
+        writer.event(
+            "postmatch_boss_room_missing",
+            attemptIndex=run.match_attempts,
+            reentryPass=reentry_pass,
+            reason=returned.reason,
+            branch=returned.lobby.branch,
+            reentrySource=source,
+            targetBossId=target.boss_id,
+        )
+        map_return = _return_from_chinh_phuc_map(
+            run=run,
+            process=process,
+            provider=provider,
+            target=target,
+            initial=returned,
+            binding=binding,
+            executor=executor,
+            directory=directory,
+            interval=interval,
+            timeout=timeout,
+            hotkeys=hotkeys,
+            control_hotkeys=control_hotkeys,
+            pinned_input_session=pinned_input_session,
+            max_region_mib=max_region_mib,
+            chunk_mib=chunk_mib,
+            outside_modal_handler=outside_modal_handler,
+        )
+        writer.event(
+            "chinh_phuc_map_return",
+            attemptIndex=run.match_attempts,
+            reentryPass=reentry_pass,
+            initial=returned,
+            result=map_return,
+        )
+        if map_return is None:
+            if source == "FAILED_ROOM_BOOTSTRAP" and not run.stopped:
+                # Reconnection can finish while the failed-room proof is being
+                # checked. Do not turn a correctly rehydrated room into a stop.
+                rechecked = _wait_boss_lobby(
+                    process, provider, target, min(2.0, timeout), interval,
+                    hotkeys, control_hotkeys,
+                    outside_modal_handler=outside_modal_handler)
+                writer.event("postmatch_bootstrap_recovery_recheck", result=rechecked)
+                if rechecked.ready:
+                    return rechecked
+                next_source = _postmatch_reentry_source(
+                    rechecked, target_pet_id=pet_id,
+                    current_session=provider.current_session_key)
+                if next_source is not None and next_source != "FAILED_ROOM_BOOTSTRAP":
+                    returned = rechecked
+                    continue
+            break
+        returned = map_return
+    return returned
 
 
 def _outside_current_boss_room(result: LobbyWaitResult) -> bool:
@@ -3687,8 +4258,14 @@ def _restore_ejected_farm_room(
     writer: FarmRunArtifactWriter,
     recovery_records: tuple[Any, ...] | None = None,
     pinned_input_session: PinnedForegroundMouseSession | None = None,
+    outside_modal_handler: Any = None,
 ) -> bool:
     """Restore the immutable farm-session pet after a proven room ejection."""
+
+    if run.snapshot().gameplay_config.game_mode is GameMode.COOP:
+        run.safe_stop(FarmRunStopReason.ROOM_EJECTED, detail="COOP_ROOM_REJOIN_REQUIRES_USER")
+        writer.event("coop_room_ejected", automaticReentry=False)
+        return False
 
     target_id = str(target.boss_id or "").strip()
     try:
@@ -3737,6 +4314,7 @@ def _restore_ejected_farm_room(
         pinned_input_session=pinned_input_session,
         max_region_mib=args.max_region_mib,
         chunk_mib=args.chunk_mib,
+        outside_modal_handler=outside_modal_handler,
     )
     writer.event(
         "combat_room_ejection_reentry",
@@ -3914,6 +4492,13 @@ def _run_recovery(
     test_only: bool,
     failed_recovery_map_fallback: Callable[[Any], bool] | None = None,
 ) -> bool:
+    if run.snapshot().gameplay_config.game_mode is GameMode.COOP:
+        run.safe_stop(
+            FarmRunStopReason.COMBAT_SAFE_STOP,
+            detail="COOP_TECHNICAL_FAILURE_REQUIRES_USER",
+        )
+        writer.event("coop_technical_stop", automaticExit=False, automaticReentry=False)
+        return False
     if not run.begin_recovery():
         return False
     code = technical_recovery.run_armed_live_recovery(
@@ -3952,11 +4537,45 @@ def _run_recovery(
                 detail="graceful technical exit did not validate",
             )
         return stopped
+    if (
+        code == 4
+        and _technical_reason(coordinator) == "PET_SKILL_CONTROL_UNAVAILABLE"
+        and snapshot.old_session_invalidated is True
+        and snapshot.state is TechnicalRecoveryState.RESOLVE_REENTRY_TARGET
+        and snapshot.gameplay_locked is True
+        and snapshot.new_session is None
+    ):
+        stopped = run.record_technical_exit(
+            snapshot.input_records, failure_reason="PET_SKILL_CONTROL_UNAVAILABLE"
+        )
+        writer.event(
+            "policy_fault_boss_lobby_stop",
+            stoppedAtLobby=stopped,
+            reason="PET_SKILL_CONTROL_UNAVAILABLE",
+            recoveryReentrySent=False,
+            recovery=snapshot,
+        )
+        return stopped
     if code != 0 or not _recovery_clean(snapshot):
         if (
             failed_recovery_map_fallback is not None
             and failed_recovery_map_fallback(snapshot)
         ):
+            if _technical_reason(coordinator) == "PET_SKILL_CONTROL_UNAVAILABLE":
+                run.safe_stop(
+                    FarmRunStopReason.COMBAT_SAFE_STOP,
+                    detail="PET_SKILL_CONTROL_UNAVAILABLE",
+                    returnedBossLobby=True,
+                    recoveryReentrySent=False,
+                )
+                writer.event(
+                    "policy_fault_boss_lobby_stop",
+                    stoppedAtLobby=True,
+                    reason="PET_SKILL_CONTROL_UNAVAILABLE",
+                    recoveryReentrySent=False,
+                    restoredFromMap=True,
+                )
+                return True
             runtime.executor.arm_recovery_swap_pacing(
                 "FAILED_RECOVERY_MAP_FALLBACK"
             )
@@ -4252,9 +4871,37 @@ def _run_live(
     *,
     control_edges: FarmControlHotkeyEdges | None = None,
     observer: Callable[[Any, str], None] | None = None,
+    shadow_session: Any | None = None,
+    reasoning_session: Any | None = None,
 ) -> int:
     gameplay_config = gameplay_config_from_args(args)
+    input_randomization=randomization_from_args(args)
     gameplay_config.require_farm_policy()
+    coop_mode = gameplay_config.game_mode is GameMode.COOP
+    coop_room_id = None
+    coop_room_owner = None
+    if coop_mode:
+        # A guest cannot recreate another player's room after an ejection.
+        args.stop_if_room_ejected = True
+
+    def wait_run_lobby(*wait_args: Any, **wait_kwargs: Any) -> LobbyWaitResult:
+        if coop_mode:
+            wait_kwargs.update(
+                allow_guest_room=True,
+                expected_room_id=coop_room_id,
+                expected_room_owner=coop_room_owner,
+            )
+        wait_kwargs["outside_modal_handler"] = handle_outside_modal
+        return _wait_boss_lobby(*wait_args, **wait_kwargs)
+
+    def handle_outside_modal(lobby: Any) -> str:
+        return _dismiss_play_reminder(
+            run=run, process=process, provider=provider, lobby=lobby,
+            binding=binding, executor=executor, directory=writer.directory,
+            hotkeys=hotkeys, control_hotkeys=control_hotkeys,
+            pinned_input_session=pinned_input_session,
+        )
+
     stage_b1 = bool(args.stage_b1_recovery_resume)
     stage_d5_b1 = bool(args.stage_d5_b1_terminal)
     stage_d5_b2 = bool(args.stage_d5_b2_soak)
@@ -4312,6 +4959,11 @@ def _run_live(
     root = (args.artifacts or current_app_paths().farm_runs).resolve()
     writer = FarmRunArtifactWriter.create(root, run.farm_run_id)
     memory = _ControllerMemorySampler()
+    if reasoning_session is not None:
+        try:
+            reasoning_session.bind_run(run.farm_run_id, writer.directory)
+        except Exception:
+            pass  # Optional timing link failure cannot affect BASIC ownership.
     memory.sample()
     unexpected: dict[str, Any] | None = None
     stage_b1_proof: dict[str, Any] | None = None
@@ -4349,6 +5001,7 @@ def _run_live(
             executor = ForegroundClickExecutor(
                 backend,
                 input_mode=BoardInputMode(args.board_input_mode),
+                randomization=input_randomization,
             )
             provider = MemoryBoardStateProvider(
                 process,
@@ -4357,6 +5010,7 @@ def _run_live(
                     chunk_mib=args.chunk_mib,
                     required_confirmations=2,
                     require_lobby_start=True,
+                    coop_mode=coop_mode,
                     # BASIC owns a high-cadence immutable dispatcher tap plus
                     # a bounded monitor fallback. Keep the provider off the
                     # competing heap path so callback capture stays live.
@@ -4429,6 +5083,7 @@ def _run_live(
                 )
             writer.event(
                 "farm_run_started",
+                inputRandomization=input_randomization.to_dict(),
                 farmRunId=run.farm_run_id,
                 continuationOf=run.continuation_of,
                 resumed=bool(run.resumed),
@@ -4471,7 +5126,7 @@ def _run_live(
                 F9="EMERGENCY_STOP",
                 infiniteFarmingMode=False,
             )
-            initial = _wait_boss_lobby(
+            initial = wait_run_lobby(
                 process,
                 provider,
                 target,
@@ -4503,6 +5158,16 @@ def _run_live(
                 )
                 run.safe_stop(initial_reason, detail=initial.reason)
             else:
+                if coop_mode:
+                    coop_room_id = initial.lobby.chinh_phuc.current_room_id
+                    coop_room_owner = initial.lobby.chinh_phuc.owner_username
+                    writer.event(
+                        "coop_room_bound",
+                        roomId=coop_room_id,
+                        owner=coop_room_owner,
+                        isHost=initial.lobby.chinh_phuc.is_host,
+                        readyToggleRetry=False,
+                    )
                 run.observe_initial_lobby(BossLobbyState.BOSS_LOBBY)
             if controlled_run:
                 # Create the first durable checkpoint only after a fresh clean
@@ -4611,6 +5276,7 @@ def _run_live(
                         control_hotkeys=control_hotkeys,
                         test_only_recovery=stage_b1,
                         pinned_input_session=pinned_input_session,
+                        outside_modal_handler=handle_outside_modal,
                     )
                     writer.event(
                         "match_entry_result",
@@ -4623,7 +5289,7 @@ def _run_live(
                         if _entry_postclick_room_ejection_probe_required(
                             entry_result
                         ):
-                            returned = _wait_boss_lobby(
+                            returned = wait_run_lobby(
                                 process,
                                 provider,
                                 target,
@@ -4713,6 +5379,7 @@ def _run_live(
                                 control_hotkeys=control_hotkeys,
                                 writer=writer,
                                 pinned_input_session=pinned_input_session,
+                                outside_modal_handler=handle_outside_modal,
                             )
                             if restored:
                                 # No match attempt was created, so the next
@@ -4768,7 +5435,7 @@ def _run_live(
                                 entryInputSent=False,
                                 reason=entry_result.get("stopReason"),
                             )
-                            returned = _wait_boss_lobby(
+                            returned = wait_run_lobby(
                                 process,
                                 provider,
                                 target,
@@ -4785,14 +5452,12 @@ def _run_live(
                                 attemptIndex=run.match_attempts + 1,
                                 result=returned,
                             )
-                            if (
-                                not returned.ready
-                                and returned.reason
-                                in {
-                                    "TARGET_MISSING",
-                                    "CHINH_PHUC_MAP_CANDIDATE",
-                                    "DETACHED_ROOM_SHELL_CANDIDATE",
-                                }
+                            if not returned.ready and any(
+                                _farm_room_ejection_sources(
+                                    returned,
+                                    target_boss_id=str(target.boss_id or ""),
+                                    current_session=provider.current_session_key,
+                                )
                             ):
                                 map_return = _return_from_chinh_phuc_map(
                                     run=run,
@@ -4810,6 +5475,7 @@ def _run_live(
                                     pinned_input_session=pinned_input_session,
                                     max_region_mib=args.max_region_mib,
                                     chunk_mib=args.chunk_mib,
+                                    outside_modal_handler=handle_outside_modal,
                                 )
                                 writer.event(
                                     "entry_preflight_map_return",
@@ -5057,7 +5723,16 @@ def _run_live(
                         input_delivery_config=input_delivery_config,
                         pinned_input_session=pinned_input_session,
                     )
-                    basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime)
+                    if reasoning_session is not None:
+                        from pokiguard_v2.reasoning_swap_timing import prepare_reasoning_options_safely
+                        basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime,
+                            **prepare_reasoning_options_safely(reasoning_session))
+                    elif shadow_session is None:
+                        basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime)
+                    else:
+                        from pokiguard_v2.reasoning_settings import prepare_shadow_safely
+                        basic_auto_bot.run(combat_args, shared_runtime=resumed_runtime,
+                                           shadow_adapter=prepare_shadow_safely(shadow_session))
                     records = _read_jsonl(combat_log)
                     accepted, stage_b1_proof = _stage_b1_action_proof(records)
                     summary = stage_b1_proof.get("summary") if stage_b1_proof else None
@@ -5084,9 +5759,20 @@ def _run_live(
                     continue
 
                 combat_log = match_directory / "combat.jsonl"
-                basic_auto_bot.run(
-                    _combat_args(args, combat_log), shared_runtime=runtime
-                )
+                if reasoning_session is not None:
+                    from pokiguard_v2.reasoning_swap_timing import prepare_reasoning_options_safely
+                    basic_auto_bot.run(_combat_args(args, combat_log), shared_runtime=runtime,
+                        **prepare_reasoning_options_safely(reasoning_session))
+                elif shadow_session is None:
+                    basic_auto_bot.run(
+                        _combat_args(args, combat_log), shared_runtime=runtime
+                    )
+                else:
+                    from pokiguard_v2.reasoning_settings import prepare_shadow_safely
+                    basic_auto_bot.run(
+                        _combat_args(args, combat_log), shared_runtime=runtime,
+                        shadow_adapter=prepare_shadow_safely(shadow_session),
+                    )
                 records = _read_jsonl(combat_log)
                 combat_ok, combat_reason, summary = _validate_combat_summary(records)
                 run.apply_combat_summary(summary or {})
@@ -5127,7 +5813,7 @@ def _run_live(
                                 failClosed=True,
                             )
                             return False
-                        ejected = _wait_boss_lobby(
+                        ejected = wait_run_lobby(
                             process,
                             provider,
                             target,
@@ -5206,6 +5892,7 @@ def _run_live(
                                 recovery_snapshot.input_records
                             ),
                             pinned_input_session=pinned_input_session,
+                            outside_modal_handler=handle_outside_modal,
                         )
                         if restored:
                             memory.sample()
@@ -5258,7 +5945,7 @@ def _run_live(
                         # completed match.  It may, however, be an exact room
                         # ejection. Prove the world-boss map with no combat
                         # owner before using the immutable farm-session pet ID.
-                        ejected = _wait_boss_lobby(
+                        ejected = wait_run_lobby(
                             process,
                             provider,
                             target,
@@ -5313,6 +6000,7 @@ def _run_live(
                             control_hotkeys=control_hotkeys,
                             writer=writer,
                             pinned_input_session=pinned_input_session,
+                            outside_modal_handler=handle_outside_modal,
                         )
                         if not restored:
                             if not run.stopped:
@@ -5385,6 +6073,8 @@ def _run_live(
                         hotkeys=hotkeys,
                         control_hotkeys=control_hotkeys,
                         pinned_input_session=pinned_input_session,
+                        event_sink=lambda event, payload: writer.event(event, **payload),
+                        outside_modal_handler=handle_outside_modal,
                     )
                     writer.event(
                         "postmatch_ui_audit",
@@ -5400,7 +6090,7 @@ def _run_live(
                     )
                 if not postmatch_ready:
                     continue
-                returned = _wait_boss_lobby(
+                returned = wait_run_lobby(
                     process,
                     provider,
                     target,
@@ -5434,52 +6124,26 @@ def _run_live(
                         mapTargetSelectionAttempted=False,
                     )
                     continue
-                reentry_reasons = {
-                    "TARGET_MISSING",
-                    "CHINH_PHUC_MAP_CANDIDATE",
-                    "DETACHED_ROOM_SHELL_CANDIDATE",
-                }
-                # One server failure mode accepts the exact target click but
-                # creates an owner-free room shell.  Route that shell once,
-                # then reselect the same immutable target.  Two bounded route
-                # passes cover map->shell->map without permitting an open
-                # retry loop or a third target selection.
-                for reentry_pass in range(1, 3):
-                    if not (
-                        controlled_run
-                        and not args.stop_if_room_ejected
-                        and not returned.ready
-                        and returned.reason in reentry_reasons
-                        and not run.stopped
-                    ):
-                        break
-                    map_return = _return_from_chinh_phuc_map(
-                        run=run,
-                        process=process,
-                        provider=provider,
-                        target=target,
-                        initial=returned,
-                        binding=binding,
-                        executor=executor,
-                        directory=match_directory,
-                        interval=args.interval,
-                        timeout=args.return_lobby_timeout,
-                        hotkeys=hotkeys,
-                        control_hotkeys=control_hotkeys,
-                        pinned_input_session=pinned_input_session,
-                        max_region_mib=args.max_region_mib,
-                        chunk_mib=args.chunk_mib,
-                    )
-                    writer.event(
-                        "chinh_phuc_map_return",
-                        attemptIndex=attempt_index,
-                        reentryPass=reentry_pass,
-                        initial=returned,
-                        result=map_return,
-                    )
-                    if map_return is None:
-                        break
-                    returned = map_return
+                returned = _recover_postmatch_boss_lobby(
+                    run=run,
+                    process=process,
+                    provider=provider,
+                    target=target,
+                    initial=returned,
+                    allow_reentry=controlled_run and not args.stop_if_room_ejected,
+                    writer=writer,
+                    binding=binding,
+                    executor=executor,
+                    directory=match_directory,
+                    interval=args.interval,
+                    timeout=args.return_lobby_timeout,
+                    hotkeys=hotkeys,
+                    control_hotkeys=control_hotkeys,
+                    pinned_input_session=pinned_input_session,
+                    max_region_mib=args.max_region_mib,
+                    chunk_mib=args.chunk_mib,
+                    outside_modal_handler=handle_outside_modal,
+                )
                 if not returned.ready:
                     if run.stopped:
                         continue
@@ -6022,6 +6686,8 @@ def run(
     *,
     control_edges: FarmControlHotkeyEdges | None = None,
     observer: Callable[[Any, str], None] | None = None,
+    shadow_session: Any | None = None,
+    reasoning_session: Any | None = None,
 ) -> int:
     limits = _validate_args(args)
     if args.stage_d5_a_results:
@@ -6036,6 +6702,8 @@ def run(
             limits,
             control_edges=control_edges,
             observer=observer,
+            **({} if shadow_session is None else {"shadow_session": shadow_session}),
+            **({} if reasoning_session is None else {"reasoning_session": reasoning_session}),
         )
     )
 

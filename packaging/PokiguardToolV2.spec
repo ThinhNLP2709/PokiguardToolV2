@@ -2,6 +2,7 @@
 """PyInstaller one-folder definition for the Phase 2F.1 Windows package."""
 
 from pathlib import Path
+import os
 
 
 ROOT = Path(SPECPATH).resolve().parent
@@ -21,6 +22,9 @@ datas = [
         "pokiguard_v2/resources/reference",
     ),
 ]
+identity = Path(os.environ['POKIGUARD_PACKAGE_IDENTITY']).resolve()
+datas.extend((str(identity/name),'pokiguard_v2/resources')
+             for name in ('package_build.json','package_probe.json'))
 
 a = Analysis(
     [str(SRC / "pokiguard_v2" / "windows_entry.py")],
@@ -34,6 +38,14 @@ a = Analysis(
         "tools.farm_run",
         "tools.farm_cycle",
         "tools.basic_auto_bot",
+        "tools.dinosaur_run",
+        "pokiguard_v2.dinosaur_session",
+        "pokiguard_v2.input_randomization",
+        "pokiguard_v2.packaged_reasoning",
+        "pokiguard_v2.reasoning_ui_scope",
+        "pokiguard_v2.reasoning_ui_profile",
+        "pokiguard_v2.reasoning_ui_session",
+        "pokiguard_v2.packaged_verification",
         "tools.boss_entry",
         "tools.technical_recovery",
         "pokiguard_v2.input_delivery",

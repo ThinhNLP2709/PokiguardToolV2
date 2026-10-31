@@ -105,11 +105,11 @@ class GameLocationTests(unittest.TestCase):
             validate_supported_game_assembly(game_assembly)
         self.assertEqual("GAME_BUILD_INCOMPATIBLE", context.exception.reason)
 
-    def test_only_reverse_verified_b6_layout_hash_is_enabled(self) -> None:
+    def test_only_reverse_verified_b12_layout_hash_is_enabled(self) -> None:
         self.assertEqual(
             SUPPORTED_GAME_ASSEMBLY_SHA256,
             frozenset(
-                {"72d10a43fbfdab705e2db7caca1cc2b998b0b8581d56946dc545d87c720ec063"}
+                {"51eaeff77252e7119647a590c534196093b36e752115b500672f24da758f1064"}
             ),
         )
 

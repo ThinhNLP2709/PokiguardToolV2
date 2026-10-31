@@ -1,8 +1,35 @@
 # PokiguardToolV2
 
+## Phase 5 closeout — 2026-10-31
+
+Checkpoint **v1.3.0** (01/11/2026) includes the completed scoped UI opt-in.
+[Release report](docs/v1.3.0_release_report.md) ·
+[Next requested scope: common reasoning across styles/target gems](docs/phase5/NEXT_REASONING_SCOPE.md).
+The F1 package described below is historical evidence, not the current release.
+
+**ROADMAP COMPLETE — STOP** within the declared scope in
+[Final report](docs/phase5/FINAL_REPORT.md). BASIC remains the default; efficacy
+is INCONCLUSIVE. The exact F1 test package passed bounded Demon/Shield/Solo/
+Lieyun77 lab acceptance. Ordinary UI reasoning selection remains disabled;
+other profile pilots retain their historical source/build scopes.
+
+[User guide](docs/phase5/USER_GUIDE.md) · [Rollback](docs/phase5/ROLLBACK.md).
+This docs-only closeout does not replace the portable release linked below,
+publish a new binary, or authorize more live matches.
+
 ## Mở tool trên Windows
 
-### Bản portable Release Candidate Phase 2F.2
+### Bản portable hiện tại: v1.3.0
+
+[Tải ZIP Windows x64 v1.3.0](build/v1.3.0/PokiguardToolV2-v1.3.0-win-x64.zip)
+— checkpoint Phase5, có bật/tắt suy luận trong AI cho Demon Farm ăn Khiên
+trong cohort đã kiểm. BASIC vẫn mặc định/fallback; profile riêng không nằm
+trong ZIP. Chưa là AI chung cho mọi lối chơi hoặc mọi viên mục tiêu.
+Giữ gameplay/reader/input/QTE/ACK của bản UI đã live; game phải đúng b12.
+Đóng tool cũ, giải nén toàn bộ ZIP và chạy `PokiguardToolV2.exe`; giữ `_internal`
+đi cùng EXE. Xem [phạm vi và kiểm chứng phát hành](docs/v1.3.0_release_report.md).
+
+### Bản portable Release Candidate Phase 2F.2 (lịch sử)
 
 Build chuẩn tạo một bundle Windows x64 không cần cài Python:
 
@@ -27,11 +54,11 @@ thư mục game. Release Candidate đã được clean-build và live-validate t
 e077a74827478d78bea99200c247f14ba787179352db59a0148bf58d08594a69
 ```
 
-The current source compatibility version is `v1.0.49`. The accepted packaged
-Phase 2F.2 artifact above remains `v1.0.0+15`; rebuild packaging before
-distributing the maintenance version.
+The source compatibility version at that historical checkpoint was `v1.0.49`.
+The accepted Phase 2F.2 artifact above remains `v1.0.0+15`; the current
+maintenance release and package are linked separately above.
 
-The current Pokiguard 1.7.4-b4 build uses Unity IL2CPP metadata 110. Its
+The historical Pokiguard 1.7.4-b4 build uses Unity IL2CPP metadata 110. Its
 verified symbols, exact binary hashes, implemented default paths, and remaining
 live-combat boundary are recorded in
 [docs/pokiguard_1.7.4_b4_compatibility_report.md](docs/pokiguard_1.7.4_b4_compatibility_report.md).
@@ -50,9 +77,17 @@ Chạy [run_tool.bat](run_tool.bat) từ thư mục gốc project. Launcher sẽ
 
 Game phải được mở sẵn. Để Start một farm session mới, user vẫn phải ở đúng
 boss lobby; UI sẽ tự xác minh lại lifecycle và target trước khi cho phép Start.
+Riêng **Khủng long**: tự vào trận rồi bấm Start, hết giờ chưa đi thì chờ lượt mới;
+xác nhận WIN thì dừng ngay, không chờ thưởng/lobby và không tự vào trận tiếp theo.
 Trong tab **Settings**, ô **Game executable** lưu full path chính xác, ví dụ
 `D:\pc\Pokiguard-1.7.4.exe`. Khi game đổi phiên bản và tên EXE thay đổi, dùng
 nút **File...** để chọn launcher mới. `GameAssembly.dll` phải nằm cùng folder.
+
+Source mới có **Cài đặt → Random đi bàn cờ**: Min/Max trước nước đi, Min/Max
+random thêm giữa hai click và độ lệch tọa độ 0–10% kích thước ô. Max = 0 tắt
+random thời gian của mục đó; tọa độ 0% dùng tâm viên. Xem
+[cách dùng và phạm vi kiểm chứng](docs/input_randomization_settings_20261024.md).
+Tính năng này đã có trong ZIP v1.2.9.
 
 PokiguardToolV2 is the second-generation automation research project for the
 Windows x64 Unity IL2CPP game Pokiguard.
@@ -159,8 +194,9 @@ Canonical release tag: `v1.0.0+15`.
 
 Supported scope remains finite BASIC farming, exact-room session pinning,
 read-only state acquisition, normal foreground input, bounded technical
-recovery, graceful checkpoint resume, and Emergency stop. REASONING,
-unbounded farming, automatic game launch/restart or login, target rotation,
+recovery, graceful checkpoint resume, and Emergency stop. General/public
+REASONING remains unsupported; bounded Phase5 lab acceptance is documented in
+the current final report above. Unbounded farming, automatic game launch/restart or login, target rotation,
 memory writes, and network manipulation remain unsupported.
 
 Runtime logs and screenshots under `logs/` are intentionally excluded from Git

@@ -247,8 +247,8 @@ class BoundedOperatorLogTests(unittest.TestCase):
 class CompactPresentationContractTests(unittest.TestCase):
     def test_post_mvp_title_uses_semantic_maintenance_version(self) -> None:
         self.assertEqual(0, APP_BUILD)
-        self.assertEqual("v1.2.4", APP_VERSION)
-        self.assertEqual("Tool PokiguardV2 - v1.2.4", APP_TITLE)
+        self.assertEqual("v1.3.0", APP_VERSION)
+        self.assertEqual("Tool PokiguardV2 - v1.3.0", APP_TITLE)
 
     def test_match_energy_text_counts_each_local_turn_once(self) -> None:
         controller = DesktopControllerSnapshot(
@@ -339,13 +339,14 @@ class CompactPresentationContractTests(unittest.TestCase):
 
     def test_control_preferences_and_diagnostics_tab_order(self) -> None:
         self.assertEqual(
-            ("Điều khiển", "Tùy chọn", "Cài đặt", "Chẩn đoán / Nhật ký"),
+            ("Điều khiển", "Tùy chọn", "AI", "Cài đặt", "Chẩn đoán / Nhật ký"),
             DESKTOP_TAB_TITLES,
         )
         self.assertEqual(
             (
                 "Lối chơi", "Chế độ chơi", "Độ thông minh", "Pet của tôi", "Tiến hóa",
                 "Thẻ sát thương",
+                "Viên mục tiêu",
                 "Điều kiện ra skill",
                 "Hành động skill", "Cách đi bàn cờ",
                 "Chế độ thao tác",
@@ -354,7 +355,8 @@ class CompactPresentationContractTests(unittest.TestCase):
             PREFERENCE_TABLE_ROWS,
         )
         self.assertEqual(
-            ("Tệp chạy trò chơi", "Âm báo của tool", "Log farm_runs"),
+            ("Tệp chạy trò chơi", "Âm báo của tool", "Log farm_runs",
+             "Random trước nước đi", "Random thêm giữa hai click", "Lệch tọa độ tối đa"),
             SETTINGS_TABLE_ROWS,
         )
         self.assertEqual("notebook", INITIAL_FOCUS_TARGET)

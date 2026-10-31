@@ -119,15 +119,18 @@ class WindowsPackagingTests(unittest.TestCase):
             self.assertFalse(evidence["processAttachment"])
             self.assertFalse(evidence["windowsInput"])
             self.assertEqual(evidence["productionResetCapabilities"], 1)
+            self.assertIn("tools.dinosaur_run", evidence["importedModules"])
+            self.assertIn("pokiguard_v2.dinosaur_session", evidence["importedModules"])
+            self.assertIn("pokiguard_v2.input_randomization", evidence["importedModules"])
 
     def test_production_calibration_is_internal_and_matches_accepted_values(self) -> None:
         values = production_input_calibration()
         self.assertEqual(values["click_delay_seconds"], 0.35)
         self.assertEqual(values["cursor_settle_seconds"], 0.06)
-        self.assertEqual(values["board_first_center_x"], 0.3620)
-        self.assertEqual(values["board_first_center_y"], 0.1625)
-        self.assertEqual(values["board_step_x"], 0.0393)
-        self.assertEqual(values["board_step_y"], 0.0787)
+        self.assertEqual(values["board_first_center_x"], 430.5 / 1279)
+        self.assertEqual(values["board_first_center_y"], 59.5 / 639)
+        self.assertEqual(values["board_step_x"], 59.75 / 1279)
+        self.assertEqual(values["board_step_y"], 59.75 / 639)
         source = (ROOT / "tools" / "basic_auto_bot.py").read_text(encoding="utf-8")
         self.assertNotIn("V1SolverAdapter(args.v1_root)", source)
 
@@ -142,6 +145,9 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertIn('"pokiguard_v2.pinned_board_input"', spec)
         self.assertIn('"pokiguard_v2.foreground_lease_transport"', spec)
         self.assertIn('"pokiguard_v2.foreground_qte_lease_transport"', spec)
+        self.assertIn('"tools.dinosaur_run"', spec)
+        self.assertIn('"pokiguard_v2.dinosaur_session"', spec)
+        self.assertIn('"pokiguard_v2.input_randomization"', spec)
         for forbidden in ("reverse", "cpp2il", "Pokiguard.exe", "GameAssembly.dll"):
             self.assertNotIn(forbidden, spec)
 
@@ -149,8 +155,8 @@ class WindowsPackagingTests(unittest.TestCase):
         script = (ROOT / "scripts" / "build_windows.ps1").read_text(encoding="utf-8")
         self.assertIn("from pokiguard_v2.version import APP_VERSION", script)
         self.assertNotIn(f"APP_BUILD = {APP_BUILD}", script)
-        self.assertEqual(APP_VERSION, "v1.2.4")
-        self.assertEqual(APP_TITLE, "Tool PokiguardV2 - v1.2.4")
+        self.assertEqual(APP_VERSION, "v1.3.0")
+        self.assertEqual(APP_TITLE, "Tool PokiguardV2 - v1.3.0")
 
 
 if __name__ == "__main__":

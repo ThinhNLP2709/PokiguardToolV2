@@ -101,7 +101,7 @@ class CombatCardTests(unittest.TestCase):
         struct.pack_into("<3Q", array_raw, 0x20, *card_data)
         memory.map(items, array_raw)
         for value in card_data:
-            memory.map(value, bytearray(0x9C))
+            memory.map(value, bytearray(0xA8))
 
         self.assertEqual(
             read_selected_card_data_addresses(memory, board),
@@ -114,14 +114,14 @@ class CombatCardTests(unittest.TestCase):
         skill_card = self.BASE + 0x1000
         drop_reason = self.BASE + 0x2000
         string_class = self.BASE + 0x3000
-        raw = bytearray(0xD0)
-        struct.pack_into("<i", raw, 0x40, 19)
-        raw[0x98] = 1
-        struct.pack_into("<ii", raw, 0x9C, 25, 30)
-        raw[0xA4] = 1
-        struct.pack_into("<i", raw, 0xA8, 19)
-        struct.pack_into("<qqQ", raw, 0xB0, 101, 202, skill_card)
-        struct.pack_into("<Q", raw, 0xC8, drop_reason)
+        raw = bytearray(0xE0)
+        struct.pack_into("<i", raw, 0x50, 19)
+        raw[0xA8] = 1
+        struct.pack_into("<ii", raw, 0xAC, 25, 30)
+        raw[0xB4] = 1
+        struct.pack_into("<i", raw, 0xB8, 19)
+        struct.pack_into("<qqQ", raw, 0xC0, 101, 202, skill_card)
+        struct.pack_into("<Q", raw, 0xD8, drop_reason)
         memory.map(service, raw)
         memory.map(skill_card, bytearray(0x20))
         memory.map(string_class, bytearray(8))
@@ -209,15 +209,16 @@ class CombatCardTests(unittest.TestCase):
         map_string(memory, element, "ATTACK", string_class)
         map_string(memory, skill, "DOT_SKILL", string_class)
 
-        data_raw = bytearray(0x9C)
+        data_raw = bytearray(0xA8)
         struct.pack_into("<Q", data_raw, 0, data_class)
         struct.pack_into("<qq", data_raw, 0x10, 9001, 73)
         struct.pack_into("<Q", data_raw, 0x20, name)
         struct.pack_into("<Q", data_raw, 0x28, description)
         struct.pack_into("<Q", data_raw, 0x30, element)
         struct.pack_into("<Q", data_raw, 0x78, skill)
-        struct.pack_into("<iii", data_raw, 0x80, 20, 0, 1)
-        data_raw[0x8C] = 1
+        struct.pack_into("<ii", data_raw, 0x80, 20, 0)
+        struct.pack_into("<i", data_raw, 0x94, 1)
+        data_raw[0x98] = 1
         memory.map(card_data, data_raw)
 
         button_raw = bytearray(SELECTABLE_INTERACTABLE_OFFSET + 1)

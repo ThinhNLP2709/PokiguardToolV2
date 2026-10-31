@@ -6,7 +6,7 @@ ownership, checkpoint history, executable combat state, or an auto-start flag.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -15,9 +15,12 @@ from typing import Any
 
 from .desktop_control_plane import DesktopConfig, utc_timestamp
 from .pet_configuration import GameplayConfig
+from .reasoning_settings import AISettings
+from .input_randomization import InputRandomization
 
 
-PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v2"
+PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v3"
+PRE_AI_PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v2"
 LEGACY_PREFERENCE_SCHEMA = "pokiguard.desktop_preferences.v1"
 
 
@@ -57,7 +60,7 @@ class DesktopPreferenceStore:
                 raise PreferenceError(
                     "PREFERENCE_ROOT_INVALID", "preference root must be an object"
                 )
-            if raw.get("schema") not in {PREFERENCE_SCHEMA, LEGACY_PREFERENCE_SCHEMA}:
+            if raw.get("schema") not in {PREFERENCE_SCHEMA, PRE_AI_PREFERENCE_SCHEMA, LEGACY_PREFERENCE_SCHEMA}:
                 raise PreferenceError(
                     "PREFERENCE_SCHEMA_UNSUPPORTED",
                     f"unsupported preference schema: {raw.get('schema')!r}",
@@ -114,6 +117,20 @@ class DesktopPreferenceStore:
                     )
                 ).lower(),
             ).with_gameplay_config(gameplay).without_target()
+            # An invalid optional AI block cannot discard a valid old PlayStyle/loadout.
+            warnings = ()
+            try:
+                ai = AISettings.from_dict(config_raw.get("ai"))
+            except (TypeError, ValueError) as exc:
+                ai = AISettings()
+                warnings = (PreferenceWarning("PREFERENCE_AI_INVALID", str(exc)),)
+            config = replace(config, ai=ai)
+            try:
+                randomization=InputRandomization.from_dict(config_raw.get('input_randomization'))
+            except (TypeError,ValueError) as exc:
+                randomization=InputRandomization()
+                warnings += (PreferenceWarning('PREFERENCE_RANDOMIZATION_INVALID',str(exc)),)
+            config=replace(config,input_randomization=randomization)
             game_location_raw = config_raw.get("game_location", "")
             if not isinstance(game_location_raw, str):
                 raise PreferenceError(
@@ -123,6 +140,7 @@ class DesktopPreferenceStore:
             return PreferenceLoadResult(
                 config,
                 True,
+                warnings=warnings,
                 game_location=game_location_raw.strip(),
             )
         except (KeyError, UnicodeError, json.JSONDecodeError, OSError, PreferenceError, TypeError, ValueError) as exc:

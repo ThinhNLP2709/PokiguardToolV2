@@ -34,10 +34,14 @@ def result_from_winner(
 
 
 def result_from_hp(
-    local_hp: int | None, boss_hp: int | None
+    local_hp: int | None, boss_hp: int | None, *, coop_mode: bool = False
 ) -> TerminalResult:
     """Resolve only an unambiguous terminal HP pair."""
 
+    # In Coop a dead local pet can still receive the team's victory. Its
+    # death alone never proves a team loss; an authoritative winner can.
+    if coop_mode:
+        return TerminalResult.WIN if boss_hp == 0 else TerminalResult.UNKNOWN
     if local_hp is None or boss_hp is None:
         return TerminalResult.UNKNOWN
     if boss_hp == 0 and local_hp > 0:
@@ -93,6 +97,7 @@ def capture_terminal_snapshot(
     local_username: str | None = None,
     ui_text: str | None = None,
     captured_before_cleanup: bool,
+    coop_mode: bool = False,
 ) -> TerminalCombatSnapshot:
     """Build one immutable terminal record without trusting stale positive HP.
 
@@ -125,7 +130,7 @@ def capture_terminal_snapshot(
 
     local_hp = local.hp if local is not None else None
     boss_hp = boss.hp if boss is not None else None
-    hp_result = result_from_hp(local_hp, boss_hp)
+    hp_result = result_from_hp(local_hp, boss_hp, coop_mode=coop_mode)
     username = local_username
     if username is None and active_state is not None:
         username = active_state.battle.local_username

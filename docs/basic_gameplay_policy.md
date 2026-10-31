@@ -1,5 +1,14 @@
 # Phase 2C.2A BASIC gameplay policy
 
+## Current Phase5 status — 31/10/2026
+
+[Phase5 final report](phase5/FINAL_REPORT.md) closes scoped R1 work. BASIC rules
+and operational owners below are unchanged by F2. The ordinary UI REASONING
+selector remains disabled; guarded experimental sessions use a BASIC incumbent
+and separate validated authority. Current package acceptance is limited to
+Solo/Lieyun77/DemonShield4/floor2. Historical skill/profile source pilots are
+listed separately; efficacy remains INCONCLUSIVE. [Guide](phase5/USER_GUIDE.md).
+
 ## 1.7.4-b2 Phase 2 repair — 2026-09-11
 
 The default `NORMAL / NORMAL / DEFAULT_ATTACK` run and ordinary Evolution are
@@ -72,8 +81,36 @@ The user-authored gameplay rules these steps implement live in
 numeric threshold is a `PolicyConfig` field; see that file's table for the CLI
 flags.
 
-Only `BASIC` is implemented. Selecting `REASONING` returns `NONE` with
-`REASONING_NOT_IMPLEMENTED`.
+This direct policy route implements `BASIC`. Selecting `REASONING` through that
+route returns `NONE` with `REASONING_NOT_IMPLEMENTED`; it is not the guarded
+Phase5 operational activation path described in the current final report.
+
+### Phase 5A.1 REASONING boundary — spec only (2026-10-09)
+
+REASONING product intent is now defined in
+[reasoning_gameplay_policy.md](reasoning_gameplay_policy.md) and the
+[5A.1 contract](phase5/specs/5a1_baseline_reasoning_contract.md). The placeholder
+above remains the documented runtime behavior; no planner or new fallback has
+been implemented in this docs-only step.
+
+The branch order, tactical thresholds and survival hotfixes of BASIC remain
+unchanged. Future opt-in REASONING retains the selected PlayStyle objective and
+uses its tactical settings as references, allowing evidenced overrides of
+setup/fire/Sword/resource priorities. Actual costs, identity, legality,
+turn/PASS and executor/transition contracts remain hard.
+
+The planner consumes existing immutable state, proposes through the existing
+final preflight/action path, and adds no memory/capture/poll loop. Before input,
+reasoning failure uses the valid BASIC incumbent; invalid state keeps existing
+fail-closed behavior. After physical input, ACK/pending/recovery ownership wins
+and no replacement baseline input may be sent. Logging must not block fallback.
+These are future integration requirements, not claims of runtime acceptance.
+
+[5A.2 features/utility](phase5/specs/5a2_features_utility_and_profiles.md) now
+defines scoped resource/sufficiency calibration and post-boss setup/bait for
+all six profiles; [scenario designs](phase5/specs/5a2_scenario_matrix.md) remain
+unexecuted. Numerical tuning and runtime/acceptance are pending. BASIC rules
+and defaults in this file are unchanged.
 
 ## Phase 3C.1 Pet Skill order
 
@@ -376,7 +413,10 @@ preserving server payloads as the only numeric idle source.
   exist but no exact branch selects one, BASIC returns `NONE` with
   `BASIC_INTERMEDIATE_FALLBACK_UNDEFINED` instead of inventing a preference.
 - Exact exit UI/action state is outside this phase; `EXIT_MATCH` is log-only.
-- REASONING semantics remain intentionally undefined.
+- REASONING runtime remains unimplemented; its product contract is defined in
+  [Phase 5A.1](phase5/specs/5a1_baseline_reasoning_contract.md) and feature/utility
+  spec in [5A.2](phase5/specs/5a2_features_utility_and_profiles.md). Numerical
+  tuning and runtime acceptance remain pending, tracked in Phase 5.
 
 ## Decision trace
 

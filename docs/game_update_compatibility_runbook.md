@@ -22,7 +22,8 @@ các địa chỉ cũ.
 3. Ghi tên/kích thước/SHA-256; PE architecture, timestamp, preferred base,
    `SizeOfImage`; metadata magic/version.
 4. Kiểm tra launcher name, process name, window title, Unity data-directory và
-   PlayerPrefs registry owner. Product có thể đổi tên nhưng registry vẫn cũ.
+   PlayerPrefs registry owner. Lấy company/product từ `app.info`; không suy
+   registry owner từ tên EXE hoặc sự tồn tại của một khóa cũ.
 5. Tạo compatibility report và `reverse/<build>/README.md` ghi provenance.
 
 ## 2. So sánh toàn bộ contract managed
@@ -45,6 +46,14 @@ order/offset và static owner; phân biệt class/array/nested type/co-op/PVP; k
 tra enum, sentinel và domain như lifecycle, RoomStartState, QTE, multiplier.
 Ghi thêm class mới/xóa/thay đổi có thể ảnh hưởng UI hoặc flow.
 
+Trước khi sửa source, có thể tạo candidate audit bằng
+`tools/audit_game_update.py --old <reverse-cũ> --new <reverse-mới>
+--install <thư-mục-game> --output <artifact>/static_audit.json`.
+Source hiện tại phải còn ứng với `--old`; dùng `--source` trỏ baseline nếu
+đang kiểm lại migration đã làm. Script chỉ đọc file, không tự patch source
+hoặc cho phép build. Field tìm theo offset chỉ là candidate, phải kiểm lại
+tên/kiểu/ownership trước khi áp dụng; nested/compiler closures phải lần riêng.
+
 ## 3. Kiểm tra native bridge và UI
 
 1. So hash `UnityPlayer.dll`; dù không đổi vẫn kiểm lại byte signatures.
@@ -59,6 +68,17 @@ Ghi thêm class mới/xóa/thay đổi có thể ảnh hưởng UI hoặc flow.
    CanvasGroup, modal, foreground và geometry stability.
 7. Diff semantics của nút/state; cùng một button có thể là Start, ReadyOff hoặc
    CancelCountdown ở các phase khác nhau.
+8. Lưu ảnh fixture có provenance của Start/room, main hub, island/boss map,
+   WIN và LOSS/aborted nếu có. Chứng minh đúng nút, label đã hiện, không
+   nhập nhằng và không click trong reward animation. Scale fixture chỉ là
+   test biến đổi, không tính thành live trên nhiều profile.
+9. Kiểm riêng ánh xạ **board cell -> input pixel**: provider đọc đúng 64 ô
+   không chứng minh tọa độ click đúng. Diff HUD layout, DotsArea/content rect,
+   padding/frame gap và công thức tâm ô trong reverse. Đối chiếu ảnh client-only
+   thật, ghi rõ pitch theo pixel khác kích thước local/world và sprite art.
+   Đồng bộ production calibration/default/fallback; kiểm 64 tâm ô, 112 cặp
+   swap, mép bàn và 4 profile 2:1 với jitter người dùng yêu cầu. Không đổi jitter
+   hoặc input pacing để bù một calibration sai. Live phải xác nhận move/ACK.
 
 ## 4. Cập nhật một profile đồng bộ
 
@@ -83,6 +103,19 @@ Ghi thêm class mới/xóa/thay đổi có thể ảnh hưởng UI hoặc flow.
 6. Resolve TypeInfo đã initialize; null ngoài scene có thể hợp lệ, sai class
    hoặc pointer không hợp lệ là lỗi.
 7. Chạy full regression. Không tự mở tool sau khi fix nếu user chưa yêu cầu.
+8. Khi test lỗi, phân biệt fixture còn layout cũ, bug runtime và rejection
+   đúng của calibration/source gate cũ. Không nới gate hoặc rebind bằng chứng
+   live cũ để làm test xanh. Ghi rõ calibration cần requalify sau migration.
+
+## 5a. Khi được yêu cầu kiểm tra cơ chế phát hiện auto
+
+- So với bản trước, phân biệt tên field/metadata, native path có caller và
+  remote/backend policy thực tế. Ghi UNKNOWN nếu chưa có bằng chứng.
+- Rà API process/window/hook/debug, clock, combat report và QTE/input paths;
+  keyword không có hit không chứng minh không có cơ chế phát hiện.
+- Import native đơn lẻ không chứng minh application đang dùng nó để quét.
+- Đánh giá ảnh hưởng đối với read-only memory + normal input hiện tại.
+  Không đổi pacing để né phát hiện, không che process, spoof hoặc bypass.
 
 ## 6. Live acceptance giới hạn
 

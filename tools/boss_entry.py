@@ -118,7 +118,9 @@ from pokiguard_v2.win32_input import (  # noqa: E402
 from pokiguard_v2.win32_screenshot import (  # noqa: E402
     ClientRgbCapture,
     capture_client_rgb,
+    write_failure_png_rgb,
     write_png_rgb,
+    write_failure_png_rgb,
 )
 from tools.idle_state_watch import CHAT_MESSAGE_DTO_TYPE_INFO_RVA  # noqa: E402
 from tools.dispatcher_qte_result_tap import DispatcherTransportTap  # noqa: E402
@@ -148,6 +150,30 @@ class SharedEntryRuntime:
     # In Coop the same control is a Ready toggle.  A second click can cancel
     # readiness, so entry waits for the host instead of using the Solo retry.
     coop_mode: bool = False
+    outside_modal_handler: Any | None = None
+
+
+def _read_entry_lobby(runtime: SharedEntryRuntime, lifecycle: Any) -> Any:
+    if runtime.coop_mode:
+        return read_boss_lobby_runtime(
+            runtime.target.resolver, lifecycle, allow_guest_room=True
+        )
+    return read_boss_lobby_runtime(runtime.target.resolver, lifecycle)
+
+
+def _entry_opening_turn_valid(game_state: Any, *, coop_mode: bool) -> bool:
+    battle = game_state.battle
+    return bool(
+        battle.is_first_local_turn is True
+        or (
+            coop_mode
+            and battle.is_first_local_turn is False
+            and battle.is_local_turn is False
+            and battle.turn_number == 1
+            and battle.local_move_sequence == 0
+            and "ChatMessageDTO.MATCH_START.matchPayload.board" in battle.sources
+        )
+    )
 
 
 def _retryable_board_messages(
@@ -223,6 +249,10 @@ def _entry_preflight_runtime_valid(
         and current_resolution.candidate.selection is TargetSelectionState.SELECTED
         and current_resolution.candidate.entry_control_address
         == ready.resolution.candidate.entry_control_address
+        and getattr(current_lobby.chinh_phuc, "owner_username", None)
+        == getattr(ready.lobby.chinh_phuc, "owner_username", None)
+        and getattr(current_lobby.chinh_phuc, "is_host", None)
+        == getattr(ready.lobby.chinh_phuc, "is_host", None)
     )
 
 
@@ -254,6 +284,26 @@ def _entry_room_context_valid(
         == expected_lobby.chinh_phuc.current_room_id
         and current_lobby.chinh_phuc.button_start
         == expected_lobby.chinh_phuc.button_start
+        and getattr(current_lobby.chinh_phuc, "owner_username", None)
+        == getattr(expected_lobby.chinh_phuc, "owner_username", None)
+        and getattr(current_lobby.chinh_phuc, "is_host", None)
+        == getattr(expected_lobby.chinh_phuc, "is_host", None)
+    )
+
+
+def _coop_wait_room_changed(current_lobby: Any, expected_lobby: Any) -> bool:
+    """Reject positive evidence of another room/owner while waiting for host."""
+
+    current = current_lobby.chinh_phuc
+    expected = expected_lobby.chinh_phuc
+    return bool(
+        current.current_room_id
+        and current.owner_username
+        and (
+            current.current_room_id != expected.current_room_id
+            or current.owner_username != expected.owner_username
+            or current.is_host != expected.is_host
+        )
     )
 
 
@@ -302,7 +352,7 @@ def _send_one_entry_retry(
     poll = runtime.provider.poll()
     if poll.combat_lifecycle is None:
         return False, "ENTRY_RETRY_LIFECYCLE_UNAVAILABLE"
-    lobby = read_boss_lobby_runtime(runtime.target.resolver, poll.combat_lifecycle)
+    lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
     resolution = resolve_target(farm_target, lobby.candidates)
     if not _entry_retry_runtime_valid(
         lobby,
@@ -362,9 +412,7 @@ def _send_one_entry_retry(
         fresh_poll = runtime.provider.poll()
         if fresh_poll.combat_lifecycle is None:
             return False
-        fresh_lobby = read_boss_lobby_runtime(
-            runtime.target.resolver, fresh_poll.combat_lifecycle
-        )
+        fresh_lobby = _read_entry_lobby(runtime, fresh_poll.combat_lifecycle)
         fresh_resolution = resolve_target(farm_target, fresh_lobby.candidates)
         if not _entry_retry_runtime_valid(
             fresh_lobby,
@@ -817,6 +865,20 @@ def _save_capture(path: Path, capture: ClientRgbCapture) -> None:
     write_png_rgb(path, capture.width, capture.height, capture.rgb)
 
 
+def _save_attack_failure_captures(artifact_dir, first, second, log) -> None:
+    """Keep at most two existing frames; never capture again or mask a stop."""
+    for name, capture in (("attack_card_failure_first.png", first),
+                          ("attack_card_failure_second.png", second)):
+        if capture is None:
+            continue
+        try:
+            write_failure_png_rgb(artifact_dir / name, capture.width,
+                                  capture.height, capture.rgb)
+        except Exception as exc:
+            _write(log, "attack_card_failure_image_write_failed",
+                   path=str(artifact_dir / name), error=f"{type(exc).__name__}: {exc}")
+
+
 def _attack_toggle_visuals_stable(
     first: ClientRgbCapture,
     first_location: Any,
@@ -981,16 +1043,18 @@ def _ensure_required_attack_card(
                 or time.monotonic() - proof_started
                 >= ATTACK_CARD_ALREADY_SELECTED_SETTLE_SECONDS
             )
-            if visual_stable and selected_settle_complete:
+            # A selected card needs no Toggle click. Its accepted runtime
+            # identity is rechecked below after the existing settle interval;
+            # artwork recognition must only authorize an actual Toggle click.
+            if selected_settle_complete and (
+                visual_stable or plan.status is AttackSelectionStatus.ALREADY_SELECTED
+            ):
                 break
         previous = current
         previous_location = current_location
         time.sleep(max(interval, 0.18))
 
-    # evidence path defensive if capture cadence changes in the future.
-    # A normal proof window always produces at least a pair. Keep the evidence
-    # path defensive if capture cadence changes in the future.
-    # evidence path defensive if capture cadence changes in the future.
+    # A normal proof window produces a pair; preserve partial failure evidence.
     if first is None or first_location is None:
         first = previous
         first_location = previous_location
@@ -998,6 +1062,7 @@ def _ensure_required_attack_card(
         second = previous
         second_location = previous_location
     if first is None or second is None or first_location is None or second_location is None:
+        _save_attack_failure_captures(artifact_dir, first, second, log)
         result.update(status="STOPPED", stopReason="ATTACK_CARD_TOGGLE_UNPROVEN")
         _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
         return None
@@ -1013,7 +1078,10 @@ def _ensure_required_attack_card(
         proofFrames=proof_frames,
         proofWindowSeconds=ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS,
     )
-    if not visual_stable or second_location.normalized_point is None:
+    if plan.status is not AttackSelectionStatus.ALREADY_SELECTED and (
+        not visual_stable or second_location.normalized_point is None
+    ):
+        _save_attack_failure_captures(artifact_dir, first, second, log)
         result.update(status="STOPPED", stopReason="ATTACK_CARD_TOGGLE_UNPROVEN")
         _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False)
         return None
@@ -1052,12 +1120,14 @@ def _ensure_required_attack_card(
             plan=plan,
             currentPlan=current_plan,
             selectedIdentity=current_loadout.identity,
-            stableVisualFrames=2,
+            stableVisualFrames=2 if visual_stable else 0,
+            visualToggleRequired=False,
+            verificationSource="ManagerRoom.selectedCards identity after settle",
             settleSeconds=ATTACK_CARD_ALREADY_SELECTED_SETTLE_SECONDS,
             inputSent=False,
             semantic=(
-                "selected Attack and its rendered room card remained stable "
-                "before Start"
+                "same selected Attack and room verified after settle; no Toggle "
+                "input required; Start retains its own visual/runtime preflight"
             ),
         )
         return current_loadout
@@ -1080,6 +1150,7 @@ def _ensure_required_attack_card(
         return current_loadout
     runtime_stable = bool(
         room_runtime_stable
+        and plan.status is AttackSelectionStatus.REQUIRED
         and current_plan.status is AttackSelectionStatus.REQUIRED
         and current_plan.identity == plan.identity
         and current_plan.room_card_index == plan.room_card_index
@@ -1408,7 +1479,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             if poll.combat_lifecycle is None:
                 time.sleep(args.interval)
                 continue
-            lobby = read_boss_lobby_runtime(target.resolver, poll.combat_lifecycle)
+            lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
+            if runtime.outside_modal_handler is not None:
+                modal_status = runtime.outside_modal_handler(lobby)
+                if modal_status == "BLOCKED":
+                    result.update(status="STOPPED", stopReason="HEALTH_REMINDER_BLOCKED")
+                    _write(log, "entry_stopped", reason=result["stopReason"])
+                    break
+                if modal_status == "DISMISSED":
+                    stable_lobby_key, stable_lobby_count = None, 0
+                    continue
             status = (lobby.state, lobby.branch, tuple(c.identity.stable_key() for c in lobby.candidates))
             if status != last_lobby_status:
                 _write(
@@ -1581,9 +1661,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                         stopReason="ATTACK_CARD_RUNTIME_CHANGED",
                     )
                     break
-                refreshed_lobby = read_boss_lobby_runtime(
-                    target.resolver, refreshed_poll.combat_lifecycle
-                )
+                refreshed_lobby = _read_entry_lobby(runtime, refreshed_poll.combat_lifecycle)
                 if (
                     refreshed_lobby.state is not BossLobbyState.BOSS_LOBBY
                     or refreshed_lobby.branch != "CHINH_PHUC_ROOM"
@@ -1831,7 +1909,21 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         poll = provider.poll()
         if poll.combat_lifecycle is None:
             raise RuntimeError("preflight lifecycle unavailable")
-        current_lobby = read_boss_lobby_runtime(target.resolver, poll.combat_lifecycle)
+        current_lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
+        if runtime.outside_modal_handler is not None:
+            modal_status = runtime.outside_modal_handler(current_lobby)
+            if modal_status == "BLOCKED":
+                result.update(status="STOPPED", stopReason="HEALTH_REMINDER_BLOCKED")
+                _write(log, "entry_stopped", reason=result["stopReason"])
+                summary_path.write_text(
+                    json.dumps(_jsonable(result), ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+                return 2
+            if modal_status == "DISMISSED":
+                poll = provider.poll()
+                if poll.combat_lifecycle is None:
+                    raise RuntimeError("post-reminder entry lifecycle unavailable")
+                current_lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
         current_resolution = resolve_target(farm_target, current_lobby.candidates)
         ready_loadout = ready.lobby.chinh_phuc.card_loadout
         current_loadout = current_lobby.chinh_phuc.card_loadout
@@ -1958,9 +2050,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     "ENTRY_PREFLIGHT_RUNTIME_UNAVAILABLE"
                 )
                 return False
-            fresh_lobby = read_boss_lobby_runtime(
-                target.resolver, fresh_poll.combat_lifecycle
-            )
+            fresh_lobby = _read_entry_lobby(runtime, fresh_poll.combat_lifecycle)
             fresh_resolution = resolve_target(farm_target, fresh_lobby.candidates)
             if not _entry_preflight_runtime_valid(
                 fresh_lobby, fresh_resolution, ready
@@ -2188,6 +2278,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         opening_confirmation_skip_logged = False
         opening_native_fast_path_logged = False
         last_provider_status = None
+        coop_ready_ack_logged = False
         latest_current_board_evidence: dict[str, Any] | None = None
 
         while target.is_running():
@@ -2295,6 +2386,30 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                 )
                 last_provider_status = provider_status
             lifecycle_state = poll.combat_lifecycle.state if poll.combat_lifecycle else None
+            if (
+                runtime.coop_mode
+                and active_session is None
+                and early_match_id in {None, ready.baseline.old_match_id}
+                and lifecycle_state is not None
+                and lifecycle_state.value == "lobby"
+            ):
+                waiting_lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
+                if _coop_wait_room_changed(waiting_lobby, ready.lobby):
+                    result.update(status="STOPPED", stopReason="COOP_ROOM_CHANGED")
+                    _write(log, "entry_stopped", reason=result["stopReason"])
+                    break
+                if (
+                    waiting_lobby.chinh_phuc.room_start_my_ready is True
+                    and not coop_ready_ack_logged
+                ):
+                    coop_ready_ack_logged = True
+                    _write(
+                        log,
+                        "coop_ready_acknowledged",
+                        roomId=waiting_lobby.chinh_phuc.current_room_id,
+                        waitingForHost=True,
+                        readyToggleRetry=False,
+                    )
             if lifecycle_state is not None and lifecycle_state.value == "entering_combat" and not entering_seen:
                 entering_seen = True
                 _write(log, "entering_combat", lifecycle=poll.combat_lifecycle)
@@ -2838,7 +2953,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     and game_state.battle.match_id == new_match_id
                     and game_state.battle.stable
                     and game_state.battle.board_hash
-                    and game_state.battle.is_first_local_turn is True
+                    and _entry_opening_turn_valid(
+                        game_state, coop_mode=runtime.coop_mode
+                    )
                     and game_state.battle.local_move_sequence == 0
                     and len(cells) == 64
                     and unique_coordinates == 64
@@ -2857,6 +2974,18 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                         completeCells=len(cells),
                         sourceOk=source_ok,
                     )
+                    try:
+                        failure_window = executor.window_status(binding)
+                        if failure_window.valid and failure_window.foreground is True:
+                            failure_capture = capture_client_rgb(target.pid)
+                            failure_path = artifact_dir / "opening_invariant_failure.png"
+                            write_failure_png_rgb(
+                                failure_path, failure_capture.width,
+                                failure_capture.height, failure_capture.rgb,
+                            )
+                            _write(log, "opening_failure_screenshot_saved", path=str(failure_path))
+                    except (OSError, RuntimeError, ValueError) as exc:
+                        _write(log, "opening_failure_screenshot_skipped", reason=str(exc))
                     break
                 _write(
                     log,
@@ -2866,7 +2995,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     boardHash=game_state.battle.board_hash,
                     completeCells=64,
                     confirmations=poll.confirmations,
-                    firstLocalTurn=True,
+                    firstLocalTurn=game_state.battle.is_first_local_turn,
+                    isLocalTurn=game_state.battle.is_local_turn,
+                    turnNumber=game_state.battle.turn_number,
                     localMoveSequence=0,
                     sources=game_state.battle.sources,
                 )
@@ -2892,7 +3023,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     openingGemTypesValid=gem_types_valid,
                     openingMultipliersValid=multipliers_valid,
                     openingFreshDto=match_start_source_ok,
-                    firstLocalTurn=True,
+                    firstLocalTurn=game_state.battle.is_first_local_turn,
+                    isLocalTurn=game_state.battle.is_local_turn,
+                    turnNumber=game_state.battle.turn_number,
                     localMoveSequence=game_state.battle.local_move_sequence,
                     stableConfirmations=poll.confirmations,
                     openingSource=(

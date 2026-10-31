@@ -59,7 +59,8 @@ class UnityUiLayoutTests(unittest.TestCase):
         plan = map_swap_to_pixels(
             (0, 7),
             (1, 7),
-            BoardCalibration(),
+            # This fixture belongs to b6, not the new HUD's production defaults.
+            BoardCalibration(0.3620, 0.1625, 0.0393, 0.0787),
             geometry,
         )
         self.assertEqual(plan.first.client_x, 814)
@@ -75,7 +76,7 @@ class UnityUiLayoutTests(unittest.TestCase):
         plan = map_swap_to_pixels(
             (6, 5),
             (7, 5),
-            BoardCalibration(),
+            BoardCalibration(0.3620, 0.1625, 0.0393, 0.0787),
             ClientGeometry(609, 285, 1280, 640),
         )
         self.assertEqual(
@@ -174,8 +175,8 @@ class UnityUiLayoutTests(unittest.TestCase):
             BoardCalibration(),
             geometry,
         )
-        self.assertEqual(plan.first.client_x, int(0.3620 * 1279))
-        self.assertEqual(plan.first.client_y, int(0.1625 * 639))
+        self.assertEqual(plan.first.client_x, 430)
+        self.assertEqual(plan.first.client_y, 59)
 
     def test_recovery_and_postmatch_locators_accept_scaled_current_canvas(self) -> None:
         width, height = 1280, 640
@@ -184,6 +185,11 @@ class UnityUiLayoutTests(unittest.TestCase):
         recovery = bytearray(bytes((20, 80, 130)) * width * height)
         _fill(recovery, width, height, transform.rect((0.32, 0.60, 0.45, 0.675)), (230, 120, 25))
         _fill(recovery, width, height, transform.rect((0.55, 0.60, 0.68, 0.675)), (230, 120, 25))
+        for origin in (0.36, 0.59):
+            for delta in (0.0, 0.012, 0.024, 0.036):
+                _fill(recovery, width, height,
+                      transform.rect((origin+delta,0.621,origin+delta+0.006,0.645)),
+                      (250,250,250))
         self.assertTrue(locate_confirm_leave(bytes(recovery), width, height).found)
 
         result = bytearray(width * height * 3)

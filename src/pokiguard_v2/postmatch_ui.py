@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Sequence
 
@@ -70,6 +70,7 @@ def _locate_current_wide_result(
     width: int,
     height: int,
     transform: object,
+    diagnostics: dict[str, float | int | str],
 ) -> PostmatchUiLocation | None:
     """Recognize the 1.7.4 full-viewport result banner and blue confirm.
 
@@ -80,6 +81,7 @@ def _locate_current_wide_result(
     """
 
     if not str(transform.mode).startswith("POKIGUARD_2_1"):
+        diagnostics["wideReason"] = "unsupported_wide_transform"
         return None
 
     banner_components = _mask_components(
@@ -131,7 +133,14 @@ def _locate_current_wide_result(
         # while applying one scale-independent bound to every profile.
         <= transform.viewport_height * 0.14
     ]
+    diagnostics.update(
+        wideBannerComponents=len(banner_components),
+        wideBannerCandidates=len(banners),
+        wideButtonComponents=len(blue_components),
+        wideButtonCandidates=len(buttons),
+    )
     if len(banners) != 1 or len(buttons) != 1:
+        diagnostics["wideReason"] = "expected_unique_wide_banner_and_button"
         return None
 
     banner = banners[0]
@@ -152,7 +161,12 @@ def _locate_current_wide_result(
                 label_pixels += 1
     button_area = max(1, (button[2] - button[0]) * (button[3] - button[1]))
     minimum_label_pixels = max(40, round(button_area * 0.04))
+    diagnostics.update(
+        wideButtonLabelPixels=label_pixels,
+        wideMinimumButtonLabelPixels=minimum_label_pixels,
+    )
     if label_pixels < minimum_label_pixels:
+        diagnostics["wideReason"] = "wide_button_label_not_ready"
         return None
 
     banner_point = (
@@ -165,14 +179,22 @@ def _locate_current_wide_result(
     )
     banner_viewport = _viewport_point(transform, banner_point)
     button_viewport = _viewport_point(transform, button_point)
+    diagnostics.update(
+        wideBannerCenterX=banner_viewport[0],
+        wideBannerCenterY=banner_viewport[1],
+        wideButtonCenterX=button_viewport[0],
+        wideButtonCenterY=button_viewport[1],
+    )
     if not (
         0.42 <= banner_viewport[0] <= 0.58
         and 0.05 <= banner_viewport[1] <= 0.20
         and 0.46 <= button_viewport[0] <= 0.54
         and 0.86 <= button_viewport[1] <= 0.94
     ):
+        diagnostics["wideReason"] = "wide_result_anchor_out_of_bounds"
         return None
 
+    diagnostics["wideReason"] = "wide_result_proven"
     return PostmatchUiLocation(
         PostmatchControl.RESULT_CONFIRM,
         True,
@@ -193,6 +215,128 @@ def _locate_current_wide_result(
     )
 
 
+def _arena_defeat_header_proven(
+    rgb: bytes, width: int, height: int, transform: object,
+    diagnostics: dict[str, float | int | str],
+) -> bool:
+    """Defeat uses purple horns and a hanging metal crest, not ice wings.
+
+    This proves the confirmation layout only. Combat/result accounting still
+    belongs to the authoritative lifecycle and terminal/UI audit owners.
+    """
+    area = transform.viewport_width * transform.viewport_height
+    for side, box in (('Left', (.30, .025, .43, .18)),
+                      ('Right', (.57, .025, .70, .18))):
+        parts = _mask_components(
+            rgb, width, height, _viewport_rect(transform, box),
+            lambda r, g, b: b >= 100 and r >= 60 and b >= r + 15
+            and b >= g + 25 and r >= g + 10,
+        )
+        horns = [p for p in parts if p[4] >= max(80, area * .0012)
+                 and .035 <= (p[2]-p[0])/transform.viewport_width <= .09
+                 and .07 <= (p[3]-p[1])/transform.viewport_height <= .17]
+        diagnostics[f'arenaDefeat{side}HornCandidates'] = len(horns)
+        if len(horns) != 1:
+            return False
+    parts = _mask_components(
+        rgb, width, height, _viewport_rect(transform, (.45, .28, .55, .44)),
+        lambda r, g, b: 80 <= r <= 175 and 80 <= g <= 185 and 90 <= b <= 205
+        and max(r, g, b)-min(r, g, b) <= 40,
+    )
+    crests = [p for p in parts if p[4] >= max(100, area * .002)
+              and .04 <= (p[2]-p[0])/transform.viewport_width <= .09
+              and .08 <= (p[3]-p[1])/transform.viewport_height <= .15]
+    diagnostics['arenaDefeatMetalCrestCandidates'] = len(crests)
+    if len(crests) != 1:
+        return False
+    parts = _mask_components(
+        rgb, width, height, _viewport_rect(transform, (.44, .18, .56, .26)),
+        lambda r, g, b: min(r, g, b) >= 210 and max(r, g, b)-min(r, g, b) <= 35,
+    )
+    glyphs = [p for p in parts if p[4] >= max(25, area * .0001)]
+    pixels = sum(p[4] for p in glyphs)
+    diagnostics['arenaDefeatTitleGlyphs'] = len(glyphs)
+    diagnostics['arenaDefeatTitlePixels'] = pixels
+    return len(glyphs) >= 3 and pixels >= max(80, area * .0008)
+
+
+def _locate_arena_result(
+    rgb: bytes, width: int, height: int, transform: object,
+    diagnostics: dict[str, float | int | str],
+) -> PostmatchUiLocation | None:
+    """Full-viewport blue/gold result, verified header and green confirmation.
+
+    No point is authorized by color alone. Require independent panel, four
+    gold corners, victory wings or defeat crest, one button and its ready label. Lifecycle and
+    stable-frame proof remain the caller's responsibility.
+    """
+    area = transform.viewport_width * transform.viewport_height
+    panel = _mask_components(
+        rgb, width, height, _viewport_rect(transform, (0.15, 0.25, 0.85, 0.98)),
+        lambda r, g, b: b >= 110 and g >= 60 and b >= r + 35,
+    )
+    panels = [p for p in panel if p[4] >= area * 0.16
+              and 0.60 <= (p[2]-p[0])/transform.viewport_width <= 0.74
+              and 0.55 <= (p[3]-p[1])/transform.viewport_height <= 0.76]
+    diagnostics['arenaPanelCandidates'] = len(panels)
+    if len(panels) != 1:
+        return None
+    gold = lambda r, g, b: r >= 190 and g >= 145 and b <= 130
+    for index, box in enumerate(((.16, .26, .22, .36), (.78, .26, .84, .36),
+                                 (.16, .88, .22, .975), (.78, .88, .84, .975))):
+        parts = _mask_components(rgb, width, height, _viewport_rect(transform, box), gold)
+        pixels = max((p[4] for p in parts), default=0)
+        diagnostics[f'arenaGoldCorner{index}Pixels'] = pixels
+        if pixels < max(70, area * .00065):
+            return None
+    victory_header = True
+    for side, box in (('Left', (.30, .025, .48, .24)), ('Right', (.52, .025, .70, .24))):
+        parts = _mask_components(
+            rgb, width, height, _viewport_rect(transform, box),
+            lambda r, g, b: r >= 160 and g >= 185 and b >= 200,
+        )
+        pixels = max((p[4] for p in parts), default=0)
+        diagnostics[f'arena{side}WingPixels'] = pixels
+        if pixels < max(120, area * .0018):
+            victory_header = False
+    if victory_header:
+        diagnostics['arenaHeaderVariant'] = 'VICTORY_ICE_WINGS'
+    elif _arena_defeat_header_proven(rgb, width, height, transform, diagnostics):
+        diagnostics['arenaHeaderVariant'] = 'DEFEAT_PURPLE_CREST'
+    else:
+        diagnostics['arenaHeaderReason'] = 'victory_and_defeat_anchors_unproven'
+        return None
+    components = _mask_components(
+        rgb, width, height, _viewport_rect(transform, (.25, .70, .75, .94)),
+        lambda r, g, b: g >= 140 and g >= r + 40 and g >= b + 60,
+    )
+    buttons = [p for p in components if p[4] >= area * .008
+               and .12 <= (p[2]-p[0])/transform.viewport_width <= .24
+               and .065 <= (p[3]-p[1])/transform.viewport_height <= .14]
+    diagnostics['arenaButtonCandidates'] = len(buttons)
+    if len(buttons) != 1:
+        return None
+    button = buttons[0]
+    point = ((button[0]+button[2])/2/width, (button[1]+button[3])/2/height)
+    center = _viewport_point(transform, point)
+    if not (.46 <= center[0] <= .54 and .78 <= center[1] <= .89):
+        return None
+    label = 0
+    for y in range(button[1], button[3]):
+        for x in range(button[0], button[2]):
+            offset = (y*width+x)*3
+            r, g, b = rgb[offset:offset+3]
+            label += int(min(r, g, b) >= 210 and max(r, g, b)-min(r, g, b) <= 35)
+    diagnostics['arenaButtonLabelPixels'] = label
+    if label < max(35, (button[2]-button[0])*(button[3]-button[1])*.025):
+        return None
+    return PostmatchUiLocation(
+        PostmatchControl.RESULT_CONFIRM, True, point, .98,
+        'single_green_button_in_blue_gold_arena_result',
+        {**diagnostics, 'layoutVariant': 'PETPUZZLE_1_7_4_9_ARENA_RESULT'},
+    )
+
+
 def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLocation:
     """Locate the sole orange ``Đồng ý`` control inside the result-modal layout.
 
@@ -202,14 +346,22 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
     """
 
     transform = transform_for_capture(rgb, width, height)
+    diagnostics: dict[str, float | int | str] = {
+        "captureWidth": width, "captureHeight": height,
+        "transformMode": str(transform.mode),
+    }
+    arena = _locate_arena_result(rgb, width, height, transform, diagnostics)
+    if arena is not None:
+        return arena
     current_wide = _locate_current_wide_result(
         rgb,
         width,
         height,
         transform,
+        diagnostics,
     )
     if current_wide is not None:
-        return current_wide
+        return replace(current_wide, metrics={**diagnostics, **current_wide.metrics})
 
     panel_components = _mask_components(
         rgb,
@@ -239,7 +391,7 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
             None,
             0.0,
             "expected_exactly_one_large_blue_result_panel",
-            {"panelCandidates": len(panels)},
+            {**diagnostics, "panelCandidates": len(panels)},
         )
 
     orange_components = _mask_components(
@@ -268,7 +420,7 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
             None,
             0.0,
             "expected_exactly_one_orange_result_button",
-            {"buttonCandidates": len(button_shapes), "panelPixels": panels[0][4]},
+            {**diagnostics, "buttonCandidates": len(button_shapes), "panelPixels": panels[0][4]},
         )
 
     button = button_shapes[0]
@@ -287,7 +439,7 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
             None,
             0.0,
             "result_button_outside_centered_postmatch_anchor",
-            {"centerX": point[0], "centerY": point[1]},
+            {**diagnostics, "centerX": point[0], "centerY": point[1]},
         )
     return PostmatchUiLocation(
         PostmatchControl.RESULT_CONFIRM,
@@ -296,6 +448,7 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
         0.98,
         "single_orange_button_below_large_blue_result_panel",
         {
+            **diagnostics,
             "panelPixels": panels[0][4],
             "buttonPixels": button[4],
             "buttonWidth": button[2] - button[0],

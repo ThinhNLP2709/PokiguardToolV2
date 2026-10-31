@@ -37,6 +37,14 @@ class GameMode(str, Enum):
     COOP = "coop"
 
 
+class DemonTargetGem(str, Enum):
+    SHIELD = "shield"
+    HEALTH = "health"
+    MANA = "mana"
+    DRAIN = "drain"
+    RAGE = "rage"
+
+
 class PetSkillFireCondition(str, Enum):
     """Stable machine identity for the normal Pet Skill fire condition."""
 
@@ -71,6 +79,7 @@ class AuditionMode(str, Enum):
 __all__ = [
     "AuditionMode",
     "DamageCardMode",
+    "DemonTargetGem",
     "EvolutionTarget",
     "GameMode",
     "MainPetType",

@@ -378,13 +378,13 @@ class OpeningSnapshotTests(unittest.TestCase):
         event = builder.string("MATCH_MOVE_RES")
         match_id = builder.string("M_test")
         board = builder.managed_board()
-        message = builder.alloc(0x489)
-        raw = bytearray(0x489)
+        message = builder.alloc(0x4B1)
+        raw = bytearray(0x4B1)
         struct.pack_into("<Q", raw, 0, message_class)
-        struct.pack_into("<Q", raw, 0x38, event)
-        struct.pack_into("<Q", raw, 0xF8, match_id)
-        struct.pack_into("<Q", raw, 0x480, board)
-        raw[0x488] = 1
+        struct.pack_into("<Q", raw, 0x40, event)
+        struct.pack_into("<Q", raw, 0x100, match_id)
+        struct.pack_into("<Q", raw, 0x4A8, board)
+        raw[0x4B0] = 1
         builder.memory.map(message, raw)
 
         snapshot = read_preparsed_board_snapshot(
@@ -407,12 +407,12 @@ class OpeningSnapshotTests(unittest.TestCase):
         event = builder.string("MATCH_MOVE_RES")
         match_id = builder.string("M_test")
         board = builder.managed_board()
-        message = builder.alloc(0x489)
-        raw = bytearray(0x489)
+        message = builder.alloc(0x4B1)
+        raw = bytearray(0x4B1)
         struct.pack_into("<Q", raw, 0, message_class)
-        struct.pack_into("<Q", raw, 0x38, event)
-        struct.pack_into("<Q", raw, 0xF8, match_id)
-        struct.pack_into("<Q", raw, 0x480, board)
+        struct.pack_into("<Q", raw, 0x40, event)
+        struct.pack_into("<Q", raw, 0x100, match_id)
+        struct.pack_into("<Q", raw, 0x4A8, board)
         builder.memory.map(message, raw)
 
         with self.assertRaisesRegex(LayoutValidationError, "not ready"):

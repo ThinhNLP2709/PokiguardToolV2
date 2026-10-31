@@ -1676,6 +1676,24 @@ def _run_live(
             )
             return 3
 
+        if (
+            coordinator.trigger is not None
+            and coordinator.trigger.reason is not None
+            and coordinator.trigger.reason.value == "PET_SKILL_CONTROL_UNAVAILABLE"
+        ):
+            # A missing skill can be a loadout mismatch. Never consume another
+            # match automatically to retry the same unsupported profile.
+            artifacts.event(
+                "policy_fault_returned_boss_lobby",
+                reason="PET_SKILL_CONTROL_UNAVAILABLE",
+                recoveryReentrySent=False,
+                oldSessionCleared=True,
+            )
+            artifacts.finalize(
+                coordinator, stage="B_LIVE", stageResult="FAULT_RETURNED_BOSS_LOBBY"
+            )
+            return 4
+
         # Live B3 proved that the game can retain the failed match's ACK set
         # after a normal foreground << / confirm exit. Exact-25 later proved
         # that this can be a frozen owner-free lobby residue which normal entry

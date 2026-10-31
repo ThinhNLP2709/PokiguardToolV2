@@ -78,6 +78,7 @@ class RuntimeTarget:
     process_handle: int
     memory: Win32RemoteMemory
     resolver: Il2CppExternalResolver
+    game_executable: Path | None = None
 
     def close(self) -> None:
         if self.process_handle:
@@ -219,6 +220,7 @@ def attach_target() -> RuntimeTarget:
             process,
             memory,
             resolver,
+            selection.executable,
         )
     except Exception:
         _close_handle(process)

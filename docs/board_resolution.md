@@ -1,5 +1,136 @@
 # Board instance resolution — Phase 1
 
+## Current b12 compatibility — 2026-10-26
+
+The b12 profile atomically replaces the b10 fingerprint,39 TypeInfo RVAs and
+the Component.gameObject cache/unmarshal anchor.257 production field
+candidates, co-op/dispatcher nested layouts,28 library layouts and17 native
+UnityPlayer signatures match the previous contract. No solver, controller,
+input pacing, QTE, ACK, random settings or gameplay flow was changed.
+[Migration evidence](artifacts/game_1_7_4_b12_20261026/constant_migration.json).
+
+Board geometry received a separate native review. Existing MatchHudV2
+constants are equal to b10; additions concern affix/team HUD widgets.
+MatchHudV2.SolveBoard `0x5FDC80..0x5FDD60` and
+Board.GetCellBaseWorldPosition `0x13828B0..0x1382C90` match the preserved
+1.7.4.9 instruction sequences after relocation normalization,52/215
+instructions respectively, including floating constants/internal branches.
+This is narrower than whole MatchHudV2.Layout equivalence: Layout gained
+HUD elements, so current pixel mapping still needs an actual b12 combat frame
+and an acknowledged swap. Historical64centres/112swaps/four-profile fixtures
+are not new live acceptance. Keep calibration and configured centre jitter;
+no verified evidence justifies changing gem pitch or random bounds.
+[Geometry review](artifacts/game_1_7_4_b12_20261026/geometry_evidence.json).
+
+Readonly desktop status recognized Lieyun77 host room on b12 in3consistent
+samples. The exact manager-owned Start button passed native ownership and
+active checks; its live normalized rect was
+`(0.7162037,0.8351852,0.9106481,0.9037037)`, root aspect2.0,
+interactable/groupsAllow true. This rect is evidence only, never a new fixed
+click coordinate. No screenshot/input/game method call was performed.
+[Readonly evidence](artifacts/game_1_7_4_b12_20261026/readonly_status.json).
+Combat board/ACK, card/QTE, result/return, health popup and re-entry remain
+NOT_OBSERVED in this migration. [Full report](petpuzzle_b12_compatibility_report.md).
+
+## b10 x2 audit — 2026-10-22
+
+Multiplier field layouts remain Dot+0x88/BoardCellDTO+0x20. Actual logged
+M_86c91873/turn7 contains Swordx2; pure replay computes3physical/4effective for
+two Health triggers. Source9fa67d8… BASIC filters physical count>=4, explaining
+its SETUP choice. This is an eligibility-rule issue, not evidence of a changed
+reader field. [Audit and limits](multiplier_b10_review_20261022.md).
+User-authorized BASIC fix now uses weighted Sword totals with a2-cell floor;
+[159 offline tests PASS](demon_effective_sword_fix_20261022.md). Reader unchanged.
+
+## Current b10 compatibility — 2026-10-22
+
+Source now resolves Board/Active/MatchService and supporting roots through
+b10 TypeInfo values; GameAssembly SHA256
+`9bedce81bfdeae1d3f749a5244c0288f1891e658f992eb27c31ee874a9b79777`.
+256 mapped read-field candidates keep their1.7.4.9 offsets. The native Unity
+ownership bridge cache moved to0x3F72288, unmarshal proof to0x191413F;
+all15 UnityPlayer layout signatures stay valid. Ordinary provider, solver,
+lifecycle,ACK,QTE,Stop and action ordering are byte-exact to the pre-b10 source.
+
+Board input mapping and +-10% centre jitter are unchanged. Existing tests
+cover64 centres/112swaps/four size profiles against the original1.7.4.9 frame;
+these are historical fixtures, not live b10 board-coordinate evidence.
+The b10 ChinhPhucArenaHud changes concern map badge/title/sweep placement;
+no board-geometry change is inferred from those field names alone.
+
+Readonly attachment recognized a guest ChinhPhuc room (Pharapo432) and verified
+the native bridge without input. Board/swaps/result/return/re-entry still
+require bounded B1/B2 live acceptance; unseen skill/QTE paths stay unclaimed.
+No E1 request/claim was created and no old timing calibration is rebound.
+See [b10 report](petpuzzle_b10_compatibility_report.md).
+
+
+## 1.7.4.9 board-to-input calibration correction — 2026-10-21
+
+Live B1 `e84738476d4e4b88a15bc5fcfa5d4f89`, match `M_51626dbc`, exposed a
+missed compatibility boundary: board **identity/content** resolved correctly,
+but normal input still used b6's approximately 50.25 px grid. Policy selected
+SWAP `(screen row 0,col 1)->(1,1)`, not PASS. Saved click `(520,96)` landed in
+row 1 of the new grid; no response/ACK arrived for that turn. The operator
+subsequently stopped with F9. This is not evidence of a solver PASS or crash.
+
+Verified native 1.7.4.9 layout:
+
+- `MatchHudV2.Build` RVA `0x59EFA0` saves `_S0 +0xD0` from board rect width
+  times absolute local scale; sets Board frame gap `+0xC8` to 2.
+- `MatchHudV2.Layout` RVA `0x5A3590` recomputes size/position; it uses an
+  `S0*1.17` cap and available-space constraints. There is no universal literal
+  "60 screen pixels" in the reverse metadata.
+- `Board.ComputeEvenGridCellLayout` RVA `0x12D96B0` divides the grid **content**
+  rectangle width/height by Board width/height (both 8), after frame/padding.
+- `Board.GetCellBaseWorldPosition` RVA `0x12DB830`, even-grid branch
+  `0x12DBA71..0x12DBAA4`, uses `origin+(col+0.5,row+0.5)*cell`, then transforms
+  from local space. Runtime row increases upward; provider still flips once.
+
+The original 1280x640 **client-only** opening capture establishes the pixel
+conversion: first screen-cell centre approximately `(430.5,59.5)`, pitch
+approximately `59.75 px` in both axes. Independent annotations of all eight
+rows/columns have 2 px raster tolerance. These are measured pixel calibration
+values, not guessed native offsets or native world-unit sizes. The retired
+Board's cached local pitch `40.6529274` is forensic supporting evidence only:
+its native object is destroyed, so it cannot authorize current input.
+
+Production calibration/default BoardCalibration now share those values,
+normalized by `1279/639` for the existing `(client dimension-1)` input formula.
+The production controller fallback refers to the same defaults. Supported
+window profiles all preserve 2:1 aspect. No extra memory read, capture, polling,
+game call or input gesture was added. Endpoint jitter is independently bounded
+to **±10% of each cell width/height**, approximately ±5.975 px at 1280x640.
+Actual live acceptance after correction remains pending.
+
+Evidence and test logs:
+[mapping correction](artifacts/game_1_7_4_9_20261020/board_mapping_fix_20261021/),
+[original frame/annotations](../tests/fixtures/petpuzzle_1_7_4_9/combat_geometry.json).
+
+## 1.7.4.9 build boundary — 2026-10-20/21
+
+Current read-only profile now targets GameAssembly SHA-256
+`4A8925CEBBCC9004A4954DAD8F04CADF01CF759FF418F84528053552E0CF156B`.
+Board/Active TypeInfo RVAs are `0x03D5E848 / 0x03D5E850`. Native getter
+still proves `Il2CppClass.static_fields +0x98`; Board static instance offset
+and consumed Board/Active instance fields are unchanged in the new export.
+
+MatchService ownership/ACK fields moved: Players `+0x118`, localSeq `+0x120`,
+pending/in-flight/ackedSeqs `+0x210/+0x218/+0x220`, current player `+0x48`,
+turn/timer `+0x50/+0x1A0`, matchOver `+0x253`. ChatMessageDTO identity and
+preparsed board are now type `+0x40`, MatchId `+0x100`, preBoard/ready
+`+0x4A8/+0x4B0`. Dispatcher message closure is now 321_0, not b6's 291_0.
+
+Opening/DTO/native ownership, canonical board validation and ACK requirements
+are unchanged; no new heap scan, poll/capture sequence or direct game method
+was added. Component icall cache/unmarshal were migrated and passed bounded
+readonly native signature verification on PID 14892. No Board instance was
+present outside combat, so this is not evidence of a live 64-cell board.
+
+Historical b6 live acceptance and Phase 5 calibration do not grant authority
+on this binary. See [compatibility report](petpuzzle_1_7_4_9_compatibility_report.md)
+for independent B1/B2 and remaining unknowns.
+
 ## First-turn native opening fallback — 2026-10-04
 
 Run `f3e21495f84245b38e8e7d25a9e3a0a9` proved that a clean entry could bind
@@ -538,3 +669,200 @@ or contradictory rendered identity fails closed before policy or input. The
 regression suite explicitly reuses one former tag address for a different tag
 between consecutive board reads and verifies that the second board receives
 the new identity. Full validation passes 1,734 tests.
+
+### Chinh Phuc display metadata correction — 2026-10-09
+
+Read-only b6 evidence resolves Khế Ước / Liên Minh / Liên Minh II to server
+group IDs `18/20/25`, live list indices `16/17/18`, and serialized island
+controls `17/18/19`. The server group ID must not be treated as a panel or
+Button array index. Existing navigation already uses the verified live
+index; only display metadata was corrected.
+
+The current catalog exposes 19 islands and 178 unique bosses. Rivan resolves
+to pet `2534`, group `20`, index `17`, order `6`, display level `392`.
+The user's reported Rivan room was joined as a guest, so it does not satisfy
+the existing local-host lobby/Start guard. That guard and all board reads,
+captures, action sequencing and combat policies remain unchanged.
+
+See [the evidence and validation report](chinh_phuc_boss_data_update_20261009.md)
+and [the reference catalog](data/chinh_phuc_boss_catalog_b6_20261009.json).
+The catalog is reference data and cannot authorize runtime navigation or input.
+
+## Guest boss-room entry for Bú win + Coop — 2026-10-10
+
+The 2026-10-09 Rivan diagnosis above described the then-existing host-only
+entry restriction. Guest room support is now explicit for Bú win + Coop.
+Boss identity still comes from the exact room DTO or verified current-room
+properties; no boss-name whitelist or screen title is used as authority.
+
+Ready and Start share `ManagerRoom.ButtonStart`. Existing native geometry,
+visual signature and fresh preflight checks remain in use. An Idle/not-ready
+guest may click once and wait for the host's new Match ID/session; readiness
+alone never publishes a combat board. The wait adds a read-only room/owner
+check and never a second Ready click. See b6 RoomStartState evidence in
+`docs/il2cpp_symbols.md` and `docs/bu_win_guest_room_20261010.md`.
+
+FarmRun binds the initial Room ID/owner and requires them again after
+postmatch. Coop room ejection/technical failure stops without solo map reentry.
+Combat lifecycle remains driven by its existing MatchHost/scene/Board and
+MatchService terminal signals, not by local HP. Local death suppresses Bú win
+actions while existing terminal/postmatch readers continue. Solo result
+classification and memory/capture/input ordering in combat remain unchanged.
+
+## Login state versus board authority — 2026-10-10
+
+B6 login response contains token/sessionKey/rememberToken and the native
+successful-login pipeline stores AuthToken for API bearer authentication.
+See `docs/login_token_research_20261010.md` and the corresponding symbols
+addendum. This finding adds no runtime reader or input behavior. A token's
+presence does not establish a current boss room, Match ID, combat ownership
+or board freshness; existing room/lifecycle/session evidence remains required.
+
+## Standalone login request example — 2026-10-10
+
+`docs/examples/login_b6.curl.txt` reconstructs the b6 password-login JSON
+request from verified reverse/native evidence. It is a manual Postman example,
+not part of the automation runtime. No request was sent and no gameplay or
+board/lifecycle/input flow was changed. Authentication response fields alone
+still do not authorize a combat action or prove a fresh board.
+
+## Device label inspection — 2026-10-10
+
+A one-off read of the running client's LoginDevice._name confirmed its cached
+login deviceName. The symbol/root and concatenation evidence are recorded in
+`docs/il2cpp_symbols.md`. This read adds no runtime behavior or board authority
+and invokes no game code; room/combat/input flows are unchanged.
+
+## Phase 5 timing observation limit — 2026-10-12
+
+The accepted provider `_read_turn_timer` and final `read_match_runtime` read
+`MatchService.TurnTimeRemainingSec` as an Int32. Existing reverse proves server
+message handlers update it and separately anchor a smooth Unity countdown;
+the provider does not reconstruct that smooth countdown. Stable repeated raw
+values do not establish tick freshness. Current Unity clock location, transport
+age and host alignment remain UNKNOWN. No new game read/capture/pointer path was
+added in P3. Timing export measures the existing final read through executor
+return upper bound; it cannot produce a native clock uncertainty authority.
+
+## Renamed-product prefs and postmatch room recovery — 2026-10-10
+
+The selected PetPuzzle-1.7.4 installation's `app.info` identifies both Unity
+company and product as `Pet Puzzle`. PlayerPrefs therefore comes from
+`HKCU\Software\Pet Puzzle\Pet Puzzle`, not the populated legacy Pokiguard key.
+The reader now resolves this identity from the attached executable's data
+directory and reports missing metadata or keys without mixing products.
+
+Registry selection is advisory for detached-room exit. Exact stale enemy ID,
+absent room/combat ownership, current map manager/panel when loaded, and the
+existing visual/freshness checks authorize navigation. ACTIVE/UNKNOWN cannot
+authorize recovery. After result confirmation, a settled general hub is also
+a missing boss room; the existing hub/map route returns to the pinned boss
+without counting another match. A direct postmatch hub click additionally
+requires a recorded result-confirm click and current hub/control proof.
+See `docs/petpuzzle_room_reentry_fix_20261010.md` for the VM fixture, tests and
+package acceptance scope. Gameplay board resolution and input stay unchanged.
+
+## Phase 5 P4 — b6 clock boundary correction, 2026-10-12
+
+P4 rebinds timing evidence to current GameAssembly b6 by direct file disassembly.
+Current raw timer is `MatchService+0x190`, already used by the accepted provider;
+the older Cpp2IL `+0x118` countdown table is historical. Current smooth anchors
+are `+0x1C8/+0x1CC`, pause `+0x1BD`, FX hold `+0x1E8`. Anchor can be changed by
+local FX as well as server timing. Stable integer or anchor is not a freshness
+receipt, and last WebSocket ping RTT does not bound a different timer message.
+
+No board/provider/input/ACK/recovery code, memory reads or captures changed.
+Native Unity time/host alignment/transport bounds remain UNKNOWN. A standalone
+passive diagnostic contract is proposed in
+`docs/phase5/research/5d1_p4_clock_evidence_and_observation.md`, outside production
+farm reads, not implemented/activated here. It does not confer deadline/input
+authority or enable REASONING. P4 report/ledger bind fields to exact build/files.
+
+## Bú win postmatch presentation boundary — 2026-10-12
+
+Run `810139fceb784f94b033aa37c2e26714`, match `M_956cc760`, proves that
+terminal ownership and visible presentation can differ: at 23:15:02.663
+Vietnam time the provider reports POSTMATCH with MATCH_GAME_OVER, while the
+first saved postmatch frame still shows a teammate's skill announcement. The
+last frame at the old 30s timeout shows the victory banner/gift without a
+confirm label. Existing result detection correctly rejects both frames.
+
+Current b6 native code sets MatchService._matchOver before checking
+IsPresentationBusy and can defer the result event for up to 30 unscaled
+seconds. Preserve terminal classification and the gameplay input prohibition;
+do not reclassify these retained animation frames as actionable combat.
+The FarmRun Bú win/Coop confirmation adapter now has a one-time 30s
+presentation allowance in addition to its configured result UI budget.
+It revalidates POSTMATCH/session before using the allowance and retains the
+three-frame label/position proof and immediate pre-click validation.
+The absolute deadline never resets on changing images. Solo timeout remains
+unchanged. This is postmatch waiting only; board resolution and gameplay
+policy/provider/input order remain unchanged.
+
+See `docs/bu_win_postmatch_animation_20261012.md` and
+`docs/artifacts/bu_win_postmatch_animation_20261012/`. Main Phase 5 remains at
+its existing milestone; historical P3/P4 source pins are historical evidence,
+not acceptance of this newer FarmRun adapter.
+
+## P6 standalone observer validation gap — 2026-10-14
+
+One user-operated native diagnostic window on b6 produced one invalid sample,
+0 useful clock samples. All15RPM returned their requested204bytes; root/identity
+yielded turn3, duration14, raw remaining14. The first48B clock block was read
+successfully, then the standalone decoder rejected INVALID_CLOCK_FLOAT before
+reading B. This is not evidence of a board/provider failure or finite timer age.
+
+Read-only current-file bytes prove `_localFxHoldUntilUnscaled +0x1E8` is reset
+to float32 -1.0 at ClearLocalFxHold RVA0x417A40 and ApplyTimingFields RVA0x417D51.
+P5's diagnostic parser incorrectly excludes this valid sentinel. The actual
+native failing field/value were not exported, so a causal attribution to -1
+in that sample remains unproven. Preserve the failed ledger and correct the
+diagnostic parser/field-level errors offline before considering a new window.
+
+No gameplay source/offset/ownership/scan/capture/input/ACK flow changed; no new
+native reads after the single window. `native_U_ms:null`, transport age UNKNOWN,
+input_authority false. See `docs/phase5/reports/5d1_p6_report.md` and its artifacts.
+
+
+## 2026-10-22 — Outside-combat health reminder geometry
+
+New `play_reminder.py` walks the exact PlayReminder-owned `_board` to its only
+Button, checks Canvas.enabled (not GameObject active), then uses existing
+NativeCardUiReader/Unity UI viewport mapping. Show animates scale, so require
+stable native geometry before the visual sanity and fresh input preflight.
+No change to board/gem centers, random 10% offsets, scan order, solver or QTE.
+After closing, reread the room/map and use the existing immutable-target router.
+
+Moving boss/island/Chinh Phuc controls alone does not require pixel-coordinate
+updates: the primary route uses their runtime Button geometry and DTO/ID
+association. Changed hierarchy/data association/artwork still needs verification.
+See [health reminder report](play_reminder_20261022.md); actual modal click/return
+live test remains outstanding, while supplied-image/native-fixture tests pass.
+
+Follow-up from the user's four map screenshots: the conquest island list is
+vertically scrollable. Current island selection has no scroll/drag step and
+does not prove ScrollRect viewport clipping; off-Canvas target geometry is
+rejected, so navigation can time out when the required island is out of view.
+The health-reminder patch does not close this gap. Exact content/viewport
+ownership must be audited before adding bounded normal-input scrolling and
+fresh visible-target proofs. See the follow-up section in the same report.
+
+## Modal/AFK incident — 2026-10-23, investigation only
+
+Farm6b1a3c58… completed95WIN then stopped in match96 before its second SWAP:
+legacy image guard reported LEAVE_MODAL_VISIBLE_BEFORE_GAMEPLAY_CLICK.
+Game later logged KICKED reason=AFK; UI reached general lobby02:45:30 local.
+No terminal/reward or automated leave input belongs to match96. No guard frame
+was retained, so real leave modal vs image false positive remains UNKNOWN.
+PlayReminder handler had no events in this run; stopped FarmRunner does not
+dismiss subsequent modals. b10 reminder scheduling repeats with remote
+health.reminderMin override; display370 is total online minutes, not an exact
+interval certificate. See [pinned investigation](health_reminder_incident_20261023.md).
+
+Follow-up2026-10-24: [visual guard repair](leave_modal_guard_fix_20261024.md)
+requires filled button bodies and interior labels on both orange candidates;
+two orange patches alone cannot pause. Existing captures remain in the same
+order. A blocking frame now persists as bounded failure evidence even when
+routine images are off; no new capture/read/input or automatic SAFE_STOP resume.
+Known true modal remains recognized. Original incident's missing frame stays
+UNKNOWN; synthetic reconstruction of its static board did not reproduce it.

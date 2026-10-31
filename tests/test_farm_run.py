@@ -60,6 +60,7 @@ from tools.farm_run import (
     _owner_free_general_hub_snapshot,
     _open_chinh_phuc_from_general_hub,
     _postmatch_reentry_source,
+    _recover_postmatch_boss_lobby,
     _pinned_input_stop_requested,
     _return_from_chinh_phuc_map,
     _restore_bound_game_foreground,
@@ -377,7 +378,7 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         button_address: int = 0x20000003000,
         button_native: int = 0x10000003000,
         manager_address: int = 0x20000005000,
-        selected_pet_id: int = 1289,
+        selected_pet_id: int | None = 1289,
         proof_source: str = "button_closure",
     ) -> SimpleNamespace:
         return SimpleNamespace(
@@ -422,7 +423,6 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         cases = (
             (self.lobby(2243), None),
             (self.lobby(), self.target(pet_id=2243)),
-            (self.lobby(), self.target(selected_pet_id=2243)),
         )
         for lobby, runtime in cases:
             with self.subTest(runtime=runtime):
@@ -446,6 +446,48 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
                 current_map_target=self.target(clean=False),
             )
         )
+
+    def test_stale_or_absent_prefs_do_not_veto_exact_room_exit(self) -> None:
+        for selected in (None, 2243):
+            with self.subTest(selected_pet_id=selected):
+                self.assertTrue(
+                    _detached_shell_exit_runtime_proven(
+                        self.lobby(),
+                        pet_id=1289,
+                        current_session=None,
+                        first_map_target=self.target(selected_pet_id=selected),
+                        current_map_target=self.target(selected_pet_id=selected),
+                    )
+                )
+
+    def test_map_backed_shell_requires_current_manager_and_panel(self) -> None:
+        lobby = self.lobby()
+        lobby.branch = "CHINH_PHUC_ISLAND"
+        lobby.world_boss = SimpleNamespace(
+            clean_for_chinh_phuc_map=True,
+            manager_chinh_phuc=0x20000005000,
+            chinh_phuc_active_panel_index=2,
+        )
+        # The exact VM failure: clean native target, missing registry, room
+        # canvas over an active island. It must reach the shell exit.
+        runtime = self.target(selected_pet_id=None)
+        kwargs = dict(
+            pet_id=1289,
+            current_session=None,
+            first_map_target=runtime,
+            current_map_target=None,
+            allow_map_backed_shell=True,
+        )
+        self.assertTrue(_detached_shell_exit_runtime_proven(lobby, **kwargs))
+        for changes in (
+            {"manager_chinh_phuc": 0x20000006000},
+            {"chinh_phuc_active_panel_index": 3},
+        ):
+            with self.subTest(changes=changes):
+                original = lobby.world_boss
+                lobby.world_boss = SimpleNamespace(**{**original.__dict__, **changes})
+                self.assertFalse(_detached_shell_exit_runtime_proven(lobby, **kwargs))
+                lobby.world_boss = original
 
     def test_changed_clean_runtime_identity_rejects_shell_exit(self) -> None:
         first = self.target()
@@ -942,18 +984,33 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         )
 
     def test_direct_game_lobby_ejection_returns_to_exact_pet_room(self) -> None:
+        self._assert_direct_game_lobby_returns_to_exact_pet_room(postmatch=False)
+
+    def test_confirmed_postmatch_general_hub_reenters_exact_pet_room(self) -> None:
+        self._assert_direct_game_lobby_returns_to_exact_pet_room(postmatch=True)
+
+    def _assert_direct_game_lobby_returns_to_exact_pet_room(
+        self, *, postmatch: bool
+    ) -> None:
         run = start_run()
         enter(run, session(1))
-        self.assertTrue(run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"))
-        self.assertTrue(
-            run.begin_ejected_map_reentry(
-                target_boss_id="1289",
-                exact_world_map=False,
-                detached_room_shell=False,
-                general_hub=True,
-                no_combat_owner=True,
+        if postmatch:
+            self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+            self.assertTrue(run.observe_postmatch())
+            confirm = run.reserve_postmatch(foreground=True)
+            self.assertIsNotNone(confirm)
+            self.assertTrue(run.complete_postmatch(confirm, sent=True))
+        else:
+            self.assertTrue(run.technical_failure("ROOM_EJECTED_TO_BOSS_MAP"))
+            self.assertTrue(
+                run.begin_ejected_map_reentry(
+                    target_boss_id="1289",
+                    exact_world_map=False,
+                    detached_room_shell=False,
+                    general_hub=True,
+                    no_combat_owner=True,
+                )
             )
-        )
         hub_lobby = ChinhPhucMapSnapshotTests.lobby(
             state=BossLobbyState.LOBBY_OTHER,
             branch="GAME_LOBBY",
@@ -1036,7 +1093,13 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         ), patch(
             "tools.farm_run._wait_boss_lobby", return_value=expected
         ), patch("tools.farm_run.write_png_rgb"):
-            observed = _return_from_chinh_phuc_map(
+            route = (
+                _recover_postmatch_boss_lobby
+                if postmatch
+                else _return_from_chinh_phuc_map
+            )
+            writer = MagicMock()
+            observed = route(
                 run=run,
                 process=process,
                 provider=provider,
@@ -1049,6 +1112,7 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
                 timeout=5.0,
                 hotkeys=SimpleNamespace(poll=lambda: (False, False)),
                 control_hotkeys=None,
+                **({"allow_reentry": True, "writer": writer} if postmatch else {}),
             )
 
         self.assertIs(observed, expected)
@@ -1061,6 +1125,19 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
             ],
         )
         self.assertNotIn(FarmInputDomain.BOSS_ROOM_SHELL_EXIT, domains)
+        if postmatch:
+            self.assertFalse(run.stopped)
+            self.assertEqual(run.match_attempts, 1)
+            self.assertEqual(run.completed_matches, 1)
+            self.assertEqual(run.wins, 1)
+            self.assertEqual(run.technical_aborts, 0)
+            self.assertEqual(run.technical_recoveries, 0)
+            missing_events = [
+                call for call in writer.event.call_args_list
+                if call.args[0] == "postmatch_boss_room_missing"
+            ]
+            self.assertEqual(len(missing_events), 1)
+            self.assertEqual(missing_events[0].kwargs["reentrySource"], "GENERAL_HUB")
 
     def test_pinned_detached_hub_map_route_reacquires_each_dynamic_transition(self) -> None:
         run = start_run()
@@ -1522,8 +1599,8 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         self.assertEqual(len(target_inputs), 1)
         self.assertTrue(target_inputs[0].sent)
 
-    def test_visible_room_shell_overrides_stale_active_island_panel(self) -> None:
-        """Regression for run e954: the room canvas can cover an active map."""
+    def test_visible_room_shell_exits_with_missing_prefs_and_active_island(self) -> None:
+        """VM regression: missing PlayerPrefs must not veto the proven exit."""
 
         run = start_run()
         enter(run, session(1))
@@ -1549,7 +1626,7 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
             lobby,
             2,
         )
-        runtime = self.target()
+        runtime = self.target(selected_pet_id=None)
         capture = SimpleNamespace(width=1280, height=640, rgb=b"")
         shell = SimpleNamespace(found=True, normalized_point=(0.95, 0.07))
         process = SimpleNamespace(pid=123, is_running=lambda: True)
@@ -2841,6 +2918,51 @@ class FarmRunBoundaryTests(unittest.TestCase):
         self.assertIsNotNone(permit)
         self.assertTrue(run.complete_hub_chinh_phuc_open(permit, sent=True))
         self.assertIsNone(run.reserve_hub_chinh_phuc_open(foreground=True))
+
+    def test_confirmed_postmatch_hub_open_is_once_and_preserves_accounting(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+        self.assertTrue(run.observe_postmatch())
+        confirm = run.reserve_postmatch(foreground=True)
+        self.assertTrue(run.complete_postmatch(confirm, sent=True))
+        permit = run.reserve_hub_chinh_phuc_open(
+            foreground=True, general_hub_proven=True
+        )
+        self.assertIsNotNone(permit)
+        self.assertTrue(run.complete_hub_chinh_phuc_open(permit, sent=True))
+        self.assertEqual(run.match_attempts, 1)
+        self.assertEqual(run.completed_matches, 1)
+        self.assertEqual(run.technical_aborts, 0)
+        self.assertEqual(run.technical_recoveries, 0)
+        self.assertIsNone(run.reserve_hub_chinh_phuc_open(
+            foreground=True, general_hub_proven=True
+        ))
+
+    def test_normal_postmatch_hub_requires_confirmation_and_hub_proof(self) -> None:
+        for confirmed, proven in ((False, True), (True, False)):
+            with self.subTest(confirmed=confirmed, proven=proven):
+                run = start_run()
+                enter(run, session(1))
+                self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+                self.assertTrue(run.observe_postmatch())
+                if confirmed:
+                    confirm = run.reserve_postmatch(foreground=True)
+                    self.assertTrue(run.complete_postmatch(confirm, sent=True))
+                self.assertIsNone(run.reserve_hub_chinh_phuc_open(
+                    foreground=True, general_hub_proven=proven
+                ))
+                self.assertFalse(any(
+                    record.domain is FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN
+                    for record in run.input_records
+                ))
+
+    def test_active_combat_cannot_open_hub_even_with_hub_proof(self) -> None:
+        run = start_run()
+        enter(run, session(1))
+        self.assertIsNone(run.reserve_hub_chinh_phuc_open(
+            foreground=True, general_hub_proven=True
+        ))
 
     def test_failed_recovery_fallback_accepts_one_audited_prior_reentry(self) -> None:
         run = start_run(FarmRunLimits(3, 2, 5))

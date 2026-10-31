@@ -7,7 +7,7 @@ immediately afterwards. A reservation is never counted as an input.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 import re
 from typing import Any
@@ -105,6 +105,25 @@ class OpeningEvidence:
     multipliers_valid: bool = True
     fresh_dto: bool = True
     timer_safe: bool = True
+    is_local_turn: bool | None = None
+    turn_number: int | None = None
+
+    def valid_coop_waiting_opening(self) -> bool:
+        """Prove a fresh Coop opening while another actor owns server turn 1.
+
+        This is admission to the combat observer only. The controller still
+        needs a fresh actionable local turn before reserving any gameplay.
+        The other actor's timer cannot authorize or reject our future move.
+        """
+
+        return bool(
+            self.first_local_turn is False
+            and self.is_local_turn is False
+            and self.turn_number == 1
+            and self.source == "ChatMessageDTO.MATCH_START.matchPayload.board"
+            and self.fresh_dto
+            and replace(self, first_local_turn=True, timer_safe=True).valid()
+        )
 
     def valid(self) -> bool:
         source_valid = bool(

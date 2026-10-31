@@ -30,8 +30,25 @@ names. A missing saved path such as `D:\pc\Pokiguard-1.7.4.exe` migrates only
 to a supported launcher in the same existing directory. The hash gate remains
 the final authority.
 
-The installed b6 client still owns Unity PlayerPrefs under
-`HKCU\Software\Pokiguard\PokiguardOnlines`, so that registry path is retained.
+**Correction — 2026-10-10:** the earlier claim that the b6 client still owns
+PlayerPrefs under `HKCU\Software\Pokiguard\PokiguardOnlines` was incorrect.
+The installed client's `PetPuzzle-1.7.4_Data/app.info` contains company/product
+`Pet Puzzle` / `Pet Puzzle`, corresponding to
+`HKCU\Software\Pet Puzzle\Pet Puzzle`. Both registry branches exist on the
+development machine but contain different selection data; existence of the old
+branch does not establish that the renamed client uses it.
+
+The production reader still hard-codes the retired branch. Supplied VM run
+`4bf54d3fa8f046239a141ec1448c4d3a` cannot open that branch and stops at 50/200
+when shell-exit validation requires the unavailable `SelectedPetId`. Product
+rename migration is therefore **incomplete for PlayerPrefs and this recovery
+case**. The base B2 gameplay observations above remain historical evidence,
+not acceptance of renamed-product recovery on a fresh Windows profile.
+See [VM stop analysis](log_analysis_vm_stops_20261010.md#34-bằng-chứng-bổ-sung-đường-dẫn-playerprefs-cũ).
+Subsequent source remediation resolves PlayerPrefs from the attached EXE's
+`app.info` and removes the stale-registry veto from proven shell exit. Offline
+tests and a separate packaged candidate pass; VM live acceptance is pending.
+See [PlayerPrefs/re-entry repair](petpuzzle_room_reentry_fix_20261010.md).
 
 ## TypeInfo migration
 

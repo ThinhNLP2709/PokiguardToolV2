@@ -43,10 +43,10 @@ MAX_PARTICIPANTS = 16
 MAX_DICTIONARY_SLOTS = 32
 
 # Cpp2IL: MatchService.<Players>k__BackingField is
-# Dictionary<string, MatchPlayerSnapshotDTO> at +0x108.  Active's
+# Dictionary<string, MatchPlayerSnapshotDTO> at +0x118 in 1.7.4.9. Active's
 # get_LocalActorNumberOrZero() indexes that dictionary with
 # ChatService.Username and returns MatchPlayerSnapshotDTO.actorNumber (+0x18).
-MATCH_SERVICE_PLAYERS_OFFSET = 0x108
+MATCH_SERVICE_PLAYERS_OFFSET = 0x118
 MATCH_PLAYER_SNAPSHOT_ACTOR_OFFSET = 0x18
 
 

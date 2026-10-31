@@ -5,6 +5,12 @@ Mọi thay đổi hành vi trong `src/pokiguard_v2/basic_policy.py` phải khớ
 file này. Bản triển khai kỹ thuật (simulator, trace, fail-closed gates) nằm ở
 `docs/basic_gameplay_policy.md`.
 
+Phần logic BASIC dưới đây giữ nguyên. Yêu cầu REASONING bổ sung của người dùng
+ngày 2026-10-09 được định nghĩa ở mục **Logic suy luận — Phase 5A.1/5A.2** trong file
+này và [contract REASONING](reasoning_gameplay_policy.md). Trạng thái31/10/2026:
+[Phase5 đã đóng scoped R1](phase5/FINAL_REPORT.md); BASIC không đổi, public UI
+REASONING vẫn khóa, package chỉ nghiệm thu labDemonShield/Solo/Lieyun77.
+
 ## 1. Cấu hình lối chơi
 
 Ta có 3 lựa chọn lối chơi: **Đơn giản**, **Cẩn thận**, và tùy chọn
@@ -406,6 +412,54 @@ Chi phí tiến hóa (1.7.4-b2 hiện quan sát **120**) và chi phí chưởng 
 sát **160**) **không bao giờ được hard-code**: policy đọc chi phí thật từ
 runtime (`FusionState.mana_cost`, `CardData.manaCost` / `conditionUse`) và
 fail-closed nếu chưa chứng minh được.
+
+## Logic suy luận — Phase 5A.1/5A.2 (hợp đồng sản phẩm)
+
+Suy luận kết hợp với lối chơi đang chọn: lấy mục tiêu và nước BASIC làm chuẩn,
+nhưng cài đặt chiến thuật là tham khảo để đánh giá tình thế. Ngưỡng ra skill,
+setup/Kết Ấn, giữ Kiếm, ưu tiên tài nguyên và thứ tự cứu nguy không được khóa
+cứng mọi nước đi. REASONING được chọn khác khi có căn cứ phù hợp mục tiêu;
+không tự đổi lối chơi, pet/loadout hoặc ghi đè cài đặt của người dùng.
+
+Ví dụ Mega Icarus chưa đạt ngưỡng Kết Ấn nhưng có phương án hợp lệ bảo vệ tốt
+hơn thì phải được cân nhắc; không đợi một ngưỡng HP cứng mới được suy luận.
+Khi đang khỏe và setup hiệu quả, planner vẫn hướng tới chu kỳ skill của Mega.
+Chi phí thật, cooldown/actionability, nguồn skill, turn/PASS, deadline và quyền
+input vẫn bắt buộc. Không dùng survival cá nhân làm mục tiêu chung cho Bú win.
+
+Giữ nguyên flow v1.2.4: thứ tự memory/chụp ảnh, nhánh Evolution chung, cách
+action/QTE/click-only/ACK, input mode/lease, lifecycle/recovery và Stop. Planner
+chỉ dùng state đã có. Lỗi/timeout suy luận dùng nước BASIC còn hợp lệ trước
+dispatch; state invalid giữ fail-closed. Input đã gửi thì không đi thêm nước
+BASIC thay thế hoặc retry do AI.
+
+Log ưu tiên dễ theo dõi riêng nếu đo được không làm chậm action; nếu chưa
+prove/không đạt thì dùng event chung với filter/export. Log lỗi không chặn
+fallback/Stop. Mặc định vẫn BASIC. v1.2.4 là baseline lịch sử chưa có suy luận;
+phạm vi source/package đã nghiệm thu sau đó nằm trong FINAL_REPORT, không tự
+mở mọi profile hoặc đổi các luật BASIC tại đây.
+Xem [đặc tả 5A.1](phase5/specs/5a1_baseline_reasoning_contract.md) và
+[STATUS](phase5/STATUS.md). Logic BASIC và các giá trị trong bảng trên không đổi.
+
+### Làm rõ 5A.2 — tài nguyên, hiệu quả và boss tranh setup
+
+Một viên Nộ x1=20 điểm Nộ; Mana x1=30 điểm Mana theo khai báo người dùng.
+Số ô vật lý, tổng multiplier và điểm tài nguyên có unit/evidence riêng.
+Ví dụ account người dùng setting4 Kiếm nhưng đủ Nộ thì3 Kiếm có thể đủ, gồm
+3 Kiếm+5 viên Nộ thường trong vùng phá. Đây là calibration có scope để suy
+luận cân nhắc, không đổi default BASIC hoặc sinh rule cứng “luôn3+5”. Resource
+cuối action không tự chứng minh Nộ được áp trước damage cùng burst.
+
+Phải tính ta→boss→ta: setup Khiên bị boss ăn/phá thì không được giữ full credit.
+Nominal boss ưu tiên ăn Kiếm và lượng Kiếm lớn nhất; mọi max-Sword tie phải
+được xét/ghi coverage. Có thể chừa Kiếm làm mồi để giữ Khiên, nhưng phải tính
+boss threat/HP và trường hợp boss chọn khác. Secondary priorities/refill/effect
+chưa biết giữ UNKNOWN, không tự giả boss chừa Khiên.
+
+Áp dụng nguyên tắc này cho cả sáu PlayStyle theo
+[5A.2 spec](phase5/specs/5a2_features_utility_and_profiles.md) và
+[scenario matrix](phase5/specs/5a2_scenario_matrix.md). Weights/margins proposed;
+chưa code/test/live. Flow, fallback và hard gates ở contract trên giữ nguyên.
 
 ## 8. Lịch sử thay đổi
 

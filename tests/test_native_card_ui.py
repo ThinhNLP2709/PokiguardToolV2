@@ -176,13 +176,13 @@ class NativeFixture:
 
 
 class NativeCardUiTests(unittest.TestCase):
-    def test_b6_gameassembly_bridge_anchors_are_pinned(self):
-        self.assertEqual(_COMPONENT_GO_ICALL, 0x38D7AE8)
+    def test_b12_gameassembly_bridge_anchors_are_pinned(self):
+        self.assertEqual(_COMPONENT_GO_ICALL, 0x3FE1650)
         self.assertEqual(
             _UNMARSHAL_SIGNATURE,
             (
-                0x138561F,
-                "4885db7433f6c301740d488bcbe87f6ee8fe488bd8eb03488b1b",
+                0x19740BF,
+                "4885db7433f6c301740d488bcbe8df888afe488bd8eb03488b1b",
             ),
         )
 
