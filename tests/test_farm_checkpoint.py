@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
+import errno
+import os
+import threading
 import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget
 from pokiguard_v2.farm_checkpoint import (
@@ -394,6 +398,101 @@ class CheckpointRoundTripTests(unittest.TestCase):
             temps = list(directory.glob("checkpoint_*.tmp"))
             self.assertEqual(temps, [])
             self.assertTrue(path.exists())
+
+    def test_atomic_replace_retries_windows_sharing_failures_with_same_closed_temp(self) -> None:
+        from pokiguard_v2 import farm_checkpoint as checkpoint
+        for winerror in (5, 32, 33):
+            with self.subTest(winerror=winerror), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "checkpoint.json"
+                original = _payload()
+                updated = replace(original, checkpoint_seq=2)
+                write_checkpoint(path, original)
+                before = path.read_bytes()
+                real_replace = os.replace
+                calls = []
+                def busy_twice(source, target):
+                    calls.append((source, target))
+                    if len(calls) <= 2:
+                        self.assertEqual(path.read_bytes(), before)
+                        self.assertEqual(json.loads(Path(source).read_text("utf-8"))["checkpoint_seq"], 2)
+                        error = PermissionError(errno.EACCES, "simulated Windows sharing conflict")
+                        error.winerror = winerror
+                        raise error
+                    return real_replace(source, target)
+                with patch.object(checkpoint.os, "replace", side_effect=busy_twice), patch.object(checkpoint.time, "sleep") as sleep:
+                    write_checkpoint(path, updated)
+                self.assertEqual(load_checkpoint(path), updated)
+                self.assertEqual(len(calls), 3)
+                self.assertEqual(len({c[0] for c in calls}), 1)
+                self.assertEqual(sleep.call_args_list, [unittest.mock.call(0.01), unittest.mock.call(0.02)])
+                self.assertEqual(list(path.parent.glob("checkpoint_*.tmp")), [])
+
+    def test_persistent_windows_access_denial_is_bounded_and_preserves_old_checkpoint(self) -> None:
+        from pokiguard_v2 import farm_checkpoint as checkpoint
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "checkpoint.json"
+            original = _payload();write_checkpoint(path, original)
+            before = path.read_bytes()
+            error = PermissionError(errno.EACCES, "persistent Windows access denial")
+            error.winerror = 5
+            with patch.object(checkpoint.os, "replace", side_effect=error) as replace_file, patch.object(checkpoint.time, "sleep") as sleep:
+                with self.assertRaises(PermissionError) as raised:
+                    write_checkpoint(path, replace(original, checkpoint_seq=2))
+            self.assertIs(raised.exception, error)
+            self.assertEqual(replace_file.call_count, 7)
+            self.assertEqual(sleep.call_count, 6)
+            self.assertAlmostEqual(sum(c.args[0] for c in sleep.call_args_list), 0.51)
+            self.assertEqual(path.read_bytes(), before)
+            self.assertEqual(load_checkpoint(path), original)
+            self.assertEqual(list(path.parent.glob("checkpoint_*.tmp")), [])
+
+    def test_other_io_errors_are_not_retried_or_reported_as_success(self) -> None:
+        from pokiguard_v2 import farm_checkpoint as checkpoint
+        for error in (OSError(errno.ENOSPC, "disk full"), PermissionError(errno.EACCES, "no Windows sharing code")):
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "checkpoint.json"
+                write_checkpoint(path, _payload());before = path.read_bytes()
+                with patch.object(checkpoint.os, "replace", side_effect=error) as replace_file, patch.object(checkpoint.time, "sleep") as sleep:
+                    with self.assertRaises(OSError) as raised:
+                        write_checkpoint(path, replace(_payload(), checkpoint_seq=2))
+                self.assertIs(raised.exception, error)
+                self.assertEqual(replace_file.call_count, 1)
+                sleep.assert_not_called()
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(list(path.parent.glob("checkpoint_*.tmp")), [])
+
+    @unittest.skipUnless(os.name == "nt", "real Windows file sharing semantics required")
+    def test_real_windows_reader_releases_and_atomic_write_recovers(self) -> None:
+        # No game or fake Win32 APIs: ordinary Python readers deny delete sharing.
+        from pokiguard_v2 import farm_checkpoint as checkpoint
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "checkpoint.json"
+            original = _payload();write_checkpoint(path, original)
+            reader = path.open("rb")
+            blocked = threading.Event();released = threading.Event()
+            def release_reader():
+                if blocked.wait(2):
+                    reader.close();released.set()
+            thread = threading.Thread(target=release_reader)
+            real_replace = os.replace;errors = []
+            def observe_replace(source, target):
+                try:return real_replace(source, target)
+                except OSError as exc:
+                    errors.append(getattr(exc, "winerror", None));blocked.set()
+                    raise
+            thread.start()
+            try:
+                with patch.object(checkpoint.os, "replace", side_effect=observe_replace):
+                    write_checkpoint(path, replace(original, checkpoint_seq=2))
+            finally:
+                blocked.set();thread.join(2);reader.close()
+            self.assertFalse(thread.is_alive())
+            self.assertTrue(released.is_set())
+            self.assertTrue(errors)
+            self.assertEqual(errors[0], 5)
+            self.assertTrue(all(n in (5, 32, 33) for n in errors))
+            self.assertEqual(load_checkpoint(path).checkpoint_seq, 2)
+            self.assertEqual(list(path.parent.glob("checkpoint_*.tmp")), [])
 
     def test_malformed_json_raises_checkpoint_invalid(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

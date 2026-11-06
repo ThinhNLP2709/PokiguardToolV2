@@ -164,15 +164,16 @@ CLOSE_INTENT_LABELS = {
 
 
 AI_SELECTION_HELP = (
-    "Suy luận thử nghiệm cho Demon Farm ăn Khiên, cấu hình đã nghiệm thu. "
-    "Ngoài phạm vi hoặc lỗi suy luận, tool dùng Cơ bản qua kiểm tra an toàn hiện có."
+    "Chọn Lối chơi và Độ thông minh tại tab Tùy chọn. "
+    "Tab AI chỉ chứa ngân sách suy luận và chẩn đoán. "
+    "Suy luận dùng tình hình trận đấu và mục tiêu của lối chơi; lỗi hoặc quá hạn thì dùng Cơ bản."
 )
 AI_SHADOW_HELP = (
     "Shadow chỉ quan sát và ghi chẩn đoán riêng, không đổi nước đi. "
     "Mặc định tắt. Lỗi AI hoặc mất log vẫn để Cơ bản tiếp tục."
 )
 AI_BUDGET_HELP = (
-    "50–6000 ms, mặc định 4000 ms; suy luận hiện dùng tối đa 4000 ms. Đây là trần xử lý, "
+    "50–6000 ms, mặc định 4000 ms. Đây là trần xử lý, "
     "không phải thời gian chờ thêm trước khi đi nước."
 )
 
@@ -186,7 +187,11 @@ def ai_status_text(status: AIStatus) -> str:
             'UI_REASONING_WAITING_TURN':'Chờ lượt có đủ dữ liệu',
             'UI_REASONING_STOPPED':'Suy luận đã dừng và đóng tài nguyên',
             'UI_REASONING_CLEANUP_PENDING':'Đang đóng worker trước; dùng Cơ bản',
-            'UI_REASONING_PROFILE_MISSING':'Chưa có cấu hình suy luận đã nghiệm thu; dùng Cơ bản',
+            'UI_REASONING_PROFILE_MISSING':'Chưa có dữ liệu kiểm chứng suy luận; dùng Cơ bản',
+            'UI_REASONING_COMMON_CALIBRATION_REQUIRED':'Cần số đo đầu vào cho lõi AI chung trên bản game hiện tại; dùng Cơ bản',
+            'UI_REASONING_COMMON_PACKAGE_PENDING':'Chưa kiểm lõi AI chung trong bản đóng gói này; dùng Cơ bản',
+            'UI_REASONING_TEAM_MODEL_PENDING':'Chưa đủ dữ liệu phản hồi đồng đội trong Coop; dùng Cơ bản',
+            'UI_REASONING_TRANSPORT_UNMEASURED':'Cách gửi input này chưa có số đo cho suy luận; dùng Cơ bản',
             'UI_REASONING_CONFIG_UNSUPPORTED':'Cấu hình này chưa hỗ trợ suy luận; dùng Cơ bản',
             'UI_REASONING_TARGET_UNSUPPORTED':'Boss này chưa nghiệm thu suy luận; dùng Cơ bản',
             'UI_REASONING_COHORT_CHANGED':'Tài khoản/đồ/dữ liệu khác cấu hình đã nghiệm thu; dùng Cơ bản',
@@ -221,14 +226,10 @@ def ai_status_text(status: AIStatus) -> str:
 
 
 def ai_capability_text(profile: PlayStyle) -> str:
-    if profile is PlayStyle.DEMON_AEGIS_FARM:
-        return ('Suy luận thử nghiệm: Khiên, pet thường/không tiến hóa/nội tại, '
-            '4 Kiếm hiệu dụng, Solo Lieyun77 và tài khoản/đồ đã nghiệm thu. '
-            'Cấu hình hoặc dữ liệu khác dùng Cơ bản.')
-    if profile is PlayStyle.BU_WIN:
-        return "Bú win / Coop: shadow chưa được kiểm chứng; giữ Cơ bản và không tạo worker."
-    return ("Shadow thử nghiệm: chỉ SWAP có đủ dữ liệu xuất bản. "
-            "Skill/thẻ và mô hình game còn thiếu sẽ được báo chưa hỗ trợ; Cơ bản vẫn xử lý.")
+    return ("Mục tiêu lấy từ lối chơi đang chọn: " + PLAY_STYLE_LABELS[profile] + ". "
+        "AI dùng chung một bộ so sánh; cài đặt chiến thuật là mục tiêu tham khảo. "
+        "Hiệu ứng hoặc thời gian của hành động chưa đủ dữ liệu sẽ giữ Cơ bản. "
+        "Demon Farm lấy Viên mục tiêu từ Tùy chọn: Khiên/Máu/Mana/Hút/Nộ.")
 
 
 def background_click_clears_entry_focus(widget_class: str) -> bool:
@@ -1234,16 +1235,6 @@ class DesktopApplication:
         self.ai_feedback_var = tk.StringVar(value="")
         ai_frame = ttk.LabelFrame(ai_outer, text="AI / Suy luận", padding=12)
         ai_frame.pack(fill=tk.X)
-        self.ai_basic_widget = ttk.Radiobutton(
-            ai_frame, text="Cơ bản (mặc định)", variable=self.intelligence,
-            value=INTELLIGENCE_LABELS[Intelligence.BASIC], command=self._ai_mode_selected)
-        self.ai_basic_widget.pack(anchor=tk.W)
-        self._config_widgets.append((self.ai_basic_widget, 'normal'))
-        self.ai_reasoning_widget = ttk.Radiobutton(
-            ai_frame, text="Suy luận Demon Farm — Khiên (thử nghiệm)", variable=self.intelligence,
-            value=INTELLIGENCE_LABELS[Intelligence.REASONING], state="disabled",command=self._ai_mode_selected)
-        self.ai_reasoning_widget.pack(anchor=tk.W)
-        self._config_widgets.append((self.ai_reasoning_widget, 'disabled'))
         ttk.Label(ai_frame, text=AI_SELECTION_HELP, wraplength=400).pack(anchor=tk.W, pady=(4, 12))
         self.ai_shadow_widget = ttk.Checkbutton(
             ai_frame, text="Bật chẩn đoán shadow thử nghiệm", variable=self.ai_shadow_enabled)
@@ -1316,17 +1307,18 @@ class DesktopApplication:
             ),
             editable_state="disabled",
         )
-        preference_field(
+        self.intelligence_label, self.intelligence_widget = preference_field(
             row=2,
             label="Độ thông minh",
             widget=ttk.Combobox(
                 preferences_frame,
                 textvariable=self.intelligence,
-                values=(INTELLIGENCE_LABELS[Intelligence.BASIC],),
-                state="disabled",
+                values=tuple(INTELLIGENCE_LABELS.values()),
+                state="readonly",
             ),
-            editable_state="disabled",
+            editable_state="readonly",
         )
+        self.intelligence_widget.bind("<<ComboboxSelected>>", self._intelligence_selected)
         for row, label, name, variable, labels, visible, supported in (
             (3, "Pet của tôi", "main_pet", self.main_pet, MAIN_PET_LABELS,
              DESKTOP_MAIN_PET_OPTIONS, SUPPORTED_MAIN_PETS),
@@ -2168,7 +2160,7 @@ class DesktopApplication:
             self.intelligence.set(INTELLIGENCE_LABELS[
                 Intelligence.REASONING if config.ai.reasoning_enabled else Intelligence.BASIC])
 
-    def _ai_mode_selected(self) -> None:
+    def _intelligence_selected(self, _event=None) -> None:
         reasoning = intelligence_from_display(self.intelligence.get()) is Intelligence.REASONING
         if reasoning:
             self.ai_shadow_enabled.set(False)
@@ -2195,10 +2187,12 @@ class DesktopApplication:
 
     def _save_ai_settings(self) -> None:
         try:
-            reasoning = intelligence_from_display(self.intelligence.get()) is Intelligence.REASONING
+            current = self.view_model.control_plane.snapshot().config
+            # AI settings must not commit an unsaved intelligence choice from Options.
+            reasoning = current.ai.reasoning_enabled
             ai = AISettings.from_strings("true" if self.ai_shadow_enabled.get() and not reasoning else "false",
                                          self.ai_budget_ms.get(), "true" if reasoning else "false")
-            config = replace(self.view_model.control_plane.snapshot().config, ai=ai)
+            config = replace(current, ai=ai)
             self.view_model.control_plane.update_config(config)
             warning = self._persist_preferences(config)
             self.ai_feedback_var.set("Đã lưu; áp dụng khi Bắt đầu/Tiếp tục." +
@@ -2241,7 +2235,7 @@ class DesktopApplication:
             "tool_sound_enabled": (
                 "true" if self.tool_sound_enabled.get() else "false"
             ),
-            "ai_shadow_enabled": ("true" if self.ai_shadow_enabled.get() else "false")
+            "ai_shadow_enabled": ("true" if self.ai_shadow_enabled.get() and not reasoning else "false")
                 if hasattr(self, "ai_shadow_enabled") else "false",
             "ai_budget_ms": self.ai_budget_ms.get() if hasattr(self, "ai_budget_ms") else "4000",
             "ai_reasoning_enabled": "true" if reasoning else "false",
@@ -3130,14 +3124,7 @@ class DesktopApplication:
             except ValueError:
                 ai_profile = snapshot.config.play_style
             self.ai_capability_var.set(ai_capability_text(ai_profile))
-            from .reasoning_ui_scope import ui_reasoning_scope_reason
-            try:
-                # Shadow is cleared when the operator selects reasoning.
-                ai_eligible = ai_draft is not None and ui_reasoning_scope_reason(replace(ai_draft,
-                    ai=replace(ai_draft.ai,shadow_enabled=False))) is None
-            except (ValueError,TypeError):
-                ai_eligible = False
-            self.ai_reasoning_widget.configure(state='normal' if config_editable and ai_eligible else 'disabled')
+            self.intelligence_widget.configure(state='readonly' if config_editable else 'disabled')
             self.ai_shadow_widget.configure(state='normal' if config_editable and
                 intelligence_from_display(self.intelligence.get()) is Intelligence.BASIC else 'disabled')
             self._render_operator_log()

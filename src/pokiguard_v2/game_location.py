@@ -20,11 +20,11 @@ _VERSIONED_NAME = re.compile(
 )
 _LEGACY_NAMES = frozenset({"pokiguard.exe", "petpuzzle.exe"})
 
-# Runtime layouts are verified only for the exact current 1.7.4-b10 binary.
+# Runtime layouts are verified only for the exact current 1.7.4-b15 binary.
 # Future executable names may still resolve in Settings, but attachment must
 # fail closed until their GameAssembly fingerprint is reverse-verified.
 SUPPORTED_GAME_ASSEMBLY_SHA256 = frozenset(
-    {"51eaeff77252e7119647a590c534196093b36e752115b500672f24da758f1064"}
+    {"18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea"}
 )
 
 

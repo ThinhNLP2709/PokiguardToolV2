@@ -52,13 +52,14 @@ class Binding:
 
     def __post_init__(self):
         from .reasoning_snapshot import PROFILES, SourceIdentity, strict_json_loads
+        from .reasoning_common_problem import PROFILES as COMMON_PROFILES
         for value in (self.snapshot_id, self.config_hash):
             if type(value) is not str or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
                 raise ValueError("SHA-256 binding required")
         if type(self.source_json) is not str or len(self.source_json) > 4096:
             raise ValueError("invalid source identity")
         SourceIdentity.from_dict(strict_json_loads(self.source_json))
-        if self.profile not in PROFILES or self.clock_domain != "host.perf_counter_ns":
+        if self.profile not in PROFILES|COMMON_PROFILES or self.clock_domain != "host.perf_counter_ns":
             raise ValueError("unsupported profile/clock domain")
 
 
@@ -74,7 +75,8 @@ class RunnerJob:
 
     def __post_init__(self):
         from .reasoning_snapshot import ReasoningSnapshot, canonical_json
-        if (type(self.snapshot) is not ReasoningSnapshot or type(self.binding) is not Binding
+        from .reasoning_common_problem import CommonProblem
+        if (type(self.snapshot) not in (ReasoningSnapshot,CommonProblem) or type(self.binding) is not Binding
                 or type(self.generation) is not int or self.generation < 0
                 or type(self.job_id) is not str or not 1 <= len(self.job_id) <= 128
                 or type(self.created_ns) is not int or type(self.deadline_ns) is not int
@@ -82,6 +84,8 @@ class RunnerJob:
                 or type(self.refinement) is not bool):
             raise ValueError("invalid immutable job")
         self.snapshot.board_state()
+        if type(self.snapshot) is CommonProblem and self.refinement:
+            raise ValueError('common chooser owns its bounded search; legacy refinement is separate')
         if (self.binding.snapshot_id != self.snapshot.snapshot_id
                 or self.binding.config_hash != self.snapshot.intent.config_hash
                 or self.binding.source_json != canonical_json(self.snapshot.source.to_dict())
@@ -178,7 +182,29 @@ def _decision_summary(snapshot, result, refinement):
         omitted_candidate_summaries=max(0,len(result.scores)-len(candidates)),
         refinement=refinement, controller_input_sent="NOT_PUBLISHED", worker_input_sent=False,
         dispatch_preflight_ack="NOT_MEASURED", mode="OFFLINE_ONLY")
-    d2 = snapshot.recorded.plain().get('d2_actions')
+    from .reasoning_common_problem import CommonProblem,VERSION as COMMON_VERSION
+    common=type(snapshot) is CommonProblem
+    if common:
+        summary['common_engine']=COMMON_VERSION
+        summary['common_diagnostics']=result.diagnostics.plain()
+        summary['common_effect_model']=snapshot.facts.plain().get('demon_effect')
+        for candidate in candidates:
+            score=by_id.get(candidate['candidate_id'])
+            if score is not None:
+                context=score.details.plain()
+                tactical=context.get('tactical_context',{})
+                candidate['tactical_context']=dict(
+                    phase=tactical.get('objective_phase'),resources=tactical.get('resource_value'),
+                    self_hp_fraction=tactical.get('self_hp_fraction'),boss_hp_fraction=tactical.get('boss_hp_fraction'),
+                    boss_mana_fraction=tactical.get('boss_mana_fraction'),
+                    boss_rage_reference_fraction=tactical.get('boss_rage_reference_fraction'),
+                    protection=tactical.get('protection_proxy'),reply=tactical.get('boss_reply_proxy'),
+                    nominal_sword_reference=context.get('nominal_sword_reference'),
+                    damage_context=context.get('damage_context'),self_heal_amount=tactical.get('self_heal_amount'))
+            candidate['status']='COMMON_CONDITIONAL_PROXY'
+            candidate['future_setup']=('COMMON_BOUNDED_CONDITIONAL_NOT_GLOBAL_OPTIMUM'
+                if result.diagnostics.plain().get('stage')=='LOOKAHEAD_COMPLETE' else 'NOT_PROMOTED')
+    d2 = None if common else snapshot.recorded.plain().get('d2_actions')
     if d2 is not None:
         summary.update(action_scope=d2['version'], conditional_perfect=d2.get('conditional_perfect',True),
             effects_excluded=d2['exclusions'], settings_are_advisory=True,
@@ -197,18 +223,26 @@ def _decision_summary(snapshot, result, refinement):
 def _reply_for(wire, cancel):
     """Child-only imports. R2 remains diagnostics and cannot change the R1 proposal."""
     from .reasoning_snapshot import ReasoningSnapshot
+    from .reasoning_common_problem import CommonProblem,SCHEMA as COMMON_SCHEMA
     from .reasoning_planner import plan
     start = time.perf_counter_ns()
-    snapshot = ReasoningSnapshot.from_dict(wire["snapshot"])
+    common=wire['snapshot'].get('schema')==COMMON_SCHEMA
+    snapshot=(CommonProblem if common else ReasoningSnapshot).from_dict(wire["snapshot"])
     binding = wire["binding"]
     from .reasoning_snapshot import canonical_json
     if (snapshot.snapshot_id != binding["snapshot_id"] or snapshot.intent.config_hash != binding["config_hash"]
             or canonical_json(snapshot.source.to_dict()) != binding["source_json"]
             or snapshot.intent.profile != binding["profile"] or binding["clock_domain"] != "host.perf_counter_ns"):
         raise ValueError("snapshot/config binding mismatch")
-    result = plan(snapshot)
+    if common:
+        from .reasoning_common_planner import plan_common,CommonLimits
+        # Reserve the rest of this same absolute deadline for host verification.
+        remaining=max(0,wire['budget_ns']-(time.perf_counter_ns()-start))
+        result=plan_common(snapshot,CommonLimits(duration_ms=min(1800,remaining/1e6*.45)),
+            cancelled=cancel.is_set)
+    else:result = plan(snapshot)
     refinement = None
-    if wire["refinement"] and not cancel.is_set():
+    if wire["refinement"] and not common and not cancel.is_set():
         from .reasoning_refinement import Limits, refine
         local_deadline = time.perf_counter_ns() / 1e6 + max(0, wire["budget_ns"] - (time.perf_counter_ns() - start)) / 1e6
         refined = refine(snapshot, result, Limits(deadline_ms=local_deadline),
@@ -267,11 +301,16 @@ def _validate_reply(raw: bytes, job: RunnerJob) -> Reply:
     if (value["disposition"] == "USE_CANDIDATE") != (action is not None):
         raise ValueError("inconsistent proposal disposition")
     if action is not None:
+        from .reasoning_common_problem import CommonProblem
+        common=type(job.snapshot) is CommonProblem
+        if common:
+            from .reasoning_common_planner import action_is_eligible
+            if not action_is_eligible(job.snapshot,action):raise ValueError('common proposal not in current legal model')
         from .reasoning_full_action_planner import VERSION as full_action_version
         from .reasoning_mega import VERSION as mega_action_version
-        action_version=job.snapshot.recorded.plain().get('d2_actions', {}).get('version')
+        action_version=None if common else job.snapshot.recorded.plain().get('d2_actions', {}).get('version')
         if action.family not in {"swap", "cast", "pet_skill"} and not (
-                action.family == 'pass' and (action_version==full_action_version or
+                action.family == 'pass' and (common or action_version==full_action_version or
                     (action_version==mega_action_version and job.binding.profile=='mega_icarus_spam_skill'))):
             raise ValueError("unsupported proposal family")
         if action.move and (any(not 0 <= n < 8 for p in (action.move.first, action.move.second) for n in p)

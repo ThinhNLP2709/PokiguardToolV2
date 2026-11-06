@@ -83,8 +83,8 @@ class IntentAndFallbackTests(unittest.TestCase):
         for cfg in (config(boss_id='1289'),config()):
             self.assertIsNone(create_ui_reasoning_session(cfg,paths=None,game_executable=None,
                 directory=Path('unused'),observer=lambda status,*_:events.append(status),profile_loader=loader))
-        self.assertEqual(1,loader.call_count)
-        self.assertEqual(['UI_REASONING_TARGET_UNSUPPORTED','UI_REASONING_PROFILE_MISSING'],[s.reason for s in events])
+        self.assertEqual(2,loader.call_count)
+        self.assertEqual(['UI_REASONING_PROFILE_MISSING']*2,[s.reason for s in events])
 
     def test_normal_controller_runs_same_basic_arguments_on_setup_failure(self):
         with tempfile.TemporaryDirectory() as d:
@@ -209,32 +209,44 @@ class ToggleUITests(unittest.TestCase):
         from tests.test_reasoning_settings import OfflineAIUiTests
         OfflineAIUiTests.setUp(self)
 
-    def test_supported_radio_save_and_reload_keep_gameplay_basic(self):
+    def test_options_intelligence_save_and_reload_keep_basic_incumbent(self):
         cfg=config(ai=AISettings())
         from pokiguard_v2.desktop_ui import PLAY_STYLE_LABELS
         self.app.play_style.set(PLAY_STYLE_LABELS[cfg.play_style])
         self.plane.update_config(cfg);self.app._display_pet_config(cfg);self.app._display_ai_config(cfg)
         self.app._render()
-        self.assertNotIn('disabled',self.app.ai_reasoning_widget.state())
-        self.app.ai_shadow_enabled.set(True);self.app.ai_reasoning_widget.invoke();self.app._save_ai_settings()
+        self.assertNotIn('disabled',self.app.intelligence_widget.state())
+        self.app.ai_shadow_enabled.set(True);self.app.intelligence.set('Suy luận')
+        self.app._intelligence_selected();self.app._validate_draft()
         saved=self.plane.snapshot().config
         self.assertTrue(saved.ai.reasoning_enabled);self.assertFalse(saved.ai.shadow_enabled)
         self.assertIs(saved.intelligence,Intelligence.BASIC)
         self.assertEqual('true',self.app._draft_fields()['ai_reasoning_enabled'])
         self.app._display_ai_config(saved)
         self.assertEqual('Suy luận',self.app.intelligence.get())
-        self.app.ai_basic_widget.invoke();self.app._save_ai_settings()
+        self.app.intelligence.set('Cơ bản');self.app._intelligence_selected();self.app._validate_draft()
         self.assertFalse(self.plane.snapshot().config.ai.reasoning_enabled)
 
-    def test_other_gem_and_active_run_lock_radio(self):
+    def test_other_gem_allows_intelligence_choice_but_active_run_still_locks_it(self):
         cfg=config(demon_target_gem=DemonTargetGem.HEALTH,ai=AISettings())
         from pokiguard_v2.desktop_ui import PLAY_STYLE_LABELS
         self.app.play_style.set(PLAY_STYLE_LABELS[cfg.play_style])
         self.plane.update_config(cfg);self.app._display_pet_config(cfg);self.app._display_ai_config(cfg);self.app._render()
-        self.assertIn('disabled',self.app.ai_reasoning_widget.state())
+        self.assertNotIn('disabled',self.app.intelligence_widget.state())
         self.app._lock_accepted_run_config(config())
-        self.assertIn('disabled',self.app.ai_reasoning_widget.state())
-        self.assertIn('disabled',self.app.ai_basic_widget.state())
+        self.assertIn('disabled',self.app.intelligence_widget.state())
+
+    def test_ai_settings_cannot_commit_unsaved_intelligence_or_change_play_style(self):
+        cfg=config(ai=AISettings())
+        self.plane.update_config(cfg);self.app._display_pet_config(cfg);self.app._display_ai_config(cfg)
+        self.app.intelligence.set('Suy luận');self.app._intelligence_selected()
+        self.app.ai_budget_ms.set('6000');self.app._save_ai_settings()
+        saved=self.plane.snapshot().config
+        self.assertFalse(saved.ai.reasoning_enabled);self.assertEqual(6000,saved.ai.budget_ms)
+        self.assertEqual(cfg.play_style,saved.play_style)
+        self.assertEqual(('Cơ bản','Suy luận'),tuple(self.app.intelligence_widget['values']))
+        self.assertFalse(hasattr(self.app,'ai_basic_widget'))
+        self.assertFalse(hasattr(self.app,'ai_reasoning_widget'))
 
 
 class ProfileReviewTests(unittest.TestCase):
@@ -265,6 +277,18 @@ class ProfileReviewTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):main(['--out',str(cls.profile.parent),'--qualification',str(qpath)])
         cls.exe=cls.root/'test-only.exe';cls.exe.write_bytes(b'ISOLATED_TEST_GAME_NOT_REAL')
         data=json.loads(cls.profile.read_text());data['game_executable_sha256']=hashlib.sha256(cls.exe.read_bytes()).hexdigest()
+        from pokiguard_v2.reasoning_calibration_review import document
+        from pokiguard_v2.reasoning_ui_profile import UI_DELTA
+        historical=document(cls.profile.parent,data['base_source'])['files']
+        cls.synthetic_files=dict(historical)
+        current=source_files(ROOT)
+        for name in UI_DELTA:cls.synthetic_files[name]=current[name]
+        cls.synthetic_source=digest(cls.synthetic_files)
+        data['source_sha256']=cls.synthetic_source
+        qp=cls.profile.parent/data['qualification']['path']
+        isolated_q=json.loads(qp.read_text('utf-8'));isolated_q['source_sha256']=cls.synthetic_source
+        qp.write_text(json.dumps(isolated_q),encoding='utf-8')
+        data['qualification']['sha256']=hashlib.sha256(qp.read_bytes()).hexdigest()
         cls.original=json.dumps(data).encode();cls.profile.write_bytes(cls.original)
 
     def setUp(self):
@@ -273,6 +297,9 @@ class ProfileReviewTests(unittest.TestCase):
         data=json.loads(self.original)
         self.validate=patch('pokiguard_v2.game_location.validate_supported_game_assembly',return_value=data['game_build_sha256'])
         self.validate.start();self.addCleanup(self.validate.stop)
+        self.identity=patch('pokiguard_v2.reasoning_ui_profile.runtime_source_identity',
+            return_value=(self.synthetic_source,dict(self.synthetic_files),None))
+        self.identity.start();self.addCleanup(self.identity.stop)
 
     def load(self,cfg=None):
         from pokiguard_v2.reasoning_ui_profile import load_ui_authority

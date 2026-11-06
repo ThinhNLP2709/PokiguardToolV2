@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from pokiguard_v2.native_card_ui import (
     NativeCardUiReader, NativeGeometryBusyError, _COMPONENT_GO_ICALL, _COMPONENT_GO_RVA,
-    _NATIVE_SIGNATURES, _UNMARSHAL_SIGNATURE,
+    _NATIVE_SIGNATURES, _UNMARSHAL_SIGNATURE, _TRANSFORM_DATA_LOCAL_TRS_OFFSET,
 )
 from pokiguard_v2.combat_cards import (
     BOARD_CARD_CONTAINER_OFFSET,
@@ -117,7 +117,7 @@ class NativeFixture:
         node.trs, node.data = trs, data
         self.q(node.transform + 0x40, access)
         self.q(access, data)
-        self.q(data + 0x20, trs)
+        self.q(data + _TRANSFORM_DATA_LOCAL_TRS_OFFSET, trs)
         self.memory.map(trs, struct.pack("<12f", *pos, 0, 0, 0, 0, 1, 1, 1, 1, 0))
         node.child_array = self.alloc()
         self.q(node.transform + 0x50, node.child_array)
@@ -176,13 +176,26 @@ class NativeFixture:
 
 
 class NativeCardUiTests(unittest.TestCase):
-    def test_b12_gameassembly_bridge_anchors_are_pinned(self):
-        self.assertEqual(_COMPONENT_GO_ICALL, 0x3FE1650)
+    def test_b14_transform_array_uses_18_even_when_old_20_is_invalid(self):
+        self.assertEqual(_TRANSFORM_DATA_LOCAL_TRS_OFFSET, 0x18)
+        for node in [self.fixture.root, self.fixture.container, *self.fixture.cards]:
+            self.fixture.q(node.data + 0x20, 3)
+        self.assertEqual(len(self.hand().entries), 5)
+
+    def test_old_transform_array_alone_cannot_authorize_geometry(self):
+        node = self.fixture.container
+        self.fixture.q(node.data + 0x18, 0)
+        self.fixture.q(node.data + 0x20, node.trs)
+        with self.assertRaises(LayoutValidationError):
+            self.hand()
+
+    def test_b15_gameassembly_bridge_anchors_are_pinned(self):
+        self.assertEqual(_COMPONENT_GO_ICALL, 0x456E020)
         self.assertEqual(
             _UNMARSHAL_SIGNATURE,
             (
-                0x19740BF,
-                "4885db7433f6c301740d488bcbe8df888afe488bd8eb03488b1b",
+                0x1BD423C,
+                "f6c301740d488bcbe8173d67fe488bd8eb03488b1b4885db",
             ),
         )
 

@@ -4,11 +4,17 @@ import json
 import math
 import os
 import tempfile
+import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 from .input_delivery import InputDeliveryMode
 from .pet_configuration import GameplayConfig
+
+
+# Retry only the final atomic replacement, never rewrite/delete the old file.
+# Windows readers can briefly deny delete sharing; total added wait is 0.51 s.
+_CHECKPOINT_REPLACE_DELAYS = (0.01, 0.02, 0.04, 0.08, 0.16, 0.20)
 
 
 CHECKPOINT_SCHEMA = "pokiguard.farm_checkpoint.v3"
@@ -123,7 +129,7 @@ class ResumeDecision:
 
 
 def write_checkpoint(path: Path, payload: CheckpointPayload) -> None:
-    """Atomic write: temp file in same dir → flush → fsync → os.replace."""
+    """Atomic write with bounded retries for Windows destination sharing conflicts."""
     _validate_payload(payload)
     directory = path.parent
     directory.mkdir(parents=True, exist_ok=True)
@@ -133,7 +139,15 @@ def write_checkpoint(path: Path, payload: CheckpointPayload) -> None:
             json.dump(_payload_to_dict(payload), handle, separators=(",", ":"))
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp_path, str(path))
+        for attempt in range(len(_CHECKPOINT_REPLACE_DELAYS) + 1):
+            try:
+                os.replace(tmp_path, str(path))
+                break
+            except OSError as exc:
+                if (getattr(exc, "winerror", None) not in {5, 32, 33}
+                        or attempt == len(_CHECKPOINT_REPLACE_DELAYS)):
+                    raise
+                time.sleep(_CHECKPOINT_REPLACE_DELAYS[attempt])
     except Exception:
         try:
             os.unlink(tmp_path)

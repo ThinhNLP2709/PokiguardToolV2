@@ -161,6 +161,10 @@ def apply_action(baseline, action, state, packet, candidate=None):
 
 
 def publish_context_safely(adapter, state, config, baseline, capability, history, owner_allowed, pass_owner_allowed=True):
+    from .reasoning_common_selection import CommonSelectionBridge
+    if type(adapter) is CommonSelectionBridge:
+        adapter.action_context = context_packet(state, config, baseline, capability, history, owner_allowed, pass_owner_allowed)
+        return
     if not is_full_action(getattr(adapter,'pilot_authority',None)):
         return
     try:

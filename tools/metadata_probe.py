@@ -17,7 +17,7 @@ from typing import Iterable
 EXPECTED_MAGIC = 0xFAB11BAF
 # Compatibility export retained for the original Phase 1 fixture.
 EXPECTED_VERSION = 31
-SUPPORTED_VERSIONS = frozenset({31, 110})
+SUPPORTED_VERSIONS = frozenset({31, 110, 111})
 HEADER_SIZE = 8
 DEFAULT_RELATIVE_METADATA = Path(
     "PetPuzzle_Data/il2cpp_data/Metadata/global-metadata.dat"

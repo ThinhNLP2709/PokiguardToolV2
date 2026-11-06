@@ -52,7 +52,7 @@ def put_pointer(buffer: bytearray, offset: int, value: int) -> None:
 
 class Il2CppExternalResolverTests(unittest.TestCase):
     MODULE_BASE = 0x0000000180000000
-    MODULE_SIZE = 0x04000000
+    MODULE_SIZE = 0x04ADC000
     CLASS = 0x0000020000000000
     STATIC_FIELDS = 0x0000021000000000
     BOARD = 0x0000022000000000
@@ -85,12 +85,16 @@ class Il2CppExternalResolverTests(unittest.TestCase):
         self.assertFalse(is_canonical_user_pointer(0x1234))
         self.assertEqual(checked_address(self.CLASS, 0xB8), self.CLASS + 0xB8)
 
-    def test_b12_coop_player_stats_typeinfo_does_not_use_pvp_class(self) -> None:
-        # reverse/reverse_1.7.4-b12/cpp/appdata/il2cpp-types-ptr.h:
-        #   0x03D6E4A0 -> Active_PlayerStats
-        #   0x03D746C8 -> ActivePVP_PlayerStats
-        self.assertEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x03D6E4A0)
-        self.assertNotEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x03D746C8)
+    def test_b14_root_rejected_if_loaded_module_is_too_small(self) -> None:
+        resolver = Il2CppExternalResolver(FakeMemory(), self.MODULE_BASE, 0x04000000)
+        self.assertEqual(resolver.resolve_singleton(BOARD_SINGLETON).status, "anchor_outside_module")
+
+    def test_b15_coop_player_stats_typeinfo_does_not_use_pvp_class(self) -> None:
+        # reverse/reverse_1.7.4-b15/script.json:
+        #   0x042AC860 -> Active_PlayerStats
+        #   0x042B4480 -> ActivePVP_PlayerStats
+        self.assertEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x042AC860)
+        self.assertNotEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x042B4480)
 
     def test_resolves_board_through_verified_static_chain(self) -> None:
         memory = FakeMemory()

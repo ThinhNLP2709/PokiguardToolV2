@@ -16,6 +16,15 @@ from tools.metadata_probe import (
 
 
 class MetadataProbeTests(unittest.TestCase):
+    def test_metadata_111_header_supported_but_future_or_bad_magic_invalid(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "global-metadata.dat"
+            for magic, version, valid in ((EXPECTED_MAGIC, 111, True),
+                                           (EXPECTED_MAGIC, 112, False), (0, 111, False)):
+                with self.subTest(magic=magic, version=version):
+                    path.write_bytes(struct.pack("<II", magic, version))
+                    self.assertEqual(parse_metadata(path).valid, valid)
+
     def test_parses_little_endian_header_and_size(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "global-metadata.dat"

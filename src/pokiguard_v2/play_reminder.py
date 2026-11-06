@@ -1,4 +1,4 @@
-"""Read-only ownership proof for b12's Poki.Health.PlayReminder.
+"""Read-only ownership proof for b14's Poki.Health.PlayReminder.
 
 IsOpen reads Canvas.enabled, NOT GameObject.activeSelf. Hide only disables
 that Canvas. No engine method is invoked here. See the native evidence in
@@ -22,13 +22,14 @@ from .native_card_ui import NativeButtonGeometry, NativeCardUiReader
 from .unity_ui_layout import transform_for_capture
 
 
-PLAY_REMINDER_TYPE_INFO_RVA = 0x3DD5B50
+PLAY_REMINDER_TYPE_INFO_RVA = 0x42C4110
 CANVAS_OFFSET = 0x30
 BOARD_OFFSET = 0x48
 REMINDER_COUNT_OFFSET = 0x24
 # Behaviour.get_enabled_Injected's native thunk: mov rax,[rcx]; jmp [rax+C8].
 _ENABLED_VIRTUAL_SLOT = 0xC8
-_CANVAS_ENABLED_GETTER_RVA = 0xCD630
+_BEHAVIOUR_ENABLED_THUNK_RVA = 0xFDFF0
+_CANVAS_ENABLED_GETTER_RVA = 0xD5590
 _CANVAS_ENABLED_GETTER_CODE = bytes.fromhex("807930000f95c0c3")
 
 
@@ -60,14 +61,14 @@ def _canvas_enabled(reader: NativeCardUiReader, canvas: int) -> bool:
     """Follow and verify the observed Canvas virtual getter before reading +30.
 
     Read-only observation of LoginScreen._backCanvas and disk disassembly agree:
-    UnityPlayer+CD630 = cmp byte [rcx+30],0; setne al; ret.
+    UnityPlayer+D5590 = cmp byte [rcx+30],0; setne al; ret.
     """
     if reader._class_identity(canvas) != ("Canvas", "UnityEngine"):
         raise LayoutValidationError("PlayReminder._canvas is not a Canvas")
     native = reader._pointer(canvas + 0x10)
     if reader._managed(native) != canvas:
         raise LayoutValidationError("PlayReminder Canvas roundtrip mismatch")
-    thunk = reader.unity_base + 0x114430
+    thunk = reader.unity_base + _BEHAVIOUR_ENABLED_THUNK_RVA
     if reader._read(thunk, 10) != bytes.fromhex("488b0148ffa0c8000000"):
         raise LayoutValidationError("Behaviour enabled virtual thunk changed")
     vtable = reader._pointer(native)

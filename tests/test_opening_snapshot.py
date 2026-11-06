@@ -372,19 +372,19 @@ class OpeningSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot.sequence, 9)
         self.assertEqual(len(snapshot.cells), 64)
 
-    def test_b5_preparsed_board_combines_typed_cells_with_raw_sequence(self) -> None:
+    def test_b15_preparsed_board_combines_typed_cells_with_raw_sequence(self) -> None:
         builder = SnapshotBuilder()
         message_class = builder.alloc(8)
         event = builder.string("MATCH_MOVE_RES")
         match_id = builder.string("M_test")
         board = builder.managed_board()
-        message = builder.alloc(0x4B1)
-        raw = bytearray(0x4B1)
+        message = builder.alloc(0x4C9)
+        raw = bytearray(0x4C9)
         struct.pack_into("<Q", raw, 0, message_class)
         struct.pack_into("<Q", raw, 0x40, event)
         struct.pack_into("<Q", raw, 0x100, match_id)
-        struct.pack_into("<Q", raw, 0x4A8, board)
-        raw[0x4B0] = 1
+        struct.pack_into("<Q", raw, 0x4C0, board)
+        raw[0x4C8] = 1
         builder.memory.map(message, raw)
 
         snapshot = read_preparsed_board_snapshot(
@@ -401,18 +401,18 @@ class OpeningSnapshotTests(unittest.TestCase):
         self.assertEqual(len(snapshot.cells), 64)
         self.assertEqual(snapshot.provenance, "preBoard+raw.matchPayload.srvSeq")
 
-    def test_b5_preparsed_board_requires_ready(self) -> None:
+    def test_b15_preparsed_board_requires_ready(self) -> None:
         builder = SnapshotBuilder()
         message_class = builder.alloc(8)
         event = builder.string("MATCH_MOVE_RES")
         match_id = builder.string("M_test")
         board = builder.managed_board()
-        message = builder.alloc(0x4B1)
-        raw = bytearray(0x4B1)
+        message = builder.alloc(0x4C9)
+        raw = bytearray(0x4C9)
         struct.pack_into("<Q", raw, 0, message_class)
         struct.pack_into("<Q", raw, 0x40, event)
         struct.pack_into("<Q", raw, 0x100, match_id)
-        struct.pack_into("<Q", raw, 0x4A8, board)
+        struct.pack_into("<Q", raw, 0x4C0, board)
         builder.memory.map(message, raw)
 
         with self.assertRaisesRegex(LayoutValidationError, "not ready"):

@@ -11,6 +11,7 @@ from pokiguard_v2.farm_checkpoint import CHECKPOINT_SCHEMA
 from pokiguard_v2.farm_run import (
     FarmRun,
     FarmRunArtifactWriter,
+    FarmRunLimits,
     FarmRunState,
     FarmRunStopReason,
 )
@@ -244,6 +245,50 @@ class CheckpointPathTests(unittest.TestCase):
             self.assertEqual(
                 _checkpoint_path(directory), directory / "checkpoint.json"
             )
+
+    def test_repeated_final_checkpoint_survives_transient_windows_replace_denial(self) -> None:
+        import errno
+        import os
+        from tests.test_farm_checkpoint import start_run, enter, finish_normal, session
+        from pokiguard_v2.farm_checkpoint import load_checkpoint
+        run = start_run(FarmRunLimits(1, 1, 1), control=True)
+        enter(run, session(1));finish_normal(run)
+        with tempfile.TemporaryDirectory() as tmp:
+            writer = FarmRunArtifactWriter.create(Path(tmp), run.farm_run_id)
+            self.assertTrue(_persist_checkpoint(run, writer, finalized_status="COMPLETED"))
+            real_replace = os.replace;calls = []
+            def busy_once(source, target):
+                calls.append((source, target))
+                if len(calls) == 1:
+                    error = PermissionError(errno.EACCES, "temporary Windows destination lock")
+                    error.winerror = 5
+                    raise error
+                return real_replace(source, target)
+            with patch("pokiguard_v2.farm_checkpoint.os.replace", side_effect=busy_once), patch("pokiguard_v2.farm_checkpoint.time.sleep"):
+                self.assertTrue(_persist_checkpoint(run, writer, finalized_status="COMPLETED"))
+            checkpoint = load_checkpoint(_checkpoint_path(writer.directory))
+            events = [json.loads(line) for line in (writer.directory / "events.jsonl").read_text("utf-8").splitlines()]
+        self.assertEqual(checkpoint.checkpoint_seq, 2)
+        self.assertEqual(checkpoint.finalized_status, "COMPLETED")
+        self.assertEqual(checkpoint.completed_matches, 1)
+        self.assertEqual(run.stop_reason, FarmRunStopReason.FARM_TARGET_COMPLETED)
+        self.assertEqual([e["event"] for e in events], ["checkpoint_written", "checkpoint_written"])
+
+    def test_persistent_windows_checkpoint_failure_still_stops_before_farming(self) -> None:
+        import errno
+        run = FarmRun(FarmTarget("1289", None))
+        self.assertTrue(run.observe_initial_lobby(BossLobbyState.BOSS_LOBBY))
+        error = PermissionError(errno.EACCES, "persistent Windows destination lock")
+        error.winerror = 5
+        with tempfile.TemporaryDirectory() as tmp:
+            writer = FarmRunArtifactWriter.create(Path(tmp), run.farm_run_id)
+            with patch("pokiguard_v2.farm_checkpoint.os.replace", side_effect=error), patch("pokiguard_v2.farm_checkpoint.time.sleep"):
+                self.assertFalse(_persist_checkpoint(run, writer))
+            events = [json.loads(line) for line in (writer.directory / "events.jsonl").read_text("utf-8").splitlines()]
+            self.assertFalse(_checkpoint_path(writer.directory).exists())
+        self.assertEqual(run.stop_reason, FarmRunStopReason.CHECKPOINT_INVALID)
+        self.assertEqual([e["event"] for e in events], ["checkpoint_write_failed"])
+        self.assertIn("persistent Windows destination lock", events[0]["error"])
 
     def test_checkpoint_write_failure_safe_stops_before_farming(self) -> None:
         run = FarmRun(FarmTarget("1289", None))

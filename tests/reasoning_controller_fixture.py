@@ -644,6 +644,7 @@ def controller_trace(path, adapter=None, case='normal', *, controller_module=Non
         args.audition_mode=gameplay_config.audition_mode.value
         args.pet_skill_fire_condition=gameplay_config.pet_skill_fire_condition.value
         args.pet_skill_fire_value=gameplay_config.pet_skill_fire_value
+        args.demon_target_gem=gameplay_config.demon_target_gem.value
     selection = None
     timing = None
     if selection_factory is not None or timing_factory is not None:

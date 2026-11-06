@@ -82,7 +82,7 @@ from pokiguard_v2.live_state import (  # noqa: E402
     EVIDENCED_MULTIPLIERS,
     board_state_hash,
 )
-from pokiguard_v2.native_card_ui import NativeCardUiReader  # noqa: E402
+from pokiguard_v2.native_card_ui import NativeCardUiReader, NativeGeometryBusyError  # noqa: E402
 from pokiguard_v2.foreground_lease_transport import LeaseStatus  # noqa: E402
 from pokiguard_v2.input_delivery import InputDeliveryDomain  # noqa: E402
 from pokiguard_v2.lobby_card_selection import (  # noqa: E402
@@ -343,23 +343,25 @@ def _send_one_entry_retry(
     log: Any,
     artifact_dir: Path,
     interval: float,
+    hotkeys: HotkeyEdges,
 ) -> tuple[bool, str]:
     """Send one farm-authorized retry after the first Start got no response."""
 
     capability = runtime.entry_capability
     if capability is None or not hasattr(capability, "reserve_retry"):
         return False, "ENTRY_RETRY_CAPABILITY_UNAVAILABLE"
-    poll = runtime.provider.poll()
-    if poll.combat_lifecycle is None:
-        return False, "ENTRY_RETRY_LIFECYCLE_UNAVAILABLE"
-    lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
-    resolution = resolve_target(farm_target, lobby.candidates)
-    if not _entry_retry_runtime_valid(
-        lobby,
-        resolution,
-        ready,
-        provider_session=runtime.provider.current_session_key,
-    ):
+    def runtime_rejection() -> str | None:
+        if not runtime.target.is_running():
+            return "ENTRY_RETRY_RUNTIME_CHANGED"
+        poll = runtime.provider.poll()
+        if poll.combat_lifecycle is None:
+            return "ENTRY_RETRY_LIFECYCLE_UNAVAILABLE"
+        lobby = _read_entry_lobby(runtime, poll.combat_lifecycle)
+        resolution = resolve_target(farm_target, lobby.candidates)
+        if _entry_retry_runtime_valid(
+            lobby, resolution, ready, provider_session=runtime.provider.current_session_key
+        ):
+            return None
         _write(
             log,
             "entry_retry_rejected",
@@ -368,22 +370,28 @@ def _send_one_entry_retry(
             resolution=resolution,
             providerSession=runtime.provider.current_session_key,
         )
-        return False, "ENTRY_RETRY_RUNTIME_CHANGED"
+        return "ENTRY_RETRY_RUNTIME_CHANGED"
+
+    rejection = runtime_rejection()
+    if rejection is not None:
+        return False, rejection
     try:
-        first_capture, first_location, first_signature = _capture_proof(
+        _first_capture, first_location, first_signature = _capture_proof_with_retry(
             target=runtime.target,
             executor=runtime.executor,
             binding=runtime.binding,
             button_address=ready.resolution.candidate.entry_control_address,
             require_foreground=_proof_requires_foreground(runtime),
+            busy_geometry_only=True,
         )
         time.sleep(max(interval, 0.14))
-        second_capture, second_location, second_signature = _capture_proof(
+        second_capture, second_location, second_signature = _capture_proof_with_retry(
             target=runtime.target,
             executor=runtime.executor,
             binding=runtime.binding,
             button_address=ready.resolution.candidate.entry_control_address,
             require_foreground=_proof_requires_foreground(runtime),
+            busy_geometry_only=True,
         )
     except RuntimeError as exc:
         _write(log, "entry_retry_rejected", reason=str(exc))
@@ -402,43 +410,37 @@ def _send_one_entry_retry(
             secondSignature=second_signature,
         )
         return False, "ENTRY_RETRY_BUTTON_CHANGED"
-    status = runtime.executor.window_status(runtime.binding)
     permit = None
     click = None
     authorized = True
     lease_result = None
 
     def final_retry_preflight() -> bool:
-        fresh_poll = runtime.provider.poll()
-        if fresh_poll.combat_lifecycle is None:
-            return False
-        fresh_lobby = _read_entry_lobby(runtime, fresh_poll.combat_lifecycle)
-        fresh_resolution = resolve_target(farm_target, fresh_lobby.candidates)
-        if not _entry_retry_runtime_valid(
-            fresh_lobby,
-            fresh_resolution,
-            ready,
-            provider_session=runtime.provider.current_session_key,
-        ):
-            return False
         try:
-            _capture, fresh_location, fresh_signature = _capture_proof(
+            _capture, fresh_location, fresh_signature = _capture_proof_with_retry(
                 target=runtime.target,
                 executor=runtime.executor,
                 binding=runtime.binding,
                 button_address=ready.resolution.candidate.entry_control_address,
                 require_foreground=False,
+                busy_geometry_only=True,
             )
-        except RuntimeError:
+        except RuntimeError as exc:
+            _write(log, "entry_retry_final_proof_rejected", reason=str(exc))
             return False
         return bool(
             fresh_signature == ready.signature
             and fresh_location.normalized_point
             == second_location.normalized_point
+            and runtime_rejection() is None
         )
 
     def send_retry_once() -> bool:
         nonlocal permit, click, authorized
+        _f8_edge, f9_edge = hotkeys.poll()
+        if _entry_emergency_requested(runtime, f9_edge):
+            authorized = False
+            return False
         permit = capability.reserve_retry(
             foreground=True,
             exact_same_target=True,
@@ -504,6 +506,10 @@ def _send_one_entry_retry(
             noBlindRetry=True,
         )
     else:
+        rejection = runtime_rejection()
+        if rejection is not None:
+            return False, rejection
+        status = runtime.executor.window_status(runtime.binding)
         if not status.valid or status.foreground is not True:
             return False, "ENTRY_RETRY_CAPABILITY_DENIED"
         sent_ok = send_retry_once()
@@ -752,6 +758,7 @@ def _capture_proof_with_retry(
     require_foreground: bool,
     attempts: int = 3,
     delay_seconds: float = 0.05,
+    busy_geometry_only: bool = False,
 ) -> tuple[ClientRgbCapture, Any, str]:
     """Retry a transient Unity geometry sample without sending input.
 
@@ -775,6 +782,8 @@ def _capture_proof_with_retry(
                 require_foreground=require_foreground,
             )
         except RuntimeError as exc:
+            if busy_geometry_only and not isinstance(exc.__cause__, NativeGeometryBusyError):
+                raise
             last_error = exc
             if attempt + 1 < attempts:
                 time.sleep(max(0.0, delay_seconds))
@@ -2302,6 +2311,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                         log=log,
                         artifact_dir=artifact_dir,
                         interval=args.interval,
+                        hotkeys=hotkeys,
                     )
                     if retry_sent:
                         entry_deadline = time.monotonic() + args.entry_timeout

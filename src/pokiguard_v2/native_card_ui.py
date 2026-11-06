@@ -1,7 +1,7 @@
-"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b12 card strip.
+"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b15 card strip.
 
 No heap scan and no engine invocation. Offsets below are native-code verified,
-not Cpp2IL managed-field offsets; see docs/phase3b3_native_card_evidence.md.
+not managed-field offsets; see docs/petpuzzle_b15_compatibility_report.md.
 Every native layout is enabled only after matching the relevant code bytes.
 """
 
@@ -32,32 +32,36 @@ _DICTIONARY_ENTRY_VALUE_OFFSET = 0x10
 _ARRAY_DATA_OFFSET = 0x20
 _MAX_DOT_PREFAB_ENTRIES = 16
 
+# Unity 6000.7.0b7 local-position/rotation/scale native getters.
+_TRANSFORM_DATA_LOCAL_TRS_OFFSET = 0x18
+
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
-# Component.get_gameObject at RVA 0x3136170 reads this exact icall cache.
-# UnityPlayer is byte-identical to b6; its code/layout signatures stay valid.
-_COMPONENT_GO_ICALL = 0x3FE1650
-_COMPONENT_GO_RVA = 0x1067390
+# B15 Component.get_gameObject at RVA 0x353AB90 reads this exact cache.
+# Unity 6000.7.0b7 signatures are re-derived from readonly icall cache joins.
+_COMPONENT_GO_ICALL = 0x456E020
+_COMPONENT_GO_RVA = 0x1197500
 _NATIVE_SIGNATURES = (
-    (0x1067396, "488b5928"),  # Component -> GameObject +28
-    (0x1068897, "488b5638488b4e2848c1e20448035628483bca"),
-    (0x10688BE, "4883c110483bca75edeb22488b5908"),  # 16-byte entries, ptr +8
-    (0x10688D2, "488b7b20"),  # component scripting handle
-    (0x1069C46, "837938007427488b4128488b5808"),  # first component = Transform
-    (0x179BE86, "80794fff488bd9740d80794f000f95c0"),  # active cache (FF unknown)
-    (0x1078CC9, "0f1083c0000000"),  # RectTransform cached rect
-    (0x1440E2E, "488b4170"),  # parent
-    (0x1440E4E, "48635860418bd285db7e1e488b4050"),  # parent's children
-    (0x1078FA0, "498b7840488b1f"),  # Transform access handle
-    (0x1078FD8, "8b4708488b5c2440488d1440488b074803d2488b48200f1004d1"),
-    (0x107922E, "0f1044d110"),  # quaternion in 48-byte TRS at +10
-    (0x107934E, "0f1044d120"),  # scale in TRS at +20
-    (0xB5AB16, "4883b90803000000"),  # Canvas parent canvas
-    (0xB5AB4E, "8b4338"),  # Canvas renderMode
+    (0x1197506, "488b5928"),
+    (0x12C265B, "488b4328488b4b38488bd048c1e1044c8d0c01"),
+    (0x12C2723, "488b4208"),
+    (0x119AF54, "488b4320"),
+    (0x119AF46, "837938007427488b4128488b5808"),
+    (0x16E94B6, "80794fff488bd9740d80794f000f95c0"),
+    (0x11AE12D, "80bbf900000000"),
+    (0x11AE149, "0f1083c0000000"),
+    (0x11AFBD6, "488b5970"),
+    (0x11B1353, "3b51607d0d488b41504863d2488b1cd0"),
+    (0x11AF804, "498b7840488b1f48833b00"),
+    (0x11AF835, "8b4708488b5c2440488d1440488b074803d2488b48180f1014d1"),
+    (0x11AFA5B, "0f1044d110"),
+    (0x11AFB4B, "0f1054d120"),
+    (0xC36896, "4883b90803000000"),
+    (0xC35D4E, "8b4338"),
 )
 _UNMARSHAL_SIGNATURE = (
-    0x19740BF,
-    '4885db7433f6c301740d488bcbe8df888afe488bd8eb03488b1b',
+    0x1BD423C,
+    "f6c301740d488bcbe8173d67fe488bd8eb03488b1b4885db",
 )
 
 
@@ -628,10 +632,10 @@ class NativeCardUiReader:
         # not a pointer to dereference, and busy geometry is never published.
         if self._read(data, 8) != bytes(8):
             raise NativeGeometryBusyError("native_card_ui: transform job pending")
-        array = self._pointer(data + 0x20)
+        array = self._pointer(data + _TRANSFORM_DATA_LOCAL_TRS_OFFSET)
         raw_trs = self._remember(array + index * 48, 48)
         self._remember(data, 8)  # pending-job fence stays clear for whole walk
-        self._remember(data + 0x20, 8)
+        self._remember(data + _TRANSFORM_DATA_LOCAL_TRS_OFFSET, 8)
         self._remember(transform + 0x40, 8)
         self._remember(transform + 0x70, 8)
         trs = struct.unpack("<12f", raw_trs)

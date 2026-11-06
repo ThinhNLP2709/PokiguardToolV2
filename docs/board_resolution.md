@@ -1,6 +1,89 @@
 # Board instance resolution — Phase 1
 
-## Current b12 compatibility — 2026-10-26
+B15 giữ công thức tâm ô của MatchHudV2 và Board. preBoard ở ChatMessageDTO +0x4C0, preBoardReady +0x4C8. Dot.multiplier +0x88 và BoardCellDTO.multiplier +0x20 đã đối chiếu lại. Phòng Lieyun lv77 đọc đúng trên tiến trình B15. Kiểm board và ACK trong trận còn chờ live. [Báo cáo B15](petpuzzle_b15_compatibility_report.md).
+
+## B14 room overlay handling remains outside combat — 2026-11-04
+
+The run390/96 return failure has no live board/room owner: room DTO and enemy
+identity are NULL while the cached island graph is readable. This now enables
+only a bounded shell-vs-map visual probe; it cannot alone authorize an exit.
+A target click still requires exact current target/owner-free proof, including
+foreground's final preflight. Limits on shell exit/second target selection stay.
+
+Serialized `RoomCoopV2Refs.invitePanel +0x258` / `btnInviteClose +0x260` are
+read through the existing View.refs root. Close must be a native Button below
+the exact designRoot+0x30, never Start+0x38. Health is dismissed before Invite,
+then the existing router reads the uncovered surface afresh. No board resolver,
+turn read order, QTE or gameplay input path changed. No game methods/network
+calls are used. [Evidence and fix](room_return_popup_fix_20261104.md).
+
+
+## B14: elemental context candidate — 2026-11-03
+
+Static Dumper/PE evidence on exact build SHA256
+`33df13da565808a41d8268dafdf5702d736fc8fcb889515e57bda475528d2152`
+confirms `Active.PlayerStats.weakness +0x98` through the getter load at
+RVA `0x1445729` (`GetWeaknessVsBoss`, RVA `0x14456E0`). The reverse direction
+getter RVA `0x1445750` computes a positive-value reciprocal, else `1.0`.
+[Verified symbols](il2cpp_symbols.md),
+[raw static evidence](phase5/artifacts/strategy_alignment_20261103/weakness_static_evidence.json).
+
+`PLAYER_STATS_READ_SIZE=0xA8` already spans bytes `+0x98..+0x9F`.
+Thus decoding this candidate could reuse the existing stats buffer, without
+adding a memory read. This is a span observation, not runtime validation.
+ParticipantState/current common packet does not publish weakness. No reader,
+packet or read order changed in this task. Field values, actual counter effect,
+server damage/heal formula and snapshot DTO assignment remain **UNKNOWN**.
+Do not infer a universal 100k damage model from HP/ATK or from field names.
+
+
+## B14: B2 ba trận BASIC PASS — 01/11/2026
+
+Run73391a59…: ba fresh MatchId,3WIN/STRONG và UI audit CONSISTENT;5swap
+sent,2ACK riêng trong ledger, không tự gán ACK cho terminal kills.3entry và
+3confirm/return đúng target, mọi safety counter0. Sourcea330e839… giữ nguyên
+trong phiên. Chỉ chốt vòng BASIC/Solo/Lieyun77/DemonShield4; không suy ra đủ
+mọi cửa sổ/64tâm/card/QTE hoặc AI timing acceptance.
+[Evidence](artifacts/game_1_7_4_b14_loss_20261101/b2_acceptance.json).
+
+
+## B14 live B1 — 01/11/2026
+
+Attempt1/M_2ad798d0: entry1click, opening64cells và ít nhất1swap có exact
+MatchService last-move/sequence ACK. Terminal WIN/STRONG; không coi một ACK
+là kiểm hết64tâm/bốn profile. Confirm/return thất bại do visual layout B14
+mới, đã sửa riêng và81tests PASS; còn live kiểm lại.
+[Report](petpuzzle_b14_postmatch_fix_20261101.md).
+
+
+## Current B14 compatibility — 2026-11-01
+
+B14/metadata111 changes both managed field placement and Unity6000.7.0b7 native
+anchors. Exact profile replaces B12;39 TypeInfo,51 mapped field moves, three
+read spans and native Canvas/Transform bridges updated. Readonly native getters
+prove TransformData.localTRS array`+0x18` instead of`+0x20`; TRS stride48,
+quaternion`+0x10`, scale`+0x20` unchanged. Class.static_fields still`+0x98`.
+Popup Canvas.enabled thunk/getter RVAs updated with cache/vtable/file proof.
+
+Board197fields, Dot and BoardCellDTO layouts unchanged. Dot.multiplier`+0x88`
+and DTO.multiplier`+0x20` retained. SolveBoard/GetCellBaseWorldPosition match
+52/215 normalized instructions against B12, including float constants; external
+call targets are excluded from that comparison. HUD timer/other widgets changed,
+so this is not whole-HUD or screen-pixel equivalence. Preserve gem calibration,
+random bounds and gameplay/input flow pending an actual8×8 frame and swap ACK.
+Historical64centres/112swaps/four-profile fixtures are offline regression only.
+
+27 initialized roots and managed/native ownership passed readonly checks. Normal
+provider identifies the visible island map in three samples with no error;
+three visible island Buttons have validated native geometry. Start/combat/result/
+QTE/re-entry and popup dismissal have not been accepted by live input on B14.
+B1 one BASIC match is next after offline review; no game input sent in migration.
+[Report and limits](petpuzzle_b14_compatibility_report.md),
+[geometry evidence](artifacts/game_1_7_4_b14_20261101/semantic_evidence_v3.json),
+[readonly evidence](artifacts/game_1_7_4_b14_20261101/readonly_status_final.json).
+
+
+## Historical b12 compatibility — 2026-10-26
 
 The b12 profile atomically replaces the b10 fingerprint,39 TypeInfo RVAs and
 the Component.gameObject cache/unmarshal anchor.257 production field
@@ -286,7 +369,7 @@ A generally healthy dispatcher is not proof that every short-lived callback
 was sampled. If `MatchService._ackedSeqs` advances but no retained board has
 that exact sequence, the controller permits one read-only recovery for that
 exact `(matchId, turn, ACK)`. Run
-`logs/farm_runs/bef23282eac3461bb6ca629e36f63537` proves why it must remain
+`logs/farm_runs/bef23282eac3461bb6ca629e36f64077` proves why it must remain
 strictly bounded: eleven full scans each traversed 1.28--1.31 GiB and took
 7.02--7.18 seconds, starving callback capture and creating more gaps. Active
 combat now forbids the full escalation and rotates through at most 64 MiB of
@@ -866,3 +949,10 @@ order. A blocking frame now persists as bounded failure evidence even when
 routine images are off; no new capture/read/input or automatic SAFE_STOP resume.
 Known true modal remains recognized. Original incident's missing frame stays
 UNKNOWN; synthetic reconstruction of its static board did not reproduce it.
+
+## 2026-11-06 — B15 window sizing and viewport
+
+V2 uses Win32 `SetWindowPos` when the selected client dimensions differ from
+the measured dimensions. All four profiles keep a 2:1 client ratio. The game
+can observe the new local `Screen.width` and `Screen.height` and update its
+camera viewport. See the [B15 resize symbols and audit limits](il2cpp_symbols.md#2026-11-06--b15-desktop-window-resize).

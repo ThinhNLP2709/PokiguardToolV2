@@ -3639,7 +3639,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 else "PRODUCTION_GATED"
             )
             from pokiguard_v2.reasoning_pilot import PilotSelectionBridge, observe_pilot_safely
-            if type(selection_adapter) is PilotSelectionBridge:
+            from pokiguard_v2.reasoning_common_selection import CommonSelectionBridge, observe_common_safely, await_common_safely
+            if type(selection_adapter) in (PilotSelectionBridge, CommonSelectionBridge):
                 selection_context = selection_adapter.controller_context(
                     target_pid=target.pid, shared_runtime=shared_runtime is not None)
             input_delivery_stack.callback(stop_safely, selection_adapter)
@@ -5052,7 +5053,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
                     _beep("pause", not args.no_beep)
 
-            if selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge:
+            if selection_adapter is not None and type(selection_adapter) in (PilotSelectionBridge, CommonSelectionBridge):
                 selection_observed_ns = time.perf_counter_ns()
             if swap_timing_adapter is not None:
                 timing_safely(swap_timing_adapter, "observe_start")
@@ -5072,6 +5073,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             )
             if selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge:
                 observe_pilot_safely(selection_adapter, poll.state, policy.config,
+                    observed_ns=selection_observed_ns, read_end_ns=time.perf_counter_ns(),
+                    context=selection_context)
+            elif selection_adapter is not None and type(selection_adapter) is CommonSelectionBridge:
+                observe_common_safely(selection_adapter, poll.state, policy.config,
                     observed_ns=selection_observed_ns, read_end_ns=time.perf_counter_ns(),
                     context=selection_context)
             if swap_timing_adapter is not None:
@@ -8024,10 +8029,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     pass_owner_allowed=pass_coordinator is not None and not p3_mandatory_reset_pending)
                 selection_adapter.native_policy_guard = lambda proposed, legal=analysis.legal_match_producing_moves, safe=analysis.safe_move_count, first=state.battle.is_first_local_turn: _must_pause_for_no_safe_move(
                     proposed, legal_move_count=legal, safe_move_count=safe, first_local_turn=first)
-            if (selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge
+            if (selection_adapter is not None and type(selection_adapter) in (PilotSelectionBridge, CommonSelectionBridge)
                     and selection_adapter.decision_budget and decision == basic_decision):
                 from pokiguard_v2.reasoning_pilot import await_pilot_safely
-                budget_result = await_pilot_safely(selection_adapter, state, basic_decision, policy.config,
+                wait_for_decision = await_common_safely if type(selection_adapter) is CommonSelectionBridge else await_pilot_safely
+                budget_result = wait_for_decision(selection_adapter, state, basic_decision, policy.config,
                     context=selection_context, stop_requested=lambda: hotkeys.emergency_stop_requested()
                         or _farm_emergency_requested(shared_runtime))
                 if budget_result == "STOPPED":
@@ -8048,7 +8054,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         mouse_button_hold_seconds=getattr(getattr(executor, "backend", None), "mouse_button_hold_seconds", None)),
                     selection=None if selection_receipt is None else dict(job_id=selection_receipt.job.job_id,
                         generation=selection_receipt.job.generation, deadline_ns=selection_receipt.job.deadline_ns),
-                    budget=(selection_adapter.budget_receipts[-1] if selection_adapter is not None and type(selection_adapter) is PilotSelectionBridge
+                    budget=(selection_adapter.budget_receipts[-1] if selection_adapter is not None and type(selection_adapter) in (PilotSelectionBridge, CommonSelectionBridge)
                         and selection_adapter.budget_receipts else None))
             observed_branch = _record_policy_observation(
                 counters,

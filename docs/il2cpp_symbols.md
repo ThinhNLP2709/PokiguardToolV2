@@ -1,6 +1,86 @@
 # IL2CPP symbols — Phase 1
 
-## Current b12 compatibility — 2026-10-26
+B15 dùng metadata 111. Đã đối chiếu 39 TypeInfo RVA theo tên Il2CppDumper và cập nhật chín field ChatMessageDTO. Board TypeInfo là 0x432ADB0, Active là 0x432ADC0. Component cache là 0x456E020, Unmarshal signature ở 0x1BD423C. Đọc tiến trình xác nhận cache trỏ UnityPlayer RVA 0x1197500. Chi tiết và SHA-256 tại [báo cáo B15](petpuzzle_b15_compatibility_report.md).
+
+## B14 room Invite Close — verified static fields, 2026-11-04
+
+Exact build GameAssembly SHA256
+`33df13da565808a41d8268dafdf5702d736fc8fcb889515e57bda475528d2152`:
+`RoomCoopV2View.refs +0x20` uses the existing verified TypeInfo root.
+Dumper declares `RoomCoopV2Refs.designRoot +0x30` (RectTransform),
+`ButtonStart +0x38`, `invitePanel +0x258` (GameObject), `btnInviteClose +0x260`
+and distinct `btnInviteDim +0x268`. Only the Close field is consumed for input.
+Read-only class/ancestry/roundtrip/active/geometry proofs bind that Close to
+this room designRoot; the field cannot alias Start.
+
+Static PE: `RoomCoopV2Host.CloseInvite` RVA `0xF09340` passes the panel at
+refs+0x258 into `UIAnim.Close` (RVA `0x12AF230`) at callsite `0xF094FC`. Its on-complete callback
+RVA `0x12AF6C0` resolves the literal
+`UnityEngine.GameObject::SetActive_Injected(System.IntPtr,System.Boolean)`
+at data RVA `0x3B953D0`, then passes edx=0 at RVA `0x12AF7C9` to call rax.
+Thus the panel GameObject hides after the closing animation; no game method
+was invoked by the tool. These are RVAs, not ASLR absolute addresses.
+[Bytes/disassembly](artifacts/room_return_20261104/invite_native_static.json).
+Live closing/animation duration remains unobserved; caller verifies hidden
+state after one normal click and keeps a bounded wait. No health-minute text
+is part of the ownership proof.
+
+
+## B14 weakness getter — static evidence, 2026-11-03
+
+Read-only inspection of the exact B14 GameAssembly (SHA256
+`33df13da565808a41d8268dafdf5702d736fc8fcb889515e57bda475528d2152`):
+
+- Dumper class `Active.PlayerStats`: `double weakness` at `+0x98`;
+  `int[] equipCounter +0xA0`, `PetUserDTO petData +0xA8`.
+- `Active.GetWeaknessVsBoss(int)` RVA `0x14456E0` loads actor dictionary at
+  `this+0x20`, calls `CollectionExtensions.GetValueOrDefault<int, __Canon>`
+  RVA `0x19862A0`, and reads `movsd xmm0,[rax+0x98]` at RVA `0x1445729`.
+  Absent actor returns constant `1.0` (data RVA `0x3E06498`).
+- `Active.GetBossWeaknessVsPlayer(int)` RVA `0x1445750` calls that getter,
+  returns `1.0/value` for positive values and `1.0` otherwise.
+- `MatchPlayerSnapshotDTO` declares `petElementType +0x58` and
+  `weaknessVsBoss +0x70`. The assignment chain into PlayerStats was not
+  established; do not treat the two fields as a verified live pointer chain.
+
+All addresses above are file/module RVAs; no ASLR absolute addresses or game
+calls were used. Runtime values, elemental interpretation and server damage
+formula remain **UNKNOWN**. Existing read span covers the double but current
+state does not publish it; no provider/schema change or additional read made.
+[Disassembly/bytes hashes](phase5/artifacts/strategy_alignment_20261103/weakness_static_evidence.json).
+
+
+## Current B14 compatibility — 2026-11-01
+
+Profile `reverse/reverse_1.7.4-b14` uses Il2CppDumper / metadata111, Unity6000.7.0b7.
+Exact GameAssembly SHA256
+`33df13da565808a41d8268dafdf5702d736fc8fcb889515e57bda475528d2152`.
+39 TypeInfo slots matched by exact symbols;257 consumed field candidates,
+51 moves, three expanded read spans. Board197fields unchanged; co-op
+PlayerStats`0x421DB18` remains distinct from PVP`0x4226D30`.
+Board/Active/MatchService roots`0x429DA00/0x429DA08/0x4265908`;
+ManagerRoom`0x4265820`, PlayReminder`0x42A9C18`, closure324`0x425BF60`.
+
+UnityPlayer changed:16 native signatures rederived via readonly cached icalls.
+Component wrapper`0x34B7110` loads/stores cache`0x44DA7F8`, native Unity`0x1197500`,
+Unmarshal tail`0x1B52D20`; unique24byte signature at`0x1B52D4C`.
+TransformData TRS array is now`+0x18` (old`+0x20`), stride48 preserved.
+Behaviour.enabled thunk`0xFDFF0`, Canvas getter`0xD5590`, virtual slot`+0xC8`.
+Live/native class.static_fields remains`+0x98`, not Dumper header's`+0xB8`.
+All addresses are module-relative RVAs. Never apply a shared address delta.
+
+104 existing enums preserve their values; only two nonconsumed domains append
+Demon/Arcane values. Open generic offset0 is UNKNOWN; closed container header
+layouts prove List/Queue/Dictionary/HashSet and entry/slot packing.
+27 roots readable in the map scene; twelve uninitialized/encoded, no forced init.
+Three normal readonly provider samples correctly identify CHINH_PHUC_MAP.
+407 focused tests PASS; bounded combat/input acceptance remains required.
+[Full B14 report](petpuzzle_b14_compatibility_report.md),
+[static mapping](artifacts/game_1_7_4_b14_20261101/static_audit.json),
+[native evidence](artifacts/game_1_7_4_b14_20261101/native_evidence_v2.json).
+
+
+## Historical b12 compatibility — 2026-10-26
 
 Profile source: `reverse/reverse_1.7.4-b12`; installed GameAssembly SHA256
 `51eaeff77252e7119647a590c534196093b36e752115b500672f24da758f1064`.
@@ -757,7 +837,7 @@ Evidence:
 |---|---|---:|---|---:|---:|---:|---|
 | `WsCombatBatch.srvSeq` | field | no | `System.Int64` | `+0x10` | `0x04000BFD` | N/A | CONFIRMED |
 | `WsCombatBatch.board` | field | no | `BoardCellDTO[][]` | `+0x38` | `0x04000C02` | N/A | CONFIRMED |
-| `WsCombatBatch` type info | global slot | yes | `Il2CppClass*` | N/A | TypeDef `0x0200018C` | `0x35354A0` | HIGH, native allocation path |
+| `WsCombatBatch` type info | global slot | yes | `Il2CppClass*` | N/A | TypeDef `0x0200018C` | `0x40754A0` | HIGH, native allocation path |
 | `MatchService.<PendingCombat>k__BackingField` | field | no | `WsCombatBatch` | `+0x170` | — | N/A | CONFIRMED |
 | `MatchService.<CurrentMatchId>k__BackingField` | field | no | `System.String` | `+0x20` | N/A | N/A | CONFIRMED |
 | `BoardWsApplier._bootstrappedMatchId` | field | no | `System.String` | `+0x30` | N/A | N/A | CONFIRMED; current renderer/match correlation |
@@ -798,7 +878,7 @@ Evidence is recorded in detail in `docs/card_state_detection.md`.
 | Assembly-CSharp | global | `MatchService` | `LocalFusionSelectedPetId` backing field | field | no | `System.Int64` | `+0x70` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `MatchService` | `LocalFusionSkillCard` backing field | field | no | `CardData` | `+0x78` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `MatchService` | `LocalFusionDropReason` backing field | field | no | `System.String` | `+0x80` | N/A | CONFIRMED |
-| Assembly-CSharp | global | `FusionCardUI` | type-info global slot used by its own metadata initializer | global | yes | `Il2CppClass*` | N/A | `0x35332A0` | HIGH; native `RefreshState` metadata init |
+| Assembly-CSharp | global | `FusionCardUI` | type-info global slot used by its own metadata initializer | global | yes | `Il2CppClass*` | N/A | `0x40732A0` | HIGH; native `RefreshState` metadata init |
 | Assembly-CSharp | global | `FusionCardUI` | `_btn` | field | no | `UnityEngine.UI.Button` | `+0x58` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `FusionCardUI` | `_nextRefreshAt` | field | no | `System.Single` | `+0x60` | N/A | CONFIRMED |
 | Assembly-CSharp | global | `FusionCardUI` | `_boundPetId` | field | no | `System.Int64` | `+0x68` | N/A | CONFIRMED |
@@ -1783,3 +1863,24 @@ Board.Start passes its root to Apply (call RVA0x1327D61 to0xF6E2B0).
 This establishes the warning hierarchy name, not a field offset or a live
 PanelExit observation for the95/500 incident. No native PanelExit reader was
 added. [Evidence and scoped visual guard repair](leave_modal_guard_fix_20261024.md).
+
+## 2026-11-06 — B15 desktop window resize
+
+GameAssembly SHA-256 `18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea`
+matches the B15 dump. `PcAspectLock.WndProc` at RVA `0x11458B0` handles
+`WM_SIZING` (`0x0214`) and adjusts the drag rectangle to preserve the 2:1
+aspect. `Update` at `0x1144040` compares Unity `Screen.width`, `Screen.height`
+and fullscreen state with its cached values. It can call `ApplyNow` at
+`0x11442F0`, which updates the cache and camera viewport/backdrop.
+
+Native cross-references to the managed Screen size methods and their inlined
+internal-call caches lead to window and UI layout paths. The exported
+`screenWidth` and `screenHeight` literals are referenced by
+`UnityEngine.TextCore.NativeTextGenerationSettings.ToString`. The examined
+aspect-lock methods do not call a game network sender. `LoginRequest` and
+`TokenLoginRequest` have device ID/name and platform fields. `LoginDevice.Name`
+uses the device model and operating system. The WebSocket heartbeat calls
+`WebSocketSharp.WebSocket.ping`. `ClientErrorReporter` sends level, message,
+stack, scene and version. None of these examined payload paths contains a
+window size field. Other native modules, live outbound traffic and server
+behavior are outside this static audit and remain UNKNOWN.

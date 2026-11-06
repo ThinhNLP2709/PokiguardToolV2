@@ -138,6 +138,7 @@ class MatchResult(str, Enum):
 
 class FarmInputDomain(str, Enum):
     BOSS_HEALTH_REMINDER_DISMISS = "BOSS_HEALTH_REMINDER_DISMISS"
+    BOSS_ROOM_OVERLAY_DISMISS = "BOSS_ROOM_OVERLAY_DISMISS"
     BOSS_ROOM_SHELL_EXIT = "BOSS_ROOM_SHELL_EXIT"
     BOSS_ROOM_SHELL_CONFIRM = "BOSS_ROOM_SHELL_CONFIRM"
     BOSS_HUB_CHINH_PHUC_OPEN = "BOSS_HUB_CHINH_PHUC_OPEN"
@@ -748,6 +749,7 @@ class FarmRun:
             if r.domain
             in {
                 FarmInputDomain.BOSS_HEALTH_REMINDER_DISMISS,
+                FarmInputDomain.BOSS_ROOM_OVERLAY_DISMISS,
                 FarmInputDomain.BOSS_ROOM_SHELL_EXIT,
                 FarmInputDomain.BOSS_ROOM_SHELL_CONFIRM,
                 FarmInputDomain.BOSS_HUB_CHINH_PHUC_OPEN,
@@ -1897,6 +1899,32 @@ class FarmRun:
         self._record_input(permit, sent=sent, detail=detail)
         if not sent:
             self.safe_stop(FarmRunStopReason.HEALTH_REMINDER_BLOCKED, detail=detail)
+        return sent
+
+    def reserve_room_overlay_dismiss(
+        self, *, identity: str, foreground: bool, outside_combat: bool,
+    ) -> FarmInputPermit | None:
+        if (self.stopped or self.current_session is not None or self._pending is not None
+                or self.state not in {FarmRunState.WAIT_INITIAL_BOSS_LOBBY, FarmRunState.RESOLVE_TARGET,
+                                      FarmRunState.ENTRY_READY, FarmRunState.WAIT_BOSS_LOBBY}
+                or not foreground or not outside_combat or not isinstance(identity, str) or not identity.startswith("invite:")):
+            return None
+        permit = FarmInputPermit(uuid4().hex, FarmInputDomain.BOSS_ROOM_OVERLAY_DISMISS,
+                                 None, self.match_attempts)
+        self._pending = permit
+        self._event("room_overlay_dismiss_reserved", identity=identity)
+        return permit
+
+    def complete_room_overlay_dismiss(
+        self, permit: FarmInputPermit, *, sent: bool, detail: str = "",
+    ) -> bool:
+        if permit != self._pending or permit.domain is not FarmInputDomain.BOSS_ROOM_OVERLAY_DISMISS:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail="room overlay capability mismatch")
+            return False
+        self._pending = None
+        self._record_input(permit, sent=sent, detail=detail)
+        if not sent:
+            self.safe_stop(FarmRunStopReason.RETURN_LOBBY_TIMEOUT, detail=detail)
         return sent
 
     def reserve_target_select(

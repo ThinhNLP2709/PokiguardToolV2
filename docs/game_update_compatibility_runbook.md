@@ -80,6 +80,27 @@ tên/kiểu/ownership trước khi áp dụng; nested/compiler closures phải l
    swap, mép bàn và 4 profile 2:1 với jitter người dùng yêu cầu. Không đổi jitter
    hoặc input pacing để bù một calibration sai. Live phải xác nhận move/ACK.
 
+## 3a. Nếu reverse dùng Il2CppDumper (B14 / metadata111)
+
+- Dùng `dump.cs`, `script.json`, `il2cpp.h`; không yêu cầu Inspector `il2cpp.json`
+  hoặc suy ra symbol bằng delta từ bản trước. `ScriptMetadata` chứa TypeInfo;
+  `ScriptMethod` chứa exact wrapper/method identity. Giữ namespace/nesting.
+- Dumper có thể bỏ namespace của nested declarations: cần kiểm parent và thứ
+  tự TypeDef hoặc field/native role, không ghép tùy ý theo short name. Backing
+  fields/nullable/UI.Text khác spelling phải được đối chiếu riêng.
+- Generic Il2CppClass header không phải bằng chứng live ABI. B14 header gợi
+  static_fields+0xB8, nhưng native getters + readonly classes chứng minh+0x98.
+  Open generic offset0 không chứng minh container layout; kiểm closed structs,
+  packing, stride và native access. Duplicate/opaque field names là UNKNOWN.
+- Khi UnityPlayer đổi, đọc cached icall pointers từ process chỉ đọc, join với
+  managed wrapper và file bytes, rồi kiểm lại Transform/Canvas/virtual getter.
+  Không gọi game method hoặc ép initialize để lấy pointer. B14 đổi cả TRS array
+  offset và popup enabled-thunk/getter, dù nhiều managed UI fields giữ nguyên.
+- Helpers: `tools/reverse_exports.py`, `audit_dumper_update.py`,
+  `audit_dumper_native.py`, `audit_dumper_semantics.py`, `probe_dumper_candidates.py`.
+  Audit cũ→mới cần `--source` là snapshot source trước migration; không coi
+  chạy lại trên source đã thay constants là inventory đầy đủ.
+
 ## 4. Cập nhật một profile đồng bộ
 
 1. Cập nhật launcher-family resolver và migration đường dẫn cũ.

@@ -704,6 +704,32 @@ class DesktopFarmControllerManager:
         session = self._ui_reasoning_session
         return session is None or session.wait_closed(timeout_seconds)
 
+    def _prepare_ui_reasoning(self,config,observer):
+        if not config.ai.reasoning_enabled:return None
+        session=None
+        try:
+            previous = self._ui_reasoning_session
+            if previous is not None and (not previous.closed.is_set() or previous.cleanup_ok is not True):
+                observer(AIStatus('DEGRADED', 'UI_REASONING_CLEANUP_PENDING'), 'AI_STATUS')
+            else:
+                from .app_paths import current_app_paths
+                from .reasoning_ui_session import create_ui_reasoning_session
+                from tools.runtime_common import configured_game_executable
+                import uuid
+                selection = configured_game_executable()
+                if selection is None:
+                    observer(AIStatus('UNSUPPORTED', 'UI_REASONING_GAME_LOCATION_REQUIRED'), 'AI_STATUS')
+                else:
+                    paths = replace(current_app_paths(),source_root=self.project_root,data_root=self.data_root)
+                    session = create_ui_reasoning_session(config,paths=paths,
+                        game_executable=selection.executable,
+                        directory=self.artifacts_root/'reasoning'/('ui_'+uuid.uuid4().hex),observer=observer)
+                    self._ui_reasoning_session = session
+        except Exception as exc:
+            try:observer(AIStatus('DEGRADED','UI_REASONING_SETUP_'+type(exc).__name__),'AI_STATUS')
+            except Exception:pass
+        return session
+
     def _run_production(
         self,
         launch: ControllerLaunch,
@@ -713,12 +739,26 @@ class DesktopFarmControllerManager:
         launch.config.gameplay_config.require_farm_policy()
         if launch.config.play_style is PlayStyle.DINOSAUR:
             from tools.dinosaur_run import run as run_dinosaur
-            return run_dinosaur(
-                launch.config, expected_match_id=launch.expected_match_id,
-                expected_pid=launch.game_pid, reset_evidence=self.reset_evidence,
-                artifacts_root=self.artifacts_root, control_edges=edges,
-                observer=observer,
-            )
+            session=None
+            if launch.config.ai.reasoning_enabled:
+                try:
+                    session=(self._reasoning_session_factory(launch.config) if self._reasoning_session_factory
+                        is not None else self._prepare_ui_reasoning(launch.config,observer))
+                except Exception as exc:
+                    try:observer(AIStatus('DEGRADED','UI_REASONING_SETUP_'+type(exc).__name__),'AI_STATUS')
+                    except Exception:pass
+            options={} if session is None else dict(reasoning_session=session)
+            try:
+                return run_dinosaur(
+                    launch.config, expected_match_id=launch.expected_match_id,
+                    expected_pid=launch.game_pid, reset_evidence=self.reset_evidence,
+                    artifacts_root=self.artifacts_root, control_edges=edges,
+                    observer=observer,**options,
+                )
+            finally:
+                if session is not None:
+                    try:session.stop()
+                    except Exception:pass
         from tools import farm_run as farm_run_tool
 
         config = launch.config
@@ -810,29 +850,7 @@ class DesktopFarmControllerManager:
             # Any setup/profile fault still invokes this exact BASIC FarmRunner.
             session = None
             if self._reasoning_session_factory is None:
-                try:
-                    previous = self._ui_reasoning_session
-                    if previous is not None and (not previous.closed.is_set() or previous.cleanup_ok is not True):
-                        observer(AIStatus('DEGRADED', 'UI_REASONING_CLEANUP_PENDING'), 'AI_STATUS')
-                    else:
-                        from .app_paths import current_app_paths
-                        from .reasoning_ui_session import create_ui_reasoning_session
-                        from tools.runtime_common import configured_game_executable
-                        import uuid
-                        selection = configured_game_executable()
-                        if selection is None:
-                            observer(AIStatus('UNSUPPORTED', 'UI_REASONING_GAME_LOCATION_REQUIRED'), 'AI_STATUS')
-                        else:
-                            paths = replace(current_app_paths(),source_root=self.project_root,data_root=self.data_root)
-                            session = create_ui_reasoning_session(config,paths=paths,
-                                game_executable=selection.executable,
-                                directory=self.artifacts_root/'reasoning'/('ui_'+uuid.uuid4().hex),observer=observer)
-                            self._ui_reasoning_session = session
-                except Exception as exc:
-                    try:
-                        observer(AIStatus('DEGRADED', 'UI_REASONING_SETUP_'+type(exc).__name__), 'AI_STATUS')
-                    except Exception:
-                        pass
+                session = self._prepare_ui_reasoning(config,observer)
             if session is None:
                 return farm_run_tool.run(args,control_edges=edges,observer=observer)
             try:

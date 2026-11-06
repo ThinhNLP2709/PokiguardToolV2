@@ -2,7 +2,7 @@
 
 
 def ui_reasoning_scope_reason(config, *, require_target=False):
-    """Unsupported AI intent never makes an otherwise valid BASIC farm invalid."""
+    """Historical Shield acceptance only; this is not the UI intent selector."""
     required = dict(play_style='demon_aegis_farm', game_mode='solo', main_pet='normal',
         evolution='none', damage_card='pet_passive', demon_target_gem='shield',
         pet_skill_fire_condition='sword_count', input_delivery_mode='foreground',
@@ -20,4 +20,12 @@ def ui_reasoning_scope_reason(config, *, require_target=False):
         return 'UI_REASONING_TIMING_CONFIG_UNSUPPORTED'
     if require_target and config.normalized_boss_id != '1436':
         return 'UI_REASONING_TARGET_UNSUPPORTED'
+    return None
+
+
+def ui_reasoning_intent_reason(config):
+    """One opt-in for every objective. Runtime proof is checked separately."""
+    from .reasoning_common_problem import PROFILES
+    if config.play_style.value not in PROFILES:return 'UI_REASONING_CONFIG_UNSUPPORTED'
+    if config.ai.shadow_enabled:return 'UI_REASONING_SHADOW_CONFLICT'
     return None

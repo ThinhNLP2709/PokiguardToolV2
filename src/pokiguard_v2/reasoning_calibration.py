@@ -22,6 +22,7 @@ SCHEMA='pokiguard.basic_calibration_request.v1'
 D2_CONTROL_PROTOCOL='D2_SKILL_RUSH_BASIC_CONTROL_V1'
 D2_TIMING_PROTOCOL='D2_SKILL_RUSH_SKILL_TIMING_PROBE_V1'
 D3_CONTROL_PROTOCOL='D3_DEMON_AEGIS_BASIC_CONTROL_V1'
+COMMON_DEMON_CONTROL_PROTOCOL='COMMON_DEMON_TARGET_BASIC_CONTROL_V1'
 D4_CONTROL_PROTOCOL='D4_MEGA_ICARUS_BASIC_CONTROL_V1'
 D4_INPUT_TIMING_PROTOCOL='D4_MEGA_CLICK_ONLY_INPUT_PROBE_V1'
 D4_INPUT_RETRY_PROTOCOL='D4_MEGA_CLICK_ONLY_INPUT_REMEDIATION_V2'
@@ -139,6 +140,21 @@ def decode_config(raw):
 
 
 def check_config(config,cap,*,profile_protocol=None):
+    if profile_protocol == COMMON_DEMON_CONTROL_PROTOCOL:
+        from .gameplay_profile import MainPetType,EvolutionTarget,DamageCardMode,PetSkillFireCondition,DemonTargetGem
+        if (config.intelligence is not Intelligence.BASIC or config.ai.shadow_enabled or config.ai.reasoning_enabled
+            or config.play_style is not PlayStyle.DEMON_AEGIS_FARM or config.game_mode is not GameMode.SOLO
+            or config.main_pet is not MainPetType.NORMAL or config.evolution is not EvolutionTarget.NONE
+            or config.damage_card is not DamageCardMode.PET_PASSIVE
+            or config.pet_skill_fire_condition is not PetSkillFireCondition.SWORD_COUNT
+            or type(config.pet_skill_fire_value) is not int or not 2<=config.pet_skill_fire_value<=64
+            or config.demon_target_gem not in tuple(DemonTargetGem)
+            or config.input_delivery_mode.value!='foreground' or config.board_input_mode.value!='two_click'
+            or config.game_window_size_profile.value!='original_1280x640'
+            or type(cap) is not int or not 1<=cap<=3 or config.max_match_attempts!=cap
+            or config.target_completed_matches!=cap or not config.normalized_boss_id):
+            raise ValueError('common Demon control requires BASIC-only normal passive, configured target, exact 1-3 total attempts')
+        return
     if profile_protocol == D4_INPUT_RETRY_PROTOCOL:
         return check_config(config,cap,profile_protocol=D4_INPUT_TIMING_PROTOCOL)
     if profile_protocol == D4_INPUT_TIMING_PROTOCOL:

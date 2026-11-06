@@ -74,7 +74,9 @@ class DemonTargetGemTests(unittest.TestCase):
         root=Path(__file__).resolve().parents[1]
         raw=json.loads((root/'docs/phase5/artifacts/5d3_lieyun_basic3_live_20261018_021056/request.json').read_text('utf-8'))['config']
         with self.assertRaises(ValueError):decode_config(raw)
-        current=decode_config(dict(raw,demon_target_gem='shield'))
+        # Derive a current-schema fixture; preserve the archived request unchanged.
+        current=decode_config(dict(raw,demon_target_gem='shield',
+            input_randomization=DesktopConfig().input_randomization.to_dict()))
         check_config(current,3,profile_protocol=D3_CONTROL_PROTOCOL)
         check_demon(current)
         e1=replace(current,target_completed_matches=20,max_match_attempts=20,max_technical_recoveries=0)

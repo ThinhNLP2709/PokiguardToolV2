@@ -116,3 +116,14 @@ def load_ui_authority(config, *, paths, game_executable):
         older['ack_samples'],time.perf_counter_ns()+24*60*60*1_000_000_000,
         budget_ms=min(4000,config.ai.budget_ms),root_read_policy=FrozenJSON.of(POLICY),
         component_guard_policy=GUARD,demon_profile=FrozenJSON.of(profile))
+
+
+def load_session_authority(config,*,paths,game_executable):
+    """One UI switch, prefer shared engine; preserve historical proof as-is."""
+    from .reasoning_common_native import profile_path,load_common_authority
+    if profile_path(paths).exists():
+        return load_common_authority(config,paths=paths,game_executable=game_executable)
+    from .reasoning_ui_scope import ui_reasoning_scope_reason
+    if ui_reasoning_scope_reason(config,require_target=True) is None and acceptance_path(paths).exists():
+        return load_ui_authority(config,paths=paths,game_executable=game_executable)
+    raise ValueError('UI_REASONING_COMMON_CALIBRATION_REQUIRED')

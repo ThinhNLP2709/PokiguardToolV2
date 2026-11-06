@@ -84,9 +84,9 @@ class ReminderNativeFixture(NativeFixture):
         self.vtable = self.alloc()
         self.q(self.modal_canvas.native,self.vtable)
         # Getter bytes/field verified in the binary and read-only live Canvas.
-        self.getter = self.unity+0xCD630
+        self.getter = self.unity+0xD5590
         self.q(self.vtable+0xc8,self.getter)
-        self.memory.map(self.unity+0x114430,bytes.fromhex("488b0148ffa0c8000000"))
+        self.memory.map(self.unity+0xFDFF0,bytes.fromhex("488b0148ffa0c8000000"))
         self.memory.map(self.getter,bytes.fromhex("807930000f95c0c3"))
         self.memory.map(self.modal_canvas.native+0x30,b"\1")
         self.resolver = NS(memory=self.memory,game_assembly_base=self.ga,
@@ -128,7 +128,7 @@ class NativeReminderTests(unittest.TestCase):
                 if kind=="pointer":f.q(f.instance+0x30,17)
                 if kind=="enabled":f.memory.map(f.modal_canvas.native+0x30,b"\xff")
                 if kind=="getter":f.q(f.vtable+0xc8,0x20000000000)
-                if kind=="thunk":f.memory.map(f.unity+0x114430,bytes(9))
+                if kind=="thunk":f.memory.map(f.unity+0xFDFF0,bytes(9))
                 if kind=="complex":f.memory.map(f.getter,bytes(12))
                 c=read_play_reminder_control(f.target)
                 self.assertFalse(c.clean);self.assertIsNone(c.open);self.assertTrue(c.reasons)
@@ -200,6 +200,17 @@ class ReminderPermitTests(unittest.TestCase):
             self.assertIsNone(r.reserve_health_reminder_dismiss(identity="x",foreground=True,outside_combat=True))
         for opts in ({"foreground":False,"outside_combat":True}, {"foreground":True,"outside_combat":False}):
             self.assertIsNone(FarmRun(FarmTarget("1436")).reserve_health_reminder_dismiss(identity="x",**opts))
+
+
+class Screenshot540ReminderTests(unittest.TestCase):
+    def test_supplied_540_minute_popup_uses_the_same_owned_button(self):
+        image=read_png_rgb(Path(__file__).resolve().parents[1]/'docs/artifacts/room_return_20261104/game_client.png')
+        geometry=NativeButtonGeometry(1,2,3,4,5,True,(.412037,.655555,.587963,.751852),6,2.0)
+        # Visual sanity only; production must still supply current native ownership.
+        control=PlayReminderControl(True,True,7,3,8,9,geometry)
+        result=locate_play_reminder_confirm(image.rgb,image.width,image.height,control)
+        self.assertTrue(result.found,result.reason)
+        self.assertAlmostEqual(.5,result.normalized_point[0])
 
 
 class ReminderControllerTests(unittest.TestCase):
@@ -427,6 +438,97 @@ class ReminderControllerTests(unittest.TestCase):
                   ui_timeout=1,hotkeys=self.keys,outside_modal_handler=handler)
         self.assertEqual(result,(True,TerminalResult.UNKNOWN,None))
         handler.assert_called_once();self.executor.send_normalized_point.assert_not_called()
+
+
+class RoomInviteNativeTests(unittest.TestCase):
+    def fixture(self):
+        from pokiguard_v2.boss_lobby_runtime import ROOM_COOP_V2_VIEW_TYPE_INFO_RVA
+        f=ReminderNativeFixture();view_class=f.klass('RoomCoopV2View','');refs_class=f.klass('RoomCoopV2Refs','')
+        view,refs,fields=f.alloc(),f.alloc(),f.alloc()
+        f.q(view_class+0x98,fields);f.q(fields,view);f.q(view,view_class);f.q(view+0x20,refs);f.q(refs,refs_class)
+        f.q(refs+0x30,f.modal_root.managed_transform);f.q(refs+0x258,f.board_node.managed);f.q(refs+0x260,f.ok.managed)
+        start_node=f.node(f.modal_root,(-100,-30,200,60),(300,-250,0));start=f.component(start_node,f.button_class);f.q(refs+0x38,start.managed)
+        old=f.resolver.resolve_type_info_class
+        f.resolver.resolve_type_info_class=lambda rva:view_class if rva==ROOM_COOP_V2_VIEW_TYPE_INFO_RVA else old(rva)
+        return f,refs
+
+    def test_invite_close_uses_exact_serialized_button_and_design_root(self):
+        from pokiguard_v2.room_invite import read_room_invite_control
+        f,refs=self.fixture();c=read_room_invite_control(f.target)
+        self.assertTrue(c.clean,c.reasons);self.assertTrue(c.open);self.assertEqual(c.geometry.button,f.ok.managed)
+
+    def test_hidden_invite_is_absent_without_a_close_button(self):
+        from pokiguard_v2.room_invite import read_room_invite_control
+        f,refs=self.fixture();f.memory.map(f.board_node.native+0x4f,b'\0');f.q(refs+0x260,0)
+        c=read_room_invite_control(f.target);self.assertTrue(c.clean,c.reasons);self.assertIs(c.open,False)
+
+    def test_start_alias_foreign_hierarchy_or_disabled_close_never_authorizes(self):
+        from pokiguard_v2.room_invite import read_room_invite_control
+        for mode in ('alias','foreign','disabled','bad_refs'):
+            f,refs=self.fixture()
+            if mode=='alias':f.q(refs+0x260,f.resolver.read_pointer(refs+0x38))
+            if mode=='foreign':f.q(refs+0x30,f.ok_node.managed_transform)
+            if mode=='disabled':f.memory.map(f.ok.managed+SELECTABLE_INTERACTABLE_OFFSET,b'\0')
+            if mode=='bad_refs':f.q(refs,f.go_class)
+            c=read_room_invite_control(f.target)
+            if mode=='foreign':
+                # A root equal to Close itself must also be rejected.
+                self.assertFalse(c.clean,c.reasons)
+            else:self.assertFalse(c.clean,c.reasons)
+
+
+def synthetic_invite_image(label=True):
+    width,height=1280,640;rgb=bytearray(bytes((20,30,45))*(width*height))
+    rect=(.8,.15,.87,.28);left,top,right,bottom=(round(v*(width if i%2==0 else height)) for i,v in enumerate(rect))
+    for y in range(top,bottom):
+        for x in range(left,right):
+            white=label and (abs((x-left)-(y-top))<5 or abs((right-x)-(y-top))<5)
+            rgb[(y*width+x)*3:(y*width+x)*3+3]=bytes((245,245,245) if white else (35,155,230))
+    return NS(width=width,height=height,rgb=bytes(rgb)),rect
+
+
+class RoomInviteControllerTests(unittest.TestCase):
+    def setUp(self):
+        from pokiguard_v2.room_invite import RoomInviteControl
+        ReminderControllerTests.setUp(self)
+        self.image,rect=synthetic_invite_image();self.capture.return_value=self.image
+        geometry=NativeButtonGeometry(10,11,12,13,14,True,rect,15,2.0)
+        self.control=RoomInviteControl(True,True,1,2,3,geometry)
+        self.l.chinh_phuc.room_coop_v2_refs=2
+        self.read=self.stack.enter_context(patch('pokiguard_v2.room_invite.read_room_invite_control',side_effect=lambda _:RoomInviteControl(False,True) if self.executor.send_normalized_point.call_count else self.control))
+
+    def call(self,**kw):return ReminderControllerTests.call(self,_modal_kind='invite',**kw)
+
+    def test_close_one_owned_invite_then_force_fresh_room_route(self):
+        self.assertEqual('DISMISSED',self.call());self.executor.send_normalized_point.assert_called_once()
+        self.assertEqual(self.r.input_records[-1].domain,FarmInputDomain.BOSS_ROOM_OVERLAY_DISMISS)
+        self.assertEqual(self.r.snapshot().total_lobby_inputs,1)
+        self.assertEqual('ABSENT',self.call());self.assertEqual(self.executor.send_normalized_point.call_count,1)
+
+    def test_no_refs_or_combat_does_not_read_or_click_invite(self):
+        self.l.chinh_phuc.room_coop_v2_refs=None
+        self.assertEqual('ABSENT',self.call());self.read.assert_not_called()
+        self.l.chinh_phuc.room_coop_v2_refs=2;self.provider.current_session_key=object()
+        self.assertEqual('DEFERRED',self.call());self.read.assert_not_called();self.executor.send_normalized_point.assert_not_called()
+
+    def test_native_change_or_missing_cross_blocks_without_click(self):
+        from pokiguard_v2.room_invite import RoomInviteControl
+        self.read.side_effect=[self.control,self.control,replace(self.control,panel=4)]
+        self.assertEqual('BLOCKED',self.call());self.executor.send_normalized_point.assert_not_called()
+
+    def test_plain_blue_invite_button_is_not_the_close_cross(self):
+        from pokiguard_v2.room_invite import locate_room_invite_close
+        image,_=synthetic_invite_image(label=False)
+        self.assertFalse(locate_room_invite_close(image.rgb,image.width,image.height,self.control).found)
+
+    def test_pinned_close_has_fresh_exact_control_and_normal_input(self):
+        pin=Mock()
+        pin.expected_cursor_for_normalized_point.return_value=(100,100)
+        def execute(**kw):
+            okay=kw['preflight']() and kw['final_pre_takeover_preflight']() and kw['action']()
+            return NS(action_succeeded=okay,status=LeaseStatus.COMPLETE)
+        pin.execute_mouse.side_effect=execute
+        self.assertEqual('DISMISSED',self.call(pinned_input_session=pin));self.executor.send_normalized_point.assert_called_once()
 
 
 class ReminderWaitRoutingTests(unittest.TestCase):

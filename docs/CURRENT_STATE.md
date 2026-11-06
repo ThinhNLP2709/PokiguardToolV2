@@ -1,10 +1,147 @@
 # PokiguardToolV2 Current State
 
-Canonical technical handoff as of **2026-10-31 (Asia/Saigon)**.
+**Pet Puzzle B15** đã cập nhật bộ đọc và kiểm được phòng Lieyun lv77. 414 test tập trung qua. [Báo cáo B15](petpuzzle_b15_compatibility_report.md).
+
+**05/11/2026 — checkpoint WinError5 đã sửa offline:** [Báo cáo](checkpoint_replace_fix_20261105.md).
+135tests/14gates PASS; source3badf8c5…, chưa build/live mới. Phiên tool cũ cần mở lại để nhận sửa.
+
+## Nhánh ổn định: về phòng/popup — 04/11/2026
+
+Đã sửa nhánh dừng sau thưởng/re-entry của run390 và96: phòng mất DTO che
+bản đồ cache, kiểm lại target foreground, xử lý sức khỏe rồi Invite Close,
+re-entry có giới hạn và ảnh/trạng thái khi thất bại. [Báo cáo](room_return_popup_fix_20261104.md).
+404tests PASS; source404 4da18e87…; chưa live/build mới. Logic suy luận,
+BASIC, QTE, board reader và luật bỏ lượt giữ byte; proof/draft cũ không relabel.
+
+
+## Adviser: sửa đánh giá Kiếm trực tiếp — 04/11/2026
+
+Đã xác định scorer Demon lấy điểm D từ passive rồi trừ Kiếm thường, khiến
+cơ hội đánh trực tiếp bị hạ điểm. Đã sửa duy nhất runtime scorer: ghi nhận
+Kiếm hiệu dụng và cân cơ hội theo HP/Nộ hiện có, giữ boss-reply risk. Không
+hard-code7Kiếm hoặc công bố đủ damage/kill. [Báo cáo](phase5/ADVISER_DIRECT_SWORD.md).
+387tests/14gates PASS; source403 cc02306c…; BASIC/input/QTE/PASS/read/farm
+byte giữ nguyên. Chưa live/build mới; raw14ACK/source518805f4… và kết quả
+SkyPinkRain trước sửa không bị relabel. Lion Star là boss user chọn tiếp.
+
+
+## Adviser: một trận Suy luận native PASS — 04/11/2026
+
+User đã đổi phép thử từ30 trận sang1 trận SkyPinkRain lv95, Demon Aegis ăn
+Khiên/4Kiếm. Run e80c8ef2…:1WIN/2lượt,1nhận thưởng/về phòng,0technical lỗi.
+2decision thật:1giữ BASIC,1đề xuất khác;6checkpoint VALID_COMPLETED_COMMON,
+0AI fault/0log lost. Source403 518805f4… giữ nguyên, không build mới.
+[Receipt](phase5/artifacts/adviser_reasoning_1_20261104_010336/result.json).
+Timing:14ACK từ1BASIC Highsion165 (trận thua);3BASIC Lieyun trước đó chỉ
+terminal kills nên không được dùng làm ACK. Profile dùng data root riêng,
+cap1; không tự tiếp tục30. Đây là1native SWAP case, chưa nghiệm thu mọi lối
+chơi/skill/PASS hoặc chứng minh tối ưu/tỷ lệ thắng.
+
+
+## Suy luận theo lối chơi — 03/11/2026
+
+Contract/UI đã chỉnh theo yêu cầu mới: chọn Lối chơi và Độ thông minh tại
+Tùy chọn; AI chỉ budget/shadow/chẩn đoán. Model chung dùng nhu cầu HP/Mana/Nộ
+hai bên, cost skill/tiến hóa thực, bảo vệ tài nguyên và boss reply; cài đặt
+chiến thuật là tham khảo. PASS theo count/threshold/status và quyền owner đọc
+từ game, không thêm hard cap hoặc tự reset ngoài cơ chế hiện có. [Báo cáo hiện hành](phase5/STRATEGY_ALIGNMENT.md).
+
+Kiểm offline và source receipt trong báo cáo; chưa có native input/build mới.
+Estimate Demon 2/3/4 Kiếm theo HP có contract và test có điều kiện, chưa tự
+áp dụng ngoài game khi thiếu khắc hệ/damage. Skill native vẫn cần timing
+hiện hành; QTE/BASIC/đọc memory/input/farm giữ nguyên trong đợt này.
+Các entry dưới là snapshot lịch sử; proof/draft cũ không cấp quyền source mới.
+
+
+## Dừng nhận thưởng ở132/550 — source đã sửa, chờ test — 02/11/2026
+
+Đã tái hiện `POSTMATCH_UI_AMBIGUOUS` trên capture thật của runf7d1226f…:
+132WIN nhưng chỉ131confirm, detector xanh B14 không chịu được nền xuyên qua
+panel. [Nguyên nhân và sửa](postmatch_transparency_fix_20261102.md).
+193test PASS; source401 513e0104…, ZIP1.3.0 chưa đổi. Không phát input mới.
+AI chung/draft f669b126… là snapshot trước sửa; chưa activate. Cần cập nhật
+kiểm offline/draft theo successor trước live, không mở lại cap đã đóng.
+
+## AI hỗ trợ chung — offline PASS, chờ native — 02/11/2026
+
+Đã nối một intent AI chung theo lối chơi/cấu hình đang chọn; tab AI không chọn
+AI A/B/C. Demon lấy cả 5 target từ cấu hình, có mục tiêu Nộ/Kiếm danh nghĩa do
+user khai báo. [Thiết kế, kết quả và điểm chốt](phase5/COMMON_AI_ASSISTANT.md).
+339 test liên quan và 14 gate qualification PASS; 42 trace BASIC B14 giữ hành
+vi, 300/300 checkpoint log. Source400 SHA f669b126…; ZIP1.3.0 B14 không đổi.
+Native chung chưa chạy: cần timing BASIC hiện hành, không dùng lại log thường
+B14 hoặc proof B12. Chỉ đề xuất 1 case đại diện tối đa 3 BASIC + 3 REASONING;
+chưa tạo request/claim/cài profile/mở tool/phát input. Không bắt live từng viên.
+Skill/PASS thiếu timing hiện hành và Coop thiếu team model tiếp tục BASIC;
+source timing không tự cấp nghiệm thu cho binary. Không mở lại cap đã CLOSED.
+
+## Rebuild1.3.0 cho B14 — 01/11/2026
+
+User yêu cầu dọn build cũ và build lại1.3.0. [Artifact và kiểm chứng](v1.3.0_release_report.md).
+ZIP mới SHAa9a190ba…, EXE2dd0405b…,396-source8a7fca21…;141runtime modules
+khớp source,15packaging tests và2EXE self-checks PASS, không đổi version/source.
+BASIC B14 đã live3/3WIN trước build; không rebind AI/timing hoặc live binary.
+Xóa đệ quy bị automatic approval review chặn (`blocked by policy`);16build cũ
+chỉ được gom có thể hoàn tác vào `build/_old_builds_20261101/`, chưa xóa hẳn.
+AI chung/Sagui tiếp tục giữ đúng trạng thái trước task, chưa mở native mới.
+
+
+## B14: vòng lặp 3 BASIC PASS — 01/11/2026
+
+User đã test3trận bằng sourcea330e839…:3WIN,3lần Đồng ý và về đúng phòng
+Lieyun77, không technical abort/safety violation; stop đúng mục tiêu.
+[Acceptance](artifacts/game_1_7_4_b14_loss_20261101/b2_acceptance.json),
+[phạm vi và phần chưa live](petpuzzle_b14_compatibility_report.md).
+Nhánh thích ứng đã PASS BASIC/Solo/Demon Aegis ăn Khiên/4Kiếm trong cohort.
+Chưa build; AI chung/Sagui vẫn tạm giữ, timing/source admission cũ không rebind.
+Màn Thua B14 có89test/offline nhưng chưa live click; re-entry cưỡng bức và
+card/QTE không phát sinh trong3trận, không tự mở thêm trận để lấy mẫu.
+
+
+## B14 B1 retest PASS; màn Thua đã cập nhật — 01/11/2026
+
+1BASIC b87f39b5…: WIN, Đồng ý đúng1lần, về phòng Lieyun77, dừng đúng mục tiêu.
+Ảnh Thua mới của user đã bổ sung vào detector;89tests PASS. [Chi tiết và giới
+hạn live](petpuzzle_b14_loss_ui_20261101.md).3BASIC tiếp theo chờ user sẵn sàng;
+chưa mở, chưa build; AI chung/Sagui vẫn tạm giữ. Source sau cập nhật UI khác
+source B1, không rebind proof cũ.
+
+
+## B14 B1: sửa nhận diện màn thắng — 01/11/2026
+
+B1 đã WIN nhưng chưa return vì detector khung thưởng cũ không nhận giao diện
+B14; tool dừng POSTMATCH_UI_AMBIGUOUS sau30giây, chưa click Đồng ý. Đã sửa
+riêng variant visual và81tests PASS. [Report](petpuzzle_b14_postmatch_fix_20261101.md).
+Cần user về phòng, sau đó phiên1BASIC mới kiểm confirm/return. Không autoStart,
+không build, không mở cap E1/Sagui; AI chung vẫn tạm giữ.
+
+
+## B14 compatibility branch — 2026-11-01
+
+User yêu cầu thích ứng gameB14, metadata111, reverse Il2CppDumper. Đã chuyển
+profile managed/native Unity6000.7.0b7, giữ nguyên gameplay/input flow và các
+thay đổi AI chung có trước task. [Report](petpuzzle_b14_compatibility_report.md).
+407focused tests PASS; readonly provider nhận đúng bản đồ Chinh Phục. Combat/
+ACK/result cần B1 có giới hạn sau offline review. Chưa mở tool, chưa input,
+chưa build hoặc đổi1.3.0. Full regression phân loại trong report.
+Sagui draft trước migration đã obsolete; không activate/rebind source proof cũ.
+AI chung tạm giữ, không mở lại acceptance/cap Phase5 đã đóng.
+
+
+Canonical technical handoff as of **2026-11-01 (Asia/Saigon)**.
 
 Read [AGENTS.md](../AGENTS.md) first. User-defined gameplay/product rules are
 canonical in [DECISIONS.md](DECISIONS.md). This file contains current accepted
 technical state; use linked phase reports for detailed evidence.
+
+## Đang mở rộng AI chung sau 1.3.0 — 2026-11-01
+
+Lõi chung và bridge đã được kiểm offline; chưa bật native/UI cho mọi lối chơi.
+[Trạng thái, evidence và phần còn thiếu](phase5/COMMON_REASONING.md).
+Không mở lại cap/acceptance Phase 5 cũ hoặc thay artifact phát hành 1.3.0.
+User đã xác nhận 5 target Demon dùng cùng phép quét; chọn Demon Sagui ăn Máu
+làm cohort mới. Đã chuẩn bị [draft test](phase5/COMMON_SAGUI_LIVE_PLAN.md), chưa
+active hoặc chạy live. Kiểm chứng nguồn xác nhận khác với native acceptance.
 
 ## Checkpoint1.3.0 — 2026-11-01
 
@@ -720,7 +857,7 @@ default B3 has now also passed. See
 [phase3c3_report.md](phase3c3_report.md) and
 [phase3c3_runbook.md](phase3c3_runbook.md).
 
-Fresh B1 attempt `ba353e09c60c407abb485ae9086496ac` exposed one shared-guard
+Fresh B1 attempt `ba407e09c60c407abb485ae9086496ac` exposed one shared-guard
 integration defect: turn 7 had a complete current board and eight legal moves,
 but the generic `safeMoveCount=0` guard overrode an authorized
 `SKILL_RUSH_RESOURCE_PROGRESS` Mana SWAP. The guard now exempts only the five
@@ -1086,7 +1223,7 @@ no safe stop and consistent result/attempt accounting. The user accepted this
 The relevant immutable runs include
 `logs/farm_runs/e354ad0b878f4959838b3e07c4fbdcf0`,
 `logs/farm_runs/2b7ce245380c45848285ad087ef86ea7` and
-`logs/farm_runs/bef23282eac3461bb6ca629e36f63537`. The latest diagnostic
+`logs/farm_runs/bef23282eac3461bb6ca629e36f64077`. The latest diagnostic
 runs are `logs/farm_runs/ab7e9331f5774a48b2da8549e2f7e77a` and
 `logs/farm_runs/c756bbc90fc64366802c7df3ade5f4ba`.
 
@@ -1107,7 +1244,7 @@ Findings:
   idle. The dispatcher now falls back from rejected raw JSON board shape to the
   same callback's DTO payload. The subsequent diagnostic run below proves that
   escalating this gap recovery to a full heap scan was itself unsafe.
-- Run `bef23282eac3461bb6ca629e36f63537` recorded 11 local turns, six sent and
+- Run `bef23282eac3461bb6ca629e36f64077` recorded 11 local turns, six sent and
   acknowledged SWAPs, **zero policy PASS actions** and a user F9 stop. The
   visible idle turns were technical board-publication gaps, not solver PASS:
   every unresolved ACK launched a 1.28--1.31 GiB scan lasting 7.02--7.18
@@ -2241,7 +2378,7 @@ retry. **102/102 focused and 1018/1018 full regression PASS**, compileall and
 diff check PASS. Harness terminal 73692 exited code 1 and no controller remains.
 Await user readiness for one corrected B1 retry; do not start B2 yet.
 
-Retry 10 log `logs/phase3b3_pet_skill_action_20260905_003531.jsonl`:
+Retry 10 log `logs/phase3b3_pet_skill_action_20260905_004071.jsonl`:
 first match M_d126ec41 ended without skill capability or any automated action;
 user continued into M_854938f2 under the same still-unused invocation.
 Second match had current HT7/200+200 cost, Mana/Rage 760/250. At local turn 29,
@@ -2273,7 +2410,7 @@ Read-only precheck: game PID 26436 x64, LOBBY (combat objects absent),
 HWND 4130696 / client 1280x640, native signatures PASS, no competing controller.
 Foreground was false at precheck; operator must foreground game before playing.
 Harness PID 2852 / terminal session 92604, timeout 1800 s, log
-`logs/phase3b3_pet_skill_action_20260905_003531.jsonl`: now ended with the
+`logs/phase3b3_pet_skill_action_20260905_004071.jsonl`: now ended with the
 zero-input rejection above. Do not assume PID 2852/session 92604 still waits.
 
 Retry 9 log `logs/phase3b3_pet_skill_action_20260905_001953.jsonl`,

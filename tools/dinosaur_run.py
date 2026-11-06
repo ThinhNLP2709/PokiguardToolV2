@@ -98,7 +98,7 @@ def wait_current_board(run, process, provider, hotkeys, writer, *, timeout=None,
 
 
 def run(config, *, expected_match_id, expected_pid, reset_evidence, artifacts_root,
-        control_edges, observer=None) -> int:
+        control_edges, observer=None, reasoning_session=None) -> int:
     ledger = DinosaurCombatRun(config, expected_match_id=expected_match_id)
     writer = FarmRunArtifactWriter.create(Path(artifacts_root), ledger.farm_run_id)
     hotkeys = _ContextualFarmHotkeys(control_edges, lambda: ledger)
@@ -113,6 +113,16 @@ def run(config, *, expected_match_id, expected_pid, reset_evidence, artifacts_ro
                  bossLobbyRequired=False, checkpointSupported=False)
     error = None
     try:
+        if reasoning_session is not None:
+            try:
+                reasoning_session.bind_run(ledger.farm_run_id, writer.directory)
+            except Exception as exc:
+                writer.event("reasoning_session_unavailable", reason=type(exc).__name__, fallback="BASIC")
+                try:
+                    reasoning_session.stop()
+                except Exception:
+                    pass
+                reasoning_session = None
         with attach_target() as target:
             if expected_pid is None or target.pid != expected_pid:
                 raise RuntimeError("DINOSAUR_GAME_PROCESS_CHANGED")
@@ -135,7 +145,11 @@ def run(config, *, expected_match_id, expected_pid, reset_evidence, artifacts_ro
                     turn_progress_observer=lambda role, key, turn, local, boss:
                         _notify_combat_turn_progress(observer, ledger, role, key, turn, local, boss),
                 )
-                basic_auto_bot.run(args, shared_runtime=runtime)
+                options = {}
+                if reasoning_session is not None:
+                    from pokiguard_v2.reasoning_swap_timing import prepare_reasoning_options_safely
+                    options = prepare_reasoning_options_safely(reasoning_session)
+                basic_auto_bot.run(args, shared_runtime=runtime, **options)
                 records = _read_jsonl(args.log)
                 normal, reason, summary = _validate_combat_summary(records)
                 if summary is not None and summary.get('stopReason') == 'DINOSAUR_WIN_CONFIRMED':
@@ -157,6 +171,11 @@ def run(config, *, expected_match_id, expected_pid, reset_evidence, artifacts_ro
         ledger.safe_stop(FarmRunStopReason.COMBAT_SAFE_STOP, detail=error)
         writer.event("dinosaur_controller_error", error=error)
     finally:
+        if reasoning_session is not None:
+            try:
+                reasoning_session.stop()
+            except Exception:
+                pass
         writer.finalize(ledger, mode="DINOSAUR_CURRENT_COMBAT", error=error,
                         checkpointSupported=False, automaticReentry=False)
         _notify_run_observer(observer, ledger, "DINOSAUR_STOPPED")

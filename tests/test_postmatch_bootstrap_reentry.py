@@ -92,6 +92,24 @@ class BootstrapCandidateTests(unittest.TestCase):
             self.assertFalse(live._detached_shell_exit_runtime_proven(changed,**kw))
 
 
+class NullableMapCandidateTests(unittest.TestCase):
+    def test_recorded_map_timeout_still_routes_back_to_the_same_target(self):
+        l=recorded_lobby('postmatch_dto_null_map_20261104.json')
+        self.assertTrue(live._is_map_backed_detached_chinh_phuc_room_candidate(l,target_pet_id=1436,no_combat_owner=True))
+        result=LobbyWaitResult(False,l.state,None,'BOSS_LOBBY_TIMEOUT',l,2)
+        self.assertEqual('CHINH_PHUC_MAP',live._postmatch_reentry_source(result,target_pet_id=1436,current_session=None))
+        self.assertIsNone(live._postmatch_reentry_source(result,target_pet_id=1436,current_session=object()))
+
+    def test_unknown_or_foreign_room_is_not_a_null_dto_probe(self):
+        for object_name,key,value in (('chinh_phuc','current_room_id','other'),
+                ('chinh_phuc','enemy_pet_id',650),('chinh_phuc','owner_username','other'),
+                ('chinh_phuc','room_panel',None),('chinh_phuc','manager_room_native',None),
+                ('chinh_phuc','is_opening_flow',True),('chinh_phuc','reasons',('invalid pointer read',)),
+                ('combat_lifecycle','state',CombatLifecycleState.ACTIVE)):
+            l=recorded_lobby('postmatch_dto_null_map_20261104.json');setattr(getattr(l,object_name),key,value)
+            with self.subTest(key=key):self.assertFalse(live._is_map_backed_detached_chinh_phuc_room_candidate(l,target_pet_id=1436,no_combat_owner=True))
+
+
 class BootstrapRouteTests(unittest.TestCase):
     def setUp(self):
         self.stack=ExitStack();self.addCleanup(self.stack.close)
@@ -251,10 +269,12 @@ class BootstrapRouteTests(unittest.TestCase):
         calls=[]
         def modal(_):
             calls.append('modal')
-            self.assertEqual(self.locator.call_count,0)
-            return 'DISMISSED'
+            if len(calls)==1:
+                self.assertEqual(self.locator.call_count,0)
+                return 'DISMISSED'
+            return 'ABSENT'
         self.assertIs(self.call(outside_modal_handler=modal),self.ready)
-        self.assertEqual(calls,['modal'])
+        self.assertGreaterEqual(len(calls),2)
         self.assertEqual(len(self.clicks),2)
 
     def test_popup_or_reconnection_exposes_map_and_uses_remaining_reentry_pass(self):
@@ -267,6 +287,93 @@ class BootstrapRouteTests(unittest.TestCase):
         self.assertIs(self.call(outside_modal_handler=modal),self.ready)
         self.assertEqual(self.clicks,[self.native.viewport_point])
         self.assertEqual((self.run.completed_matches,self.run.match_attempts),(1,1))
+
+    def use_recorded_dto_null_map(self):
+        self.l=recorded_lobby('postmatch_dto_null_map_20261104.json')
+        self.native=farm_fixture.DetachedShellExitRuntimeTests.target(pet_id=1436,selected_pet_id=1436,
+            manager_address=self.l.world_boss.manager_chinh_phuc)
+        self.native.group_index=self.l.world_boss.chinh_phuc_active_panel_index
+        self.map=deepcopy(self.l)
+        self.discover.side_effect=lambda *_a,**_k:self.native
+        self.initial=LobbyWaitResult(False,self.l.state,None,'CHINH_PHUC_MAP_CANDIDATE',self.l,2)
+        self.wait.side_effect=None;self.wait.return_value=self.ready
+
+    def test_recorded_390_null_dto_probes_visible_shell_before_cached_map_click(self):
+        self.use_recorded_dto_null_map()
+        self.assertIs(self.call(),self.ready)
+        self.assertEqual(self.clicks,[self.shell.normalized_point,self.native.viewport_point])
+        self.assertEqual((self.run.completed_matches,self.run.match_attempts),(1,1))
+
+    def test_same_null_dto_on_real_map_does_not_authorize_a_shell_exit(self):
+        self.use_recorded_dto_null_map();self.locator.return_value=NS(found=False)
+        self.assertIs(self.call(),self.ready)
+        self.assertEqual(self.clicks,[self.native.viewport_point])
+        self.assertLess(self.clock.value,5)
+
+    def test_foreground_target_is_rechecked_immediately_before_click(self):
+        self.use_recorded_dto_null_map();self.locator.return_value=NS(found=False)
+        calls=[];wrong=deepcopy(self.native);wrong.pet_id=650
+        def discover(*_a,**_k):
+            calls.append(1);return self.native if len(calls)<4 else wrong
+        self.discover.side_effect=discover
+        self.call();self.assertEqual(self.clicks,[])
+        self.assertFalse(any(x.domain is FarmInputDomain.BOSS_TARGET_SELECT for x in self.run.input_records))
+
+    def test_map_target_missing_for_one_atomic_read_reenters_once(self):
+        self.use_recorded_dto_null_map()
+        self.locator.return_value = NS(found=False)
+        # Two stable target reads, then the recorded B15 atomic read miss.
+        self.discover.side_effect = [self.native, self.native, None, self.native, self.native]
+        self.assertIs(self.call(), self.ready)
+        self.assertEqual(self.clicks, [self.native.viewport_point])
+        self.assertEqual(self.discover.call_count, 5)
+        selected = [e for e in self.run.events if e.event == "chinh_phuc_map_target_selected"]
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(selected[0].detail["atomicRuntimeProbes"], 2)
+
+    def test_missing_atomic_map_target_stops_after_bounded_reads(self):
+        self.use_recorded_dto_null_map()
+        self.locator.return_value = NS(found=False)
+        self.wait.return_value = self.initial
+        self.discover.side_effect = [self.native, self.native, None, None, None, None]
+        self.assertFalse(self.call().ready)
+        self.assertEqual(self.discover.call_count, 6)
+        self.assertEqual(self.clicks, [])
+
+    def test_atomic_map_retry_rejects_a_readable_button_change(self):
+        self.use_recorded_dto_null_map()
+        self.locator.return_value = NS(found=False)
+        self.wait.return_value = self.initial
+        changed = deepcopy(self.native)
+        changed.button_address += 8
+        self.discover.side_effect = [self.native, self.native, None, changed]
+        self.assertFalse(self.call().ready)
+        self.assertEqual(self.discover.call_count, 4)
+        self.assertEqual(self.clicks, [])
+
+    def test_health_modal_is_rechecked_during_optional_shell_probe(self):
+        self.use_recorded_dto_null_map();calls=[]
+        def modal(_):
+            calls.append(1)
+            return 'BLOCKED' if len(calls)>2 else 'ABSENT'
+        self.call(outside_modal_handler=modal)
+        self.assertGreater(len(calls),2);self.assertEqual(self.clicks,[])
+
+    def test_late_room_reconnect_after_map_preflight_does_not_become_timeout(self):
+        self.use_recorded_dto_null_map()
+        with patch.object(live,'_return_from_chinh_phuc_map',return_value=None):
+            result=self.call()
+        self.assertIs(result,self.ready);self.assertEqual(self.clicks,[])
+        self.assertFalse(self.run.stopped)
+
+    def test_return_timeout_persists_one_failure_image_without_changing_outcome(self):
+        from pokiguard_v2.play_reminder import PlayReminderControl
+        with patch.object(live,'_return_from_chinh_phuc_map',return_value=self.initial),patch.object(live,'read_play_reminder_control',return_value=PlayReminderControl(False,True)),patch.object(live,'write_failure_png_rgb') as save:
+            result=self.call()
+        self.assertIs(result,self.initial);save.assert_called_once()
+        self.assertEqual(save.call_args.args[0].name,'return_lobby_failure.png')
+        self.assertEqual(self.clicks,[])
+
 
 
 if __name__=='__main__':unittest.main()

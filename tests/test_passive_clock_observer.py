@@ -69,7 +69,7 @@ class FakeMemory:
 class FakeSource:
     def __init__(self, *, string_size=None):
         self.memory = FakeMemory()
-        self.pinned = Binding("a" * 64, "b" * 64, 123, 42, 0x10000000, 0x4000000)
+        self.pinned = Binding("a" * 64, "b" * 64, 123, 42, 0x10000000, 0x4ADC000)
         self.binding_calls = 0
         self.on_binding = None
         self.root = 0x22000000
@@ -382,7 +382,7 @@ class FakeKernel:
         self.region_size = 4096
         self.modules = [
             p.ModuleInfo("PetPuzzle-1.7.4.exe","D:/pc/PetPuzzle-1.7.4.exe",0x400000,0x100000),
-            p.ModuleInfo("GameAssembly.dll","D:/pc/GameAssembly.dll",0x10000000,0x4000000),
+            p.ModuleInfo("GameAssembly.dll","D:/pc/GameAssembly.dll",0x10000000,0x4ADC000),
             p.ModuleInfo("UnityPlayer.dll","D:/pc/UnityPlayer.dll",0x18000000,0x1000000),
         ]
         self.cursor = 0

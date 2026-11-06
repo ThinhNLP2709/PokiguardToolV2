@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from pokiguard_v2.boss_entry import (
     BossCandidate,
@@ -22,6 +22,7 @@ from pokiguard_v2.boss_entry_ui import (
 )
 from pokiguard_v2.state import CombatSessionKey
 from pokiguard_v2.foreground_lease_transport import LeaseStatus
+from pokiguard_v2.native_card_ui import NativeGeometryBusyError
 from pokiguard_v2.win32_screenshot import read_png_rgb
 from tools.boss_entry import (
     ATTACK_CARD_RENDER_PROOF_WINDOW_SECONDS,
@@ -38,6 +39,7 @@ from tools.boss_entry import (
     _jsonable,
     _preentry_optional_card_mode,
     _retryable_board_messages,
+    _send_one_entry_retry,
 )
 
 
@@ -96,6 +98,114 @@ def candidate(index: int, boss_id: str, name: str) -> BossCandidate:
         True,
         entry_control_address=0x100000 + index * 0x100,
     )
+
+
+class EntryStartRetryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.boss = candidate(0, "1436", "Lieyun")
+        self.lobby = SimpleNamespace(
+            state=BossLobbyState.BOSS_LOBBY,
+            branch="CHINH_PHUC_ROOM",
+            candidates=(self.boss,),
+            chinh_phuc=SimpleNamespace(
+                clean=True,
+                current_room_id=self.boss.identity.room_id,
+                enemy_pet_id=1436,
+                button_start=self.boss.entry_control_address,
+                button_interactable=True,
+                button_groups_allow=True,
+                is_opening_flow=False,
+            ),
+        )
+        self.ready = SimpleNamespace(
+            lobby=self.lobby,
+            resolution=SimpleNamespace(candidate=self.boss),
+            attempt=SimpleNamespace(digest=lambda: "attempt-395"),
+            signature="start-signature",
+        )
+        self.location = SimpleNamespace(normalized_point=(0.81, 0.87), confidence=0.99)
+        self.proof = (object(), self.location, self.ready.signature)
+        self.runtime = SimpleNamespace(
+            target=SimpleNamespace(is_running=lambda: True),
+            provider=SimpleNamespace(
+                current_session_key=None,
+                poll=lambda: SimpleNamespace(combat_lifecycle=object()),
+            ),
+            entry_capability=Mock(),
+            executor=Mock(),
+            binding=object(),
+            pinned_input_session=None,
+            emergency_stop_requested=None,
+        )
+        self.runtime.executor.window_status.return_value = SimpleNamespace(
+            valid=True, foreground=True
+        )
+        self.runtime.executor.send_normalized_point.return_value = SimpleNamespace(
+            sent=True, status=SimpleNamespace(value="SENT")
+        )
+        self.runtime.entry_capability.execute.side_effect = lambda operation: (True, operation())
+        self.result = {"entryClicks": 1, "entryRetryClicks": 0}
+
+    @staticmethod
+    def busy_geometry() -> RuntimeError:
+        reason = "native_card_ui: transform job pending"
+        exc = RuntimeError(f"runtime Start button geometry is invalid: {reason}")
+        exc.__cause__ = NativeGeometryBusyError(reason)
+        return exc
+
+    def run_entry_retry(self, samples, *, after_proof=None, f9=False):
+        with (
+            patch("tools.boss_entry._capture_proof", side_effect=samples) as capture,
+            patch("tools.boss_entry._read_entry_lobby", side_effect=[self.lobby, after_proof or self.lobby]),
+            patch("tools.boss_entry._save_capture"),
+            patch("tools.boss_entry._write"),
+            patch("tools.boss_entry.time.sleep"),
+        ):
+            outcome = _send_one_entry_retry(
+                runtime=self.runtime,
+                farm_target=FarmTarget("1436", "Lieyun"),
+                ready=self.ready,
+                result=self.result,
+                log=None,
+                artifact_dir=Path("unused"),
+                interval=0.14,
+                hotkeys=SimpleNamespace(poll=lambda: (False, f9)),
+            )
+        return outcome, capture.call_count
+
+    def test_pending_transform_retries_proof_and_sends_one_start(self) -> None:
+        outcome = self.run_entry_retry([self.busy_geometry(), self.proof, self.proof])
+        self.assertEqual(outcome, ((True, "ENTRY_RETRY_SENT"), 3))
+        self.assertEqual(self.result, {"entryClicks": 2, "entryRetryClicks": 1})
+        self.runtime.executor.send_normalized_point.assert_called_once_with(
+            self.runtime.binding, self.location.normalized_point, settle_cursor=True
+        )
+
+    def test_persistent_pending_transform_and_modal_do_not_send(self) -> None:
+        for samples in (
+            [self.busy_geometry()] * 3,
+            [RuntimeError("modal-like two-button overlay is visible")],
+        ):
+            with self.subTest(samples=len(samples)):
+                outcome = self.run_entry_retry(samples)
+                self.assertEqual(outcome, ((False, "ENTRY_RETRY_VISUAL_UNPROVEN"), len(samples)))
+        self.runtime.entry_capability.reserve_retry.assert_not_called()
+        self.runtime.executor.send_normalized_point.assert_not_called()
+
+    def test_room_change_after_recovered_geometry_blocks_start(self) -> None:
+        changed = SimpleNamespace(**vars(self.lobby))
+        changed.chinh_phuc = SimpleNamespace(**vars(self.lobby.chinh_phuc))
+        changed.chinh_phuc.current_room_id = "Coop_other"
+        outcome = self.run_entry_retry(
+            [self.proof, self.busy_geometry(), self.proof], after_proof=changed
+        )
+        self.assertEqual(outcome, ((False, "ENTRY_RETRY_RUNTIME_CHANGED"), 3))
+        self.runtime.entry_capability.reserve_retry.assert_not_called()
+
+    def test_f9_after_recovered_geometry_blocks_start(self) -> None:
+        outcome = self.run_entry_retry([self.proof, self.busy_geometry(), self.proof], f9=True)
+        self.assertEqual(outcome, ((False, "F9_EMERGENCY_STOP"), 3))
+        self.runtime.entry_capability.reserve_retry.assert_not_called()
 
 
 def synthetic_button_image(

@@ -218,6 +218,7 @@ def _locate_current_wide_result(
 def _arena_defeat_header_proven(
     rgb: bytes, width: int, height: int, transform: object,
     diagnostics: dict[str, float | int | str],
+    *, b14: bool = False,
 ) -> bool:
     """Defeat uses purple horns and a hanging metal crest, not ice wings.
 
@@ -239,7 +240,8 @@ def _arena_defeat_header_proven(
         if len(horns) != 1:
             return False
     parts = _mask_components(
-        rgb, width, height, _viewport_rect(transform, (.45, .28, .55, .44)),
+        rgb, width, height, _viewport_rect(transform, (.45, .20, .55, .36) if b14
+                                         else (.45, .28, .55, .44)),
         lambda r, g, b: 80 <= r <= 175 and 80 <= g <= 185 and 90 <= b <= 205
         and max(r, g, b)-min(r, g, b) <= 40,
     )
@@ -250,7 +252,8 @@ def _arena_defeat_header_proven(
     if len(crests) != 1:
         return False
     parts = _mask_components(
-        rgb, width, height, _viewport_rect(transform, (.44, .18, .56, .26)),
+        rgb, width, height, _viewport_rect(transform, (.44, .15, .56, .24) if b14
+                                         else (.44, .18, .56, .26)),
         lambda r, g, b: min(r, g, b) >= 210 and max(r, g, b)-min(r, g, b) <= 35,
     )
     glyphs = [p for p in parts if p[4] >= max(25, area * .0001)]
@@ -263,6 +266,7 @@ def _arena_defeat_header_proven(
 def _locate_arena_result(
     rgb: bytes, width: int, height: int, transform: object,
     diagnostics: dict[str, float | int | str],
+    *, b14: bool = False,
 ) -> PostmatchUiLocation | None:
     """Full-viewport blue/gold result, verified header and green confirmation.
 
@@ -272,22 +276,42 @@ def _locate_arena_result(
     """
     area = transform.viewport_width * transform.viewport_height
     panel = _mask_components(
-        rgb, width, height, _viewport_rect(transform, (0.15, 0.25, 0.85, 0.98)),
+        rgb, width, height, _viewport_rect(transform, (.22, .29, .78, .98) if b14 else (0.15, 0.25, 0.85, 0.98)),
         lambda r, g, b: b >= 110 and g >= 60 and b >= r + 35,
     )
-    panels = [p for p in panel if p[4] >= area * 0.16
-              and 0.60 <= (p[2]-p[0])/transform.viewport_width <= 0.74
+    # B14 is translucent: board/reward/pet pixels can split its blue fill,
+    # and scenery outside the gold frame can connect to it. Restrict this
+    # search to the B14 frame and accept less blue coverage. Four gold corners,
+    # the result header and labelled button remain mandatory independent proof.
+    # Other layouts retain their original ROI and thresholds.
+    panel_area, min_width, max_width = (.08, .53, .62) if b14 else (.16, .60, .74)
+    panels = [p for p in panel if p[4] >= area * panel_area
+              and min_width <= (p[2]-p[0])/transform.viewport_width <= max_width
               and 0.55 <= (p[3]-p[1])/transform.viewport_height <= 0.76]
     diagnostics['arenaPanelCandidates'] = len(panels)
+    largest = max(panel, key=lambda p: p[4], default=None)
+    diagnostics['arenaPanelLargestPixels'] = 0 if largest is None else largest[4]
+    diagnostics['arenaPanelMinimumPixels'] = area * panel_area
+    diagnostics['arenaPanelLargestWidthFraction'] = 0 if largest is None else (largest[2]-largest[0])/transform.viewport_width
+    diagnostics['arenaPanelLargestHeightFraction'] = 0 if largest is None else (largest[3]-largest[1])/transform.viewport_height
     if len(panels) != 1:
         return None
-    gold = lambda r, g, b: r >= 190 and g >= 145 and b <= 130
-    for index, box in enumerate(((.16, .26, .22, .36), (.78, .26, .84, .36),
-                                 (.16, .88, .22, .975), (.78, .88, .84, .975))):
+    # B14 gold is shaded/translucent in both supplied result variants. Match
+    # its warm hue as well as brightness, retaining the larger corner-area
+    # requirement rather than relying on a few bright highlight pixels.
+    gold = ((lambda r, g, b: r >= 165 and g >= 125 and b <= 130
+             and r >= b + 55 and g >= b + 45 and r >= g) if b14
+            else (lambda r, g, b: r >= 190 and g >= 145 and b <= 130))
+    corners = ((.22, .29, .27, .38), (.73, .29, .78, .38),
+                (.22, .90, .27, .98), (.73, .90, .78, .98)) if b14 else (
+                (.16, .26, .22, .36), (.78, .26, .84, .36),
+                (.16, .88, .22, .975), (.78, .88, .84, .975))
+    for index, box in enumerate(corners):
         parts = _mask_components(rgb, width, height, _viewport_rect(transform, box), gold)
         pixels = max((p[4] for p in parts), default=0)
         diagnostics[f'arenaGoldCorner{index}Pixels'] = pixels
-        if pixels < max(70, area * .00065):
+        minimum = max(70, area * .00065)
+        if pixels < minimum:
             return None
     victory_header = True
     for side, box in (('Left', (.30, .025, .48, .24)), ('Right', (.52, .025, .70, .24))):
@@ -301,7 +325,7 @@ def _locate_arena_result(
             victory_header = False
     if victory_header:
         diagnostics['arenaHeaderVariant'] = 'VICTORY_ICE_WINGS'
-    elif _arena_defeat_header_proven(rgb, width, height, transform, diagnostics):
+    elif _arena_defeat_header_proven(rgb, width, height, transform, diagnostics, b14=b14):
         diagnostics['arenaHeaderVariant'] = 'DEFEAT_PURPLE_CREST'
     else:
         diagnostics['arenaHeaderReason'] = 'victory_and_defeat_anchors_unproven'
@@ -333,12 +357,13 @@ def _locate_arena_result(
     return PostmatchUiLocation(
         PostmatchControl.RESULT_CONFIRM, True, point, .98,
         'single_green_button_in_blue_gold_arena_result',
-        {**diagnostics, 'layoutVariant': 'PETPUZZLE_1_7_4_9_ARENA_RESULT'},
+        {**diagnostics, 'layoutVariant': ('PETPUZZLE_B14_RESULT' if b14
+                                        else 'PETPUZZLE_1_7_4_9_ARENA_RESULT')},
     )
 
 
 def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLocation:
-    """Locate the sole orange ``Đồng ý`` control inside the result-modal layout.
+    """Locate the sole labelled ``Đồng ý`` control inside a proven result layout.
 
     The caller must independently prove authoritative POSTMATCH lifecycle. This
     locator proves only the visible layout and intentionally rejects the
@@ -353,6 +378,9 @@ def locate_result_confirm(rgb: bytes, width: int, height: int) -> PostmatchUiLoc
     arena = _locate_arena_result(rgb, width, height, transform, diagnostics)
     if arena is not None:
         return arena
+    b14 = _locate_arena_result(rgb, width, height, transform, diagnostics, b14=True)
+    if b14 is not None:
+        return b14
     current_wide = _locate_current_wide_result(
         rgb,
         width,

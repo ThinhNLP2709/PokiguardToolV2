@@ -408,7 +408,8 @@ class OfflineAIUiTests(unittest.TestCase):
 
     def test_actual_tab_gate_defaults_save_and_no_poller_started(self):
         self.assertEqual(DESKTOP_TAB_TITLES, tuple(self.app.notebook.tab(t, "text") for t in self.app.notebook.tabs()))
-        self.assertIn("disabled", self.app.ai_reasoning_widget.state())
+        self.assertEqual(("Cơ bản","Suy luận"),tuple(self.app.intelligence_widget["values"]))
+        self.assertFalse(hasattr(self.app,"ai_reasoning_widget"))
         self.assertFalse(self.app.ai_shadow_enabled.get())
         self.assertEqual("4000", self.app.ai_budget_ms.get())
         self.assertEqual(0, self.poller.starts)
@@ -448,14 +449,14 @@ class OfflineAIUiTests(unittest.TestCase):
         self.assertEqual("6000", self.app.ai_budget_ms.get())
         self.app._set_config_editable(True)
         self.assertNotIn("disabled", self.app.ai_shadow_widget.state())
-        self.assertIn("disabled", self.app.ai_reasoning_widget.state())
+        self.assertNotIn("disabled", self.app.intelligence_widget.state())
 
     def test_cached_status_stop_degraded_and_unsupported_text(self):
         status = AIStatus("DEGRADED", "DISK_FULL", written=2, dropped=3)
         self.assertIn("đã ghi 2; bỏ 3", ai_status_text(status))
         self.assertIn("Quyền chọn nước: Cơ bản", ai_status_text(status))
         self.assertIn("ĐÃ DỪNG", ai_status_text(replace(status, state="STOPPED")))
-        self.assertIn("không tạo worker", ai_capability_text(PlayStyle.BU_WIN))
+        self.assertIn("AI dùng chung một bộ so sánh", ai_capability_text(PlayStyle.BU_WIN))
         self.assertNotIn("xác suất", ai_status_text(status))
 
 

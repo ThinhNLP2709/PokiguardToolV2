@@ -73,7 +73,7 @@ class UIReasoningSession:
         self.directory.mkdir(parents=True,exist_ok=False)
         binding=dict(schema='pokiguard.ui_reasoning.session.v1',run_id=self.run_id,
             farm_run_id=farm_run_id,farm_directory=str(Path(directory).resolve()),
-            config_id=self.intent.config_id,profile='DEMON_SHIELD_LIEYUN77',native_U_ms=None,
+            config_id=self.intent.config_id,profile=self.intent.profile,native_U_ms=None,
             runtime_sha256=self.authority.runtime_sha256,calibration_sha256=self.authority.calibration_sha256,
             max_live_bridges=1,receipt_history_limit=32,input_authority=False)
         (self.directory/'session.json').write_text(json.dumps(binding,indent=2),encoding='utf-8')
@@ -101,7 +101,10 @@ class UIReasoningSession:
                 self._fault('UI_REASONING_RESOURCE_LIMIT');return {}
             from .reasoning_pilot import create_pilot_bridge
             from .reasoning_swap_timing import SwapTimingCollector
-            factory=self.bridge_factory or create_pilot_bridge
+            from .reasoning_common_native import CommonNativeAuthority
+            from .reasoning_common_selection import create_common_native_bridge
+            factory=self.bridge_factory or (create_common_native_bridge
+                if type(self.authority) is CommonNativeAuthority else create_pilot_bridge)
             combat_run_id=f'{self.run_id}:{self.serial+1}'
             bridge=factory(enabled=True,authority=self.authority,
                 verified_build_sha256=self.authority.game_build_sha256,diagnostics=self.sink,
@@ -214,12 +217,12 @@ class UIReasoningSession:
 
 def create_ui_reasoning_session(config,*,paths,game_executable,directory,observer,profile_loader=None):
     if not config.ai.reasoning_enabled:return None
-    from .reasoning_ui_scope import ui_reasoning_scope_reason
-    reason=ui_reasoning_scope_reason(config,require_target=True)
+    from .reasoning_ui_scope import ui_reasoning_intent_reason
+    reason=ui_reasoning_intent_reason(config)
     try:
         if reason is not None:raise ValueError(reason)
-        from .reasoning_ui_profile import load_ui_authority
-        authority=(profile_loader or load_ui_authority)(config,paths=paths,game_executable=game_executable)
+        from .reasoning_ui_profile import load_session_authority
+        authority=(profile_loader or load_session_authority)(config,paths=paths,game_executable=game_executable)
         return UIReasoningSession(config,authority,directory=directory,observer=observer)
     except Exception as exc:
         reason=str(exc) if str(exc).startswith('UI_REASONING_') else 'UI_REASONING_PROFILE_'+type(exc).__name__

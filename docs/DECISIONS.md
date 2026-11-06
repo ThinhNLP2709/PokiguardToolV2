@@ -7,6 +7,17 @@ Technical implementation and acceptance status are in
 [CURRENT_STATE.md](CURRENT_STATE.md). Workspace/safety precedence begins with
 [AGENTS.md](../AGENTS.md).
 
+## Demon Farm: cơ chế chung cho 5 viên — người dùng chốt 01/11/2026
+
+- Khiên, Máu, Mana, Hút và Nộ dùng cùng phép quét: ghép ngang phá các cột,
+  ghép dọc phá các hàng; chỉ khác viên kích hoạt. Người dùng trả lời trực tiếp:
+  “Cùng cơ chế quét, chỉ đổi viên kích hoạt”.
+- Người dùng có **Demon Sagui ăn Máu**, chọn làm cấu hình kiểm tiếp theo ngoài
+  Demon Aegis ăn Khiên. Chưa có ID runtime của Sagui trong phép thử mới.
+- Đây là xác nhận cơ chế từ người dùng; không đổi thành chứng cứ reverse/native,
+  công thức damage, thứ tự cộng Nộ trong cùng đợt hoặc nghiệm thu input timing.
+  BASIC, flow farm, input và QTE vẫn giữ chuẩn hiện có.
+
 ## Khủng long: rule người dùng chốt ngày26/10/2026
 
 - Người dùng tự vào trận Khủng long, rồi Start trong tool; không yêu cầu boss lobby.

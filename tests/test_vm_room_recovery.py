@@ -262,7 +262,7 @@ class PostmatchRoomRecoveryTests(unittest.TestCase):
         for result, expected_calls in ((None, 1), (initial, 2)):
             with self.subTest(result=result), patch(
                 "tools.farm_run._return_from_chinh_phuc_map", return_value=result
-            ) as route:
+            ) as route, patch("tools.farm_run._wait_boss_lobby", return_value=initial):
                 self.assertIs(self.recover(initial), initial)
                 self.assertEqual(route.call_count, expected_calls)
 

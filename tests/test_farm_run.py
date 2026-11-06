@@ -942,7 +942,7 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
             return_value=shell,
         ), patch(
             "tools.farm_run._read_lobby_runtime_with_provider_fallback",
-            side_effect=[detached_lobby, hub_lobby] + [map_lobby] * 8,
+            side_effect=[detached_lobby, detached_lobby, hub_lobby] + [map_lobby] * 8,
         ), patch(
             "tools.farm_run._settle_detached_room_shell_exit",
             return_value=("HUB_LOBBY", hub),
@@ -1259,6 +1259,7 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         lobby_reads = [
             detached_lobby,
             detached_lobby,
+            detached_lobby,
             hub_lobby,
             hub_lobby,
             map_lobby,
@@ -1552,13 +1553,13 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
             return_value=no_shell,
         ), patch(
             "tools.farm_run._read_lobby_runtime_with_provider_fallback",
-            side_effect=([map_lobby] * 16) + ([island_lobby] * 3),
+            side_effect=([map_lobby] * 16) + ([island_lobby] * 4),
         ), patch(
             "tools.farm_run.discover_chinh_phuc_island_target",
             return_value=island_target,
         ), patch(
             "tools.farm_run.discover_chinh_phuc_map_target",
-            side_effect=[runtime, runtime, runtime],
+            side_effect=[runtime, runtime, runtime, runtime],
         ) as discover, patch(
             "tools.farm_run._wait_boss_lobby", return_value=expected
         ), patch("tools.farm_run.write_png_rgb"):
@@ -1577,7 +1578,7 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
             )
 
         self.assertIs(observed, expected)
-        self.assertEqual(discover.call_count, 3)
+        self.assertEqual(discover.call_count, 4)
         self.assertTrue(
             all(
                 call.kwargs.get("manager_hint") == 0x20000005000

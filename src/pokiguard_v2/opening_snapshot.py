@@ -34,10 +34,10 @@ from .state import MAX_CELL_MULTIPLIER
 
 # Metadata-usage slots referenced as typeof(...) by the local Newtonsoft.Json
 # native bodies.  These are build RVAs, never ASLR-dependent addresses.
-JARRAY_TYPE_INFO_RVA = 0x3DC2740
-JOBJECT_TYPE_INFO_RVA = 0x3DC2738
-JPROPERTY_TYPE_INFO_RVA = 0x3D619D0
-JVALUE_TYPE_INFO_RVA = 0x3DB8FE8
+JARRAY_TYPE_INFO_RVA = 0x42FA7F0
+JOBJECT_TYPE_INFO_RVA = 0x42FA7D8
+JPROPERTY_TYPE_INFO_RVA = 0x42E3AA8
+JVALUE_TYPE_INFO_RVA = 0x4302C80
 
 JARRAY_VALUES_OFFSET = 0x50
 LIST_ITEMS_OFFSET = 0x10
@@ -71,8 +71,8 @@ MAX_SERVER_SEQUENCE = 10_000_000
 # typed fields remain owned by the same exact ChatMessageDTO.
 CHAT_MESSAGE_TYPE_OFFSET = 0x40
 CHAT_MESSAGE_MATCH_ID_OFFSET = 0x100
-CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x4A8
-CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x4B0
+CHAT_MESSAGE_PRE_BOARD_OFFSET = 0x4C0
+CHAT_MESSAGE_PRE_BOARD_READY_OFFSET = 0x4C8
 
 # All three response handlers in the supported 1.7.4 build delegate to
 # MatchService.HandleResEnvelope, which in turn calls ParseCombatBatch on the
