@@ -1,0 +1,74 @@
+01554500 push       rbx
+01554502 sub        rsp, 0x20
+01554506 cmp        byte ptr [rip + 0x300cae7], 0
+0155450D mov        rbx, rcx
+01554510 jne        0x155452c
+01554512 mov        dl, 1
+01554514 lea        rcx, [rip + 0x2da3f75]                             CardUI_TypeInfo
+0155451B call       0x23b090
+01554520 lock or    dword ptr [rsp], 0
+01554525 mov        byte ptr [rip + 0x300cac8], 1
+0155452C mov        rcx, qword ptr [rip + 0x2da3f5d]                   CardUI_TypeInfo
+01554533 cmp        dword ptr [rcx + 0xdc], 0
+0155453A jne        0x1554541
+0155453C call       0x25c2c0
+01554541 cmp        byte ptr [rip + 0x300caaa], 0
+01554548 jne        0x1554564
+0155454A mov        dl, 1
+0155454C lea        rcx, [rip + 0x2d9687d]                             'MEGA_ICARUS'
+01554553 call       0x23b090
+01554558 lock or    dword ptr [rsp], 0
+0155455D mov        byte ptr [rip + 0x300ca8e], 1
+01554564 mov        rdx, qword ptr [rip + 0x2d96865]                   'MEGA_ICARUS'
+0155456B cmp        rbx, rdx
+0155456E je         0x1554606
+01554574 test       rbx, rbx
+01554577 je         0x15545a1
+01554579 test       rdx, rdx
+0155457C je         0x15545a1
+0155457E mov        eax, dword ptr [rdx + 0x10]
+01554581 cmp        dword ptr [rbx + 0x10], eax
+01554584 jne        0x15545a1
+01554586 movsxd     r8, dword ptr [rbx + 0x10]
+0155458A lea        rcx, [rbx + 0x14]
+0155458E add        r8, r8
+01554591 add        rdx, 0x14
+01554595 xor        r9d, r9d
+01554598 call       0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+0155459D test       al, al
+0155459F jne        0x1554606
+015545A1 cmp        byte ptr [rip + 0x300ca4b], 0
+015545A8 jne        0x15545c4
+015545AA mov        dl, 1
+015545AC lea        rcx, [rip + 0x2d96805]                             'MEGA_TREX'
+015545B3 call       0x23b090
+015545B8 lock or    dword ptr [rsp], 0
+015545BD mov        byte ptr [rip + 0x300ca2f], 1
+015545C4 mov        rdx, qword ptr [rip + 0x2d967ed]                   'MEGA_TREX'
+015545CB cmp        rbx, rdx
+015545CE je         0x1554606
+015545D0 test       rbx, rbx
+015545D3 je         0x15545fe
+015545D5 test       rdx, rdx
+015545D8 je         0x15545fe
+015545DA mov        eax, dword ptr [rdx + 0x10]
+015545DD cmp        dword ptr [rbx + 0x10], eax
+015545E0 jne        0x15545fe
+015545E2 movsxd     r8, dword ptr [rbx + 0x10]
+015545E6 lea        rcx, [rbx + 0x14]
+015545EA add        r8, r8
+015545ED add        rdx, 0x14
+015545F1 xor        r9d, r9d
+015545F4 add        rsp, 0x20
+015545F8 pop        rbx
+015545F9 jmp        0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+015545FE xor        al, al
+01554600 add        rsp, 0x20
+01554604 pop        rbx
+01554605 ret
+01554606 mov        al, 1
+01554608 add        rsp, 0x20
+0155460C pop        rbx
+0155460D ret
+0155460E int3
+0155460F int3

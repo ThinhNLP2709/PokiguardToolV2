@@ -1,0 +1,157 @@
+01554A40 push       rbx
+01554A42 sub        rsp, 0x20
+01554A46 cmp        byte ptr [rip + 0x300c5ac], 0
+01554A4D mov        rbx, rcx
+01554A50 jne        0x1554aa5
+01554A52 mov        dl, 1
+01554A54 lea        rcx, [rip + 0x2da3a35]                             CardUI_TypeInfo
+01554A5B call       0x23b090
+01554A60 lock or    dword ptr [rsp], 0
+01554A65 mov        dl, 1
+01554A67 lea        rcx, [rip + 0x2da388a]                             'ATTACK_LEGEND'
+01554A6E call       0x23b090
+01554A73 lock or    dword ptr [rsp], 0
+01554A78 mov        dl, 1
+01554A7A lea        rcx, [rip + 0x2da3837]                             'ATTACK_LEGEND_'
+01554A81 call       0x23b090
+01554A86 lock or    dword ptr [rsp], 0
+01554A8B mov        dl, 1
+01554A8D lea        rcx, [rip + 0x2da37f4]                             'MEGA2'
+01554A94 call       0x23b090
+01554A99 lock or    dword ptr [rsp], 0
+01554A9E mov        byte ptr [rip + 0x300c554], 1
+01554AA5 cmp        qword ptr [rbx + 0x20], 0
+01554AAA je         0x1554c4e
+01554AB0 mov        rax, qword ptr [rbx + 0x20]
+01554AB4 cmp        qword ptr [rax + 0x30], 0
+01554AB9 je         0x1554c4e
+01554ABF mov        rcx, qword ptr [rax + 0x30]
+01554AC3 xor        edx, edx
+01554AC5 call       0x26ddb30                                          System.String$$ToUpper
+01554ACA mov        rcx, qword ptr [rip + 0x2da39bf]                   CardUI_TypeInfo
+01554AD1 mov        rbx, rax
+01554AD4 cmp        dword ptr [rcx + 0xdc], 0
+01554ADB jne        0x1554ae2
+01554ADD call       0x25c2c0
+01554AE2 xor        edx, edx
+01554AE4 mov        rcx, rbx
+01554AE7 call       0x1553b40                                          CardUI$$IsRowSkillType
+01554AEC test       al, al
+01554AEE jne        0x1554c46
+01554AF4 xor        edx, edx
+01554AF6 mov        rcx, rbx
+01554AF9 call       0x1553c10                                          CardUI$$IsGalaxySkillType
+01554AFE test       al, al
+01554B00 jne        0x1554c46
+01554B06 xor        edx, edx
+01554B08 mov        rcx, rbx
+01554B0B call       0x1553c90                                          CardUI$$IsGalaxyRickyType
+01554B10 test       al, al
+01554B12 jne        0x1554c46
+01554B18 xor        edx, edx
+01554B1A mov        rcx, rbx
+01554B1D call       0x1554500                                          CardUI$$IsSealSkillType
+01554B22 test       al, al
+01554B24 jne        0x1554c46
+01554B2A xor        edx, edx
+01554B2C mov        rcx, rbx
+01554B2F call       0x1554610                                          CardUI$$IsHealConvertSkillType
+01554B34 test       al, al
+01554B36 jne        0x1554c46
+01554B3C xor        edx, edx
+01554B3E mov        rcx, rbx
+01554B41 call       0x1553d10                                          CardUI$$IsMegaPrysmaType
+01554B46 test       al, al
+01554B48 jne        0x1554c46
+01554B4E xor        edx, edx
+01554B50 mov        rcx, rbx
+01554B53 call       0x1553d90                                          CardUI$$IsMegaPriestType
+01554B58 test       al, al
+01554B5A jne        0x1554c46
+01554B60 xor        edx, edx
+01554B62 mov        rcx, rbx
+01554B65 call       0x15540e0                                          CardUI$$IsMegaTwinFlameType
+01554B6A test       al, al
+01554B6C jne        0x1554c46
+01554B72 xor        edx, edx
+01554B74 mov        rcx, rbx
+01554B77 call       0x1554160                                          CardUI$$IsMegaNhusagoType
+01554B7C test       al, al
+01554B7E jne        0x1554c46
+01554B84 xor        edx, edx
+01554B86 mov        rcx, rbx
+01554B89 call       0x15541e0                                          CardUI$$IsMegaPosidallType
+01554B8E test       al, al
+01554B90 jne        0x1554c46
+01554B96 mov        rdx, qword ptr [rip + 0x2da36eb]                   'MEGA2'
+01554B9D cmp        rbx, rdx
+01554BA0 je         0x1554c46
+01554BA6 test       rbx, rbx
+01554BA9 je         0x1554bd3
+01554BAB test       rdx, rdx
+01554BAE je         0x1554bd3
+01554BB0 mov        eax, dword ptr [rdx + 0x10]
+01554BB3 cmp        dword ptr [rbx + 0x10], eax
+01554BB6 jne        0x1554bd3
+01554BB8 movsxd     r8, dword ptr [rbx + 0x10]
+01554BBC lea        rcx, [rbx + 0x14]
+01554BC0 add        r8, r8
+01554BC3 add        rdx, 0x14
+01554BC7 xor        r9d, r9d
+01554BCA call       0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+01554BCF test       al, al
+01554BD1 jne        0x1554c46
+01554BD3 mov        rdx, qword ptr [rip + 0x2da371e]                   'ATTACK_LEGEND'
+01554BDA cmp        rbx, rdx
+01554BDD je         0x1554c46
+01554BDF test       rbx, rbx
+01554BE2 je         0x1554c0c
+01554BE4 test       rdx, rdx
+01554BE7 je         0x1554c0c
+01554BE9 mov        eax, dword ptr [rdx + 0x10]
+01554BEC cmp        dword ptr [rbx + 0x10], eax
+01554BEF jne        0x1554c0c
+01554BF1 movsxd     r8, dword ptr [rbx + 0x10]
+01554BF5 lea        rcx, [rbx + 0x14]
+01554BF9 add        r8, r8
+01554BFC add        rdx, 0x14
+01554C00 xor        r9d, r9d
+01554C03 call       0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+01554C08 test       al, al
+01554C0A jne        0x1554c46
+01554C0C mov        rdx, qword ptr [rip + 0x2da36a5]                   'ATTACK_LEGEND_'
+01554C13 cmp        rbx, rdx
+01554C16 je         0x1554c46
+01554C18 test       rbx, rbx
+01554C1B je         0x1554c4e
+01554C1D test       rdx, rdx
+01554C20 je         0x1554c4e
+01554C22 mov        eax, dword ptr [rdx + 0x10]
+01554C25 cmp        dword ptr [rbx + 0x10], eax
+01554C28 jne        0x1554c4e
+01554C2A movsxd     r8, dword ptr [rbx + 0x10]
+01554C2E lea        rcx, [rbx + 0x14]
+01554C32 add        r8, r8
+01554C35 add        rdx, 0x14
+01554C39 xor        r9d, r9d
+01554C3C add        rsp, 0x20
+01554C40 pop        rbx
+01554C41 jmp        0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+01554C46 mov        al, 1
+01554C48 add        rsp, 0x20
+01554C4C pop        rbx
+01554C4D ret
+01554C4E xor        al, al
+01554C50 add        rsp, 0x20
+01554C54 pop        rbx
+01554C55 ret
+01554C56 int3
+01554C57 int3
+01554C58 int3
+01554C59 int3
+01554C5A int3
+01554C5B int3
+01554C5C int3
+01554C5D int3
+01554C5E int3
+01554C5F int3

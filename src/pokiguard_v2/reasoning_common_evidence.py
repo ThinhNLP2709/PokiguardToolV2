@@ -157,9 +157,15 @@ def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geomet
     effects=[skill_evidence(value,root),pass_evidence(state,root,pass_owner)]
     if action.family=='cast':effects.append(EffectChoice(action,root,'INCUMBENT_CAST_EFFECT_UNMODELED',None,'UNKNOWN','UNKNOWN'))
     requirements={}
-    if type(cap) is PetSkillCapability:
-        if type(cap.effective_mana_cost) is int:requirements['mana']=cap.effective_mana_cost
-        if type(cap.effective_power_cost) is int:requirements['rage']=cap.effective_power_cost
+    if (config.damage_card is DamageCardMode.PET_SKILL and type(cap) is PetSkillCapability
+            and cap.current and cap.session_key == state.battle.session_key
+            and cap.skill_card_id is not None and cap.card_id == cap.skill_card_id):
+        if (cap.effective_mana_cost_source is PetSkillCostSource.CONDITION_USE
+                and type(cap.effective_mana_cost) is int and cap.effective_mana_cost >= 0):
+            requirements['mana']=cap.effective_mana_cost
+        if (cap.effective_power_cost_source is PetSkillCostSource.POWER
+                and type(cap.effective_power_cost) is int and cap.effective_power_cost >= 0):
+            requirements['rage']=cap.effective_power_cost
     fusion=state.fusion
     evolution=dict(pending=bool(config.evolution.value!='none' and fusion is not None and fusion.enabled and not fusion.used),
         mana_cost=None if fusion is None else fusion.mana_cost,source='EXISTING_FUSION_STATE')

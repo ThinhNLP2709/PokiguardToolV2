@@ -1,0 +1,46 @@
+01554480 push       rbx
+01554482 sub        rsp, 0x20
+01554486 cmp        byte ptr [rip + 0x300cb66], 0
+0155448D mov        rbx, rcx
+01554490 jne        0x15544ac
+01554492 mov        dl, 1
+01554494 lea        rcx, [rip + 0x2d9691d]                             'MEGA_TREX'
+0155449B call       0x23b090
+015544A0 lock or    dword ptr [rsp], 0
+015544A5 mov        byte ptr [rip + 0x300cb47], 1
+015544AC mov        rdx, qword ptr [rip + 0x2d96905]                   'MEGA_TREX'
+015544B3 cmp        rbx, rdx
+015544B6 je         0x15544ee
+015544B8 test       rbx, rbx
+015544BB je         0x15544e6
+015544BD test       rdx, rdx
+015544C0 je         0x15544e6
+015544C2 mov        eax, dword ptr [rdx + 0x10]
+015544C5 cmp        dword ptr [rbx + 0x10], eax
+015544C8 jne        0x15544e6
+015544CA movsxd     r8, dword ptr [rbx + 0x10]
+015544CE lea        rcx, [rbx + 0x14]
+015544D2 add        r8, r8
+015544D5 add        rdx, 0x14
+015544D9 xor        r9d, r9d
+015544DC add        rsp, 0x20
+015544E0 pop        rbx
+015544E1 jmp        0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+015544E6 xor        al, al
+015544E8 add        rsp, 0x20
+015544EC pop        rbx
+015544ED ret
+015544EE mov        al, 1
+015544F0 add        rsp, 0x20
+015544F4 pop        rbx
+015544F5 ret
+015544F6 int3
+015544F7 int3
+015544F8 int3
+015544F9 int3
+015544FA int3
+015544FB int3
+015544FC int3
+015544FD int3
+015544FE int3
+015544FF int3

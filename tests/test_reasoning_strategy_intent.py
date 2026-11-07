@@ -95,6 +95,24 @@ class StrategyIntentTests(unittest.TestCase):
         facts['self']['mana']=0;poor=replace(v,facts=FrozenJSON.of(facts))
         self.assertGreater(rich,evaluate_context(poor,step(poor,mana=3),[drain_reply],0)[0]['T'])
 
+    def test_boss_threat_uses_one_possible_reply_instead_of_combining_ties(self):
+        v=context('careful');facts=v.facts.plain();facts['opponent']['hp']=50000
+        v=replace(v,facts=FrozenJSON.of(facts))
+        own=step(v,mana=3)
+        replies=[step(v,sword=2,drain=3),step(v,sword=2,health=5)]
+        risk,details,_=evaluate_context(v,own,replies,2)
+        self.assertAlmostEqual(max(evaluate_context(v,own,[r],2)[0]['T'] for r in replies),risk['T'])
+        self.assertEqual('WORST_SINGLE_REPLY',details['boss_reply_proxy']['aggregation'])
+        self.assertEqual(0,details['boss_reply_proxy']['health'])
+
+    def test_missing_reply_with_refill_does_not_certify_zero_threat(self):
+        v=context()
+        chosen=step(v,mana=3)
+        changed=(tuple([SimulatedCell(GemType.UNKNOWN,None),*chosen.after[0][1:]]),*chosen.after[1:])
+        f,w,d=_features(v,replace(chosen,after=changed),[],0)
+        self.assertEqual('UNSUPPORTED',dict(_score(v,chosen,f,w,d).features)['T'].status)
+        self.assertIn('NO_KNOWN_REPLY_WITH_UNRESOLVED_REFILL',d['unknown_effects'])
+
     def test_mega_prepares_actual_evolution_cost_before_farming_extra_rage(self):
         v=context('mega_icarus_spam_skill');facts=v.facts.plain()
         facts['self'].update(mana=200,rage=80)
@@ -115,6 +133,43 @@ class StrategyIntentTests(unittest.TestCase):
         self.assertGreater(result['R'],0);self.assertEqual(200,details['resource_value']['mana']['goal'])
         facts['self']['mana']=120;buffer=replace(v,facts=FrozenJSON.of(facts))
         self.assertGreater(evaluate_context(buffer,step(buffer,mana=1),[],0)[0]['R'],0)
+
+    def test_skill_readiness_checks_both_costs_and_retains_later_cycle_priority(self):
+        v=context('skill_rush',resource_requirements=dict(mana=100,rage=100),past_skill_successes=1)
+        facts=v.facts.plain();facts['self'].update(mana=80,rage=80)
+        v=replace(v,facts=FrozenJSON.of(facts))
+        incomplete=step(v,mana=1)
+        f,w,d=_features(v,incomplete,[],0)
+        self.assertEqual(7,w['R'])
+        self.assertEqual(0,d['tactical_context']['skill_resource_readiness']['unlock_bonus'])
+        _,complete,_=evaluate_context(v,step(v,mana=1,rage=1),[],0)
+        self.assertEqual(1,complete['skill_resource_readiness']['after'])
+        self.assertGreater(complete['skill_resource_readiness']['unlock_bonus'],0)
+        self.assertEqual(200,complete['resource_value']['rage']['goal'])
+        facts['self'].update(mana=220,rage=165)
+        one_short=replace(v,facts=FrozenJSON.of(facts))
+        extra_mana=evaluate_context(one_short,step(one_short,mana=5),[],0)[0]['R']
+        missing_rage=evaluate_context(one_short,step(one_short,rage=2),[],0)[0]['R']
+        self.assertGreater(missing_rage,extra_mana)
+        facts['self'].update(mana=100,rage=100)
+        ready=replace(v,facts=FrozenJSON.of(facts))
+        _,ready_weights,_=_features(ready,step(ready,mana=1),[],0)
+        self.assertEqual(3,ready_weights['R'])
+        skill=step(ready,family='pet_skill',mana_cost=100,rage_cost=100,rage=5)
+        score,details,_=evaluate_context(ready,skill,[],0)
+        self.assertEqual(0,score['R'])
+        self.assertIsNone(details['skill_resource_readiness']['after'])
+
+    def test_demon_future_sweep_uses_its_own_known_rage(self):
+        from pokiguard_v2.reasoning_common_models import DEMON_RAGE_REFERENCE
+        settings=dict(demon_strategy=dict(rage_reference=DEMON_RAGE_REFERENCE.plain()),operator_demon_rage_discount=1)
+        def setup(rage_cells, **facts):
+            v=problem('demon_aegis_farm',board=demon_board(swords=3,rage_cells=rage_cells),facts=dict(settings,**facts))
+            grid=tuple(tuple(SimulatedCell(GemType(g),m) for g,m in row) for row in v.board)
+            return _setup(v,grid,Work(CommonLimits(),lambda:0,lambda:False,None))
+        self.assertEqual(1.,setup(5))
+        self.assertEqual(.75,setup(4))
+        self.assertEqual(.75,setup(5,operator_demon_rage_discount=None))
 
     def test_mega_heal_can_override_sword_setting_but_not_be_rewarded_at_full_hp(self):
         v=context('mega_icarus_spam_skill');facts=v.facts.plain()

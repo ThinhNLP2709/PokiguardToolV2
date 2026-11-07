@@ -23,10 +23,49 @@ def resource_goal(name,own,requirements,evolution,settings):
     if name=='rage':
         reference=settings.get('rage_target',100)
         reference=reference if number(reference) and reference>0 else 100
-        return min(capacity,max(reference,cost or 0)),'RAGE_OR_ACTUAL_SKILL_COST'
+        if number(cost) and cost>0:
+            return min(capacity,max(reference,2*cost)),'RAGE_AND_NEXT_SKILL_CYCLE'
+        return min(capacity,reference),'RAGE_REFERENCE'
     if number(cost) and cost>0:
         return min(capacity,2*cost),'SKILL_AND_NEXT_CYCLE_RESERVE'
     return capacity,'AVAILABLE_STORAGE'
+
+
+def skill_resource_readiness(requirements, own, gains):
+    costs = tuple(requirements.get(name) for name in ('mana', 'rage'))
+    if not all(number(cost) and cost >= 0 for cost in costs) or not any(costs):
+        return None
+    ratios = []
+    for name, cost in zip(('mana', 'rage'), costs):
+        if cost == 0:
+            continue
+        balance = own.get(name)
+        gain = gains.get(name, 0)
+        if not number(balance) or balance < 0 or not number(gain):
+            return None
+        ratios.append(clip((balance + gain) / cost))
+    return min(ratios)
+
+
+def _reply_risk(reply, boss, rates, own_mana_fill, boss_rage_fill, boss_hp_fill, advantage):
+    resources = reply.resources
+    sword = clip(resources.effective(GemType.SWORD)/8*(1+.75*boss_rage_fill+.5*advantage))
+    drain = clip(resources.effective(GemType.DRAIN)/8)*own_mana_fill
+    health = clip(resources.effective(GemType.HEALTH)/8)*(1-boss_hp_fill if boss_hp_fill is not None else 1.)
+    progress = 0.
+    missing = []
+    for name in ('mana', 'rage'):
+        units = resources.effective(GemType(name))
+        if not units:
+            continue
+        current, capacity, rate = boss.get(name), boss.get('max_'+name), rates.get(name)
+        goal = min(capacity, 100) if name=='rage' and number(capacity) else capacity
+        if number(current) and number(goal) and goal>0 and number(rate):
+            progress += min(max(0,goal-current),units*rate)/goal
+        else:
+            missing.append('BOSS_RESOURCE_PROGRESS_UNKNOWN_'+name)
+    return dict(sword=sword, drain=drain, resource_progress=progress, health=health,
+        threat=clip(sword+.45*drain+.25*progress+.15*health)), missing
 
 
 def evaluate_context(problem,step,replies,maximum):
@@ -45,8 +84,11 @@ def evaluate_context(problem,step,replies,maximum):
         goal,origin=resource_goal(name,own,needs,evolution,settings)
         item=dict(current=current,capacity=own.get('max_'+name),goal=goal,goal_origin=origin,
             effective_gems=units,useful_gain=None,progress=0.,saturated=False)
-        # Conversion is irrelevant when this resource is already at its goal.
-        if number(goal) and goal>=0 and number(current) and current>=goal:
+        if step.action.family=='pet_skill':
+            # The skill can consume and produce resources in the same action.
+            # Its net balance is not part of the observed first-wave ledger.
+            item['gain_status']='POST_SKILL_ORDER_UNKNOWN_NO_CREDIT';progress[name]=0.
+        elif number(goal) and goal>=0 and number(current) and current>=goal:
             item.update(useful_gain=0,progress=0.,saturated=True);progress[name]=0.
             if units:wastes.append(1.)
         elif not units:
@@ -57,35 +99,45 @@ def evaluate_context(problem,step,replies,maximum):
         else:
             potential=units*rate;useful=min(max(0,goal-current),potential)
             value=useful/goal
-            cost=needs.get(name)
-            if number(cost) and cost>current and current+useful>=cost:
-                value+=.25  # Readiness proxy; not permission for a future skill.
             item.update(useful_gain=useful,progress=value);progress[name]=value
             if potential:wastes.append(1-useful/potential)
         resource_details[name]=item
+    readiness_before=skill_resource_readiness(needs,own,{})
+    readiness_after=(None if step.action.family=='pet_skill' else skill_resource_readiness(
+        needs,own,{name:item['useful_gain'] for name,item in resource_details.items()}))
+    if (not evolution.get('pending') and readiness_after is not None and readiness_after<1):
+        for name,item in resource_details.items():
+            gain = item['useful_gain']
+            if not gain:
+                continue
+            towards_cast = min(gain, max(0,needs[name]-item['current']))
+            # Extra reserves still matter, with lower priority while the next
+            # cast lacks either resource.
+            progress[name] = (towards_cast+.25*(gain-towards_cast))/item['goal']
+            item['progress'] = progress[name]
     mana_weight=2. if evolution.get('pending') else 1.5 if profile=='skill_rush' else 1.
     rage_weight=.5 if evolution.get('pending') else 1.
-    resource_value=clip((mana_weight*progress['mana']+rage_weight*progress['rage'])/2)
+    unlock_bonus=.125 if (not evolution.get('pending') and readiness_before is not None
+        and readiness_before<1 and readiness_after==1) else 0.
+    resource_value=clip((mana_weight*progress['mana']+rage_weight*progress['rage'])/2+unlock_bonus)
 
     # Sword-first is conditional on the user's boss policy. Keep every tie.
     nominal=([r for r in replies if r.resources.effective(GemType.SWORD)==maximum]
         if maximum and facts.get('boss_policy')=='USER_CONDITIONAL_MAX_EFFECTIVE_SWORD' else replies)
-    def worst(gem):return max((r.resources.effective(GemType(gem)) for r in nominal),default=0)
     own_attack=own.get('attack');boss_attack=boss.get('attack')
     advantage=(boss_attack/(own_attack+boss_attack) if number(own_attack) and own_attack>0
         and number(boss_attack) and boss_attack>=0 else 1.)
     sword_threat=clip(maximum/8*(1+.75*boss_rage_fill+.5*advantage))
-    drain_threat=clip(worst('drain')/8)*own_mana_fill
-    boss_progress=[]
-    for name in ('mana','rage'):
-        current=boss.get(name);capacity=boss.get('max_'+name);rate=rates.get(name)
-        goal=min(capacity,100) if name=='rage' and number(capacity) else capacity
-        if number(current) and number(goal) and goal>0 and number(rate):
-            boss_progress.append(min(max(0,goal-current),worst(name)*rate)/goal)
-        elif worst(name):
-            missing.append('BOSS_RESOURCE_PROGRESS_UNKNOWN_'+name);unknown_features.add('T')
-    enemy_healing=clip(worst('health')/8)*(1-boss_hp_fill if boss_hp_fill is not None else 1.)
-    threat=clip(sword_threat+.45*drain_threat+.25*sum(boss_progress)+.15*enemy_healing)
+    reply_risks=[]
+    for reply in nominal:
+        risk, gaps=_reply_risk(reply,boss,rates,own_mana_fill,boss_rage_fill,boss_hp_fill,advantage)
+        reply_risks.append(risk)
+        if gaps:
+            missing.extend(gap for gap in gaps if gap not in missing);unknown_features.add('T')
+    if not nominal and any(c.gem is GemType.UNKNOWN for row in step.after for c in row):
+        missing.append('NO_KNOWN_REPLY_WITH_UNRESOLVED_REFILL');unknown_features.add('T')
+    worst_reply=max(reply_risks,key=lambda risk:risk['threat'],default=dict(
+        sword=0.,drain=0.,resource_progress=0.,health=0.,threat=0.))
 
     health=clip(step.resources.effective(GemType.HEALTH)/6)*pressure
     existing_shield=fill(own.get('shield'),own.get('max_hp'),0.)
@@ -111,12 +163,12 @@ def evaluate_context(problem,step,replies,maximum):
         boss_rage_reference_fraction=boss_rage_fill,boss_rage_capacity_fraction=fill(boss.get('rage'),boss.get('max_rage')),
         boss_attack_advantage_proxy=advantage,
         protection_proxy=dict(health=health,shield=shield,drain=drain,self_heal_opportunity=heal_opportunity),
-        boss_reply_proxy=dict(sword=sword_threat,drain=drain_threat,resource_progress=sum(boss_progress),
-            health=enemy_healing,replies_examined=len(nominal)),
+        boss_reply_proxy=dict(**worst_reply,replies_examined=len(nominal),aggregation='WORST_SINGLE_REPLY'),
+        skill_resource_readiness=dict(before=readiness_before,after=readiness_after,unlock_bonus=unlock_bonus),
         self_heal_amount='UNKNOWN' if step.heals_self else 'NOT_APPLICABLE',
         action_effort_kind='INPUT_AND_WASTED_RESOURCE_PROXY_NOT_ACTUAL_ENERGY',
         post_skill_resource_order='UNKNOWN_NOT_CREDITED',missing=missing)
-    return dict(R=resource_value,P=protection,T=threat,L=sum(commitment)/2,
+    return dict(R=resource_value,P=protection,T=worst_reply['threat'],L=sum(commitment)/2,
         E=clip(input_effort+.4*(sum(wastes)/len(wastes) if wastes else 0))),details,unknown_features
 
 

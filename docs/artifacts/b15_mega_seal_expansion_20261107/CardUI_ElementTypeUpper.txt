@@ -1,0 +1,75 @@
+01569D20 push       rbx
+01569D22 sub        rsp, 0x20
+01569D26 cmp        qword ptr [rcx + 0x20], 0
+01569D2B mov        rbx, rcx
+01569D2E je         0x1569e2b
+01569D34 mov        rax, qword ptr [rcx + 0x20]
+01569D38 mov        rcx, qword ptr [rax + 0x30]
+01569D3C test       rcx, rcx
+01569D3F je         0x1569e2b
+01569D45 cmp        dword ptr [rcx + 0x10], 0
+01569D49 jbe        0x1569e2b
+01569D4F cmp        rcx, qword ptr [rbx + 0x488]
+01569D56 je         0x1569e1e
+01569D5C cmp        dword ptr [rip + 0x2ff1cc1], 0
+01569D63 mov        qword ptr [rsp + 0x30], rdi
+01569D68 lea        rdi, [rip + 0x3009e71]
+01569D6F mov        qword ptr [rbx + 0x488], rcx
+01569D76 je         0x1569dba
+01569D78 lea        r9, [rbx + 0x488]
+01569D7F shr        r9, 0xc
+01569D83 and        r9d, 0x1fffff
+01569D8A mov        eax, r9d
+01569D8D shr        rax, 6
+01569D91 and        r9d, 0x3f
+01569D95 lea        r8, [rdi + rax*8]
+01569D99 prefetchw  byte ptr [r8 + 0x462e0]
+01569DA1 mov        rax, qword ptr [r8 + 0x462e0]
+01569DA8 mov        rdx, rax
+01569DAB bts        rdx, r9
+01569DAF lock cmpxchg qword ptr [r8 + 0x462e0], rdx
+01569DB8 jne        0x1569da1
+01569DBA xor        edx, edx
+01569DBC call       0x26ddc50                                          System.String$$ToUpperInvariant
+01569DC1 cmp        dword ptr [rip + 0x2ff1c5c], 0
+01569DC8 mov        qword ptr [rbx + 0x490], rax
+01569DCF je         0x1569e19
+01569DD1 lea        r8, [rbx + 0x490]
+01569DD8 shr        r8, 0xc
+01569DDC and        r8d, 0x1fffff
+01569DE3 mov        eax, r8d
+01569DE6 shr        rax, 6
+01569DEA and        r8d, 0x3f
+01569DEE lea        rdx, [rdi + rax*8]
+01569DF2 prefetchw  byte ptr [rdx + 0x462e0]
+01569DF9 nop        dword ptr [rax]
+01569E00 mov        rax, qword ptr [rdx + 0x462e0]
+01569E07 mov        rcx, rax
+01569E0A bts        rcx, r8
+01569E0E lock cmpxchg qword ptr [rdx + 0x462e0], rcx
+01569E17 jne        0x1569e00
+01569E19 mov        rdi, qword ptr [rsp + 0x30]
+01569E1E mov        rax, qword ptr [rbx + 0x490]
+01569E25 add        rsp, 0x20
+01569E29 pop        rbx
+01569E2A ret
+01569E2B mov        rax, qword ptr [rip + 0x2d8dc8e]                   string_TypeInfo
+01569E32 mov        rax, qword ptr [rax + 0x98]
+01569E39 mov        rax, qword ptr [rax]
+01569E3C add        rsp, 0x20
+01569E40 pop        rbx
+01569E41 ret
+01569E42 int3
+01569E43 int3
+01569E44 int3
+01569E45 int3
+01569E46 int3
+01569E47 int3
+01569E48 int3
+01569E49 int3
+01569E4A int3
+01569E4B int3
+01569E4C int3
+01569E4D int3
+01569E4E int3
+01569E4F int3

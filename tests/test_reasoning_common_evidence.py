@@ -70,6 +70,13 @@ class CommonEvidenceTests(unittest.TestCase):
                 (replace(state,battle=replace(state.battle,consecutive_pass_reset_evidence=None)),True,True)):
             self.assertFalse(pass_evidence(s,root,owner).eligible)
 
+    def test_resource_planning_rejects_costs_from_a_previous_skill_session(self):
+        value=list(fixture());cap=value[3]
+        self.assertEqual({'mana':cap.effective_mana_cost,'rage':cap.effective_power_cost},
+                         build(tuple(value)).facts.plain()['resource_requirements'])
+        value[3]=replace(cap,session_key=None)
+        self.assertEqual({},build(tuple(value)).facts.plain()['resource_requirements'])
+
     def test_root_fence_and_context_changes_invalidate_without_new_observation(self):
         value=fixture();state,config,base,cap,h,owner,passed=value
         self.assertTrue(root_allowed(value))

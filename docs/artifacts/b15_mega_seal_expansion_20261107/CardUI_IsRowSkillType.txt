@@ -1,0 +1,72 @@
+01553B40 push       rbx
+01553B42 sub        rsp, 0x20
+01553B46 cmp        byte ptr [rip + 0x300d498], 0
+01553B4D mov        rbx, rcx
+01553B50 jne        0x1553b7f
+01553B52 mov        dl, 1
+01553B54 lea        rcx, [rip + 0x2d9d235]                             'MEGA3'
+01553B5B call       0x23b090
+01553B60 lock or    dword ptr [rsp], 0
+01553B65 mov        dl, 1
+01553B67 lea        rcx, [rip + 0x2d9d1d2]                             'MEGA1'
+01553B6E call       0x23b090
+01553B73 lock or    dword ptr [rsp], 0
+01553B78 mov        byte ptr [rip + 0x300d466], 1
+01553B7F mov        rdx, qword ptr [rip + 0x2d9d1ba]                   'MEGA1'
+01553B86 cmp        rbx, rdx
+01553B89 je         0x1553bfa
+01553B8B test       rbx, rbx
+01553B8E je         0x1553bb8
+01553B90 test       rdx, rdx
+01553B93 je         0x1553bb8
+01553B95 mov        eax, dword ptr [rdx + 0x10]
+01553B98 cmp        dword ptr [rbx + 0x10], eax
+01553B9B jne        0x1553bb8
+01553B9D movsxd     r8, dword ptr [rbx + 0x10]
+01553BA1 lea        rcx, [rbx + 0x14]
+01553BA5 add        r8, r8
+01553BA8 add        rdx, 0x14
+01553BAC xor        r9d, r9d
+01553BAF call       0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+01553BB4 test       al, al
+01553BB6 jne        0x1553bfa
+01553BB8 mov        rdx, qword ptr [rip + 0x2d9d1d1]                   'MEGA3'
+01553BBF cmp        rbx, rdx
+01553BC2 je         0x1553bfa
+01553BC4 test       rbx, rbx
+01553BC7 je         0x1553bf2
+01553BC9 test       rdx, rdx
+01553BCC je         0x1553bf2
+01553BCE mov        eax, dword ptr [rdx + 0x10]
+01553BD1 cmp        dword ptr [rbx + 0x10], eax
+01553BD4 jne        0x1553bf2
+01553BD6 movsxd     r8, dword ptr [rbx + 0x10]
+01553BDA lea        rcx, [rbx + 0x14]
+01553BDE add        r8, r8
+01553BE1 add        rdx, 0x14
+01553BE5 xor        r9d, r9d
+01553BE8 add        rsp, 0x20
+01553BEC pop        rbx
+01553BED jmp        0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+01553BF2 xor        al, al
+01553BF4 add        rsp, 0x20
+01553BF8 pop        rbx
+01553BF9 ret
+01553BFA mov        al, 1
+01553BFC add        rsp, 0x20
+01553C00 pop        rbx
+01553C01 ret
+01553C02 int3
+01553C03 int3
+01553C04 int3
+01553C05 int3
+01553C06 int3
+01553C07 int3
+01553C08 int3
+01553C09 int3
+01553C0A int3
+01553C0B int3
+01553C0C int3
+01553C0D int3
+01553C0E int3
+01553C0F int3

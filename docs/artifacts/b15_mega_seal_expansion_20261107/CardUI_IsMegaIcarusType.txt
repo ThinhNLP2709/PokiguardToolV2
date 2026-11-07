@@ -1,0 +1,46 @@
+01554400 push       rbx
+01554402 sub        rsp, 0x20
+01554406 cmp        byte ptr [rip + 0x300cbe5], 0
+0155440D mov        rbx, rcx
+01554410 jne        0x155442c
+01554412 mov        dl, 1
+01554414 lea        rcx, [rip + 0x2d969b5]                             'MEGA_ICARUS'
+0155441B call       0x23b090
+01554420 lock or    dword ptr [rsp], 0
+01554425 mov        byte ptr [rip + 0x300cbc6], 1
+0155442C mov        rdx, qword ptr [rip + 0x2d9699d]                   'MEGA_ICARUS'
+01554433 cmp        rbx, rdx
+01554436 je         0x155446e
+01554438 test       rbx, rbx
+0155443B je         0x1554466
+0155443D test       rdx, rdx
+01554440 je         0x1554466
+01554442 mov        eax, dword ptr [rdx + 0x10]
+01554445 cmp        dword ptr [rbx + 0x10], eax
+01554448 jne        0x1554466
+0155444A movsxd     r8, dword ptr [rbx + 0x10]
+0155444E lea        rcx, [rbx + 0x14]
+01554452 add        r8, r8
+01554455 add        rdx, 0x14
+01554459 xor        r9d, r9d
+0155445C add        rsp, 0x20
+01554460 pop        rbx
+01554461 jmp        0x28c73f0                                          System.SpanHelpers$$SequenceEqual
+01554466 xor        al, al
+01554468 add        rsp, 0x20
+0155446C pop        rbx
+0155446D ret
+0155446E mov        al, 1
+01554470 add        rsp, 0x20
+01554474 pop        rbx
+01554475 ret
+01554476 int3
+01554477 int3
+01554478 int3
+01554479 int3
+0155447A int3
+0155447B int3
+0155447C int3
+0155447D int3
+0155447E int3
+0155447F int3

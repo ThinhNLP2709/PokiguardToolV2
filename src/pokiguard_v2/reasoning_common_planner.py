@@ -10,6 +10,7 @@ from .board_simulator import (SwapMove,ResourceResult,SimulatedCell,_CellValue,
     _candidate_swaps,_match_through,_matches_touching,_tallies,_merge_results,_resolve_known_reply,_collapse,_freeze)
 from .demon_aegis import _passive_geometry
 from .mega_icarus import MEGA_ICARUS_SEAL_CELLS
+from .reasoning_common_models import DEMON_RAGE_REFERENCE
 from .reasoning_common_problem import CommonProblem,VERSION
 from .reasoning_planner import Bound,CandidateScore,FEATURES,order_key
 from .reasoning_snapshot import Action,FrozenJSON,canonical_json,require
@@ -165,16 +166,53 @@ def _reference(problem):
     return value if type(value) is int and value>0 else None
 
 
+def _demon_rage_goal(facts, reference, rage, sweep_rage):
+    discount = facts.get('operator_demon_rage_discount')
+    if type(discount) is not int or discount <= 0:
+        return reference, 'UNKNOWN_NO_CREDIT'
+    reduced = max(2, reference-discount)
+    if type(rage) is int and rage >= 100:
+        return reduced, 'UNKNOWN_NO_CREDIT'
+    declaration = facts.get('demon_strategy',{}).get('rage_reference')
+    capacity = facts.get('self',{}).get('max_rage')
+    rate = facts.get('conversion',{}).get('rage')
+    if (declaration != DEMON_RAGE_REFERENCE.plain() or type(rage) is not int or rage < 0
+            or type(capacity) is not int or capacity < 100 or rate != 20 or sweep_rage <= 0):
+        return reference, 'UNKNOWN_NO_CREDIT'
+    if rage+sweep_rage*rate >= 100:
+        return reduced, 'USER_DECLARED_NOMINAL_REFERENCE_ONLY'
+    return reference, 'KNOWN_RAGE_BELOW_REFERENCE'
+
+
+def _sweep_rage(grid, move, blast):
+    # The blast uses post-swap coordinates. Attribute the two moved cells to
+    # their original gems without copying or mutating the board.
+    moved = {move.first:move.second, move.second:move.first}
+    total = 0
+    for point in blast:
+        r,c = moved.get(point,point)
+        cell = grid[r][c]
+        if cell.gem is GemType.RAGE:
+            total += cell.multiplier or 1
+    return total
+
+
 def _setup(problem,grid,work):
     profile=problem.intent.profile;reference=_reference(problem)
     if profile=='demon_aegis_farm':
-        if problem.facts.plain().get('demon_geometry')!='USER_DECLARED_PERPENDICULAR' or reference is None:return None
+        facts=problem.facts.plain()
+        if facts.get('demon_geometry')!='USER_DECLARED_PERPENDICULAR' or reference is None:return None
         target=GemType(problem.intent.settings.plain().get('demon_target_gem','shield'));best=0.
         for move in _candidate_swaps():
             work.node();a=grid[move.first[0]][move.first[1]];b=grid[move.second[0]][move.second[1]]
             if not a.known or not b.known or a.gem is b.gem:continue
             matched,blast,physical,swords=_passive_geometry(grid,move,target)
-            if matched and physical>=2:best=max(best,clip(swords/reference))
+            if matched and physical>=2:
+                # Future balances are unknown after our move and the reply.
+                # Only this future sweep's own known Rage can meet the goal.
+                goal,_=_demon_rage_goal(facts,reference,0,_sweep_rage(grid,move,blast))
+                best=max(best,clip(swords/goal))
+                if best==1.:break
         return best
     if profile=='mega_icarus_spam_skill':
         if reference is None or problem.intent.settings.plain().get('pet_skill_fire_condition','sword_count')!='sword_count':return None
@@ -212,7 +250,7 @@ def _features(problem,step,replies,maximum):
     profile=problem.intent.profile;settings=problem.intent.settings.plain()
     from .reasoning_common_tactics import evaluate_context,fill
     context,context_details,unknown_features=evaluate_context(problem,step,replies,maximum)
-    conversions=facts.get('conversion',{});missing=list(context_details['missing'])
+    missing=list(context_details['missing'])
     # Known direct Sword matches are offense too; the passive is one route.
     sword=effective(step.resources,'sword')
     f=dict(F=0.,R=context['R'],D=clip(sword/8),P=context['P'],H=0.,B=clip(maximum/8),
@@ -223,20 +261,8 @@ def _features(problem,step,replies,maximum):
         reference=_reference(problem)
         # Nominal objective only. This is not a damage/terminal certificate.
         if reference is not None and step.passive_physical>=2:
-            discount=facts.get('operator_demon_rage_discount')
-            rage=own.get('rage')
-            discounted=(type(discount) is int and discount>=0 and type(rage) is int and rage>=100)
-            same_burst='UNKNOWN_NO_CREDIT'
-            declaration=facts.get('demon_strategy',{}).get('rage_reference')
-            from .reasoning_common_models import DEMON_RAGE_REFERENCE
-            rate=conversions.get('rage');capacity=own.get('max_rage')
-            if (not discounted and declaration==DEMON_RAGE_REFERENCE.plain()
-                    and step.coverage=='CONDITIONAL_PASSIVE_FIRST_WAVE_ONLY'
-                    and type(rage) is int and 0<=rage<100 and type(capacity) is int and capacity>=100
-                    and type(rate) in (int,float) and rate==20 and step.passive_rage>0):
-                discounted=rage+step.passive_rage*rate>=100
-                same_burst=('USER_DECLARED_NOMINAL_REFERENCE_ONLY' if discounted else 'KNOWN_RAGE_BELOW_REFERENCE')
-            nominal_reference=max(2,reference-discount) if discounted else reference
+            sweep_rage=step.passive_rage if step.coverage=='CONDITIONAL_PASSIVE_FIRST_WAVE_ONLY' else 0
+            nominal_reference,same_burst=_demon_rage_goal(facts,reference,own.get('rage'),sweep_rage)
             from .reasoning_common_tactics import demon_damage_reference
             damage_target,damage_context=demon_damage_reference(facts,step,reference)
             if damage_target is not None:nominal_reference=damage_target
@@ -269,7 +295,8 @@ def _features(problem,step,replies,maximum):
         else:unknown_features.add('P')
     if profile!='bu_win':
         weights['P']*=1+2*pressure;weights['T']*=1+pressure
-    if profile=='skill_rush' and facts.get('past_skill_successes',0)>0:
+    if (profile=='skill_rush' and facts.get('past_skill_successes',0)>0
+            and context_details['skill_resource_readiness']['before']==1):
         weights['R']=3;weights['D']=7
     details=dict(resources={g.value:dict(physical=step.resources.cells(g),effective=step.resources.effective(g))
             for g in GemType if g is not GemType.UNKNOWN},

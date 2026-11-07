@@ -956,3 +956,68 @@ V2 uses Win32 `SetWindowPos` when the selected client dimensions differ from
 the measured dimensions. All four profiles keep a 2:1 client ratio. The game
 can observe the new local `Screen.width` and `Screen.height` and update its
 camera viewport. See the [B15 resize symbols and audit limits](il2cpp_symbols.md#2026-11-06--b15-desktop-window-resize).
+
+## 2026-11-07 — B15 Mega Icarus seal coordinate mapping
+
+`MegaIcarusPattern.ToBoardCell` at RVA `0x169F510` maps each pattern `(x, y)`
+to `(col, row) = (x + trunc((width - 8) / 2), height - 1 - y)` in game
+coordinates. The provider maps the 8×8 runtime row to `screen_row = 7 - row`.
+The resulting 30 `(screen_row, col)` pairs match `MEGA_ICARUS_SEAL_CELLS`
+exactly, with rows shown top to bottom below. `#` means the cell is in the seal.
+
+```text
+....#...
+..##.#..
+#.#.###.
+.#######
+..#####.
+.#####..
+.###.#..
+........
+```
+
+[B15 seal symbols](il2cpp_symbols.md#2026-11-07--b15-mega-icarus-seal-table),
+[binary extraction and source comparison](artifacts/b15_mega_icarus_seal_20261107/evidence.json).
+
+## 2026-11-07 — B15 T-Rex seal and shared geometry contract
+
+On the same B15 binary, MegaTrexPattern..cctor `0x16A0280` initializes 30
+unique Vector2Int cells. ToBoardCell `0x169FE80` uses the same column offset
+and inverted game row as Icarus. With the existing 8x8 provider conversion,
+the screen mask is:
+
+```text
+..####..
+.######.
+##.##.##
+.######.
+.#.##.#.
+..#..#..
+...##...
+........
+```
+
+Icarus and Trex share 19 cells; each has 11 cells absent from the other.
+Static initializer decoding checked bounds/uniqueness, each store RVA and
+exact Icarus parity with current V2 MEGA_ICARUS_SEAL_CELLS. No gameplay
+implementation or native process read was introduced by this audit.
+
+The proposed common geometry must be selected by the current card's exact
+build-bound elementTypeCard, MEGA_ICARUS or MEGA_TREX, then passed to every
+condition/setup/boss-reply/turnover calculation. This also prevents resource
+counting from silently retaining the pre-evolution card's shape. Effective
+counts sum known multipliers only inside the selected mask; unknown cells
+receive no credit. The current software fire threshold is a strategy setting,
+separate from the game's Mana/Power/cooldown/input eligibility.
+
+BoardWsApplier.ApplyMegaTrexMark.MoveNext `0xA68D60` parses operation cells
+and compares the set with MegaTrexPattern.BoardCells, analogous to Icarus.
+This supplies a post-cast validation path, not observed live agreement.
+Initial geometry does not establish cascade/refill/rolled multiplier,
+healing or final damage. Unsupported card types must not receive an Icarus
+mask by default. Existing QTE/input/read/PASS/farm behavior stays outside
+this research change.
+
+[Coordinates and instruction RVAs](artifacts/b15_mega_seal_expansion_20261107/seal_masks.json),
+[static verification](artifacts/b15_mega_seal_expansion_20261107/static_checks.json),
+[proposed integration and validation](phase5/MEGA_SEAL_RESEARCH_DESIGN_20261107.md).

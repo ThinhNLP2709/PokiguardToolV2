@@ -1,5 +1,19 @@
 # Phase 5 — Status
 
+**07/11/2026 — Mega Kết Ấn: chốt nghiên cứu và thiết kế theo lựa chọn user.**
+B15 xác minh Icarus/T-Rex chung seal dispatcher, khác hình ấn 30 ô và lấy
+giá Mana/Nộ theo từng thẻ. Đã ghi thiết kế registry/đếm ấn/UI tương thích,
+phạm vi damage server và kế hoạch triển khai có giới hạn.
+[Báo cáo nghiên cứu](MEGA_SEAL_RESEARCH_DESIGN_20261107.md).
+Chưa triển khai gameplay, chưa live/build; phần adviser offline bên dưới
+giữ trạng thái riêng. Bước kế tiếp là triển khai offline khi user yêu cầu.
+
+**07/11/2026 — Nâng cấp adviser offline sau checkpoint `37a6718a`.**
+Đã tách các phản hồi boss khi chấm rủi ro, ưu tiên tài nguyên còn thiếu cho
+chu kỳ skill và áp dụng Nộ trong vùng quét cho bước chuẩn bị Demon. Đối chiếu
+105 ca trên cùng dữ liệu, giữ phạm vi kiểm live B15 ở checkpoint.
+[Nghiên cứu và kết quả replay](OFFLINE_ADVISER_UPGRADE_20261107.md).
+
 **07/11/2026 — Suy luận trên B15 qua một trận kiểm kỹ thuật từ source.**
 Solo Lion Star lv105, Demon Aegis ăn Khiên, ngưỡng 4 Kiếm hiệu dụng.
 Trận BASIC thắng sau 3 lượt và cung cấp 2 mẫu timing có SWAP ACK khi boss còn

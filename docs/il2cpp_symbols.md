@@ -1884,3 +1884,90 @@ uses the device model and operating system. The WebSocket heartbeat calls
 stack, scene and version. None of these examined payload paths contains a
 window size field. Other native modules, live outbound traffic and server
 behavior are outside this static audit and remain UNKNOWN.
+
+## 2026-11-07 — B15 Mega Icarus seal table
+
+On the B15 GameAssembly hash above, `CardUI.IsMegaIcarusType` at RVA
+`0x1554400` compares against `MEGA_ICARUS`. `StartMegaIcarusPanel` at
+`0x157E9C0` dispatches kind `0` (`Icarus`) to `StartMegaSealCast` at
+`0x157E9E0`. `RunMegaSealAutoCast.MoveNext` at `0x1598ED0` calls
+`Board.ShowMegaSealHint` at `0x1520AD0`, whose cell test calls
+`MegaSeal.Contains` at `0x16A0990`. The Icarus branch reads
+`MegaIcarusPattern.Cells`. `CardData` describes the card and skill costs and
+has no coordinate-array field.
+
+`MegaIcarusPattern_TypeInfo` is at RVA `0x42F15F0`. Its `.cctor` at
+`0x169F910` allocates a 30-element `Vector2Int[]` and writes the initializer
+coordinates directly in native code. It publishes the array at
+`Il2CppClass.static_fields (+0x98) -> Cells (+0x0)`. The array length is at
+`+0x18` and its inline pairs are at `+0x20`, with an 8-byte stride. This
+runtime path requires an initialized, validated class and array. Its
+availability before the first skill cast is UNKNOWN.
+
+`BoardWsApplier.ApplyMegaIcarusMark.MoveNext` at `0xA68000` parses the
+operation's `data["cells"]`, calls `MegaIcarusPattern.BoardCells` at
+`0x169F5A0`, compares sets and displays the marks. This is post-cast evidence
+for the marked cells. Server damage, healing, refill, and destruction beyond
+the initial shape were outside the static audit. [Extracted coordinates and RVAs](artifacts/b15_mega_icarus_seal_20261107/evidence.json).
+
+## 2026-11-07 — B15 shared Mega seal classification and damage evidence
+
+Static audit, same GameAssembly SHA-256
+`18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea`.
+No process attachment, game invocation, network requests or runtime edits.
+
+| Symbol | RVA | Verified behavior |
+|---|---|---|
+| CardUI.ElementTypeUpper | `0x1569D20` | Reads CardUI.cardData `+0x20`, then CardData.elementTypeCard `+0x30`; uses ToUpperInvariant |
+| CardUI.IsSealSkillType | `0x1554500` | Exact string alternatives `MEGA_ICARUS`, `MEGA_TREX` |
+| CardUI.IsMegaTrexType | `0x1554480` | Exact `MEGA_TREX` string |
+| CardUI.StartMegaTrexPanel | `0x157E9D0` | Passes kind 1 to shared StartMegaSealCast `0x157E9E0`; Icarus entry passes 0 |
+| MegaSeal.SkillType | `0x16A07F0` | Maps kind 1 to MEGA_TREX, default branch to MEGA_ICARUS; unknown external kinds must not inherit this default |
+| MegaTrexPattern.ToBoardCell | `0x169FE80` | Same coordinate transform as Icarus |
+| MegaTrexPattern.BoardCells / Contains | `0x169FF10` / `0x16A0110` | Trex-specific pattern traversal |
+| MegaTrexPattern..cctor | `0x16A0280` | Allocates and initializes exactly 30 Vector2Int entries |
+| BoardWsApplier.ApplyMegaTrexMark.MoveNext | `0xA68D60` | Parses data["cells"], compares to Trex BoardCells via HashSet.SetEquals, shows shared seal animation/marks |
+| CardUI.IsRowSkillType | `0x1553B40` | Exact alternatives MEGA1, MEGA3; these are not the B15 fixed seal classifier |
+| CardUI.CheckConditionUse | `0x1571AB0` | Successful seal classification branches at `0x1571F38` to `0x157262A`; checks currentPower against CardData.power `+0x50`, currentMana against conditionUse `+0x48` when those requirements are positive |
+
+The resource checks read Active.PlayerStats currentPower `+0x54` and
+currentMana `+0x34` through their ObfuscatedInt decode. This proves the
+client eligibility branch for both seal types; current T-Rex card values,
+server acceptance and discount population were not observed live. Fields
+manaCost/powerCost existing on CardData do not override this verified branch.
+
+Other Mega classifiers also exist: PRYSMA, PRIEST, TWIN_FLAME, NHUSAGO,
+POSIDALL, CASTELLAN and QILIN. Their presence does not place them in
+IsSealSkillType or prove identical effects/target selection. Existing V2
+MEGA1-as-Icarus compatibility must be scoped by build when generalized.
+
+Damage-related declarations and native branches:
+
+- ApiEndpoints.SUBMIT_BOSS_DAMAGE (`0x1235AD0`) and
+  SUBMIT_BOSS_DAMAGE_SERVER_SIGNED (`0x123C130`) carry Obsolete attributes
+  stating damage is server-engine calculated and client-declared damage is
+  not accepted. This is client metadata, not an endpoint availability probe.
+- MatchService.ParseCombatBatch (`0xAD2F80`) reads srvSeq,
+  totalDamageDisplay, combatSteps and destroyedByTag into WsCombatBatch.
+- WsCombatStepDTO has kind `+0x10`, source `+0x18`, target `+0x20`, amount
+  `+0x28`, stealType `+0x30`, dmgSrc `+0x38`, fullPower `+0x40`, after
+  `+0x48` and idx `+0x50`. These are declarations, not new V2 read chains.
+- Active.SumBoardDotDamage (`0x14BBE30`) sums positive received step.amount
+  only for kind DAMAGE and dmgSrc BOARD_DOT. It is not a prospective formula.
+- Active.GetWeaknessVsBoss (`0x14B86C0`) reads PlayerStats.weakness `+0x98`;
+  Active.GetDamageMultiplier (`0x14BC600`) uses that scalar or its reciprocal
+  by actor direction. Neither establishes the full damage calculation.
+- MatchPrepDataDTO declares nullable fullPowerThreshold `+0x50` and
+  fullPowerCost `+0x58`. Current values and V2 snapshot availability UNKNOWN.
+- CardData declares damageMultiplier `+0x70`, starSkillDamagePct `+0xAC`,
+  mana/power discounts `+0xB0`/`+0xB4`, btSkillCritPct `+0xBC` and seal
+  modifiers `+0xC0`/`+0xC4`. Complete server semantics/order remain UNKNOWN.
+
+No verified complete pre-action Sword/Icarus/Trex damage formula was found
+in the audited paths. Trex healing remains UNKNOWN. Runtime event lifetime,
+complete capture of all combat steps and existing-reader availability are
+separate unresolved questions, not supplied by these declarations.
+
+[Native audit index](artifacts/b15_mega_seal_expansion_20261107/native_index.json),
+[initializer verification](artifacts/b15_mega_seal_expansion_20261107/static_checks.json),
+[research and design](phase5/MEGA_SEAL_RESEARCH_DESIGN_20261107.md).

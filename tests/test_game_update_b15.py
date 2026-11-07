@@ -95,7 +95,7 @@ class B15CompatibilityTests(unittest.TestCase):
         current = source_files(ROOT)
         protected = {name for name in before if name.startswith(("src/", "tools/"))}
         expected = {"src/pokiguard_v2/" + name for name in migration}
-        # Pin the later map re-entry and Start retry fixes separately from the
+        # Pin later operational fixes and planner changes separately from the
         # original constant-only compatibility migration.
         followup_hashes = {
             "tools/farm_run.py": (
@@ -105,6 +105,18 @@ class B15CompatibilityTests(unittest.TestCase):
             "tools/boss_entry.py": (
                 "eaf1ea2a783093be64f04461d437c4759dd932c5ac98c6777a84a8de0805aac9",
                 "fdd40e5e9cb133220d0deb65fa6675df05bbf0c981b2026dadae529f43fc0e8c",
+            ),
+            "src/pokiguard_v2/reasoning_common_evidence.py": (
+                "11abecf11e6df49a69aacebe1c1bb85c6bfb211ed48d46a1378dff51cc9558ad",
+                "43adaac9db6b5203d611fdade7e90604de038e31ae8447404cc188fa0d506456",
+            ),
+            "src/pokiguard_v2/reasoning_common_planner.py": (
+                "03c2ba24d65b66456f1d4b894a957405ccef7d0a2f6a88336a1017f2abaf16d3",
+                "41193226885cb00bf9dc06ca181c336db9549d59a6681ccc9f691ed9e28cf63b",
+            ),
+            "src/pokiguard_v2/reasoning_common_tactics.py": (
+                "57deecc77258d820927282532852831690d32a6c196eff7798ec45490d1d8e98",
+                "57517266fc42208664415f9ecd07a3a12322cae76ef7317e33a1d336cf653965",
             ),
         }
         for name, hashes in followup_hashes.items():
