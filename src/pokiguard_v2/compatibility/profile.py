@@ -199,3 +199,23 @@ def active_profile(executable: Path, *, root: Path | None = None) -> RuntimeProf
             "PROFILE_PROBE_EVIDENCE_INVALID")
     require(install_identity(executable) == profile.identity, "INSTALL_CHANGED")
     return profile
+
+
+def verified_assembly_profile(assembly: Path) -> RuntimeProfile:
+    """Pure file gate used by existing qualification code, without rebinding it.
+
+    Qualification must still match its own exact build/source evidence. Verify
+    the complete install of a paired launcher rather than trusting a hash entry.
+    The actual attach additionally validates the operator's exact selected EXE.
+    """
+    from ..game_location import is_supported_game_executable_name
+    last = None
+    for executable in assembly.resolve().parent.iterdir():
+        if executable.is_file() and is_supported_game_executable_name(executable.name):
+            try:
+                profile = active_profile(executable)
+                if profile is not None:
+                    return profile
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                last = exc
+    raise CompatibilityError("GAME_BUILD_INCOMPATIBLE", str(last or "No verified profile for this install"))

@@ -48,9 +48,11 @@ def migrate(location: str | Path, *, root: Path | None = None,
             identity = install_identity(executable)
             check_cancel(cancel)
             build = identity["files"]["assembly"]["sha256"]
-            if build in SUPPORTED_GAME_ASSEMBLY_SHA256 and not audit_builtin:
-                return MigrationResult("builtin", "Bản game này đã được tool hỗ trợ sẵn. Không cần migration.")
             contract = load_contract()
+            if build in SUPPORTED_GAME_ASSEMBLY_SHA256 and not audit_builtin:
+                require(identity == contract["identity"], "BUILTIN_INSTALL_CHANGED",
+                        "Một phần game đã đổi; cần kiểm tra thủ công trước khi dùng profile có sẵn.")
+                return MigrationResult("builtin", "Bản game này đã được tool hỗ trợ sẵn. Không cần migration.")
             require(identity["metadata_version"] == contract["identity"]["metadata_version"], "METADATA_ABI_CHANGED")
             require(identity["files"]["unity"] == contract["identity"]["files"]["unity"], "UNITY_ABI_CHANGED")
             require(identity["ui_assets"] == contract["identity"]["ui_assets"], "UI_ASSETS_CHANGED",

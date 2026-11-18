@@ -164,6 +164,16 @@ class TransactionTests(unittest.TestCase):
         with patch('pokiguard_v2.compatibility.profile.load_contract', return_value=self.contract):
             self.assertEqual(self.profile, p.active_profile(self.exe, root=self.root))
 
+    def test_existing_build_gate_recognizes_verified_profiles_without_rebinding_evidence(self):
+        from pokiguard_v2.game_location import validate_supported_game_assembly
+        self.run_job()
+        with patch('pokiguard_v2.compatibility.profile.compatibility_root', return_value=self.root), \
+             patch('pokiguard_v2.compatibility.profile.load_contract', return_value=self.contract):
+            self.assertEqual(self.build, validate_supported_game_assembly(self.exe.parent / 'GameAssembly.dll'))
+            record = p.load_json(self.active); record['status'] = 'pending'; p.atomic_json(self.active, record)
+            with self.assertRaisesRegex(ValueError, 'incompatible game build'):
+                validate_supported_game_assembly(self.exe.parent / 'GameAssembly.dll')
+
     def test_probe_failure_keeps_previous_profile_bytes(self):
         self.active.parent.mkdir(parents=True)
         self.active.write_bytes(b'previous known profile')

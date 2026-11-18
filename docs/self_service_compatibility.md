@@ -51,7 +51,7 @@ cùng object profile. Không monkeypatch globals hoặc sửa code/EXE khi migra
 Không có external profile thì B17 đi đúng đường built-in cũ. Solver, scoring,
 policy, drain-resource logic, input backend, pacing, jitter và calibration không
 đổi. Fixture `tests/fixtures/compatibility/b17_gameplay_manifest.json` giữ dấu
-vết 241 module ngoài lớp tích hợp so với checkpoint.
+vết 240 module ngoài lớp tích hợp so với checkpoint.
 
 Migration giữ cùng OS controller lease với FarmRunner. GUI khóa Start/Resume
 và sửa đường dẫn trong lúc chạy; đóng cửa sổ sẽ hủy worker và thu hồi child

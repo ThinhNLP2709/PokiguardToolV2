@@ -92,6 +92,13 @@ def validate_supported_game_assembly(path: str | Path) -> str:
 
     actual = game_assembly_sha256(path)
     if actual.casefold() not in SUPPORTED_GAME_ASSEMBLY_SHA256:
+        try:
+            from .compatibility.profile import verified_assembly_profile
+            profile = verified_assembly_profile(Path(path))
+            if profile.identity["files"]["assembly"]["sha256"] == actual:
+                return actual
+        except (ValueError, OSError, KeyError, TypeError):
+            pass
         raise GameLocationError(
             "GAME_BUILD_INCOMPATIBLE",
             "incompatible game build: GameAssembly.dll SHA-256 "

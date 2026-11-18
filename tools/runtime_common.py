@@ -42,6 +42,7 @@ from pokiguard_v2.game_location import (  # noqa: E402
     is_supported_game_executable_name,
     resolve_game_executable,
     validate_supported_game_assembly,
+    SUPPORTED_GAME_ASSEMBLY_SHA256,
 )
 
 
@@ -216,7 +217,10 @@ def attach_target(*, candidate_profile=None) -> RuntimeTarget:
                 profile = candidate_profile
             else:
                 try:
-                    validate_supported_game_assembly(game_assembly.path)
+                    actual_build = validate_supported_game_assembly(game_assembly.path)
+                    if actual_build not in SUPPORTED_GAME_ASSEMBLY_SHA256:
+                        from pokiguard_v2.compatibility.profile import active_profile
+                        profile = active_profile(selection.executable)
                 except GameLocationError as exc:
                     if exc.reason != "GAME_BUILD_INCOMPATIBLE":
                         raise
