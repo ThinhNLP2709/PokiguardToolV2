@@ -81,6 +81,8 @@ Không xóa preferences hoặc log lịch sử. Không tự Start/Resume sau app
 Đọc đúng board hay kiểm Start không thay thế live acceptance move/ACK/result.
 Migration không cấp chứng nhận reasoning/timing: các gate hash/source cũ vẫn
 giữ nguyên và cần qualification mới khi build hoặc source scope thay đổi.
+Gate nhận diện build đã hiểu profile verified để cho phép qualification mới;
+không thay hash/source trong calibration hay acceptance lịch sử.
 
 ## CLI và catalog tùy chọn
 
@@ -114,10 +116,14 @@ chuyển sang audit cục bộ; không chấp nhận profile unsigned.
   đủ dump.cs/script.json/il2cpp.h; audit lại contract đạt; `--prepare` giữ pending.
 - UI offline: nút phản hồi B17 đã hỗ trợ, 0 lỗi render, 0 Start/Resume, worker
   và poller đóng sạch. Không có tiến trình game chạy ở lần kiểm tra này.
-- Regression cuối: 270 test PASS; gồm migration, provider/resolver/native UI,
+- Regression cuối: 271 test PASS; gồm migration, provider/resolver/native UI,
   game location, checkpoint, packaging, policy, input và drain-resource logic.
 - Không thực hiện live trận đánh/build kế tiếp. Chưa thể khẳng định một build
   chưa có sẽ được chấp nhận; các kiểm tra trên quyết định khi build đó xuất hiện.
+
+Bản EXE trong ZIP thử nghiệm cũng đã qua compatibility self-check, packaging
+self-check và packaged reasoning self-check từ thư mục giải nén ZIP, CWD/data
+root riêng, không PYTHONPATH. [Biên bản đóng gói](self_service_compatibility_verification.md).
 
 Nguồn toolchain: [Dumper3.2.1](https://github.com/AndnixSH/Il2CppDumper/releases/tag/3.2.1),
 [CLI/build instructions](https://github.com/AndnixSH/Il2CppDumper/tree/3.2.1),
