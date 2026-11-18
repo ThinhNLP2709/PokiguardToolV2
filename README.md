@@ -279,3 +279,9 @@ cho build chỉ đổi địa chỉ. Nhánh/phát hành gốc được giữ t�
 chấp nhận và giới hạn: [self-service compatibility](docs/self_service_compatibility.md).
 Catalog từ xa chưa cấu hình; luồng local tải toolchain đã khóa checksum và
 audit/probe trước khi kích hoạt profile mới.
+
+Trên cùng nhánh đã có **Cài đặt → Cập nhật tool**, xác minh gói có chữ ký,
+helper thay cả bundle và khôi phục bản cũ khi health-check thất bại. Pipeline
+GitHub Actions đã tạo Draft Release preview, chưa Publish stable.
+[Hướng dẫn phát hành](docs/tool_update_release.md) ·
+[Biên bản kiểm tra](docs/tool_update_verification_20261119.md).
