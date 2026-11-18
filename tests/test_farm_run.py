@@ -68,6 +68,7 @@ from tools.farm_run import (
     _source_selected_input_delivery_config,
     _settle_detached_room_shell_exit,
     _stable_visual_proof,
+    _stalled_entry_room_id,
     _stage_b1_action_proof,
     _world_map_ejection_proven,
 )
@@ -1765,6 +1766,89 @@ class DetachedShellExitRuntimeTests(unittest.TestCase):
         ]
         self.assertEqual(len(shell_inputs), 1)
         self.assertTrue(shell_inputs[0].sent)
+
+    def test_stalled_owned_room_reopens_exact_boss_only_when_back_stays_bound(self) -> None:
+        stalled = {
+            "status": "STOPPED", "stopReason": "ENTRY_START_CONTROL_UNVERIFIED",
+            "stalledRoomId": "Coop_828496", "entryClicks": 0,
+            "entryRetryClicks": 0, "gameplayInputs": 0,
+        }
+        room_id = _stalled_entry_room_id(stalled)
+        self.assertEqual(room_id, "Coop_828496")
+        self.assertIsNone(_stalled_entry_room_id({**stalled, "entryClicks": 1}))
+
+        owned = self.lobby()
+        owned.state = BossLobbyState.BOSS_LOBBY
+        owned.branch = "CHINH_PHUC_ROOM"
+        owned.combat_lifecycle.signals = SimpleNamespace(read_errors=())
+        owned.chinh_phuc.__dict__.update(
+            current_room_id=room_id, current_room_type="ChinhPhuc", owner_username="local",
+            is_host=True, clean=True, is_opening_flow=False, manager_room=0x20000000000,
+            room_coop_v2_view=0x20000001000, room_coop_v2_refs=0x20000003000,
+        )
+        map_lobby = ChinhPhucMapSnapshotTests.lobby(
+            state=BossLobbyState.LOBBY_OTHER, branch="CHINH_PHUC_ISLAND",
+            clean_for_chinh_phuc_map=True,
+        )
+        map_lobby.chinh_phuc.enemy_pet_id = 1289
+        initial = LobbyWaitResult(True, owned.state, None, "READY", owned, 2)
+        returned = LobbyWaitResult(True, owned.state, None, "READY", owned, 2)
+        capture = SimpleNamespace(width=1280, height=640, rgb=b"")
+        shell = SimpleNamespace(found=True, normalized_point=(0.965, 0.07))
+        back = SimpleNamespace(button=100, viewport_rect=(0.93, 0.02, 1.0, 0.12))
+        replaced_back = SimpleNamespace(button=101, viewport_rect=back.viewport_rect)
+        process = SimpleNamespace(pid=123, is_running=lambda: True)
+        provider = SimpleNamespace(current_session_key=None)
+        map_target = self.target()
+
+        for final_back in (back, replaced_back):
+            with self.subTest(final_back=final_back.button):
+                run = start_run()
+                enter(run, session(1))
+                self.assertTrue(run.normal_combat_ended(MatchResult.WIN))
+                self.assertTrue(run.observe_postmatch())
+                self.assertTrue(run.complete_postmatch(run.reserve_postmatch(foreground=True), sent=True))
+                self.assertTrue(run.observe_return_lobby(BossLobbyState.BOSS_LOBBY))
+                self.assertTrue(run.target_resolved(exact=True))
+                self.assertTrue(run.observe_entry_preflight_runtime_changed())
+                clicks = MagicMock(return_value=ClickPointResult(ClickStatus.SENT))
+                executor = SimpleNamespace(
+                    window_status=lambda _binding: SimpleNamespace(valid=True, foreground=True),
+                    move_normalized_point=lambda _binding, _point: ClickStatus.SENT,
+                    send_normalized_point=clicks,
+                )
+                with tempfile.TemporaryDirectory() as directory, patch.multiple(
+                    "tools.farm_run",
+                    _restore_bound_game_foreground=MagicMock(return_value=True),
+                    capture_client_rgb=MagicMock(return_value=capture),
+                    locate_confirm_leave=MagicMock(return_value=SimpleNamespace(found=False)),
+                    read_play_reminder_control=MagicMock(return_value=SimpleNamespace(open=False)),
+                    locate_owned_chinh_phuc_room_exit=MagicMock(return_value=shell),
+                    _runtime_owned_room_back=MagicMock(side_effect=[back, back, final_back]),
+                    _read_lobby_runtime_with_provider_fallback=MagicMock(
+                        side_effect=[owned, owned, owned, map_lobby, map_lobby],
+                    ),
+                    _settle_detached_room_shell_exit=MagicMock(return_value=("DIRECT_MAP", map_target)),
+                    discover_chinh_phuc_map_target=MagicMock(return_value=map_target),
+                    _wait_boss_lobby=MagicMock(return_value=returned),
+                    write_png_rgb=MagicMock(),
+                ), patch("tools.farm_run.time.sleep"):
+                    result = _return_from_chinh_phuc_map(
+                        run=run, process=process, provider=provider, target=run.target,
+                        initial=initial, binding=object(), executor=executor, directory=Path(directory),
+                        interval=0.0, timeout=5.0, hotkeys=SimpleNamespace(poll=lambda: (False, False)),
+                        stalled_entry_room_id=room_id,
+                    )
+                if final_back is replaced_back:
+                    self.assertIsNone(result)
+                    clicks.assert_not_called()
+                else:
+                    self.assertIs(result, returned)
+                    self.assertEqual(
+                        [call.args[1] for call in clicks.call_args_list],
+                        [shell.normalized_point, map_target.viewport_point],
+                    )
+                self.assertEqual((run.match_attempts, run.completed_matches, run.wins), (1, 1, 1))
 
     def test_stable_leave_modal_is_confirmed_before_any_map_scan(self) -> None:
         run = start_run()

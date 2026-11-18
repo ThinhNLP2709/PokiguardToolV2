@@ -3,6 +3,7 @@ from dataclasses import replace
 import hashlib,json
 from pathlib import Path
 import tempfile,time,unittest,uuid
+from tests.reasoning_test_paths import reasoning_temp_root
 from unittest.mock import patch
 
 from pokiguard_v2.app_paths import resolve_app_paths
@@ -17,7 +18,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 class PackagedReasoningTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory(dir=ROOT/'docs/phase5/artifacts/5f1_packaged_20261031')
+        self.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root())
         self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.exe=self.root/'install/Tool.exe';self.exe.parent.mkdir();self.exe.write_bytes(b'SYNTHETIC_EXE')
         self.paths=resolve_app_paths(frozen=True,executable=self.exe,module_file=self.root/'bundle/pokiguard_v2/app_paths.py',

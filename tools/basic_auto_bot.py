@@ -164,6 +164,7 @@ from tools.sequence_desync_runtime import (  # noqa: E402
     RuntimeSequenceObservation,
 )
 from pokiguard_v2.gameplay_profile import (  # noqa: E402
+    MegaSelfProtection,
     AuditionMode,
     DemonTargetGem,
     DamageCardMode,
@@ -247,7 +248,7 @@ def _current_pet_skill_capability(
     state: GameState,
     resolver: PetSkillCapabilityProvider,
 ) -> PetSkillCapability:
-    """Resolve one current main-Legendary skill without re-reading the board."""
+    """Resolve the current owned Pet Skill without re-reading the board."""
 
     session = state.battle.session_key
     cards = (
@@ -258,7 +259,7 @@ def _current_pet_skill_capability(
         if session is not None
         else ()
     )
-    return resolver.observe(
+    capability = resolver.observe(
         observed_at=time.monotonic(),
         current_session=session,
         source_pet=None,
@@ -272,6 +273,18 @@ def _current_pet_skill_capability(
             if session is not None
         ),
     )
+    phase_reader = getattr(provider, "read_pet_skill_phase", None)
+    if (callable(phase_reader) and capability.current and state.player is not None
+            and capability.element_type in {"GALAXY_RICKY", "GALAXY_DRAGON_KNIGHT"}):
+        phase = phase_reader(session, local_username=state.battle.local_username,
+            local_actor=state.player.actor_number, card_id=capability.skill_card_id,
+            source_turn=state.battle.turn_number)
+        capability = replace(capability,
+            skill_phase_next=phase.next_phase if phase is not None else None,
+            skill_phase_max=phase.maximum if phase is not None else None,
+            skill_phase_source=phase.source if phase is not None else
+                "UNKNOWN:" + getattr(provider, "_pet_skill_phase_reason", "current_card_phase_unavailable"))
+    return capability
 
 
 def _pet_skill_failure_diagnostics(provider: Any, capability: Any) -> dict[str, Any]:
@@ -1416,7 +1429,7 @@ def _must_pause_for_no_safe_move(
     safe_move_count: int,
     first_local_turn: bool | None,
 ) -> bool:
-    """Keep the terminal safety pause except for policy-authorized risk."""
+    """Keep missing-action failures separate from the policy's move risk."""
 
     # EVOLVE is non-consuming and must always be attempted before board
     # safety is considered. CAST is itself the consuming safe action and also
@@ -1445,91 +1458,15 @@ def _must_pause_for_no_safe_move(
         and decision.trace.blocker == "TURN_TIMER_SAFETY_MARGIN"
     ):
         return False
-    # SKILL_RUSH may use its explicit least-risk fallback only when the shared
-    # simulator proves that no legal Sword-safe move exists. Keep this narrow
-    # executor exemption tied to named SKILL_RUSH swap branches; policy itself
-    # now hard-filters to the safe pool whenever that pool is non-empty.
-    skill_rush_no_safe_fallback = bool(
-        decision.action is PolicyAction.SWAP
-        and decision.move is not None
-        and decision.trace.play_style == "skill_rush"
-        and decision.trace.policy_step
-        in {
-            "SKILL_RUSH_RESOURCE_PROGRESS",
-            "SKILL_RUSH_RESOURCE_RISK_ACCEPTED",
-            "SKILL_RUSH_SURVIVAL_RISK_ACCEPTED",
-            "SKILL_RUSH_RESOURCE_MANDATORY",
-            "SKILL_RUSH_LEGAL_FALLBACK",
-            "SKILL_RUSH_BOARD_SETUP",
-            "SKILL_RUSH_SETUP_RELAXED",
-            "SKILL_RUSH_POST_SKILL_FINISHER_SWORD",
-        }
-    )
-    demon_aegis_no_safe_fallback = bool(
-        decision.action is PolicyAction.SWAP
-        and decision.move is not None
-        and decision.trace.play_style == PlayStyle.DEMON_AEGIS_FARM.value
-        and decision.trace.policy_step
-        in {
-            "DEMON_AEGIS_PASSIVE_FIRE",
-            "DEMON_AEGIS_SETUP_RISK_ACCEPTED",
-            "DEMON_AEGIS_SURVIVAL",
-            "DEMON_AEGIS_MANDATORY",
-            "DEMON_AEGIS_MANDATORY_SWORD",
-        }
-    )
-    mega_icarus_no_safe_fallback = bool(
-        decision.action is PolicyAction.SWAP
-        and decision.move is not None
-        and decision.trace.play_style
-        == PlayStyle.MEGA_ICARUS_SPAM_SKILL.value
-        and decision.trace.policy_step
-        in {
-            "MEGA_ICARUS_RESOURCE_PROGRESS",
-            "MEGA_ICARUS_RESOURCE_RISK_ACCEPTED",
-            "MEGA_ICARUS_SURVIVAL_RISK_ACCEPTED",
-            "MEGA_ICARUS_RESOURCE_MANDATORY",
-            "MEGA_ICARUS_LEGAL_FALLBACK",
-            "MEGA_ICARUS_BOARD_SETUP",
-            "MEGA_ICARUS_SETUP_RELAXED",
-            "MEGA_ICARUS_SURVIVAL_SWORD",
-            "MEGA_ICARUS_SURVIVAL_SWORD_BREAK",
-            "MEGA_ICARUS_SURVIVAL_SWORD_UNAVOIDABLE_RISK",
-            "MEGA_ICARUS_SURVIVAL_HEALTH",
-            "MEGA_ICARUS_SURVIVAL_SHIELD",
-            "MEGA_ICARUS_SURVIVAL_DRAIN",
-            "MEGA_ICARUS_SURVIVAL_SAFE",
-        }
-    )
-    # Bú win deliberately leaves Sword for the boss so the local Pet dies.
-    # "No safe move" here measures Sword exposure, not swap legality. Its
-    # named policy branch selects from proven match-producing swaps; applying
-    # the ordinary survival pause would stop a healthy Coop farm instead.
-    # Keep the exemption tied to that exact swap branch. Fresh state, local
-    # ownership, mapping, deadline and input/ACK guards still run normally.
-    bu_win_feed_boss = bool(
-        decision.action is PolicyAction.SWAP
-        and decision.move is not None
-        and decision.trace.play_style == PlayStyle.BU_WIN.value
-        and decision.trace.policy_step == "BU_WIN_FEED_BOSS"
-    )
+    # A valid policy swap can be the best available play even when every move
+    # exposes Sword or UNKNOWN refill. Freshness, ownership, legality and input
+    # preflight are verified by their existing action gates.
+    if decision.action is PolicyAction.SWAP and decision.move is not None:
+        return False
     return bool(
         legal_move_count > 0
         and safe_move_count == 0
         and first_local_turn is not True
-        and not skill_rush_no_safe_fallback
-        and not demon_aegis_no_safe_fallback
-        and not mega_icarus_no_safe_fallback
-        and not bu_win_feed_boss
-        and not (
-            decision.action is PolicyAction.SWAP
-            and (
-                decision.trace.policy_step == "STEP_2_SWORD"
-                or decision.trace.skip_status.value
-                == "pass_forbidden_mandatory_action"
-            )
-            and decision.move is not None
-        )
     )
 
 
@@ -2059,6 +1996,22 @@ def _without_optional_card_actions(
     if cards is state.cards and fusion is state.fusion:
         return state
     return replace(state, cards=cards, fusion=fusion)
+
+
+def _policy_decision_key(
+    state: GameState,
+    suppressed: frozenset[PolicyAction],
+    skill: PetSkillCapability | None,
+    skill_history: SkillRushMatchContext | None,
+) -> tuple:
+    # Owned Pet Skill is discovered separately from GameState.cards. A new
+    # valid sample can change the decision without changing the board or stats.
+    return (
+        state.dedup_key, state.player, state.opponents, state.cards, state.fusion,
+        state.battle.turn_time_remaining_seconds, state.battle.client_move_allowed,
+        suppressed, replace(skill, observed_at=0.0) if skill is not None else None,
+        skill_history,
+    )
 
 
 def _retain_mandatory_consuming_action_requirement(
@@ -3218,7 +3171,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--audition-mode",
         choices=[value.value for value in AuditionMode],
-        default=AuditionMode.V3_TWO_DIRECTION.value,
     )
     parser.add_argument("--intelligence", choices=[value.value for value in Intelligence], default="basic")
     parser.add_argument(
@@ -3259,7 +3211,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pet-skill-fire-condition",
         choices=[value.value for value in PetSkillFireCondition],
-        default=PetSkillFireCondition.SWORD_COUNT.value,
     )
     parser.add_argument(
         "--pet-skill-fire-value",
@@ -3482,7 +3433,7 @@ def _create_shared_combat_runtime(
 
 def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None,
         shadow_adapter: Any | None = None, selection_adapter: Any | None = None,
-        swap_timing_adapter: Any | None = None) -> int:
+        swap_timing_adapter: Any | None = None, galaxy_reasoning: bool = False) -> int:
     _validate_args(args)
 
     if (
@@ -3495,9 +3446,23 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         getattr(args, name, None) is not None
         for name in ("main_pet", "evolution_target", "damage_card")
     )
+    galaxy_style = args.play_style == PlayStyle.GALAXY.value
+    default_fire_condition = (
+        PetSkillFireCondition.SKILL_COST_READY if galaxy_style else PetSkillFireCondition.SWORD_COUNT
+    )
+    fire_condition = PetSkillFireCondition(
+        getattr(args, "pet_skill_fire_condition", None) or default_fire_condition
+    )
+    fire_value = (
+        getattr(args, "pet_skill_fire_value", PET_SKILL_FIRE_VALUE_DEFAULT)
+        if fire_condition.uses_board_count else None
+    )
     if canonical_profile:
         gameplay = GameplayConfig(
             demon_target_gem=DemonTargetGem(getattr(args, "demon_target_gem", "shield")),
+            mega_self_protection=MegaSelfProtection(
+                getattr(args, "mega_self_protection", MegaSelfProtection.HP_BELOW_30.value)
+            ),
             play_style=PlayStyle(args.play_style),
             game_mode=GameMode(getattr(args, "game_mode", GameMode.SOLO.value)),
             intelligence=Intelligence.BASIC,
@@ -3505,32 +3470,14 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             evolution=EvolutionTarget(args.evolution_target),
             damage_card=DamageCardMode(args.damage_card),
             audition_mode=AuditionMode(
-                getattr(args, "audition_mode", AuditionMode.V3_TWO_DIRECTION.value)
+                getattr(args, "audition_mode", None)
+                or (AuditionMode.NO_ACTION if galaxy_style else AuditionMode.V3_TWO_DIRECTION)
             ),
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
             rage_target=getattr(args, "rage_target", 100),
-            pet_skill_fire_condition=PetSkillFireCondition(
-                getattr(
-                    args,
-                    "pet_skill_fire_condition",
-                    PetSkillFireCondition.SWORD_COUNT.value,
-                )
-            ),
-            pet_skill_fire_value=(
-                None
-                if getattr(
-                    args,
-                    "pet_skill_fire_condition",
-                    PetSkillFireCondition.SWORD_COUNT.value,
-                )
-                == PetSkillFireCondition.SKILL_COST_READY.value
-                else getattr(
-                    args,
-                    "pet_skill_fire_value",
-                    PET_SKILL_FIRE_VALUE_DEFAULT,
-                )
-            ),
+            pet_skill_fire_condition=fire_condition,
+            pet_skill_fire_value=fire_value,
         )
         policy_config = basic_policy_config(gameplay)
         configured_mana_priority = (
@@ -3542,40 +3489,25 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         configured_mana_priority = ManaPriority(args.mana_priority)
         policy_config = PolicyConfig(
             demon_target_gem=DemonTargetGem(getattr(args, "demon_target_gem", "shield")),
+            mega_self_protection=MegaSelfProtection(
+                getattr(args, "mega_self_protection", MegaSelfProtection.HP_BELOW_30.value)
+            ),
             play_style=PlayStyle(args.play_style),
             mana_priority=configured_mana_priority,
             intelligence=Intelligence.BASIC,
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile_threshold=getattr(args, "cast_mana_stockpile", 480),
             rage_target=getattr(args, "rage_target", 100),
-            pet_skill_fire_condition=PetSkillFireCondition(
-                getattr(
-                    args,
-                    "pet_skill_fire_condition",
-                    PetSkillFireCondition.SWORD_COUNT.value,
-                )
-            ),
-            pet_skill_fire_value=(
-                None
-                if getattr(
-                    args,
-                    "pet_skill_fire_condition",
-                    PetSkillFireCondition.SWORD_COUNT.value,
-                )
-                == PetSkillFireCondition.SKILL_COST_READY.value
-                else getattr(
-                    args,
-                    "pet_skill_fire_value",
-                    PET_SKILL_FIRE_VALUE_DEFAULT,
-                )
-            ),
+            pet_skill_fire_condition=fire_condition,
+            pet_skill_fire_value=fire_value,
         )
     policy = BasicPolicyEngine(
         replace(
             policy_config,
             minimum_turn_time_seconds=args.minimum_action_time,
             minimum_evolve_time_seconds=args.minimum_action_time,
-        )
+        ),
+        galaxy_reasoning=galaxy_reasoning,
     )
     # Production V2 uses only these accepted normal-input calibration values;
     # it no longer depends on a separate PokiguardAuto checkout at runtime.
@@ -3765,6 +3697,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         _write(
             log,
             "auto_controller_started",
+            galaxyReasoningEnabled=galaxy_reasoning,
             mode=(
                 "STAGE_B5_FULL_BASIC_COMBAT_AUTHORITATIVE_PASS_CYCLE"
                 if pass_stage == "B5"
@@ -3931,6 +3864,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         successful_pet_skill_turns_by_session: dict[Any, list[int]] = {}
         active_progress_watchdog = ActiveCombatProgressWatchdog()
         dispatcher_ready_sessions: set[Any] = set()
+        from pokiguard_v2.combat_board_evidence import PublishedStateRecorder, retained_board_fields
+        published_state_evidence = PublishedStateRecorder()
 
         def reset_unconfirmed_swap_passes_after_acceptance(
             accepted: PendingAutonomousAction,
@@ -3958,6 +3893,19 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                 match_id=session.match_id,
                 offered=dispatcher_offered_boards,
             ):
+                replay = (
+                    dispatcher_tap.move_response_replay_fields(snapshot)
+                    if accepted and event_type == "MATCH_MOVE_RES"
+                    and gameplay.play_style is PlayStyle.DEMON_AEGIS_FARM
+                    and args.game_mode == GameMode.SOLO.value
+                    else {}
+                )
+                if replay:
+                    replay.update(matchId=session.match_id, lifecycleEpoch=session.lifecycle_epoch)
+                outcome_fields = {}
+                if accepted and event_type in ("MATCH_MOVE_RES", "MATCH_CARD_USE_RES", "MATCH_SKILL_USE_RES"):
+                    from pokiguard_v2.combat_outcome_evidence import export_outcome_safely
+                    outcome_fields = export_outcome_safely(dispatcher_tap, snapshot)
                 _write(
                     log,
                     "dispatcher_board_snapshot_offered",
@@ -3968,6 +3916,11 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     srvSeq=snapshot.sequence,
                     completeCells=len(snapshot.cells),
                     accepted=accepted,
+                    **retained_board_fields(snapshot.cells, match_id=session.match_id,
+                        lifecycle_epoch=session.lifecycle_epoch, sequence=snapshot.sequence,
+                        source="TRANSPORT_BOARD", accepted=accepted),
+                    **replay,
+                    **outcome_fields,
                 )
             for source, batch, accepted in _offer_dispatcher_runtime_batches(
                 dispatcher_tap,
@@ -3984,7 +3937,17 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     boardHash=board_state_hash(batch.cells),
                     completeCells=len(batch.cells),
                     accepted=accepted,
+                    **retained_board_fields(batch.cells, match_id=session.match_id,
+                        lifecycle_epoch=session.lifecycle_epoch, sequence=batch.sequence,
+                        source=source, accepted=accepted),
                 )
+
+            # Galaxy and other skills can return effects without changing the
+            # board. These records are diagnostics, never action acceptance.
+            from pokiguard_v2.combat_outcome_evidence import drain_outcomes_safely
+            for outcome in drain_outcomes_safely(dispatcher_tap, session.match_id):
+                _write(log, "dispatcher_combat_outcome", matchId=session.match_id,
+                    lifecycleEpoch=session.lifecycle_epoch, combatOutcome=outcome)
 
         def observe_b5_server_reset(observed_idle: Any) -> None:
             """Consume only exact server idle evidence after a reset action."""
@@ -4911,6 +4874,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                                     srvSeq=snapshot.sequence,
                                     completeCells=len(snapshot.cells),
                                     accepted=accepted,
+                                    **retained_board_fields(snapshot.cells, match_id=active_session.match_id,
+                                        lifecycle_epoch=active_session.lifecycle_epoch, sequence=snapshot.sequence,
+                                        source="TRANSPORT_BOARD", accepted=accepted),
                                 )
                             except (OSError, RuntimeError, ValueError) as exc:
                                 attempt, retired = _record_transport_board_decode_failure(
@@ -5140,6 +5106,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     )
                 break
             state = poll.state
+            state_evidence_fields = (published_state_evidence.observe(state)
+                if args.game_mode == GameMode.SOLO.value else {})
+            if state_evidence_fields:
+                _write(log, "combat_state_evidence", **state_evidence_fields)
             if state is not None and state.terminal_snapshot is not None:
                 terminal_combat_snapshot = merge_terminal_snapshots(
                     terminal_combat_snapshot, state.terminal_snapshot
@@ -7941,7 +7911,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     policy_state,
                     pet_skill_capability_provider,
                 )
-                if policy.config.pet_skill_profile
+                if (
+                    policy.config.pet_skill_profile
+                    and PolicyAction.PET_SKILL not in suppressed_optional_actions
+                )
                 else None
             )
             skill_rush_match_context = _current_skill_rush_match_context(
@@ -7961,11 +7934,16 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             )
             if (
                 policy.config.pet_skill_profile
-                and basic_decision.trace.blocker
-                in {
-                    "PET_SKILL_CAPABILITY_UNAVAILABLE",
-                    "PET_SKILL_ACTIONABILITY_UNKNOWN",
-                }
+                and (
+                    basic_decision.trace.blocker in {
+                        "PET_SKILL_CAPABILITY_UNAVAILABLE",
+                        "PET_SKILL_ACTIONABILITY_UNKNOWN",
+                    }
+                    or (policy.config.play_style is PlayStyle.GALAXY
+                        and PolicyAction.PET_SKILL not in suppressed_optional_actions
+                        and (pet_skill_capability is None or not pet_skill_capability.current
+                             or pet_skill_capability.live_card_actionable is None))
+                )
                 and optional_turn_key is not None
             ):
                 warmup_started = pet_skill_warmups.setdefault(
@@ -8521,15 +8499,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     legalMoveCount=analysis.legal_match_producing_moves,
                     safeMoveCount=analysis.safe_move_count,
                 )
-            decision_key = (
-                state.dedup_key,
-                state.player,
-                state.opponents,
-                state.cards,
-                state.fusion,
-                state.battle.turn_time_remaining_seconds,
-                state.battle.client_move_allowed,
-                tuple(sorted(action.value for action in suppressed_optional_actions)),
+            decision_key = _policy_decision_key(
+                state, suppressed_optional_actions, pet_skill_capability, skill_rush_match_context,
             )
             # Compare the existing action-specific input identity. Skill
             # metadata on a SWAP explains the policy, but is not its target.
@@ -9244,7 +9215,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     fresh_policy_state,
                     pet_skill_capability_provider,
                 )
-                if policy.config.pet_skill_profile
+                if (
+                    policy.config.pet_skill_profile
+                    and PolicyAction.PET_SKILL not in fresh_suppressed_actions
+                )
                 else None
             )
             fresh_decision = policy.decide(
@@ -9639,7 +9613,10 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         ),
                         expected_session=fresh.battle.session_key,
                         expected_skill_card_id=decision.skill_card_id,
+                        expected_source_turn=fresh.battle.turn_number,
+                        minimum_action_time=args.minimum_action_time,
                         audition_mode=gameplay.audition_mode,
+                        galaxy_card=gameplay.play_style is PlayStyle.GALAXY,
                         backend=backend,
                         binding=binding,
                         atomic_input_gate=(
@@ -9778,6 +9755,39 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         guard.stop()
                         stop_reason = "FARM_GAMEPLAY_CAPABILITY_CANCELLED"
                         break
+                    if (
+                        outcome.state is PetSkillDispatchState.ZERO_INPUT_FRESH_STATE_REQUIRED
+                        and hook is not None
+                        and (
+                            hook.no_action_geometry_skipped
+                            or getattr(hook, "can_fallback_to_board", False)
+                        )
+                        and fresh_optional_turn_key is not None
+                        and (
+                            pinned_qte_cleanup_ok
+                            or (
+                                pinned_qte_action is not None
+                                and hook.lease_acquire_result is None
+                                and not pinned_qte_action.lease.active
+                            )
+                        )
+                    ):
+                        optional_card_suppressions.setdefault(
+                            fresh_optional_turn_key, set()
+                        ).add(PolicyAction.PET_SKILL)
+                        fallback_summary = hook.summary
+                        _write(
+                            log, "pet_skill_geometry_board_fallback", identity=identity,
+                            inputSent=False, freshStateRequired=True, blindRetry=False,
+                            reason=(
+                                result.reason if result is not None
+                                else fallback_summary.get("reason")
+                                if isinstance(fallback_summary, dict)
+                                else "CLICK_ONLY_CARD_GEOMETRY_UNAVAILABLE_BEFORE_INPUT"
+                            ),
+                        )
+                        time.sleep(args.interval)
+                        continue
                     if pinned_qte_action is not None:
                         guard.stop()
                         stop_reason = "PINNED_QTE_ZERO_INPUT_LEASE_CONSUMED"
@@ -10230,10 +10240,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                         ),
                         action=send_pinned_swap_once,
                         preflight=read_final_swap_preflight,
-                        expected_cursor_after=(
-                            plan.second.screen_x,
-                            plan.second.screen_y,
-                        ),
+                        expected_cursor_after=board_lease_executor.swap_end_position(plan),
                     )
                     _write(
                         log,

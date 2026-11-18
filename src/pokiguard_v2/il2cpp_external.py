@@ -17,49 +17,49 @@ from typing import Protocol
 
 POINTER_SIZE = 8
 MAX_USER_ADDRESS = 0x00007FFFFFFFFFFF
-# Unity 6000.7.0b7 / PetPuzzle B15: native getter + readonly class proof.
+# Unity 6000.7.0b7 / PetPuzzle B17: native getter + readonly class proof.
 # Bounded RPM checks across ManagerQuangTruong, ManagerRoom and WsRoomService
 # resolve static-field blocks at +0x98, not the generic Dumper header +0xB8.
 IL2CPP_CLASS_STATIC_FIELDS_OFFSET = 0x98
 
-# Verified for PetPuzzle 1.7.4-b15 / metadata 111, Il2CppDumper exports under
-# reverse/reverse_1.7.4-b15 (preferred image base 0x180000000). Attachment is
+# Verified for PetPuzzle 1.7.4-b17 / metadata 111, Il2CppDumper exports under
+# reverse/reverse_1.7.4-b17 (preferred image base 0x180000000). Attachment is
 # gated by its exact hash; old builds are incompatible with these layouts.
-BOARD_TYPE_INFO_RVA = 0x432ADB0
-ACTIVE_TYPE_INFO_RVA = 0x432ADC0
-MANAGER_MATCH_TYPE_INFO_RVA = 0x432AD98
-MATCH_SERVICE_TYPE_INFO_RVA = 0x42F8570
-CHAT_SERVICE_TYPE_INFO_RVA = 0x42F7EB8
+BOARD_TYPE_INFO_RVA = 0x43F68F0
+ACTIVE_TYPE_INFO_RVA = 0x43F68F8
+MANAGER_MATCH_TYPE_INFO_RVA = 0x43F68E8
+MATCH_SERVICE_TYPE_INFO_RVA = 0x43C2580
+CHAT_SERVICE_TYPE_INFO_RVA = 0x43C1A58
 # Repeated ChatService native bodies initialize this slot immediately before
 # ``typeof(ChatMessageDTO)`` / ``il2cpp_codegen_object_new``.
-CHAT_MESSAGE_DTO_TYPE_INFO_RVA = 0x43022C8
-HUB_SUSPEND_MANAGER_TYPE_INFO_RVA = 0x42F7F00
-MATCH_HOST_TYPE_INFO_RVA = 0x432B428
-MATCH_SCENE_LOADER_TYPE_INFO_RVA = 0x42FF448
-TURN_ANNOUNCER_TYPE_INFO_RVA = 0x42F81B0
-DOT_TYPE_INFO_RVA = 0x42F1550
-WS_COMBAT_BATCH_TYPE_INFO_RVA = 0x42F2BE8
-BOARD_WS_APPLIER_TYPE_INFO_RVA = 0x42F8110
-CARD_UI_TYPE_INFO_RVA = 0x42F8490
-FUSION_CARD_UI_TYPE_INFO_RVA = 0x42F9D68
-# Keep co-op Active.PlayerStats (0x42AC860) distinct from the PVP class
-# (0x42B4480). Both slots are independently named in the B15 export.
-ACTIVE_PLAYER_STATS_TYPE_INFO_RVA = 0x42AC860
-PET_USER_DTO_TYPE_INFO_RVA = 0x42B4488
-CARD_DATA_TYPE_INFO_RVA = 0x42D75F8
-# Audition V3 roots from the exact b14 Il2CppDumper output. AuditionStage is
+CHAT_MESSAGE_DTO_TYPE_INFO_RVA = 0x43CD9E0
+HUB_SUSPEND_MANAGER_TYPE_INFO_RVA = 0x43C1A80
+MATCH_HOST_TYPE_INFO_RVA = 0x43F6BC0
+MATCH_SCENE_LOADER_TYPE_INFO_RVA = 0x43C8320
+TURN_ANNOUNCER_TYPE_INFO_RVA = 0x43C2020
+DOT_TYPE_INFO_RVA = 0x43BC3D0
+WS_COMBAT_BATCH_TYPE_INFO_RVA = 0x43691F8
+BOARD_WS_APPLIER_TYPE_INFO_RVA = 0x43C1E50
+CARD_UI_TYPE_INFO_RVA = 0x43C24A8
+FUSION_CARD_UI_TYPE_INFO_RVA = 0x43CC208
+# Keep co-op Active.PlayerStats (0x43C0080) distinct from the PVP class
+# (0x436EC00). Both slots are independently named in the B17 export.
+ACTIVE_PLAYER_STATS_TYPE_INFO_RVA = 0x43C0080
+PET_USER_DTO_TYPE_INFO_RVA = 0x436EC28
+CARD_DATA_TYPE_INFO_RVA = 0x439FFC8
+# Audition V3 roots from the exact B17 Il2CppDumper output. AuditionStage is
 # a managed state object; its first static field owns the current stage.
-AUDITION_STAGE_TYPE_INFO_RVA = 0x42CA918
-AUDITION_CHALLENGE_TYPE_INFO_RVA = 0x42CB740
-# Read-only websocket-dispatch roots verified in the B15 Dumper output.
+AUDITION_STAGE_TYPE_INFO_RVA = 0x4396968
+AUDITION_CHALLENGE_TYPE_INFO_RVA = 0x4398570
+# Read-only websocket-dispatch roots verified in the B17 Dumper output.
 # ``ChatService.OnWebSocketMessage`` captures the fully deserialized
 # ``ChatMessageDTO`` in this closure before enqueuing its Action on
-# ``UnityMainThreadDispatcher`` (closure 324_0 in B15). These are type-info slots, never absolute
+# ``UnityMainThreadDispatcher`` (closure 328_0 in B17). These are type-info slots, never absolute
 # runtime addresses; the normal module-base + RVA resolver remains mandatory.
-CHAT_SERVICE_MESSAGE_CLOSURE_TYPE_INFO_RVA = 0x42F1DA0
-UNITY_MAIN_THREAD_DISPATCHER_TYPE_INFO_RVA = 0x42F1E38
-UNITY_PENDING_ACTION_LIST_TYPE_INFO_RVA = 0x42B0CF0
-UNITY_PENDING_ACTION_QUEUE_TYPE_INFO_RVA = 0x42B0D18
+CHAT_SERVICE_MESSAGE_CLOSURE_TYPE_INFO_RVA = 0x43BCBB8
+UNITY_MAIN_THREAD_DISPATCHER_TYPE_INFO_RVA = 0x43BCC50
+UNITY_PENDING_ACTION_LIST_TYPE_INFO_RVA = 0x436B4B8
+UNITY_PENDING_ACTION_QUEUE_TYPE_INFO_RVA = 0x436B4E0
 
 BOARD_WIDTH_OFFSET = 0x88
 BOARD_HEIGHT_OFFSET = 0x8C
@@ -111,9 +111,9 @@ BOARD_RESULT_TITLE_OFFSET = 0x2A8
 UNITY_UI_TEXT_VALUE_OFFSET = 0xE8
 CHAT_SERVICE_IS_CONNECTED_OFFSET = 0x28
 CHAT_SERVICE_USERNAME_OFFSET = 0x30
-CHAT_SERVICE_EXPLICIT_DISCONNECT_OFFSET = 0x345
-CHAT_SERVICE_RECONNECT_COROUTINE_OFFSET = 0x348
-CHAT_SERVICE_CONNECTING_OFFSET = 0x354
+CHAT_SERVICE_EXPLICIT_DISCONNECT_OFFSET = 0x34D
+CHAT_SERVICE_RECONNECT_COROUTINE_OFFSET = 0x350
+CHAT_SERVICE_CONNECTING_OFFSET = 0x35C
 MANAGER_MATCH_ACTIVE_OFFSET = 0x130
 MANAGER_MATCH_IS_BOSS_BATTLE_OFFSET = 0x138
 
@@ -171,7 +171,7 @@ CHAT_SERVICE_SINGLETON = SingletonSpec(
     "ChatService", CHAT_SERVICE_TYPE_INFO_RVA, 0x00
 )
 # CardUI.<ActiveDotSkillCard>k__BackingField is the first static field,
-# rechecked in the B15 layout (Il2CppClass.static_fields + 0x00).
+# rechecked in the B17 layout (Il2CppClass.static_fields + 0x00).
 # It is an observation anchor only; no method on the object is ever invoked.
 ACTIVE_DOT_SKILL_CARD = SingletonSpec(
     "CardUI.ActiveDotSkillCard", CARD_UI_TYPE_INFO_RVA, 0x00

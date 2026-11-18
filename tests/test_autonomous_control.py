@@ -2816,7 +2816,7 @@ class AutonomousGuardTests(unittest.TestCase):
         self.assertIsNotNone(returned.new_source)
         self.assertIsNone(tracker.action)
 
-    def test_no_safe_move_pause_allows_nonboard_actions_and_real_sword(self) -> None:
+    def test_no_safe_move_pause_allows_policy_swaps_and_nonboard_actions(self) -> None:
         state = self._state()
         sword = BasicPolicyEngine().decide(state)
         self.assertEqual(sword.trace.policy_step, "STEP_2_SWORD")
@@ -2833,7 +2833,7 @@ class AutonomousGuardTests(unittest.TestCase):
             sword,
             trace=replace(sword.trace, policy_step="STEP_3_RAGE"),
         )
-        self.assertTrue(
+        self.assertFalse(
             _must_pause_for_no_safe_move(
                 non_sword,
                 legal_move_count=3,
@@ -2864,7 +2864,7 @@ class AutonomousGuardTests(unittest.TestCase):
                     )
                 )
 
-    def test_no_safe_move_pause_allows_only_explicit_skill_rush_swaps(self) -> None:
+    def test_no_safe_move_pause_accepts_policy_swaps_across_styles(self) -> None:
         base = BasicPolicyEngine().decide(self._state())
         self.assertIsNotNone(base.move)
 
@@ -2910,7 +2910,7 @@ class AutonomousGuardTests(unittest.TestCase):
             ),
         )
         for decision in (standard, unrelated_rush):
-            self.assertTrue(
+            self.assertFalse(
                 _must_pause_for_no_safe_move(
                     decision,
                     legal_move_count=8,

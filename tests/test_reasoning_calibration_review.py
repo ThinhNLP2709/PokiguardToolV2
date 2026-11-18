@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import threading
 from types import SimpleNamespace
 import unittest
@@ -31,7 +32,7 @@ from tools.review_reasoning_calibration import export_review, ROOT
 class ReviewPackageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.base=tempfile.TemporaryDirectory(dir=ROOT)
+        cls.base=tempfile.TemporaryDirectory(dir=reasoning_temp_root())
         cls.template=Path(cls.base.name)/'package'
         # Keep P13/P14 semantic tests on their sealed reviewed source. Current
         # P16 runtime is intentionally not accepted by that old source gate.
@@ -42,7 +43,7 @@ class ReviewPackageTests(unittest.TestCase):
     def tearDownClass(cls): cls.base.cleanup()
 
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(self.temp.cleanup)
+        self.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(self.temp.cleanup)
         self.directory=Path(self.temp.name)/'package';shutil.copytree(self.template,self.directory)
         self.data=deepcopy(self.native)
 

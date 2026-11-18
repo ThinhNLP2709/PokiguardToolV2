@@ -1,8 +1,4 @@
-"""Pure-data Mega Icarus seal geometry and readiness contract.
-
-This module does not select moves or emit input.  It only projects one
-provider-neutral board onto the 30 cells destroyed by Mega Icarus.
-"""
+"""B15 fixed seal geometry, with compatibility helpers for Icarus callers."""
 
 from __future__ import annotations
 
@@ -23,17 +19,48 @@ MEGA_ICARUS_SEAL_CELLS: tuple[tuple[int, int], ...] = (
 )
 
 
-def _validate_seal_cells() -> None:
-    if len(MEGA_ICARUS_SEAL_CELLS) != 30:
-        raise RuntimeError("Mega Icarus seal must contain exactly 30 cells")
-    if len(set(MEGA_ICARUS_SEAL_CELLS)) != len(MEGA_ICARUS_SEAL_CELLS):
-        raise RuntimeError("Mega Icarus seal cells must be unique")
-    if any(not (0 <= row < 8 and 0 <= col < 8)
-           for row, col in MEGA_ICARUS_SEAL_CELLS):
-        raise RuntimeError("Mega Icarus seal cells must be inside the 8x8 board")
+MEGA_TREX_SEAL_CELLS: tuple[tuple[int, int], ...] = (
+    (0, 2), (0, 3), (0, 4), (0, 5),
+    (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6),
+    (2, 0), (2, 1), (2, 3), (2, 4), (2, 6), (2, 7),
+    (3, 1), (3, 2), (3, 3), (3, 4), (3, 5), (3, 6),
+    (4, 1), (4, 3), (4, 4), (4, 6),
+    (5, 2), (5, 5),
+    (6, 3), (6, 4),
+)
 
 
-_validate_seal_cells()
+@dataclass(frozen=True)
+class MegaSeal:
+    element_type: str
+    cells: tuple[tuple[int, int], ...]
+    heals_self: bool = False
+
+    @property
+    def condition_scope(self) -> str:
+        return f"{self.element_type}_SEAL_{len(self.cells)}"
+
+
+# The attachment gate pins B15. Source of both masks:
+# docs/artifacts/b15_mega_seal_expansion_20261107/seal_masks.json.
+_B15_SEALS = {
+    seal.element_type: seal
+    for seal in (
+        MegaSeal("MEGA_ICARUS", MEGA_ICARUS_SEAL_CELLS, heals_self=True),
+        MegaSeal("MEGA_TREX", MEGA_TREX_SEAL_CELLS),
+    )
+}
+for _seal in _B15_SEALS.values():
+    if len(_seal.cells) != 30 or len(set(_seal.cells)) != 30:
+        raise RuntimeError(f"{_seal.element_type} seal must contain 30 unique cells")
+    if any(not (0 <= row < 8 and 0 <= col < 8) for row, col in _seal.cells):
+        raise RuntimeError(f"{_seal.element_type} seal exceeds the 8x8 board")
+
+
+def mega_seal_for_type(element_type: str | None) -> MegaSeal | None:
+    return _B15_SEALS.get(element_type.upper()) if isinstance(element_type, str) else None
+
+
 MEGA_ICARUS_SEAL_CELL_SET = frozenset(MEGA_ICARUS_SEAL_CELLS)
 
 
@@ -54,7 +81,16 @@ _CONDITION_GEMS = {
 }
 
 
-def count_seal_gems(board: BoardState, gem_type: GemType) -> SealGemCount:
+def gem_for_fire_condition(condition: PetSkillFireCondition | str) -> GemType | None:
+    return _CONDITION_GEMS.get(condition) if isinstance(condition, str) else None
+
+
+def count_seal_gems(
+    board: BoardState,
+    gem_type: GemType,
+    *,
+    cells: tuple[tuple[int, int], ...] = MEGA_ICARUS_SEAL_CELLS,
+) -> SealGemCount:
     """Count one known gem type inside the fixed seal only.
 
     ``effective`` is authoritative for readiness so x2/x3 gems contribute
@@ -70,9 +106,8 @@ def count_seal_gems(board: BoardState, gem_type: GemType) -> SealGemCount:
         return SealGemCount(0, 0)
     matched = tuple(
         board.cells[row][col]
-        for row, col in MEGA_ICARUS_SEAL_CELLS
+        for row, col in cells
         if board.cells[row][col].gem is gem_type
-        and board.cells[row][col].gem is not GemType.UNKNOWN
     )
     return SealGemCount(
         physical=len(matched),
@@ -83,6 +118,8 @@ def count_seal_gems(board: BoardState, gem_type: GemType) -> SealGemCount:
 def seal_condition_count(
     board: BoardState,
     condition: PetSkillFireCondition,
+    *,
+    cells: tuple[tuple[int, int], ...] = MEGA_ICARUS_SEAL_CELLS,
 ) -> SealGemCount:
     """Return seal counts for a board-count fire condition."""
 
@@ -90,7 +127,7 @@ def seal_condition_count(
         raise TypeError("condition must be PetSkillFireCondition")
     if condition is PetSkillFireCondition.SKILL_COST_READY:
         raise ValueError("skill_cost_ready has no board count")
-    return count_seal_gems(board, _CONDITION_GEMS[condition])
+    return count_seal_gems(board, _CONDITION_GEMS[condition], cells=cells)
 
 
 def mega_icarus_condition_ready(
@@ -117,8 +154,12 @@ def mega_icarus_condition_ready(
 __all__ = [
     "MEGA_ICARUS_SEAL_CELLS",
     "MEGA_ICARUS_SEAL_CELL_SET",
+    "MEGA_TREX_SEAL_CELLS",
+    "MegaSeal",
     "SealGemCount",
     "count_seal_gems",
+    "gem_for_fire_condition",
+    "mega_seal_for_type",
     "mega_icarus_condition_ready",
     "seal_condition_count",
 ]

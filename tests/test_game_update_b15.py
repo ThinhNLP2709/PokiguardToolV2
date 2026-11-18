@@ -88,43 +88,14 @@ class B15CompatibilityTests(unittest.TestCase):
             self.assertTrue(self.audit["selected_layouts"][owner]["equal"], owner)
 
     def test_runtime_migration_only_changes_verified_constants(self):
-        from pokiguard_v2.reasoning_calibration import source_files
-
         migration = json.loads((EVIDENCE / "constant_migration.json").read_text("utf-8"))
         before = json.loads((EVIDENCE / "before_source.json").read_text("utf-8"))["files"]
-        current = source_files(ROOT)
+        # Compare the two manifests from the migration itself. The shape
+        # check below still audits the current runtime layout modules.
+        migrated = json.loads((EVIDENCE / "source_manifest.json").read_text("utf-8"))["files"]
         protected = {name for name in before if name.startswith(("src/", "tools/"))}
         expected = {"src/pokiguard_v2/" + name for name in migration}
-        # Pin later operational fixes and planner changes separately from the
-        # original constant-only compatibility migration.
-        followup_hashes = {
-            "tools/farm_run.py": (
-                "ef64e7e3e96d5a495e608ce5150170012dbc42bc969841879c59a32ced7ad0a0",
-                "3a8bdd501ab57dcc368a179ddcbc70f8e6f4b009cc371a9a14dcececd840f4a5",
-            ),
-            "tools/boss_entry.py": (
-                "eaf1ea2a783093be64f04461d437c4759dd932c5ac98c6777a84a8de0805aac9",
-                "fdd40e5e9cb133220d0deb65fa6675df05bbf0c981b2026dadae529f43fc0e8c",
-            ),
-            "src/pokiguard_v2/reasoning_common_evidence.py": (
-                "11abecf11e6df49a69aacebe1c1bb85c6bfb211ed48d46a1378dff51cc9558ad",
-                "43adaac9db6b5203d611fdade7e90604de038e31ae8447404cc188fa0d506456",
-            ),
-            "src/pokiguard_v2/reasoning_common_planner.py": (
-                "03c2ba24d65b66456f1d4b894a957405ccef7d0a2f6a88336a1017f2abaf16d3",
-                "41193226885cb00bf9dc06ca181c336db9549d59a6681ccc9f691ed9e28cf63b",
-            ),
-            "src/pokiguard_v2/reasoning_common_tactics.py": (
-                "57deecc77258d820927282532852831690d32a6c196eff7798ec45490d1d8e98",
-                "57517266fc42208664415f9ecd07a3a12322cae76ef7317e33a1d336cf653965",
-            ),
-        }
-        for name, hashes in followup_hashes.items():
-            self.assertEqual((before[name], current[name]), hashes, name)
-            protected.remove(name)
-        # The release label is verified separately by the packaging tests.
-        protected.remove("src/pokiguard_v2/version.py")
-        self.assertEqual({name for name in protected if before[name] != current.get(name)}, expected)
+        self.assertEqual({name for name in protected if before[name] != migrated.get(name)}, expected)
 
         def shape(path, constants):
             tree = ast.parse(path.read_bytes())

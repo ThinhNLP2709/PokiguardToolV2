@@ -14,6 +14,7 @@ import math
 from typing import Iterable
 
 from .combat_cards import CardDataState
+from .mega_icarus import MegaSeal, mega_seal_for_type
 from .pet_qte_observer import (
     BoundQteObservation,
     CardUiQteSnapshot,
@@ -47,6 +48,8 @@ class PetSkillFamily(str, Enum):
     AUTOMATIC_DOT_DESTRUCTION = "AUTOMATIC_DOT_DESTRUCTION"
     DOT_QTE_OTHER = "DOT_QTE_OTHER"
     MEGA_ICARUS_CLICK_ONLY = "MEGA_ICARUS_CLICK_ONLY"
+    MEGA_TREX_CLICK_ONLY = "MEGA_TREX_CLICK_ONLY"
+    GALAXY_CLICK_ONLY = "GALAXY_CLICK_ONLY"
     UNKNOWN = "UNKNOWN"
 
 
@@ -55,17 +58,18 @@ class PetSkillTargetMode(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-PET_SKILL_ELEMENT_TYPES = frozenset(
-    {
-        "ATTACK_LEGEND",
-        "ATTACK_LEGEND_",
-        # Older fixtures and current PetPuzzle b6 use different names for
-        # the same Mega Icarus click-only card family.  Keep both aliases so
-        # CardUI discovery and capability resolution cannot drift apart.
-        "MEGA1",
-        "MEGA_ICARUS",
-    }
-)
+_MEGA_SEAL_FAMILIES = {
+    "MEGA_ICARUS": PetSkillFamily.MEGA_ICARUS_CLICK_ONLY,
+    "MEGA_TREX": PetSkillFamily.MEGA_TREX_CLICK_ONLY,
+}
+# B15 CardPhotonSync starts these card coroutines directly from the click.
+_GALAXY_CLICK_ONLY_TYPES = frozenset({
+    "GALAXY_2", "GALAXY_RICKY", "GALAXY_CHESS_MASTER", "GALAXY_DRAGON_KNIGHT",
+})
+# MEGA1 is a row-selection skill in B15.
+PET_SKILL_ELEMENT_TYPES = frozenset({
+    "ATTACK_LEGEND", "ATTACK_LEGEND_", *_MEGA_SEAL_FAMILIES, *_GALAXY_CLICK_ONLY_TYPES,
+})
 
 
 class QteDirection(str, Enum):
@@ -182,6 +186,9 @@ class PetSkillCapability:
     source: str
     evidence: tuple[str, ...] = ()
     stale_reason: str | None = None
+    skill_phase_next: int | None = None
+    skill_phase_max: int | None = None
+    skill_phase_source: str | None = None
 
     @property
     def current(self) -> bool:
@@ -197,20 +204,58 @@ def pet_skill_family(element_type: str | None) -> tuple[PetSkillFamily, PetSkill
         )
     if value == "ATTACK_LEGEND":
         return PetSkillFamily.DOT_QTE_OTHER, PetSkillTargetMode.UNKNOWN
-    if value in {"MEGA1", "MEGA_ICARUS"}:
-        return PetSkillFamily.MEGA_ICARUS_CLICK_ONLY, PetSkillTargetMode.AUTOMATIC
+    if value in _MEGA_SEAL_FAMILIES:
+        return _MEGA_SEAL_FAMILIES[value], PetSkillTargetMode.AUTOMATIC
+    if value in _GALAXY_CLICK_ONLY_TYPES:
+        return PetSkillFamily.GALAXY_CLICK_ONLY, PetSkillTargetMode.AUTOMATIC
     return PetSkillFamily.UNKNOWN, PetSkillTargetMode.UNKNOWN
 
 
+def current_click_only_card_type(
+    capability: PetSkillCapability | None,
+    session_key: CombatSessionKey | None,
+) -> str | None:
+    """Identify a verified click-only skill from its current owned CardUI."""
+    if (
+        capability is None
+        or not capability.current
+        or session_key is None
+        or capability.session_key != session_key
+        or capability.source != "CARD_UI_BUTTON"
+        or not capability.live_card_present
+        or capability.target_mode is not PetSkillTargetMode.AUTOMATIC
+        or capability.card_id != capability.skill_card_id
+        or capability.source_pet_skill_card_id not in (None, capability.card_id)
+        or any(type(value) is not int or value <= 0 for value in (
+            capability.card_id, capability.card_data_address,
+            capability.live_card_address, capability.live_button_address,
+        ))
+    ):
+        return None
+    element = (capability.element_type or "").upper()
+    family = (PetSkillFamily.GALAXY_CLICK_ONLY if element in _GALAXY_CLICK_ONLY_TYPES
+              else _MEGA_SEAL_FAMILIES.get(element))
+    if family is None or family is not capability.skill_family:
+        return None
+    return element
+
+
+def current_mega_seal(
+    capability: PetSkillCapability | None,
+    session_key: CombatSessionKey | None,
+) -> MegaSeal | None:
+    return mega_seal_for_type(current_click_only_card_type(capability, session_key))
+
+
 def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
-    """Resolve only the family semantics proven in Phase 3A.1.
+    """Resolve verified Dot-QTE and B15 click-only resource fields.
 
     Live fixtures prove the same raw-field contract for both Dot-QTE families:
     ``conditionUse`` is consumed Mana and ``power`` is consumed Rage/Power,
     while raw ``manaCost``/``powerCost`` remain zero.  Huyền Thoại 7 observed
     200/200 and Huyền Thoại 2 observed 200/150.  Values are always read from
     the exact card; no card/pet identity or numeric cost is encoded here.
-    Other shapes remain UNKNOWN.
+    B15 CheckConditionUse shares the conditionUse/power branch for seal and Galaxy cards.
     """
 
     family, _ = pet_skill_family(card.element_type)
@@ -222,21 +267,17 @@ def resolve_pet_skill_cost(card: CardDataState) -> PetSkillCostResolution:
         and card.mana_cost == 0
         and card.power_cost == 0
     )
-    mega_icarus_shape = bool(
-        family is PetSkillFamily.MEGA_ICARUS_CLICK_ONLY
-        and card.mana_cost == 0
-        and card.power_cost == 0
-    )
+    click_only = family in _MEGA_SEAL_FAMILIES.values() or family is PetSkillFamily.GALAXY_CLICK_ONLY
     mana = (
         card.condition_use
-        if (qte_shape or mega_icarus_shape) and card.condition_use > 0
+        if (click_only and card.condition_use >= 0) or (qte_shape and card.condition_use > 0)
         else None
     )
     # Mega cards may legitimately require no Rage. Preserve live zero as a
     # known requirement instead of converting it into an unknown cost.
     power = (
         card.power
-        if mega_icarus_shape and card.power >= 0
+        if click_only and card.power >= 0
         else card.power
         if qte_shape and card.power > 0
         else None
@@ -285,8 +326,8 @@ def card_data_from_state(card: CardState) -> CardDataState:
         max_level=int(card.max_level or 0),
         count=int(card.count or 0),
         level=int(card.level or 0),
-        condition_use=int(card.condition_use or 0),
-        power=int(card.power or 0),
+        condition_use=-1 if card.condition_use is None else card.condition_use,
+        power=-1 if card.power is None else card.power,
         green=int(colors.get("green", 0)),
         blue=int(colors.get("blue", 0)),
         red=int(colors.get("red", 0)),
@@ -311,6 +352,11 @@ def live_pet_skill_card_from_state(
     active_instance: int | None,
 ) -> LivePetSkillCard:
     live_wrapper = card.interaction_authority == "CARD_UI_BUTTON"
+    interactable = card.interactable
+    if mega_seal_for_type(card.element_type) is not None:
+        interactable = interactable and not (
+            card.action_pending or card.is_placeholder or card.has_used_this_turn
+        )
     return LivePetSkillCard(
         session_key=session_key,
         card_data=card_data_from_state(card),
@@ -318,7 +364,7 @@ def live_pet_skill_card_from_state(
         board_instance=session_key.board_instance,
         active_instance=active_instance,
         button_address=card.button_address if live_wrapper else None,
-        button_interactable=card.interactable if live_wrapper else None,
+        button_interactable=interactable if live_wrapper else None,
         button_validated=live_wrapper and card.button_address is not None,
         source=card.interaction_authority,
     )

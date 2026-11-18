@@ -127,8 +127,12 @@ class PostmatchB14UiTests(unittest.TestCase):
             source = followup
         # Retain original win/loss proof bytes; the transparency regression is
         # a separately reviewed successor, with an exact hash chain.
-        successor = json.loads((ROOT / 'tests/fixtures/petpuzzle_b14_result_20261102_transparency/provenance.json').read_text('utf-8'))['source_change']
+        transparency = json.loads((ROOT / 'tests/fixtures/petpuzzle_b14_result_20261102_transparency/provenance.json').read_text('utf-8'))
+        successor = transparency['source_change']
         self.assertEqual(source['after_sha256'], successor['before_sha256'])
+        followup = transparency['followup_source_change']
+        self.assertEqual(successor['after_sha256'], followup['before_sha256'])
+        successor = followup
         self.assertEqual(hashlib.sha256((ROOT / successor['path']).read_bytes()).hexdigest(), successor['after_sha256'])
 
 

@@ -16,7 +16,7 @@ from pokiguard_v2.gameplay_profile import (
     MainPetType,
     PetSkillFireCondition,
 )
-from pokiguard_v2.mega_icarus import MEGA_ICARUS_SEAL_CELLS
+from pokiguard_v2.mega_icarus import MEGA_ICARUS_SEAL_CELLS, MEGA_TREX_SEAL_CELLS
 from pokiguard_v2.pet_skill_shadow import (
     PetSkillFamily,
     pet_skill_family,
@@ -65,7 +65,7 @@ def mega_policy(
 def mega_capability(*, mana: int = 200, rage: int = 150):
     return replace(
         capability(mana_cost=mana, rage_cost=max(rage, 1)),
-        element_type="MEGA1",
+        element_type="MEGA_ICARUS",
         skill_type="MEGA",
         effective_mana_cost=mana,
         effective_power_cost=rage,
@@ -83,8 +83,8 @@ def board_with_seal_gems(
     outside: int = 0,
     gem: GemType = GemType.SWORD,
     inside_multipliers: tuple[int, ...] = (),
+    seal: tuple[tuple[int, int], ...] = MEGA_ICARUS_SEAL_CELLS,
 ) -> BoardState:
-    seal = tuple(MEGA_ICARUS_SEAL_CELLS)
     outside_cells = tuple(
         (row, col)
         for row in range(8)
@@ -357,14 +357,54 @@ class MegaIcarusPolicyTests(unittest.TestCase):
 
         self.assertIs(decision.action, PolicyAction.EVOLVE)
 
-    def test_mega1_live_cost_keeps_zero_rage_as_known(self) -> None:
-        family, _target = pet_skill_family("MEGA1")
+    def test_icarus_live_cost_keeps_zero_rage_as_known(self) -> None:
+        family, _target = pet_skill_family("MEGA_ICARUS")
         cost = resolve_pet_skill_cost(
-            card_data(element="MEGA1", mana_cost=200, rage_cost=0)
+            card_data(element="MEGA_ICARUS", mana_cost=200, rage_cost=0)
         )
         self.assertIs(family, PetSkillFamily.MEGA_ICARUS_CLICK_ONLY)
         self.assertEqual(cost.effective_mana_cost, 200)
         self.assertEqual(cost.effective_power_cost, 0)
+
+    def test_current_card_selects_mask_after_evolution(self) -> None:
+        state = session_state(mana=250, rage=250)
+        trex_only = tuple(cell for cell in MEGA_TREX_SEAL_CELLS if cell not in MEGA_ICARUS_SEAL_CELLS)
+        state = replace(state, fusion=replace(state.fusion, used=True), board=board_with_seal_gems(
+            state.board, inside=2, inside_multipliers=(3, 3), seal=trex_only,
+        ))
+        policy = mega_policy(main_pet=MainPetType.NORMAL, evolution=EvolutionTarget.MEGA, threshold=6)
+        icarus = policy.decide(state, pet_skill_capability=mega_capability())
+        trex_cap = capability(element="MEGA_TREX", mana_cost=235, rage_cost=0)
+        trex = policy.decide(state, pet_skill_capability=trex_cap)
+        self.assertIsNot(icarus.action, PolicyAction.PET_SKILL)
+        self.assertIs(trex.action, PolicyAction.PET_SKILL)
+        self.assertEqual(trex.trace.fire_condition_scope, "MEGA_TREX_SEAL_30")
+        self.assertEqual(trex.trace.selected_known_gem_effective_count, 6)
+        self.assertEqual(trex_cap.effective_mana_cost, 235)
+        self.assertEqual(trex_cap.effective_power_cost, 0)
+        short_mana = replace(state, player=replace(state.player, mana=234))
+        blocked = policy.decide(short_mana, pet_skill_capability=trex_cap)
+        self.assertIsNot(blocked.action, PolicyAction.PET_SKILL)
+        self.assertEqual(blocked.trace.missing_mana, 1)
+
+        for cap in (replace(trex_cap, live_card_actionable=False), replace(trex_cap, session_key=None)):
+            blocked = policy.decide(state, pet_skill_capability=cap)
+            self.assertIsNot(blocked.action, PolicyAction.PET_SKILL)
+
+    def test_row_skill_falls_back_to_board_play(self) -> None:
+        state = session_state(mana=250, rage=250)
+        row_skill = replace(mega_capability(), element_type="MEGA1")
+        self.assertIs(pet_skill_family("MEGA1")[0], PetSkillFamily.UNKNOWN)
+        decision = mega_policy(threshold=1).decide(state, pet_skill_capability=row_skill)
+        self.assertIs(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.trace.fire_condition_scope, "MEGA_SEAL_UNAVAILABLE")
+
+    def test_low_hp_trex_does_not_inherit_icarus_heal_trigger(self) -> None:
+        state = with_player_hp(session_state(mana=250, rage=250), hp=25)
+        policy = mega_policy(threshold=90)
+        trex = policy.decide(state, pet_skill_capability=capability(element="MEGA_TREX"))
+        self.assertIsNot(trex.action, PolicyAction.PET_SKILL)
+        self.assertNotEqual(trex.trace.policy_step, "MEGA_ICARUS_SURVIVAL_SKILL")
 
     def test_global_ten_but_only_nine_in_seal_does_not_fire(self) -> None:
         state = session_state(mana=250, rage=250)
@@ -552,6 +592,24 @@ class MegaIcarusPolicyTests(unittest.TestCase):
             )
         self.assertEqual(decision.move, effective_move.move)
         self.assertEqual(decision.trace.policy_step, "MEGA_ICARUS_BOARD_SETUP")
+
+    def test_setup_prefers_the_cells_of_the_current_seal(self) -> None:
+        state = session_state(mana=250, rage=250)
+        bases = evaluate_all_moves(state.board)
+        icarus_only = tuple(cell for cell in MEGA_ICARUS_SEAL_CELLS if cell not in MEGA_TREX_SEAL_CELLS)
+        trex_only = tuple(cell for cell in MEGA_TREX_SEAL_CELLS if cell not in MEGA_ICARUS_SEAL_CELLS)
+        icarus_move = candidate(replace(bases[0], result=board_with_seal_gems(
+            state.board, inside=4, seal=icarus_only,
+        ).cells))
+        trex_move = candidate(replace(bases[1], result=board_with_seal_gems(
+            state.board, inside=4, seal=trex_only,
+        ).cells))
+        policy = mega_policy(threshold=60)
+        with patch("pokiguard_v2.basic_policy.evaluate_all_moves", return_value=(icarus_move, trex_move)):
+            icarus = policy.decide(state, pet_skill_capability=mega_capability())
+            trex = policy.decide(state, pet_skill_capability=capability(element="MEGA_TREX"))
+        self.assertEqual(icarus.move, icarus_move.move)
+        self.assertEqual(trex.move, trex_move.move)
 
     def test_setup_prefers_no_boss_sword_reply_over_larger_seal_gain(self) -> None:
         state = session_state(mana=250, rage=250)

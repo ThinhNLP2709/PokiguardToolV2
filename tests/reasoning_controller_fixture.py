@@ -621,6 +621,7 @@ def controller_trace(path, adapter=None, case='normal', *, controller_module=Non
     stop_iteration=2 if case in ('stale','wrong_turn','final_late','stats_changed','reserve_final') else 3
     if case == 'dinosaur_opening_missed':stop_iteration=4
     if case == 'dinosaur_repeat_missed':stop_iteration=6
+    if case == 'pet_skill_geometry_fallback':stop_iteration=4
     if case=='pet_skill_missing':stop_iteration=5
     hotkeys=SimpleNamespace(poll=lambda:(False,False,case=='stop' or loop>=stop_iteration),
         emergency_stop_requested=lambda:(case=='stop_after_fresh' and polls>1
@@ -645,6 +646,7 @@ def controller_trace(path, adapter=None, case='normal', *, controller_module=Non
         args.pet_skill_fire_condition=gameplay_config.pet_skill_fire_condition.value
         args.pet_skill_fire_value=gameplay_config.pet_skill_fire_value
         args.demon_target_gem=gameplay_config.demon_target_gem.value
+        args.mega_self_protection=gameplay_config.mega_self_protection.value
     selection = None
     timing = None
     if selection_factory is not None or timing_factory is not None:

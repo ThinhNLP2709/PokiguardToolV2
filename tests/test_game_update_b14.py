@@ -192,9 +192,11 @@ class B14CompatibilityTests(unittest.TestCase):
         current_result_fix = result_proof.get('followup_source_change', result_fix)
         if current_result_fix is not result_fix:
             self.assertEqual(current_result_fix['before_sha256'], result_fix['after_sha256'])
-        transparency = json.loads((ROOT / 'tests/fixtures/petpuzzle_b14_result_20261102_transparency/provenance.json').read_text('utf-8'))['source_change']
+        transparency_proof = json.loads((ROOT / 'tests/fixtures/petpuzzle_b14_result_20261102_transparency/provenance.json').read_text('utf-8'))
+        transparency = transparency_proof['source_change']
         self.assertEqual(current_result_fix['after_sha256'], transparency['before_sha256'])
-        current_result_fix = transparency
+        current_result_fix = transparency_proof['followup_source_change']
+        self.assertEqual(transparency['after_sha256'], current_result_fix['before_sha256'])
         # The later common-AI task is independent of B14 constant migration.
         # Only its explicitly reviewed runtime files may use the pinned closure;
         # reader/input/QTE and every other pre-task byte stay under this audit.

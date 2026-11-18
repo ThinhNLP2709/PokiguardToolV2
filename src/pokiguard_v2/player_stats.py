@@ -56,12 +56,12 @@ class _DecodedStats:
     state: ParticipantState
 
 
-def read_match_local_actor_number(
+def _read_match_local_snapshot(
     memory: MemoryReader,
     match_service: int,
     local_username: str | None,
-) -> int | None:
-    """Read the game-owned username -> actor mapping used by ``Active``.
+) -> tuple[int, int] | None:
+    """Return (actor, snapshot address) from the game-owned username mapping.
 
     This mirrors the first, strongest branch of
     ``Active.get_LocalActorNumberOrZero`` without calling game code.  Missing
@@ -105,7 +105,7 @@ def read_match_local_actor_number(
         raise LayoutValidationError("MatchService.Players capacity is invalid")
 
     expected = local_username.casefold()
-    matches: list[int] = []
+    matches: list[tuple[int, int]] = []
     live_entries = 0
     for index in range(count):
         entry = ARRAY_DATA_OFFSET + index * DICTIONARY_ENTRY_SIZE
@@ -140,15 +140,25 @@ def read_match_local_actor_number(
             raise LayoutValidationError(
                 "MatchService.Players local actor number is implausible"
             )
-        matches.append(actor)
+        matches.append((actor, value_pointer))
     if live_entries != count - free_count:
         raise LayoutValidationError("MatchService.Players live entry count mismatch")
     header_after = _read_exact(memory, dictionary, 0x30)
     if header_after != header_before:
         raise LayoutValidationError("MatchService.Players changed during read")
+    if struct.unpack("<Q", _read_exact(memory, match_service + MATCH_SERVICE_PLAYERS_OFFSET, 8))[0] != dictionary:
+        raise LayoutValidationError("MatchService.Players root changed during read")
     if len(matches) > 1 or len(set(matches)) != len(matches):
         raise LayoutValidationError("MatchService.Players local username is ambiguous")
     return matches[0] if matches else None
+
+
+def read_match_local_actor_number(
+    memory: MemoryReader, match_service: int, local_username: str | None,
+) -> int | None:
+    """Read the exact local actor through the validated Players ownership map."""
+    local = _read_match_local_snapshot(memory, match_service, local_username)
+    return local[0] if local is not None else None
 
 
 def _read_exact(memory: MemoryReader, address: int, size: int) -> bytes:

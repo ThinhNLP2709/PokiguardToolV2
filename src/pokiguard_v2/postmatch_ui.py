@@ -284,7 +284,11 @@ def _locate_arena_result(
     # search to the B14 frame and accept less blue coverage. Four gold corners,
     # the result header and labelled button remain mandatory independent proof.
     # Other layouts retain their original ROI and thresholds.
-    panel_area, min_width, max_width = (.08, .53, .62) if b14 else (.16, .60, .74)
+    # A five-item reward reveal including the T-Rex chest left 49,674 blue
+    # pixels in the 1120x560 native frame, below the previous 50,176 minimum.
+    # Allow 7% viewport coverage for this translucent panel while requiring
+    # its full span, four corners, result header and labelled unique button.
+    panel_area, min_width, max_width = (.07, .53, .62) if b14 else (.16, .60, .74)
     panels = [p for p in panel if p[4] >= area * panel_area
               and min_width <= (p[2]-p[0])/transform.viewport_width <= max_width
               and 0.55 <= (p[3]-p[1])/transform.viewport_height <= 0.76]

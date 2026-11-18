@@ -151,6 +151,7 @@ class SharedEntryRuntime:
     # readiness, so entry waits for the host instead of using the Solo retry.
     coop_mode: bool = False
     outside_modal_handler: Any | None = None
+    recover_stalled_room: bool = False
 
 
 def _read_entry_lobby(runtime: SharedEntryRuntime, lifecycle: Any) -> Any:
@@ -688,6 +689,14 @@ def _candidate_records(lobby: BossLobbyRuntimeSnapshot) -> tuple[dict[str, Any],
     )
 
 
+class EntryStartVisualMismatch(RuntimeError):
+    def __init__(self, capture: ClientRgbCapture, rect: tuple[float, ...], location: Any):
+        super().__init__(location.reason)
+        self.capture = capture
+        self.rect = rect
+        self.location = location
+
+
 def _capture_proof(
     *,
     target: Any,
@@ -737,6 +746,8 @@ def _capture_proof(
         expected_rect=geometry.viewport_rect,
     )
     if not location.found or location.normalized_point is None or location.normalized_rect is None:
+        if location.reason == "runtime_start_rect_visual_mismatch":
+            raise EntryStartVisualMismatch(capture, geometry.viewport_rect, location)
         raise RuntimeError(location.reason)
     if location.confidence < 0.90:
         raise RuntimeError(f"entry locator confidence {location.confidence:.3f} is below 0.90")
@@ -1474,6 +1485,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
         last_lobby_status = None
         locked_lobby: BossLobbyRuntimeSnapshot | None = None
         locked_candidate: BossCandidate | None = None
+        start_mismatch_since = None
+        start_mismatch_capture = None
         deadline = time.monotonic() + args.lobby_timeout
 
         while target.is_running() and time.monotonic() < deadline and ready is None:
@@ -1497,6 +1510,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     break
                 if modal_status == "DISMISSED":
                     stable_lobby_key, stable_lobby_count = None, 0
+                    start_mismatch_since = None
                     continue
             status = (lobby.state, lobby.branch, tuple(c.identity.stable_key() for c in lobby.candidates))
             if status != last_lobby_status:
@@ -1711,10 +1725,34 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
                     button_address=candidate.entry_control_address,
                     require_foreground=_proof_requires_foreground(runtime),
                 )
+            except EntryStartVisualMismatch as exc:
+                now = time.monotonic()
+                if start_mismatch_since is None:
+                    start_mismatch_since = now
+                if start_mismatch_capture is None:
+                    _write(log, "entry_start_visual_mismatch", expectedRect=exc.rect,
+                           width=exc.capture.width, height=exc.capture.height,
+                           location=exc.location)
+                start_mismatch_capture = exc.capture
+                if (
+                    runtime.recover_stalled_room
+                    and lobby.chinh_phuc.current_room_id
+                    and now - start_mismatch_since >= 8.0
+                ):
+                    result.update(status="STOPPED", stopReason="ENTRY_START_CONTROL_UNVERIFIED",
+                                  stalledRoomId=lobby.chinh_phuc.current_room_id)
+                    _write(log, "entry_stopped", reason=result["stopReason"], inputSent=False,
+                           stalledRoomId=result["stalledRoomId"])
+                    break
+                time.sleep(args.interval)
+                continue
             except RuntimeError as exc:
+                if not isinstance(exc.__cause__, NativeGeometryBusyError):
+                    start_mismatch_since = None
                 _write(log, "fight_button_waiting", reason=str(exc))
                 time.sleep(args.interval)
                 continue
+            start_mismatch_since = None
             time.sleep(max(args.interval, 0.14))
             try:
                 second_capture, second_location, second_signature = _capture_proof(
@@ -1803,6 +1841,20 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedEntryRuntime | None =
             )
             _write(log, "entry_ready", attempt=attempt, attemptDigest=attempt.digest())
 
+        if (
+            ready is None
+            and start_mismatch_capture is not None
+            and result.get("stopReason") in {None, "ENTRY_START_CONTROL_UNVERIFIED"}
+        ):
+            try:
+                write_failure_png_rgb(
+                    artifact_dir / "start_visual_mismatch.png",
+                    start_mismatch_capture.width,
+                    start_mismatch_capture.height,
+                    start_mismatch_capture.rgb,
+                )
+            except (OSError, ValueError) as exc:
+                _write(log, "entry_start_visual_mismatch_image_failed", reason=str(exc))
         if result["status"] != "RUNNING":
             summary_path.write_text(
                 json.dumps(_jsonable(result), ensure_ascii=False, indent=2), encoding="utf-8"

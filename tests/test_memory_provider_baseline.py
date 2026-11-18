@@ -222,6 +222,14 @@ class ExtendedFusionUiScanTests(unittest.TestCase):
             require_fusion_success=False,
         )
 
+    def test_main_galaxy_card_refresh_does_not_require_fusion(self) -> None:
+        self._assert_pet_skill_control_refresh(
+            legend_flag=False,
+            element_type="GALAXY_DRAGON_KNIGHT",
+            fusion_used=False,
+            require_fusion_success=False,
+        )
+
     def _assert_pet_skill_control_refresh(
         self,
         *,

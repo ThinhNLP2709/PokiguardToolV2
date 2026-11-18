@@ -685,6 +685,48 @@ class CheckpointRoundTripTests(unittest.TestCase):
         self.assertEqual(decision.historical_counters["completed_matches"], 0)
         self.assertEqual(decision.seen_match_ids, ())
 
+    def test_entry_timeout_resume_requires_zero_start_inputs_across_all_probes(self) -> None:
+        payload = replace(
+            _payload(completed=1, wins=1, seen=("match-1",), finalized="SAFE_STOP"),
+            stop_reason="ENTRY_TIMEOUT",
+            stop_request_state="RUNNING",
+        )
+        summary = {
+            "status": "STOPPED",
+            "stopReason": "ENTRY_TIMEOUT_BOSS_LOBBY",
+            "entryClicks": 0,
+            "entryRetryClicks": 0,
+            "gameplayInputs": 0,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / "checkpoint.json"
+            attempt = checkpoint.parent / "matches" / "attempt_002"
+            entry = attempt / "entry" / "entry.json"
+            entry.parent.mkdir(parents=True)
+
+            def resume() -> ResumeDecision:
+                return validate_for_resume(
+                    payload,
+                    target_boss_id="1289",
+                    target_boss_name="Starburst",
+                    target_completed_matches=5,
+                    max_technical_recoveries=1,
+                    max_match_attempts=8,
+                    checkpoint_path=checkpoint,
+                )
+
+            self.assertFalse(resume().allowed)
+            entry.write_text(json.dumps(summary), encoding="utf-8")
+            decision = resume()
+            self.assertTrue(decision.allowed, decision)
+            self.assertEqual(decision.remaining_completed, 4)
+            self.assertEqual(decision.historical_counters["wins"], 1)
+            retry = attempt / "entry_preflight_retry_01" / "entry.json"
+            retry.parent.mkdir()
+            retry.write_text(json.dumps(summary), encoding="utf-8")
+            entry.write_text(json.dumps({**summary, "entryClicks": 1}), encoding="utf-8")
+            self.assertFalse(resume().allowed)
+
     def test_unfinalized_running_checkpoint_requires_durable_lobby_boundary(self) -> None:
         payload = _payload()
         payload = CheckpointPayload(

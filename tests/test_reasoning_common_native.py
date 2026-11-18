@@ -2,6 +2,7 @@
 from copy import deepcopy
 from dataclasses import replace
 import hashlib,json,tempfile,time,unittest
+from tests.reasoning_test_paths import reasoning_temp_root
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock,patch
@@ -214,7 +215,7 @@ class CommonNativeTests(unittest.TestCase):
 
     def test_profile_assembly_does_not_install_or_start_and_rechecks_every_raw_pin(self):
         from tools.prepare_common_runtime import prepare,ROOT
-        with tempfile.TemporaryDirectory(dir=ROOT/'docs/phase5/artifacts/common_ai_assistant_20261101') as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             root=Path(temp);raw=root/'raw_control';raw.mkdir()
             data,export,_=bundle(raw,absolute=True)
             with patch('tools.prepare_common_runtime.source_fingerprint',return_value=data['source_sha256']):
@@ -236,7 +237,7 @@ class CommonNativeTests(unittest.TestCase):
         q['source_files']=json.loads(b14_manifest.read_text('utf-8'))['files']
         q['source_sha256']=digest(q['source_files'])
         current_files=source_files(ROOT)
-        with tempfile.TemporaryDirectory(dir=ROOT/'docs/phase5/artifacts') as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             root=Path(temp);qpath=root/'synthetic_qualification.json';qpath.write_text(canonical_json(q),encoding='utf-8')
             out=root/'profile'
             with patch('tools.prepare_common_runtime.source_fingerprint',return_value=q['source_sha256']):

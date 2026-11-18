@@ -268,7 +268,7 @@ def run(args: argparse.Namespace) -> int:
                     read_match_runtime(target)[1],
                     args.minimum_action_time,
                 ),
-                expected_cursor_after=(plan.second.screen_x, plan.second.screen_y),
+                expected_cursor_after=executor.swap_end_position(plan),
             )
             if delivery.action_attempted:
                 log.summary["inputCounts"]["foregroundLeaseSwaps"] = 1

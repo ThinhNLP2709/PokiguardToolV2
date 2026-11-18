@@ -1131,7 +1131,7 @@ class BasicPolicyTests(unittest.TestCase):
         self.assertFalse(decision.consumes_turn)
         self.assertEqual(decision.trace.blocker, "EXIT_IS_PROPOSAL_ONLY")
 
-    def test_unknown_game_owned_skip_state_blocks_pass(self) -> None:
+    def test_unknown_game_owned_skip_state_uses_a_legal_move(self) -> None:
         state = combat_state(rage=100)
         candidate = next(
             value
@@ -1141,8 +1141,11 @@ class BasicPolicyTests(unittest.TestCase):
         unsafe = replace(candidate, sword_risk=replace(candidate.sword_risk, safe=False))
         with patch("pokiguard_v2.basic_policy.evaluate_all_moves", return_value=(unsafe,)):
             decision = BasicPolicyEngine().decide(state)
-        self.assertEqual(decision.action, PolicyAction.NONE)
-        self.assertEqual(decision.trace.blocker, "GAME_OWNED_SKIP_STATE_UNKNOWN")
+        self.assertEqual(decision.action, PolicyAction.SWAP)
+        self.assertEqual(decision.move, unsafe.move)
+        self.assertEqual(decision.trace.skip_status, GameOwnedIdleStatus.UNKNOWN)
+        self.assertIsNone(state.battle.consecutive_passes)
+        self.assertIsNone(decision.trace.blocker)
 
     def test_game_owned_skip_state_can_allow_pass(self) -> None:
         state = combat_state(rage=100)

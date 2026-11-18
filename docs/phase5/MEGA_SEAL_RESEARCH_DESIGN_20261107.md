@@ -261,6 +261,19 @@ thể tách tác nhân, dựng estimate offline rồi đo sai số trên dữ li
 lại. Nếu không thu được dữ liệu đầy đủ, giữ UNKNOWN; không kéo dài phần
 Kết Ấn để theo đuổi công thức chưa chứng minh được.
 
-**Trạng thái cuối bước nghiên cứu:** thiết kế đã chốt theo đề xuất trên;
-chưa triển khai, chưa live, chưa build. Tiếp theo là Bước 1 khi người dùng
-yêu cầu thực hiện.
+## 8. Triển khai offline sau mốc so sánh
+
+Commit `4a681359` lưu phiên bản trước khi sửa gameplay. Bước 1 đã nối cả
+hai hình ấn vào nhận diện thẻ B15, BASIC, adviser và executor. Tùy chọn
+hiển thị Mega Kết Ấn với mã cấu hình `mega_icarus_spam_skill` để đọc được
+cấu hình cũ. Bộ suy luận dùng số viên hiệu dụng trong ấn làm một phần của
+điểm chọn skill. T-Rex dùng dữ liệu tác động lên bàn và lợi ích tài nguyên
+đã biết. Phần hồi máu hiện có của Icarus vẫn gắn riêng với Icarus.
+
+Các bài kiểm thử mô phỏng thẻ đổi sau tiến hóa, hai nước chuẩn bị có lợi
+cho hai hình ấn khác nhau, giá Mana/Nộ theo thẻ và việc hủy click nếu loại
+thẻ đổi trong lần kiểm cuối. Đối chiếu dữ liệu B15 khớp đủ 30 ô cho mỗi ấn.
+448/450 kiểm thử offline đạt. Hai ca đọc cấu hình D4 lịch sử báo
+`complete canonical DesktopConfig required` khi chạy cả bản sửa và commit
+mốc. Bước 2 cần quan sát hành vi thật của T-Rex trên B15. Phép ước lượng
+sát thương vẫn là nhánh riêng.

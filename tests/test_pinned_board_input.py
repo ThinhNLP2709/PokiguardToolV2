@@ -27,7 +27,9 @@ from pokiguard_v2.pinned_board_input import (
 from pokiguard_v2.win32_input import (
     BoardInputMode,
     ClientGeometry,
+    CoordinatePlan,
     ForegroundClickExecutor,
+    PixelPoint,
     WindowBinding,
 )
 
@@ -112,7 +114,7 @@ class FakeBackend:
 
 def binding(backend: FakeBackend) -> ExactWindowBinding:
     return ExactWindowBinding(
-        WindowBinding(5, backend.pid, backend.title, 1280, 640),
+        WindowBinding(5, backend.pid, backend.title, backend.geometry.width, backend.geometry.height),
         backend.geometry,
     )
 
@@ -312,6 +314,48 @@ class PinnedForegroundBoardSessionTests(unittest.TestCase):
         )
         self.assertEqual(bound.input_mode, source.input_mode)
         self.assertIs(bound.swap_pacer, source.swap_pacer)
+
+    def test_swap_lease_restores_cursor_after_actual_gesture_endpoint(self) -> None:
+        class GestureBackend(FakeBackend):
+            def is_foreground(self, hwnd: int) -> bool:
+                return self.foreground == hwnd
+
+            def click_mouse(self) -> None:
+                pass
+
+            def mouse_left_down(self) -> None:
+                pass
+
+            def mouse_left_up(self) -> None:
+                pass
+
+        for mode, expected in (
+            (BoardInputMode.DRAG, (4248, 441)),
+            (BoardInputMode.TWO_CLICK, (4232, 441)),
+        ):
+            with self.subTest(mode=mode):
+                backend = GestureBackend()
+                backend.geometry = ClientGeometry(3641, 263, 960, 480)
+                clock = FakeClock()
+                plan = CoordinatePlan(
+                    (3, 5), (3, 6), PixelPoint(546, 178, 4187, 441),
+                    PixelPoint(591, 178, 4232, 441), (300, 22, 658, 380), backend.geometry,
+                )
+                source = ForegroundClickExecutor(backend, input_mode=mode, sleeper=clock.sleep)
+                with session(backend, clock) as board:
+                    executor = board.bind_executor(source)
+                    result = board.execute_swap(
+                        action_identity="M_198f7663:1:swap",
+                        action=lambda: executor.send_swap(board.binding.window, plan, reasoned=True).sent,
+                        preflight=lambda: True,
+                        expected_cursor_after=executor.swap_end_position(plan),
+                    )
+
+                self.assertEqual(result.status, LeaseStatus.COMPLETE)
+                self.assertEqual(result.cursor_after_action, expected)
+                self.assertFalse(result.user_moved_cursor)
+                self.assertTrue(result.cursor_restored)
+                self.assertEqual(backend.cursor, (40, 50))
 
     def test_shared_mouse_session_accepts_each_non_qte_production_domain(self) -> None:
         backend = FakeBackend()

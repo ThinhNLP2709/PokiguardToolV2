@@ -40,7 +40,11 @@ from pokiguard_v2.foreground_qte_lease_transport import (  # noqa: E402
     QteLeaseMouseReleaseResult,
     QteLeaseReleaseResult,
 )
-from pokiguard_v2.native_card_ui import NativeCardUiReader, NativeGeometryBusyError  # noqa: E402
+from pokiguard_v2.native_card_ui import (  # noqa: E402
+    PET_SKILL_GEOMETRY_BUSY_PREFIX,
+    NativeCardUiReader,
+    NativeGeometryBusyError,
+)
 from pokiguard_v2.combat_cards import read_combat_card  # noqa: E402
 from pokiguard_v2.il2cpp_external import (  # noqa: E402
     BOARD_ACTIVE_OFFSET, CARD_UI_TYPE_INFO_RVA, ExternalReadError,
@@ -103,6 +107,7 @@ class Phase3b3RuntimeHook:
     """Bridge production read-only evidence to one PetSkillActionExecutor."""
 
     name = "PHASE3B3_ONE_FULL_PET_SKILL_ACTION"
+    _CLICK_ONLY_GEOMETRY_WAIT_SECONDS = 0.5
 
     def __init__(
         self,
@@ -113,6 +118,8 @@ class Phase3b3RuntimeHook:
         post_state_timeout_seconds: float,
         expected_session: Any | None = None,
         expected_skill_card_id: int | None = None,
+        expected_source_turn: int | None = None,
+        minimum_action_time: int = 1,
         allow_zero_input_rearm: bool = True,
         require_fusion_success: bool = True,
         basic_policy_integration: bool = False,
@@ -120,6 +127,7 @@ class Phase3b3RuntimeHook:
         provided_binding: Any | None = None,
         atomic_input_gate: Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None = None,
         audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
+        galaxy_card: bool = False,
     ) -> None:
         self._direction_ack_timeout = direction_ack_timeout_seconds
         self._qte_generation_timeout = qte_generation_timeout_seconds
@@ -127,6 +135,10 @@ class Phase3b3RuntimeHook:
         self._post_state_timeout = post_state_timeout_seconds
         self._expected_session = expected_session
         self._expected_skill_card_id = expected_skill_card_id
+        self._expected_source_turn = expected_source_turn
+        self._minimum_action_time = minimum_action_time
+        self._no_action_geometry_deadline: float | None = None
+        self.no_action_geometry_skipped = False
         self._allow_zero_input_rearm = allow_zero_input_rearm
         self.require_fusion_success = require_fusion_success
         self._basic_policy_integration = basic_policy_integration
@@ -134,6 +146,7 @@ class Phase3b3RuntimeHook:
         self._provided_binding = provided_binding
         self._atomic_input_gate = atomic_input_gate
         self.audition_mode = AuditionMode(audition_mode)
+        self._galaxy_card = galaxy_card
         self._emit: Callable[..., None] | None = None
         self._target: Any = None
         self._backend: NativeWin32Backend | None = None
@@ -310,6 +323,39 @@ class Phase3b3RuntimeHook:
         return bool(self.result is not None and self.result.success)
 
     @property
+    def can_fallback_to_board(self) -> bool:
+        """Release a click-only proposal that ended before any game input."""
+        if self.no_action_geometry_skipped:
+            return True
+        result = self.result
+        context = self._latest_context or {}
+        # Focus may already be acquired while geometry is still unavailable.
+        # The executor stays IDLE in that case and has no result to report.
+        never_started = bool(
+            result is None
+            and self._executor is not None
+            and self._executor.state is PetSkillActionState.IDLE
+            and not self._invocation_consumed
+            and self._fatal_stop_reason == "ACTIVE_QTE_UNREADABLE_OR_AMBIGUOUS"
+        )
+        rejected_before_input = bool(
+            result is not None
+            and result.kind is PetSkillActionResultKind.INVALIDATED
+            and result.reason == "ACTIVE_QTE_UNREADABLE_OR_AMBIGUOUS"
+            and result.card_clicks == 0
+            and result.space_presses == 0
+            and result.direction_presses == 0
+        )
+        return bool(
+            self.audition_mode is AuditionMode.NO_ACTION
+            and (never_started or rejected_before_input)
+            and context.get("active_qte_present") is False
+            and context.get("lifecycle_valid") is True
+            and context.get("session") == self._expected_session
+            and self._expected_session is not None
+        )
+
+    @property
     def summary(self) -> Any:
         if self._executor is None:
             return None
@@ -353,6 +399,7 @@ class Phase3b3RuntimeHook:
                 result_timeout_seconds=self._result_timeout,
                 post_state_timeout_seconds=self._post_state_timeout,
                 audition_mode=self.audition_mode,
+                galaxy_card=self._galaxy_card,
             )
 
         self._executor_factory = build_executor
@@ -405,8 +452,12 @@ class Phase3b3RuntimeHook:
             flush=True,
         )
 
-    def runtime_context(self, **context: Any) -> None:
+    def runtime_context(self, **context: Any) -> bool:
         self._latest_context = context
+        if self._defer_click_only_geometry(context):
+            return True
+        if self._fatal_stop_reason is not None:
+            return False
         capability = context.get("capability")
         if (
             not self._invocation_consumed
@@ -423,6 +474,73 @@ class Phase3b3RuntimeHook:
             )
         ):
             self._fatal_stop_reason = "PET_SKILL_POLICY_PROPOSAL_CHANGED"
+        return False
+
+    def _defer_click_only_geometry(self, context: dict[str, Any]) -> bool:
+        """Wait for a complete hand sample for an authorized click-only skill."""
+        if (
+            self.audition_mode is not AuditionMode.NO_ACTION
+            or self._expected_skill_card_id is None
+            or self._expected_source_turn is None
+            or self.pre_action_watch_session is None
+        ):
+            return False
+        capability = context.get("capability")
+        card_id = getattr(capability, "skill_card_id", None)
+        diagnostics = context.get("card_diagnostics") or {}
+        busy = bool(
+            not context.get("active_qte_present")
+            and card_id is None
+            and not context.get("live_cards")
+            and str(diagnostics.get("nativeCardDiscoveryReason", "")).startswith(
+                PET_SKILL_GEOMETRY_BUSY_PREFIX
+            )
+        )
+        deadline = self._no_action_geometry_deadline
+        if not busy and deadline is None:
+            return False
+        if not self._can_wait_for_click_only_geometry():
+            self.invalidate("PINNED_QTE_LEASE_INVALIDATED")
+            return True
+        runtime = context.get("runtime")
+        session = context.get("session")
+        if (
+            runtime is None
+            or session is None
+            or session != self._expected_session
+            or runtime.match_id != session.match_id
+            or not context.get("lifecycle_valid")
+            or context.get("active_qte_present")
+            or (not busy and card_id != self._expected_skill_card_id)
+        ):
+            self._fatal_stop_reason = "PET_SKILL_POLICY_PROPOSAL_CHANGED"
+            self.invalidate(self._fatal_stop_reason)
+            return True
+        now = time.monotonic()
+        if (
+            runtime.turn != self._expected_source_turn
+            or not runtime.current_player
+            or runtime.current_player != runtime.local_username
+            or runtime.remaining is None
+            or runtime.remaining <= self._minimum_action_time
+            or (deadline is not None and now >= deadline)
+        ):
+            self.no_action_geometry_skipped = True
+            self._fatal_stop_reason = "CLICK_ONLY_CARD_GEOMETRY_UNAVAILABLE_BEFORE_INPUT"
+            self.invalidate(self._fatal_stop_reason)
+            return True
+        if busy and deadline is None:
+            self._no_action_geometry_deadline = now + self._CLICK_ONLY_GEOMETRY_WAIT_SECONDS
+            if self._emit is not None:
+                self._emit(
+                    "click_only_card_geometry_busy", session=session,
+                    turn=runtime.turn, detail=diagnostics.get("nativeCardDiscoveryReason"),
+                    inputEmitted=False,
+                )
+        return busy
+
+    def _can_wait_for_click_only_geometry(self) -> bool:
+        return True
 
     def dispatcher_qte_results(self, match_id: str) -> tuple[Any, ...]:
         """Return immutable responses retained from exact dispatcher roots."""
@@ -1040,7 +1158,9 @@ class Phase3b3RuntimeHook:
         transient_native_hand_rejection = bool(
             result is not None
             and result.reason == "FINAL_CARD_CURRENT_PET_SKILL_CAPABILITY_MISSING"
-            and native_card_reason.startswith("pet_skill_control_read_error:")
+            and native_card_reason.startswith((
+                PET_SKILL_GEOMETRY_BUSY_PREFIX, "pet_skill_control_read_error:",
+            ))
         )
         if (
             result is None
@@ -1405,6 +1525,9 @@ class PinnedForegroundPetSkillHook(Phase3b3RuntimeHook):
         expected_session: Any | None = None,
         expected_skill_card_id: int | None = None,
         basic_policy_integration: bool = True,
+        expected_source_turn: int | None = None,
+        minimum_action_time: int = 1,
+        galaxy_card: bool = False,
         atomic_input_gate: (
             Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None
         ) = None,
@@ -1417,6 +1540,8 @@ class PinnedForegroundPetSkillHook(Phase3b3RuntimeHook):
             post_state_timeout_seconds=post_state_timeout_seconds,
             expected_session=expected_session,
             expected_skill_card_id=expected_skill_card_id,
+            expected_source_turn=expected_source_turn,
+            minimum_action_time=minimum_action_time,
             # A fresh native-hand read can be torn while Unity is laying out
             # the card strip. No input has been emitted at that point, so keep
             # the already validated bounded lease and wait for one complete
@@ -1428,6 +1553,7 @@ class PinnedForegroundPetSkillHook(Phase3b3RuntimeHook):
             provided_binding=binding,
             atomic_input_gate=atomic_input_gate,
             audition_mode=audition_mode,
+            galaxy_card=galaxy_card,
         )
         self._phase4_lease = lease
         self._phase4_stop_requested = stop_requested
@@ -1446,6 +1572,9 @@ class PinnedForegroundPetSkillHook(Phase3b3RuntimeHook):
             self.stop("EMERGENCY_STOP")
             return True
         return super().done
+
+    def _can_wait_for_click_only_geometry(self) -> bool:
+        return not self._phase4_lease.active or self._phase4_lease.validate_active()
 
     def _geometry_proof(self, session: Any, live_card: Any) -> Any:
         if self._phase4_lease.active and not self._phase4_lease.validate_active():
@@ -1714,7 +1843,10 @@ def run_embedded_policy_action(
     log_path: Path,
     expected_session: Any,
     expected_skill_card_id: int,
+    expected_source_turn: int | None = None,
+    minimum_action_time: int = 1,
     audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
+    galaxy_card: bool = False,
     backend: Any | None = None,
     binding: Any | None = None,
     atomic_input_gate: Callable[[Callable[[], Any]], tuple[bool, Any | None]] | None = None,
@@ -1743,12 +1875,15 @@ def run_embedded_policy_action(
             lease=pinned_qte_lease,
             stop_requested=stop_requested,
             audition_mode=audition_mode,
+            galaxy_card=galaxy_card,
             direction_ack_timeout_seconds=1.25,
             qte_generation_timeout_seconds=3.0,
             result_timeout_seconds=15.0,
             post_state_timeout_seconds=15.0,
             expected_session=expected_session,
             expected_skill_card_id=expected_skill_card_id,
+            expected_source_turn=expected_source_turn,
+            minimum_action_time=minimum_action_time,
             basic_policy_integration=True,
             atomic_input_gate=atomic_input_gate,
             on_lease_acquired=on_pinned_qte_lease_acquired,
@@ -1761,6 +1896,8 @@ def run_embedded_policy_action(
             post_state_timeout_seconds=15.0,
             expected_session=expected_session,
             expected_skill_card_id=expected_skill_card_id,
+            expected_source_turn=expected_source_turn,
+            minimum_action_time=minimum_action_time,
             allow_zero_input_rearm=False,
             require_fusion_success=False,
             basic_policy_integration=True,
@@ -1768,6 +1905,7 @@ def run_embedded_policy_action(
             provided_binding=binding,
             atomic_input_gate=atomic_input_gate,
             audition_mode=audition_mode,
+            galaxy_card=galaxy_card,
         )
     observer_args = argparse.Namespace(
         watch=True,

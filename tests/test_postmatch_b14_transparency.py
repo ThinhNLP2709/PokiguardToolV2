@@ -105,8 +105,10 @@ class B14TransparencyTests(unittest.TestCase):
             self.assertEqual(row['sha256'],hashlib.sha256((FIXTURES/row['file']).read_bytes()).hexdigest())
             self.assertEqual((row['width'],row['height']),(1280,640))
         source=proof['source_change']
-        self.assertEqual(source['after_sha256'],hashlib.sha256((ROOT/source['path']).read_bytes()).hexdigest())
         self.assertEqual(source['before_sha256'],hashlib.sha256((FIXTURES/'before_postmatch_ui.py.txt').read_bytes()).hexdigest())
+        followup = proof['followup_source_change']
+        self.assertEqual(source['after_sha256'], followup['before_sha256'])
+        self.assertEqual(followup['after_sha256'], hashlib.sha256((ROOT/source['path']).read_bytes()).hexdigest())
 
 
 if __name__=='__main__':unittest.main()

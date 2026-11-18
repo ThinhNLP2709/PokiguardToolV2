@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import threading
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import time
 import unittest
 from unittest.mock import patch
@@ -236,7 +237,7 @@ class DemonMinimumTests(unittest.TestCase):
             bridge=PilotSelectionBridge(authority=authority,diagnostics=MemorySink(),
                 verified_build_sha256=authority.game_build_sha256,enabled=True,warm_worker=True,decision_budget=True)
             bridges.append(bridge);return bridge
-        with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as tmp:
             kw=dict(initial_combat=s,profile='demon_aegis_farm',target_pid=123,real_processing_clock=True,
                 timer_source='MatchService.server_tick',gameplay_config=cfg)
             ordinary=controller_trace(Path(tmp)/'basic.jsonl',**kw)
@@ -260,7 +261,7 @@ class DemonNativeReviewTests(unittest.TestCase):
         from tests.game_update_fixture import historical_config_shape
         self.enterContext(historical_config_shape())
         from tools.prepare_d3_reasoning import copy_native
-        self.temp=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(self.temp.cleanup)
+        self.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(self.temp.cleanup)
         self.directory=Path(self.temp.name);self.cal=copy_native(self.directory)
 
     def alter(self,ref,fn,lines=False):
@@ -357,7 +358,7 @@ class DemonNativeReviewTests(unittest.TestCase):
         from pokiguard_v2.reasoning_demon import PROTOCOL
         helper=OperationalLoaderTests()
         for protocol in (None,PROTOCOL,'D1_SIMPLE_CAREFUL_CURRENT_NATIVE_V1','D2_HT7_FULL_ACTION_CURRENT_NATIVE_V1'):
-            with tempfile.TemporaryDirectory(dir=ROOT) as name:
+            with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as name:
                 data,_=helper.package(Path(name));data['total_attempt_cap']=20
                 if protocol:data['pilot_protocol']=protocol
                 with self.subTest(protocol=protocol),self.assertRaisesRegex(ValueError,'bounded run required'):

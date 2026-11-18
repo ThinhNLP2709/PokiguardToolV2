@@ -258,6 +258,53 @@ def _legacy_artifact_config(path: Path, payload: CheckpointPayload) -> GameplayC
         return None
 
 
+def has_unstarted_entry_timeout(payload: CheckpointPayload, path: Path | None) -> bool:
+    """Require the final entry summary to show that no match input was sent."""
+    expected_reason = {
+        "ENTRY_TIMEOUT": "ENTRY_TIMEOUT_BOSS_LOBBY",
+        "ENTRY_START_CONTROL_UNVERIFIED": "ENTRY_START_CONTROL_UNVERIFIED",
+    }.get(payload.stop_reason)
+    if (
+        path is None
+        or expected_reason is None
+        or payload.finalized_status != "SAFE_STOP"
+        or payload.last_safe_lifecycle != "BOSS_LOBBY"
+        or payload.stop_request_state != "RUNNING"
+        or payload.completed_matches <= 0
+        or payload.match_attempts != payload.completed_matches + payload.technical_aborts
+    ):
+        return False
+    attempt = path.parent / "matches" / f"attempt_{payload.match_attempts + 1:03d}"
+    try:
+        retries = sorted(attempt.glob("entry_preflight_retry_*"))
+        # Check every probe for this same attempt. A later zero-input result
+        # cannot erase a Start recorded by an earlier probe.
+        results = [
+            json.loads((directory / "entry.json").read_text(encoding="utf-8"))
+            for directory in [attempt / "entry", *retries]
+        ]
+    except (OSError, ValueError):
+        return False
+    return (
+        all(
+            isinstance(result, dict)
+            and result.get("status") == "STOPPED"
+            and result.get("stopReason") in (
+                expected_reason,
+                "ENTRY_PREFLIGHT_RUNTIME_CHANGED",
+                "ENTRY_PREFLIGHT_BUTTON_CHANGED",
+                "ENTRY_START_CONTROL_UNVERIFIED",
+            )
+            and all(
+                type(result.get(key)) is int and result[key] == 0
+                for key in ("entryClicks", "entryRetryClicks", "gameplayInputs")
+            )
+            for result in results
+        )
+        and results[-1].get("stopReason") == expected_reason
+    )
+
+
 def validate_for_resume(
     payload: CheckpointPayload,
     *,
@@ -268,6 +315,7 @@ def validate_for_resume(
     max_match_attempts: int,
     gameplay_config: GameplayConfig | None = None,
     input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND,
+    checkpoint_path: Path | None = None,
 ) -> ResumeDecision:
     if not isinstance(input_delivery_mode, InputDeliveryMode):
         raise TypeError("input_delivery_mode must be InputDeliveryMode")
@@ -304,6 +352,7 @@ def validate_for_resume(
         graceful_lobby_stop
         or interrupted_at_durable_lobby_boundary
         or recoverable_legacy_technical_stop
+        or has_unstarted_entry_timeout(payload, checkpoint_path)
     ):
         return ResumeDecision(False, "CHECKPOINT_NOT_RESUMABLE", {}, (), 0)
     if (

@@ -189,13 +189,13 @@ class NativeCardUiTests(unittest.TestCase):
         with self.assertRaises(LayoutValidationError):
             self.hand()
 
-    def test_b15_gameassembly_bridge_anchors_are_pinned(self):
-        self.assertEqual(_COMPONENT_GO_ICALL, 0x456E020)
+    def test_b17_gameassembly_bridge_anchors_are_pinned(self):
+        self.assertEqual(_COMPONENT_GO_ICALL, 0x4630EE0)
         self.assertEqual(
             _UNMARSHAL_SIGNATURE,
             (
-                0x1BD423C,
-                "f6c301740d488bcbe8173d67fe488bd8eb03488b1b4885db",
+                0x1C7201C,
+                "f6c301740d488bcbe8f7945dfe488bd8eb03488b1b4885db",
             ),
         )
 

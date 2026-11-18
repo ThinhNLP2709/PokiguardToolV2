@@ -80,6 +80,10 @@ class DesktopPreferenceStore:
                 evolution=gameplay.evolution.value,
                 damage_card=gameplay.damage_card.value,
                 audition_mode=gameplay.audition_mode.value,
+                pet_skill_fire_condition=gameplay.pet_skill_fire_condition.value,
+                mega_self_protection=gameplay.mega_self_protection.value,
+                pet_skill_fire_value=(str(gameplay.pet_skill_fire_value)
+                                      if gameplay.pet_skill_fire_value is not None else None),
                 intelligence=str(config_raw.get("intelligence", "")),
                 # Target identity is farm-session authority and is never
                 # restored from preferences, including older v1 files.

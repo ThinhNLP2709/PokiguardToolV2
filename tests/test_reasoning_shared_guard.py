@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -89,7 +90,7 @@ class SharedGuardTests(unittest.TestCase):
 
 class NativeBoundaryTests(unittest.TestCase):
     def setUp(self):
-        temp=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(temp.cleanup);self.d=Path(temp.name)
+        temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(temp.cleanup);self.d=Path(temp.name)
         from tools.review_reasoning_calibration import ref
         import shutil
         for n in CHANGED:

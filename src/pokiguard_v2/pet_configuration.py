@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any, Mapping
 
 from .basic_policy import (
+    CLICK_ONLY_PET_TYPES,
     DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT,
     Intelligence,
     ManaPriority,
@@ -27,6 +28,7 @@ from .gameplay_profile import (
     EvolutionTarget,
     GameMode,
     MainPetType,
+    MegaSelfProtection,
     PetSkillFireCondition,
 )
 from .win32_input import BoardInputMode
@@ -48,6 +50,7 @@ class SkillSourceStatus(str, Enum):
 MAIN_PET_LABELS = {
     MainPetType.NORMAL: "Pet thường", MainPetType.LEGENDARY: "Huyền thoại",
     MainPetType.EVOLVED: "Tiến hóa", MainPetType.MEGA: "Mega",
+    MainPetType.GALAXY: "Galaxy",
 }
 EVOLUTION_LABELS = {
     EvolutionTarget.NONE: "Không tiến hóa",
@@ -55,6 +58,7 @@ EVOLUTION_LABELS = {
     EvolutionTarget.LEGENDARY: "Tiến hóa pet huyền thoại",
     EvolutionTarget.EVOLVED: "Tiến hóa pet tiến hóa",
     EvolutionTarget.MEGA: "Tiến hóa pet Mega",
+    EvolutionTarget.GALAXY: "Tiến hóa Galaxy",
 }
 DAMAGE_LABELS = {
     DamageCardMode.NONE: "Không có",
@@ -81,7 +85,8 @@ PLAY_STYLE_LABELS = {
     PlayStyle.CAREFUL: "Cẩn trọng",
     PlayStyle.SKILL_RUSH: "Chịu đấm ăn xôi",
     PlayStyle.DEMON_AEGIS_FARM: "Demon Farm",
-    PlayStyle.MEGA_ICARUS_SPAM_SKILL: "Mega Icarus (Spam Skill)",
+    PlayStyle.MEGA_ICARUS_SPAM_SKILL: "Mega Kết Ấn (Icarus/T-Rex)",
+    PlayStyle.GALAXY: "Galaxy",
     PlayStyle.BU_WIN: "Bú win",
 }
 GAME_MODE_LABELS = {
@@ -95,6 +100,11 @@ DEMON_TARGET_GEM_LABELS = {
     DemonTargetGem.DRAIN: "Hút",
     DemonTargetGem.RAGE: "Nộ",
 }
+MEGA_SELF_PROTECTION_LABELS = {
+    MegaSelfProtection.NONE: "Không",
+    MegaSelfProtection.HP_BELOW_30: "Máu dưới 30%",
+    MegaSelfProtection.HP_BELOW_10: "Máu dưới 10%",
+}
 SUPPORTED_MAIN_PETS = frozenset({MainPetType.NORMAL, MainPetType.LEGENDARY})
 SUPPORTED_EVOLUTIONS = frozenset({
     EvolutionTarget.NONE, EvolutionTarget.NORMAL, EvolutionTarget.LEGENDARY,
@@ -103,12 +113,14 @@ DESKTOP_MAIN_PET_OPTIONS = (
     MainPetType.NORMAL,
     MainPetType.LEGENDARY,
     MainPetType.MEGA,
+    MainPetType.GALAXY,
 )
 DESKTOP_EVOLUTION_OPTIONS = (
     EvolutionTarget.NONE,
     EvolutionTarget.NORMAL,
     EvolutionTarget.LEGENDARY,
     EvolutionTarget.MEGA,
+    EvolutionTarget.GALAXY,
 )
 # Phase 3C.1 policy/backend and Phase 3C.2 normal Desktop routing are integrated.
 # The current V3 path remains read-only for state and uses only the accepted
@@ -187,20 +199,22 @@ def loadout_capability(
             farm_policy_supported=valid,
             blocker_reason=None if valid else "BU_WIN_LOADOUT_INVALID",
         )
-    if play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+    if play_style in CLICK_ONLY_PET_TYPES:
+        main_type, evolution_type = CLICK_ONLY_PET_TYPES[play_style]
+        reason_prefix = "GALAXY" if play_style is PlayStyle.GALAXY else "MEGA_ICARUS"
         matrix_valid = bool(
             (
-                main_pet is MainPetType.MEGA
+                main_pet is main_type
                 and evolution in {EvolutionTarget.NONE, EvolutionTarget.NORMAL}
             )
             or (
                 main_pet is MainPetType.NORMAL
-                and evolution is EvolutionTarget.MEGA
+                and evolution is evolution_type
             )
         )
         sources = tuple(source for present, source in (
-            (main_pet is MainPetType.MEGA, SkillSource.MAIN_PET),
-            (evolution is EvolutionTarget.MEGA, SkillSource.EVOLUTION_TARGET),
+            (main_pet is main_type, SkillSource.MAIN_PET),
+            (evolution is evolution_type, SkillSource.EVOLUTION_TARGET),
         ) if present)
         status = (
             SkillSourceStatus.MULTIPLE_SKILL_SOURCES if len(sources) > 1 else
@@ -215,9 +229,9 @@ def loadout_capability(
             and audition_mode is AuditionMode.NO_ACTION
         )
         reason = (
-            "MEGA_ICARUS_LOADOUT_INVALID" if not matrix_valid or len(sources) != 1 else
-            "MEGA_ICARUS_REQUIRES_PET_SKILL" if damage_card is not DamageCardMode.PET_SKILL else
-            "MEGA_ICARUS_REQUIRES_NO_ACTION" if audition_mode is not AuditionMode.NO_ACTION else
+            f"{reason_prefix}_LOADOUT_INVALID" if not matrix_valid or len(sources) != 1 else
+            f"{reason_prefix}_REQUIRES_PET_SKILL" if damage_card is not DamageCardMode.PET_SKILL else
+            f"{reason_prefix}_REQUIRES_NO_ACTION" if audition_mode is not AuditionMode.NO_ACTION else
             None
         )
         return PetLoadoutCapability(
@@ -320,6 +334,7 @@ class GameplayConfig:
     pet_skill_fire_condition: PetSkillFireCondition = PetSkillFireCondition.SWORD_COUNT
     pet_skill_fire_value: int | None = PET_SKILL_FIRE_VALUE_DEFAULT
     demon_target_gem: DemonTargetGem = DemonTargetGem.SHIELD
+    mega_self_protection: MegaSelfProtection = MegaSelfProtection.HP_BELOW_30
 
     def __post_init__(self) -> None:
         for name, enum in (("play_style", PlayStyle), ("game_mode", GameMode),
@@ -328,6 +343,7 @@ class GameplayConfig:
                            ("damage_card", DamageCardMode), ("audition_mode", AuditionMode),
                            ("pet_skill_fire_condition", PetSkillFireCondition),
                            ("demon_target_gem", DemonTargetGem),
+                           ("mega_self_protection", MegaSelfProtection),
                            ("board_input_mode", BoardInputMode)):
             if not isinstance(getattr(self, name), enum):
                 raise ValueError(f"{name} must be {enum.__name__}")
@@ -336,6 +352,7 @@ class GameplayConfig:
         if (
             self.play_style not in {
                 PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+                PlayStyle.GALAXY,
                 PlayStyle.BU_WIN,
             }
             and self.audition_mode is AuditionMode.NO_ACTION
@@ -348,6 +365,9 @@ class GameplayConfig:
             raise ValueError("COOP_REQUIRES_BU_WIN")
         if not self.capability.config_valid:
             raise ValueError(self.capability.blocker_reason)
+        if (self.play_style is PlayStyle.GALAXY
+                and self.pet_skill_fire_condition is not PetSkillFireCondition.SKILL_COST_READY):
+            raise ValueError("GALAXY_REQUIRES_RESOURCE_READY")
         for name in ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target"):
             value = getattr(self, name)
             if type(value) is not int or value < 0:
@@ -391,7 +411,7 @@ class GameplayConfig:
             ):
                 return "BU_WIN_PROFILE_NOT_IMPLEMENTED"
             return self.capability.blocker_reason
-        if self.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+        if self.play_style in CLICK_ONLY_PET_TYPES:
             return self.capability.blocker_reason
         if self.play_style is PlayStyle.SKILL_RUSH and not (
             self.damage_card is DamageCardMode.PET_SKILL
@@ -449,7 +469,8 @@ class GameplayConfig:
         condition = PetSkillFireCondition(
             raw.get(
                 "pet_skill_fire_condition",
-                PetSkillFireCondition.SWORD_COUNT.value,
+                (PetSkillFireCondition.SKILL_COST_READY if play_style is PlayStyle.GALAXY
+                 else PetSkillFireCondition.SWORD_COUNT).value,
             )
         )
         if condition.uses_board_count:
@@ -471,6 +492,7 @@ class GameplayConfig:
             AuditionMode.NO_ACTION.value
             if play_style in {
                 PlayStyle.MEGA_ICARUS_SPAM_SKILL,
+                PlayStyle.GALAXY,
                 PlayStyle.BU_WIN,
             }
             else AuditionMode.V3_TWO_DIRECTION.value
@@ -485,6 +507,9 @@ class GameplayConfig:
                     pet_skill_fire_condition=condition,
                     pet_skill_fire_value=fire_value,
                     demon_target_gem=DemonTargetGem(raw.get("demon_target_gem", "shield")),
+                    mega_self_protection=MegaSelfProtection(
+                        raw.get("mega_self_protection", MegaSelfProtection.HP_BELOW_30.value)
+                    ),
                     **{name: raw.get(name, getattr(cls(), name)) for name in
                        ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target",
                        )})
@@ -512,6 +537,7 @@ def basic_policy_config(config: GameplayConfig) -> PolicyConfig:
         pet_skill_fire_condition=config.pet_skill_fire_condition,
         pet_skill_fire_value=config.pet_skill_fire_value,
         demon_target_gem=config.demon_target_gem,
+        mega_self_protection=config.mega_self_protection,
     )
 
 
@@ -541,6 +567,7 @@ def legacy_basic_policy(config: GameplayConfig) -> PolicyConfig:
         pet_skill_fire_condition=config.pet_skill_fire_condition,
         pet_skill_fire_value=config.pet_skill_fire_value,
         demon_target_gem=config.demon_target_gem,
+        mega_self_protection=config.mega_self_protection,
     )
 
 
@@ -561,9 +588,13 @@ def add_pet_arguments(parser: Any) -> None:
     )
     parser.add_argument("--damage-card", choices=[v.value for v in DamageCardMode])
     parser.add_argument(
+        "--mega-self-protection",
+        choices=[value.value for value in MegaSelfProtection],
+        default=MegaSelfProtection.HP_BELOW_30.value,
+    )
+    parser.add_argument(
         "--pet-skill-fire-condition",
         choices=[value.value for value in PetSkillFireCondition],
-        default=PetSkillFireCondition.SWORD_COUNT.value,
     )
     parser.add_argument(
         "--pet-skill-fire-value",
@@ -574,7 +605,6 @@ def add_pet_arguments(parser: Any) -> None:
     parser.add_argument(
         "--audition-mode",
         choices=[v.value for v in AuditionMode],
-        default=AuditionMode.V3_TWO_DIRECTION.value,
     )
     parser.add_argument("--mana-priority", choices=[v.value for v in ManaPriority],
                         help="deprecated compatibility alias; cannot be combined with Pet flags")
@@ -591,9 +621,15 @@ def gameplay_config_from_args(args: Any) -> GameplayConfig:
     raw.update({k: v for k, v in new.items() if v is not None})
     for name in ("play_style", "game_mode", "intelligence", "audition_mode", "board_input_mode", "cast_when_boss_hp_below",
                  "cast_mana_stockpile", "rage_target", "pet_skill_fire_condition",
-                 "pet_skill_fire_value", "demon_target_gem"):
+                 "pet_skill_fire_value", "demon_target_gem", "mega_self_protection"):
         if hasattr(args, name):
-            raw[name] = getattr(args, name)
+            value = getattr(args, name)
+            if value is not None or name not in {"audition_mode", "pet_skill_fire_condition"}:
+                raw[name] = value
+    if raw['play_style'] == PlayStyle.GALAXY.value:
+        for name in ('audition_mode', 'pet_skill_fire_condition'):
+            if getattr(args, name, None) is None:
+                raw.pop(name)
     if raw.get("pet_skill_fire_condition") == PetSkillFireCondition.SKILL_COST_READY.value:
         raw["pet_skill_fire_value"] = None
     if legacy is not None:

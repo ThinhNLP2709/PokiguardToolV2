@@ -7,16 +7,16 @@ import hashlib
 from dataclasses import fields
 from functools import lru_cache
 from .autonomous_control import AutonomousSource
-from .basic_policy import PolicyAction,SkillRushMatchContext
+from .basic_policy import PlayStyle,PolicyAction,SkillRushMatchContext
 from .board_diagnostics import jsonable
 from .game_owned_idle import ResetConfidence
-from .gameplay_profile import DamageCardMode
-from .pet_skill_shadow import PetSkillCapability,PetSkillCostSource
+from .gameplay_profile import DamageCardMode,EvolutionTarget
+from .pet_skill_shadow import (PetSkillCapability,PetSkillCostSource,PetSkillFamily,
+    current_click_only_card_type,current_mega_seal)
 from .reasoning_action_candidates import current_ht7_source_binding
 from .reasoning_common_problem import CommonProblem,CommonIntent,EffectChoice,VERSION
 from .reasoning_common_models import AUTO_GEOMETRY,AUTO_DISCOUNT,demon_effect,demon_strategy
 from .reasoning_full_actions import pass_authority_view
-from .reasoning_mega import current_source_binding as current_mega_source,seal_geometry
 from .reasoning_snapshot import Action,FrozenJSON,SourceIdentity,SourceRecord,canonical_json,digest,require
 from .state import GameOwnedIdleStatus,GamePhase,GemType
 
@@ -97,9 +97,23 @@ def skill_evidence(value,root):
     card=cap.skill_card_id if known_cap else None
     action=Action('pet_skill',card_source=canonical_json(dict(session=jsonable(state.battle.session_key),card_id=card)))
     reason='SKILL_CAPABILITY_MISSING';model='UNKNOWN';cleared=None;source=None;costs=(None,None)
-    if type(cap) is PetSkillCapability:
+    seal = None
+    galaxy = None
+    if known_cap:
         costs=(cap.effective_mana_cost,cap.effective_power_cost)
-        source=current_ht7_source_binding(cap) or current_mega_source(cap)
+        if config.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+            if config.evolution is EvolutionTarget.NONE or (state.fusion is not None and state.fusion.used):
+                seal = current_mega_seal(cap, state.battle.session_key)
+            if seal is not None:
+                source = 'CURRENT_OWNED_MEGA_SEAL_CARD'
+        elif config.play_style is PlayStyle.GALAXY:
+            if (cap.skill_family is PetSkillFamily.GALAXY_CLICK_ONLY and
+                (config.evolution is EvolutionTarget.NONE or (state.fusion is not None and state.fusion.used))):
+                galaxy = current_click_only_card_type(cap, state.battle.session_key)
+            if galaxy is not None:
+                source = 'CURRENT_OWNED_GALAXY_CARD'
+        else:
+            source = current_ht7_source_binding(cap)
         if not root:reason='EXISTING_OWNER_OR_STATE_BLOCKED'
         elif config.damage_card is not DamageCardMode.PET_SKILL:reason='CONFIGURED_DAMAGE_SOURCE_IS_NOT_PET_SKILL'
         elif not cap.current or cap.session_key!=state.battle.session_key:reason='SKILL_SOURCE_NOT_CURRENT'
@@ -107,28 +121,37 @@ def skill_evidence(value,root):
         elif not cap.live_card_present or cap.live_card_actionable is not True:reason='SKILL_NOT_ACTIONABLE'
         elif (cap.card_id!=cap.skill_card_id or cap.effective_mana_cost_source is not PetSkillCostSource.CONDITION_USE
                 or cap.effective_power_cost_source is not PetSkillCostSource.POWER):reason='ACTUAL_COST_SOURCE_UNKNOWN'
+        elif galaxy is not None:
+            # Costs can guide swaps, but the server damage/effect is unmeasured.
+            reason='GALAXY_SKILL_EFFECT_UNMODELED'
         elif any(type(n) is not int or n<0 for n in costs) or type(cap.cooldown_turns) is not int:reason='ACTUAL_COST_OR_COOLDOWN_UNKNOWN'
-        elif cap.cooldown_turns!=0:reason='SKILL_ON_COOLDOWN'
+        # For seal cards the validated live button reports readiness. CardData
+        # cooldownTurns describes the card, rather than a remaining-turn counter.
+        elif seal is None and cap.cooldown_turns!=0:reason='SKILL_ON_COOLDOWN'
         elif (type(state.player.mana) is not int or type(state.player.power) is not int
                 or state.player.mana<costs[0] or state.player.power<costs[1]):reason='SKILL_RESOURCES_INSUFFICIENT'
         else:
             reason='CURRENT_OWNED_MODELED_SKILL_AVAILABLE'
-            if current_ht7_source_binding(cap):
+            if seal is None:
                 cleared=tuple((c.row,c.col) for row in state.board.cells for c in row
                     if c.gem in (GemType.SWORD,GemType.RAGE,GemType.HEALTH))
                 model='USER_CONDITIONAL_HT7_PERFECT_FIRST_WAVE'
             else:
-                cleared=tuple(tuple(p) for p in seal_geometry(state.board)['original_cells'])
-                model='USER_CONDITIONAL_MEGA_SEAL_FIRST_WAVE'
+                cleared=seal.cells
+                model='B15_CONDITIONAL_MEGA_SEAL_FIRST_WAVE'
+    self_heal = cleared is not None and seal is not None and seal.heals_self
+    support = 'UNKNOWN' if cleared is None else 'CONDITIONAL_MODEL' if seal is not None else 'USER_CALIBRATED'
     return EffectChoice(action,reason=='CURRENT_OWNED_MODELED_SKILL_AVAILABLE',reason,cleared,model,
-        'USER_CALIBRATED' if cleared is not None else 'UNKNOWN',*costs,
+        support,*costs,
         FrozenJSON.of(dict(source_binding=source,skill_card_id=card,
+            seal_element_type=seal.element_type if seal is not None else None,
+            **({'galaxy_element_type': galaxy} if config.play_style is PlayStyle.GALAXY else {}),
             actionability=cap.live_card_actionable if known_cap else None,
             cooldown=cap.cooldown_turns if known_cap else None,
             actual_costs=dict(mana=costs[0],rage=costs[1]),
-            self_heal_present=bool(cleared is not None and known_cap and current_mega_source(cap)),
+            self_heal_present=self_heal,
             self_heal_provenance='USER_DECLARATION_MEGA_ICARUS_HEALS_AMOUNT_UNKNOWN'
-                if cleared is not None and known_cap and current_mega_source(cap) else None,
+                if self_heal else None,
             post_cost_gain_order='UNKNOWN',QTE_executor='UNCHANGED_EXISTING_OWNER')))
 
 
@@ -154,10 +177,15 @@ def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geomet
     current_history=type(history) is SkillRushMatchContext and history.session_key==state.battle.session_key
     geometry,effect_evidence=demon_effect(config,demon_geometry)
     rates,discount,strategy=demon_strategy(config,geometry,conversion,operator_demon_rage_discount)
-    effects=[skill_evidence(value,root),pass_evidence(state,root,pass_owner)]
+    skill = skill_evidence(value,root)
+    skill_facts = skill.facts.plain()
+    seal_type = skill_facts['seal_element_type']
+    effects=[skill,pass_evidence(state,root,pass_owner)]
     if action.family=='cast':effects.append(EffectChoice(action,root,'INCUMBENT_CAST_EFFECT_UNMODELED',None,'UNKNOWN','UNKNOWN'))
     requirements={}
     if (config.damage_card is DamageCardMode.PET_SKILL and type(cap) is PetSkillCapability
+            and (config.play_style is not PlayStyle.MEGA_ICARUS_SPAM_SKILL or seal_type is not None)
+            and (config.play_style is not PlayStyle.GALAXY or skill_facts.get('galaxy_element_type') is not None)
             and cap.current and cap.session_key == state.battle.session_key
             and cap.skill_card_id is not None and cap.card_id == cap.skill_card_id):
         if (cap.effective_mana_cost_source is PetSkillCostSource.CONDITION_USE
@@ -181,6 +209,8 @@ def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geomet
         account_sha256=None if state.battle.local_username is None else hashlib.sha256(
             state.battle.local_username.casefold().encode()).hexdigest(),
         provenance='EXISTING_STATE_AND_OWNER_PACKET_ONLY_NO_EXTRA_READ')
+    if seal_type is not None:
+        facts['mega_seal_type'] = seal_type
     board=tuple(tuple((c.gem.value,c.multiplier) for c in row) for row in state.board.cells)
     intent=CommonIntent(config.play_style.value,FrozenJSON.of(jsonable(config)),
         FrozenJSON.of(dict(engine=VERSION)),FrozenJSON.of(dict(kind='COMMON_STRUCTURAL_MODEL_NOT_DAMAGE_AUTHORITY')))

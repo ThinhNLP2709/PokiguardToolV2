@@ -35,10 +35,10 @@ from .native_card_ui import NativeCardUiReader
 
 
 # Type-info global slots proven by native ``typeof`` use in this build.
-MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x42FA1B0
-MANAGER_ROOM_TYPE_INFO_RVA = 0x42F8478
-WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x42B0B10
-ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x42BE138
+MANAGER_QUANG_TRUONG_TYPE_INFO_RVA = 0x43C3F58
+MANAGER_ROOM_TYPE_INFO_RVA = 0x43C2490
+WS_ROOM_SERVICE_TYPE_INFO_RVA = 0x436B2D8
+ROOM_COOP_V2_VIEW_TYPE_INFO_RVA = 0x4359F30
 
 # b5 inserted ``KnownUserLevel`` before ``ManagerQuangTruong.Instance``.
 MANAGER_QUANG_TRUONG_INSTANCE_STATIC_OFFSET = 0x08
@@ -66,7 +66,7 @@ MANAGER_BOSS_PANEL_WORLD_OFFSET = 0x30
 
 # UIPanelManager (Assembly-CSharp).  The managed open-order count is the
 # read-only counterpart of the final AnyPanelOpen check in IsHubViewActive.
-UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x42FA388
+UI_PANEL_MANAGER_TYPE_INFO_RVA = 0x43C4028
 UI_PANEL_MANAGER_OPEN_ORDER_OFFSET = 0x30
 
 # ManagerRoom (Assembly-CSharp).
@@ -113,10 +113,10 @@ WS_PROPERTIES_OFFSET = 0x38
 # b6. A host room can keep this dictionary while ``ManagerRoom.roomData`` is
 # null; ManagerRoom.BuildInitialBossProps/SetEnemyPetFromProps use the exact
 # keys below. The type-info RVAs come from the b6 Il2CppInspector output.
-DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA = 0x43022B8
-INT32_TYPE_INFO_RVA = 0x42F84F0
-INT64_TYPE_INFO_RVA = 0x42FADF8
-STRING_TYPE_INFO_RVA = 0x42F7AC0
+DICTIONARY_STRING_OBJECT_TYPE_INFO_RVA = 0x43CD9C8
+INT32_TYPE_INFO_RVA = 0x43C2508
+INT64_TYPE_INFO_RVA = 0x43C44E0
+STRING_TYPE_INFO_RVA = 0x43C13D8
 DICTIONARY_ENTRIES_OFFSET = 0x18
 DICTIONARY_COUNT_OFFSET = 0x20
 DICTIONARY_FREE_COUNT_OFFSET = 0x28

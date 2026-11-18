@@ -31,7 +31,7 @@ def build(value,**kw):
 
 
 class CommonEvidenceTests(unittest.TestCase):
-    def test_seven_styles_keep_their_actual_identity_and_config(self):
+    def test_styles_keep_their_actual_identity_and_config(self):
         value=fixture()
         for profile in sorted(PROFILES):
             v=list(value);v[1]=replace(v[1],play_style=PlayStyle(profile))
@@ -47,6 +47,9 @@ class CommonEvidenceTests(unittest.TestCase):
         for profile in PROFILES:
             cfg=replace(config,play_style=PlayStyle(profile),pet_skill_fire_value=50)
             evidence=skill_evidence(packet(state,cfg,base,cap,h,True),True)
+            if cfg.play_style in {PlayStyle.MEGA_ICARUS_SPAM_SKILL, PlayStyle.GALAXY}:
+                self.assertFalse(evidence.eligible)
+                continue
             self.assertTrue(evidence.eligible)
             expected={(c.row,c.col) for row in state.board.cells for c in row
                 if c.gem in (GemType.SWORD,GemType.RAGE,GemType.HEALTH)}
@@ -57,6 +60,30 @@ class CommonEvidenceTests(unittest.TestCase):
                 replace(cap,effective_mana_cost=10000)):
             v=list(value);v[3]=changed
             self.assertFalse(skill_evidence(tuple(v),True).eligible)
+
+    def test_trex_adviser_uses_current_seal_with_its_own_costs_and_no_heal(self):
+        from pokiguard_v2.gameplay_profile import PetSkillFireCondition
+        from pokiguard_v2.mega_icarus import MEGA_TREX_SEAL_CELLS
+        from pokiguard_v2.reasoning_common_planner import plan_common
+        from tests.test_mega_icarus_policy import mega_policy
+
+        state = fixture()[0]
+        cap = replace(capability(element='MEGA_TREX', mana_cost=230, rage_cost=0), cooldown_turns=3)
+        policy = mega_policy(threshold=60, condition=PetSkillFireCondition.MANA_GEM_COUNT)
+        baseline = policy.decide(state, pet_skill_capability=cap)
+        value = packet(state, policy.config, baseline, cap, None, True)
+        problem = build(value)
+        effect = next(e for e in problem.effects if e.action.family == 'pet_skill')
+        self.assertTrue(effect.eligible)
+        self.assertEqual(effect.cleared, MEGA_TREX_SEAL_CELLS)
+        self.assertEqual((effect.mana_cost, effect.rage_cost), (230, 0))
+        self.assertFalse(effect.facts.plain()['self_heal_present'])
+        score = next(s for s in plan_common(problem).scores if s.action.family == 'pet_skill')
+        expected = sum(state.board.cells[r][c].multiplier for r, c in MEGA_TREX_SEAL_CELLS
+                       if state.board.cells[r][c].gem is GemType.MANA)
+        self.assertEqual(score.details.plain()['seal_goal']['effective'], expected)
+        self.assertFalse(skill_evidence(packet(state, policy.config, baseline,
+            replace(cap, live_card_actionable=False), None, True), True).eligible)
 
     def test_pass_third_first_turn_reset_and_owner_are_separate_from_tactics(self):
         state=fixture()[0]

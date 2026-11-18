@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import sys
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -231,14 +232,14 @@ class ProjectionLifecycleTests(lifecycle.SessionLifecycleTests):
 class ProjectionReviewTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp=tempfile.TemporaryDirectory(dir=ROOT);cls.package=Path(cls.temp.name)/'review'
+        cls.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());cls.package=Path(cls.temp.name)/'review'
         cls.historical_root=ROOT/'docs/phase5/artifacts/5d1_offline_closeout_v1/before'
         shutil.copytree(ART/'review_verified',cls.package)
         cls.original=json.loads((cls.package/'source_review.json').read_text(encoding='utf-8'))
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
     def setUp(self):
-        temp=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(temp.cleanup)
+        temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(temp.cleanup)
         self.directory=Path(temp.name)/'review';shutil.copytree(self.package,self.directory);self.data=deepcopy(self.original)
     def verify(self,root=None):
         return verify_review(self.directory,self.data,runtime_sha256=self.data['target_runtime_sha256'],

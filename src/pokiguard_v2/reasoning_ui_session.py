@@ -221,6 +221,9 @@ def create_ui_reasoning_session(config,*,paths,game_executable,directory,observe
     reason=ui_reasoning_intent_reason(config)
     try:
         if reason is not None:raise ValueError(reason)
+        if config.play_style.value == 'galaxy' and profile_loader is None:
+            from .reasoning_galaxy import GalaxyReasoningSession
+            return GalaxyReasoningSession(config,directory=directory,observer=observer)
         from .reasoning_ui_profile import load_session_authority
         authority=(profile_loader or load_session_authority)(config,paths=paths,game_executable=game_executable)
         return UIReasoningSession(config,authority,directory=directory,observer=observer)

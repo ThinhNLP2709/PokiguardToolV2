@@ -199,6 +199,8 @@ def _decision_summary(snapshot, result, refinement):
                     boss_mana_fraction=tactical.get('boss_mana_fraction'),
                     boss_rage_reference_fraction=tactical.get('boss_rage_reference_fraction'),
                     protection=tactical.get('protection_proxy'),reply=tactical.get('boss_reply_proxy'),
+                    drain_resources=tactical.get('drain_resources'),
+                    reply_sensitivity=tactical.get('boss_reply_sensitivity'),
                     nominal_sword_reference=context.get('nominal_sword_reference'),
                     damage_context=context.get('damage_context'),self_heal_amount=tactical.get('self_heal_amount'))
             candidate['status']='COMMON_CONDITIONAL_PROXY'

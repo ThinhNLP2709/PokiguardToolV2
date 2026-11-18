@@ -1,5 +1,10 @@
 # Phase 5 — Suy luận bổ sung theo PlayStyle
 
+**Index hiện tại18/11/2026:** [STATUS](STATUS.md), [bàn giao source](CURRENT_HANDOFF.md),
+[backlog nghiên cứu đã rà từ temp](RESEARCH_BACKLOG_20261118.md). Source mới
+đã kiểm live trong scope B16/Demon ăn Khiên; model học/damage chung vẫn còn
+mở. Các checkpoint và cap bên dưới là lịch sử, không tự được kích hoạt lại.
+
 **Yêu cầu mới sau closeout:** [bật/tắt suy luận Demon Farm ăn Khiên trong UI](ui_reasoning_delivery_20261031.md).
 Bản thử riêng đã PASS offline và live01/11/2026:2/2WIN,6Rcompleted,
 31AIrecords/0loss,1workerreaped. Task UI đã đóng trong scope; chưa phát hành.

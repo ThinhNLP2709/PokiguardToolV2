@@ -15,6 +15,7 @@ class MainPetType(str, Enum):
     LEGENDARY = "legendary"
     EVOLVED = "evolved"
     MEGA = "mega"
+    GALAXY = "galaxy"
 
 
 class EvolutionTarget(str, Enum):
@@ -23,6 +24,7 @@ class EvolutionTarget(str, Enum):
     LEGENDARY = "legendary"
     EVOLVED = "evolved"
     MEGA = "mega"
+    GALAXY = "galaxy"
 
 
 class DamageCardMode(str, Enum):
@@ -43,6 +45,20 @@ class DemonTargetGem(str, Enum):
     MANA = "mana"
     DRAIN = "drain"
     RAGE = "rage"
+
+
+class MegaSelfProtection(str, Enum):
+    NONE = "none"
+    HP_BELOW_30 = "hp_below_30"
+    HP_BELOW_10 = "hp_below_10"
+
+    @property
+    def hp_ratio(self) -> float | None:
+        return {
+            MegaSelfProtection.NONE: None,
+            MegaSelfProtection.HP_BELOW_30: 0.30,
+            MegaSelfProtection.HP_BELOW_10: 0.10,
+        }[self]
 
 
 class PetSkillFireCondition(str, Enum):
@@ -70,7 +86,7 @@ class AuditionMode(str, Enum):
 
     V3_TWO_DIRECTION = "audition_v3"
     V2_FOUR_DIRECTION = "audition_v2"
-    # Mega Icarus activates on the accepted CardUI click itself.  Keep this
+    # Fixed seal skills activate on the accepted CardUI click itself. Keep this
     # identity in the existing persisted field so old V2/V3 checkpoints do
     # not need a schema migration.
     NO_ACTION = "none"
@@ -83,5 +99,6 @@ __all__ = [
     "EvolutionTarget",
     "GameMode",
     "MainPetType",
+    "MegaSelfProtection",
     "PetSkillFireCondition",
 ]

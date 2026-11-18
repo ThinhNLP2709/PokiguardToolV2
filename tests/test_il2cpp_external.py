@@ -89,12 +89,12 @@ class Il2CppExternalResolverTests(unittest.TestCase):
         resolver = Il2CppExternalResolver(FakeMemory(), self.MODULE_BASE, 0x04000000)
         self.assertEqual(resolver.resolve_singleton(BOARD_SINGLETON).status, "anchor_outside_module")
 
-    def test_b15_coop_player_stats_typeinfo_does_not_use_pvp_class(self) -> None:
-        # reverse/reverse_1.7.4-b15/script.json:
-        #   0x042AC860 -> Active_PlayerStats
-        #   0x042B4480 -> ActivePVP_PlayerStats
-        self.assertEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x042AC860)
-        self.assertNotEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x042B4480)
+    def test_b17_coop_player_stats_typeinfo_does_not_use_pvp_class(self) -> None:
+        # reverse/reverse_1.7.4-b17/script.json:
+        #   0x043C0080 -> Active_PlayerStats
+        #   0x0436EC00 -> ActivePVP_PlayerStats
+        self.assertEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x043C0080)
+        self.assertNotEqual(ACTIVE_PLAYER_STATS_TYPE_INFO_RVA, 0x0436EC00)
 
     def test_resolves_board_through_verified_static_chain(self) -> None:
         memory = FakeMemory()

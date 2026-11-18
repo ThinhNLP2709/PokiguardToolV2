@@ -1,15 +1,16 @@
 """One bounded, explainable chooser across all styles. Never owns game input.
 
-Utilities are structural proxies, not damage or win probabilities. Boss replies
-are conditional Sword-first/all ties; refill, boss skills and effect order are
-not invented. Settings are references; action eligibility comes from the owner.
+Utilities are structural proxies, not damage or win probabilities. Conditional
+Sword-first replies are checked for sensitivity to other known legal replies;
+refill, boss skills and effect order are not invented. Settings are references;
+action eligibility comes from the owner.
 """
 from dataclasses import dataclass,replace
 import math,time
 from .board_simulator import (SwapMove,ResourceResult,SimulatedCell,_CellValue,
     _candidate_swaps,_match_through,_matches_touching,_tallies,_merge_results,_resolve_known_reply,_collapse,_freeze)
 from .demon_aegis import _passive_geometry
-from .mega_icarus import MEGA_ICARUS_SEAL_CELLS
+from .mega_icarus import gem_for_fire_condition,mega_seal_for_type
 from .reasoning_common_models import DEMON_RAGE_REFERENCE
 from .reasoning_common_problem import CommonProblem,VERSION
 from .reasoning_planner import Bound,CandidateScore,FEATURES,order_key
@@ -24,6 +25,7 @@ WEIGHTS={
     'skill_rush':(10,7,3,4,4,0,5,3,0,1),
     'demon_aegis_farm':(12,4,6,4,6,0,6,3,0,1),
     'mega_icarus_spam_skill':(10,6,4,5,5,0,7,3,0,1),
+    'galaxy':(0,7,4,5,5,0,7,3,0,1),
     'bu_win':(0,0,0,0,0,10,0,2,0,1),
 }
 
@@ -215,9 +217,12 @@ def _setup(problem,grid,work):
                 if best==1.:break
         return best
     if profile=='mega_icarus_spam_skill':
-        if reference is None or problem.intent.settings.plain().get('pet_skill_fire_condition','sword_count')!='sword_count':return None
-        return clip(sum(grid[r][c].multiplier or 1 for r,c in MEGA_ICARUS_SEAL_CELLS
-            if grid[r][c].gem is GemType.SWORD)/reference)
+        seal = mega_seal_for_type(problem.facts.plain().get('mega_seal_type'))
+        gem = gem_for_fire_condition(problem.intent.settings.plain().get('pet_skill_fire_condition','sword_count'))
+        if reference is None or seal is None or gem is None:
+            return None
+        return clip(sum(grid[r][c].multiplier or 1 for r,c in seal.cells
+            if grid[r][c].gem is gem)/reference)
     if profile=='skill_rush':
         if reference is None:return None
         condition=problem.intent.settings.plain().get('pet_skill_fire_condition','sword_count')
@@ -241,6 +246,56 @@ def _replies(grid,work,sword_first):
     maximum=max((s.resources.effective(GemType.SWORD) for s in replies),default=0)
     nominal=[s for s in replies if s.resources.effective(GemType.SWORD)==maximum] if maximum and sword_first else replies
     return replies,nominal,maximum
+
+
+def _future_setup(problem,replies,nominal,work,cache):
+    """Bound setup credit across boss-policy assumptions, not reply probabilities.
+
+    Sword-first remains a conditional reference. A lower-Sword reply can be a
+    counterexample to guaranteed setup, without claiming the boss will take it.
+    A bounded or unknown alternative search has a zero conservative floor.
+    Only the existing known-cell solver is used; refill receives no credit.
+    """
+    info=dict(pre_boss_diagnostic=None,nominal_total=len(nominal),nominal_examined=0,
+        status='UNSUPPORTED_NO_KNOWN_REPLY',favorable_refill_credit=0,
+        alternative_total=len(replies)-len(nominal),alternative_examined=0,
+        alternative_status='NOT_EXAMINED',setup_kind='BOSS_POLICY_SENSITIVITY_NOT_PROBABILITY')
+
+    def quality(reply):
+        work.check()
+        if reply.after not in cache:
+            cache[reply.after]=_setup(problem,reply.after,work)
+        return cache[reply.after]
+
+    if not nominal:return None,info
+    if len(nominal)>work.limits.scenarios:
+        info['status']='PARTIAL_NOMINAL_TIES_NO_FUTURE_CREDIT'
+        return None,info
+    values=[]
+    for reply in nominal:
+        value=quality(reply)
+        if value is None:return None,info
+        values.append(value);info['nominal_examined']+=1
+    upper=min(values);lower=upper
+    nominal_actions={reply.action for reply in nominal}
+    alternatives=[reply for reply in replies if reply.action not in nominal_actions]
+    info.update(status='COMPLETED_ALL_NOMINAL_TIES',post_boss_setup_floor=upper,
+        alternative_status='ALL_KNOWN_REPLIES_COVERED')
+    for reply in alternatives:
+        if lower==0:
+            info['alternative_status']='ZERO_FLOOR_WITNESSED';break
+        if info['nominal_examined']+info['alternative_examined']>=work.limits.scenarios:
+            lower=0.;info['alternative_status']='BOUNDED_SEARCH_UNKNOWN_FLOOR';break
+        value=quality(reply)
+        if value is None:
+            lower=0.;info['alternative_status']='UNMODELED_ALTERNATIVE_UNKNOWN_FLOOR';break
+        info['alternative_examined']+=1
+        if value<lower:
+            lower=value
+            info['setup_denial_witness']=reply.action.to_dict()
+    info.update(known_reply_setup_floor=lower,conditional_setup_ceiling=upper,
+        setup_policy_sensitive=lower<upper)
+    return Bound(lower*.5,upper*.5,'PRESENT','KNOWN_REPLY_POLICY_SENSITIVITY'),info
 
 
 def _features(problem,step,replies,maximum):
@@ -274,7 +329,18 @@ def _features(problem,step,replies,maximum):
             nominal_reference=None;same_burst='PHYSICAL_SWORD_FLOOR_OR_REFERENCE_MISSING'
             damage_context=dict(status='PHYSICAL_SWORD_FLOOR_OR_REFERENCE_MISSING',kill_certified=False)
     weights=dict(zip(FEATURES,WEIGHTS[profile]))
-    if profile in ('skill_rush','mega_icarus_spam_skill'):weights['L']=2.
+    if profile in ('skill_rush','mega_icarus_spam_skill','galaxy'):weights['L']=2.
+    seal_goal = None
+    if profile == 'mega_icarus_spam_skill' and step.action.family == 'pet_skill':
+        seal = mega_seal_for_type(facts.get('mega_seal_type'))
+        gem = gem_for_fire_condition(settings.get('pet_skill_fire_condition','sword_count'))
+        reference = _reference(problem)
+        if seal is not None and gem is not None and reference is not None:
+            collected = step.resources.effective(gem)
+            # A partial goal still earns credit. It cannot authorize a skill.
+            f['F'] = clip(collected / reference)
+            weights['F'] = 2.
+            seal_goal = dict(element_type=seal.element_type,gem=gem.value,effective=collected,reference=reference)
     boss_fraction=context_details['boss_hp_fraction']
     if boss_fraction is not None:weights['L']*=1+(1-boss_fraction)
     rage_fraction=fill(own.get('rage'),100,0.)
@@ -287,7 +353,9 @@ def _features(problem,step,replies,maximum):
         # first-wave ledger, but do not score an imagined boss response or
         # suppress the incumbent's unmodeled additional resource/effect value.
         missing.append('LOCAL_EFFECT_RESIDUAL_ORDER_UNMODELED')
-        unknown_features.update(('F','R','D','B','T'))
+        unknown_features.update(('R','D','B','T'))
+        if seal_goal is None:
+            unknown_features.add('F')
         if step.heals_self:
             # The declared healing opportunity does not require predicting the refill.
             # Its HP amount and survival result remain unknown.
@@ -324,12 +392,18 @@ def _features(problem,step,replies,maximum):
         details['automatic_kill_claim']=False
         details['effect_provenance']=facts.get('demon_effect')
         details['damage_context']=damage_context
+    if seal_goal is not None:
+        details['seal_goal'] = seal_goal
     return f,weights,details
 
 
-def _score(problem,step,features,weights,details):
+def _score(problem,step,features,weights,details,*,followup=None):
     bounds={k:Bound.missing('COMMON_REQUIRED_EFFECT_INPUT_UNKNOWN') if k in details.get('unknown_features',())
         else Bound.fixed(features[k],'COMMON_STRUCTURAL_PROXY') for k in FEATURES}
+    sensitivity=details['tactical_context'].get('boss_reply_sensitivity')
+    if sensitivity is not None and 'T' not in details.get('unknown_features',()):
+        bounds['T']=Bound(sensitivity['low'],sensitivity['high'],'PRESENT','KNOWN_REPLY_POLICY_SENSITIVITY')
+    if followup is not None:bounds['H']=followup
     contributions={k:Bound(-bounds[k].high*weights[k],-bounds[k].low*weights[k],'BOUNDED') if k in ('T','X','L','E')
         else Bound(bounds[k].low*weights[k],bounds[k].high*weights[k],'BOUNDED') for k in FEATURES}
     return CandidateScore(problem.candidate_id(step.action),step.action,step.action==problem.baseline,
@@ -371,7 +445,7 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
                 facts.get('boss_policy')=='USER_CONDITIONAL_MAX_EFFECTIVE_SWORD')
             features,weights,details=_features(problem,step,replies,maximum)
             score=_score(problem,step,features,weights,details)
-            root_scores.append((score,step,nominal,features,weights,details))
+            root_scores.append((score,step,nominal,features,weights,details,replies))
         scored[:]=[r[0] for r in root_scores]
         stage='ONE_STEP_COMPLETE'
         def choose():
@@ -384,32 +458,35 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
         ranked=sorted(root_scores,key=lambda r:order_key(r[0],problem.intent.profile))
         baseline=next(r for r in ranked if r[0].baseline_member)
         roots=[baseline]+[r for r in ranked if not r[0].baseline_member][:limits.roots-1]
-        refinements=[]
+        refinements=[];unknown_future=0
+        setup_cache={}
         stage='LOOKAHEAD'
-        for score,step,nominal,features,weights,details in roots:
+        for score,step,nominal,features,weights,details,replies in roots:
             work.check()
-            info=dict(pre_boss_diagnostic=None,nominal_total=len(nominal),nominal_examined=0,
-                status='UNSUPPORTED_NO_KNOWN_REPLY',favorable_refill_credit=0)
             revised=dict(features)
-            if nominal and len(nominal)<=limits.scenarios:
-                quality=[]
-                for reply in nominal:
-                    work.check();value=_setup(problem,reply.after,work)
-                    if value is None:break
-                    quality.append(value);info['nominal_examined']+=1
-                if len(quality)==len(nominal):
-                    revised['H']=min(quality)*.5
-                    info.update(status='COMPLETED_ALL_NOMINAL_TIES',post_boss_setup_floor=min(quality))
-            elif len(nominal)>limits.scenarios:
-                info['status']='PARTIAL_NOMINAL_TIES_NO_FUTURE_CREDIT'
-            refinements.append(_score(problem,step,revised,weights,dict(details,lookahead=info)))
-        # Commit only a complete, comparable shortlist containing the incumbent.
-        if any(s.details.plain()['lookahead']['status']!='COMPLETED_ALL_NOMINAL_TIES' for s in refinements):
+            followup,info=_future_setup(problem,replies,nominal,work,setup_cache)
+            if followup is None:
+                # _setup is normalized to [0, 1], with the same .5 discount
+                # on every root. Unknown replies/refill cannot earn a positive
+                # floor, but the incumbent must keep its possible upside.
+                # This preserves completed branches without calling an
+                # unmodeled future either worthless or fully searched.
+                followup=Bound(0.,.5,'UNSUPPORTED','COMMON_FUTURE_SETUP_UNKNOWN')
+                unknown_future+=1
+            refinements.append(_score(problem,step,revised,weights,dict(details,lookahead=info),
+                followup=followup))
+        if unknown_future==len(refinements):
+            # An entirely unmodeled future adds no information. Preserve the
+            # completed one-step comparison instead of changing it on ignorance.
             stage='ONE_STEP_COMPLETE'
             return finish('COMMON_FUTURE_INCOMPLETE_USE_COMPLETED_R1',one_step)
+        # Commit only after every shortlist root, including the incumbent, has
+        # a comparable future interval. Budget/cancellation exceptions still
+        # discard partial refinements and use the completed one-step result.
         scored[:]=refinements;stage='LOOKAHEAD_COMPLETE';selected=choose()
         return finish('COMMON_BOUNDED_IMPROVEMENT' if selected else 'COMMON_COMPLETED_RETENTION',selected,
-            dict(lookahead_roots=len(roots),unexamined_root_candidates=len(root_scores)-len(roots)))
+            dict(lookahead_roots=len(roots),lookahead_unknown_roots=unknown_future,
+                unexamined_root_candidates=len(root_scores)-len(roots)))
     except Exhausted as exc:
         # Partial root work cannot select; partial future work cannot replace R1.
         if stage=='LOOKAHEAD':

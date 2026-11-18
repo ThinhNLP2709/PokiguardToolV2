@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import threading
 import time
 import unittest
@@ -148,7 +149,7 @@ class RootPolicyLifecycleTests(lifecycle.SessionLifecycleTests):
 class V4ReviewTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp=tempfile.TemporaryDirectory(dir=ROOT);cls.package=Path(cls.temp.name)/'review'
+        cls.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());cls.package=Path(cls.temp.name)/'review'
         # V4 remains pinned to source297. New source must use its own review.
         cls.historical_root=ROOT/'docs/phase5/artifacts/5d1_config_projection_integration_p27_v1/before'
         shutil.copytree(ROOT/'docs/phase5/artifacts/5d1_root_policy_p21_v1/review_verified',cls.package)
@@ -156,7 +157,7 @@ class V4ReviewTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
     def setUp(self):
-        self.tempdir=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(self.tempdir.cleanup)
+        self.tempdir=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(self.tempdir.cleanup)
         self.directory=Path(self.tempdir.name)/'review';shutil.copytree(self.package,self.directory);self.data=deepcopy(self.original)
     def verify(self,root=None):
         d=self.data;return verify_review(self.directory,d,runtime_sha256=d['target_runtime_sha256'],host_sha256=d['host_sha256'],

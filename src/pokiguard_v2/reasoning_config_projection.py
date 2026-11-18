@@ -8,6 +8,7 @@ from dataclasses import fields
 from .basic_policy import PolicyConfig, PlayStyle, ManaPriority, Intelligence
 from .gameplay_profile import (
     MainPetType, EvolutionTarget, DamageCardMode, PetSkillFireCondition, DemonTargetGem,
+    MegaSelfProtection,
 )
 from .board_diagnostics import jsonable
 
@@ -18,11 +19,12 @@ EXPECTED_FIELDS = (
     'cast_when_boss_hp_below', 'cast_mana_stockpile_threshold', 'rage_target',
     'low_hp_ratio_simple', 'low_hp_ratio_careful', 'boss_high_mana',
     'boss_high_rage', 'boss_low_resource', 'pet_skill_fire_condition',
-    'pet_skill_fire_value', 'demon_target_gem',
+    'pet_skill_fire_value', 'demon_target_gem', 'mega_self_protection',
 )
 ENUM_TYPES = (
     PlayStyle, ManaPriority, Intelligence, MainPetType, EvolutionTarget,
     DamageCardMode, PetSkillFireCondition, DemonTargetGem,
+    MegaSelfProtection,
 )
 SCALAR_TYPES = (str, int, bool, float, type(None))
 

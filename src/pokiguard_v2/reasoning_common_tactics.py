@@ -47,13 +47,78 @@ def skill_resource_readiness(requirements, own, gains):
     return min(ratios)
 
 
-def _reply_risk(reply, boss, rates, own_mana_fill, boss_rage_fill, boss_hp_fill, advantage):
+def _drain_fills(owner, rage_reference=100):
+    """Exposed Mana/Rage, not a transfer amount or a choice-of-resource rule.
+
+    B17 recorded STEAL for both MANA and POWER. Use one resource at a time;
+    their maximum is a conservative structural proxy, never two simultaneous
+    transfers. HP STEAL and the server's selection/amount formula stay unknown.
+    """
+    result = {}
+    for name in ('mana', 'rage'):
+        current, capacity = owner.get(name), owner.get('max_'+name)
+        if current == 0 and number(current) and number(capacity) and capacity == 0:
+            result[name] = 0.
+            continue
+        goal = min(capacity, rage_reference) if name == 'rage' and number(capacity) else capacity
+        result[name] = fill(current, goal)
+    return result
+
+
+def _known_gain_exposure(own, step, rates, rage_reference):
+    """Second conditional resource scenario, never a net server balance.
+
+    Known SWAP gains can make our resources more exposed to a Drain reply.
+    Attack Rage spend, transfers, skill order and unknown refill are deliberately
+    not reconstructed. This only extends the known-reply sensitivity upwards.
+    """
+    after = dict(own)
+    detail = dict(status='UNCHANGED_REFERENCE', source='DECLARED_KNOWN_SWAP_GAINS_ONLY',
+        gains={}, unmodeled=[], net_balance_prediction=False)
+    if step.action.family != 'swap':
+        detail['status'] = ('SKILL_POST_BALANCE_UNMODELED' if step.action.family == 'pet_skill'
+            else 'UNCHANGED_REFERENCE')
+        return _drain_fills(own, rage_reference), detail
+    detail['status'] = 'CONDITIONAL_KNOWN_GAIN_SCENARIO'
+    if any(c.gem is GemType.UNKNOWN for row in step.after for c in row):
+        detail['unmodeled'].append('REFILL_AND_FURTHER_CASCADES')
+    if step.resources.effective(GemType.DRAIN):
+        detail['unmodeled'].append('TRANSFER_AMOUNT_AND_ORDER')
+    for name in ('mana','rage'):
+        count=step.resources.effective(GemType(name))
+        current, capacity, rate=own.get(name),own.get('max_'+name),rates.get(name)
+        item=dict(known_effective_gems=count, balance_before=current,
+            conditional_gross_balance=current, status='NO_KNOWN_GAIN')
+        if name=='rage' and step.resources.effective(GemType.SWORD):
+            # Native intervals show that Rage need not rise by its gross gain
+            # during an attack. Do not project it as stored post-attack Rage.
+            item['status']='ATTACK_RAGE_SPEND_ORDER_UNKNOWN_KEEP_REFERENCE'
+            detail['unmodeled'].append('ATTACK_RAGE_SPEND_ORDER')
+        elif count:
+            if (number(current) and current>=0 and number(capacity) and capacity>=current
+                    and number(rate) and rate>=0):
+                after[name]=min(capacity,current+count*rate)
+                item.update(conditional_gross_balance=after[name],status='DECLARED_KNOWN_GAIN_CAPPED')
+            else:
+                after[name]=None
+                item.update(conditional_gross_balance=None,status='GAIN_CONTEXT_UNKNOWN')
+        detail['gains'][name]=item
+    if step.unresolved_residual:detail['unmodeled'].append('LOCAL_EFFECT_RESIDUAL_ORDER')
+    return _drain_fills(after,rage_reference),detail
+
+
+def _reply_risk(reply, boss, rates, own_drained_fills, boss_rage_fill, boss_hp_fill, advantage):
     resources = reply.resources
     sword = clip(resources.effective(GemType.SWORD)/8*(1+.75*boss_rage_fill+.5*advantage))
-    drain = clip(resources.effective(GemType.DRAIN)/8)*own_mana_fill
+    drain_units = resources.effective(GemType.DRAIN)
+    # Missing balances cannot make a Drain reply appear harmless.
+    drain = clip(drain_units/8)*max((v if v is not None else 1.) for v in own_drained_fills.values())
     health = clip(resources.effective(GemType.HEALTH)/8)*(1-boss_hp_fill if boss_hp_fill is not None else 1.)
     progress = 0.
     missing = []
+    if drain_units:
+        missing.extend('DRAIN_BALANCE_UNKNOWN_SELF_'+name.upper()
+            for name, value in own_drained_fills.items() if value is None)
     for name in ('mana', 'rage'):
         units = resources.effective(GemType(name))
         if not units:
@@ -75,9 +140,13 @@ def evaluate_context(problem,step,replies,maximum):
     evolution=facts.get('evolution',{})
     hp_fill=fill(own.get('hp'),own.get('max_hp'));pressure=1-hp_fill if hp_fill is not None else 1.
     boss_hp_fill=fill(boss.get('hp'),boss.get('max_hp'))
-    own_mana_fill=fill(own.get('mana'),own.get('max_mana'),1.)
     boss_mana_fill=fill(boss.get('mana'),boss.get('max_mana'))
     boss_rage_fill=fill(boss.get('rage'),100,1.)
+    reference=settings.get('rage_target',100)
+    reference=reference if number(reference) and reference>0 else 100
+    own_drained_fills=_drain_fills(own,reference)
+    after_gain_fills,gain_context=_known_gain_exposure(own,step,rates,reference)
+    boss_drained_fills=_drain_fills(boss)
     missing=[];unknown_features=set();progress={};resource_details={};wastes=[]
     for name in ('mana','rage'):
         current=own.get(name);rate=rates.get(name);units=step.resources.effective(GemType(name))
@@ -128,27 +197,56 @@ def evaluate_context(problem,step,replies,maximum):
     advantage=(boss_attack/(own_attack+boss_attack) if number(own_attack) and own_attack>0
         and number(boss_attack) and boss_attack>=0 else 1.)
     sword_threat=clip(maximum/8*(1+.75*boss_rage_fill+.5*advantage))
-    reply_risks=[]
-    for reply in nominal:
-        risk, gaps=_reply_risk(reply,boss,rates,own_mana_fill,boss_rage_fill,boss_hp_fill,advantage)
-        reply_risks.append(risk)
+    reply_risks=[];all_reply_risks=[];after_reply_risks=[];all_after_reply_risks=[]
+    nominal_actions={reply.action for reply in nominal}
+    for reply in replies:
+        risk, gaps=_reply_risk(reply,boss,rates,own_drained_fills,boss_rage_fill,boss_hp_fill,advantage)
+        after_risk,after_gaps=(_reply_risk(reply,boss,rates,after_gain_fills,boss_rage_fill,boss_hp_fill,advantage)
+            if after_gain_fills!=own_drained_fills else (risk,[]))
+        all_reply_risks.append((risk,reply.action))
+        all_after_reply_risks.append((after_risk,reply.action))
+        if reply.action in nominal_actions:
+            reply_risks.append(risk);after_reply_risks.append(after_risk)
+        gaps+=after_gaps
         if gaps:
             missing.extend(gap for gap in gaps if gap not in missing);unknown_features.add('T')
     if not nominal and any(c.gem is GemType.UNKNOWN for row in step.after for c in row):
         missing.append('NO_KNOWN_REPLY_WITH_UNRESOLVED_REFILL');unknown_features.add('T')
     worst_reply=max(reply_risks,key=lambda risk:risk['threat'],default=dict(
         sword=0.,drain=0.,resource_progress=0.,health=0.,threat=0.))
+    # Sword-first is a conditional reference, not a guarantee about boss policy.
+    # A lower-Sword reply can still collect Mana/Rage/Drain and be more costly.
+    # Keep one complete reply per risk; never combine effects from separate moves.
+    before_all,_=max(all_reply_risks,key=lambda item:item[0]['threat'],default=(worst_reply,None))
+    after_nominal=max(after_reply_risks,key=lambda risk:risk['threat'],default=worst_reply)
+    all_worst,all_action=max(all_after_reply_risks,key=lambda item:item[0]['threat'],default=(worst_reply,None))
+    sensitivity=dict(low=worst_reply['threat'],high=all_worst['threat'],
+        nominal_replies=len(nominal),all_known_replies=len(replies),
+        policy_sensitive=all_worst['threat']>after_nominal['threat'],
+        before_gain_policy_sensitive=before_all['threat']>worst_reply['threat'],
+        resource_sensitive=all_worst['threat']>before_all['threat'],
+        before_gain_high=before_all['threat'],after_known_gain_nominal=after_nominal['threat'],
+        alternative_witness=(all_action.to_dict() if all_action is not None
+            and all_worst['threat']>after_nominal['threat'] else None),
+        alternative_proxy=all_worst,
+        kind='KNOWN_REPLY_POLICY_SENSITIVITY_NOT_PROBABILITY_OR_DAMAGE')
 
     health=clip(step.resources.effective(GemType.HEALTH)/6)*pressure
     existing_shield=fill(own.get('shield'),own.get('max_hp'),0.)
     shield=clip(step.resources.effective(GemType.SHIELD)/6)*max(pressure,sword_threat)*(1-existing_shield)
     drain_units=step.resources.effective(GemType.DRAIN)
-    if boss.get('mana')==0:drain=0.
-    elif boss_mana_fill is not None:
-        drain=clip(drain_units/6)*boss_mana_fill*(.35+.65*own_mana_fill)
-    elif drain_units:
-        drain=0.;unknown_features.add('P');missing.append('DRAIN_BENEFIT_OPPONENT_BALANCE_UNKNOWN')
-    else:drain=0.
+    drain=0.
+    if drain_units:
+        possibilities=[]
+        for name in ('mana','rage'):
+            exposed=boss_drained_fills[name]
+            if exposed == 0:
+                possibilities.append(0.)
+            elif exposed is None or own_drained_fills[name] is None:
+                unknown_features.add('P');missing.append('DRAIN_BENEFIT_BALANCE_UNKNOWN_'+name.upper())
+            else:
+                possibilities.append(exposed*(.35+.65*own_drained_fills[name]))
+        drain=clip(drain_units/6)*max(possibilities,default=0.)
     heal_opportunity=pressure if step.heals_self else 0.
     protection=clip(max(health,heal_opportunity)+.5*shield+.5*drain)
     commitment=[]
@@ -164,6 +262,11 @@ def evaluate_context(problem,step,replies,maximum):
         boss_attack_advantage_proxy=advantage,
         protection_proxy=dict(health=health,shield=shield,drain=drain,self_heal_opportunity=heal_opportunity),
         boss_reply_proxy=dict(**worst_reply,replies_examined=len(nominal),aggregation='WORST_SINGLE_REPLY'),
+        boss_reply_sensitivity=sensitivity,
+        drain_resources=dict(self_exposed=own_drained_fills,boss_exposed=boss_drained_fills,
+            self_after_known_gain_exposed=after_gain_fills,known_gain_context=gain_context,
+            aggregation='MAX_SINGLE_RESOURCE_NOT_SIMULTANEOUS_TRANSFERS',
+            resource_selection='UNKNOWN',amount_formula='UNKNOWN',hp_steal='NOT_MODELED'),
         skill_resource_readiness=dict(before=readiness_before,after=readiness_after,unlock_bonus=unlock_bonus),
         self_heal_amount='UNKNOWN' if step.heals_self else 'NOT_APPLICABLE',
         action_effort_kind='INPUT_AND_WASTED_RESOURCE_PROXY_NOT_ACTUAL_ENERGY',

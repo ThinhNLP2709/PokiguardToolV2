@@ -22,7 +22,7 @@ from .native_card_ui import NativeButtonGeometry, NativeCardUiReader
 from .unity_ui_layout import transform_for_capture
 
 
-PLAY_REMINDER_TYPE_INFO_RVA = 0x42C4110
+PLAY_REMINDER_TYPE_INFO_RVA = 0x4385EA8
 CANVAS_OFFSET = 0x30
 BOARD_OFFSET = 0x48
 REMINDER_COUNT_OFFSET = 0x24

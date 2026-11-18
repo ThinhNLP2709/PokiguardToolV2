@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import tempfile,threading,time,unittest
+from tests.reasoning_test_paths import reasoning_temp_root
 from types import SimpleNamespace
 from unittest.mock import Mock,patch
 
@@ -264,7 +265,7 @@ class ProfileReviewTests(unittest.TestCase):
         from pokiguard_v2.reasoning_operational import host_fingerprint
         from tools.prepare_ui_reasoning import main
         cls.temp=tempfile.TemporaryDirectory(prefix='offline-profile-',
-            dir=ROOT/'docs/phase5/artifacts/ui_reasoning_delivery_20261031')
+            dir=reasoning_temp_root())
         cls.addClassCleanup(cls.temp.cleanup);cls.root=Path(cls.temp.name)
         raw=cls.root/'raw_costs.json';raw.write_text(json.dumps([0]*100))
         q=dict(status='PASS',source_sha256=digest(source_files(ROOT)),host_sha256=host_fingerprint(),

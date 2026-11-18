@@ -79,9 +79,12 @@ class StrategyIntentTests(unittest.TestCase):
 
     def test_boss_mana_rage_hp_and_own_resources_change_protection_and_risk(self):
         v=context();facts=v.facts.plain()
+        facts['opponent']['rage']=0  # Isolate Mana; Rage can also be drained.
+        v=replace(v,facts=FrozenJSON.of(facts))
         loaded=evaluate_context(v,step(v,drain=3),[],0)[0]['P']
         facts['opponent']['mana']=0;empty=replace(v,facts=FrozenJSON.of(facts))
         self.assertGreater(loaded,evaluate_context(empty,step(empty,drain=3),[],0)[0]['P'])
+        facts['opponent']['rage']=100;v=replace(v,facts=FrozenJSON.of(facts))
         sword_reply=step(v,sword=2)
         high=evaluate_context(v,step(v,mana=3),[sword_reply],2)[0]['T']
         facts['opponent']['rage']=0;low=replace(v,facts=FrozenJSON.of(facts))
@@ -91,6 +94,8 @@ class StrategyIntentTests(unittest.TestCase):
         self.assertGreater(evaluate_context(hurt,step(hurt,mana=3),[heal_reply],0)[0]['T'],
             evaluate_context(v,step(v,mana=3),[heal_reply],0)[0]['T'])
         drain_reply=step(v,drain=3)
+        facts['self']['rage']=0  # Isolate Mana exposure from the Rage path.
+        v=replace(v,facts=FrozenJSON.of(facts))
         rich=evaluate_context(v,step(v,mana=3),[drain_reply],0)[0]['T']
         facts['self']['mana']=0;poor=replace(v,facts=FrozenJSON.of(facts))
         self.assertGreater(rich,evaluate_context(poor,step(poor,mana=3),[drain_reply],0)[0]['T'])
@@ -258,7 +263,7 @@ class StrategyIntentTests(unittest.TestCase):
         value[1]=replace(value[1],play_style=PlayStyle.MEGA_ICARUS_SPAM_SKILL,main_pet=MainPetType.NORMAL,
             evolution=EvolutionTarget.MEGA,damage_card=DamageCardMode.PET_SKILL)
         value[3]=replace(value[3],card_id=22,skill_card_id=22,pet_id=2524,source_pet_skill_card_id=22,
-            skill_family=PetSkillFamily.MEGA_ICARUS_CLICK_ONLY)
+            element_type='MEGA_ICARUS',skill_family=PetSkillFamily.MEGA_ICARUS_CLICK_ONLY)
         value[2]=BasicPolicyEngine(value[1]).decide(value[0],pet_skill_capability=value[3])
         now=time.perf_counter_ns();p=build_problem(tuple(value),run_id='SYNTHETIC',generation=1,observed_ns=now,read_end_ns=now)
         effect=next(c for c in p.effects if c.action.family=='pet_skill')

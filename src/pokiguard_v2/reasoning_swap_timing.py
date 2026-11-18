@@ -411,6 +411,7 @@ def prepare_reasoning_options_safely(session):
     try:
         options = session.prepare_options()
         return options if type(options) is dict and set(options) <= {
-            "selection_adapter", "swap_timing_adapter"} else {}
+            "selection_adapter", "swap_timing_adapter", "galaxy_reasoning"} and (
+            "galaxy_reasoning" not in options or type(options["galaxy_reasoning"]) is bool) else {}
     except Exception:
         return {}

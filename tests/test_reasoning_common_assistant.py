@@ -50,11 +50,15 @@ class CommonAssistantTests(unittest.TestCase):
     def test_one_intent_for_all_styles_targets_bosses_and_thresholds(self):
         from tests.test_reasoning_ui_delivery import config
         from pokiguard_v2.gameplay_profile import DemonTargetGem
-        from pokiguard_v2.pet_configuration import MainPetType,EvolutionTarget,DamageCardMode,AuditionMode,GameMode
+        from pokiguard_v2.pet_configuration import MainPetType,EvolutionTarget,DamageCardMode,AuditionMode,GameMode,PetSkillFireCondition
         for style in PlayStyle:
             changes=dict(play_style=style,ai=AISettings(False,6000,True))
             if style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
                 changes.update(evolution=EvolutionTarget.MEGA,damage_card=DamageCardMode.PET_SKILL,audition_mode=AuditionMode.NO_ACTION)
+            if style is PlayStyle.GALAXY:
+                changes.update(evolution=EvolutionTarget.GALAXY,damage_card=DamageCardMode.PET_SKILL,
+                    audition_mode=AuditionMode.NO_ACTION,pet_skill_fire_condition=PetSkillFireCondition.SKILL_COST_READY,
+                    pet_skill_fire_value=None)
             if style is PlayStyle.SKILL_RUSH:
                 changes.update(main_pet=MainPetType.LEGENDARY,evolution=EvolutionTarget.NONE,damage_card=DamageCardMode.PET_SKILL)
             if style is PlayStyle.DEMON_AEGIS_FARM:

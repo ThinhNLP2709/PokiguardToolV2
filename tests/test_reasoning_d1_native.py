@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -28,7 +29,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 class D1NativeTests(unittest.TestCase):
     def setUp(self):
-        temp=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(temp.cleanup);self.directory=Path(temp.name)
+        temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(temp.cleanup);self.directory=Path(temp.name)
         self.fixture=native_fixtures.OperationalLoaderTests()
         from pokiguard_v2.state import CardState
         card=CardState(1,2,64647,4,None,None,'ATTACK',None,True,False,False,-1,False,False,0,0,0,False)

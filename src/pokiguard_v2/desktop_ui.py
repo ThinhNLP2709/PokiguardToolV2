@@ -12,6 +12,7 @@ import time
 from typing import Any, Callable
 
 from .basic_policy import (
+    CLICK_ONLY_PET_TYPES,
     DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT,
     Intelligence,
     PET_SKILL_FIRE_VALUE_DEFAULT,
@@ -28,6 +29,7 @@ from .pet_configuration import (
     SUPPORTED_MAIN_PETS, SUPPORTED_EVOLUTIONS,
     normalize_damage, normalize_evolution,
     DEMON_TARGET_GEM_LABELS, DemonTargetGem,
+    MEGA_SELF_PROTECTION_LABELS, MegaSelfProtection,
 )
 from .desktop_control_plane import (
     ControlPlaneSnapshot,
@@ -181,6 +183,10 @@ AI_BUDGET_HELP = (
 def ai_status_text(status: AIStatus) -> str:
     if status.reason.startswith('UI_REASONING_'):
         reasons = {
+            'UI_REASONING_GALAXY_PETS_READY':'Suy luận Galaxy: nhận G1/G2/G3 theo thẻ, dùng chiến thuật riêng',
+            'UI_REASONING_GALAXY_G2_READY':'Suy luận Galaxy: G2 cân nhắc khiên và bảo vệ; G1/G3 đủ là ra skill',
+            'UI_REASONING_GALAXY_WAITING_COMBAT':'Suy luận Galaxy: chờ vào trận và nhận thẻ hiện hành',
+            'UI_REASONING_GALAXY_STOPPED':'Suy luận Galaxy đã dừng',
             'UI_REASONING_READY':'Suy luận đang hoạt động',
             'UI_REASONING_COMPLETED':'Đã suy luận xong; vẫn kiểm tra nước đi trước khi gửi',
             'UI_REASONING_WAITING_COMBAT':'Chờ vào trận',
@@ -265,7 +271,15 @@ def pet_skill_fire_condition_from_display(value: str) -> PetSkillFireCondition:
     for condition, label in PET_SKILL_FIRE_CONDITION_LABELS.items():
         if value == label:
             return condition
+    if value == "Đủ điều kiện":
+        return PetSkillFireCondition.SKILL_COST_READY
     return PetSkillFireCondition(value)
+
+
+def _pet_skill_fire_condition_label(config: DesktopConfig) -> str:
+    if config.play_style is PlayStyle.GALAXY:
+        return "Đủ điều kiện"
+    return PET_SKILL_FIRE_CONDITION_LABELS[config.pet_skill_fire_condition]
 
 
 def demon_target_gem_from_display(value: str) -> DemonTargetGem:
@@ -273,6 +287,13 @@ def demon_target_gem_from_display(value: str) -> DemonTargetGem:
         if value == label:
             return gem
     return DemonTargetGem(value)
+
+
+def mega_self_protection_from_display(value: str) -> MegaSelfProtection:
+    for mode, label in MEGA_SELF_PROTECTION_LABELS.items():
+        if value == label:
+            return mode
+    return MegaSelfProtection(value)
 
 
 def game_mode_from_display(value: str) -> GameMode:
@@ -854,11 +875,15 @@ class DesktopViewModel:
             "NO_DAMAGE_CARD_REQUIRES_BU_WIN": "Thẻ sát thương Không có hiện chỉ dùng với lối chơi Bú win.",
             "PET_PASSIVE_REQUIRES_DEMON_AEGIS_FARM": "Nội tại pet hiện chỉ dùng được với lối chơi Demon Farm.",
             "PET_PASSIVE_PROFILE_INVALID": "Nội tại pet yêu cầu Pet thường và Không tiến hóa.",
-            "MEGA_ICARUS_LOADOUT_INVALID": "Mega Icarus yêu cầu Mega + Không tiến hóa/Tiến hóa pet thường, hoặc Pet thường + Tiến hóa pet Mega.",
-            "MEGA_ICARUS_REQUIRES_PET_SKILL": "Mega Icarus yêu cầu Thẻ skill của pet.",
-            "MEGA_ICARUS_REQUIRES_NO_ACTION": "Mega Icarus yêu cầu Hành động skill là Không có.",
-            "NO_ACTION_REQUIRES_MEGA_ICARUS": "Hành động skill Không có hiện chỉ dùng cho Mega Icarus.",
-            "MEGA_ICARUS_POLICY_NOT_IMPLEMENTED": "Cấu hình Mega Icarus hợp lệ; policy click-only sẽ được nối ở MI.2.",
+            "MEGA_ICARUS_LOADOUT_INVALID": "Mega Kết Ấn yêu cầu Mega + Không tiến hóa/Tiến hóa pet thường, hoặc Pet thường + Tiến hóa pet Mega.",
+            "MEGA_ICARUS_REQUIRES_PET_SKILL": "Mega Kết Ấn yêu cầu Thẻ skill của pet.",
+            "MEGA_ICARUS_REQUIRES_NO_ACTION": "Mega Kết Ấn yêu cầu Hành động skill là Không có.",
+            "NO_ACTION_REQUIRES_MEGA_ICARUS": "Chọn Mega Kết Ấn để dùng Hành động skill Không có.",
+            "MEGA_ICARUS_POLICY_NOT_IMPLEMENTED": "Cấu hình Mega Kết Ấn chưa sẵn sàng.",
+            "GALAXY_LOADOUT_INVALID": "Galaxy yêu cầu pet chính Galaxy hoặc Pet thường tiến hóa Galaxy.",
+            "GALAXY_REQUIRES_PET_SKILL": "Galaxy yêu cầu Thẻ skill của pet.",
+            "GALAXY_REQUIRES_NO_ACTION": "Galaxy yêu cầu Hành động skill là Không có.",
+            "GALAXY_REQUIRES_RESOURCE_READY": "Galaxy dùng điều kiện ra skill Đủ điều kiện.",
             "FARM_PROFILE_NOT_IMPLEMENTED": "Cấu hình pet hợp lệ; lối chơi tự động cho cấu hình này chưa được hỗ trợ.",
             "CHECKPOINT_PROFILE_UNKNOWN": "Checkpoint cũ thiếu bằng chứng cấu hình; chưa thể tiếp tục an toàn.",
             "CHECKPOINT_CONFIG_MISMATCH": "Chọn cấu hình và giới hạn giống checkpoint để tiếp tục.",
@@ -1171,11 +1196,12 @@ class DesktopApplication:
         self.evolution = tk.StringVar(value=config.evolution.value)
         self.damage_card = tk.StringVar(value=config.damage_card.value)
         self.demon_target_gem = tk.StringVar(value=DEMON_TARGET_GEM_LABELS[config.demon_target_gem])
+        self.mega_self_protection = tk.StringVar(
+            value=MEGA_SELF_PROTECTION_LABELS[config.mega_self_protection]
+        )
         self.audition_mode = tk.StringVar(value=AUDITION_LABELS[config.audition_mode])
         self.pet_skill_fire_condition = tk.StringVar(
-            value=PET_SKILL_FIRE_CONDITION_LABELS[
-                config.pet_skill_fire_condition
-            ]
+            value=_pet_skill_fire_condition_label(config)
         )
         self.pet_skill_fire_value = tk.StringVar(
             value=(
@@ -1350,6 +1376,17 @@ class DesktopApplication:
             ),
             editable_state="readonly",
         )
+        self.mega_self_protection_label, self.mega_self_protection_widget = preference_field(
+            row=6,
+            label="Tự bảo vệ",
+            widget=ttk.Combobox(
+                preferences_frame,
+                textvariable=self.mega_self_protection,
+                values=tuple(MEGA_SELF_PROTECTION_LABELS.values()),
+                state="readonly",
+            ),
+            editable_state="readonly",
+        )
         self.pet_skill_fire_label = ttk.Label(
             preferences_frame, text="Điều kiện ra skill:"
         )
@@ -1505,7 +1542,8 @@ class DesktopApplication:
         self._config_widgets.append((self.load_checkpoint_preferences_button, "normal"))
         for variable in (self.main_pet, self.evolution, self.damage_card):
             variable.trace_add("write", self._pet_selection_changed)
-        self.demon_target_gem.trace_add("write", self._demon_target_gem_changed)
+        self.demon_target_gem.trace_add("write", self._style_setting_changed)
+        self.mega_self_protection.trace_add("write", self._style_setting_changed)
         self.pet_skill_fire_condition.trace_add(
             "write", self._pet_skill_fire_condition_changed
         )
@@ -2211,6 +2249,9 @@ class DesktopApplication:
             "evolution": self.evolution.get(),
             "damage_card": self.damage_card.get(),
             "demon_target_gem": demon_target_gem_from_display(self.demon_target_gem.get()).value,
+            "mega_self_protection": mega_self_protection_from_display(
+                self.mega_self_protection.get()
+            ).value,
             "audition_mode": audition_mode_from_display(
                 self.audition_mode.get()
             ).value,
@@ -2268,10 +2309,9 @@ class DesktopApplication:
                 getattr(self, name).set(getattr(config, name).value)
             self.audition_mode.set(AUDITION_LABELS[config.audition_mode])
             self.demon_target_gem.set(DEMON_TARGET_GEM_LABELS[config.demon_target_gem])
+            self.mega_self_protection.set(MEGA_SELF_PROTECTION_LABELS[config.mega_self_protection])
             self.pet_skill_fire_condition.set(
-                PET_SKILL_FIRE_CONDITION_LABELS[
-                    config.pet_skill_fire_condition
-                ]
+                _pet_skill_fire_condition_label(config)
             )
             if config.pet_skill_fire_value is not None:
                 self._last_valid_pet_skill_fire_value = config.pet_skill_fire_value
@@ -2321,9 +2361,7 @@ class DesktopApplication:
         blocker = profile.farm_policy_blocker_reason
         editable = self._config_editable is not False
         demon = profile.play_style is PlayStyle.DEMON_AEGIS_FARM
-        mega_icarus = (
-            profile.play_style is PlayStyle.MEGA_ICARUS_SPAM_SKILL
-        )
+        click_only_types = CLICK_ONLY_PET_TYPES.get(profile.play_style)
         bu_win = profile.play_style is PlayStyle.BU_WIN
         main_pet = MainPetType(self.main_pet.get())
         for value in DESKTOP_MAIN_PET_OPTIONS:
@@ -2336,11 +2374,8 @@ class DesktopApplication:
                         and not demon
                         and not bu_win
                         and (
-                            (mega_icarus and value in {
-                                MainPetType.NORMAL,
-                                MainPetType.MEGA,
-                            })
-                            or (not mega_icarus and value in SUPPORTED_MAIN_PETS)
+                            value in {MainPetType.NORMAL, click_only_types[0]}
+                            if click_only_types else value in SUPPORTED_MAIN_PETS
                         )
                         else "disabled"
                     )
@@ -2356,10 +2391,10 @@ class DesktopApplication:
                         and not bu_win
                         and (
                             (
-                                mega_icarus
+                                click_only_types
                                 and (
                                     (
-                                        main_pet is MainPetType.MEGA
+                                        main_pet is click_only_types[0]
                                         and value in {
                                             EvolutionTarget.NONE,
                                             EvolutionTarget.NORMAL,
@@ -2367,12 +2402,12 @@ class DesktopApplication:
                                     )
                                     or (
                                         main_pet is MainPetType.NORMAL
-                                        and value is EvolutionTarget.MEGA
+                                        and value is click_only_types[1]
                                     )
                                 )
                             )
                             or (
-                                not mega_icarus
+                                not click_only_types
                                 and value in SUPPORTED_EVOLUTIONS
                                 and not (
                                     value is EvolutionTarget.LEGENDARY
@@ -2391,10 +2426,10 @@ class DesktopApplication:
                 editable
                 and (
                     (demon and value is DamageCardMode.PET_PASSIVE)
-                    or (mega_icarus and value is DamageCardMode.PET_SKILL)
+                    or (click_only_types and value is DamageCardMode.PET_SKILL)
                     or (bu_win and value is DamageCardMode.NONE)
                     or (
-                        not demon and not mega_icarus and not bu_win
+                        not demon and not click_only_types and not bu_win
                         and (
                             value is DamageCardMode.DEFAULT_ATTACK
                             or (
@@ -2447,24 +2482,29 @@ class DesktopApplication:
             play_style_from_display(self.play_style.get())
             is PlayStyle.DEMON_AEGIS_FARM
         )
-        mega_icarus = (
-            play_style_from_display(self.play_style.get())
-            is PlayStyle.MEGA_ICARUS_SPAM_SKILL
-        )
+        style = play_style_from_display(self.play_style.get())
+        click_only = style in CLICK_ONLY_PET_TYPES
         for widget in (self.demon_target_gem_label, self.demon_target_gem_widget):
             if demon:
+                widget.grid()
+            else:
+                widget.grid_remove()
+        for widget in (self.mega_self_protection_label, self.mega_self_protection_widget):
+            if click_only:
                 widget.grid()
             else:
                 widget.grid_remove()
         self.pet_skill_fire_condition_widget.configure(
             values=(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT],)
             if demon
+            else ("Đủ điều kiện",)
+            if style is PlayStyle.GALAXY
             else tuple(PET_SKILL_FIRE_CONDITION_LABELS.values())
         )
         self.audition_widget.configure(
             values=(
                 (AUDITION_LABELS[AuditionMode.NO_ACTION],)
-                if mega_icarus
+                if click_only
                 else (
                     AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION],
                     AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION],
@@ -2472,7 +2512,7 @@ class DesktopApplication:
             ),
             state=(
                 "disabled"
-                if mega_icarus or self._config_editable is False
+                if click_only or self._config_editable is False
                 else "readonly"
             ),
         )
@@ -2535,7 +2575,7 @@ class DesktopApplication:
             ):
                 self._last_valid_pet_skill_fire_value = numeric
 
-    def _demon_target_gem_changed(self, *_args: Any) -> None:
+    def _style_setting_changed(self, *_args: Any) -> None:
         if self._updating_pet_fields:
             return
         snapshot = self.view_model.control_plane.snapshot()
@@ -2561,11 +2601,12 @@ class DesktopApplication:
                 main_pet = MainPetType.NORMAL
                 evolution = EvolutionTarget.NONE
                 normalized = DamageCardMode.NONE
-            elif style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+            elif style in CLICK_ONLY_PET_TYPES:
+                main_type, evolution_type = CLICK_ONLY_PET_TYPES[style]
                 if main_pet is MainPetType.NORMAL:
-                    evolution = EvolutionTarget.MEGA
+                    evolution = evolution_type
                 else:
-                    main_pet = MainPetType.MEGA
+                    main_pet = main_type
                     current_evolution = EvolutionTarget(self.evolution.get())
                     evolution = (
                         current_evolution
@@ -2640,21 +2681,21 @@ class DesktopApplication:
                     self._last_valid_pet_skill_fire_value = (
                         DEMON_AEGIS_SWORD_THRESHOLD_DEFAULT
                     )
-                elif style is PlayStyle.MEGA_ICARUS_SPAM_SKILL:
+                elif style in CLICK_ONLY_PET_TYPES:
+                    galaxy = style is PlayStyle.GALAXY
                     self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
-                    self.main_pet.set(MainPetType.MEGA.value)
+                    self.main_pet.set(CLICK_ONLY_PET_TYPES[style][0].value)
                     self.evolution.set(EvolutionTarget.NONE.value)
                     self.damage_card.set(DamageCardMode.PET_SKILL.value)
                     self.audition_mode.set(
                         AUDITION_LABELS[AuditionMode.NO_ACTION]
                     )
                     self.pet_skill_fire_condition.set(
-                        PET_SKILL_FIRE_CONDITION_LABELS[
-                            PetSkillFireCondition.SWORD_COUNT
-                        ]
+                        "Đủ điều kiện" if galaxy else
+                        PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT]
                     )
                     self.pet_skill_fire_value.set(
-                        str(PET_SKILL_FIRE_VALUE_DEFAULT)
+                        "" if galaxy else str(PET_SKILL_FIRE_VALUE_DEFAULT)
                     )
                     self._last_valid_pet_skill_fire_value = (
                         PET_SKILL_FIRE_VALUE_DEFAULT
@@ -2678,6 +2719,8 @@ class DesktopApplication:
                     or self.damage_card.get() == DamageCardMode.NONE.value
                     or self.main_pet.get() == MainPetType.MEGA.value
                     or self.evolution.get() == EvolutionTarget.MEGA.value
+                    or self.main_pet.get() == MainPetType.GALAXY.value
+                    or self.evolution.get() == EvolutionTarget.GALAXY.value
                     or self.audition_mode.get()
                     == AUDITION_LABELS[AuditionMode.NO_ACTION]
                 ):

@@ -44,7 +44,7 @@ MANAGER_CHINH_PHUC_BUTTONS_OFFSET = 0x30
 # ChinhPhucDataService is a persistent singleton that owns the same server data
 # even when the island panel is not visible.  Reading it avoids the bounded
 # native Button scan used by the re-entry executor.
-CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x42BCFA0
+CHINH_PHUC_DATA_SERVICE_TYPE_INFO_RVA = 0x43779E0
 CHINH_PHUC_DATA_SERVICE_DATA_OFFSET = 0x20
 # Display-only server GroupDTO IDs, verified against b6 live data and scene labels.
 # Server IDs are not serialized btnIsland numbers: the final three islands use

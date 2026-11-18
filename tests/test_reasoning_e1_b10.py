@@ -3,6 +3,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import unittest
 
 from pokiguard_v2.reasoning_calibration import source_files, source_fingerprint
@@ -16,7 +17,7 @@ COMPLETION = ROOT / 'docs/phase5/artifacts/5e1_b10_requalification_20261022/comp
 
 class B10E1Tests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(dir=COMPLETION)
+        self.temp = tempfile.TemporaryDirectory(dir=reasoning_temp_root())
         self.addCleanup(self.temp.cleanup)
         self.out = Path(self.temp.name)
         self.cal = copy_native(self.out, COMPLETION)

@@ -1,6 +1,208 @@
 # Board instance resolution — Phase 1
 
+## 18/11/2026 — B17 room and independent map callback proof
+
+Board root 0x43F68F0 and Active 0x43F68F8 are exact B17 TypeInfo slots. All
+existing board/cell/lifecycle/ACK/transport/card/QTE fields retain B16 layout.
+The production profile changes only verified constants and build admission;
+solver, policy, calibration, input pacing and ±10% jitter are preserved.
+
+Three production samples identify the host room for Lion Star 1473, display
+lv105, Bóng đêm. ManagerRoom/V2 Start is active/interactable at Idle, CanvasGroup
+clean, with stable rect `(0.70463,0.83056,0.92222,0.90833)` on the 2:1 root.
+The real 1280x640 room fixture shows Bắt Đầu; locator confidence is 0.99.
+Invite/reminder are closed. A raw room enemy level of 0 is not promoted to a
+server combat level; the displayed 105 is separately confirmed from metadata/UI.
+
+Map target uses pet ID 1473 at cached index 4. Its Button also owns the exact
+ManagerChinhPhuc.<>c__DisplayClass41_0 callback with pet ID 1473 and the live
+manager. Independent listener method-pointer identity confirms the binding;
+badge numbering is not authority. Button center is approximately
+`(0.423187,0.399495)`, or `(542,256)` on 1280x640. Map raw level 11 and display
+105 remain distinct fields. No agent click was sent.
+
+SolveBoard, GetCellBaseWorldPosition and HUD constants match B16 in the audited
+scope. Replay of 64 centers, 112 swaps and four size profiles is offline using
+historical combat frames. B17 live board→pixel, ACK, actual card/QTE and result
+acceptance remain UNKNOWN until B1/B2; prior timing/live calibration is not
+relabeled for B17. Foreground must still pass live preflight at input time.
+
+[Full build identity, evidence, tests and acceptance](petpuzzle_b17_compatibility_report.md).
+
+
+## 18/11/2026 — Native first-wave outcome observations
+
+Two saved B16 Demon Shield moves have native actor/match/sequence interval
+attribution plus exact SWAP ACKs. Existing geometry reconstructs4/6 physical
+Sword cells and5/7 effective Sword; all six effective gem totals match their
+destroyed tags. POWER precedes DAMAGE and uppercase after.HP/SHIELD reconcile
+within those batches. These are scoped observations, not complete effect
+coverage, a wire coordinate echo, a power threshold or a damage formula.
+No board provider/input authority changed.
+[Evidence and exclusions](phase5/COMBAT_NORMALIZATION_20261118.md).
+
+## 17/11/2026 — Optional combat outcome evidence
+
+Outcome diagnostics use the immutable response JSON already obtained by
+DispatcherTransportTap. An attached-board record requires the exact accepted
+OpeningBoardSnapshot instance, MatchId and srvSeq; reused callback addresses
+cannot attach old evidence to a new snapshot. Skill responses without a board
+are retained separately and explicitly lack board attestation. They are never
+fed into board ownership, action acceptance, ACK or QTE resolution.
+Invalid/missing/oversized steps reject evidence only. No target reads, native
+bridges or board geometry changed. Live step/after semantics and complete
+action damage remain UNKNOWN; no HP-delta fit was activated.
+[Audit, bounds and tests](phase5/COMBAT_OUTCOME_EVIDENCE_20261117.md).
+
+## 17/11/2026 — B16 migration and read-only room/map proof
+
+B16 Board TypeInfo is `0x43F5870`, Active `0x43F5878`, ManagerMatch `0x43F5868`.
+The existing 8x8 fields, Dot/BoardCellDTO multipliers, BoardWsApplier,
+MatchService/ACK and opening `preBoard +0x4C0` / ready `+0x4C8` retain their
+verified layout. Added `Board.isGuildWarBattle +0x30C` does not move the
+consumed fields; the new mode's behavior is UNKNOWN/unqualified.
+
+Production read-only attachment returns BOSS_LOBBY, Lieyun 1436/lv77,
+Thập nhị tinh in three consecutive samples. The exact V2-bound Start Button
+is active/interactable at phase Idle, CanvasGroup clean, stable normalized
+rect `(0.70463, 0.83056, 0.92222, 0.90833)`, root aspect 2:1. Its label/geometry
+matches the captured 1280x640 client with confidence 0.99. Production's bounded
+nested-Canvas ownership checks are preserved. Invite/reminder are clean.
+
+Map reads identify Lieyun by pet ID and `ManagerChinhPhuc.OnReceived
+panelButtons[pet_index]` ownership, hunt order 5; the badge is not authority.
+Three stable reads give center `(0.6839475, 0.4056069)`, about `(875,260)` on
+1280x640, matching the live map image. Raw pet level and display/room level
+are distinct fields; see the captured metadata in the B16 evidence.
+
+`MatchHudV2.SolveBoard`, `Board.GetCellBaseWorldPosition` and HUD constants
+match B15 in the audited scope. The 64-cell/112-swap/four-profile checks remain
+offline transformations of historical combat fixtures. B16 combat board→pixel,
+move/ACK, actual card/QTE and WIN/LOSS/result/re-entry acceptance are UNKNOWN
+until B1/B2. Calibration, ±10% jitter, pacing and solver/policy are preserved;
+old live timing authority is not relabeled for B16.
+
+[Build identity, evidence, tests and acceptance checklist](petpuzzle_b16_compatibility_report.md).
+
+
+## 16/11/2026 — Suy luận nhận pet và chu kỳ G1/G3
+
+Profile Galaxy giờ phân nhánh từ CardUI đã xác minh: `GALAXY_RICKY` → G1,
+`GALAXY_2` → G2, `GALAXY_DRAGON_KNIGHT` → G3. G1/G3 đủ tài nguyên vẫn ra
+skill ngay; nhánh tích tài nguyên biết G1 có lần thứ tư x2 và G3 có chu kỳ
+hồi 250 mana / 150 nộ / 150 mana + 50 nộ. Pha runtime được đọc từ map
+`MatchService.Players` của đúng actor/card/session và kiểm lại turn/owner.
+
+Pha không có nguồn vẫn UNKNOWN hoặc được ghi rõ là ước lượng từ lịch sử
+tool quan sát từ đầu trận, không tự đặt pha 1 khi resume/đổi pet. Bài ngẫu
+nhiên G1, sát thương đã ghi vào ấn G3 và thời gian buff hiện hành không được
+suy ra từ HP hay phần hồi dự kiến. Phần hồi chỉ so sánh nút thắt vòng sau,
+không bù chi phí còn thiếu để cho phép bấm skill. G2 giữ cách đánh đã có.
+[Báo cáo và giới hạn](galaxy_pet_reasoning_20261116.md).
+
+## Nhánh rẽ Suy luận G2 Glank
+
+Log ba lượt Galaxy sau sửa cooldown: G1/G3 thắng sau một skill; G2 thua sau
+bốn skill thành công. Cấu hình UI có bật Suy luận nhưng trạng thái thực là
+`UI_REASONING_COMMON_CALIBRATION_REQUIRED`, chưa có authority của common
+worker. Source mới nối riêng lựa chọn Suy luận Galaxy đến chiến thuật G2
+tại các checkpoint policy đang dùng. G1/G3 và chế độ Cơ bản giữ nguyên.
+
+G2 dùng tổng khiên có hệ số nhân, giữ khiên khi tích mana/nộ; đánh sớm để
+bảo vệ hoặc khi không có setup giữ khiên an toàn. Setup chỉ chờ tối đa một
+lượt local trong chu kỳ skill, không dự đoán refill. Kiếm chỉ được mở khi
+nộ bằng đúng 0, kể cả lúc Tự bảo vệ đang ưu tiên. Skill không phá bàn;
+hiệu ứng giảm sát thương/giáp hiện hành chưa được decoder xác nhận, giữ
+UNKNOWN. Mô tả cũ “Galaxy chỉ gây sát thương” không bao quát các hiệu ứng
+bổ sung trong ảnh thẻ G1/G2/G3 người dùng cung cấp ở đợt này.
+[Bằng chứng, quy tắc và kiểm thử G2](galaxy_glank_reasoning.md).
+
+## Galaxy tích skill và Tự bảo vệ — 15/11/2026
+
+Log `78a948f88e2747669f1e7d5d2dcad46f`, match `M_ac467ce3`, ghi nhận
+9 quyết định Galaxy đều `NO_CAPABILITY`, không có thẻ skill được nhận.
+Đọc riêng trận người dùng mở sau đó xác nhận lỗi đọc cooldown nhầm
+`CardData.petElement +0x88` thay vì `cooldownTurns +0x94`; xem
+[bằng chứng field](il2cpp_symbols.md#galaxy-carddata-cooldown--15112026).
+
+Galaxy hiện dùng chung nhánh tích tài nguyên và ra skill với Mega kết ấn:
+giữ kiếm, ưu tiên phần mana/nộ còn thiếu, dùng cùng thứ tự hỗ trợ và PASS
+có bằng chứng từ game. Khi chưa nhận được thẻ, không bấm skill hoặc đoán
+chi phí; tiếp tục nhánh mana/nộ với chi phí UNKNOWN, không rơi về cơ bản.
+Tự bảo vệ dùng cùng lựa chọn Không / Máu dưới 30% / Máu dưới 10% và được
+hiện trong UI Galaxy. Đủ chi phí thật và thẻ actionable thì ra skill ngay,
+kể cả HP thấp. Suy luận giữ quyết định skill, nhánh bảo vệ và ưu tiên tích
+tài nguyên này khi so sánh các nước khác.
+
+Theo xác nhận của người dùng, skill Galaxy ở lối chơi này chỉ gây sát thương;
+không gán ấn, điều kiện số viên, tự hồi máu hay mô phỏng phá bàn cho nó.
+Sau click vẫn đọc trạng thái mới và cho phép xác nhận dù bàn không đổi.
+Lượng sát thương và hiệu quả thắng Jasper 244 chưa được đo trong đợt sửa.
+Chi tiết: [báo cáo Galaxy](galaxy_review_20261115.md).
+
 B15 giữ công thức tâm ô của MatchHudV2 và Board. preBoard ở ChatMessageDTO +0x4C0, preBoardReady +0x4C8. Dot.multiplier +0x88 và BoardCellDTO.multiplier +0x20 đã đối chiếu lại. Phòng Lieyun lv77 đọc đúng trên tiến trình B15. Kiểm board và ACK trong trận còn chờ live. [Báo cáo B15](petpuzzle_b15_compatibility_report.md).
+
+## Dữ liệu replay nước boss B15 — 10/11/2026
+
+Trong Demon Farm Solo, dòng `dispatcher_board_snapshot_offered` có thêm `moveReplay` khi bộ thu callback giữ được cùng một `MATCH_MOVE_RES` JSON gốc và bàn 64 ô được provider nhận để kiểm tra. Record giữ `matchId`, `lifecycleEpoch`, `srvSeq`, hash và bàn sau phản hồi. Dữ liệu actor lưu dạng `BOSS`, `OTHER_ACTOR` hoặc `UNKNOWN`. Tọa độ chỉ ghi khi có hai ô kề nhau, là số nguyên trong `[0, 7]` và được chuyển sang hàng màn hình bằng quy ước `7 - runtime_row`. `wire_turn` giữ nguyên trường `turnNumber` nếu có. Thiếu trường vẫn để `null` hoặc `UNKNOWN`.
+
+`accepted` tại dòng này chỉ là kết quả nhận snapshot của provider. Replay cần đối chiếu ACK hoặc bàn thật theo cùng trận và `srvSeq` trước khi dùng làm nhãn. Bàn trước nước boss chỉ dùng khi tìm được phản hồi trước đó đúng nguồn và đủ dữ kiện chứng minh nối tiếp. Dữ liệu này không tham gia bộ chọn nước. Bộ thu dùng lần đọc callback hiện có và giữ nguyên decoder bàn cờ.
+
+## Tiếp tục trận khi nước đi có rủi ro — 12/11/2026
+
+Đối chiếu phản hồi về `GALAXY_SURVIVAL_SWORD` cho thấy bộ thực thi
+`_must_pause_for_no_safe_move` dùng danh sách tên nhánh ngoại lệ.
+Danh sách thiếu Galaxy nên một đề xuất SWAP của policy bị đổi thành
+`POLICY_NO_SAFE_MOVE` khi không còn nước Sword-safe. Chỉ số này xét kiếm
+trả lại và refill UNKNOWN, chưa chứng minh nước đó bất hợp lệ hoặc chắc thua.
+
+Bộ thực thi chấp nhận đề xuất SWAP có nước đi từ policy qua các kiểm tra
+fresh state, quyền lượt và input hiện có. Khi game chưa cho biết trạng thái
+bỏ lượt và còn nước hợp lệ, policy chọn nước ít rủi ro nhất theo thứ tự
+hiện có. Bỏ lượt tiếp tục dựa trên dữ liệu game.
+
+Với thẻ click-only, `ACTIVE_QTE_UNREADABLE_OR_AMBIGUOUS` trước khi gửi
+input có thể trở về nhánh đọc bàn mới nếu cùng session, lifecycle hợp lệ,
+không có QTE hiện hành và quyền chuột đã được thu hồi thành công.
+Executor có thể đang IDLE nên chưa có result; trạng thái đó được kiểm riêng.
+Skill bị loại khỏi lựa chọn trong chính lượt lỗi trước khi đánh giá lại bàn.
+
+Hai match nêu trong ảnh phản hồi chưa có log gốc trong Downloads/log tại
+lúc kiểm tra. Kiểm thử tái hiện dùng bàn có 9 nước hợp lệ, 0 nước Sword-safe
+và runtime giả cho lỗi skill trước click. Các ca này nằm tại
+`tests/test_gameplay_risk_continuation.py`.
+
+## Nhận thưởng nhiều vật phẩm — 12/11/2026
+
+Log người dùng `8cb2cb5d5aff4ebfa9fcd33d59c9ff37` dừng tại 6/13 trận,
+cả sáu trận đều thắng. Trận cuối `M_a2158932` kết thúc lúc 23 giờ 16 phút
+ngày 11/11 theo giờ Việt Nam. Sau 47 mẫu trong 30,532 giây, bộ nhận diện
+vẫn loại bảng thưởng với `POSTMATCH_UI_AMBIGUOUS`.
+
+Ảnh cuối 1120×560 có nút Đồng ý cùng năm phần thưởng, gồm rương Mega T-Rex.
+Vùng xanh liên thông lớn nhất có 49.674 pixel, thấp hơn ngưỡng 50.176 pixel.
+Nền trong suốt và các vật phẩm làm phép kiểm diện tích xanh hụt ngưỡng.
+Ngưỡng riêng của bảng B14 được điều chỉnh từ 8% xuống 7% diện tích viewport.
+Xác nhận tiếp tục cần hình học bảng, bốn góc vàng, tiêu đề kết quả,
+một nút có nhãn và ba khung hình ổn định qua FarmRunner.
+
+Hai ảnh gốc cùng số đo lỗi nằm tại
+`tests/fixtures/postmatch_many_rewards_20261112/`. Kiểm thử phát lại dùng
+input giả, kiểm cả giai đoạn hộp quà và bước vào trận kế tiếp.
+
+## B15 phục hồi khi mất xác nhận nút Bắt đầu — 11/11/2026
+
+Phiên `80c29bb217c945fdb862dc618e078430` đã lưu 77 trận thắng. Lần chuẩn bị
+trận 78 giữ đúng phòng Lieyun trong 180 giây nhưng Start không qua đối chiếu
+ảnh với vùng nút đọc từ game. Log game ghi thay nóng RoomCoopV2 ngay trước
+đó. Ảnh tại thời điểm lỗi chưa có, nguyên nhân cụ thể của sai lệch là UNKNOWN.
+
+Sau một trận Solo đã xác nhận kết quả, nếu Start sai lệch ít nhất 8 giây
+và chưa có input vào trận, FarmRunner thử phục hồi một lần. Nút thoát cần
+đúng binding của phòng, hai ảnh và một lần xác minh cuối trước click.
+Sau khi thoát, router hiện có xác minh lại đúng boss trên bản đồ rồi
+quay về bước vào trận. Phiên cũ có thể tiếp tục từ checkpoint sau khi
+kiểm log lần vào trận và xác minh phòng mới.
 
 ## B14 room overlay handling remains outside combat — 2026-11-04
 
@@ -1021,3 +1223,86 @@ this research change.
 [Coordinates and instruction RVAs](artifacts/b15_mega_seal_expansion_20261107/seal_masks.json),
 [static verification](artifacts/b15_mega_seal_expansion_20261107/static_checks.json),
 [proposed integration and validation](phase5/MEGA_SEAL_RESEARCH_DESIGN_20261107.md).
+
+## 2026-11-08 — Galaxy skill and board decisions
+
+Galaxy uses the current owned CardUI and its Mana and Nộ costs. It has no
+seal geometry or configured target gem. The tool waits for the game's fresh
+combat state after the click. A resource or turn transition can confirm the
+action even when the board is unchanged. BASIC prioritizes safe moves that
+fill a skill or evolution deficit and can collect Sword directly. The shared
+adviser uses the same observed costs to score swaps. The server damage and
+board effect of the skill are UNKNOWN, so the adviser leaves a ready BASIC
+skill in place. [Verified B15 card paths](il2cpp_symbols.md#2026-11-08--b15-galaxy-cards).
+
+## 2026-11-18 — B16 operation coordinates are evidence, not boss labels
+
+The B16 static path is `ChatMessageDTO.matchPayload` -> dictionary key
+`ops` -> `MatchOpDTO.data` -> `ApplySwap`. ApplyOp dispatches exact type
+`SWAP`. ApplySwap reads `fromRow`, `fromCol`, `toRow`, `toCol` as native
+board coordinates (call sites read column then row). See
+[B16 symbols](il2cpp_symbols.md#2026-11-18--b16-optional-combat-evidence-and-swap-operation-source)
+and [pinned disassembly](phase5/artifacts/common_outcomes_20261118/boss_move_static.json).
+
+Optional capture stores these as `swap_operations[].native_swap` in
+native from-row/col/to-row/col order, alongside operation index. It does
+not overwrite `wire_swap`, select one operation among multiple SWAPs,
+invert rows, attest the actor's original decision or supply a pre-board.
+Missing fields, bools, non-adjacent or out-of-domain coordinates receive
+no inferred values. Missing ops is distinct from an observed empty list.
+
+Existing provider row mapping stays unchanged. Its existence is not proof
+of a new boss policy dataset: native/view agreement, action ownership,
+pre-board and cascade/refill coverage remain UNKNOWN for this capture
+path until observed together. `MatchService.LastMove` stays local evidence;
+it is never assigned to the boss because a turn returned. The old137
+outcome records were created before ops retention and cannot recover this
+missing information. No controller, input, admission or PASS change.
+
+## 2026-11-18 — B17 observed SWAP coordinate agreement
+
+The new Priest131/Demon/Shield cohort confirms all28 locally sent SWAPs
+against the single retained SWAP op in their response: native (row,col)
+maps to screen (7-row,col), in exact endpoint order.24 are independently
+acknowledged,4 are terminal responses. B1 plans use client board rectangle
+[400,29,878,507] on1280x640;22 click points are within the configured jitter
+and rounding bound. Opening image loading text occludes some cells, so this
+does not attest complete all-cell CV/multiplier/card geometry.
+
+21 boss SWAP ops are now retained, but their pre-action board is still not
+attested. Do not construct that board from our LastMove or a refill guess,
+or label a selected root as optimal from a match WIN. No gameplay mapping,
+input pacing or jitter was changed. [Evidence and limits](phase5/B17_PRIEST_OUTCOME_LIVE_20261118.md).
+# B17 published before/after boss boards — 18/11/2026
+
+Source `b1b718fb…` copies optional64-cell board evidence from already-read
+transport/current-owner snapshots at the controller's existing offer points.
+Offer acceptance remains retention/session binding only, never ACK publication.
+`PublishedStateRecorder` separately copies stable/latest/ACK provider GameState
+with exact Solo actor, epoch, Board, match, seq, turn and participants. Raw
+native cell hash and semantic screen-board hash have separate names/encodings.
+`ChatMessageDTO.preBoard` means pre-parsed DTO, not an attested before-action board.
+
+Priest131/DemonShield BASIC probe `M_db5ccb58` recorded7 published BOSS→LOCAL
+intervals with one captured SWAP each; all7 matched legal swaps on their actual
+before board using native row→screen row `7-row`. The normalizer does not assume
+consecutive srvSeq values, synthesize refill, use local LastMove for boss input,
+or make optimal/training labels. Missing/ambiguous intervals remain unbound.
+No new field offsets, process reads, authority gates or input behavior changed.
+See [report](phase5/B17_BOSS_BOARD_AND_REASONING_20261118.md) and hash-pinned
+[native closure](phase5/artifacts/b17_boss_board_evidence_20261118/live/closure.json).
+
+# B17 reply audit against actual before/after boards — 18/11/2026
+
+13 closed Priest intervals: all observed swaps legal on actual before board;
+3 known-Sword opportunities all take known maximum. The6 reasoning-linked
+intervals have3 swaps in the partial/no-refill reply set and2 post-local
+boards where known cells continued moving after refill/cascade. A partial
+known Sword maximum0 can become5 on the actual boss board. This does not
+prove coordinate/solver corruption and must not be patched with guessed refill.
+The response-policy sensitivity bound is conditional on known cells, not a
+guarantee covering unknown refills. Native state and adviser before-state
+are kept separate; no actual after board is fed back as a prospective input.
+Offline fix450abb97… only adds Rage to shared Drain resource valuation and
+its bounded worker summary. [Report](phase5/B17_REPLY_DRAIN_REVIEW_20261118.md).
+

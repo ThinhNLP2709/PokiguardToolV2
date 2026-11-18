@@ -256,6 +256,7 @@ def _combat_args(args: Namespace, log_path: Path) -> Namespace:
         pet_skill_fire_condition=gameplay.pet_skill_fire_condition.value,
         pet_skill_fire_value=gameplay.pet_skill_fire_value,
         demon_target_gem=gameplay.demon_target_gem.value,
+        mega_self_protection=gameplay.mega_self_protection.value,
         interval=args.interval,
         action_timeout=9.0,
         matches=1,

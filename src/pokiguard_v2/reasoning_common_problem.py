@@ -6,7 +6,7 @@ from .state import BoardState,CellState,GemType
 SCHEMA='pokiguard.reasoning.common_problem.v1'
 VERSION='common_reasoning.v1'
 PROFILES=frozenset(('simple','careful','skill_rush','demon_aegis_farm',
-    'mega_icarus_spam_skill','bu_win','dinosaur'))
+    'mega_icarus_spam_skill','galaxy','bu_win','dinosaur'))
 
 
 @dataclass(frozen=True)

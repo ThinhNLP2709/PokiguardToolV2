@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -22,7 +23,7 @@ from tools import desktop_ui
 class OperationalLaunchTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.base=tempfile.TemporaryDirectory(dir=ROOT)
+        cls.base=tempfile.TemporaryDirectory(dir=reasoning_temp_root())
         cls.template=Path(cls.base.name)/'review'
         import shutil
         # Historical launch contract under explicitly mocked P14 source/build;
@@ -35,7 +36,7 @@ class OperationalLaunchTests(unittest.TestCase):
 
     def setUp(self):
         import shutil
-        self.temp=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(self.temp.cleanup)
+        self.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.dir=self.root/'review';shutil.copytree(self.template,self.dir)
         helper=legacy.OperationalLoaderTests();self.data,self.doc=helper.package(self.dir)
         d=self.data;r=self.review
@@ -164,7 +165,7 @@ class OperationalCLIArgumentsTests(unittest.TestCase):
                 desktop_ui._validate_args(desktop_ui.build_parser().parse_args(argv))
 
     def test_invalid_request_returns_before_runtime_ui_or_ordinary_preference_write(self):
-        with tempfile.TemporaryDirectory(dir=ROOT) as name:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as name:
             root=Path(name);prefs=root/'preferences.json';prefs.write_text('{}',encoding='utf-8');before=prefs.read_bytes()
             paths=Mock(frozen=False,source_root=root,preferences_file=prefs)
             args=desktop_ui.build_parser().parse_args(['--artifacts',str(root/'ui'),
@@ -183,7 +184,7 @@ class OperationalCLIArgumentsTests(unittest.TestCase):
         from pokiguard_v2.desktop_control_plane import DesktopConfig
         from pokiguard_v2.desktop_preferences import DesktopPreferenceStore
         from pokiguard_v2.desktop_ui import DesktopEventLog
-        with tempfile.TemporaryDirectory(dir=ROOT) as name:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as name:
             root=Path(name);prefs=root/'preferences.json';prefs.write_text('{}',encoding='utf-8');before=prefs.read_bytes()
             paths=Mock(frozen=False,source_root=root,preferences_file=prefs,reset_evidence=root/'reset',farm_runs=root/'runs',data_root=root)
             gate=SimpleNamespace(config=DesktopConfig(boss_id='1289',target_completed_matches=3,max_match_attempts=3))
@@ -217,7 +218,7 @@ class OperationalDraftTests(unittest.TestCase):
         import shutil
         from tools.prepare_operational_pilot import prepare_draft
         old=ROOT/'docs/phase5/artifacts/5d1_calibration_review_p13_v1'
-        with tempfile.TemporaryDirectory(dir=ROOT) as name:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as name:
             directory=Path(name);review=directory/'review'
             shutil.copytree(old/'review_final',review,ignore=shutil.ignore_patterns('qualification','selector_allowance.json','readiness.json'))
             q=json.loads((old/'qualification_final/qualification.json').read_text(encoding='utf-8'))

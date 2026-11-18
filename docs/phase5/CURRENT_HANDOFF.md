@@ -1,4 +1,57 @@
-# Bàn giao hiện tại — UI suy luận Demon Farm ăn Khiên
+# Bàn giao suy luận — source hiện tại và UI lịch sử
+
+**18/11/2026 — Offline mới nhất: source450abb97… sửa định giá Hút Mana/Nộ.**
+Audit13 khoảng B17 phát hiện adviser chỉ xét Mana dù raw STEAL có cả POWER.
+Shared tactics giờ xét từng Mana/Nộ, max-single-resource, thiếu số dư→unknown;
+không đổi BASIC/input/PASS/skill guard. Summary thêm nguồn giới hạn. Paired
+613 replay/83 đổi,tất cả swap→swap hợp lệ;222/227 test PASS,5 lỗi fixture cũ
+tái hiện trên tactics trước sửa.0 live/train/build. Sourceb1b7 đã live
+BASIC1+R1 theo mốc dưới **không** là live của450a; không rebind profile cũ.
+[Báo cáo và việc còn mở](B17_REPLY_DRAIN_REVIEW_20261118.md).
+
+**18/11/2026 — Mốc mới nhất: B17 boss before/after + R1 đã đóng.**
+Sourceb1b718fb… chỉ thêm optional board/state logging và offline normalizer,
+246 test PASS. Priest131/DemonShield: thêm1 BASIC8 lượt+1 R8 lượt,2 WIN
+STRONG/confirm/return,0 safe stop/recovery/PASS. Có13 khoảng boss với bàn
+trước/sau thực. R8 decision/24 ROOT-FRESH-FINAL hợp lệ;5 override thực gửi
+(4 ACK+1 terminal),49 diagnostic0 loss,worker1/1 reaped. Profile mới dùng7
+timing samples BASIC cùng source/B17/host; không rebind B16/95288. Các cap
+đóng, tổng nhóm6 trận (5 BASIC+1 R),không tự restart hoặc tăng cap. Game
+Priest/room911927, toolPID15904 stopped1/1. Chưa fit/build/skill;2 trận mới
+khác board, không kết luận R nhanh hơn. [Báo cáo](B17_BOSS_BOARD_AND_REASONING_20261118.md).
+
+**18/11/2026 — B17 Priest/Demon BASIC CLOSED:** source hiện tại95288bff…
+giữ nguyên trong4 trận mới (1 thăm dò+3 tiếp theo),4 WIN STRONG/confirm/return,
+28 lượt ta,24 ACK+4 terminal,0 PASS/safe stop/technical recovery.51 outcome,
+166 effect;28 op của ta khớp nước gửi,21 op trong batch boss;22 STEAL đã có
+POWER/MANA.17 observation Demon/10 usable nhưng0 calibration-eligible.
+Game ở Priest131/room911927, tool dừng3/3. Cap4 đóng. Chưa REASONING B17,
+profile/skill/train/build. Acc/boss/pet mỗi nhóm giữ riêng; full gear và
+boss pre-board còn UNKNOWN. [Báo cáo](B17_PRIEST_OUTCOME_LIVE_20261118.md).
+
+**Mốc offline trước live B17:** source923813c6… thêm
+optional evidence stealType/ops SWAP, exporter observation chung và test.
+137 batch/397 effect đã chuẩn hóa;186 test PASS;35 observation Demon cũ
+giống hệt.11/11 power mismatch có pattern chạm trần. Chưa fit model,
+đổi gameplay hoặc build/live. [Báo cáo](COMMON_ACTION_OUTCOMES_20261118.md).
+Learned outcome/value/ranker đã xếp sau việc cũ. Skill binding/damage/heal
+và boss action/refill còn cần dữ liệu có nguồn; không dùng WIN làm nhãn
+tối ưu cho mọi nước. [Backlog hiện tại](RESEARCH_BACKLOG_20261118.md).
+
+**Mốc live trước đó:** source9b4a2109… đã qua live có giới hạn
+3 BASIC +3 REASONING trên B16/Lion Star105/Demon Aegis ăn Khiên,6WIN. Hai
+nhánh bounded-unknown đã thực sự chạy,21 quyết định/63 receipt hợp lệ,
+129 record không mất,3worker reaped. Chưa build source này hoặc suy ra
+nghiệm thu mọi style/pet/ZIP. [Live report](BOUNDED_FUTURE_NATIVE_20261118.md).
+
+Hướng hiện tại sau khi rà temp: nối tiếp nhánh dữ liệu effect/damage còn mở,
+giữ model học trong backlog; không làm lại tactical planner đã áp dụng.
+[Backlog và thứ tự](RESEARCH_BACKLOG_20261118.md), [STATUS](STATUS.md).
+Các cap live đã đóng; dữ liệu thiếu ở skill/boss action chưa được bù bằng
+giả định. Phần dưới giữ nguyên danh tính bàn giao UI01/11, là lịch sử của
+checkpoint cũ, không phải trạng thái source hoặc lệnh chạy hiện tại.
+
+## Bàn giao UI01/11/2026 — lịch sử
 
 **Checkpoint1.3.0 ngày01/11/2026:** [báo cáo và artifact](../v1.3.0_release_report.md).
 Scope hiện tại giữ nguyên; [AI chung và mọi targetDemon](NEXT_REASONING_SCOPE.md)

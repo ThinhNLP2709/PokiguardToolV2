@@ -25,6 +25,10 @@ from pokiguard_v2.reasoning_common_models import DEMON_TARGETS,DEMON_DECLARATION
 from pokiguard_v2.pet_configuration import GameplayConfig
 
 CHECKPOINT='e3e3dee90dd09ecd51961c06d0b390dbb04994b5'
+# Reviewed read-compatibility migration only. This is not a native timing
+# profile/source pin and grants no attempts or action-family authority.
+LEGACY_MEGA_DEFAULT_REVIEW_SHA='de85959c3d9b7d07eab624352b5793532ba1f7c473cbddb33914023832108fd9'
+LEGACY_MEGA_DEFAULT_REVIEW_VALUE='hp_below_30'
 
 
 def sha(raw):return hashlib.sha256(raw).hexdigest()
@@ -46,8 +50,19 @@ def semantic_trace(result):
 
 def calibration_projection():
     name='src/pokiguard_v2/reasoning_calibration.py'
-    previous=ast.parse(subprocess.check_output(['git','show',CHECKPOINT+':'+name],cwd=ROOT))
-    current=ast.parse((ROOT/name).read_bytes())
+    return calibration_ast_projection(subprocess.check_output(['git','show',CHECKPOINT+':'+name],cwd=ROOT),
+        (ROOT/name).read_bytes())
+
+
+def calibration_ast_projection(previous_raw,current_raw):
+    """Exact historical projection plus one hash-pinned default-field migration.
+
+    The legacy default must remain HP<30%. No function is skipped wholesale; after the
+    two reviewed branches are removed the complete AST must still be equal.
+    Unknown edits to the migrated file fail even if its branch looks similar.
+    """
+    previous=ast.parse(previous_raw)
+    current=ast.parse(current_raw)
     constants=[n for n in current.body if isinstance(n,ast.Assign) and any(
         isinstance(t,ast.Name) and t.id=='COMMON_DEMON_CONTROL_PROTOCOL' for t in n.targets)]
     assert len(constants)==1
@@ -56,6 +71,16 @@ def calibration_projection():
     branch=function.body[0]
     assert isinstance(branch,ast.If) and ast.unparse(branch.test)=='profile_protocol == COMMON_DEMON_CONTROL_PROTOCOL'
     function.body.remove(branch)
+    decoder=next(n for n in current.body if isinstance(n,ast.FunctionDef) and n.name=='decode_config')
+    migration=ast.parse("if type(raw) is dict and 'mega_self_protection' not in raw:\n"
+        "    raw = dict(raw, mega_self_protection=default.mega_self_protection.value)\n").body[0]
+    matches=[n for n in decoder.body if ast.dump(n,include_attributes=False)==ast.dump(migration,include_attributes=False)]
+    if matches:
+        from pokiguard_v2.desktop_control_plane import DesktopConfig
+        if (len(matches)!=1 or sha(current_raw)!=LEGACY_MEGA_DEFAULT_REVIEW_SHA
+                or DesktopConfig().mega_self_protection.value!=LEGACY_MEGA_DEFAULT_REVIEW_VALUE):
+            return False
+        decoder.body.remove(matches[0])
     return ast.dump(previous,include_attributes=False)==ast.dump(current,include_attributes=False)
 
 

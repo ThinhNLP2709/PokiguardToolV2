@@ -1,5 +1,131 @@
 # Phase 5 — Status
 
+**18/11/2026 — Offline reply audit / Hút Nộ source450abb97… complete.**
+13 native interval/3 cơ hội kiếm đều chọn known-max; giới hạn refill vẫn có.
+Sửa shared tactics bỏ sót POWER khi chấm Hút; max-single-resource/unknown,
+không thêm quyền input hoặc safe-stop.613 paired replay,83 đổi hợp lệ,
+node cap4→2;222 PASS/5 lỗi historical fixture được tái hiện trước sửa.
+0 native attempt/train/build; source450a và profile/liveb1b7 tách rõ.
+[Report](B17_REPLY_DRAIN_REVIEW_20261118.md).
+
+**18/11/2026 — B17 optional board evidence và Suy luận sourceb1b718fb…:**
+246 test liên quan PASS; thêm1 BASIC+1 R trên Priest131/DemonShield,2WIN
+STRONG/confirm/return,0 safe stop/recovery/PASS.13 khoảng boss có before/after
+provider-state thực (B7/R6,không complete coverage). R8 decision/24 receipt
+hợp lệ,5 override thực gửi,49 record0 loss,worker1 reaped. Timing7 sample mới
+cùng source/game/host,0 old-profile rebind. Tổng nhómB17 Priest6 trận đều
+WIN;cap4+1+1 đã đóng, tool stopped1/1. Chưa model/skill/build hoặc hiệu quả
+thống kê. [Báo cáo và closures](B17_BOSS_BOARD_AND_REASONING_20261118.md).
+
+**18/11/2026 — B17 Priest131/Demon Shield: native BASIC4 đóng trong scope.**
+1 B1+3 B2 đều WIN STRONG/nhận thưởng/về đúng phòng,28 lượt ta/24 ACK+4
+terminal,0 PASS/safe stop/technical abort/recovery. Source95288bff… giữ nguyên.
+51 batch/166 effect;28 local ops khớp đúng nước gửi,21 boss ops được giữ,
+STEAL14 POWER+8 MANA.17 Demon observations/10 usable/0 calibration-eligible.
+Main prefs giữ nguyên, tool dừng3/3.0 REASONING/skill/train/build. Chưa có
+boss pre-board hoặc model damage đủ nguồn. Nhóm acc/boss/pet tách riêng.
+[Native report và cap4 closure](B17_PRIEST_OUTCOME_LIVE_20261118.md).
+
+**18/11/2026 — Việc cũ: common outcome observation offline complete.**
+Exporter chung đọc137 batch/397 effect từ12 trận B16 đã đóng.62 batch có
+SWAP sent/ACK,12 thiếu ACK,63 boss chưa bind.35 output Demon cũ giữ nguyên;
+11/11 power mismatch có pattern chạm trần, không nới calibration eligibility.
+Reverse B16 xác minh ops.data SWAP; optional capture thêm ops và stealType,
+không thêm RPM/input hoặc đổi solver.186 test liên quan PASS. Source mới
+923813c6… chưa live/build, proof9b4 giữ scope cũ. Learned outcome/value/ranker
+QUEUED_AFTER_OLD_WORK; skill binding/damage/heal/boss policy vẫn thiếu dữ
+liệu, chưa training. [Báo cáo và artifact](COMMON_ACTION_OUTCOMES_20261118.md).
+
+**18/11/2026 — Đã rà backlog temp trước khi mở nhánh model học.**
+Setup/reply-risk/bounded-future và snapshot collector đã áp dụng. Còn dữ
+liệu effect chung, predictor damage/heal, nguồn nước boss/refill và learned
+value/ranker. Đề xuất mới nối tiếp nhánh damage/R2 cũ; ưu tiên dữ liệu chung.
+Audit2 cohort B16:12 trận,137 outcome duy nhất,16 quan sát usable nhưng0
+calibration-eligible;63 batch boss/0tọa độ,0skill dispatch.605 input replay
+không phải nhãn tối ưu. Galaxy hiện dùng nhánh chiến thuật riêng G1/G2/G3.
+Source9b4a2109… không đổi; chưa train/live/build mới hoặc mở lại cap cũ.
+[Backlog đã đối chiếu với code và bằng chứng](RESEARCH_BACKLOG_20261118.md).
+
+**18/11/2026 — Native bounded-future B16 CLOSED PASS trong cohort hiện tại.**
+User giao tự live; cap mới3B+3R đã dùng hết,6WIN/confirm/return.21 quyết định
+R có đủ63 ROOT/FRESH/FINAL hợp lệ;15 override gửi đúng gồm12 ACK và3 terminal
+exclusions. Hai ca bounded-unknown đã chạy thật;129 record không mất,3 worker
+reaped.0 technical abort/recovery/safe stop/PASS;BASIC có1 read race đã loại
+mẫu và đọc lại, R0. Source9b4a2109… giữ nguyên, profile riêng theo16 BASIC ACK,
+14 gate fresh-current-source PASS; không sửa3 lỗi ancestry lịch sử hoặc build.
+Không kết luận efficacy từ19B/21R lượt trên các bàn random.
+[Báo cáo và receipt](BOUNDED_FUTURE_NATIVE_20261118.md).
+
+**18/11/2026 — Adviser giữ phần nhìn trước đã biết: offline complete.**
+Nhánh thiếu model dùng khoảng H[0;0,5], không cộng cơ hội refill thành điểm
+chắc chắn; giữ BASIC có upside chưa biết. Toàn bộ future thiếu model hoặc
+chạm budget vẫn dùng một bước. Paired584:584 hợp lệ,583 giữ nước,1 Mega đổi
+sang6 Kiếm + setup trong ấn vững qua9 phản hồi đã biết. Coverage559→571,
+node không tăng;18 ca B16 giữ nước,coverage16→18.140test:137PASS,3 lỗi
+projection lịch sử tái hiện cả với planner trước sửa; chưa nới gate/pin.
+Source9b4a2109… cần native mới; cap6 và proof836a5e09… bên dưới vẫn đóng,
+chưa build/rebind/profile hoặc fit damage.
+[Báo cáo và bằng chứng](ADVISER_BOUNDED_FUTURE_20261118.md).
+
+**18/11/2026 — Native adviser B16 CLOSED PASS trong cohort hiện tại.**
+3 BASIC + 3 REASONING trên Solo Lion Star105, Demon Aegis thường ăn Khiên,
+đều WIN/confirm/return. 11 nước khác BASIC được gửi đúng và có ACK;18 snapshot
+nguyên vẹn,111 record không mất,3 worker đã reap. Không technical abort,
+recovery hoặc safe stop. Source836a5e09… và cấu hình chính giữ nguyên.
+23 so với18 lượt chỉ mô tả mẫu bàn random; chưa chứng minh efficacy/damage.
+Cap6 đã hết, tool dừng đúng target trong phòng boss; chưa build hoặc nghiệm
+thu ZIP/mọi lối chơi. [Báo cáo và receipt](ADVISER_NATIVE_20261118.md).
+
+**18/11/2026 — Chốt offline adviser khi game tắt; cần native mới.**
+Thêm khoảng rủi ro giữa Sword-first và phản hồi xấu nhất trên ô đã biết;
+probe2736 root thấy10 nhánh ít Kiếm nhưng proxy rủi ro lớn hơn. Replay566
+tình huống giữ lựa chọn hợp lệ, không giảm coverage nhìn trước, chưa chứng
+minh tăng win. Thêm snapshot đúng đầu vào adviser qua writer nền có sẵn;
+mất record riêng không dừng quyết định.154/154 test liên quan PASS. Sửa
+projection lịch sử bằng đúng migration/SHA đã review và default bảo vệ30%;
+không sửa runtime decoder, timing proof, cap hoặc tự cấp native authority.
+Chưa build/live/rebind hoặc fit damage. [Báo cáo và điểm dừng](ADVISER_REPLY_RISK_20261118.md).
+
+**18/11/2026 — Chuẩn hóa hai quan sát damage không terminal.**
+Lion Star lượt9/11 có4/6 Kiếm thật nhưng5/7 Kiếm hiệu dụng; cả6 loại viên
+trong first wave khớp destroyed tags hiệu dụng. Tách DAMAGE164256/227493
+khỏi BLOCK870/3451; Nộ được cộng trước damage. Mẫu Lieyun kết trận bị censor,
+không tạo công thức từ tỷ số hai mẫu.85 kiểm tra liên quan PASS; chưa đổi
+scorer hoặc quyền input. [Bằng chứng và phạm vi](COMBAT_NORMALIZATION_20261118.md).
+
+**18/11/2026 — Đường thu combatOutcome đã có kiểm thực tế, chưa fit damage.**
+Lieyun77 BASIC1 và Lion Star105 BASIC1 đều WIN/confirm/return, cap riêng đã
+dùng hết. Lion Star8 nước thu14 batch/37 steps;2 mẫu DAMAGE không terminal có
+ACK và khớp giảm HP164256/227493, BLOCK riêng870/3451, fullPowertrue.
+Thiếu callback outcome đòn cuối, dmgSrc và tọa độ wire; không suy công thức
+từ2 điểm. Việc đối chiếu destroyed tags được bổ sung ở mốc chuẩn hóa trên.
+Tiếp tục có thể phân tích
+offline; chưa đổi scorer/build/profile hoặc mở thêm trận.
+[Bằng chứng và giới hạn](COMBAT_OUTCOME_EVIDENCE_20261117.md).
+
+**17/11/2026 — Chuẩn bị dữ liệu damage/skill: offline complete, chưa fit model.**
+Audit401 trận có1034 quyết định/626SWAP ACK/6skill dispatch nhưng không có
+server steps đủ nguồn. Source bổ sung ghi combatOutcome từ JSON callback đã
+đọc sẵn, gồm skill không board như Galaxy; không thêm đọc game/input. Có cap,
+identity binding và lỗi diagnostics không dừng controller;226 test PASS.
+Scorer/version giữ nguyên, chưa build/live; cần record thật trước khi fit.
+[Báo cáo và giới hạn](COMBAT_OUTCOME_EVIDENCE_20261117.md).
+
+**17/11/2026 — Hoàn tất nâng adviser offline: độ vững của nước chuẩn bị.**
+Điểm chuẩn bị xét độ nhạy với phản hồi ít Kiếm hơn bằng một khoảng, không
+giả định boss chắc chắn phá setup. 205 snapshot đối chiếu: 1 ca đổi từ chờ
+setup mong manh sang ăn 3 Kiếm, 204 giữ lựa chọn; 205 hợp lệ, mức hoàn tất
+nhìn trước không giảm. Chỉ planner thay đổi; BASIC/PASS/input/QTE/farm giữ
+nguyên, chưa build/live hay đổi profile. Có giới hạn raw log cũ không còn,
+không dùng replay làm chứng cứ thắng/thua hoặc hiệu chuẩn mới.
+[Báo cáo và ranh giới kiểm chứng](ADVISER_SETUP_SENSITIVITY_20261117.md).
+
+**07/11/2026 — Mega Kết Ấn đã triển khai offline sau mốc `4a681359`.**
+B15 nhận hình Icarus hoặc T-Rex từ thẻ hiện tại. BASIC và adviser dùng hình
+đó để đếm viên và đánh giá nước chuẩn bị. Executor kiểm lại loại thẻ ngay
+trước khi bấm. Tên trong Tùy chọn là Mega Kết Ấn và cấu hình lưu trước đây
+vẫn đọc được. Bước tiếp theo là kiểm trong trận B15.
+
 **07/11/2026 — Mega Kết Ấn: chốt nghiên cứu và thiết kế theo lựa chọn user.**
 B15 xác minh Icarus/T-Rex chung seal dispatcher, khác hình ấn 30 ô và lấy
 giá Mana/Nộ theo từng thẻ. Đã ghi thiết kế registry/đếm ấn/UI tương thích,

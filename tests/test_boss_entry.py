@@ -19,6 +19,7 @@ from pokiguard_v2.boss_entry_ui import (
     locate_chinh_phuc_attack_card_toggle,
     locate_chinh_phuc_start,
     locate_detached_chinh_phuc_room_shell_exit,
+    locate_owned_chinh_phuc_room_exit,
 )
 from pokiguard_v2.state import CombatSessionKey
 from pokiguard_v2.foreground_lease_transport import LeaseStatus
@@ -891,6 +892,12 @@ class BossEntryButtonLocatorTests(unittest.TestCase):
         )
         self.assertFalse(rejected.found)
         self.assertEqual(rejected.reason, "room_shell_start_control_missing")
+        self.assertTrue(locate_owned_chinh_phuc_room_exit(
+            bytes(map_without_room_control), width, height, expected_rect=(0.06, 0.025, 0.14, 0.135),
+        ).found)
+        self.assertFalse(locate_owned_chinh_phuc_room_exit(
+            bytes(map_without_room_control), width, height, expected_rect=(0.90, 0.025, 0.98, 0.135),
+        ).found)
 
     def test_current_detached_room_shell_accepts_red_ready_and_top_right_exit(self) -> None:
         width, height = 1000, 500

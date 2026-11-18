@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from collections import deque
 import hashlib
 import json
 import struct
@@ -10,6 +11,9 @@ import threading
 import time
 from typing import Any
 
+from pokiguard_v2.combat_outcome_evidence import (
+    CombatOutcomeCapture, MAX_RETAINED_CAPTURES, RESPONSE_TYPES, project_combat_outcome,
+)
 from pokiguard_v2.dispatcher_chat_roots import DispatcherChatRootReader
 from pokiguard_v2.il2cpp_external import (
     BOARD_WS_APPLIER_TYPE_INFO_RVA,
@@ -27,7 +31,9 @@ from pokiguard_v2.il2cpp_layout import (
     read_combat_batch,
     read_il2cpp_string,
 )
-from pokiguard_v2.live_state import board_state_hash, dto_rejection_reasons
+from pokiguard_v2.live_state import (
+    board_state_hash, dto_rejection_reasons, runtime_row_to_screen_row, to_board_state,
+)
 from pokiguard_v2.memory_board_provider import (
     read_board_ws_candidate,
     read_pending_queue,
@@ -201,6 +207,40 @@ def parse_skill_result_envelope_json(
 
 
 @dataclass(frozen=True)
+class MoveResponseReplay:
+    """Anonymous evidence from one immutable MOVE response, never input authority."""
+
+    actor_role: str
+    screen_swap: tuple[tuple[int, int], tuple[int, int]] | None
+    wire_turn: int | None
+
+
+def _raw_move_replay(envelope: dict[str, Any]) -> MoveResponseReplay | None:
+    payload = envelope.get("matchPayload")
+    if (not isinstance(payload, dict) or envelope.get("rejectReason") not in (None, "")
+            or payload.get("rejected") is True or payload.get("success") is False
+            or payload.get("accepted") is False):
+        return None
+
+    # ParseCombatBatch uses actorUsername; currentTurnPlayer can be the next actor.
+    actor = _optional_raw_string(payload.get("actorUsername"))
+    role = "UNKNOWN"
+    if actor and actor.strip():
+        role = "BOSS" if actor == "__BOSS__" else "OTHER_ACTOR"
+
+    from_row, from_col, to_row, to_col = (
+        envelope.get(key) for key in ("fromRow", "fromCol", "toRow", "toCol")
+    )
+    swap = None
+    if (all(type(value) is int and 0 <= value < 8 for value in (from_row, from_col, to_row, to_col))
+            and abs(from_row - to_row) + abs(from_col - to_col) == 1):
+        swap = ((runtime_row_to_screen_row(from_row), from_col),
+                (runtime_row_to_screen_row(to_row), to_col))
+    turn = payload.get("turnNumber")
+    return MoveResponseReplay(role, swap, turn if type(turn) is int and turn > 0 else None)
+
+
+@dataclass(frozen=True)
 class DispatcherTapDiagnostics:
     armed_match_id: str | None
     poll_count: int
@@ -249,8 +289,13 @@ class DispatcherTransportTap:
         self._messages: dict[tuple[str, int, int | None, bytes], ServerMessage] = {}
         self._raw_boards: dict[tuple[str, int], OpeningBoardSnapshot] = {}
         self._transport_boards: dict[
-            tuple[str, int, int], tuple[str, OpeningBoardSnapshot]
+            tuple[str, int, int], tuple[str, OpeningBoardSnapshot, MoveResponseReplay | None]
         ] = {}
+        self._combat_outcomes: dict[
+            tuple[str, int, int], tuple[OpeningBoardSnapshot | ServerMessage, CombatOutcomeCapture]
+        ] = {}
+        self._pending_combat_outcomes: deque[tuple[str, CombatOutcomeCapture]] = deque()
+        self._dropped_combat_outcomes = 0
         self._runtime_batches: dict[
             tuple[str, str, int, int, str], tuple[str, CombatBatchSnapshot]
         ] = {}
@@ -293,6 +338,9 @@ class DispatcherTransportTap:
                 self._messages.clear()
                 self._raw_boards.clear()
                 self._transport_boards.clear()
+                self._combat_outcomes.clear()
+                self._pending_combat_outcomes.clear()
+                self._dropped_combat_outcomes = 0
                 self._runtime_batches.clear()
                 self._board_rejection_reasons.clear()
                 self._last_stable_at = None
@@ -332,6 +380,9 @@ class DispatcherTransportTap:
             self._messages.clear()
             self._raw_boards.clear()
             self._transport_boards.clear()
+            self._combat_outcomes.clear()
+            self._pending_combat_outcomes.clear()
+            self._dropped_combat_outcomes = 0
             self._runtime_batches.clear()
             self._board_rejection_reasons.clear()
             self._last_stable_at = None
@@ -395,10 +446,58 @@ class DispatcherTransportTap:
 
         with self._lock:
             return tuple(
-                value
-                for (owned_match, _, _), value in self._transport_boards.items()
+                (event_type, snapshot)
+                for (owned_match, _, _), (event_type, snapshot, _) in self._transport_boards.items()
                 if owned_match == match_id
             )
+
+    def move_response_replay_fields(self, snapshot: OpeningBoardSnapshot) -> dict[str, Any]:
+        """Project evidence from the exact raw board instance just offered."""
+
+        identity = (snapshot.match_id, snapshot.message_address, snapshot.board_token_address)
+        with self._lock:
+            record = self._transport_boards.get(identity)
+        if record is None or record[1] is not snapshot or record[2] is None:
+            return {}
+        board = to_board_state(snapshot.cells)
+        return dict(moveReplay={
+            "evidence": record[2],
+            "boardHash": board_state_hash(snapshot.cells),
+            "postBoard": [[(cell.gem.value, cell.multiplier) for cell in row] for row in board.cells],
+            "boardOrder": "screen_rows_top_to_bottom_columns_left_to_right",
+        })
+
+    def combat_outcome_fields(self, snapshot: OpeningBoardSnapshot) -> dict[str, Any]:
+        """Return optional evidence for the exact offered board; never read memory."""
+        identity = (snapshot.match_id, snapshot.message_address, snapshot.board_token_address)
+        with self._lock:
+            board_record = self._transport_boards.get(identity)
+            record = self._combat_outcomes.get(identity)
+            capped = len(self._combat_outcomes) >= MAX_RETAINED_CAPTURES
+        if board_record is None or board_record[1] is not snapshot:
+            return {}
+        if record is None or record[0] is not snapshot:
+            if not capped:
+                return {}
+            capture = CombatOutcomeCapture('UNAVAILABLE', 'CAPTURE_LIMIT_REACHED')
+        else:
+            capture = record[1]
+        return dict(combatOutcome=dict(capture.to_dict(),
+            post_board_hash=board_state_hash(snapshot.cells)))
+
+    def drain_combat_outcomes(self, match_id: str) -> tuple[dict[str, Any], ...]:
+        """Drain at most two boardless JSON witnesses, not action acknowledgments."""
+        captures = []
+        with self._lock:
+            if self._dropped_combat_outcomes:
+                captures.append(CombatOutcomeCapture('UNAVAILABLE', 'CAPTURE_QUEUE_OR_RECORD_LIMIT_REACHED'))
+                self._dropped_combat_outcomes = 0
+            while self._pending_combat_outcomes and len(captures) < 2:
+                if self._pending_combat_outcomes[0][0] != match_id:
+                    break
+                match, capture = self._pending_combat_outcomes.popleft()
+                captures.append(capture)
+        return tuple(capture.to_dict() for capture in captures)
 
     def configure_runtime_owners(
         self,
@@ -625,7 +724,7 @@ class DispatcherTransportTap:
                             root.message_address,
                             root.json_address,
                         )
-                    ] = ("MATCH_START", snapshot)
+                    ] = ("MATCH_START", snapshot, None)
                     self._match_id = discovered_match_id
                     self._discover_excluding_match_id = None
                     self._discover_new_match = False
@@ -662,7 +761,9 @@ class DispatcherTransportTap:
                 raw_json = None
                 raw_message = None
                 raw_event_type = None
+                raw_envelope = None
                 snapshot = None
+                move_replay = None
                 raw_board_rejection: str | None = None
                 if root.json_address is not None:
                     try:
@@ -719,6 +820,8 @@ class DispatcherTransportTap:
                                 message_address=root.message_address,
                                 json_address=root.json_address,
                             )
+                            if raw_event_type == "MATCH_MOVE_RES":
+                                move_replay = _raw_move_replay(raw_envelope)
                             with self._lock:
                                 self._decoded_raw_boards += 1
                     except (
@@ -874,6 +977,33 @@ class DispatcherTransportTap:
                     with self._lock:
                         if len(self._board_rejection_reasons) < 16:
                             self._board_rejection_reasons.append(rejection)
+                # Diagnostics reuse the already parsed immutable JSON. They add
+                # no target reads and cannot reject a valid transport board.
+                outcome = None
+                outcome_identity = (match_id, root.message_address, root.json_address)
+                outcome_witness = snapshot or raw_message
+                if (outcome_witness is not None and type(raw_envelope) is dict
+                        and raw_envelope.get('type') in RESPONSE_TYPES):
+                    with self._lock:
+                        room_for_outcome = (outcome_identity in self._combat_outcomes
+                            or len(self._combat_outcomes) < MAX_RETAINED_CAPTURES)
+                        if not room_for_outcome:
+                            self._dropped_combat_outcomes += 1
+                    if room_for_outcome:
+                        try:
+                            outcome = project_combat_outcome(raw_envelope, expected_match_id=match_id,
+                                expected_sequence=(snapshot.sequence if snapshot is not None else raw_message.server_sequence),
+                                raw_sha256=raw_fingerprint.hex(), board_attested=snapshot is not None)
+                        except Exception as exc:
+                            outcome = CombatOutcomeCapture('INVALID', 'PROJECTION_' + type(exc).__name__)
+                if outcome is not None:
+                    with self._lock:
+                        self._combat_outcomes[outcome_identity] = (outcome_witness, outcome)
+                        if snapshot is None:
+                            if len(self._pending_combat_outcomes) < MAX_RETAINED_CAPTURES:
+                                self._pending_combat_outcomes.append((match_id, outcome))
+                            else:
+                                self._dropped_combat_outcomes += 1
                 # The immutable envelope belongs to this exact closure. Prefer
                 # its skill identity when the DTO has already been cleared or
                 # its allocation reused before the external sample.
@@ -884,7 +1014,7 @@ class DispatcherTransportTap:
                             self._seen.add(seen_identity)
                             self._transport_boards[
                                 (match_id, root.message_address, root.json_address)
-                            ] = (raw_event_type, snapshot)
+                            ] = (raw_event_type, snapshot, move_replay)
                     continue
                 with self._lock:
                     self._seen.add(seen_identity)
@@ -898,7 +1028,7 @@ class DispatcherTransportTap:
                     if snapshot is not None and raw_event_type is not None:
                         self._transport_boards[
                             (match_id, root.message_address, root.json_address)
-                        ] = (raw_event_type, snapshot)
+                        ] = (raw_event_type, snapshot, move_replay)
         except (ExternalReadError, OSError, LayoutValidationError) as exc:
             with self._lock:
                 self._poll_count += 1

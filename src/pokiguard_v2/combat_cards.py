@@ -372,9 +372,11 @@ def read_card_data(memory: MemoryReader, card_data: int) -> CardDataState:
     damage_multiplier = struct.unpack_from(
         "<f", data, CARD_DATA_DAMAGE_MULTIPLIER_OFFSET
     )[0]
-    mana_cost, power_cost, cooldown = struct.unpack_from(
-        "<iii", data, CARD_DATA_MANA_COST_OFFSET
+    mana_cost, power_cost = struct.unpack_from(
+        "<ii", data, CARD_DATA_MANA_COST_OFFSET
     )
+    # petElement (+0x88) and petId (+0x90) sit between costs and cooldown.
+    cooldown = struct.unpack_from("<i", data, CARD_DATA_COOLDOWN_TURNS_OFFSET)[0]
     need_perfection = _bool(
         data, CARD_DATA_NEED_PERFECTION_OFFSET, "CardData.needPerfection"
     )

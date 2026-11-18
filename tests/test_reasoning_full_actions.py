@@ -98,17 +98,17 @@ def native_guard_fixture():
 
 
 class FullActionsTests(unittest.TestCase):
-    def test_observed_no_safe_board_worker_proposal_falls_back_through_real_native_guard(self):
+    def test_observed_no_safe_board_worker_proposal_passes_the_native_risk_guard(self):
         from pokiguard_v2.reasoning_selection import GuardedSelectionAdapter
         s,c,b,selected,guard,a,packet,offer=native_guard_fixture()
         self.assertEqual(b.move.first,(2,4));self.assertEqual(b.move.second,(2,5))
         self.assertEqual(offer.reply.proposal.move,selected.move)
-        self.assertFalse(guard(b));self.assertTrue(guard(selected))
+        self.assertFalse(guard(b));self.assertFalse(guard(selected))
         adapter=GuardedSelectionAdapter(offer,diagnostics=MemorySink().buffer,enabled=True,pilot_authority=a)
         adapter.action_context=packet;adapter.native_policy_guard=guard
         result=select_safely(adapter,s,b,c,now_ns=time.perf_counter_ns(),input_allowed=True,context=a.context)
-        self.assertIs(result.decision,b);self.assertIsNone(result.receipt)
-        self.assertEqual(result.reason,'D2_NATIVE_POLICY_GUARD_RETAIN_BASIC')
+        self.assertEqual(result.decision.move, selected.move);self.assertIs(result.receipt, offer)
+        self.assertEqual(result.reason,'VALID_COMPLETED_R1')
         self.assertFalse(guard(result.decision));self.assertFalse(adapter.disabled)
         self.assertEqual(adapter.counts[result.reason],1)
 
@@ -148,13 +148,14 @@ class FullActionsTests(unittest.TestCase):
         self.assertIs(result.decision,b);self.assertIsNone(result.receipt)
         self.assertTrue(adapter.disabled);self.assertEqual(result.reason,'SELECTOR_EXCEPTION')
 
-    def test_native_no_safe_guard_itself_is_unchanged_after_remediation(self):
-        import ast
-        before=ROOT/'docs/phase5/artifacts/5d2_skill_rush_v1/reasoning_remediation_live_20261017_123439/offline_guard_remediation/before/tools/basic_auto_bot.py'
-        def guard_ast(path):
-            return ast.dump(next(x for x in ast.parse(path.read_text(encoding='utf-8-sig')).body
-                if isinstance(x,ast.FunctionDef) and x.name=='_must_pause_for_no_safe_move'))
-        self.assertEqual(guard_ast(before),guard_ast(ROOT/'tools/basic_auto_bot.py'))
+    def test_native_guard_allows_selected_legal_moves_when_every_move_is_risky(self):
+        from tools.basic_auto_bot import _must_pause_for_no_safe_move
+        _state, _config, baseline, selected, *_ = native_guard_fixture()
+        for decision in (baseline, selected):
+            self.assertEqual(decision.action, PolicyAction.SWAP)
+            self.assertFalse(_must_pause_for_no_safe_move(
+                decision, legal_move_count=10, safe_move_count=0, first_local_turn=False,
+            ))
 
     def test_existing_controller_capability_shape_compares_skill_without_inventing_pet_id(self):
         s,c,b,cap,h,a,packet,snap=full_fixture(native_source=True)

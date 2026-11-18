@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import unittest
 from unittest.mock import patch
 
@@ -18,7 +19,7 @@ COMPLETION = ROOT/'docs/phase5/artifacts/5e1_requalification_1749_20261021/compl
 class CurrentE1Tests(unittest.TestCase):
     def setUp(self):
         self.enterContext(historical_config_shape())
-        self.temp = tempfile.TemporaryDirectory(dir=ROOT/'docs/phase5/artifacts')
+        self.temp = tempfile.TemporaryDirectory(dir=reasoning_temp_root())
         self.addCleanup(self.temp.cleanup)
         self.out = Path(self.temp.name)
         self.cal = copy_native(self.out, COMPLETION)

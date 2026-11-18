@@ -30,7 +30,12 @@ from pokiguard_v2.app_paths import current_app_paths  # noqa: E402
 from pokiguard_v2.input_randomization import add_randomization_argument,randomization_from_args  # noqa: E402
 from pokiguard_v2.board_diagnostics import analyze_game_state  # noqa: E402
 from pokiguard_v2.boss_entry import BossLobbyState, FarmTarget  # noqa: E402
-from pokiguard_v2.boss_lobby_runtime import _unknown_lifecycle_has_no_positive_combat  # noqa: E402
+from pokiguard_v2.boss_lobby_runtime import (  # noqa: E402
+    ROOM_COOP_V2_REFS_OFFSET,
+    SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET,
+    SELECTABLE_INTERACTABLE_OFFSET,
+    _unknown_lifecycle_has_no_positive_combat,
+)
 from pokiguard_v2.combat_lifecycle import CombatLifecycleState  # noqa: E402
 from pokiguard_v2.chinh_phuc_map import (  # noqa: E402
     discover_chinh_phuc_island_target,
@@ -38,6 +43,7 @@ from pokiguard_v2.chinh_phuc_map import (  # noqa: E402
 )
 from pokiguard_v2.boss_entry_ui import (  # noqa: E402
     locate_detached_chinh_phuc_room_shell_exit,
+    locate_owned_chinh_phuc_room_exit,
 )
 from pokiguard_v2.hub_navigation import (  # noqa: E402
     HubChinhPhucControl,
@@ -642,6 +648,7 @@ def _resume_decision(
         max_match_attempts=limits.max_match_attempts,
         gameplay_config=gameplay_config_from_args(args),
         input_delivery_mode=input_delivery_config.mode,
+        checkpoint_path=args.resume,
     )
     return payload, decision
 
@@ -679,6 +686,36 @@ def _entry_preflight_runtime_changed_before_start(
         and int(result.get("entryClicks") or 0) == 0
         and int(result.get("entryRetryClicks") or 0) == 0
         and int(result.get("gameplayInputs") or 0) == 0
+    )
+
+
+def _stalled_entry_room_id(result: dict[str, Any] | None) -> str | None:
+    if (
+        result is not None
+        and result.get("status") == "STOPPED"
+        and result.get("stopReason") == "ENTRY_START_CONTROL_UNVERIFIED"
+        and isinstance(room_id := result.get("stalledRoomId"), str)
+        and room_id
+        and all(type(result.get(key)) is int and result[key] == 0
+                for key in ("entryClicks", "entryRetryClicks", "gameplayInputs"))
+    ):
+        return room_id
+    return None
+
+
+def _confirmed_solo_postmatch(run: FarmRun) -> bool:
+    return bool(
+        run.current_session is None
+        and run.snapshot().gameplay_config.game_mode is GameMode.SOLO
+        and run.attempts
+        and run.attempts[-1].normal_postmatch
+        and run.attempts[-1].end_timestamp is not None
+        and any(
+            record.domain is FarmInputDomain.POSTMATCH_CONFIRM
+            and record.attempt_index == run.match_attempts
+            and record.sent
+            for record in reversed(run.input_records)
+        )
     )
 
 
@@ -769,6 +806,7 @@ def _run_entry(
     test_only_recovery: bool = False,
     pinned_input_session: PinnedForegroundMouseSession | None = None,
     outside_modal_handler: Any = None,
+    recover_stalled_room: bool = False,
 ) -> tuple[
     OpeningEvidence | ActiveCombatHandoffEvidence | None,
     dict[str, Any] | None,
@@ -801,6 +839,7 @@ def _run_entry(
         ),
         pinned_input_session=pinned_input_session,
         outside_modal_handler=outside_modal_handler,
+        recover_stalled_room=recover_stalled_room,
         emergency_stop_requested=(
             pinned_input_session.stop_requested
             if pinned_input_session is not None
@@ -816,7 +855,7 @@ def _run_entry(
         run.safe_stop(FarmRunStopReason.OPENING_INVARIANT_FAILED, detail="entry summary missing")
         return None, None
     if result.get("status") != "PASS":
-        if _entry_preflight_runtime_changed_before_start(result):
+        if _entry_preflight_runtime_changed_before_start(result) or _stalled_entry_room_id(result):
             # BossEntry rejected the stale room before reserving/sending Start.
             # The caller owns the bounded lobby/map re-router; do not turn this
             # zero-input navigation race into a terminal farm failure here.
@@ -1802,6 +1841,65 @@ def _runtime_room_start_rect(
     return geometry.viewport_rect if geometry.active else None
 
 
+def _owned_room_key(lobby: Any, pet_id: int, current_session: Any) -> tuple[Any, ...] | None:
+    room = getattr(lobby, "chinh_phuc", None)
+    lifecycle = getattr(lobby, "combat_lifecycle", None)
+    if (
+        current_session is not None
+        or getattr(lobby, "state", None) is not BossLobbyState.BOSS_LOBBY
+        or lobby.branch != "CHINH_PHUC_ROOM"
+        or lifecycle is None
+        or lifecycle.state is not CombatLifecycleState.LOBBY
+        or lifecycle.signals.read_errors
+        or room is None
+        or not room.clean
+        or room.is_host is not True
+        or room.is_opening_flow is not False
+        or room.current_room_type != "ChinhPhuc"
+        or room.enemy_pet_id != pet_id
+    ):
+        return None
+    key = (
+        room.current_room_id, room.owner_username, room.manager_room,
+        room.room_coop_v2_view, room.room_coop_v2_refs, room.button_start,
+    )
+    return key if all(key) else None
+
+
+def _runtime_owned_room_back(process: Any, room: Any) -> Any:
+    """Read the active Back button shared by ManagerRoom and the live V2 view."""
+    try:
+        reader = NativeCardUiReader(process.memory, process.resolver.game_assembly_base)
+        view_refs = room.room_coop_v2_view + ROOM_COOP_V2_REFS_OFFSET
+        # B15 RoomCoopV2Host.RebindManagerRoom copies the V2 Back binding
+        # into ManagerRoom. Both must still point to this live Button.
+        refs_back = room.room_coop_v2_refs + 0x68
+        manager_back = room.manager_room + 0x58
+        button = reader._pointer(refs_back)
+        if button == room.button_start:
+            return None
+
+        def references_agree() -> bool:
+            return (
+                reader._pointer(view_refs) == room.room_coop_v2_refs
+                and reader._pointer(refs_back) == button
+                and reader._pointer(manager_back) == button
+                and reader._read(button + SELECTABLE_INTERACTABLE_OFFSET, 1) == b"\x01"
+                and reader._read(button + SELECTABLE_GROUPS_ALLOW_INTERACTION_OFFSET, 1) == b"\x01"
+            )
+
+        if not references_agree():
+            return None
+        geometry = reader.read_button_geometry(
+            button, max_translation_jitter=1.0, allow_nested_fullscreen_canvas=True
+        )
+        if not references_agree():
+            return None
+    except Exception:  # noqa: BLE001 - an unreadable UI cannot authorize input
+        return None
+    return geometry if geometry.active and geometry.viewport_rect is not None else None
+
+
 def _health_reminder_outside_combat(run: FarmRun, provider: Any, lobby: Any) -> bool:
     lifecycle = getattr(lobby, "combat_lifecycle", None)
     if lifecycle is None:
@@ -2238,6 +2336,7 @@ def _detached_shell_exit_runtime_proven(
     current_map_target: Any | None,
     allow_map_backed_shell: bool = False,
     failed_bootstrap_key: tuple[Any, ...] | None = None,
+    stalled_owned_room_key: tuple[Any, ...] | None = None,
 ) -> bool:
     """Authorize only the shell-exit step when map objects are not loaded yet.
 
@@ -2249,6 +2348,8 @@ def _detached_shell_exit_runtime_proven(
     visual frames are required separately by the caller.
     """
 
+    if stalled_owned_room_key is not None:
+        return _owned_room_key(lobby, pet_id, current_session) == stalled_owned_room_key
     if failed_bootstrap_key is not None:
         return bool(
             first_map_target is None and current_map_target is None
@@ -2506,6 +2607,7 @@ def _settle_detached_room_shell_exit(
     chunk_mib: int = 2,
     allow_map_backed_shell: bool = False,
     failed_bootstrap_key: tuple[Any, ...] | None = None,
+    stalled_owned_room_key: tuple[Any, ...] | None = None,
 ) -> tuple[str, Any | None] | None:
     """Prove either direct map navigation or one stable leave confirmation."""
 
@@ -2587,6 +2689,7 @@ def _settle_detached_room_shell_exit(
                 current_map_target=None,
                 allow_map_backed_shell=allow_map_backed_shell,
                 failed_bootstrap_key=failed_bootstrap_key,
+                stalled_owned_room_key=stalled_owned_room_key,
             ):
                 run._event(  # noqa: SLF001
                     "chinh_phuc_room_shell_confirm_rejected",
@@ -2621,6 +2724,7 @@ def _settle_detached_room_shell_exit(
                         current_map_target=None,
                         allow_map_backed_shell=allow_map_backed_shell,
                         failed_bootstrap_key=failed_bootstrap_key,
+                        stalled_owned_room_key=stalled_owned_room_key,
                     )
                     and _stable_visual_proof(
                         capture,
@@ -2691,7 +2795,8 @@ def _settle_detached_room_shell_exit(
                 )
             else:
                 sent_ok = bool(
-                    (failed_bootstrap_key is None or fresh_confirm_preflight())
+                    ((failed_bootstrap_key is None and stalled_owned_room_key is None)
+                     or fresh_confirm_preflight())
                     and send_confirm_once())
             authorized = bool(click_context["authorized"])
             click = click_context["click"]
@@ -3023,6 +3128,7 @@ def _return_from_chinh_phuc_map(
     max_region_mib: int = 8,
     chunk_mib: int = 2,
     outside_modal_handler: Any = None,
+    stalled_entry_room_id: str | None = None,
 ) -> LobbyWaitResult | None:
     """Select the same pet when a result returns to its Chinh Phuc map.
 
@@ -3053,11 +3159,30 @@ def _return_from_chinh_phuc_map(
         pet_id = int(target.boss_id or "")
     except ValueError:
         return None
-    reentry_source = _postmatch_reentry_source(
-        initial,
-        target_pet_id=pet_id,
-        current_session=provider.current_session_key,
-    )
+    stalled_owned_room_key = None
+    if stalled_entry_room_id is None:
+        reentry_source = _postmatch_reentry_source(
+            initial,
+            target_pet_id=pet_id,
+            current_session=provider.current_session_key,
+        )
+    else:
+        stalled_owned_room_key = _owned_room_key(lobby, pet_id, provider.current_session_key)
+        if (
+            stalled_owned_room_key is None
+            or stalled_owned_room_key[0] != stalled_entry_room_id
+            or run.state is not FarmRunState.WAIT_BOSS_LOBBY
+            or run.target != target
+            or not _confirmed_solo_postmatch(run)
+            or any(
+                record.sent
+                and record.attempt_index == run.match_attempts
+                and record.domain is FarmInputDomain.BOSS_ROOM_SHELL_EXIT
+                for record in reversed(run.input_records)
+            )
+        ):
+            return None
+        reentry_source = "STALLED_OWNED_ROOM"
     if reentry_source is None:
         return None
 
@@ -3068,14 +3193,9 @@ def _return_from_chinh_phuc_map(
         # remains a separate native proof after the room has actually closed.
         confirmed_postmatch = bool(
             run.state is FarmRunState.WAIT_BOSS_LOBBY
-            and run.current_session is None
             and run.target == target
-            and run.snapshot().gameplay_config.game_mode is GameMode.SOLO
-            and run.attempts and run.attempts[-1].normal_postmatch
-            and run.attempts[-1].end_timestamp is not None
-            and any(record.domain is FarmInputDomain.POSTMATCH_CONFIRM
-                    and record.attempt_index == run.match_attempts and record.sent
-                    for record in run.input_records))
+            and _confirmed_solo_postmatch(run)
+        )
         if not confirmed_postmatch:
             run._event("postmatch_bootstrap_reentry_rejected",
                        reason="completed Solo attempt and sent reward confirmation required")
@@ -3356,6 +3476,7 @@ def _return_from_chinh_phuc_map(
     stable_room_shell = False
     first_shell_exit = None
     second_shell_exit = None
+    first_back = second_back = None
     first_capture = None
     second_capture = None
     proof_frames = 0
@@ -3427,20 +3548,40 @@ def _return_from_chinh_phuc_map(
         proof_hard_deadline = time.monotonic() + max(1.0, timeout)
         # Optional disambiguation on a real map must not consume the whole
         # return timeout. Two stable room frames still own every exit click.
-        proof_deadline = min(proof_hard_deadline, time.monotonic()+1.0) if map_backed_shell_probe else proof_hard_deadline
-        room_start_rect = _runtime_room_start_rect(process, lobby)
+        proof_deadline = proof_hard_deadline
+        if map_backed_shell_probe:
+            proof_deadline = min(proof_hard_deadline, time.monotonic() + 1.0)
+        if stalled_owned_room_key is not None:
+            proof_deadline = min(proof_hard_deadline, time.monotonic() + 5.0)
+        room_start_rect = (
+            _runtime_room_start_rect(process, lobby) if stalled_owned_room_key is None else None
+        )
         if failed_bootstrap_key is not None and room_start_rect is None:
             run._event("postmatch_bootstrap_reentry_rejected",
                        reason="native room Start geometry unavailable")
             return None
+        def locate_shell_exit(capture: Any, current_lobby: Any, start_rect: Any) -> tuple[Any, Any]:
+            if stalled_owned_room_key is None:
+                return locate_detached_chinh_phuc_room_shell_exit(
+                    capture.rgb, capture.width, capture.height, expected_start_rect=start_rect,
+                ), None
+            if (
+                _owned_room_key(current_lobby, pet_id, provider.current_session_key)
+                != stalled_owned_room_key
+                or locate_confirm_leave(capture.rgb, capture.width, capture.height).found
+                or read_play_reminder_control(process).open is not False
+            ):
+                return None, None
+            back = _runtime_owned_room_back(process, current_lobby.chinh_phuc)
+            if back is None:
+                return None, None
+            return locate_owned_chinh_phuc_room_exit(
+                capture.rgb, capture.width, capture.height, expected_rect=back.viewport_rect,
+            ), back
+
         time.sleep(max(interval, 0.18))
         first_capture = capture_client_rgb(process.pid)
-        first_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
-            first_capture.rgb,
-            first_capture.width,
-            first_capture.height,
-            expected_start_rect=room_start_rect,
-        )
+        first_shell_exit, first_back = locate_shell_exit(first_capture, lobby, room_start_rect)
         second_capture = first_capture
         second_shell_exit = first_shell_exit
         proof_frames = 1
@@ -3469,27 +3610,23 @@ def _return_from_chinh_phuc_map(
                 return LobbyWaitResult(False, lobby.state, None, "HEALTH_REMINDER_BLOCKED", proof_lobby)
             if modal_status == "DISMISSED":
                 first_capture = first_shell_exit = None
-                proof_deadline = min(proof_hard_deadline, time.monotonic()+1.0) if map_backed_shell_probe else proof_hard_deadline
+                if map_backed_shell_probe:
+                    proof_deadline = min(proof_hard_deadline, time.monotonic() + 1.0)
                 continue
             time.sleep(max(interval, 0.18))
             second_capture = capture_client_rgb(process.pid)
-            second_shell_exit = locate_detached_chinh_phuc_room_shell_exit(
-                second_capture.rgb,
-                second_capture.width,
-                second_capture.height,
-                expected_start_rect=room_start_rect,
-            )
+            second_shell_exit, second_back = locate_shell_exit(second_capture, proof_lobby, room_start_rect)
             proof_frames += 1
-            stable_room_shell = bool(first_capture is not None and first_shell_exit is not None and _stable_visual_proof(
-                first_capture,
-                first_shell_exit,
-                second_capture,
-                second_shell_exit,
-            ))
+            stable_room_shell = bool(
+                first_capture is not None and first_shell_exit is not None
+                and second_shell_exit is not None and first_back == second_back
+                and _stable_visual_proof(first_capture, first_shell_exit, second_capture, second_shell_exit)
+            )
             if stable_room_shell:
                 break
             first_capture = second_capture
             first_shell_exit = second_shell_exit
+            first_back = second_back
         if second_capture is not None:
             write_png_rgb(
                 directory / "chinh_phuc_room_shell_before.png",
@@ -3539,6 +3676,7 @@ def _return_from_chinh_phuc_map(
             current_map_target=None,
             allow_map_backed_shell=map_backed_shell_probe,
             failed_bootstrap_key=failed_bootstrap_key,
+            stalled_owned_room_key=stalled_owned_room_key,
         )
         if not shell_runtime_stable:
             run._event(  # noqa: SLF001
@@ -3563,16 +3701,14 @@ def _return_from_chinh_phuc_map(
                 process, provider
             )
             fresh_capture = capture_client_rgb(process.pid)
-            fresh_shell = locate_detached_chinh_phuc_room_shell_exit(
-                fresh_capture.rgb,
-                fresh_capture.width,
-                fresh_capture.height,
-                expected_start_rect=_runtime_room_start_rect(
-                    process, fresh_lobby
-                ),
+            fresh_start_rect = (
+                _runtime_room_start_rect(process, fresh_lobby) if stalled_owned_room_key is None else None
             )
+            fresh_shell, fresh_back = locate_shell_exit(fresh_capture, fresh_lobby, fresh_start_rect)
             accepted = bool(
                 fresh_lobby is not None
+                and fresh_shell is not None
+                and fresh_back == second_back
                 and _detached_shell_exit_runtime_proven(
                     fresh_lobby,
                     pet_id=pet_id,
@@ -3581,9 +3717,9 @@ def _return_from_chinh_phuc_map(
                     current_map_target=None,
                     allow_map_backed_shell=map_backed_shell_probe,
                     failed_bootstrap_key=failed_bootstrap_key,
+                    stalled_owned_room_key=stalled_owned_room_key,
                 )
-                and (failed_bootstrap_key is None
-                     or _runtime_room_start_rect(process, fresh_lobby) == room_start_rect)
+                and (failed_bootstrap_key is None or fresh_start_rect == room_start_rect)
                 and _stable_visual_proof(
                     second_capture,
                     second_shell_exit,
@@ -3653,7 +3789,8 @@ def _return_from_chinh_phuc_map(
             )
         else:
             shell_sent = bool(
-                (failed_bootstrap_key is None or fresh_shell_exit_preflight())
+                ((failed_bootstrap_key is None and stalled_owned_room_key is None)
+                 or fresh_shell_exit_preflight())
                 and send_shell_exit_once())
         authorized = bool(shell_context["authorized"])
         shell_click = shell_context["click"]
@@ -3707,6 +3844,7 @@ def _return_from_chinh_phuc_map(
             chunk_mib=chunk_mib,
             allow_map_backed_shell=map_backed_shell_probe,
             failed_bootstrap_key=failed_bootstrap_key,
+            stalled_owned_room_key=stalled_owned_room_key,
         )
         if shell_transition_result is None:
             return None
@@ -5068,6 +5206,7 @@ def _run_live(
     entry_preflight_reroute_pending = False
     entry_preflight_reroute_attempt: int | None = None
     entry_preflight_reroute_count = 0
+    stalled_room_recovery_attempt: int | None = None
     _notify_run_observer(observer, run, "CREATED")
 
     if resume_decision is not None:
@@ -5371,6 +5510,11 @@ def _run_live(
                         test_only_recovery=stage_b1,
                         pinned_input_session=pinned_input_session,
                         outside_modal_handler=handle_outside_modal,
+                        recover_stalled_room=(
+                            controlled_run
+                            and not args.stop_if_room_ejected
+                            and _confirmed_solo_postmatch(run)
+                        ),
                     )
                     writer.event(
                         "match_entry_result",
@@ -5503,9 +5647,13 @@ def _run_live(
                                     ),
                                 )
                             continue
-                        if _entry_preflight_runtime_changed_before_start(
-                            entry_result
-                        ):
+                        stalled_room_id = _stalled_entry_room_id(entry_result)
+                        if stalled_room_id or _entry_preflight_runtime_changed_before_start(entry_result):
+                            failure = (
+                                FarmRunStopReason.ENTRY_START_CONTROL_UNVERIFIED
+                                if stalled_room_id
+                                else FarmRunStopReason.OPENING_INVARIANT_FAILED
+                            )
                             pending_attempt = run.match_attempts + 1
                             if entry_preflight_reroute_attempt != pending_attempt:
                                 entry_preflight_reroute_attempt = pending_attempt
@@ -5513,16 +5661,16 @@ def _run_live(
                             entry_preflight_reroute_count += 1
                             if (
                                 entry_preflight_reroute_count > 3
+                                or (stalled_room_id and stalled_room_recovery_attempt == pending_attempt)
                                 or not controlled_run
                                 or args.stop_if_room_ejected
                                 or not run.observe_entry_preflight_runtime_changed()
                             ):
                                 if not run.stopped:
-                                    run.safe_stop(
-                                        FarmRunStopReason.OPENING_INVARIANT_FAILED,
-                                        entry=entry_result,
-                                    )
+                                    run.safe_stop(failure, entry=entry_result)
                                 continue
+                            if stalled_room_id:
+                                stalled_room_recovery_attempt = pending_attempt
                             writer.event(
                                 "entry_preflight_navigation_reroute",
                                 attemptIndex=run.match_attempts + 1,
@@ -5533,7 +5681,8 @@ def _run_live(
                                 process,
                                 provider,
                                 target,
-                                args.return_lobby_timeout,
+                                min(5.0, args.return_lobby_timeout)
+                                if stalled_room_id else args.return_lobby_timeout,
                                 args.interval,
                                 hotkeys,
                                 control_hotkeys,
@@ -5546,13 +5695,18 @@ def _run_live(
                                 attemptIndex=run.match_attempts + 1,
                                 result=returned,
                             )
-                            if not returned.ready and any(
+                            needs_room_reset = bool(
+                                stalled_room_id
+                                and returned.ready
+                                and returned.lobby.chinh_phuc.current_room_id == stalled_room_id
+                            )
+                            if needs_room_reset or (not returned.ready and any(
                                 _farm_room_ejection_sources(
                                     returned,
                                     target_boss_id=str(target.boss_id or ""),
                                     current_session=provider.current_session_key,
                                 )
-                            ):
+                            )):
                                 map_return = _return_from_chinh_phuc_map(
                                     run=run,
                                     process=process,
@@ -5570,6 +5724,7 @@ def _run_live(
                                     max_region_mib=args.max_region_mib,
                                     chunk_mib=args.chunk_mib,
                                     outside_modal_handler=handle_outside_modal,
+                                    stalled_entry_room_id=stalled_room_id if needs_room_reset else None,
                                 )
                                 writer.event(
                                     "entry_preflight_map_return",
@@ -5579,11 +5734,17 @@ def _run_live(
                                 )
                                 if map_return is not None:
                                     returned = map_return
+                                elif needs_room_reset:
+                                    returned = LobbyWaitResult(
+                                        False, returned.state, returned.resolution_status,
+                                        "stalled room could not be reopened safely", returned.lobby,
+                                    )
                             if not returned.ready:
                                 if not run.stopped:
                                     reason = (
                                         FarmRunStopReason.EMERGENCY_STOP
                                         if returned.reason == "F9_EMERGENCY_STOP"
+                                        else failure if stalled_room_id
                                         else FarmRunStopReason.RETURN_LOBBY_TIMEOUT
                                     )
                                     run.safe_stop(reason, detail=returned.reason)

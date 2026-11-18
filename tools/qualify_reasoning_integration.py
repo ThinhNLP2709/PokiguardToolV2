@@ -183,7 +183,8 @@ def benchmark(out):
         interpretation='per-run/family gates; failed v1 retained; no latency claim for actual game/ACK/QTE')
     dump(out/'protocol.json',info)
     results=[]
-    profiles=list(PlayStyle)
+    # The C3 benchmark exercises the legacy shadow corpus. Galaxy uses the shared chooser.
+    profiles=[profile for profile in PlayStyle if profile is not PlayStyle.GALAXY]
     with controlled_main_thread() as environment,(out/'raw.jsonl').open('w',encoding='utf-8',buffering=1) as raw:
         info['thread_environment']=environment
         for run in range(3):

@@ -52,7 +52,7 @@ class BuWinSwordRiskGuardTests(unittest.TestCase):
             first_local_turn=state.battle.is_first_local_turn,
         ))
 
-    def test_exemption_requires_exact_bu_win_swap_branch_and_move(self):
+    def test_risk_does_not_veto_policy_swaps_but_missing_actions_remain_blocked(self):
         decision = BasicPolicyEngine(basic_policy_config(bu_win_config())).decide(observed_bu_win_state())
         variants = (
             replace(decision, trace=replace(decision.trace, play_style=PlayStyle.SIMPLE.value)),
@@ -62,7 +62,7 @@ class BuWinSwordRiskGuardTests(unittest.TestCase):
         )
         for candidate in variants:
             with self.subTest(action=candidate.action, step=candidate.trace.policy_step, style=candidate.trace.play_style):
-                self.assertTrue(_must_pause_for_no_safe_move(
+                self.assertEqual(candidate.move is None, _must_pause_for_no_safe_move(
                     candidate, legal_move_count=9, safe_move_count=0, first_local_turn=False,
                 ))
 

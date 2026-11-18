@@ -8,11 +8,12 @@ from collections import Counter,deque
 from dataclasses import dataclass,replace,field
 import json,math,threading,time,uuid
 from .autonomous_control import AutonomousSource
-from .basic_policy import PolicyAction,PolicyDecision,_candidate_trace
+from .basic_policy import PlayStyle,PolicyAction,PolicyDecision,_candidate_trace
 from .board_simulator import simulate_move
 from .reasoning_common_evidence import build_problem,incumbent_action,packet_hash,_packet_hash,policy_json
 from .reasoning_common_planner import CommonLimits,plan_common
 from .reasoning_common_problem import CommonProblem,VERSION
+from .reasoning_common_capture import record_snapshot_safely
 from .reasoning_diagnostics import DiagnosticBuffer,encode_event
 from .reasoning_full_actions import pass_authority_view
 from .reasoning_runner import make_job,deadline_ns,_validate_reply,_decision_summary,REPLY_SCHEMA
@@ -192,6 +193,26 @@ def apply_common_action(baseline,action,state,value,candidate):
         consumes_turn=family is not PolicyAction.PASS,requires_state_reread=True)
 
 
+def galaxy_strategy_allows(config,baseline,proposed):
+    """Keep shared skill/resource/protection priorities at the input boundary."""
+    if config.play_style is not PlayStyle.GALAXY or proposed == baseline:return True
+    if (baseline.action is not PolicyAction.SWAP or proposed.action is not PolicyAction.SWAP
+            or baseline.trace.policy_step.startswith('GALAXY_SURVIVAL')):return False
+    before=baseline.trace.selected_candidate;after=proposed.trace.selected_candidate
+    if before is None or after is None:return False
+    if after.sword_effective>0 or after.known_sword_consumed>0:return False
+    if before.safe and not after.safe:return False
+    def progresses(candidate):
+        return ((baseline.trace.missing_mana != 0 and candidate.known_mana_gain>0)
+            or (baseline.trace.missing_rage != 0 and candidate.known_rage_gain>0))
+    if progresses(before):return progresses(after)
+    # Preserve the shared Drain > Shield > turnover fallback order as well.
+    for gem in ('drain','shield'):
+        if any(name==gem and effective>0 for name,physical,effective in before.total_resources):
+            return any(name==gem and effective>0 for name,physical,effective in after.total_resources)
+    return True
+
+
 class CommonSelectionBridge:
     """One pending packet, one worker, bounded logs; admission owns the context."""
     def __init__(self,*,admission,diagnostics,enabled=False,run_id=None):
@@ -297,6 +318,9 @@ class CommonSelectionBridge:
         if reason!='VALID_COMPLETED_COMMON':return Selection(baseline,reason=reason)
         action=offer.reply.proposal
         decision=baseline if action is None else apply_common_action(baseline,action,state,self.action_context,offer.candidate_trace)
+        if not galaxy_strategy_allows(config,baseline,decision):
+            self._record('GALAXY_STRATEGY_RETAIN_BASIC','ROOT',now_ns)
+            return Selection(baseline,reason='GALAXY_STRATEGY_RETAIN_BASIC')
         guard=getattr(self,'native_policy_guard',None)
         if action is not None and guard is not None and guard(decision) is not False:
             self._record('EXISTING_POLICY_GUARD_RETAIN_BASIC','ROOT',now_ns)
@@ -350,6 +374,7 @@ class CommonSelectionBridge:
         problem=self.admission.problem(value,run_id=self.run_id,generation=generation,
             observed_ns=observed,read_end_ns=ended)
         job=make_job(problem,deadline=limit,generation=generation)
+        self.counts['snapshot_'+record_snapshot_safely(self.sink,job)]+=1
         if not self.runner.submit(job):raise ValueError('worker submit rejected')
         while not self.shutdown.is_set() and time.perf_counter_ns()<limit:
             self._drain()

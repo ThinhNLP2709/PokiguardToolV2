@@ -1,6 +1,231 @@
 # IL2CPP symbols — Phase 1
 
+## 18/11/2026 — B17 exact profile
+
+GameAssembly SHA-256 `bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`,
+metadata 111. All 39 roots matched by exact Dumper identity/signature; the 16
+observed RVA deltas differ, so no common-delta migration is used.
+
+| Exact exported TypeInfo | B16 RVA | B17 RVA |
+| --- | --- | --- |
+| `ManagerQuangTruong_TypeInfo` | `0x43C2EE0` | `0x43C3F58` |
+| `ManagerRoom_TypeInfo` | `0x43C1458` | `0x43C2490` |
+| `WsRoomService_TypeInfo` | `0x436A2F0` | `0x436B2D8` |
+| `RoomCoopV2View_TypeInfo` | `0x4358F10` | `0x4359F30` |
+| `UIPanelManager_TypeInfo` | `0x43C2FC8` | `0x43C4028` |
+| `System.Collections.Generic.Dictionary<string, object>_TypeInfo` | `0x43CC9B8` | `0x43CD9C8` |
+| `int_TypeInfo` | `0x43C14D0` | `0x43C2508` |
+| `long_TypeInfo` | `0x43C3480` | `0x43C44E0` |
+| `string_TypeInfo` | `0x43C0378` | `0x43C13D8` |
+| `ChinhPhucDataService_TypeInfo` | `0x4376A00` | `0x43779E0` |
+| `Board_TypeInfo` | `0x43F5870` | `0x43F68F0` |
+| `Active_TypeInfo` | `0x43F5878` | `0x43F68F8` |
+| `ManagerMatch_TypeInfo` | `0x43F5868` | `0x43F68E8` |
+| `MatchService_TypeInfo` | `0x43C1538` | `0x43C2580` |
+| `ChatService_TypeInfo` | `0x43C09F8` | `0x43C1A58` |
+| `ChatMessageDTO_TypeInfo` | `0x43CC9D0` | `0x43CD9E0` |
+| `HubSuspendManager_TypeInfo` | `0x43C0A28` | `0x43C1A80` |
+| `MatchHost_TypeInfo` | `0x43F5BA8` | `0x43F6BC0` |
+| `MatchSceneLoader_TypeInfo` | `0x43C7308` | `0x43C8320` |
+| `TurnAnnouncer_TypeInfo` | `0x43C1030` | `0x43C2020` |
+| `Dot_TypeInfo` | `0x43BB370` | `0x43BC3D0` |
+| `WsCombatBatch_TypeInfo` | `0x4368210` | `0x43691F8` |
+| `BoardWsApplier_TypeInfo` | `0x43C0E60` | `0x43C1E50` |
+| `CardUI_TypeInfo` | `0x43C1478` | `0x43C24A8` |
+| `FusionCardUI_TypeInfo` | `0x43CB1C0` | `0x43CC208` |
+| `Active.PlayerStats_TypeInfo` | `0x43BF050` | `0x43C0080` |
+| `PetUserDTO_TypeInfo` | `0x436DC40` | `0x436EC28` |
+| `CardData_TypeInfo` | `0x439EFB8` | `0x439FFC8` |
+| `PokiGuard.Audition.AuditionStage_TypeInfo` | `0x4395910` | `0x4396968` |
+| `PokiGuard.Audition.AuditionChallenge_TypeInfo` | `0x43974B8` | `0x4398570` |
+| `ChatService.<>c__DisplayClass328_0_TypeInfo` | `0x43BBB60` | `0x43BCBB8` |
+| `UnityMainThreadDispatcher_TypeInfo` | `0x43BBC00` | `0x43BCC50` |
+| `System.Collections.Generic.List<UnityMainThreadDispatcher.PendingAction>_TypeInfo` | `0x436A4D8` | `0x436B4B8` |
+| `System.Collections.Generic.Queue<UnityMainThreadDispatcher.PendingAction>_TypeInfo` | `0x436A4F8` | `0x436B4E0` |
+| `Newtonsoft.Json.Linq.JArray_TypeInfo` | `0x43C3228` | `0x43C42A0` |
+| `Newtonsoft.Json.Linq.JObject_TypeInfo` | `0x43C3220` | `0x43C4298` |
+| `Newtonsoft.Json.Linq.JProperty_TypeInfo` | `0x43AE3C0` | `0x43AF438` |
+| `Newtonsoft.Json.Linq.JValue_TypeInfo` | `0x43CD238` | `0x43CE248` |
+| `Poki.Health.PlayReminder_TypeInfo` | `0x4384EA8` | `0x4385EA8` |
+
+All 289 consumed field bindings retain exact offset/type/static ownership;
+43 selected layouts, 2,414 closed generic contracts, eight closed ABI, opening
+JSON and 1,722 enums are unchanged. WebSocket closure remains 328_0;
+json/message remain +0x18/+0x20. Co-op stats 0x43C0080 is distinct from PVP
+0x436EC00. Core static-fields ABI stays Il2CppClass+0x98 by native/read-only proof.
+
+Component wrapper 0x35E7AA0 reads and stores cache 0x4630EE0, joined live to
+UnityPlayer+0x1197500. Unique Unmarshal signature at 0x1C7201C:
+`f6c301740d488bcbe8f7945dfe488bd8eb03488b1b4885db`.
+Loaded header/core methods, 16 native signatures, 445 cached icalls, Canvas
+enabled thunk/getter and manager managed/native roundtrips were verified.
+
+An additional 26 native body/semantic-reference comparisons match B16; both
+30-cell Mega seal initializers match production. New Fusion panel/CombatPowerFx
+methods are recorded separately, without assuming new gameplay/backend policy.
+Opaque PrivateImplementationDetails layouts remain UNKNOWN/non-authoritative.
+
+[Full B17 report and evidence](petpuzzle_b17_compatibility_report.md).
+
+
+## 18/11/2026 — B16 wire observations supplement managed declarations
+
+Saved native MOVE responses contain POWER/HEAL/MANA/SHIELD/BLOCK/STEAL/DAMAGE
+steps with uppercase after keys. Two attributed nonterminal Demon batches
+reconcile HP and individual shield decrements; fullPower is true at observed
+POWER175/230 with max250. This does not establish the meaning/threshold of
+fullPower or the server damage formula. dmgSrc and complete effect coverage
+remain UNKNOWN. No new offsets, reads or native calls were introduced.
+[Scoped observations](phase5/COMBAT_NORMALIZATION_20261118.md).
+
+## 17/11/2026 — Combat outcome declarations, not a damage formula
+
+Compared the exact B15/B16 Dumper declarations: WsCombatStepDTO retains kind
++0x10, source +0x18, target +0x20, amount +0x28, stealType +0x30, dmgSrc +0x38,
+fullPower +0x40, after(Dictionary<string,int>) +0x48 and idx +0x50.
+WsCombatBatch retains srvSeq +0x10, actorUsername +0x18, totalDamageDisplay
++0x20, steps +0x28, destroyedByTag +0x30, board +0x38, isSkill +0x40 and
+skillElementType +0x48. These are managed declarations only; no new native
+reader/offset/TypeInfo constant was added for outcome capture.
+[Static comparison and source hashes](phase5/artifacts/combat_outcomes_20261117/static_field_evidence.json).
+The new optional telemetry reuses already decoded callback JSON. B16 live
+wire step shape, after-key semantics, effect completeness and prospective
+damage remain UNKNOWN. [Scope](phase5/COMBAT_OUTCOME_EVIDENCE_20261117.md).
+
+## 17/11/2026 — B16 exact runtime profile
+
+GameAssembly SHA-256 `c69c95c4c6bd0cbc28181033ccd2a974e085f47055f123627e0b3a33e1595f3a`,
+metadata 111. All 39 TypeInfo slots relocated by exact Dumper symbol/signature.
+Co-op `Active.PlayerStats` and PVP retain distinct named slots.
+
+| Exact exported TypeInfo | B15 RVA | B16 RVA |
+| --- | --- | --- |
+| `ManagerQuangTruong_TypeInfo` | `0x42FA1B0` | `0x43C2EE0` |
+| `ManagerRoom_TypeInfo` | `0x42F8478` | `0x43C1458` |
+| `WsRoomService_TypeInfo` | `0x42B0B10` | `0x436A2F0` |
+| `RoomCoopV2View_TypeInfo` | `0x42BE138` | `0x4358F10` |
+| `UIPanelManager_TypeInfo` | `0x42FA388` | `0x43C2FC8` |
+| `System.Collections.Generic.Dictionary<string, object>_TypeInfo` | `0x43022B8` | `0x43CC9B8` |
+| `int_TypeInfo` | `0x42F84F0` | `0x43C14D0` |
+| `long_TypeInfo` | `0x42FADF8` | `0x43C3480` |
+| `string_TypeInfo` | `0x42F7AC0` | `0x43C0378` |
+| `ChinhPhucDataService_TypeInfo` | `0x42BCFA0` | `0x4376A00` |
+| `Board_TypeInfo` | `0x432ADB0` | `0x43F5870` |
+| `Active_TypeInfo` | `0x432ADC0` | `0x43F5878` |
+| `ManagerMatch_TypeInfo` | `0x432AD98` | `0x43F5868` |
+| `MatchService_TypeInfo` | `0x42F8570` | `0x43C1538` |
+| `ChatService_TypeInfo` | `0x42F7EB8` | `0x43C09F8` |
+| `ChatMessageDTO_TypeInfo` | `0x43022C8` | `0x43CC9D0` |
+| `HubSuspendManager_TypeInfo` | `0x42F7F00` | `0x43C0A28` |
+| `MatchHost_TypeInfo` | `0x432B428` | `0x43F5BA8` |
+| `MatchSceneLoader_TypeInfo` | `0x42FF448` | `0x43C7308` |
+| `TurnAnnouncer_TypeInfo` | `0x42F81B0` | `0x43C1030` |
+| `Dot_TypeInfo` | `0x42F1550` | `0x43BB370` |
+| `WsCombatBatch_TypeInfo` | `0x42F2BE8` | `0x4368210` |
+| `BoardWsApplier_TypeInfo` | `0x42F8110` | `0x43C0E60` |
+| `CardUI_TypeInfo` | `0x42F8490` | `0x43C1478` |
+| `FusionCardUI_TypeInfo` | `0x42F9D68` | `0x43CB1C0` |
+| `Active.PlayerStats_TypeInfo` | `0x42AC860` | `0x43BF050` |
+| `PetUserDTO_TypeInfo` | `0x42B4488` | `0x436DC40` |
+| `CardData_TypeInfo` | `0x42D75F8` | `0x439EFB8` |
+| `PokiGuard.Audition.AuditionStage_TypeInfo` | `0x42CA918` | `0x4395910` |
+| `PokiGuard.Audition.AuditionChallenge_TypeInfo` | `0x42CB740` | `0x43974B8` |
+| `ChatService.<>c__DisplayClass328_0_TypeInfo` | `0x42F1DA0` | `0x43BBB60` |
+| `UnityMainThreadDispatcher_TypeInfo` | `0x42F1E38` | `0x43BBC00` |
+| `System.Collections.Generic.List<UnityMainThreadDispatcher.PendingAction>_TypeInfo` | `0x42B0CF0` | `0x436A4D8` |
+| `System.Collections.Generic.Queue<UnityMainThreadDispatcher.PendingAction>_TypeInfo` | `0x42B0D18` | `0x436A4F8` |
+| `Newtonsoft.Json.Linq.JArray_TypeInfo` | `0x42FA7F0` | `0x43C3228` |
+| `Newtonsoft.Json.Linq.JObject_TypeInfo` | `0x42FA7D8` | `0x43C3220` |
+| `Newtonsoft.Json.Linq.JProperty_TypeInfo` | `0x42E3AA8` | `0x43AE3C0` |
+| `Newtonsoft.Json.Linq.JValue_TypeInfo` | `0x4302C80` | `0x43CD238` |
+| `Poki.Health.PlayReminder_TypeInfo` | `0x42C4110` | `0x4384EA8` |
+
+Consumed ChatService fields move: `_explicitDisconnect +0x34D`,
+`_reconnectCoroutine +0x350`, `_connecting +0x35C`. Other 286 field bindings
+retain their exact type/static owner and offset. WebSocket message closure is
+`ChatService.<>c__DisplayClass328_0` (`json +0x18`, `message +0x20`), proven by
+handler RIP references and native callback body. No compiler-number delta.
+
+Component wrapper `0x35E6E00` reads/stores cache `0x462FF20`; live cache joins
+UnityPlayer `0x1197500`. Unique Unmarshal signature at `0x1C7137C` is
+`f6c301740d488bcbe897a15dfe488bd8eb03488b1b4885db`. Static-fields ABI stays
+`Il2CppClass +0x98`, proven by named getters and live initialized classes,
+not generic Dumper header assumptions. 16 native signatures and 445 cached
+icall prefixes match loaded/disk UnityPlayer.
+
+B16 native `MatchService.TryGetLocalSkillPhase` at `0xB93FE0` still reads
+snapshot `+0x15C/+0x17C/+0x180`. Icarus/T-Rex initializers decode to the same
+30-cell production masks. New GuildWar/GalaxyNew semantics are UNKNOWN and
+not qualified by this migration. All 16 opaque PrivateImplementationDetails
+exports remain non-authoritative.
+
+[Full B16 evidence, identity and verification](petpuzzle_b16_compatibility_report.md).
+
+
+## 16/11/2026 — Galaxy: pha của đúng thẻ local
+
+B15 `MatchService.TryGetLocalSkillPhase(long cardId, out int next, out int max)`
+ở RVA `0xACE810` đọc `Players +0x118`, tra bằng `ChatService.Username`, rồi
+đọc `MatchPlayerSnapshotDTO.skillPhaseNext +0x15C`, `skillPhaseMax +0x17C`,
+`skillPhaseCardId +0x180`. Native kiểm card binding tại `0xACE8F3..0xACE90A`,
+đọc max ở `0xACE90C` và next ở `0xACE91F`. `actorNumber +0x18` và map
+username/actor đã có decoder ownership. `DragonKnightPhaseBar.LateUpdate`
+(RVA `0x996720`) đọc cùng next/max tại `0x996BD4` và `0x996BE0`.
+
+Đã đối chiếu Cpp2IL B15 và GameAssembly SHA-256
+`18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea`.
+V2 chỉ đọc, yêu cầu card ID khớp chính xác và pha trong khoảng; không gọi
+method hoặc dùng giá trị clamp của UI như bằng chứng. G1 có công bố counter
+qua phase/max=4 hay không trong trận thật còn UNKNOWN. G3 chỉ tin pha của
+đúng card/max=3; phase chưa công bố/không ổn định tiếp tục UNKNOWN.
+[Thiết kế, full mô tả thẻ và kiểm chứng](galaxy_pet_reasoning_20261116.md).
+
+## Galaxy Glank: đếm khiên có hệ số nhân
+
+B15 `CardPhotonSync.<WsRunGalaxySkill>d__12.MoveNext` ở RVA `0x2D3DB0`
+gọi `Board.ShowGalaxyScanFx` (RVA `0x15243B0`) tại `0x2D4183`, tag
+literal `tim Dot`. Trong scan, lệnh `0x15246BA` đọc `Dot.multiplier +0x88`,
+`0x15246CC` lấy tối thiểu 1, `0x15246CF` cộng vào tổng và `0x1524837`
+trả tổng. Đã đối chiếu binary B15 SHA-256
+`18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea`.
+Đây là tổng scan phía client, không phải chứng minh công thức damage server.
+Log của G2 Glank xác nhận thẻ hiện hành `GALAXY_2`; G1 Risky là
+`GALAXY_RICKY`, G3 là `GALAXY_DRAGON_KNIGHT`. Chiến thuật dùng đúng type
+của CardUI đã xác minh, không suy ra từ pet name/ID cấu hình.
+[Chi tiết và giới hạn](galaxy_glank_reasoning.md).
+
+## Galaxy CardData cooldown — 15/11/2026
+
+`reverse/reverse_1.7.4-b15/dump.cs`, `CardData` (TypeDefIndex 2164),
+declares `manaCost +0x80`, `powerCost +0x84`, `petElement +0x88`,
+`petId +0x90`, and `cooldownTurns +0x94`. These are separate fields;
+reading three consecutive integers from `+0x80` incorrectly treats part
+of the `petElement` pointer as cooldown.
+
+Read-only inspection of the user-opened match `M_29bac730` confirmed the
+current owned card `3347 / GALAXY_DRAGON_KNIGHT`: `conditionUse=200`,
+`power=200`, real cooldown at `+0x94` equals `0`. The old read at `+0x88`
+returned `-836433376` and rejected the card. The decoder now uses the
+existing verified cooldown offset. No RVA, pointer chain or game file changed.
+See [Galaxy review](galaxy_review_20261115.md).
+
 B15 dùng metadata 111. Đã đối chiếu 39 TypeInfo RVA theo tên Il2CppDumper và cập nhật chín field ChatMessageDTO. Board TypeInfo là 0x432ADB0, Active là 0x432ADC0. Component cache là 0x456E020, Unmarshal signature ở 0x1BD423C. Đọc tiến trình xác nhận cache trỏ UnityPlayer RVA 0x1197500. Chi tiết và SHA-256 tại [báo cáo B15](petpuzzle_b15_compatibility_report.md).
+
+## B15 nhận diện người thực hiện nước đi — 10/11/2026
+
+- Trên GameAssembly SHA‑256 `18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea`, `MatchService.HandleMatchMoveRes` ở RVA `0xADD620` truyền loại `MOVE` sang `HandleResEnvelope` ở `0xADE2E0`.
+- `MatchService.ParseCombatBatch` ở RVA `0xAD2F80` đọc `ChatMessageDTO.matchPayload +0x128`. Lệnh ở `0xAD315C` nạp khóa `actorUsername`, và `0xAD316B` ghi kết quả vào `WsCombatBatch.actorUsername +0x18`. `WsCombatBatch.get_IsBossActor` ở `0xB34A60` so sánh trường đó với chuỗi `__BOSS__`.
+- Dump B15 khai báo `ChatMessageDTO.fromCol/fromRow/toCol/toRow` là `int?` tại `+0x130/+0x138/+0x140/+0x148`. Ghi replay lấy tên bốn trường từ JSON gốc mà bộ thu callback đã đọc. Chưa xác nhận phản hồi boss trong trận thực luôn có các trường tọa độ này. `currentTurnPlayer` và `MatchService.LastMove*` không dùng để gán người đi hoặc điền tọa độ thiếu.
+
+## B15 nút thoát phòng boss — 11/11/2026
+
+Dump B15 đặt `btnBackToChinhPhuc` tại `RoomCoopV2Refs +0x68` và
+`ManagerRoom +0x58`. Trên GameAssembly B15 đã định danh ở trên,
+`RoomCoopV2Host.RebindManagerRoom` đọc nút từ refs tại RVA `0xF77791` và ghi
+binding vào ManagerRoom tại `0xF777AA`. `WireV2Buttons` đọc nút đó ở
+`0xF78D8A` để gắn listener. Bộ đọc yêu cầu hai trường cùng trỏ một Button
+đang hoạt động và xác minh lại sau khi đọc hình học. Chưa đo nút này trên
+tiến trình live trong ca giao diện thay nóng.
 
 ## B14 room Invite Close — verified static fields, 2026-11-04
 
@@ -1971,3 +2196,87 @@ separate unresolved questions, not supplied by these declarations.
 [Native audit index](artifacts/b15_mega_seal_expansion_20261107/native_index.json),
 [initializer verification](artifacts/b15_mega_seal_expansion_20261107/static_checks.json),
 [research and design](phase5/MEGA_SEAL_RESEARCH_DESIGN_20261107.md).
+
+## 2026-11-08 — B15 Galaxy cards
+
+The B15 `GameAssembly.dll` with SHA-256 `18bc4398635afaaaa3f4eb5d9a2c35554cfd81a5595b1875cbe449beba777bea` was inspected statically against the B15 Dumper index.
+
+| Symbol | B15 RVA | Observed path |
+| --- | --- | --- |
+| `CardUI.IsGalaxySkillType` | `0x1553C10` | Matches `GALAXY_2`. |
+| `CardUI.IsGalaxyRickyType` | `0x1553C90` | Matches `GALAXY_RICKY`. |
+| `CardUI.IsMegaPriestType` | `0x1553D90` | Also accepts `GALAXY_CHESS_MASTER` and `GALAXY_DRAGON_KNIGHT`. |
+| `CardPhotonSync.RequestUseCard` | `0x2D0790` | Routes these types from the card click to the Galaxy, Ricky or Priest coroutine. |
+| `WsRunGalaxySkill.MoveNext` / `WsRunGalaxyRickySkill.MoveNext` / `WsRunPriestSkill.MoveNext` | `0x2D3DB0` / `0x2D36C0` / `0x2D4EB0` | Client runs the skill automatically after the click. `GALAXY_2` also scans and highlights purple gems during its animation. |
+| `CardUI.CheckConditionUse` | `0x1571AB0` | Galaxy, Ricky and the Priest group branch to `0x157262A` and check `CardData.conditionUse` (`+0x48`) for Mana and `CardData.power` (`+0x50`) for Nộ. |
+
+The client recognizes and animates server effects, including `BoardWsApplier.ApplyGalaxyRickyPick` (`MoveNext` at `0xA67D10`). Damage, effect order and any per-card server board changes remain UNKNOWN. V2 reads these cards through the existing owned CardUI path and emits the normal card click only.
+
+## 2026-11-18 — B16 optional combat evidence and SWAP operation source
+
+Static read-only audit of B16 binary SHA-256
+`c69c95c4c6bd0cbc28181033ccd2a974e085f47055f123627e0b3a33e1595f3a`,
+against `reverse/reverse_1.7.4-b16/dump.cs` and `script.json` with pinned
+hashes in [native evidence](phase5/artifacts/common_outcomes_20261118/boss_move_static.json).
+
+| B16 symbol | Offset / RVA | Verified scope |
+|---|---|---|
+| `ChatMessageDTO.matchPayload` | `+0x128` | Dictionary passed to ParseOps when preparsed operations unavailable |
+| `ChatMessageDTO.preOps` / ready flag | `+0x4B0` / `+0x4B8` | ParseOps wrapper returns preOps only when flag and non-null pointer are present |
+| `MatchOpDTO.type` / `.data` | `+0x10` / `+0x18` | String / dictionary declarations |
+| `WsCombatStepDTO.stealType` | `+0x30` | String declaration; retain exact wire field without guessing absent values |
+| `MatchService.ParseOps(ChatMessageDTO)` | `0xBA7220` | Fallback loads message `+0x128`, tail-calls dictionary overload |
+| `MatchService.ParseOps(Dictionary)` | `0xBA72E0` | Reads literal `ops`, JArray/ToObject conversion to declared operation list |
+| `BoardWsApplier.<ApplyOp>d__102.MoveNext` | `0xB2E640` | Literal `SWAP` branch calls ApplySwap at `0xB2EAF1` |
+| `BoardWsApplier.ApplySwap` | `0xB154F0` | Reads fromCol/fromRow/toCol/toRow from op.data via ReadInt; checks bounds |
+| `BoardWsApplier.ReadInt` | `0xB275C0` | Dictionary lookup with caller fallback; V2 evidence does not apply fallback0 to absent coordinates |
+
+The optional JSON projection retains all validated SWAP ops with indices,
+separate from the older outer-envelope coordinates. No new memory chain
+or input authority. Static consumption does not prove that an op is the
+actor's decision, the boss pre-board, or a complete refill trajectory.
+These remain UNKNOWN pending actual captures. Old63 boss effect batches
+contain no retained operations and cannot be relabeled retrospectively.
+[Data report](phase5/COMMON_ACTION_OUTCOMES_20261118.md).
+
+## 2026-11-18 — B17 native operation capture
+
+On exact B17 GameAssembly SHA
+`bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`,
+four new BASIC Demon/Shield/Priest131 matches retained51 outcome batches.
+All28 local SWAP ops agree with actual sent endpoints after the existing
+native-row inversion;24 have independent SWAP ACK,4 are terminal exclusions.
+21 SWAP ops occur in actor=BOSS batches, with2 further boss batches lacking
+SWAP.22 STEAL steps retain exact stealType (14 POWER,8 MANA).
+
+This is observed JSON evidence, not a new RVA/pointer chain, server formula,
+boss pre-board, skill acceptance or global compatibility proof. Raw transfer
+after ownership remains UNKNOWN. See
+[native report](phase5/B17_PRIEST_OUTCOME_LIVE_20261118.md) and
+[response/input joins](phase5/artifacts/b17_priest_outcomes_20261118/operation_mapping.json).
+# B17 optional published-state evidence — 18/11/2026
+
+No new RVA/field/ownership chain was introduced for `combat_board_evidence`.
+It copies immutable objects already decoded by the existing provider/tap.
+The new BASIC match `M_db5ccb58` supplies7 before/after published BOSS→LOCAL
+intervals with exact match/epoch/Board/seq/turn identities and one raw SWAP
+operation each. All7 are legal on the recorded before board under the existing
+`screen_row=7-native_row` mapping. Complete refill/effect coverage and universal
+boss policy remain UNKNOWN; observations grant no action/training authority.
+Details: [B17 boss board evidence](phase5/B17_BOSS_BOARD_AND_REASONING_20261118.md).
+
+# B17 STEAL display classification — 18/11/2026
+
+GameAssembly SHA `bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`.
+Static method identity and bytes from the matching Dumper export confirm:
+`Active.StealTypeOf` RVA0x158C3A0 compares POWER→No and HP→Mau, with Mana
+as fallback. `Active.BuildWsOutputsByTag` RVA0x158C580 handles STEAL at
+0x158C9B0, uses `trang Dot` at0x158C9F0, reads step stealType at+0x30,
+calls StealTypeOf at0x158CA1B and writes display lastStealType at+0x278.
+These are static client display semantics, not new read chains or a server
+transfer formula. Never infer a missing wire type from the Mana fallback;
+HP-steal applicability to a particular board gem/skill remains UNKNOWN.
+Two closed B17 Priest logs retain6 POWER and6 MANA STEAL steps. Shared
+adviser now values Mana and Rage exposure; no new offsets/RVAs are used by
+runtime readers. [Evidence/report](phase5/B17_REPLY_DRAIN_REVIEW_20261118.md).
+

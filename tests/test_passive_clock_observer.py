@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import struct
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -340,7 +341,7 @@ class PassiveClockTests(unittest.TestCase):
 
     def test_export_exclusive_failure_partial_and_no_durability_claim(self):
         r = collect()
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as d:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as d:
             p = Path(d)/"observation.json"
             self.assertEqual(export_report(r,p)["status"], "FILE_WRITTEN")
             self.assertEqual(json.loads(p.read_bytes()),r)
@@ -543,7 +544,7 @@ class PassiveNativeAdapterFakeTests(unittest.TestCase):
         return code,out,json.loads(buf.getvalue())
 
     def test_full_cli_faked_native_window_exports_bound_ledger_after_cleanup(self):
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             code,out,receipt=self.run_cli(temp)
             self.assertEqual(code,0)
             r=json.loads((out/"observation.json").read_bytes())
@@ -556,7 +557,7 @@ class PassiveNativeAdapterFakeTests(unittest.TestCase):
 
     def test_native_setup_failure_is_retained_with_counts_and_zero_samples(self):
         self.fake.CreateToolhelp32Snapshot.return_value=self.fake.p.INVALID_HANDLE_VALUE
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             code,out,receipt=self.run_cli(temp)
             self.assertEqual(code,1)
             r=json.loads((out/"failure.json").read_bytes())
@@ -565,7 +566,7 @@ class PassiveNativeAdapterFakeTests(unittest.TestCase):
             self.assertEqual(receipt["failure_export"]["status"],"FILE_WRITTEN")
 
     def test_same_window_directory_cannot_resume_or_attach_twice(self):
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             self.assertEqual(self.run_cli(temp)[0],0)
             code,out,receipt=self.run_cli(temp)
             self.assertEqual(code,1)
@@ -573,7 +574,7 @@ class PassiveNativeAdapterFakeTests(unittest.TestCase):
             self.fake.OpenProcess.assert_called_once()
 
     def test_modified_review_file_rejected_before_any_process_api(self):
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             p=Path(temp)/"review.json"
             p.write_bytes(canonical_bytes(self.cli_review()))
             with redirect_stdout(io.StringIO()):
@@ -586,7 +587,7 @@ class PassiveNativeAdapterFakeTests(unittest.TestCase):
 class PassivePreparationTests(unittest.TestCase):
     def test_prepare_cli_creates_only_review_and_never_opens_process(self):
         review=dict(schema="synthetic",production_activation=False)
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as temp:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
             out=Path(temp)/"prepared"
             with patch.object(cli,"make_review",return_value=review),patch.object(cli,"NativeSession") as native,redirect_stdout(io.StringIO()):
                 self.assertEqual(cli.main(["--prepare","--out",str(out)]),0)
@@ -786,7 +787,7 @@ class PassiveClockP7DiagnosticsTests(unittest.TestCase):
     def test_error_report_export_keeps_json_safe_fields_and_loss_status(self):
         s=FakeSource();s.memory.put(s.root+CLOCK_OFFSET,clock_block(fx=float("inf")))
         r=collect(s)
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as d:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as d:
             p=Path(d)/"error.json";receipt=export_report(r,p)
             self.assertEqual(receipt["status"],"FILE_WRITTEN")
             self.assertEqual(json.loads(p.read_bytes()),r)
@@ -797,7 +798,7 @@ class PassiveClockP7DiagnosticsTests(unittest.TestCase):
 
     def test_p5_review_cannot_silently_activate_changed_observer(self):
         review=cli.ROOT/"docs/phase5/artifacts/5d1_passive_clock_preparation_v1/prepared_final/review.json"
-        with tempfile.TemporaryDirectory(dir=cli.ROOT) as d:
+        with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as d:
             out=Path(d)/"window"
             with patch.object(cli,"NativeSession") as native,redirect_stdout(io.StringIO()):
                 code=cli.main(["--native","--activate-passive-window","--pid","123",

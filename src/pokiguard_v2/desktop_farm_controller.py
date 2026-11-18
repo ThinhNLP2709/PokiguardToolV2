@@ -251,6 +251,7 @@ class DesktopFarmControllerManager:
             max_match_attempts=limits.max_match_attempts,
             gameplay_config=config.gameplay_config,
             input_delivery_mode=config.input_delivery_mode,
+            checkpoint_path=launch.checkpoint_path,
         )
         if not decision.allowed:
             raise CheckpointError(
@@ -792,6 +793,8 @@ class DesktopFarmControllerManager:
             config.pet_skill_fire_condition.value,
             "--demon-target-gem",
             config.demon_target_gem.value,
+            "--mega-self-protection",
+            config.mega_self_protection.value,
             "--board-input-mode",
             config.board_input_mode.value,
             "--input-delivery-mode",

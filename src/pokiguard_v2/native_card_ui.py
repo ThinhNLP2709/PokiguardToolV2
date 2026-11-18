@@ -1,7 +1,7 @@
-"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b15 card strip.
+"""Bounded, read-only Unity ownership/geometry for the 1.7.4-b17 card strip.
 
 No heap scan and no engine invocation. Offsets below are native-code verified,
-not managed-field offsets; see docs/petpuzzle_b15_compatibility_report.md.
+not managed-field offsets; see docs/petpuzzle_b17_compatibility_report.md.
 Every native layout is enabled only after matching the relevant code bytes.
 """
 
@@ -37,9 +37,9 @@ _TRANSFORM_DATA_LOCAL_TRS_OFFSET = 0x18
 
 
 # Component.get_gameObject_Injected cache -> verified UnityPlayer function RVA.
-# B15 Component.get_gameObject at RVA 0x353AB90 reads this exact cache.
+# B17 Component.get_gameObject at RVA 0x35e7aa0 reads this exact cache.
 # Unity 6000.7.0b7 signatures are re-derived from readonly icall cache joins.
-_COMPONENT_GO_ICALL = 0x456E020
+_COMPONENT_GO_ICALL = 0x4630EE0
 _COMPONENT_GO_RVA = 0x1197500
 _NATIVE_SIGNATURES = (
     (0x1197506, "488b5928"),
@@ -60,9 +60,12 @@ _NATIVE_SIGNATURES = (
     (0xC35D4E, "8b4338"),
 )
 _UNMARSHAL_SIGNATURE = (
-    0x1BD423C,
-    "f6c301740d488bcbe8173d67fe488bd8eb03488b1b4885db",
+    0x1C7201C,
+    "f6c301740d488bcbe8f7945dfe488bd8eb03488b1b4885db",
 )
+
+
+PET_SKILL_GEOMETRY_BUSY_PREFIX = "pet_skill_control_geometry_busy:"
 
 
 class NativeGeometryBusyError(LayoutValidationError):
@@ -189,7 +192,7 @@ class NativeCardUiReader:
         return value
 
     def _managed(self, native: int, *, optional: bool = False) -> int | None:
-        # UnmarshalUnityObject<T> at GA+138561F: even handle is pointer-to-object;
+        # UnmarshalUnityObject<T> tag at GA+1C7201C: even handle is pointer-to-object;
         # odd handle requires an engine GC-handle resolver. Never invoke it.
         # A tagged GC handle can be a small integer, not a user-space address.
         # Inspect its tag BEFORE treating an even handle as a pointer.

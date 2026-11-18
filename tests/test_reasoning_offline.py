@@ -6,6 +6,7 @@ import hashlib
 from pathlib import Path
 import sys
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -271,7 +272,7 @@ class ReasoningOfflineTests(unittest.TestCase):
                             {"boss": "fixture", "logDate": "fixture", "swordSetting": 3})
 
     def _temporary_dataset(self, entries):
-        temporary_root = (ROOT / "temp").resolve()
+        temporary_root = reasoning_temp_root().resolve()
         self.assertTrue(temporary_root.is_relative_to(ROOT))
         temporary_root.mkdir(exist_ok=True)
         context = tempfile.TemporaryDirectory(prefix="phase5b1_", dir=temporary_root)

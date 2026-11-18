@@ -25,9 +25,11 @@ from .gameplay_profile import AuditionMode
 from .pet_qte_observer import QteBindingStatus
 from .pet_skill_shadow import (
     PetSkillCapability,
+    PetSkillFamily,
     QteEvidenceStatus,
     QteSnapshot,
     QteTimingResult,
+    current_click_only_card_type,
 )
 from .qte_direction_assist import (
     QteAssistEvent,
@@ -305,6 +307,7 @@ class PetSkillActionExecutor:
         timestamp: Callable[[], float] = time.monotonic,
         action_id_factory: Callable[[], str] = lambda: uuid.uuid4().hex,
         audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
+        galaxy_card: bool = False,
     ) -> None:
         if not 0.5 <= qte_generation_timeout_seconds <= 10.0:
             raise ValueError("QTE generation timeout must be between 0.5 and 10 seconds")
@@ -324,12 +327,14 @@ class PetSkillActionExecutor:
         self._timestamp = timestamp
         self._action_id_factory = action_id_factory
         self._audition_mode = AuditionMode(audition_mode)
+        self._galaxy_card = galaxy_card
         self._state = PetSkillActionState.IDLE
         self._action_id: PetSkillActionId | None = None
         self._window: WindowBinding | None = None
         self._card_ui: int | None = None
         self._button: int | None = None
         self._card_data: int | None = None
+        self._click_only_element_type: str | None = None
         self._geometry: PetSkillCardGeometryProof | None = None
         self._deadline: float | None = None
         self._qte_identity = None
@@ -430,6 +435,8 @@ class PetSkillActionExecutor:
         self._card_ui = card.object_address
         self._button = card.button_address
         self._card_data = card.data_address
+        if self._audition_mode is AuditionMode.NO_ACTION:
+            self._click_only_element_type = card.element_type.upper()
         self._geometry = geometry
         self._source_board_key = observation.board_dedup_key
         self._telemetry = PetSkillActionTelemetry(
@@ -1218,6 +1225,13 @@ class PetSkillActionExecutor:
         card = observation.live_card
         if card is None or card.button_address is None:
             return "EXACT_LIVE_PET_SKILL_CARDUI_MISSING"
+        if self._audition_mode is AuditionMode.NO_ACTION:
+            element = current_click_only_card_type(capability, session)
+            is_galaxy = capability.skill_family is PetSkillFamily.GALAXY_CLICK_ONLY
+            if element is None or card.element_type.upper() != element or is_galaxy != self._galaxy_card:
+                return "CURRENT_GALAXY_CARD_UNVERIFIED" if self._galaxy_card else "CURRENT_MEGA_SEAL_CARD_UNVERIFIED"
+            if self._click_only_element_type is not None and element != self._click_only_element_type:
+                return "GALAXY_CARD_TYPE_CHANGED" if self._galaxy_card else "MEGA_SEAL_TYPE_CHANGED"
         if (
             card.object_address != capability.live_card_address
             or card.button_address != capability.live_button_address

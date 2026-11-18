@@ -1,4 +1,6 @@
 from types import SimpleNamespace
+from dataclasses import asdict, replace
+import json
 import struct
 import unittest
 from unittest.mock import Mock, patch
@@ -10,6 +12,7 @@ from pokiguard_v2.memory_board_provider import BoardWsObservation, QueueObservat
 from tools.dispatcher_qte_result_tap import (
     DispatcherQteResultTap,
     DispatcherTransportTap,
+    _raw_move_replay,
     parse_server_envelope_json,
     parse_skill_result_envelope_json,
 )
@@ -316,6 +319,59 @@ class DispatcherQteResultTapTests(unittest.TestCase):
         self.assertEqual(tap.diagnostics.decoded_raw_boards, 1)
         self.assertEqual(tap.diagnostics.decoded_dto_boards, 0)
         self.assertEqual(tap.diagnostics.retained_board_snapshots, 1)
+
+    @patch("tools.dispatcher_qte_result_tap.read_il2cpp_string")
+    @patch("tools.dispatcher_qte_result_tap.read_server_message")
+    def test_boss_replay_keeps_actor_swap_and_post_board_from_same_raw_callback(self, decode, read_string):
+        tap = DispatcherTransportTap(self.target())
+        tap._reader = Mock()
+        tap._reader.read.return_value = (
+            DispatcherChatMessageRoot(0x200000, 0x210000, 0x220000, "drain_buffer", 0, json_address=0x230000),
+        )
+        decode.side_effect = LayoutValidationError("mutable DTO unavailable")
+        read_string.return_value = json.dumps({
+            "type": "MATCH_MOVE_RES", "matchId": "M_A", "username": "outer username",
+            "fromRow": 7, "fromCol": 2, "toRow": 6, "toCol": 2,
+            "matchPayload": {
+                "srvSeq": 63, "turnNumber": 4, "actorUsername": "__BOSS__", "currentTurnPlayer": "next player",
+                "board": [[{"col": col, "row": row, "tag": "vang Dot", "multiplier": 1 + row % 4}
+                           for col in range(8)] for row in range(8)],
+            },
+        })
+
+        tap._capture_once("M_A")
+        ((event_type, snapshot),) = tap.transport_board_snapshots("M_A")
+        replay = tap.move_response_replay_fields(snapshot)["moveReplay"]
+
+        self.assertEqual(event_type, "MATCH_MOVE_RES")
+        self.assertEqual(snapshot.sequence, 63)
+        self.assertEqual(asdict(replay["evidence"]), {
+            "actor_role": "BOSS", "screen_swap": ((0, 2), (1, 2)), "wire_turn": 4,
+        })
+        self.assertEqual(replay["postBoard"][0][0], ("sword", 4))
+        self.assertEqual(len(replay["boardHash"]), 64)
+        self.assertEqual(tap.move_response_replay_fields(replace(snapshot)), {})
+        with patch("tools.dispatcher_qte_result_tap.threading.Thread"):
+            tap.arm("M_NEW")
+        self.assertEqual(tap.move_response_replay_fields(snapshot), {})
+
+    def test_boss_replay_refuses_inferred_actor_invalid_swap_and_rejection(self):
+        raw = {
+            "username": "__BOSS__", "fromRow": 7, "fromCol": 2, "toRow": 5, "toCol": 2,
+            "matchPayload": {"turnNumber": True, "currentTurnPlayer": "__BOSS__"},
+        }
+        self.assertEqual(asdict(_raw_move_replay(raw)), {
+            "actor_role": "UNKNOWN", "screen_swap": None, "wire_turn": None,
+        })
+        raw["matchPayload"]["actorUsername"] = "another player"
+        raw["toRow"] = False
+        self.assertEqual(asdict(_raw_move_replay(raw)), {
+            "actor_role": "OTHER_ACTOR", "screen_swap": None, "wire_turn": None,
+        })
+        for reject in ({"rejectReason": "rejected"}, {"matchPayload": {"success": False}},
+                       {"matchPayload": {"accepted": False}}, {"matchPayload": {"rejected": True}}):
+            with self.subTest(reject=reject):
+                self.assertIsNone(_raw_move_replay(dict(raw, **reject)))
 
     @patch("tools.dispatcher_qte_result_tap.read_match_payload_board_snapshot")
     @patch("tools.dispatcher_qte_result_tap.parse_transport_board_envelope_json")

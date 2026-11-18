@@ -1,8 +1,0 @@
-namespace Unity.VisualScripting;
-
-public enum GraphSource
-{
-	Embed = 0,
-	Macro = 1,
-}
-

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import unittest
 
 from pokiguard_v2.reasoning_calibration import decode_config,source_files,source_fingerprint
@@ -17,7 +18,7 @@ PACKAGE=ROOT/'docs/phase5/artifacts/5e2_live_20261029/reasoning20_setup'
 
 class E2NativeTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory(dir=PACKAGE)
+        self.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root())
         self.addCleanup(self.temp.cleanup)
         self.out=Path(self.temp.name)
         shutil.copytree(PACKAGE/'native',self.out/'native')

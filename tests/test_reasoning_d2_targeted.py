@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import unittest
 from unittest.mock import patch
 
@@ -17,7 +18,7 @@ from tools.prepare_d2_targeted import copy_native,ROOT
 
 class TargetedD2Tests(unittest.TestCase):
     def setUp(self):
-        tmp=tempfile.TemporaryDirectory(dir=ROOT,prefix='d2_targeted_test_')
+        tmp=tempfile.TemporaryDirectory(dir=reasoning_temp_root(),prefix='d2_targeted_test_')
         self.addCleanup(tmp.cleanup);self.out=Path(tmp.name)
         self.cal=copy_native(self.out)
         # This is a historical D2 source review, not acceptance of a D3

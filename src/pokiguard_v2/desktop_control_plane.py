@@ -22,9 +22,14 @@ from .basic_policy import (
     PlayStyle,
 )
 from .pet_configuration import GameplayConfig, MainPetType, EvolutionTarget, DamageCardMode
-from .gameplay_profile import AuditionMode, GameMode, PetSkillFireCondition, DemonTargetGem
+from .gameplay_profile import AuditionMode, GameMode, PetSkillFireCondition, DemonTargetGem, MegaSelfProtection
 from .boss_entry import FarmTarget
-from .farm_checkpoint import CheckpointError, CheckpointPayload, load_checkpoint
+from .farm_checkpoint import (
+    CheckpointError,
+    CheckpointPayload,
+    has_unstarted_entry_timeout,
+    load_checkpoint,
+)
 from .farm_run import FarmRunLimits
 from .desktop_farm_controller import (
     ControllerCommandResult,
@@ -149,6 +154,7 @@ class DesktopConfig(GameplayConfig):
         pet_skill_fire_condition: str = PetSkillFireCondition.SWORD_COUNT.value,
         pet_skill_fire_value: str | None = "10",
         demon_target_gem: str = DemonTargetGem.SHIELD.value,
+        mega_self_protection: str = MegaSelfProtection.HP_BELOW_30.value,
         input_delivery_mode: str = InputDeliveryMode.FOREGROUND.value,
         game_window_size_profile: str = DEFAULT_GAME_WINDOW_SIZE_PROFILE.value,
         tool_sound_enabled: str = "true",
@@ -206,6 +212,7 @@ class DesktopConfig(GameplayConfig):
             pet_skill_fire_condition=condition,
             pet_skill_fire_value=fire_value,
             demon_target_gem=DemonTargetGem(demon_target_gem),
+            mega_self_protection=MegaSelfProtection(mega_self_protection),
             intelligence=Intelligence(intelligence),
             board_input_mode=BoardInputMode(board_input_mode),
             boss_id=boss_id,
@@ -270,6 +277,7 @@ class CheckpointSummary:
     error: str | None = None
     gameplay_config: GameplayConfig | None = None
     input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND
+    unstarted_entry_timeout: bool = False
 
     @property
     def resumable_candidate(self) -> bool:
@@ -303,6 +311,7 @@ class CheckpointSummary:
                 graceful_lobby_stop
                 or interrupted_at_durable_lobby_boundary
                 or recoverable_legacy_technical_stop
+                or self.unstarted_entry_timeout
             )
         )
 
@@ -436,6 +445,7 @@ def _checkpoint_summary(path: Path, payload: CheckpointPayload) -> CheckpointSum
         updated_at=payload.updated_at,
         gameplay_config=payload.gameplay_config,
         input_delivery_mode=payload.input_delivery_mode,
+        unstarted_entry_timeout=has_unstarted_entry_timeout(payload, path),
     )
 
 

@@ -48,7 +48,7 @@ def incident_state(*, rage=75):
 
 def skill_for(state, *, card_id=22):
     return replace(mega_capability(), session_key=state.battle.session_key,
-                   skill_card_id=card_id)
+                   skill_card_id=card_id, card_id=card_id)
 
 
 def signature(state, decision):
@@ -93,6 +93,16 @@ class MegaSwapIdentityTests(unittest.TestCase):
         self.assertIs(ready.action, PolicyAction.PET_SKILL)
         self.assertNotEqual(signature(state, missing), signature(state, ready))
 
+    def test_policy_key_distinguishes_skill_evidence_but_not_sample_time(self):
+        state = incident_state(rage=150)
+        capability = skill_for(state)
+        empty = frozenset()
+        observed = bot._policy_decision_key(state, empty, capability, None)
+        self.assertNotEqual(observed, bot._policy_decision_key(state, empty, None, None))
+        self.assertEqual(observed, bot._policy_decision_key(
+            state, empty, replace(capability, observed_at=capability.observed_at + 1.0), None,
+        ))
+
     def test_foreign_session_still_cannot_propose_skill(self):
         state = incident_state(rage=150)
         cap = skill_for(state)
@@ -130,6 +140,9 @@ class MegaSwapIdentityTests(unittest.TestCase):
             if row.get('reason')=='POLICY_CHANGED_ON_FRESH_REREAD')
         self.assertEqual(cancelled['originalDecision']['action'], 'swap')
         self.assertEqual(cancelled['freshDecision']['action'], 'pet_skill')
+        self.assertFalse(any(row.get('reason') == 'NONDETERMINISTIC_POLICY_FOR_SAME_SOURCE'
+                             for row in rows))
+        self.assertEqual(sum(row['event'] == 'pet_skill_dispatch_started' for row in rows), 1)
 
     def test_real_controller_sends_and_acks_same_swap_when_capability_appears(self):
         self.check_controller(capability_initially_present=False)

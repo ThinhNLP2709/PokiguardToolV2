@@ -1,5 +1,26 @@
 # PokiguardToolV2
 
+## Bản portable mới nhất: v1.3.6 — B17
+
+[Tải ZIP Windows x64 v1.3.6 / B17](build/v1.3.6-b17/PokiguardToolV2-v1.3.6-b17-win-x64.zip)
+· [SHA-256](build/v1.3.6-b17/PokiguardToolV2-v1.3.6-b17-win-x64.zip.sha256)
+· [Báo cáo phát hành](docs/v1.3.6_b17_release_report.md).
+
+Gói 18/11/2026 chứa profile game B17 và sửa adviser Hút Mana/Nộ mới nhất.
+Đã kiểm source/bytecode, ZIP và hai frozen self-check. **Chưa live test gói mới**;
+6 trận B17 đã ghi trước đó thuộc source cũ. Xem [review và giới hạn](docs/phase5/B17_REPLY_DRAIN_REVIEW_20261118.md).
+Giải nén toàn bộ rồi chạy `PokiguardToolV2.exe`, giữ `_internal` đi cùng.
+
+[Gói v1.3.6 trước đó](build/v1.3.6/PokiguardToolV2-v1.3.6-win-x64.zip) và
+[báo cáo cũ](docs/v1.3.6_release_report.md) vẫn được giữ nguyên.
+Các mốc Phase 5 và bản đóng gói bên dưới là lịch sử theo thời điểm ghi nhận.
+
+Mốc nghiên cứu trước đó: đã hoàn thành bước chuẩn hóa outcome chung
+và giữ thêm bằng chứng ops/stealType B16,186 test liên quan PASS. Phần học
+model đã ghi vào backlog sau các việc cũ còn thiếu dữ liệu; chưa build hoặc
+live projection mới. [Tiến độ hiện tại](docs/phase5/RESEARCH_BACKLOG_20261118.md)
+· [Kết quả offline](docs/phase5/COMMON_ACTION_OUTCOMES_20261118.md).
+
 ## Phase 5 closeout — 2026-10-31
 
 Checkpoint **v1.3.0** (01/11/2026) includes the completed scoped UI opt-in.
@@ -19,7 +40,7 @@ publish a new binary, or authorize more live matches.
 
 ## Mở tool trên Windows
 
-### Bản portable hiện tại: v1.3.0
+### Checkpoint portable v1.3.0 (lịch sử)
 
 [Tải ZIP Windows x64 v1.3.0](build/v1.3.0/PokiguardToolV2-v1.3.0-win-x64.zip)
 — checkpoint Phase5, có bật/tắt suy luận trong AI cho Demon Farm ăn Khiên

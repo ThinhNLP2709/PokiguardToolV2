@@ -395,6 +395,32 @@ def locate_detached_chinh_phuc_room_shell_exit(
             "room_shell_start_control_missing",
             metrics={"startReason": start.reason},
         )
+    return _locate_room_exit(rgb, width, height, start_reason=start.reason)
+
+
+def locate_owned_chinh_phuc_room_exit(
+    rgb: bytes,
+    width: int,
+    height: int,
+    *,
+    expected_rect: tuple[float, float, float, float],
+) -> EntryUiLocation:
+    """Confirm the circular X inside the native room Back control."""
+    if width < 640 or height < 360 or len(rgb) != width * height * 3:
+        return EntryUiLocation(
+            BossEntryControl.CHINH_PHUC_ROOM_SHELL_EXIT, False, None, None, 0.0, "invalid_capture"
+        )
+    return _locate_room_exit(rgb, width, height, expected_rect=expected_rect)
+
+
+def _locate_room_exit(
+    rgb: bytes,
+    width: int,
+    height: int,
+    *,
+    start_reason: str = "native_room_back_control",
+    expected_rect: tuple[float, float, float, float] | None = None,
+) -> EntryUiLocation:
     transform = transform_for_capture(rgb, width, height)
     layouts = (
         (
@@ -416,6 +442,12 @@ def locate_detached_chinh_phuc_room_shell_exit(
         for left, top, right, bottom, cyan_pixels in components:
             rect = (left / width, top / height, right / width, bottom / height)
             center = ((rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2)
+            if expected_rect is not None:
+                x0, y0, x1, y1 = expected_rect
+                if not (0 <= x0 < center[0] < x1 <= 1 and 0 <= y0 < center[1] < y1 <= 1
+                        and abs(center[0] - (x0 + x1) / 2) <= 0.015
+                        and abs(center[1] - (y0 + y1) / 2) <= 0.02):
+                    continue
             if coordinate_space == "REFERENCE":
                 space_left, space_top = transform.reference_point(
                     (rect[0], rect[1])
@@ -492,7 +524,7 @@ def locate_detached_chinh_phuc_room_shell_exit(
             0.0,
             "room_shell_exit_missing" if not candidates else "room_shell_exit_ambiguous",
             tuple(candidates),
-            {"candidateCount": len(candidates), "startReason": start.reason},
+            {"candidateCount": len(candidates), "startReason": start_reason},
         )
     candidate, layout = located[0]
     layout_reason = (
@@ -504,13 +536,14 @@ def locate_detached_chinh_phuc_room_shell_exit(
         candidate.normalized_point,
         candidate.normalized_rect,
         candidate.confidence,
-        f"single_room_start_plus_{layout_reason}_circular_exit",
+        (f"single_room_start_plus_{layout_reason}_circular_exit" if expected_rect is None
+         else "runtime_owned_room_back_with_visual_signature"),
         (candidate,),
         {
             "candidateCount": 1,
             "cyanPixels": candidate.cyan_pixels,
             "whitePixels": candidate.warm_or_white_pixels,
-            "startReason": start.reason,
+            "startReason": start_reason,
             "exitLayout": layout,
         },
     )
@@ -639,4 +672,5 @@ __all__ = [
     "find_chinh_phuc_start_candidates",
     "locate_chinh_phuc_start",
     "locate_detached_chinh_phuc_room_shell_exit",
+    "locate_owned_chinh_phuc_room_exit",
 ]

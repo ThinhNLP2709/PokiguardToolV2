@@ -560,6 +560,14 @@ class ForegroundClickExecutor:
         self.backend.click_mouse()
         return ClickStatus.SENT
 
+    def swap_end_position(self, plan: CoordinatePlan) -> tuple[int, int]:
+        """Return the planned screen cursor position after a complete swap."""
+        x, y = plan.second.screen_x, plan.second.screen_y
+        if self.input_mode is BoardInputMode.DRAG:
+            x += round((x - plan.first.screen_x) * self.drag_overshoot_fraction)
+            y += round((y - plan.first.screen_y) * self.drag_overshoot_fraction)
+        return x, y
+
     def send_swap(
         self,
         binding: WindowBinding,
@@ -706,12 +714,10 @@ class ForegroundClickExecutor:
         # adaptive two-click pacing must not stretch it back into the live-
         # rejected slow gesture.  Adjacent cell centres provide the cell step.
         duration = self.drag_duration_seconds
-        delta_x = plan.second.screen_x - plan.first.screen_x
-        delta_y = plan.second.screen_y - plan.first.screen_y
-        overshoot_x = round(delta_x * self.drag_overshoot_fraction)
-        overshoot_y = round(delta_y * self.drag_overshoot_fraction)
-        end_x = plan.second.screen_x + overshoot_x
-        end_y = plan.second.screen_y + overshoot_y
+        end_x, end_y = self.swap_end_position(plan)
+        overshoot_pixels = max(
+            abs(end_x - plan.second.screen_x), abs(end_y - plan.second.screen_y)
+        )
         board_left, board_top, board_right, board_bottom = plan.board_rect_client
         board_screen = (
             plan.client_geometry.left + board_left,
@@ -735,11 +741,10 @@ class ForegroundClickExecutor:
                 input_mode=BoardInputMode.DRAG.value,
                 drag_duration_seconds=round(duration, 3),
                 drag_steps=self.drag_steps,
-                drag_overshoot_pixels=max(abs(overshoot_x), abs(overshoot_y)),
+                drag_overshoot_pixels=overshoot_pixels,
             )
         drag_distance_x = end_x - plan.first.screen_x
         drag_distance_y = end_y - plan.first.screen_y
-        overshoot_pixels = max(abs(overshoot_x), abs(overshoot_y))
 
         def result(status: ClickStatus, sent_endpoints: int) -> ClickPairResult:
             return ClickPairResult(

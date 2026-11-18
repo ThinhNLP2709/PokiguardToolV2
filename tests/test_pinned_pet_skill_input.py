@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -14,11 +15,13 @@ for import_path in (str(PROJECT_ROOT), str(SRC_ROOT)):
         sys.path.insert(0, import_path)
 
 from pokiguard_v2.gameplay_profile import AuditionMode  # noqa: E402
+from pokiguard_v2.native_card_ui import PET_SKILL_GEOMETRY_BUSY_PREFIX  # noqa: E402
 from pokiguard_v2.pet_skill_action import (  # noqa: E402
     PetSkillActionResultKind,
     PetSkillActionState,
 )
 from pokiguard_v2.state import CombatSessionKey  # noqa: E402
+from tests.test_mega_icarus_click_only import click_only_executor, observation  # noqa: E402
 from tools.pet_skill_action import (  # noqa: E402
     Phase3b3RuntimeHook,
     PinnedForegroundPetSkillHook,
@@ -85,6 +88,9 @@ def hook(
     acquired=lambda: True,
     expected_session=None,
     audition_mode: AuditionMode = AuditionMode.V3_TWO_DIRECTION,
+    galaxy_card: bool = False,
+    expected_skill_card_id: int | None = None,
+    expected_source_turn: int | None = None,
 ) -> PinnedForegroundPetSkillHook:
     return PinnedForegroundPetSkillHook(
         backend=SimpleNamespace(),
@@ -98,6 +104,9 @@ def hook(
         post_state_timeout_seconds=15.0,
         on_lease_acquired=acquired,
         expected_session=expected_session,
+        galaxy_card=galaxy_card,
+        expected_skill_card_id=expected_skill_card_id,
+        expected_source_turn=expected_source_turn,
     )
 
 
@@ -268,6 +277,145 @@ class PinnedForegroundPetSkillHookTests(unittest.TestCase):
         self.assertFalse(action._invocation_consumed)
         self.assertTrue(lease.active)
         self.assertEqual(lease.release_reasons, [])
+
+    def galaxy_geometry_context(self, *, preflight=False):
+        session = CombatSessionKey(1, 0x12340000, "M_GALAXY")
+        lease = FakeLease()
+        lease.active = True
+        action = hook(
+            lease, expected_session=session, audition_mode=AuditionMode.NO_ACTION,
+            galaxy_card=True, expected_skill_card_id=24, expected_source_turn=77,
+        )
+        action._executor = SimpleNamespace(
+            state=PetSkillActionState.PREFLIGHT if preflight else PetSkillActionState.IDLE,
+            action_id=SimpleNamespace(session_key=session) if preflight else None,
+            result=None, active=preflight, abort=Mock(),
+        )
+        action._invocation_consumed = preflight
+        context = dict(
+            session=session, lifecycle_valid=True,
+            runtime=SimpleNamespace(match_id=session.match_id, turn=77,
+                                    current_player="local", local_username="local", remaining=8),
+            capability=SimpleNamespace(skill_card_id=None), live_cards=(),
+            card_diagnostics={"nativeCardDiscoveryReason": (
+                PET_SKILL_GEOMETRY_BUSY_PREFIX + "native_card_ui: transform job pending"
+            )},
+        )
+        return action, lease, context
+
+    def test_galaxy_geometry_busy_defers_inside_same_lease_until_fresh_sample(self):
+        for preflight in (False, True):
+            with self.subTest(preflight=preflight):
+                action, lease, context = self.galaxy_geometry_context(preflight=preflight)
+                with patch("tools.pet_skill_action.time.monotonic", side_effect=(10.0, 10.2)):
+                    self.assertTrue(action.runtime_context(**context))
+                    self.assertFalse(action.done)
+                    self.assertFalse(action.runtime_context(**dict(
+                        context, capability=SimpleNamespace(skill_card_id=24),
+                        live_cards=(card(),), card_diagnostics={},
+                    )))
+                self.assertTrue(lease.active)
+                self.assertFalse(action.no_action_geometry_skipped)
+                action._executor.abort.assert_not_called()
+
+    def test_trex_geometry_changes_during_final_read_and_clicks_once_after_recovery(self):
+        source_turn = 73
+        card_id = 9999
+        sample = observation(10.0, seal_type="MEGA_TREX", turn_number=source_turn)
+        capability = replace(
+            sample.capability, source_pet_skill_card_id=None, skill_card_id=card_id, card_id=card_id,
+        )
+        sample = replace(
+            sample, capability=capability, live_card=replace(sample.live_card, card_id=card_id),
+            geometry=replace(sample.geometry, skill_card_id=card_id),
+        )
+        session = sample.session_key
+        lease = FakeLease()
+        lease.active = True
+        runtime_hook = hook(
+            lease, expected_session=session, audition_mode=AuditionMode.NO_ACTION,
+            expected_skill_card_id=card_id, expected_source_turn=source_turn,
+        )
+        action, mouse, backend, directions = click_only_executor()
+        runtime_hook._executor = action
+        fresh = dict(
+            session=session, lifecycle_valid=True, capability=capability,
+            runtime=SimpleNamespace(match_id=session.match_id, turn=source_turn,
+                                    current_player="local", local_username="local", remaining=8),
+            live_cards=(sample.live_card,),
+        )
+        with patch("tools.pet_skill_action.time.monotonic", return_value=10.0) as clock, \
+             patch.object(runtime_hook, "_observation", side_effect=(
+                 sample, replace(sample, sampled_monotonic=10.12),
+             )):
+            self.assertFalse(runtime_hook.runtime_context(**fresh))
+            runtime_hook.inactive(session)
+            self.assertIs(action.state, PetSkillActionState.PREFLIGHT)
+            self.assertEqual(mouse.points, [])
+
+            clock.return_value = 10.04
+            self.assertTrue(runtime_hook.runtime_context(**dict(
+                fresh, capability=SimpleNamespace(skill_card_id=None), live_cards=(),
+                card_diagnostics={"nativeCardDiscoveryReason": (
+                    PET_SKILL_GEOMETRY_BUSY_PREFIX + "native_card_ui: geometry changed during walk"
+                )},
+            )))
+            self.assertTrue(lease.active)
+            self.assertEqual(mouse.points, [])
+
+            clock.return_value = 10.12
+            self.assertFalse(runtime_hook.runtime_context(**fresh))
+            runtime_hook.inactive(session)
+
+        self.assertIs(action.state, PetSkillActionState.POST_SKILL_REREAD)
+        self.assertEqual(len(mouse.points), 1)
+        self.assertEqual(lease.release_reasons, ["NO_ACTION_CARD_CLICK_SENT"])
+        self.assertFalse(runtime_hook.no_action_geometry_skipped)
+        self.assertEqual(backend.keys, [])
+        directions.arm.assert_not_called()
+
+    def test_galaxy_geometry_wait_expires_without_input_or_second_lease(self):
+        action, lease, context = self.galaxy_geometry_context(preflight=True)
+        with patch("tools.pet_skill_action.time.monotonic", return_value=10.0):
+            self.assertTrue(action.runtime_context(**context))
+        with patch("tools.pet_skill_action.time.monotonic", return_value=10.51):
+            self.assertTrue(action.runtime_context(**context))
+        self.assertTrue(action.done)
+        self.assertTrue(action.no_action_geometry_skipped)
+        self.assertFalse(lease.active)
+        self.assertEqual(lease.release_reasons, ["CLICK_ONLY_CARD_GEOMETRY_UNAVAILABLE_BEFORE_INPUT"])
+        action._executor.abort.assert_called_once()
+        self.assertEqual(lease.acquire_calls, 0)
+
+    def test_galaxy_geometry_retry_rejects_wrong_card_or_lost_lease(self):
+        for lost_lease in (False, True):
+            with self.subTest(lost_lease=lost_lease):
+                action, lease, context = self.galaxy_geometry_context(preflight=True)
+                with patch("tools.pet_skill_action.time.monotonic", return_value=10.0):
+                    self.assertTrue(action.runtime_context(**context))
+                    lease.valid = not lost_lease
+                    self.assertTrue(action.runtime_context(**dict(
+                        context, capability=SimpleNamespace(skill_card_id=25),
+                        live_cards=(card(),), card_diagnostics={},
+                    )))
+                self.assertTrue(action.done)
+                self.assertFalse(action.no_action_geometry_skipped)
+                self.assertEqual(lease.release_reasons, [
+                    "PINNED_QTE_LEASE_INVALIDATED" if lost_lease else "PET_SKILL_POLICY_PROPOSAL_CHANGED",
+                ])
+
+    def test_galaxy_geometry_recovery_cannot_click_on_a_new_turn(self):
+        action, lease, context = self.galaxy_geometry_context(preflight=True)
+        with patch("tools.pet_skill_action.time.monotonic", return_value=10.0):
+            self.assertTrue(action.runtime_context(**context))
+            context['runtime'].turn += 1
+            self.assertTrue(action.runtime_context(**dict(
+                context, capability=SimpleNamespace(skill_card_id=24),
+                live_cards=(card(),), card_diagnostics={},
+            )))
+        self.assertTrue(action.no_action_geometry_skipped)
+        self.assertFalse(lease.active)
+        action._executor.abort.assert_called_once()
 
     def test_emergency_stop_releases_active_keyboard_or_mouse_guard(self) -> None:
         lease = FakeLease()

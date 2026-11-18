@@ -24,6 +24,7 @@ from pokiguard_v2.combat_cards import (  # noqa: E402
     read_cards_in_hand_anchors,
     read_selected_card_data_addresses,
     read_combat_card,
+    read_card_data,
     read_fusion_card_ui,
     read_fusion_state,
     validate_fusion_card_ui_hits,
@@ -55,6 +56,30 @@ def map_string(memory: FakeMemory, address: int, value: str, class_pointer: int)
 
 class CombatCardTests(unittest.TestCase):
     BASE = 0x0000020000000000
+
+    def test_live_galaxy_shape_reads_cooldown_after_pet_element_and_pet_id(self):
+        memory = FakeMemory()
+        data, klass, element = self.BASE, self.BASE + 0x1000, self.BASE + 0x2000
+        memory.map(klass, bytes(8))
+        map_string(memory, element, "GALAXY_DRAGON_KNIGHT", klass)
+        raw = bytearray(0xA8)
+        struct.pack_into("<Q", raw, 0, klass)
+        struct.pack_into("<qq", raw, 0x10, 0, 3347)
+        struct.pack_into("<Q", raw, 0x30, element)
+        struct.pack_into("<qq", raw, 0x48, 200, 200)
+        struct.pack_into("<Q", raw, 0x88, self.BASE + 0xCE24A220)
+        struct.pack_into("<i", raw, 0x90, 1234)
+        for cooldown in (0, 3, -1, 10_001):
+            with self.subTest(cooldown=cooldown):
+                struct.pack_into("<i", raw, 0x94, cooldown)
+                memory.map(data, raw)
+                if cooldown < 0 or cooldown > 10_000:
+                    with self.assertRaisesRegex(LayoutValidationError, "cooldown"):
+                        read_card_data(memory, data)
+                else:
+                    card = read_card_data(memory, data)
+                    self.assertEqual(card.cooldown_turns, cooldown)
+                    self.assertEqual((card.condition_use, card.power), (200, 200))
 
     def test_cards_in_hand_are_stable_region_anchors_only(self) -> None:
         memory = FakeMemory()
@@ -217,6 +242,9 @@ class CombatCardTests(unittest.TestCase):
         struct.pack_into("<Q", data_raw, 0x30, element)
         struct.pack_into("<Q", data_raw, 0x78, skill)
         struct.pack_into("<ii", data_raw, 0x80, 20, 0)
+        # +0x88 is petElement (a string pointer), not the third cost int.
+        # A non-null value reproduced the live Galaxy cooldown rejection.
+        struct.pack_into("<Q", data_raw, 0x88, name)
         struct.pack_into("<i", data_raw, 0x94, 1)
         data_raw[0x98] = 1
         memory.map(card_data, data_raw)
@@ -247,6 +275,7 @@ class CombatCardTests(unittest.TestCase):
         self.assertTrue(state.has_used_this_turn)
         self.assertEqual((state.card_id, state.last_turn_used), (73, 12))
         self.assertEqual(state.description, "Exact test metadata")
+        self.assertEqual((state.mana_cost, state.power_cost, state.cooldown_turns), (20, 0, 1))
 
         # Immutable CardData strings/costs are decoded once per combat while
         # live CardUI flags/Button state continue to be read every time.

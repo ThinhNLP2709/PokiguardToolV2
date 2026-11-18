@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
+from tests.reasoning_test_paths import reasoning_temp_root
 import time
 from types import SimpleNamespace
 import unittest
@@ -184,7 +185,7 @@ class ComponentMonitorTests(unittest.TestCase):
 class V3FileReviewTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp=tempfile.TemporaryDirectory(dir=ROOT);cls.package=Path(cls.temp.name)/'template'
+        cls.temp=tempfile.TemporaryDirectory(dir=reasoning_temp_root());cls.package=Path(cls.temp.name)/'template'
         # V3 remains bound to frozen P18, not silently rebound to P21.
         cls.frozen_root=ROOT/'docs/phase5/artifacts/5d1_root_policy_p21_v1/before'
         shutil.copytree(ROOT/'docs/phase5/artifacts/5d1_source_timing_rebind_p18_v1/review_final',cls.package)
@@ -192,7 +193,7 @@ class V3FileReviewTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
     def setUp(self):
-        self.tempdir=tempfile.TemporaryDirectory(dir=ROOT);self.addCleanup(self.tempdir.cleanup)
+        self.tempdir=tempfile.TemporaryDirectory(dir=reasoning_temp_root());self.addCleanup(self.tempdir.cleanup)
         self.directory=Path(self.tempdir.name)/'package';shutil.copytree(self.package,self.directory)
         self.data=deepcopy(self.original)
     def verify(self):

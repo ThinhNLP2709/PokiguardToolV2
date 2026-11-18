@@ -25,12 +25,12 @@ class Release130Tests(unittest.TestCase):
         with self.assertRaises(ValueError):verify_ui_source_files(base,missing)
 
 
-class Release131Tests(unittest.TestCase):
-    def test_current_label_is_131_and_old_130_proof_does_not_upgrade(self):
+class CurrentReleaseTests(unittest.TestCase):
+    def test_current_label_and_old_130_proof_does_not_upgrade(self):
         from pokiguard_v2.version import APP_VERSION,APP_TITLE,SEMANTIC_VERSION
-        self.assertEqual(SEMANTIC_VERSION,'1.3.2')
-        self.assertEqual(APP_VERSION,'v1.3.2')
-        self.assertEqual(APP_TITLE,'Tool PokiguardV2 - v1.3.2')
+        self.assertEqual(SEMANTIC_VERSION,'1.3.6')
+        self.assertEqual(APP_VERSION,'v1.3.6')
+        self.assertEqual(APP_TITLE,'Tool PokiguardV2 - v1.3.6')
         old={n:h for n,h in UI_METADATA_130.items()}
         current={n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in old}
         self.assertEqual(set(old),{n for n in current if current[n]!=old[n]})

@@ -11,18 +11,29 @@ from pokiguard_v2.pet_skill_action import (
     PetSkillActionState,
     QteSpaceInputExecutor,
 )
-from pokiguard_v2.pet_skill_shadow import PetSkillFamily, PetSkillTargetMode
+from pokiguard_v2.pet_skill_shadow import PetSkillFamily, PetSkillTargetMode, pet_skill_family
 from tests.test_pet_skill_action import (
     FakeInputBackend,
     FakeMouse,
-    observation,
+    observation as qte_observation,
     post_state,
 )
 from tools.pet_qte_observer import _no_action_click_only_inactive_edge
 from tools.pet_skill_action import Phase3b3RuntimeHook
 
 
-def click_only_executor(*, post_timeout: float = 2.0):
+def observation(*args, seal_type="MEGA_ICARUS", **kwargs):
+    sample = qte_observation(*args, **kwargs)
+    family, target = pet_skill_family(seal_type)
+    return replace(
+        sample,
+        capability=replace(sample.capability, element_type=seal_type, skill_family=family,
+                           target_mode=target, source="CARD_UI_BUTTON"),
+        live_card=replace(sample.live_card, element_type=seal_type),
+    )
+
+
+def click_only_executor(*, post_timeout: float = 2.0, galaxy_card: bool = False):
     backend = FakeInputBackend()
     mouse = FakeMouse()
     directions = Mock()
@@ -34,6 +45,7 @@ def click_only_executor(*, post_timeout: float = 2.0):
         timestamp=lambda: 100.0,
         action_id_factory=lambda: "MEGA-ACTION-1",
         audition_mode=AuditionMode.NO_ACTION,
+        galaxy_card=galaxy_card,
     )
     return action, mouse, backend, directions
 
@@ -122,8 +134,10 @@ class MegaIcarusClickOnlyTests(unittest.TestCase):
 
     def test_one_click_zero_direction_zero_space_and_resource_transition(self) -> None:
         action, mouse, backend, directions = click_only_executor()
-        action.begin(observation(0.0), monotonic_now=0.0)
-        action.step(observation(0.05), monotonic_now=0.05)
+        sample = observation(0.0, seal_type="MEGA_TREX")
+        self.assertTrue(_no_action_click_only_inactive_edge(AuditionMode.NO_ACTION, sample.capability))
+        action.begin(sample, monotonic_now=0.0)
+        action.step(observation(0.05, seal_type="MEGA_TREX"), monotonic_now=0.05)
         self.assertIs(action.state, PetSkillActionState.POST_SKILL_REREAD)
         self.assertEqual(len(mouse.points), 1)
         self.assertEqual(backend.keys, [])
@@ -221,6 +235,13 @@ class MegaIcarusClickOnlyTests(unittest.TestCase):
         self.assertEqual(len(mouse.points), 0)
         self.assertEqual(backend.keys, [])
         directions.arm.assert_not_called()
+
+    def test_seal_type_change_before_click_emits_zero_input(self) -> None:
+        action, mouse, _, _ = click_only_executor()
+        action.begin(observation(0.0), monotonic_now=0.0)
+        action.step(observation(0.05, seal_type="MEGA_TREX"), monotonic_now=0.05)
+        self.assertEqual(action.result.reason, "FINAL_CARD_MEGA_SEAL_TYPE_CHANGED")
+        self.assertEqual(mouse.points, [])
 
     def test_shutdown_after_click_cleans_up_without_qte_calls(self) -> None:
         action, mouse, backend, directions = click_only_executor()

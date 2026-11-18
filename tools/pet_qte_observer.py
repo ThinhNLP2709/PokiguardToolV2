@@ -76,8 +76,7 @@ from pokiguard_v2.pet_skill_shadow import (  # noqa: E402
     LivePetSkillCard,
     PetSkillCapabilityProvider,
     PetSkillCapabilityStatus,
-    PetSkillFamily,
-    PetSkillTargetMode,
+    current_click_only_card_type,
     QteEvidenceStatus,
     QteObserver,
     live_pet_skill_card_from_state,
@@ -110,7 +109,7 @@ def _no_action_click_only_inactive_edge(
 ) -> bool:
     """Prove that a current click-only skill intentionally has no QTE.
 
-    Mega Icarus resolves immediately from its card click.  Waiting for either
+    A verified click-only card resolves from its card click. Waiting for either
     the V2 or V3 QTE singleton to publish an inactive edge therefore deadlocks
     the action until the turn clock expires.  Keep this exemption exact: the
     selected mode, current owned capability, family, automatic targeting and
@@ -123,10 +122,7 @@ def _no_action_click_only_inactive_edge(
     return bool(
         audition_mode is AuditionMode.NO_ACTION
         and capability is not None
-        and capability.current
-        and capability.skill_family is PetSkillFamily.MEGA_ICARUS_CLICK_ONLY
-        and capability.target_mode is PetSkillTargetMode.AUTOMATIC
-        and capability.live_card_present
+        and current_click_only_card_type(capability, capability.session_key) is not None
         and (
             capability.live_card_actionable is True
             or post_click_pending
@@ -1894,10 +1890,11 @@ def run(
                 source_pet=pet,
                 candidates=live_skill_candidates,
             )
+            defer_click_only_geometry = False
             if runtime_hook is not None:
                 context_callback = getattr(runtime_hook, "runtime_context", None)
                 if callable(context_callback):
-                    context_callback(
+                    defer_click_only_geometry = context_callback(
                         sampled_monotonic=qte_sampled_monotonic,
                         control_sampled_monotonic=(poll_started if owned_poll else None),
                         session=session,
@@ -1906,6 +1903,7 @@ def run(
                         resources=current_resource,
                         capability=capability,
                         live_cards=runtime_skill_cards,
+                        active_qte_present=bool(candidates or active_qte_resolution.instance),
                         card_diagnostics={key: value for key, value in provider.scan_diagnostics.items()
                                           if key.startswith("runtimeCardLayout")
                                           or key == "nativeCardDiscoveryReason"},
@@ -1987,6 +1985,9 @@ def run(
                         detail=capability.stale_reason,
                     )
                 previous_capability_signature = capability_signature
+            if defer_click_only_geometry:
+                time.sleep(args.interval)
+                continue
             if not candidates or active_qte_card is None:
                 # Only a proven null singleton is an inactive edge.  A failed
                 # or torn read must not manufacture freshness mid-QTE.  The

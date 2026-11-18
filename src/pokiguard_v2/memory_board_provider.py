@@ -108,7 +108,9 @@ from .gameplay_ui import (
     resolve_native_standard_card_strip,
     resolve_runtime_card_strip,
 )
-from .native_card_ui import NativeCardUiReader, NativeCardHand
+from .native_card_ui import (
+    PET_SKILL_GEOMETRY_BUSY_PREFIX, NativeCardHand, NativeCardUiReader, NativeGeometryBusyError,
+)
 from .memory_scan import (
     MEM_PRIVATE,
     WRITABLE_PAGE_TYPES,
@@ -3306,6 +3308,40 @@ class MemoryBoardStateProvider(BoardStateProvider):
         except (ExternalReadError, OSError, LayoutValidationError, ValueError) as exc:
             return ProviderPoll(None, False, f"qte_control_rejected:{exc}")
 
+    def read_pet_skill_phase(self, expected_session, *, local_username, local_actor,
+                             card_id, source_turn):
+        """Observe an exact local phase; this never grants skill/input permission."""
+        self._pet_skill_phase_reason = "UNKNOWN"
+        if (not self.target.is_running() or self._lifecycle_tracker.session != expected_session
+                or expected_session is None):
+            self._pet_skill_phase_reason = "phase_session_not_owned"
+            return None
+        try:
+            from .galaxy_skill_phase import read_local_skill_phase
+            board = self._resolve_board()
+            service = self._resolve_match_service()
+            if (board is None or not board.accepted or service is None
+                    or board.board_instance != expected_session.board_instance):
+                raise LayoutValidationError("skill phase current owner unavailable")
+            match_id, turn, current_player, *_ = self._read_match_state(service)
+            if (match_id != expected_session.match_id or turn != source_turn
+                    or current_player != local_username):
+                raise LayoutValidationError("skill phase match/turn/local owner changed")
+            phase = read_local_skill_phase(self.target.memory, service, local_username,
+                local_actor=local_actor, card_id=card_id)
+            after = self._resolve_board()
+            after_match, after_turn, after_player, *_ = self._read_match_state(service)
+            if (after is None or not after.accepted or after.board_instance != board.board_instance
+                    or after.active != board.active or after_match != match_id or after_turn != turn
+                    or after_player != current_player or self._resolve_match_service() != service
+                    or self._lifecycle_tracker.session != expected_session):
+                raise LayoutValidationError("skill phase source changed during observation")
+            self._pet_skill_phase_reason = "current_local_phase" if phase is not None else "phase_not_published_for_current_card"
+            return phase
+        except (ExternalReadError, OSError, LayoutValidationError, ValueError) as exc:
+            self._pet_skill_phase_reason = f"phase_read_unavailable:{exc}"
+            return None
+
     def refresh_pet_skill_cards(
         self,
         expected_session: CombatSessionKey,
@@ -3426,6 +3462,9 @@ class MemoryBoardStateProvider(BoardStateProvider):
                 else "pet_skill_control_card_missing_or_ambiguous"
             )
             return cards
+        except NativeGeometryBusyError as exc:
+            self._native_card_reason = f"{PET_SKILL_GEOMETRY_BUSY_PREFIX}{exc}"
+            return ()
         except (
             ExternalReadError,
             OSError,

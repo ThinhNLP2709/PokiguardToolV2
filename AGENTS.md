@@ -104,4 +104,8 @@ Never hard-code ASLR-dependent absolute runtime addresses.
 - Prefer small testable milestones.
 - Log errors clearly.
 - Invalid pointers/state must stop or fail closed.
+- Keep disposable reasoning scratch files, temporary datasets and source-review
+  copies under `temp/reasoning/`, never in `tmp*` folders at the project root.
+  Tests should use `tests.reasoning_test_paths.reasoning_temp_root()` as the
+  parent of `tempfile.TemporaryDirectory`; keep permanent evidence in docs.
 - Stop at the milestone requested by the user.

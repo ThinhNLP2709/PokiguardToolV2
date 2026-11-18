@@ -42,6 +42,36 @@ from tests.test_desktop_farm_controller import _BlockingRunner, _Runtime
 
 
 class PetConfigurationTkTests(unittest.TestCase):
+    def test_self_protection_shows_for_mega_and_galaxy_and_saves_all_choices(self):
+        from pokiguard_v2.pet_configuration import MEGA_SELF_PROTECTION_LABELS
+        self.assertEqual(self.app.mega_self_protection_widget.winfo_manager(), "")
+        for style in (PlayStyle.MEGA_ICARUS_SPAM_SKILL, PlayStyle.GALAXY):
+            self.app.play_style.set(PLAY_STYLE_LABELS[style])
+            self.assertEqual(self.app.mega_self_protection_widget.winfo_manager(), "grid")
+            self.assertEqual(self.app.mega_self_protection_label.cget("text"), "Tự bảo vệ:")
+            self.assertEqual(tuple(self.app.mega_self_protection_widget.cget("values")),
+                             tuple(MEGA_SELF_PROTECTION_LABELS.values()))
+            for mode, label in MEGA_SELF_PROTECTION_LABELS.items():
+                with self.subTest(style=style, mode=mode):
+                    self.app.mega_self_protection.set(label)
+                    self.app._validate_draft()
+                    self.assertIs(self.store.load().config.mega_self_protection, mode)
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+        self.assertEqual(self.app.mega_self_protection_widget.winfo_manager(), "")
+        self.assertEqual(self.app.demon_target_gem_widget.winfo_manager(), "grid")
+
+    def test_active_run_keeps_the_launched_mega_protection_setting(self):
+        from pokiguard_v2.gameplay_profile import MegaSelfProtection
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.MEGA_ICARUS_SPAM_SKILL])
+        self.app.mega_self_protection.set("Máu dưới 10%")
+        self.app._start_farm()
+        self.assertTrue(self.runner.entered.wait(1))
+        self.assertIs(self.runner.launches[0].config.mega_self_protection, MegaSelfProtection.HP_BELOW_10)
+        self.app._render()
+        self.assertTrue(self.app.mega_self_protection_widget.instate(["disabled"]))
+        self.app.mega_self_protection.set("Không")
+        self.assertEqual(self.app.mega_self_protection.get(), "Máu dưới 10%")
+
     def test_demon_target_only_shown_for_demon_and_all_choices_save(self):
         self.assertEqual(self.app.demon_target_gem_widget.winfo_manager(), '')
         self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
@@ -568,6 +598,32 @@ class PetConfigurationTkTests(unittest.TestCase):
         )
         self.assertTrue(self.button("main_pet", "mega").instate(["disabled"]))
         self.assertTrue(self.button("evolution", "mega").instate(["disabled"]))
+
+    def test_galaxy_loadout_resource_condition_and_preferences(self):
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.GALAXY])
+        self.root.update_idletasks()
+
+        self.assertEqual(self.app.main_pet.get(), "galaxy")
+        self.assertEqual(self.app.evolution.get(), "none")
+        self.assertEqual(self.app.damage_card.get(), "pet_skill")
+        self.assertEqual(self.app.audition_mode.get(), AUDITION_LABELS[AuditionMode.NO_ACTION])
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Đủ điều kiện")
+        self.assertEqual(tuple(self.app.pet_skill_fire_condition_widget.cget("values")), ("Đủ điều kiện",))
+        self.assertTrue(self.app.pet_skill_fire_value_widget.instate(["disabled"]))
+        self.assertFalse(self.app.demon_target_gem_widget.winfo_manager())
+
+        self.button("main_pet", "normal").invoke()
+        self.assertEqual(self.app.evolution.get(), "galaxy")
+        self.app.validate_button.invoke()
+        config = self.store.load().config
+        self.assertIs(config.play_style, PlayStyle.GALAXY)
+        self.assertIs(config.evolution, EvolutionTarget.GALAXY)
+        self.assertIs(config.pet_skill_fire_condition, PetSkillFireCondition.SKILL_COST_READY)
+        self.assertIsNone(config.pet_skill_fire_value)
+
+        self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.DEMON_AEGIS_FARM])
+        self.assertIs(self.plane.snapshot().config.play_style, PlayStyle.DEMON_AEGIS_FARM)
+        self.assertEqual(self.app.pet_skill_fire_condition.get(), "Kiếm đủ")
 
     def test_skill_rush_active_run_keeps_accepted_playstyle_immutable(self):
         self.app.play_style.set(PLAY_STYLE_LABELS[PlayStyle.SKILL_RUSH])

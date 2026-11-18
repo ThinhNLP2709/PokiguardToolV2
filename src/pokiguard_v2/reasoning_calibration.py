@@ -119,6 +119,8 @@ def verify_d4_retry_parent(data,root):
 
 def decode_config(raw):
     default=DesktopConfig();values={}
+    if type(raw) is dict and 'mega_self_protection' not in raw:
+        raw = dict(raw, mega_self_protection=default.mega_self_protection.value)
     if type(raw) is not dict or set(raw)!={f.name for f in fields(default)}:
         raise ValueError('complete canonical DesktopConfig required')
     for f in fields(default):
