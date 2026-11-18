@@ -148,6 +148,8 @@ def write_checkpoint(path: Path, payload: CheckpointPayload) -> None:
                         or attempt == len(_CHECKPOINT_REPLACE_DELAYS)):
                     raise
                 time.sleep(_CHECKPOINT_REPLACE_DELAYS[attempt])
+        from .compatibility.checkpoint import record_scope
+        record_scope(path, payload)
     except Exception:
         try:
             os.unlink(tmp_path)
@@ -317,6 +319,10 @@ def validate_for_resume(
     input_delivery_mode: InputDeliveryMode = InputDeliveryMode.FOREGROUND,
     checkpoint_path: Path | None = None,
 ) -> ResumeDecision:
+    from .compatibility.checkpoint import resume_error
+    scope_error = resume_error(checkpoint_path, payload)
+    if scope_error:
+        return ResumeDecision(False, scope_error, {}, (), 0)
     if not isinstance(input_delivery_mode, InputDeliveryMode):
         raise TypeError("input_delivery_mode must be InputDeliveryMode")
     if payload.finalized_status == "COMPLETED":

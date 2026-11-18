@@ -142,7 +142,10 @@ class NativeCardUiReader:
     def __init__(self, memory, game_assembly_base: int) -> None:
         self.memory = memory
         self.game_assembly_base = game_assembly_base
-        function = self._pointer(game_assembly_base + _COMPONENT_GO_ICALL)
+        profile = getattr(memory, "runtime_profile", None)
+        self.runtime_profile = profile
+        component_cache = profile.component_cache if profile is not None else _COMPONENT_GO_ICALL
+        function = self._pointer(game_assembly_base + component_cache)
         unity_base = function - _COMPONENT_GO_RVA
         if not is_canonical_user_pointer(unity_base) or self._read(unity_base, 2) != b"MZ":
             raise LayoutValidationError("native_card_ui: UnityPlayer binding unavailable")
@@ -150,7 +153,8 @@ class NativeCardUiReader:
             expected = bytes.fromhex(code)
             if self._read(unity_base + rva, len(expected)) != expected:
                 raise LayoutValidationError(f"native_card_ui: native signature mismatch {rva:#x}")
-        rva, code = _UNMARSHAL_SIGNATURE
+        rva, code = ((profile.unmarshal_rva, profile.unmarshal_hex)
+                     if profile is not None else _UNMARSHAL_SIGNATURE)
         if self._read(game_assembly_base + rva, len(bytes.fromhex(code))) != bytes.fromhex(code):
             raise LayoutValidationError("native_card_ui: scripting handle layout mismatch")
         self.unity_base = unity_base

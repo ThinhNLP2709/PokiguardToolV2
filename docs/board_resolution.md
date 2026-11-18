@@ -1306,3 +1306,11 @@ are kept separate; no actual after board is fed back as a prospective input.
 Offline fix450abb97… only adds Rage to shared Drain resource valuation and
 its bounded worker summary. [Report](phase5/B17_REPLY_DRAIN_REVIEW_20261118.md).
 
+# Giới hạn tự migration địa chỉ
+
+Nhánh self-service giữ nguyên calibration/pitch, pacing và jitter đã có. Nó
+chặn thay đổi serialized UI assets/catalog và fingerprint các routine HUD/tâm
+ô trước khi thử probe geometry Start chỉ đọc. Probe đó không được ghi thành
+bằng chứng một swap/ACK/result trên build mới. Qualification gameplay/timing
+vẫn độc lập; xem [hướng dẫn](self_service_compatibility.md).
+

@@ -277,6 +277,9 @@ class Il2CppExternalResolver:
         if module_end <= game_assembly_base or module_end > MAX_USER_ADDRESS + 1:
             raise ValueError("GameAssembly range overflows user address space")
         self.memory = memory
+        # One immutable profile belongs to this attachment. Constants remain
+        # stable B17 binding keys; no module globals are rewritten.
+        self.runtime_profile = getattr(memory, "runtime_profile", None)
         self.game_assembly_base = game_assembly_base
         self.game_assembly_size = game_assembly_size
         self.game_assembly_end = module_end
@@ -315,7 +318,9 @@ class Il2CppExternalResolver:
         return bool(raw[0])
 
     def resolve_singleton(self, spec: SingletonSpec) -> SingletonResolution:
-        slot = self.game_assembly_base + spec.type_info_rva
+        rva = (self.runtime_profile.type_info_rva(spec.type_info_rva)
+               if self.runtime_profile is not None else spec.type_info_rva)
+        slot = self.game_assembly_base + rva
         if not self.game_assembly_base <= slot <= self.game_assembly_end - POINTER_SIZE:
             return SingletonResolution(
                 spec.name, slot, None, None, None, "anchor_outside_module"
@@ -443,7 +448,9 @@ class Il2CppExternalResolver:
         target method is invoked to force initialization.
         """
 
-        slot = self.game_assembly_base + type_info_rva
+        rva = (self.runtime_profile.type_info_rva(type_info_rva)
+               if self.runtime_profile is not None else type_info_rva)
+        slot = self.game_assembly_base + rva
         if not self.game_assembly_base <= slot <= self.game_assembly_end - POINTER_SIZE:
             raise ExternalReadError("type-info anchor is outside GameAssembly")
         value = self._read_pointer(slot)
@@ -616,12 +623,17 @@ class Win32RemoteMemory:
     # read while retaining fail-closed short/invalid-read behaviour.
     read_validates_range = True
 
-    def __init__(self, process_handle: int) -> None:
+    def __init__(self, process_handle: int, *, runtime_profile=None) -> None:
         if os.name != "nt":
             raise OSError("Win32RemoteMemory is Windows-only")
         if not process_handle:
             raise ValueError("invalid process handle")
         self.process_handle = process_handle
+        self._runtime_profile = runtime_profile
+
+    @property
+    def runtime_profile(self):
+        return self._runtime_profile
 
     def read(self, address: int, size: int) -> bytes:
         if not is_canonical_user_pointer(address) or size <= 0:

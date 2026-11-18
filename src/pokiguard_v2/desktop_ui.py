@@ -1091,6 +1091,10 @@ class DesktopApplication:
         self.preference_warnings = preference_warnings
         self.game_location_changed = game_location_changed
         self.game_window_size_changed = game_window_size_changed
+        from .compatibility.worker import MigrationWorker
+        self._migration_worker = MigrationWorker()
+        self._migration_running = False
+        self._migration_close_requested = False
         self._farm_runs_root = (
             Path(farm_runs_root).expanduser().resolve(strict=False)
             if farm_runs_root is not None
@@ -1581,6 +1585,13 @@ class DesktopApplication:
         self.game_location_apply_button.grid(
             row=1, column=1, sticky=tk.W, pady=(8, 4)
         )
+        self.compatibility_button = ttk.Button(
+            settings_frame, text="Cập nhật tương thích", command=self._start_compatibility_migration
+        )
+        self.compatibility_button.grid(row=1, column=2, sticky=tk.E, padx=(8, 0), pady=(8, 4))
+        self.compatibility_status = tk.StringVar(value="Cập nhật tương thích khi game đổi build nhưng giữ nguyên giao diện.")
+        ttk.Label(settings_frame, textvariable=self.compatibility_status, wraplength=380).grid(
+            row=5, column=0, columnspan=3, sticky=tk.W, pady=(6, 2))
         ttk.Label(settings_frame, text="Đã chọn:").grid(
             row=2, column=0, sticky=tk.NW, padx=(0, 12), pady=5
         )
@@ -1951,6 +1962,79 @@ class DesktopApplication:
                 reason=reason,
                 error=f"{type(exc).__name__}: {exc}",
             )
+
+    def _start_compatibility_migration(self) -> None:
+        if getattr(self, "_migration_running", False):
+            return
+        if self.view_model.control_plane.snapshot().controller.active:
+            self._set_compatibility_feedback("Hãy dừng lượt chơi trước khi cập nhật tương thích.")
+            return
+        try:
+            selection = self._apply_game_location(persist=True)
+            location = str(getattr(selection, "executable", selection))
+            self._migration_running = True
+            self._set_config_editable(False)
+            self.start_button.configure(state="disabled")
+            self.resume_button.configure(state="disabled")
+            self.compatibility_button.configure(state="disabled")
+            self._set_compatibility_feedback("Đang cập nhật tương thích; chỉ đọc game. Có thể đóng để hủy.")
+            if not self._migration_worker.start(location):
+                raise RuntimeError("Migration trước đang kết thúc; hãy thử lại.")
+            self.event_log.write("compatibility_migration_started", executable=location,
+                                 operatorMessage="Đang cập nhật tương thích cho bản game đã chọn.")
+        except Exception as exc:
+            self._migration_running = False
+            self._set_compatibility_feedback(f"Không thể cập nhật tương thích — {exc}")
+
+    def _set_compatibility_feedback(self, message: str) -> None:
+        self.command_feedback.set(message)
+        variable = getattr(self, "compatibility_status", None)
+        if variable is not None:
+            variable.set(message)
+
+    def _consume_compatibility_result(self) -> None:
+        import queue
+        worker = getattr(self, "_migration_worker", None)
+        if worker is None:
+            return
+        while True:
+            try:
+                kind, value = worker.events.get_nowait()
+            except queue.Empty:
+                break
+            if kind == "progress":
+                self._set_compatibility_feedback(str(value))
+                continue
+            self._migration_running = False
+            if kind == "result":
+                if value.status == "verified":
+                    # Existing callback detaches the status reader and clears
+                    # every provider/metadata cache before the next poll.
+                    try:
+                        self._apply_game_location(persist=False)
+                    except Exception as exc:
+                        self.event_log.write("compatibility_reattach_required", error=str(exc))
+                        self._set_compatibility_feedback("Profile đã cập nhật. Hãy đóng và mở lại tool để gắn tiến trình mới.")
+                        continue
+                self._set_compatibility_feedback(value.message)
+                self.event_log.write("compatibility_migration_finished", status=value.status,
+                                     profileId=value.profile_id, job=str(value.job) if value.job else None,
+                                     operatorMessage=value.message)
+            else:
+                reason = getattr(value, "reason", "")
+                message = {
+                    "UNITY_ABI_CHANGED": "Unity đã thay đổi; cần bản cập nhật tool được kiểm tra thủ công.",
+                    "MANAGED_CONTRACT_CHANGED": "Cấu trúc dữ liệu game đã thay đổi; cần bản cập nhật tool mới.",
+                    "NATIVE_CONTRACT_CHANGED": "Mã game hoặc tọa độ đã thay đổi; cần kiểm tra thủ công.",
+                    "UI_ASSETS_CHANGED": "Dữ liệu giao diện/scene đã đổi; cần bản cập nhật tool mới.",
+                    "MIGRATION_CANCELLED": "Đã hủy cập nhật tương thích.",
+                }.get(reason, f"Cập nhật tương thích chưa thành công — {value}")
+                self._set_compatibility_feedback(message)
+                self.event_log.write("compatibility_migration_failed",
+                    reason=getattr(value, "reason", type(value).__name__), error=str(value),
+                    operatorMessage="Chưa kích hoạt profile mới. Xem chi tiết lỗi trong nhật ký.")
+        if getattr(self, "_migration_close_requested", False) and not self._migration_running:
+            self._begin_shutdown("MIGRATION_CANCELLED_FOR_CLOSE")
 
     def _tool_sound_changed(self) -> None:
         """Persist the operator beep switch immediately while idle."""
@@ -2766,6 +2850,9 @@ class DesktopApplication:
         )
 
     def _start_farm(self) -> None:
+        if getattr(self, "_migration_running", False):
+            self.command_feedback.set("Đang cập nhật tương thích; hãy chờ hoàn tất.")
+            return
         if self._farm_runs_active_operation == "clear":
             self.command_feedback.set(
                 "Đang xóa log farm_runs; hãy chờ thao tác hoàn tất rồi bắt đầu."
@@ -2789,6 +2876,9 @@ class DesktopApplication:
             self.event_log.write("start_farm_rejected", error=str(exc))
 
     def _resume_checkpoint(self) -> None:
+        if getattr(self, "_migration_running", False):
+            self.command_feedback.set("Đang cập nhật tương thích; hãy chờ hoàn tất.")
+            return
         if self._farm_runs_active_operation == "clear":
             self.command_feedback.set(
                 "Đang xóa log farm_runs; hãy chờ thao tác hoàn tất rồi tiếp tục."
@@ -3057,6 +3147,9 @@ class DesktopApplication:
         if self._closed or self._shutdown_started:
             return
         try:
+            self._consume_compatibility_result()
+            if self._shutdown_started:
+                return
             presentation = self.view_model.presentation()
             self.notice_var.set(presentation.read_only_notice)
             self.operator_status_var.set(presentation.operator_status)
@@ -3106,8 +3199,10 @@ class DesktopApplication:
             if draft_valid:
                 ai_draft = DesktopConfig.from_strings(**self._draft_fields())
                 profile_reason = ai_draft.farm_policy_blocker_reason
-            config_editable = controls.config_editable and not close_pending
+            migrating = getattr(self, "_migration_running", False)
+            config_editable = controls.config_editable and not close_pending and not migrating
             self._set_config_editable(config_editable)
+            self.compatibility_button.configure(state="normal" if config_editable and not snapshot.controller.active else "disabled")
             start_actionable = bool(
                 controls.start.actionable
                 and presentation.snapshot_actionable
@@ -3115,6 +3210,7 @@ class DesktopApplication:
                 and profile_reason is None
                 and not close_pending
                 and self._farm_runs_active_operation != "clear"
+                and not migrating
             )
             self.start_button.configure(
                 state="normal" if start_actionable else "disabled"
@@ -3128,6 +3224,7 @@ class DesktopApplication:
                     and profile_reason is None
                     and not close_pending
                     and self._farm_runs_active_operation != "clear"
+                    and not migrating
                     else "disabled"
                 )
             )
@@ -3234,6 +3331,11 @@ class DesktopApplication:
 
     def close(self) -> None:
         if self._closed or self._shutdown_started:
+            return
+        if getattr(self, "_migration_running", False):
+            self._migration_close_requested = True
+            self._migration_worker.cancel.set()
+            self.command_feedback.set("Đang hủy migration và đóng tiến trình Dumper trước khi thoát...")
             return
         snapshot = self.view_model.control_plane.snapshot()
         controller = snapshot.controller

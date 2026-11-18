@@ -3,12 +3,15 @@
 
 from pathlib import Path
 import os
+from PyInstaller.utils.hooks import collect_dynamic_libs
 
 
 ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
 
 datas = [
+    (str(SRC / "pokiguard_v2/resources/compatibility_b17.json"), "pokiguard_v2/resources"),
+    (str(SRC / "pokiguard_v2/resources/compatibility_catalog.json"), "pokiguard_v2/resources"),
     (
         str(SRC / "pokiguard_v2" / "resources" / "reset_capabilities.json"),
         "pokiguard_v2/resources",
@@ -29,9 +32,15 @@ datas.extend((str(identity/name),'pokiguard_v2/resources')
 a = Analysis(
     [str(SRC / "pokiguard_v2" / "windows_entry.py")],
     pathex=[str(ROOT), str(SRC)],
-    binaries=[],
+    binaries=collect_dynamic_libs("capstone"),
     datas=datas,
     hiddenimports=[
+        "pokiguard_v2.compatibility.audit",
+        "pokiguard_v2.compatibility.service",
+        "pokiguard_v2.compatibility.probe",
+        "tools.migrate_compatibility",
+        "capstone",
+        "pefile",
         # Imported inside the UI-owned worker path.  Listing it here makes the
         # frozen contract explicit even if PyInstaller's static scan changes.
         "tools.desktop_ui",

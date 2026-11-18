@@ -20,6 +20,10 @@ if ($LASTEXITCODE -ne 0 -or $architecture.Trim() -ne '64') {
 if ($LASTEXITCODE -ne 0) {
     throw 'PyInstaller is not installed in the selected Python runtime.'
 }
+& $python -c "import capstone, pefile; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey"
+if ($LASTEXITCODE -ne 0) {
+    throw 'Migration dependencies are missing. Run: python -m pip install -r requirements-migration.txt'
+}
 
 $version = & $python -c "import sys; sys.path.insert(0, r'$projectRoot\src'); from pokiguard_v2.version import APP_VERSION; print(APP_VERSION)"
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($version)) {
@@ -65,7 +69,7 @@ if (-not $SkipFocusedTests) {
     $previousPythonPath = $env:PYTHONPATH
     try {
         $env:PYTHONPATH = "$projectRoot\src;$projectRoot"
-        & $python -m unittest tests.test_app_paths tests.test_windows_packaging -v
+        & $python -m unittest tests.test_app_paths tests.test_windows_packaging tests.test_compatibility_migration -v
         if ($LASTEXITCODE -ne 0) {
             throw 'Focused Phase 2F.1 tests failed.'
         }

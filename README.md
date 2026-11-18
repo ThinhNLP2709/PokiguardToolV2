@@ -271,3 +271,11 @@ Current source reproduction steps are in the
 [Phase 3D.1-R1 runbook](docs/phase3d1_r1_runbook.md). Build and acceptance steps for
 the accepted RC are in the
 [Phase 2F.2 runbook](docs/phase2f2_runbook.md).
+# Nhánh thử nghiệm tự cập nhật tương thích
+
+`codex/self-service-compatibility` bổ sung nút **Cài đặt → Cập nhật tương thích**
+cho build chỉ đổi địa chỉ. Nhánh/phát hành gốc được giữ tại checkpoint
+`7abb167c`; thay đổi không sửa solver, policy hoặc input. Hướng dẫn, điều kiện
+chấp nhận và giới hạn: [self-service compatibility](docs/self_service_compatibility.md).
+Catalog từ xa chưa cấu hình; luồng local tải toolchain đã khóa checksum và
+audit/probe trước khi kích hoạt profile mới.

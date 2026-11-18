@@ -2280,3 +2280,13 @@ Two closed B17 Priest logs retain6 POWER and6 MANA STEAL steps. Shared
 adviser now values Mana and Rage exposure; no new offsets/RVAs are used by
 runtime readers. [Evidence/report](phase5/B17_REPLY_DRAIN_REVIEW_20261118.md).
 
+# Profile địa chỉ ngoài EXE (nhánh self-service compatibility)
+
+Contract baseline nằm trong `resources/compatibility_b17.json`, được biên dịch
+từ audit B17 và binary/reverse B17 đã xác minh. 39 RVA trong source được giữ
+làm khóa binding; profile của mỗi attachment cung cấp RVA tương ứng sau exact
+symbol/signature match. Không đổi managed offsets hoặc ABI static_fields+0x98.
+Native bridge dùng cùng profile bất biến, không global patch. Xem
+[luồng tự phục vụ](self_service_compatibility.md). Không có phát hiện RVA game
+mới trong thay đổi này; build chưa xuất hiện vẫn UNKNOWN.
+

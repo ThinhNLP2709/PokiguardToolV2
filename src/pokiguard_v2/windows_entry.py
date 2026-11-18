@@ -150,6 +150,25 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
         elif tuple(argv or ()) == ('--packaged-reasoning-self-check',):
             from pokiguard_v2.packaged_verification import run
             exit_code = run(resolved)
+        elif tuple(argv or ()) == ('--compatibility-self-check',):
+            from pokiguard_v2.compatibility.profile import load_contract, digest
+            from pokiguard_v2.compatibility.audit import NativeAudit
+            import capstone
+            import pefile
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+            key = Ed25519PrivateKey.generate()
+            key.public_key().verify(key.sign(b'compatibility-self-check'), b'compatibility-self-check')
+            if len(list(capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64).disasm(b'\x90', 0x1000))) != 1:
+                raise RuntimeError('packaged Capstone decoder unavailable')
+            contract = load_contract()
+            _append_startup_event(resolved.startup_log, "compatibility_self_check_passed",
+                contract=digest(contract), roots=len(contract['roots']),
+                nativeRoutines=len(contract['native_methods']), processAttachment=False,
+                windowsInput=False, downloads=False)
+            exit_code = 0
+        elif tuple(argv or ())[:1] == ('--migrate-compatibility',):
+            from tools.migrate_compatibility import main as migration_main
+            exit_code = migration_main(tuple(argv or ())[1:])
         else:
             from tools.desktop_ui import main as desktop_main
 
@@ -159,7 +178,7 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
         "packaged_app_finished",
         exitCode=exit_code,
     )
-    if exit_code != 0:
+    if exit_code != 0 and tuple(argv or ())[:1] != ('--migrate-compatibility',):
         _show_error(
             "Công cụ Pokiguard V2 đã dừng do lỗi khởi động hoặc vận hành.\n\n"
             f"Nhật ký chẩn đoán: {resolved.startup_log}"

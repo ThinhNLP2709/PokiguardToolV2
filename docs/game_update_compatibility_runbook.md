@@ -4,6 +4,11 @@ Quy trình này tạo một runtime profile đã được chứng minh cho đún
 Không được bật bản mới bằng cách chỉ thay hash hoặc cộng một delta chung vào
 các địa chỉ cũ.
 
+Nhánh `codex/self-service-compatibility` bổ sung luồng tự phục vụ giới hạn cho
+build chỉ đổi địa chỉ: [hướng dẫn và giới hạn](self_service_compatibility.md).
+Nếu các gate UI/layout/Unity/native không đạt thì vẫn dùng runbook thủ công
+dưới đây; không sửa contract tự động để ép nhận build mới.
+
 ## Nguyên tắc
 
 - Chỉ đọc game/reverse; không sửa file game, ghi memory, inject DLL hoặc gọi

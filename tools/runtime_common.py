@@ -80,6 +80,10 @@ class RuntimeTarget:
     resolver: Il2CppExternalResolver
     game_executable: Path | None = None
 
+    @property
+    def runtime_profile(self):
+        return getattr(self.memory, "runtime_profile", None)
+
     def close(self) -> None:
         if self.process_handle:
             _close_handle(self.process_handle)
@@ -171,7 +175,7 @@ def _discover_running_game() -> tuple[GameExecutableSelection, int] | None:
     return next(iter(unique.values()))
 
 
-def attach_target() -> RuntimeTarget:
+def attach_target(*, candidate_profile=None) -> RuntimeTarget:
     """Attach with only PROCESS_QUERY_INFORMATION | PROCESS_VM_READ."""
 
     assert_python_x64()
@@ -199,15 +203,34 @@ def attach_target() -> RuntimeTarget:
         architecture = target_architecture(process)
         if architecture != "x64":
             raise ProcessProbeError(f"expected x64 target, got {architecture}")
+        if not _same_windows_path(game_assembly.path, selection.executable.parent / "GameAssembly.dll"):
+            raise ProcessProbeError("GameAssembly is outside the selected install")
+        profile = None
         try:
-            validate_supported_game_assembly(game_assembly.path)
-        except GameLocationError as exc:
-            if exc.reason != "GAME_BUILD_INCOMPATIBLE":
-                raise
+            if candidate_profile is not None:
+                # Migration-only read-only probe. A candidate is never persisted
+                # or installed merely by attaching it.
+                from pokiguard_v2.compatibility.profile import install_identity, require
+                require(install_identity(selection.executable) == candidate_profile.identity,
+                        "INSTALL_CHANGED")
+                profile = candidate_profile
+            else:
+                try:
+                    validate_supported_game_assembly(game_assembly.path)
+                except GameLocationError as exc:
+                    if exc.reason != "GAME_BUILD_INCOMPATIBLE":
+                        raise
+                    from pokiguard_v2.compatibility.profile import active_profile
+                    profile = active_profile(selection.executable)
+        except (ValueError, OSError, KeyError, TypeError) as exc:
             raise IncompatibleGameBuildError(
                 str(exc), pid=pid, architecture=architecture
             ) from exc
-        memory = Win32RemoteMemory(process)
+        memory = (Win32RemoteMemory(process, runtime_profile=profile)
+                  if profile is not None else Win32RemoteMemory(process))
+        if profile is not None:
+            from pokiguard_v2.compatibility.probe import verify_loaded_image
+            verify_loaded_image(memory, game_assembly.base, Path(game_assembly.path))
         resolver = Il2CppExternalResolver(
             memory,
             game_assembly.base,
