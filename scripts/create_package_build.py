@@ -8,6 +8,7 @@ sys.path[:0]=[str(ROOT),str(ROOT/'src')]
 def main():
     from pokiguard_v2.reasoning_calibration import source_files,source_fingerprint
     from pokiguard_v2.version import APP_VERSION
+    import os
     from tools.evaluate_reasoning_planner import snapshot,board_data
     out=Path(sys.argv[1]).resolve();out.mkdir(parents=True,exist_ok=True)
     files=source_files(ROOT)
@@ -17,6 +18,10 @@ def main():
         source_sha256=source_fingerprint(ROOT),source_files=files,version=APP_VERSION,
         recipe=recipe,capabilities='BASIC_DEFAULT_UI_DEMON_SHIELD_OPTIN_PROFILE_REQUIRED',contains_account_data=False),indent=2),encoding='utf-8')
     (out/'package_probe.json').write_text(json.dumps(snapshot(board=board_data('generated')).to_dict()),encoding='utf-8')
+    build = int(os.environ.get('POKIGUARD_RELEASE_BUILD', '1'))
+    if not 0 <= build < 2**31: raise ValueError('Invalid release build')
+    (out/'update_build.json').write_text(json.dumps(dict(schema=1, version=APP_VERSION,
+        build=build, platform='windows-x64')), encoding='utf-8')
 
 
 if __name__=='__main__':main()

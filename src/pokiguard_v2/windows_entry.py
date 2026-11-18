@@ -129,6 +129,17 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
     resolved = paths or current_app_paths()
     resolved.ensure_writable_directories()
     console_log = _redirect_frozen_standard_streams(resolved)
+    arguments = tuple(argv or ())
+    if arguments[:1] == ('--apply-tool-update',):
+        from pokiguard_v2.updater.protocol import require, EXE_NAME
+        from pokiguard_v2.updater.transaction import apply
+        require(resolved.frozen and len(arguments) == 2, 'UPDATE_HELPER_ARGUMENTS_INVALID')
+        job = Path(arguments[1]).resolve()
+        require(Path(sys.executable).resolve() == job / 'helper' / EXE_NAME, 'UPDATE_HELPER_LOCATION_INVALID')
+        return 0 if apply(job) in ('committed', 'rolled_back') else 1
+    if arguments == ('--update-health-check',):
+        from pokiguard_v2.updater.health import run
+        return run(resolved)
     _append_startup_event(
         resolved.startup_log,
         "packaged_app_started",
@@ -166,6 +177,11 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
                 nativeRoutines=len(contract['native_methods']), processAttachment=False,
                 windowsInput=False, downloads=False)
             exit_code = 0
+        elif arguments == ('--updater-self-check',):
+            from pokiguard_v2.updater.health import self_check
+            self_check()
+            _append_startup_event(resolved.startup_log, 'updater_self_check_passed', gameInputs=0, processAttachment=False)
+            exit_code = 0
         elif tuple(argv or ())[:1] == ('--migrate-compatibility',):
             from tools.migrate_compatibility import main as migration_main
             exit_code = migration_main(tuple(argv or ())[1:])
@@ -189,10 +205,12 @@ def run_packaged(argv: Sequence[str] | None = None, *, paths: AppPaths | None = 
 def main(argv: Sequence[str] | None = None) -> int:
     multiprocessing.freeze_support()
     startup_log: Path | None = None
+    arguments = tuple(sys.argv[1:] if argv is None else argv)
+    headless_update = bool(arguments[:1] and arguments[0] in ('--apply-tool-update', '--update-health-check', '--updater-self-check'))
     try:
         paths = current_app_paths()
         startup_log = paths.startup_log
-        return run_packaged(sys.argv[1:] if argv is None else argv, paths=paths)
+        return run_packaged(arguments, paths=paths)
     except ControllerLeaseError:
         message = "Công cụ Pokiguard V2 đang mở. Hãy đóng cửa sổ hiện tại trước."
         path = startup_log or _fallback_startup_log()
@@ -200,7 +218,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             _append_startup_event(path, "packaged_app_duplicate_rejected")
         except OSError:
             pass
-        _show_error(message)
+        if not headless_update:
+            _show_error(message)
         return 23
     except Exception as exc:  # noqa: BLE001 - fatal startup boundary
         path = startup_log or _fallback_startup_log()
@@ -216,10 +235,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         except OSError:
             pass
-        _show_error(
-            "Công cụ Pokiguard V2 không thể khởi động an toàn.\n\n"
-            f"{detail}\n\nNhật ký chẩn đoán: {path}"
-        )
+        if not headless_update:
+            _show_error(
+                "Công cụ Pokiguard V2 không thể khởi động an toàn.\n\n"
+                f"{detail}\n\nNhật ký chẩn đoán: {path}"
+            )
         return 1
 
 

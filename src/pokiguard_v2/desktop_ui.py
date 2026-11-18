@@ -1095,6 +1095,12 @@ class DesktopApplication:
         self._migration_worker = MigrationWorker()
         self._migration_running = False
         self._migration_close_requested = False
+        from .updater.service import UpdateWorker
+        self._update_worker = UpdateWorker()
+        self._update_running = False
+        self._update_close_requested = False
+        self._update_release = None
+        self._update_job = None
         self._farm_runs_root = (
             Path(farm_runs_root).expanduser().resolve(strict=False)
             if farm_runs_root is not None
@@ -1146,6 +1152,18 @@ class DesktopApplication:
         ):
             notebook.add(page, text=tab_title)
         self.notebook = notebook
+        # Settings now includes two maintenance flows. Keep the existing lower
+        # options reachable on the smallest supported window.
+        settings_page = settings_outer
+        settings_canvas = tk.Canvas(settings_page, highlightthickness=0)
+        settings_scroll = ttk.Scrollbar(settings_page, orient="vertical", command=settings_canvas.yview)
+        settings_canvas.configure(yscrollcommand=settings_scroll.set)
+        settings_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        settings_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        settings_outer = ttk.Frame(settings_canvas)
+        settings_window = settings_canvas.create_window((0, 0), window=settings_outer, anchor="nw")
+        settings_outer.bind("<Configure>", lambda event: settings_canvas.configure(scrollregion=settings_canvas.bbox("all")))
+        settings_canvas.bind("<Configure>", lambda event: settings_canvas.itemconfigure(settings_window, width=event.width))
         root.bind("<Button-1>", self._handle_background_click, add="+")
 
         title = ttk.Label(
@@ -1557,6 +1575,20 @@ class DesktopApplication:
         self.play_style.trace_add("write", self._play_style_changed)
         self._sync_pet_options()
 
+        from .updater.protocol import installed_build
+        current_build = installed_build()
+        software_frame = ttk.LabelFrame(settings_outer, text="Cập nhật tool", padding=10)
+        software_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(software_frame, text=f"Đang dùng {current_build['version']} · build {current_build['build']}").pack(anchor=tk.W)
+        update_buttons = ttk.Frame(software_frame)
+        update_buttons.pack(fill=tk.X, pady=(6, 4))
+        self.update_check_button = ttk.Button(update_buttons, text="Kiểm tra cập nhật", command=self._check_tool_update)
+        self.update_check_button.pack(side=tk.LEFT)
+        self.update_install_button = ttk.Button(update_buttons, text="Cập nhật và mở lại", command=self._install_tool_update, state="disabled")
+        self.update_install_button.pack(side=tk.LEFT, padx=(8, 0))
+        from .updater.service import last_result_message
+        self.update_status = tk.StringVar(value=last_result_message())
+        ttk.Label(software_frame, textvariable=self.update_status, wraplength=370).pack(anchor=tk.W)
         settings_frame = ttk.LabelFrame(
             settings_outer, text="Cài đặt trò chơi", padding=12
         )
@@ -1964,6 +1996,9 @@ class DesktopApplication:
             )
 
     def _start_compatibility_migration(self) -> None:
+        if getattr(self, "_update_running", False):
+            self._set_compatibility_feedback("Đang cập nhật tool; hãy chờ thao tác hoàn tất.")
+            return
         if getattr(self, "_migration_running", False):
             return
         if self.view_model.control_plane.snapshot().controller.active:
@@ -1991,6 +2026,67 @@ class DesktopApplication:
         variable = getattr(self, "compatibility_status", None)
         if variable is not None:
             variable.set(message)
+
+    def _start_update_operation(self, action: str) -> None:
+        if getattr(self, "_update_running", False) or getattr(self, "_migration_running", False):
+            return
+        if self.view_model.control_plane.snapshot().controller.active:
+            self.update_status.set("Hãy dừng lượt chơi trước khi cập nhật tool.")
+            return
+        if action == "prepare" and self._update_release is None:
+            return
+        self._update_running = True
+        self._update_close_requested = False
+        self.start_button.configure(state="disabled")
+        self.resume_button.configure(state="disabled")
+        self.update_check_button.configure(state="disabled")
+        self.update_install_button.configure(state="disabled")
+        self._set_config_editable(False)
+        if not self._update_worker.start(action, self._update_release):
+            self._update_running = False
+            self.update_status.set("Thao tác trước đang kết thúc; hãy thử lại.")
+
+    def _check_tool_update(self) -> None:
+        self._start_update_operation("check")
+
+    def _install_tool_update(self) -> None:
+        self._start_update_operation("prepare")
+
+    def _consume_update_result(self) -> None:
+        import queue
+        worker = getattr(self, "_update_worker", None)
+        if worker is None:
+            return
+        while True:
+            try:
+                kind, value = worker.events.get_nowait()
+            except queue.Empty:
+                break
+            if kind == "progress":
+                self.update_status.set(str(value))
+                continue
+            self._update_running = False
+            if kind == "check":
+                self._update_release = value
+                self.update_status.set((f"Có {value.label}. {value.notes[:280]}" if value else "Bạn đang dùng phiên bản mới nhất."))
+            elif kind == "prepare":
+                if not self._update_close_requested:
+                    self._update_job = value
+                    self._update_running = True
+                    self._begin_shutdown("INSTALL_TOOL_UPDATE")
+                    return
+            else:
+                reason = getattr(value, "reason", "")
+                message = {"UPDATE_CANCELLED": "Đã hủy cập nhật tool.",
+                           "UPDATE_SOURCE_MODE": "Bản chạy source chỉ kiểm tra cập nhật. Dùng bản EXE để cài.",
+                           "UPDATE_SIGNATURE_INVALID": "Chữ ký bản cập nhật không hợp lệ; đã từ chối gói.",
+                           "UPDATE_ARCHIVE_HASH_MISMATCH": "Gói tải về không khớp checksum; bản hiện tại được giữ lại."}.get(reason, f"Chưa cập nhật được — {value}")
+                if getattr(value, "code", None) == 404:
+                    message = "Chưa có manifest cập nhật được phát hành trên GitHub. Bản hiện tại vẫn dùng bình thường."
+                self.update_status.set(message)
+                self.event_log.write("tool_update_failed", reason=reason, error=str(value), operatorMessage=message)
+        if getattr(self, "_update_close_requested", False) and not self._update_running:
+            self._begin_shutdown("UPDATE_CANCELLED_FOR_CLOSE")
 
     def _consume_compatibility_result(self) -> None:
         import queue
@@ -2850,6 +2946,9 @@ class DesktopApplication:
         )
 
     def _start_farm(self) -> None:
+        if getattr(self, "_update_running", False):
+            self.command_feedback.set("Đang cập nhật tool; hãy chờ thao tác hoàn tất.")
+            return
         if getattr(self, "_migration_running", False):
             self.command_feedback.set("Đang cập nhật tương thích; hãy chờ hoàn tất.")
             return
@@ -2876,6 +2975,9 @@ class DesktopApplication:
             self.event_log.write("start_farm_rejected", error=str(exc))
 
     def _resume_checkpoint(self) -> None:
+        if getattr(self, "_update_running", False):
+            self.command_feedback.set("Đang cập nhật tool; hãy chờ thao tác hoàn tất.")
+            return
         if getattr(self, "_migration_running", False):
             self.command_feedback.set("Đang cập nhật tương thích; hãy chờ hoàn tất.")
             return
@@ -3119,6 +3221,10 @@ class DesktopApplication:
             return
         self.poller_alive_after_close = not result.poller_stopped
         if not result.poller_stopped or not result.control_plane_closed:
+            if getattr(self, "_update_job", None) is not None:
+                self._update_job = None
+                self._update_running = False
+                self.update_status.set("Chưa cài cập nhật vì tool chưa đóng sạch. Bản hiện tại được giữ nguyên.")
             self._shutdown_started = False
             self._shutdown_worker = DesktopShutdownWorker(self.view_model)
             self.command_feedback.set(
@@ -3131,6 +3237,14 @@ class DesktopApplication:
             )
             self._render_after = self.root.after(0, self._render)
             return
+        if getattr(self, "_update_job", None) is not None:
+            try:
+                from .updater.transaction import launch_helper
+                launch_helper(self._update_job)
+                self.event_log.write("tool_update_helper_launched", job=str(self._update_job))
+            except Exception as exc:
+                self.event_log.write("tool_update_helper_failed", error=str(exc),
+                    operatorMessage="Không chạy được bộ cài; bản tool hiện tại vẫn còn nguyên.")
         self._closed = True
         self.event_log.write(
             "ui_closed",
@@ -3147,6 +3261,7 @@ class DesktopApplication:
         if self._closed or self._shutdown_started:
             return
         try:
+            self._consume_update_result()
             self._consume_compatibility_result()
             if self._shutdown_started:
                 return
@@ -3199,10 +3314,14 @@ class DesktopApplication:
             if draft_valid:
                 ai_draft = DesktopConfig.from_strings(**self._draft_fields())
                 profile_reason = ai_draft.farm_policy_blocker_reason
-            migrating = getattr(self, "_migration_running", False)
+            updating = getattr(self, "_update_running", False)
+            migrating = getattr(self, "_migration_running", False) or updating
             config_editable = controls.config_editable and not close_pending and not migrating
             self._set_config_editable(config_editable)
             self.compatibility_button.configure(state="normal" if config_editable and not snapshot.controller.active else "disabled")
+            available_update = config_editable and not snapshot.controller.active and not migrating
+            self.update_check_button.configure(state="normal" if available_update else "disabled")
+            self.update_install_button.configure(state="normal" if available_update and self._update_release is not None else "disabled")
             start_actionable = bool(
                 controls.start.actionable
                 and presentation.snapshot_actionable
@@ -3331,6 +3450,11 @@ class DesktopApplication:
 
     def close(self) -> None:
         if self._closed or self._shutdown_started:
+            return
+        if getattr(self, "_update_running", False):
+            self._update_close_requested = True
+            self._update_worker.cancel.set()
+            self.update_status.set("Đang hủy tải cập nhật trước khi đóng...")
             return
         if getattr(self, "_migration_running", False):
             self._migration_close_requested = True

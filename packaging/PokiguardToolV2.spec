@@ -10,6 +10,7 @@ ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
 
 datas = [
+    (str(SRC / "pokiguard_v2/resources/update_config.json"), "pokiguard_v2/resources"),
     (str(SRC / "pokiguard_v2/resources/compatibility_b17.json"), "pokiguard_v2/resources"),
     (str(SRC / "pokiguard_v2/resources/compatibility_catalog.json"), "pokiguard_v2/resources"),
     (
@@ -27,7 +28,7 @@ datas = [
 ]
 identity = Path(os.environ['POKIGUARD_PACKAGE_IDENTITY']).resolve()
 datas.extend((str(identity/name),'pokiguard_v2/resources')
-             for name in ('package_build.json','package_probe.json'))
+             for name in ('package_build.json','package_probe.json','update_build.json'))
 
 a = Analysis(
     [str(SRC / "pokiguard_v2" / "windows_entry.py")],
@@ -35,6 +36,9 @@ a = Analysis(
     binaries=collect_dynamic_libs("capstone"),
     datas=datas,
     hiddenimports=[
+        "pokiguard_v2.updater.protocol",
+        "pokiguard_v2.updater.service",
+        "pokiguard_v2.updater.transaction",
         "pokiguard_v2.compatibility.audit",
         "pokiguard_v2.compatibility.service",
         "pokiguard_v2.compatibility.probe",

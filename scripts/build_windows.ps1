@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot,
+    [ValidateRange(1, 2147483647)][int]$ReleaseBuild = 1,
     [switch]$SkipFocusedTests
 )
 
@@ -69,7 +70,7 @@ if (-not $SkipFocusedTests) {
     $previousPythonPath = $env:PYTHONPATH
     try {
         $env:PYTHONPATH = "$projectRoot\src;$projectRoot"
-        & $python -m unittest tests.test_app_paths tests.test_windows_packaging tests.test_compatibility_migration -v
+        & $python -m unittest tests.test_app_paths tests.test_windows_packaging tests.test_compatibility_migration tests.test_tool_updater -v
         if ($LASTEXITCODE -ne 0) {
             throw 'Focused Phase 2F.1 tests failed.'
         }
@@ -81,6 +82,7 @@ if (-not $SkipFocusedTests) {
 
 $spec = Join-Path $projectRoot 'packaging\PokiguardToolV2.spec'
 $identityRoot = Join-Path $output 'identity'
+$env:POKIGUARD_RELEASE_BUILD = [string]$ReleaseBuild
 & $python (Join-Path $projectRoot 'scripts\create_package_build.py') $identityRoot
 if ($LASTEXITCODE -ne 0) {
     throw 'Creating the package identity failed.'
