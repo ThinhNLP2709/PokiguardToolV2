@@ -6,6 +6,11 @@ import subprocess
 import urllib.request
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # Never forward a GitHub credential to an asset/CDN host.
+
+
 class GitHubClient:
     def __init__(self, repository: str):
         import re
@@ -27,6 +32,6 @@ class GitHubClient:
             data=None if body is None else json.dumps(body).encode(),method=method,
             headers={'Authorization':'Bearer '+self._token,'Accept':'application/vnd.github+json',
                      'Content-Type':'application/json','User-Agent':'Pokiguard-release-maintainer'})
-        with urllib.request.urlopen(request,timeout=30) as response:
+        with urllib.request.build_opener(NoRedirect).open(request,timeout=30) as response:
             raw=response.read()
             return json.loads(raw) if raw else None
