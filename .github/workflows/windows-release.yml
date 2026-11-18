@@ -61,9 +61,13 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: windows-verified
-          path: |
-            build/ci/*.zip
-            temp/reasoning/ci-package-check/verification.json
+          path: build/ci/*.zip
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: windows-verification
+          path: temp/reasoning/ci-package-check/verification.json
           if-no-files-found: error
           retention-days: 7
 

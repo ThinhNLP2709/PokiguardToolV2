@@ -304,6 +304,11 @@ class WorkerAndWorkflowTests(UpdateFixture):
         self.assertIn('--draft',text);self.assertNotIn('release publish',text)
         self.assertNotIn('pull_request_target',text)
         self.assertNotIn('secrets.',str(workflow['jobs']['verify']))
+        # The signing job consumes a flat artifact root. Mixing a report from
+        # another directory changes upload-artifact's common ancestor.
+        payloads=[s['with']['path'] for s in workflow['jobs']['verify']['steps']
+                  if s.get('with',{}).get('name')=='windows-verified']
+        self.assertEqual(['build/ci/*.zip'],payloads)
 
 
 if __name__=='__main__':unittest.main()
