@@ -1,5 +1,52 @@
 # IL2CPP symbols — Phase 1
 
+## 21/11/2026 — B17 same-response context observed natively
+
+On unchanged source c50977f8, BASIC1 + REASONING1 retain30 contexts from
+`playersStateDelta`,all mapping to the exact owned local actor.23 whitelist
+fields appear; weaponRarity is absent,weaponImageId is raw0. Pet560/METAL/
+lv12,attack1819,avatarId1,weaknessVsBoss1.75,equipCounterPct[25×5] remain
+observed values,not a damage formula. No new offset or DTO initialization.
+28 contexts with exact acknowledged/stable published sequence agree on
+all8 numeric stats;13 exact-ACK comparisons differ from pre-input stats.
+This supports response-state association only,not per-effect timing or
+pre-action metadata reuse. Boss snapshot/crit/buff/counter ordering remain
+UNKNOWN; do not backfill them from local fields or older opening probes.
+
+[Two-match proof and limits](phase5/RESPONSE_CONTEXT_NATIVE_20261121.md).
+
+## 21/11/2026 — B17 raw player context key selection (offline)
+
+Exact GameAssembly SHA remains
+`bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`.
+Verified against B17 script/dump identities and native disassembly, not a
+shared RVA delta or a new runtime pointer chain:
+
+| Method | B17 RVA | Verified observation |
+|---|---|---|
+| `MatchService.ApplyStateDelta` | `0xBA6670` | Calls ParsePlayersSnapshot at `0xBA67D2` |
+| `MatchService.ParsePlayersSnapshot` | `0xBA67F0` | Raw branch tries non-null `players` before `playersStateDelta` |
+| `MatchService.MergeIncomingPlayer` | `0xBA6EF0` | Has partial merge/default behavior; not replayed by diagnostic |
+
+Raw key loads/calls: `players` at `0xBA6AB9`/TryGetValue `0xBA6AC3`,
+fallback `playersStateDelta` at `0xBA6AF0`/`0xBA6AFA`. Full-key branch clears
+the dictionary at `0xBA6B71`; ToObject at `0xBA6C93`, MergeIncomingPlayer at
+`0xBA6CB5`, with the full/delta flag. A separate pre-parsed branch exists
+(`ChatMessageDTO.prePlayers +0x4F0`, flags +0x4F8/+0x4F9); these raw labels
+do not attest which runtime path completed or the timing of individual effects.
+
+`MatchPlayerSnapshotDTO` declares attack int+0x48, petId int+0x50,
+petElementType string+0x58, petLevel int+0x60, weaknessVsBoss double+0x70,
+equipCounterPct int[]+0x78, avatarId int+0x88, fusionUsedSuccess bool+0xD8,
+fusionBonusHp/Attack/Mana int+0x110/+0x114/+0x118, weaponImageId int+0x130,
+weaponRarity string+0x138. Exact whitelist names/types were checked from dump.
+Native merge may retain prior values for some identity fields and arrays;
+the new logger deliberately preserves only fields present in the same JSON.
+No runtime offset/read was added. Counter ordering, crit/buff/formula and
+effect-time context remain UNKNOWN.
+
+[Projection/binding report and static evidence](phase5/RESPONSE_CONTEXT_BINDING_20261121.md).
+
 ## 18/11/2026 — B17 exact profile
 
 GameAssembly SHA-256 `bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`,
@@ -2290,3 +2337,121 @@ Native bridge dùng cùng profile bất biến, không global patch. Xem
 [luồng tự phục vụ](self_service_compatibility.md). Không có phát hiện RVA game
 mới trong thay đổi này; build chưa xuất hiện vẫn UNKNOWN.
 
+# B17 ordered resource diagnostics — 19/11/2026
+
+Exact GameAssembly SHA `bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`;
+matching dump/script hashes and static listings are retained in
+`phase5/artifacts/b17_rage_roles_20261119/static_resources.json`.
+
+| Method | RVA | Verified client consumption |
+|---|---|---|
+| `BoardWsApplier.<ApplyOp>d__102.MoveNext` | `0xB2E9B0` | Dispatches `STAT_CHANGE`; call to ApplyStatChange at `0xB2F759`; also handles `DESTROY` |
+| `BoardWsApplier.ApplyStatChange` | `0xB17460` | Reads `targetUsername`, `statType`, `delta`, `newValue`; calls ApplyServerStat at `0xB17823` with newValue |
+| `MatchService.ApplyServerStat` | `0xB99E30` | Exact callee name/signature verified by matching export; no method invocation by V2 |
+| `BoardWsApplier.<ApplyDestroySequenced>d__106.MoveNext` | `0xB2AC70` | Reads `positions`, indexes 0/1, calls `InBounds(col,row)` at `0xB2AFC4`, indexes existing allDots in that order |
+| `Active.HandleTurnStartInternal` | `0x158A9B0` | Turn bookkeeping/notification path inspected; does not establish a universal server tick/hit formula |
+| `Active.SyncStatsFromWsSnapshot` | `0x1589870` | Snapshot synchronization path inspected; source amounts remain server observations |
+
+The diagnostic projection copies existing immutable response JSON only. It
+does not add a process read, new offset/ownership chain or runtime call. Missing
+integer fields remain null rather than the client's numeric fallback 0. Unknown
+DESTROY layouts remain UNKNOWN; only verified leading native coordinates are
+retained when valid. Tags/multipliers are not inferred from trailing values.
+Stat spend/tick/reward formulas, complete effect coverage and order outside a
+captured response remain UNKNOWN pending native observations.
+
+
+## 2026-11-19 — B17 callback ownership/lifetime audit
+
+Exact B17 GameAssembly SHA `bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`;
+Il2CppDumper exports and file-only native disassembly rechecked byte-for-byte.
+No process attach, game call, new runtime offset or ASLR-dependent address.
+
+| Named method / native anchor | B17 RVA | Verified role |
+|---|---|---|
+| ChatService.OnWebSocketMessage | `0xB6D940` | Closure328_0 holds original JSON at+0x18 and deserialized DTO at+0x20 before Action enqueue |
+| Closure328_0 callback | `0xB7E130` | Loads own JSON/DTO and tail-calls DispatchIncoming at `0xB6DF50` |
+| UnityMainThreadDispatcher.TryEnqueue(Action,bool) | `0xC20980` | Success routes to instance Enqueue(Action,bool), `0xC219B0` |
+| UnityMainThreadDispatcher.Update | `0xC20CF0` | Queue→drain, delegate invocation; residual actions can be requeued |
+| Drain clearing instructions | `0xC21754`, `0xC21769` | Set list size0 and call System.Array.Clear |
+
+These anchors prove a transient owner path, not a fixed callback lifetime or
+that a given response was sampled. The reader now distinguishes complete
+(closure,DTO,JSON) identities rather than merging by DTO pointer alone.
+Two synthetic collision cases reproduce pre-fix loss; native DTO aliasing
+and the exact cause of BASIC response12 remain UNKNOWN. Existing board,
+ACK, PASS and input validation are unchanged. [Audit, bounds and proof](phase5/COLLECTOR_ROOT_AUDIT_20261119.md).
+
+## 2026-11-20 — B17 combat fullPower is received evidence
+
+Exact GameAssembly SHA `bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`:
+`MatchService.ParseCombatBatch` RVA `0xB98E10` looks up literal `combatSteps`
+at `0xB99194`, loads the exported generic method metadata
+`JToken.ToObject<List<WsCombatStepDTO>>()` at `0xB99206`, calls it at
+`0xB99210`, and assigns the list to `WsCombatBatch.steps +0x28` at `0xB99215`.
+Dumper declares `WsCombatStepDTO.fullPower` as non-nullable bool `+0x40`.
+This is received-step conversion, not a prospective damage formula. Server
+omission policy, actual per-match fullPower threshold/cost and cross-order
+between `combatSteps` and `ops` remain UNKNOWN. Old V2 projection cannot
+recover absent-key versus explicit-null presence from full_power=None.
+No new runtime offsets, process reads or game calls were introduced.
+[Static labels and pinned bytes](phase5/artifacts/demon_health_prefix_20261120/static_semantics.json),
+[scope and limitations](phase5/DEMON_HEALTH_AND_POWER_REVIEW_20261120.md).
+
+## Demon damage-context declaration audit and wire membership
+
+Pinned B17 dump declares Active.PlayerStats.attack +0x74, weakness +0x98,
+equipCounter (int[]) +0xA0 and petData (PetUserDTO) +0xA8. PetUserDTO declares
+petId +0x1C, elementType +0x40, attack +0x5C and weaknessValue +0x68.
+These declarations do not attest current runtime ownership, complete loadout,
+damage semantics or a new pointer chain. No new reader was introduced;
+the existing PlayerStats read size remains 0xA8. Runtime availability and
+crit/buff/element damage interpretation remain UNKNOWN.
+The existing immutable JSON projection now optionally retains fullPower
+key membership, separately from its bool/null value, within the same32KiB
+budget. A budget omission is UNKNOWN, never false. Old full_power=None
+cannot be recovered into absent versus null.
+[Pinned declarations, tests and readiness audit](phase5/DEMON_DAMAGE_CONTEXT_20261120.md).
+
+## 2026-11-21 — Scoped Active actor/pet context observed
+
+B17/source28 read-only probe matched current account alias,MatchService.Players
+local actor1 and Active.playerStatsMap ownership. Existing PetUserDTO TypeInfo
+RVA0x436EC28 and named int[] TypeInfo RVA0x43C79F8 were resolved,with bounded
+array/class checks. At one seq0/turn1 frame Active.PlayerStats.petData +0xA8
+held pet560,METAL,lv12;attack at +0x74 equaled PetUserDTO.attack +0x5C (1819).
+Active.weakness +0x98 read1.75,PetUserDTO.weaknessValue +0x68 read1.22,and
+Active.equipCounter +0xA0 held[25,25,25,25,25]. Meaning/order/formula UNKNOWN.
+MatchPlayerSnapshotDTO named TypeInfo RVA0x4385BC0 was unavailable;no metadata
+initialization or untyped DTO decode. This probe does not extend the production
+reader,attest all loadout fields or bind context to every damage event.
+[Exact scope and captured context](phase5/DEMON_CONTEXT_NATIVE_20261121.md).
+
+## 2026-11-21 — B17 raw critical flags in operation data
+
+Pinned GameAssembly SHA
+`bb456547ac1df7f5b036c3d738496e9c375b977a309547a80b7e7dd87b411bc7`;
+script SHA `0eee9df46fa34079c356e7f558586b57e4b4c4638d7bf5d86207745f024505bc`.
+`BoardWsApplier.<ApplyOp>d__102.MoveNext` RVA0xB2E9B0 branches on BOSS_HP
+at0xB2F0D4 and calls ApplyBossHp at0xB2F128. ApplyBossHp RVA0xB18FC0
+loads newHP/delta at0xB190D7/0xB190EC, calls ReadInt at0xB190E7/0xB19100,
+and in its negative-delta path loads crit at0xB191A0 then calls ReadBool
+(RVA0xB27A50) at0xB191B1 with false default. ApplyStatChange RVA0xB17460
+loads crit at0xB1787A and calls the same ReadBool at0xB17888 in its negative
+HP branch. This establishes client operation keys and display handling,
+not a server damage formula, actual key presence or per-step crit binding.
+WsCombatStepDTO still declares dmgSrc +0x38/fullPower +0x40; the existing
+projector uses dmgSrc correctly. Optional operation logging retains raw bool
+membership and never promotes a client default to observed false. No new
+runtime offset/pointer chain/memory query is introduced; runtime wire types,
+coverage and cross-list causal attribution remain UNKNOWN.
+[Pinned method bytes and references](phase5/artifacts/damage_offline_closeout_20261121/damage_operation_static.json),
+[dispatch](phase5/artifacts/damage_offline_closeout_20261121/ApplyOp_MoveNext.asm),
+[scope and tests](phase5/DAMAGE_OFFLINE_CLOSEOUT_20261121.md).
+
+Runtime B17/source d699,21/11: BASIC1+REASONING1 retain52 same-response
+operation contexts/230 operations (215 STAT_CHANGE,15 BOSS_HP). All230 have
+crit key ABSENT; no bool/null native witness. This verifies bounded optional
+projection and missing-key retention, not non-critical damage or a client/
+server critical formula. No new offset, memory query or per-step attribution.
+[Native scope and unresolved data](phase5/DAMAGE_OPERATION_NATIVE_20261121.md).

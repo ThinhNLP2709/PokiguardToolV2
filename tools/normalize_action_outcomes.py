@@ -57,6 +57,12 @@ def checked(record):
             if step.get(name) is not None and not text(step[name],64):raise ValueError('STEP_OPTIONAL_TYPE')
             step.setdefault(name,None)
         if step.get('full_power') is not None and type(step['full_power']) is not bool:raise ValueError('STEP_OPTIONAL_TYPE')
+        if 'full_power_presence' in step:
+            presence=step['full_power_presence']
+            if (presence not in ('ABSENT','NULL','VALUE')
+                    or presence=='VALUE' and type(step.get('full_power')) is not bool
+                    or presence in ('ABSENT','NULL') and step.get('full_power') is not None):
+                raise ValueError('FULL_POWER_PRESENCE_CONFLICT')
         step.setdefault('full_power',None)
         after=step.get('after')
         if after is not None and (type(after) is not dict or len(after)>32 or any(
@@ -80,6 +86,55 @@ def checked(record):
                     or abs(move[0]-move[2])+abs(move[1]-move[3])!=1):
                 raise ValueError('SWAP_OPERATION_FIELDS')
             previous=index
+    resource_ops=e.get('resource_operations')
+    projection=e.get('operation_projection')
+    if projection is not None:
+        if (type(projection) is not dict or set(projection)!={
+                'status','reason','operation_count','operation_limit','complete'}
+                or projection['status']!='OMITTED' or projection['reason']!='OPERATION_LIMIT'
+                or type(projection['operation_limit']) is not int or projection['operation_limit']!=MAX_OPERATIONS
+                or not integer(projection['operation_count'],MAX_OPERATIONS+1)
+                or projection['complete'] is not False
+                or operations is not None or resource_ops is not None):
+            raise ValueError('OPERATION_OMISSION_PROVENANCE')
+    if resource_ops is not None:
+        if (type(resource_ops) is not list or len(resource_ops)>MAX_OPERATIONS
+                or e.get('resource_operation_source')!='matchPayload.ops[].data'
+                or e.get('resource_operation_semantics')!='RAW_ORDERED_OBSERVATION_NOT_A_PREDICTION'):
+            raise ValueError('RESOURCE_OPERATION_PROVENANCE')
+        previous=-1
+        for operation in resource_ops:
+            if type(operation) is not dict:raise ValueError('RESOURCE_OPERATION_FIELDS')
+            index=operation.get('operation_index');kind=operation.get('type')
+            if not integer(index,0,MAX_OPERATIONS-1) or index<=previous:
+                raise ValueError('RESOURCE_OPERATION_ORDER')
+            previous=index
+            if kind=='STAT_CHANGE':
+                target=operation.get('target')
+                if target is not None and not actor(target):raise ValueError('STAT_TARGET_IDENTITY')
+                for key in ('stat_type','reason','source_label'):
+                    if operation.get(key) is not None and not text(operation[key],64):raise ValueError('STAT_TEXT')
+                if any(operation.get(k) is not None and not integer(operation[k]) for k in ('delta','new_value')):
+                    raise ValueError('STAT_INTEGER')
+            elif kind=='DESTROY':
+                positions=operation.get('native_positions')
+                if (operation.get('position_order')!='COL_ROW' or operation.get('tag_multiplier_binding')!='UNKNOWN'
+                        or positions is not None and (type(positions) is not list or len(positions)>64
+                        or any(type(p) is not list or len(p)!=2 or any(not integer(v,0,7) for v in p) for p in positions))):
+                    raise ValueError('DESTROY_POSITION_DOMAIN')
+                status=operation.get('positions_status')
+                if status is not None:
+                    if (status not in ('READ_NATIVE_FIRST_TWO','UNKNOWN_ABSENT','UNVERIFIED_FORMAT')
+                            or (positions is not None)!=(status=='READ_NATIVE_FIRST_TWO')):
+                        raise ValueError('DESTROY_POSITION_STATUS')
+                    trailing=operation.get('unmodeled_trailing_values')
+                    if trailing is not None and type(trailing) is not bool:raise ValueError('DESTROY_TRAILING_STATUS')
+                    shape=operation.get('position_shape')
+                    if shape is not None and (type(shape) is not dict or set(shape)!={'container','count','first_item','first_arity'}
+                            or not text(shape['container'],32) or shape['first_item'] is not None and not text(shape['first_item'],32)
+                            or any(shape[k] is not None and not integer(shape[k],0) for k in ('count','first_arity'))):
+                        raise ValueError('DESTROY_POSITION_SHAPE')
+            else:raise ValueError('RESOURCE_OPERATION_KIND')
     return e
 
 
@@ -209,10 +264,19 @@ def extract(path):
     responses=[group[0] for group in groups.values()]
     for identity,group in groups.items():
         # Same raw message can be offered through both diagnostic paths.
-        compare=lambda e:{k:v for k,v in e.items() if k not in ('accepted_board_attached','provenance')}
+        # Optional membership may fit one path's byte budget but not another.
+        # Absence of this metadata cannot turn identical effects into conflict.
+        compare=lambda e:{k:([{a:b for a,b in s.items() if a!='full_power_presence'} for s in v]
+            if k=='steps' else v) for k,v in e.items() if k not in ('accepted_board_attached','provenance')}
         if len({canonical(compare(e)) for _,e in group})!=1:
             excluded.append(dict(lines=[n for n,_ in group],reason='CONFLICTING_OUTCOME_IDENTITY'));continue
+        memberships=[{e['steps'][i]['full_power_presence'] for _,e in group
+            if 'full_power_presence' in e['steps'][i]} for i in range(len(group[0][1]['steps']))]
+        if any(len(values)>1 for values in memberships):
+            excluded.append(dict(lines=[n for n,_ in group],reason='CONFLICTING_OUTCOME_IDENTITY'));continue
         duplicates+=len(group)-1;n,e=group[0]
+        for step,values in zip(e['steps'],memberships):
+            if values:step['full_power_presence']=next(iter(values))
         binding,sent=bind(e,n,sends,results,responses)
         notes=['WHOLE_ACTION_COMPLETENESS_UNKNOWN','DAMAGE_BUFF_CRIT_AND_ELEMENT_CONTEXT_UNKNOWN',
             'NO_COUNTERFACTUAL_OUTCOMES','NOT_A_PREDICTIVE_MODEL']
@@ -223,11 +287,14 @@ def extract(path):
         if terminal:notes.append('ZERO_HP_CENSORED')
         if e.get('swap_operations') is None:notes.append('SWAP_OPERATION_DATA_NOT_CAPTURED')
         elif e['swap_operations']:notes.append('SWAP_OPERATION_DECISION_BINDING_UNKNOWN')
+        if e.get('operation_projection') is not None:notes.append('OPTIONAL_OPERATIONS_OMITTED_LIMIT')
         observations.append(dict(schema=SCHEMA,match_id=e['match_id'],server_sequence=e['server_sequence'],
             event_type=e['event_type'],actor_identity=e['actor_identity'],action_binding=binding,
             wire_swap=e.get('wire_swap'),wire_coordinate_semantics='RAW_NATIVE_UNVERIFIED_VIEW_MAPPING',
             swap_operations=e.get('swap_operations'),
             swap_operation_source=e.get('swap_operation_source'),swap_operation_decision_binding='UNKNOWN',
+            resource_operations=e.get('resource_operations'),resource_operation_source=e.get('resource_operation_source'),
+            resource_operation_semantics=e.get('resource_operation_semantics'),
             card_ids=e.get('card_ids'),destroyed_by_tag=e.get('destroyed_by_tag'),steps=e['steps'],
             effect_totals=list(observed_effect_totals(dict(schema=CAPTURE_SCHEMA,status='CAPTURED',evidence=e))),
             raw_ledger=raw_ledger(e,sent),zero_hp_targets=terminal,
@@ -235,6 +302,8 @@ def extract(path):
                 line_sha256=digest(lines[n-1].encode('utf-8')),raw_response_sha256=e['raw_sha256']),
             observation_limits=notes,calibration_eligible=False,training_eligible=False,
             prediction=None,input_authority=False))
+        if e.get('operation_projection') is not None:
+            observations[-1]['operation_projection']=e['operation_projection']
     return dict(path=str(path),sha256=digest(raw),observations=observations,excluded=excluded,
         duplicate_outcomes=duplicates)
 

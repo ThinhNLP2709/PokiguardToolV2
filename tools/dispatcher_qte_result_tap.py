@@ -14,7 +14,9 @@ from typing import Any
 from pokiguard_v2.combat_outcome_evidence import (
     CombatOutcomeCapture, MAX_RETAINED_CAPTURES, RESPONSE_TYPES, project_combat_outcome,
 )
+from pokiguard_v2.combat_capture_diagnostics import CaptureTrace, CaptureDiagnostics
 from pokiguard_v2.dispatcher_chat_roots import DispatcherChatRootReader
+from pokiguard_v2.dispatcher_read_trace import DispatcherReadTrace, RootReadDiagnostics
 from pokiguard_v2.il2cpp_external import (
     BOARD_WS_APPLIER_TYPE_INFO_RVA,
     CHAT_MESSAGE_DTO_TYPE_INFO_RVA,
@@ -261,6 +263,10 @@ class DispatcherTapDiagnostics:
     raw_board_rejections: int
     board_rejection_reasons: tuple[str, ...]
     last_error: str | None
+    outcome_capture: CaptureDiagnostics = CaptureDiagnostics()
+    outcome_capture_faults: int = 0
+    dispatcher_reads: RootReadDiagnostics = RootReadDiagnostics()
+    dispatcher_read_trace_faults: int = 0
 
 
 class DispatcherTransportTap:
@@ -275,7 +281,9 @@ class DispatcherTransportTap:
         if not 0.001 <= interval_seconds <= 0.02:
             raise ValueError("dispatcher tap interval is outside the safe range")
         self._target = target
-        self._reader = DispatcherChatRootReader(target.memory, target.resolver)
+        self._root_read_trace = DispatcherReadTrace()
+        self._root_read_trace_faults = 0
+        self._reader = DispatcherChatRootReader(target.memory, target.resolver, trace=self._root_read_trace)
         self._interval = interval_seconds
         self._lock = threading.Lock()
         self._wake = threading.Event()
@@ -296,6 +304,8 @@ class DispatcherTransportTap:
         ] = {}
         self._pending_combat_outcomes: deque[tuple[str, CombatOutcomeCapture]] = deque()
         self._dropped_combat_outcomes = 0
+        self._capture_trace = CaptureTrace()
+        self._capture_trace_faults = 0
         self._runtime_batches: dict[
             tuple[str, str, int, int, str], tuple[str, CombatBatchSnapshot]
         ] = {}
@@ -333,6 +343,11 @@ class DispatcherTransportTap:
         with self._lock:
             changed = self._match_id != match_id
             if changed:
+                try:
+                    self._root_read_trace.reset(match_id)
+                    self._root_read_trace_faults = 0
+                except Exception:
+                    self._root_read_trace_faults += 1
                 self._seen.clear()
                 self._results.clear()
                 self._messages.clear()
@@ -341,6 +356,11 @@ class DispatcherTransportTap:
                 self._combat_outcomes.clear()
                 self._pending_combat_outcomes.clear()
                 self._dropped_combat_outcomes = 0
+                try:
+                    self._capture_trace.clear()
+                    self._capture_trace_faults = 0
+                except Exception:
+                    self._capture_trace_faults += 1
                 self._runtime_batches.clear()
                 self._board_rejection_reasons.clear()
                 self._last_stable_at = None
@@ -375,6 +395,11 @@ class DispatcherTransportTap:
 
         excluded = excluded_match_id or None
         with self._lock:
+            try:
+                self._root_read_trace.reset(None)
+                self._root_read_trace_faults = 0
+            except Exception:
+                self._root_read_trace_faults += 1
             self._seen.clear()
             self._results.clear()
             self._messages.clear()
@@ -383,6 +408,11 @@ class DispatcherTransportTap:
             self._combat_outcomes.clear()
             self._pending_combat_outcomes.clear()
             self._dropped_combat_outcomes = 0
+            try:
+                self._capture_trace.clear()
+                self._capture_trace_faults = 0
+            except Exception:
+                self._capture_trace_faults += 1
             self._runtime_batches.clear()
             self._board_rejection_reasons.clear()
             self._last_stable_at = None
@@ -482,6 +512,7 @@ class DispatcherTransportTap:
             capture = CombatOutcomeCapture('UNAVAILABLE', 'CAPTURE_LIMIT_REACHED')
         else:
             capture = record[1]
+        self._trace_delivery(snapshot.match_id, board_record[0], snapshot.sequence, 'BOARD')
         return dict(combatOutcome=dict(capture.to_dict(),
             post_board_hash=board_state_hash(snapshot.cells)))
 
@@ -497,7 +528,44 @@ class DispatcherTransportTap:
                     break
                 match, capture = self._pending_combat_outcomes.popleft()
                 captures.append(capture)
-        return tuple(capture.to_dict() for capture in captures)
+        records = tuple(capture.to_dict() for capture in captures)
+        for record in records:
+            evidence = record.get('evidence')
+            if type(evidence) is not dict:
+                evidence = record.get('response_identity')
+            if type(evidence) is dict:
+                self._trace_delivery(evidence.get('match_id'), evidence.get('event_type'),
+                    evidence.get('server_sequence'), 'QUEUE')
+        return records
+
+    def _trace_capture(self, **metadata) -> None:
+        """Optional host metadata must not interrupt board/message delivery."""
+        with self._lock:
+            try:
+                self._capture_trace.observe(**metadata)
+            except Exception:
+                self._capture_trace_faults += 1
+
+    def _trace_delivery(self, match_id, event_type, sequence, route) -> None:
+        with self._lock:
+            try:
+                self._capture_trace.delivered(match_id, event_type, sequence, route)
+            except Exception:
+                self._capture_trace_faults += 1
+
+    def _root_trace_snapshot(self):
+        try:
+            return self._root_read_trace.snapshot
+        except Exception:
+            self._root_read_trace_faults += 1
+            return RootReadDiagnostics()
+
+    def _root_trace_binding(self, roots, root):
+        try:
+            return self._root_read_trace.binding(roots, root)
+        except Exception:
+            self._root_read_trace_faults += 1
+            return None
 
     def configure_runtime_owners(
         self,
@@ -555,6 +623,9 @@ class DispatcherTransportTap:
                 and self._last_stable_at is not None
                 and time.monotonic() - self._last_stable_at <= 0.25
             )
+            reader_faults = getattr(self._reader, 'trace_faults', 0)
+            if type(reader_faults) is not int:
+                reader_faults = 0
             return DispatcherTapDiagnostics(
                 armed_match_id=self._match_id,
                 poll_count=self._poll_count,
@@ -575,6 +646,10 @@ class DispatcherTransportTap:
                 raw_board_rejections=self._raw_board_rejections,
                 board_rejection_reasons=tuple(self._board_rejection_reasons),
                 last_error=self._last_error,
+                outcome_capture=self._capture_trace.snapshot,
+                outcome_capture_faults=self._capture_trace_faults,
+                dispatcher_reads=self._root_trace_snapshot(),
+                dispatcher_read_trace_faults=self._root_read_trace_faults + reader_faults,
             )
 
     @property
@@ -728,6 +803,10 @@ class DispatcherTransportTap:
                     self._match_id = discovered_match_id
                     self._discover_excluding_match_id = None
                     self._discover_new_match = False
+                    try:
+                        self._root_read_trace.bind_match(discovered_match_id)
+                    except Exception:
+                        self._root_read_trace_faults += 1
                 return
         except (ExternalReadError, OSError, LayoutValidationError) as exc:
             with self._lock:
@@ -759,6 +838,7 @@ class DispatcherTransportTap:
             for root in roots:
                 result_identity = (match_id, root.message_address)
                 raw_json = None
+                json_read_error = None
                 raw_message = None
                 raw_event_type = None
                 raw_envelope = None
@@ -777,8 +857,9 @@ class DispatcherTransportTap:
                         OSError,
                         LayoutValidationError,
                         ValueError,
-                    ):
+                    ) as exc:
                         raw_json = None
+                        json_read_error = type(exc).__name__
                 raw_fingerprint = (
                     hashlib.sha256(raw_json.encode("utf-8")).digest()
                     if raw_json is not None
@@ -996,6 +1077,14 @@ class DispatcherTransportTap:
                                 raw_sha256=raw_fingerprint.hex(), board_attested=snapshot is not None)
                         except Exception as exc:
                             outcome = CombatOutcomeCapture('INVALID', 'PROJECTION_' + type(exc).__name__)
+                self._trace_capture(match_id=match_id, raw_envelope=raw_envelope, dto_message=dto_message,
+                    raw_sha256=raw_fingerprint.hex(), json_chars=len(raw_json) if raw_json is not None else None,
+                    json_read_state=('READ' if raw_json is not None else 'READ_ERROR'
+                        if json_read_error is not None else 'NO_JSON_ROOT'),
+                    json_read_error=json_read_error, board_parsed=snapshot is not None,
+                    projection_status=outcome.status if outcome is not None else None,
+                    projection_reason=outcome.reason if outcome is not None else None,
+                    reader_binding=self._root_trace_binding(roots, root))
                 if outcome is not None:
                     with self._lock:
                         self._combat_outcomes[outcome_identity] = (outcome_witness, outcome)

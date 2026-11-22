@@ -201,6 +201,13 @@ def ai_status_text(status: AIStatus) -> str:
             'UI_REASONING_CONFIG_UNSUPPORTED':'Cấu hình này chưa hỗ trợ suy luận; dùng Cơ bản',
             'UI_REASONING_TARGET_UNSUPPORTED':'Boss này chưa nghiệm thu suy luận; dùng Cơ bản',
             'UI_REASONING_COHORT_CHANGED':'Tài khoản/đồ/dữ liệu khác cấu hình đã nghiệm thu; dùng Cơ bản',
+            'UI_REASONING_PROFILE_EXPIRED':'Hồ sơ suy luận hết hạn; dùng Cơ bản',
+            'UI_REASONING_EXPIRED_BASIC':'Hồ sơ suy luận hết hạn; dùng Cơ bản',
+            'UI_REASONING_CONFIG_CHANGED':'Cài đặt lối chơi đã thay đổi; dùng Cơ bản',
+            'UI_REASONING_WAITING_SERVER_TIMER':'Chờ timer từ game được xác minh',
+            'UI_REASONING_WAITING_STATE':'Chờ game cập nhật bàn ổn định',
+            'UI_REASONING_CONTEXT_CHANGED':'Dữ liệu trận chưa khớp hồ sơ suy luận; dùng Cơ bản',
+            'UI_REASONING_CONTEXT_UNAVAILABLE':'Chưa kiểm tra được ngữ cảnh suy luận; dùng Cơ bản',
         }
         return (f"{'Phiên đã dừng. ' if status.state == 'STOPPED' else ''}"
             f"{reasons.get(status.reason, 'Suy luận chưa sẵn sàng; dùng Cơ bản')} ({status.reason})\n"

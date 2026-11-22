@@ -189,6 +189,30 @@ def evaluate_context(problem,step,replies,maximum):
     unlock_bonus=.125 if (not evolution.get('pending') and readiness_before is not None
         and readiness_before<1 and readiness_after==1) else 0.
     resource_value=clip((mana_weight*progress['mana']+rage_weight*progress['rage'])/2+unlock_bonus)
+    # Gross Rage collected during a Sword action is not necessarily stored:
+    # recorded B17 attacks both spend Rage and sometimes leave it unchanged.
+    # Preserve the old gross-gain scenario as conditional upside, but do not
+    # give it a certain stockpile/next-skill bonus. This is a sensitivity range
+    # for the structural benefit, not a bound on server balances or damage.
+    gross_readiness=readiness_after;gross_unlock=unlock_bonus
+    stockpile_low=resource_value
+    attack_rage_unknown=step.action.family=='swap' and step.resources.effective(GemType.SWORD)>0
+    if attack_rage_unknown:
+        low_mana=progress['mana']
+        rage_cost=needs.get('rage')
+        if number(rage_cost) and rage_cost>0:
+            readiness_after=None;unlock_bonus=0.
+            if (not evolution.get('pending') and gross_readiness==1
+                    and resource_details['mana']['useful_gain']):
+                item=resource_details['mana'];gain=item['useful_gain']
+                towards=min(gain,max(0,needs['mana']-item['current']))
+                low_mana=(towards+.25*(gain-towards))/item['goal']
+        stockpile_low=clip(mana_weight*low_mana/2+unlock_bonus)
+    stockpile_sensitivity=dict(low=stockpile_low,high=resource_value,
+        attack_rage_order_unknown=attack_rage_unknown,
+        resource_sensitive=stockpile_low<resource_value,
+        kind='CONDITIONAL_ATTACK_RAGE_STOCKPILE_NOT_NET_BALANCE',
+        net_balance_prediction=False)
 
     # Sword-first is conditional on the user's boss policy. Keep every tie.
     nominal=([r for r in replies if r.resources.effective(GemType.SWORD)==maximum]
@@ -267,11 +291,14 @@ def evaluate_context(problem,step,replies,maximum):
             self_after_known_gain_exposed=after_gain_fills,known_gain_context=gain_context,
             aggregation='MAX_SINGLE_RESOURCE_NOT_SIMULTANEOUS_TRANSFERS',
             resource_selection='UNKNOWN',amount_formula='UNKNOWN',hp_steal='NOT_MODELED'),
-        skill_resource_readiness=dict(before=readiness_before,after=readiness_after,unlock_bonus=unlock_bonus),
+        skill_resource_readiness=dict(before=readiness_before,after=readiness_after,unlock_bonus=unlock_bonus,
+            conditional_gross_after=gross_readiness,conditional_unlock_bonus=gross_unlock,
+            status='ATTACK_RAGE_ORDER_UNKNOWN' if attack_rage_unknown else 'KNOWN_GAIN_ONLY_NOT_NEXT_TURN_AUTHORITY'),
+        resource_stockpile_sensitivity=stockpile_sensitivity,
         self_heal_amount='UNKNOWN' if step.heals_self else 'NOT_APPLICABLE',
         action_effort_kind='INPUT_AND_WASTED_RESOURCE_PROXY_NOT_ACTUAL_ENERGY',
         post_skill_resource_order='UNKNOWN_NOT_CREDITED',missing=missing)
-    return dict(R=resource_value,P=protection,T=worst_reply['threat'],L=sum(commitment)/2,
+    return dict(R=stockpile_low,P=protection,T=worst_reply['threat'],L=sum(commitment)/2,
         E=clip(input_effort+.4*(sum(wastes)/len(wastes) if wastes else 0))),details,unknown_features
 
 

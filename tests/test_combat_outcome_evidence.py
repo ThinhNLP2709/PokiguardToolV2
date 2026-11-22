@@ -62,7 +62,7 @@ class OutcomeProjectionTests(unittest.TestCase):
         for data in ({},dict(good,toCol=True),dict(good,toCol=5),dict(good,toRow='1'),None):
             raw=envelope();raw['matchPayload']['ops']=[dict(type='SWAP',data=data)]
             with self.subTest(data=data):self.assertEqual('INVALID',projected(raw).status)
-        for operations in ({},[None],[dict(type=True)],[dict(type='OTHER')]*(MAX_OPERATIONS+1)):
+        for operations in ({},[None],[dict(type=True)]):
             raw=envelope();raw['matchPayload']['ops']=operations
             with self.subTest(operations=str(operations)[:32]):self.assertEqual('INVALID',projected(raw).status)
 
@@ -76,6 +76,19 @@ class OutcomeProjectionTests(unittest.TestCase):
         totals=observed_effect_totals(result)
         self.assertEqual([('MANA',40),('POWER',60)],[(s['steal_type'],s['observed_amount']) for s in totals])
         self.assertIsNone(projected().to_dict()['evidence']['steps'][0]['steal_type'])
+
+    def test_operation_rejection_distinguishes_shape_from_limit_without_raw_data(self):
+        for operations, reason, container, count in (
+                ({'private': 'not retained'}, 'OPERATION_SHAPE', 'OBJECT', 1),):
+            raw=envelope();raw['matchPayload']['ops']=operations
+            record=projected(raw).to_dict()
+            self.assertEqual(('INVALID',reason,None),(record['status'],record['reason'],record['evidence']))
+            self.assertEqual(dict(operation_container=container,operation_count=count,
+                operation_limit=MAX_OPERATIONS),record['rejection_diagnostics'])
+            self.assertLess(len(json.dumps(record['rejection_diagnostics'])),256)
+            self.assertNotIn('private',json.dumps(record))
+            self.assertFalse(record['input_authority']);self.assertFalse(record['damage_prediction'])
+        self.assertNotIn('rejection_diagnostics',projected().to_dict())
 
     def test_bad_steal_type_only_invalidates_optional_evidence(self):
         for value in (True,123,[],{},'', 'x'*65):
@@ -222,6 +235,16 @@ class OutcomeTapTests(unittest.TestCase):
         new = self.capture(envelope(sequence=10))
         self.assertEqual({}, self.tap.combat_outcome_fields(old))
         self.assertEqual(10, self.tap.combat_outcome_fields(new)['combatOutcome']['evidence']['server_sequence'])
+
+    def test_operation_limit_diagnostic_adds_no_reads_or_board_rejection(self):
+        raw=envelope();raw['matchPayload']['ops']=[dict(type='OTHER')]*(MAX_OPERATIONS+1)
+        snapshot=self.capture(raw)
+        record=self.tap.combat_outcome_fields(snapshot)['combatOutcome']
+        self.assertEqual('CAPTURED',record['status'])
+        self.assertEqual('OPERATION_LIMIT',record['evidence']['operation_projection']['reason'])
+        self.assertEqual(MAX_OPERATIONS+1,record['evidence']['operation_projection']['operation_count'])
+        self.assertEqual(64,len(snapshot.cells));self.assertEqual(0,self.tap.diagnostics.raw_board_rejections)
+        self.assertEqual([],self.target.memory.mock_calls)
 
     def test_retention_cap_and_rearming_preserve_board_delivery_and_clear_old_evidence(self):
         with patch('tools.dispatcher_qte_result_tap.MAX_RETAINED_CAPTURES', 1):

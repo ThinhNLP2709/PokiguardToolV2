@@ -1,7 +1,7 @@
 """Read current ChatService callbacks from Unity's main-thread dispatcher.
 
 The game deserializes an incoming websocket envelope before it queues a
-``ChatService.__c__DisplayClass275_0`` callback.  That closure owns the exact
+``ChatService.<>c__DisplayClass328_0`` callback.  That closure owns the exact
 ``ChatMessageDTO`` at ``+0x20``.  Reading the dispatcher's queue/drain buffer is
 therefore a small, ownership-backed alternative to a process-wide heap scan.
 
@@ -221,10 +221,12 @@ def _read_list(
 class DispatcherChatRootReader:
     """Resolve and traverse exact current dispatcher-owned chat callbacks."""
 
-    def __init__(self, memory: MemoryReader, resolver: TypeInfoResolver) -> None:
+    def __init__(self, memory: MemoryReader, resolver: TypeInfoResolver, *, trace=None) -> None:
         self._memory = memory
         self._resolver = resolver
         self._resolved: tuple[int, int, int, int, int] | None = None
+        self._trace = trace
+        self.trace_faults = 0
 
     def _resolve(self) -> tuple[int, int, int, int, int]:
         if self._resolved is not None:
@@ -262,6 +264,29 @@ class DispatcherChatRootReader:
         return self._resolved
 
     def read(self) -> tuple[DispatcherChatMessageRoot, ...]:
+        if self._trace is None:
+            return self._read()
+        ticket = None
+        try:
+            ticket = self._trace.begin()
+        except Exception:
+            self.trace_faults += 1
+        try:
+            roots = self._read()
+        except Exception as exc:
+            self._note_trace(ticket, error=exc)
+            raise
+        self._note_trace(ticket, roots=roots)
+        return roots
+
+    def _note_trace(self, ticket, **result) -> None:
+        if ticket is not None:
+            try:
+                self._trace.complete(ticket, **result)
+            except Exception:
+                self.trace_faults += 1
+
+    def _read(self) -> tuple[DispatcherChatMessageRoot, ...]:
         (
             dispatcher_class,
             queue_class,
@@ -307,7 +332,7 @@ class DispatcherChatRootReader:
         ):
             raise LayoutValidationError("dispatcher roots changed during read")
 
-        roots: dict[int, DispatcherChatMessageRoot] = {}
+        roots: dict[tuple[int, int, int | None], DispatcherChatMessageRoot] = {}
         for item in actions:
             action = _read_exact(
                 self._memory,
@@ -343,8 +368,11 @@ class DispatcherChatRootReader:
                 != closure_before
             ):
                 raise LayoutValidationError("ChatService callback changed during read")
+            # Raw JSON belongs to the callback, not to a DTO pointer identity.
+            # Collapse the same callback across containers without losing a
+            # distinct callback that happens to reference the same DTO.
             roots.setdefault(
-                message,
+                (target, message, json_address),
                 DispatcherChatMessageRoot(
                     message_address=message,
                     closure_address=target,

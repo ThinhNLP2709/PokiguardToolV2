@@ -160,6 +160,67 @@ class DispatcherChatRootReaderTests(unittest.TestCase):
         roots = reader.read()
         self.assertEqual([item.message_address for item in roots], [self.MESSAGE_B])
 
+    def test_distinct_callbacks_sharing_a_dto_keep_their_separate_json(self):
+        memory, reader = self.fixture()
+        callback = bytearray(memory.blocks[self.CLOSURE_B])
+        struct.pack_into("<Q", callback, 0x20, self.MESSAGE_A)
+        memory.map(self.CLOSURE_B, callback)
+        roots = reader.read()
+        self.assertEqual(
+            {(item.closure_address, item.message_address, item.json_address) for item in roots},
+            {(self.CLOSURE_A, self.MESSAGE_A, self.JSON_A),
+             (self.CLOSURE_B, self.MESSAGE_A, self.JSON_B)},
+        )
+
+    def test_dto_only_callback_does_not_shadow_another_callbacks_json(self):
+        memory, reader = self.fixture()
+        first = bytearray(memory.blocks[self.CLOSURE_A])
+        second = bytearray(memory.blocks[self.CLOSURE_B])
+        struct.pack_into("<Q", first, 0x18, 0)
+        struct.pack_into("<Q", second, 0x20, self.MESSAGE_A)
+        memory.map(self.CLOSURE_A, first)
+        memory.map(self.CLOSURE_B, second)
+        roots = reader.read()
+        self.assertEqual([item.json_address for item in roots], [None, self.JSON_B])
+
+    def test_same_callback_in_queue_and_drain_is_returned_once(self):
+        memory, reader = self.fixture()
+        array = bytearray(memory.blocks[self.DRAIN_ARRAY])
+        struct.pack_into("<Q", array, 0x20, self.ACTION_A)
+        memory.map(self.DRAIN_ARRAY, array)
+        roots = reader.read()
+        self.assertEqual(len(roots), 1)
+        self.assertEqual(roots[0].closure_address, self.CLOSURE_A)
+
+    def test_separate_raw_responses_reach_the_tap_despite_shared_dto(self):
+        import json
+        from unittest.mock import patch
+        import tests.test_combat_outcome_evidence as outcomes
+        memory, reader = self.fixture()
+        callback = bytearray(memory.blocks[self.CLOSURE_B])
+        struct.pack_into("<Q", callback, 0x20, self.MESSAGE_A)
+        memory.map(self.CLOSURE_B, callback)
+        fixture = outcomes.OutcomeTapTests()
+        fixture.setUp()
+        fixture.tap._reader = reader
+        payloads = {self.JSON_A: json.dumps(outcomes.envelope(sequence=9)),
+                    self.JSON_B: json.dumps(outcomes.envelope(sequence=11))}
+        with patch('tools.dispatcher_qte_result_tap.read_il2cpp_string',
+                   side_effect=lambda _, address, **kwargs: payloads[address]), \
+                patch('tools.dispatcher_qte_result_tap.read_server_message',
+                      side_effect=LayoutValidationError('DTO unavailable')), \
+                patch.object(fixture.tap, '_capture_runtime_batches'):
+            fixture.tap._capture_once('M_SYNTHETIC')
+            fixture.tap._capture_once('M_SYNTHETIC')
+        boards = fixture.tap.transport_board_snapshots('M_SYNTHETIC')
+        records = [fixture.tap.combat_outcome_fields(board)['combatOutcome'] for _, board in boards]
+        self.assertEqual({9, 11}, {r['evidence']['server_sequence'] for r in records})
+        self.assertEqual(2, len(records))
+        self.assertTrue(all(r['status'] == 'CAPTURED' for r in records))
+        self.assertTrue(all(not r['input_authority'] for r in records))
+        self.assertEqual(2, len({r['evidence']['raw_sha256'] for r in records}))
+        self.assertEqual([], fixture.target.memory.mock_calls)
+
     def test_torn_queue_fails_closed(self):
         original = bytearray(0x30)
         replacement = bytearray(original)

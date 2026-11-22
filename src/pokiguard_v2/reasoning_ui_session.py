@@ -22,6 +22,29 @@ class _Combat:
     collector:object
 
 
+def _observation_status(authority,observation):
+    """Explain unavailable context for display only; never change admission."""
+    if observation is None:return None
+    try:
+        state,config=observation[:2]
+        expiry=getattr(authority,'valid_until_ns',None)
+        if type(expiry) is int and time.perf_counter_ns()>=expiry:
+            return 'UNSUPPORTED','UI_REASONING_PROFILE_EXPIRED'
+        from .reasoning_common_evidence import policy_json
+        if policy_json(config)!=authority.policy_json:
+            return 'UNSUPPORTED','UI_REASONING_CONFIG_CHANGED'
+        if state is None:
+            return 'WAITING','UI_REASONING_WAITING_STATE'
+        timer=getattr(authority,'timer_source','MatchService.server_tick')
+        if state.battle.turn_timer_source!=timer:
+            return 'WAITING','UI_REASONING_WAITING_SERVER_TIMER'
+        if not authority.matches(state,config):
+            return 'UNSUPPORTED','UI_REASONING_CONTEXT_CHANGED'
+        return None
+    except Exception:
+        return 'DEGRADED','UI_REASONING_CONTEXT_UNAVAILABLE'
+
+
 class UIReasoningSession:
     def __init__(self,config,authority,*,directory,observer,bridge_factory=None,sink_factory=None):
         self.config=config;self.authority=authority;self.directory=Path(directory);self.observer=observer
@@ -44,7 +67,8 @@ class UIReasoningSession:
                 written=stats.get('written',0),queued=stats.get('queued',0),faults=int(self.faulted),
                 accounting_valid=stats.get('accounting_valid',False),
                 selection_authority=not self.faulted and not self.stop_event.is_set()
-                    and state not in ('UNSUPPORTED','DEGRADED','STOPPED'))
+                    and state not in ('UNSUPPORTED','DEGRADED','STOPPED')
+                    and reason not in ('UI_REASONING_WAITING_SERVER_TIMER','UI_REASONING_WAITING_STATE'))
             if force or status!=self.last_status:
                 self.last_status=status;self.observer(status,'AI_STATUS')
         except Exception:
@@ -183,11 +207,10 @@ class UIReasoningSession:
                 if time.monotonic()-self.last_publish>=.5:
                     self.last_publish=time.monotonic()
                     observation=self.bundle.bridge.observation if self.bundle else None
-                    try:mismatch=observation is not None and not self.authority.matches(observation[0],observation[1])
-                    except Exception:mismatch=True
-                    self._publish('DEGRADED' if self.faulted else 'UNSUPPORTED' if mismatch else 'REASONING' if self.bundle else 'WAITING',
+                    unavailable=_observation_status(self.authority,observation)
+                    self._publish('DEGRADED' if self.faulted else unavailable[0] if unavailable else 'REASONING' if self.bundle else 'WAITING',
                         self.first_fault if self.faulted else
-                        'UI_REASONING_COHORT_CHANGED' if mismatch else
+                        unavailable[1] if unavailable else
                         'UI_REASONING_COMPLETED' if self.bundle and self.bundle.bridge.runner.counters.get('completed',0)
                         else 'UI_REASONING_WAITING_TURN')
             with self.lock:

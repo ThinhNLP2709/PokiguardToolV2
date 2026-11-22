@@ -147,6 +147,68 @@ class CircuitBreaker:
             self.disabled, self.reason = True, reason or "FAULT_THRESHOLD"
 
 
+def _health_prefix_summary(summary, snapshot, result):
+    """Optional, positive-only evidence from existing scores, at most one sample.
+
+    Missing metadata is UNKNOWN, never proof that the branch was not scored.
+    Do not mutate the decision, replace mandatory attribution, or grow the
+    existing event budget to make a diagnostic fit.
+    """
+    if snapshot.intent.profile != 'demon_aegis_farm':
+        return summary
+    matches = []
+    for score in result.scores:
+        bound = dict(score.features).get('P')
+        if (score.action.family == 'swap' and bound is not None
+                and bound.reason == 'DEMON_FIRST_WAVE_HEALTH_OPPORTUNITY'
+                and bound.status == 'PRESENT'
+                and math.isfinite(bound.low) and math.isfinite(bound.high)
+                and 0 < bound.low <= bound.high <= 1
+                and score.candidate_id == snapshot.candidate_id(score.action)):
+            matches.append((score, bound))
+    if not matches:
+        return summary
+    size = lambda value: len(json.dumps(value, separators=(',', ':')).encode())
+    if size(summary) > 12000:
+        return summary  # Preserve the pre-existing mandatory-attribution case.
+    published = {c['candidate_id'] for c in summary['candidates']}
+    score, bound = next((item for item in matches if item[0].candidate_id not in published), matches[0])
+    details = score.details.plain()
+    health = details.get('resources', {}).get('health', {}).get('effective')
+    hp = details.get('tactical_context', {}).get('self_hp_fraction')
+    sample = dict(candidate_id=score.candidate_id, action=score.action.to_dict(),
+        p=[bound.low, bound.high],
+        health_effective=health if type(health) is int and 0 < health < 2**31 else None,
+        hp_fraction=hp if type(hp) in (int, float) and math.isfinite(hp) and 0 <= hp < 1 else None,
+        role=('PROPOSAL' if score.candidate_id == summary['proposed_candidate_id'] else
+            'BASELINE' if score.candidate_id == summary['baseline_candidate_id'] else 'ALTERNATIVE'))
+    counter = dict(scored=len(matches), omitted=len(matches), sample=None)
+    witness = dict(scored=len(matches), omitted=len(matches)-1, sample=sample, kind='COLLECTION_PROXY')
+    if size(witness) > 512:
+        witness = counter
+    mandatory = len({summary['baseline_candidate_id'], summary['proposed_candidate_id']} - {None})
+    original = summary['candidates']
+    candidates = list(original)
+    omitted = summary['omitted_candidate_summaries']
+    while True:
+        trial = dict(summary, candidates=candidates, omitted_candidate_summaries=omitted,
+            demon_health_prefix=witness)
+        if size(trial) <= 12000:
+            return trial
+        if len(candidates) <= mandatory:
+            break
+        candidates = candidates[:-1]
+        omitted += 1
+    # A count-only record is useful when the complete sample cannot fit.
+    # If even that is too large, return the original summary unchanged.
+    for items, count in ((original, summary['omitted_candidate_summaries']), (candidates, omitted)):
+        trial = dict(summary, candidates=items, omitted_candidate_summaries=count,
+            demon_health_prefix=counter)
+        if size(trial) <= 12000:
+            return trial
+    return summary
+
+
 def _decision_summary(snapshot, result, refinement):
     """Compact attribution, never a dispatched-action or survival claim."""
     from .reasoning_snapshot import digest
@@ -201,8 +263,22 @@ def _decision_summary(snapshot, result, refinement):
                     protection=tactical.get('protection_proxy'),reply=tactical.get('boss_reply_proxy'),
                     drain_resources=tactical.get('drain_resources'),
                     reply_sensitivity=tactical.get('boss_reply_sensitivity'),
+                    resource_sensitivity=tactical.get('resource_stockpile_sensitivity'),
+                    skill_readiness=tactical.get('skill_resource_readiness'),
                     nominal_sword_reference=context.get('nominal_sword_reference'),
                     damage_context=context.get('damage_context'),self_heal_amount=tactical.get('self_heal_amount'))
+                reply = candidate['tactical_context']['reply_sensitivity']
+                if reply is not None and 'refill_sword_hazard' in reply:
+                    # Full provenance stays in the score. Keep the risk inputs
+                    # in the bounded worker summary without repeating labels.
+                    reply = dict(reply)
+                    hazard = reply['refill_sword_hazard']
+                    reply['refill_sword_hazard'] = dict(
+                        effective_swords=hazard['effective_swords'],
+                        sites=hazard['completion_sites'])
+                    reply.pop('refill_scope', None)
+                    reply.pop('refill_sword_proxy', None)
+                    candidate['tactical_context']['reply_sensitivity'] = reply
             candidate['status']='COMMON_CONDITIONAL_PROXY'
             candidate['future_setup']=('COMMON_BOUNDED_CONDITIONAL_NOT_GLOBAL_OPTIMUM'
                 if result.diagnostics.plain().get('stage')=='LOOKAHEAD_COMPLETE' else 'NOT_PROMOTED')
@@ -216,9 +292,19 @@ def _decision_summary(snapshot, result, refinement):
         if geometry is None:geometry=d2.get('seal_geometry')
         summary['skill_model_source'] = None if geometry is None else geometry['scope']
     # Keep baseline/proposal attribution if alternatives exceed the event budget.
-    while len(json.dumps(summary, separators=(",", ":")).encode()) > 12000 and len(candidates) > 2:
+    mandatory_candidates = len({baseline_id, proposal_id} - {None})
+    while len(json.dumps(summary, separators=(",", ":")).encode()) > 12000 and len(candidates) > mandatory_candidates:
         candidates.pop()
         summary["omitted_candidate_summaries"] += 1
+    if common:
+        try:
+            summary = _health_prefix_summary(summary, snapshot, result)
+        except Exception as exc:
+            # Log a bounded error type when space permits, never arbitrary
+            # exception text or a new worker/input failure.
+            diagnostic = dict(summary, demon_health_prefix_error=type(exc).__name__[:64])
+            if len(json.dumps(diagnostic, separators=(',', ':')).encode()) <= 12000:
+                summary = diagnostic
     return summary
 
 

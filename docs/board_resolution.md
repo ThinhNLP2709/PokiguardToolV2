@@ -1,5 +1,48 @@
 # Board instance resolution — Phase 1
 
+## 21/11/2026 — B17 response context native BASIC1/REASONING1 closure
+
+Source c50977f8 remains483 Python files byte-identical. The exact room is
+Coop_517437,pet560,boss1845; UI131 is separate from RoomDTO/properties raw0.
+BASIC1 and R1 both WIN/claim/return to the clean room;0 safe stop/recovery.
+30 immutable-response contexts,28 typed outcomes,13 exact SWAP/ACK contexts.
+28 context/published-state joins at exact match/sequence/owned actor agree
+on8 numeric stats; all13 comparable ACK contexts differ from pre-input
+stats. No nearest-time or opening-context carry-forward. Response fields
+must not become pre-action/effect-time features.
+
+R12 decisions/35 checkpoints match actual inputs or the game-confirmed PASS;
+replay12/12,worker reaped,72 events written/flushed. PASS turn17 used native
+idle_count1/threshold3 with0 gameplay inputs; no hard-coded pass rule added.
+3/16 ACK lack typed effects; normalization lost0 records. Source acceptance
+is scoped to these observations,not complete capture/damage/strategy quality.
+Cap2/2 closed,cumulative30,remaining0; no training/build or new source edits.
+
+[Complete evidence and remaining limits](phase5/RESPONSE_CONTEXT_NATIVE_20261121.md).
+
+## 21/11/2026 — Same-response player context, no new board/process reads
+
+The optional context projection consumes only the immutable JSON already
+used by the transport tap after its match/sequence fence. `players` and
+`playersStateDelta` key selection was verified statically at B17
+ParsePlayersSnapshot RVA0xBA67F0; full/delta merge semantics are not replayed.
+Reader/tap/board admission/owner/PASS/executor source files remain byte-identical
+to source28 for this milestone. A fake-tap test preserves all64 cells with
+no additional target memory queries; it is not new native acceptance.
+
+Context is bound offline to exact match/sequence/event/raw SHA and, only
+where existing typed evidence allows, the original SWAP sent/ACK record.
+ActorNumber alone does not establish local ownership. Response context is
+neither pre-action context nor proof of state at the moment damage occurred.
+Missing fields, null, full/delta source, invalid/omitted optional metadata
+remain explicit. No opening snapshot carry-forward or nearest-time join.
+Optional context cannot evict validated effect/fullPower evidence or grant
+input.130 historical files retain exact normalization; no retrofilled context.
+Source c50977f8 has offline proof only; source28 native proof remains scoped
+to its original run.0 new matches/inputs/attachments.
+
+[Implementation and verification](phase5/RESPONSE_CONTEXT_BINDING_20261121.md).
+
 ## 18/11/2026 — B17 room and independent map callback proof
 
 Board root 0x43F68F0 and Active 0x43F68F8 are exact B17 TypeInfo slots. All
@@ -1314,3 +1357,115 @@ chặn thay đổi serialized UI assets/catalog và fingerprint các routine HUD
 bằng chứng một swap/ACK/result trên build mới. Qualification gameplay/timing
 vẫn độc lập; xem [hướng dẫn](self_service_compatibility.md).
 
+# B17 raw DESTROY coordinates — 19/11/2026
+
+The matching B17 `BoardWsApplier.<ApplyDestroySequenced>d__106.MoveNext`
+consumes `positions[i][0/1]` as native **col,row**, proven by the arguments to
+`InBounds(int col,int row)` and the allDots indexing sequence. The existing
+screen conversion stays `(screen_row,screen_col)=(7-native_row,native_col)`.
+This is diagnostic metadata, never authority to click a coordinate.
+
+New optional outcome evidence preserves operation indices, STAT_CHANGE raw
+target/stat/delta/newValue, and valid leading DESTROY coordinates. Unsupported
+position shapes are null/UNVERIFIED_FORMAT; trailing fields carry no inferred
+tag/multiplier meaning. A position count cannot be relabelled as a Sword count
+without a matching board and complete applicable fall/spawn context. The
+already accepted board/input path is independent of this optional evidence.
+Static hashes/listings: `phase5/artifacts/b17_rage_roles_20261119/`.
+
+
+## 2026-11-19 — Dispatcher callback identity before board/effect parsing
+
+B17 native producer/callback retains JSON and DTO on the same closure328_0;
+Update drains and clears its transient list. A DTO pointer is not a verified
+identity for distinct closure-owned JSON witnesses. Reader dedup now uses
+(closure address,DTO address,JSON address); identical callbacks in queue/drain
+remain one root. No board cells, coordinate transform, seq/ACK publication,
+parser eligibility or input authority is inferred from this identity.
+
+Nine differential fake-memory cases preserve root read queries and all prior
+container/closure fences; only two distinct-callback collision cases recover
+a second root. A tap integration retains separate typed responses9/11 with
+independent raw hashes. Native cause/coverage of the missing BASIC12 response
+is still UNKNOWN; no old board or combatSteps was reconstructed. No cadence,
+scan or capture-limit increase. Existing tap may decode additional callbacks
+that the former key suppressed. [Native and replay evidence](phase5/COLLECTOR_ROOT_AUDIT_20261119.md).
+
+## 2026-11-20 — Demon first-wave Health and separate opening evidence
+
+A verified declared Demon first-wave geometry can retain its existing
+Health-collection/HP-deficit proxy even when the continuation is unresolved.
+This is not a net-HP, damage, survival or refill prediction. Board resolution,
+ACK publication, owner checks and game-derived PASS authority do not change.
+The opening action of M_1d67187c can be bound exactly through adviser source,
+sent snapshot, SWAP ACK and published after-state; it remains a separate tier,
+not a replacement for a missing published before-state. Terminal actions and
+missing effects are not promoted. [Evidence and tests](phase5/DEMON_HEALTH_AND_POWER_REVIEW_20261120.md).
+
+## Optional fullPower membership does not attest a board
+
+Combat evidence can retain ABSENT/NULL/VALUE key membership from JSON already
+read by the tap. It adds no process queries, board candidates, owner checks or
+input authority. New metadata is dropped when it cannot fit the existing
+capture byte budget; existing effect evidence is retained unchanged. The
+file-only normalizer merges nonconflicting optional membership across copies
+of the same response; conflicting effects/identity or contradictory known
+membership remain excluded. ACK binding and game-owned PASS are unchanged.
+[Scope, replay and remaining context](phase5/DEMON_DAMAGE_CONTEXT_20261120.md).
+
+## 2026-11-21 — Native bounded health summary witness verified
+
+Source28 completed BASIC1 +REASONING1 with the existing board/input/PASS path.
+Four actual worker summaries retained compact first-wave Health witnesses,
+including alternatives omitted from full candidate summaries;all match replay
+of the exact pre-action state. One selected full-summary Health-bound candidate
+was BASIC retention,not a changed move caused by the new floor. Separate initial
+actor/pet context was read outside the provider/preflight and is not a replacement
+for source-bound before/after board state or event-time damage evidence.
+[Native receipts,scope and cap closeout](phase5/DEMON_CONTEXT_NATIVE_20261121.md).
+
+## 2026-11-21 — Optional raw critical-operation evidence
+
+B17 ApplyBossHp/ApplyStatChange statically read crit in negative HP paths.
+The optional projection preserves BOSS_HP/STAT_CHANGE data from the immutable
+response JSON already read by the tap, fenced by match/sequence/type/raw SHA.
+ABSENT/NULL/BOOL/UNVERIFIED_TYPE remain distinct; no client-default false,
+new process read, board candidate or owner/input authority is introduced.
+The old projector body, effect/player context and32KiB combined budget are
+preserved. Optional metadata alone may be invalid/omitted without rejecting
+old valid evidence. Unknown field presence and crit-to-step mapping remain
+UNKNOWN until new native data; no old log is backfilled. First-wave/refill
+diagnostics and empirical row-flip agreement do not change board admission,
+solver transform, ACK publication or game-derived PASS rules.
+[Static addresses, tests and data blocker](phase5/DAMAGE_OFFLINE_CLOSEOUT_20261121.md).
+
+Native d699 BASIC1+REASONING1 subsequently retained52 operation contexts,
+25 exact-ACK bound, all match/sequence/type/raw SHA checks and byte budgets
+passed.230 operation crit memberships were ABSENT; this is not observed false.
+Core typed export normalized52/52 identities, with4 of29 ACK successors
+still lacking a retained scoped response. Whole-response completeness and
+cause of these gaps remain UNKNOWN.14 reasoning decisions replay exactly;
+no board admission, input, solver transform or PASS change was made.
+[Native case and capped closeout](phase5/DAMAGE_OPERATION_NATIVE_20261121.md).
+
+## 2026-11-21 — Offline damage mechanism descriptor reuses known cascades
+
+The file-only damage descriptor separates first-wave sweep/direct-outside
+cells and ordinary known-cascade Sword counts using the existing solver.
+It checks cached first-wave features against board/move/configured target.
+No target-bearing later cascade is expanded as a new Demon sweep; that case
+stops at first-wave and remains unmodeled. Unknown refill is never inserted.
+254 existing pre-input actions passed these checks;4 had known cascade
+Swords despite zero first-wave Swords. This adds no board/owner/input
+authority and does not change the native reader, planner, PASS or executor.
+[Offline scope and native fixture evidence](phase5/DAMAGE_MULTITURN_REVIEW_20261121.md).
+
+## 2026-11-21 — Conditional damage model remains offline only
+
+The conditional empirical predictor reuses the pre-input mechanism descriptor
+and does not change board resolution, input admission or game-derived PASS.
+Its incomplete-context/unsupported-neighbor results are model abstentions,
+not controller SAFE_STOP commands. No production importer was added.
+Frozen retrospective comparison did not establish better prediction quality;
+no model was deployed or rebound to the historical native timing profile.
+[Model, support and paired evaluation](phase5/DAMAGE_CONDITIONAL_MODEL_20261121.md).

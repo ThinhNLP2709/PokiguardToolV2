@@ -21,6 +21,32 @@ model đã ghi vào backlog sau các việc cũ còn thiếu dữ liệu; chưa 
 live projection mới. [Tiến độ hiện tại](docs/phase5/RESEARCH_BACKLOG_20261118.md)
 · [Kết quả offline](docs/phase5/COMMON_ACTION_OUTCOMES_20261118.md).
 
+Source nghiên cứu mới trên `main` đã sửa điểm tích Nộ/bonus skill sau nước
+kiếm thành khoảng có điều kiện.219 kiểm tra PASS,619 replay/20 đổi hợp lệ;
+chưa live hoặc build source mới này. Hai trận BASIC/Suy luận đã thắng trước
+đó thuộc source666 cũ. [Bằng chứng và giới hạn](docs/phase5/B17_RESOURCE_BALANCE_REVIEW_20261119.md).
+
+Bổ sung tiếp theo: source `e48e94d3…` giữ scorer trên, thêm ordered
+STAT_CHANGE/DESTROY. 87 test PASS và một trận BASIC sau sửa thắng,
+không safe stop; collector giữ 66 stat update/21 destroy. Bản đầu capture
+lỗi đã ghi riêng; đã đóng đủ hai trận kiểm tra. Chưa kiểm REASONING hoặc build source mới.
+[Bằng chứng Nộ theo vai trò và native trace](docs/phase5/B17_RAGE_ROLES_AND_TRACE_20261119.md).
+
+Kiểm tiếp trên cùng source: một trận Suy luận thắng sau 14 nước, 42 receipt
+hợp lệ, 11 nước khác BASIC; log đủ và không safe stop. Tool đã dừng 1/1.
+Đây là kiểm chức năng có giới hạn, chưa là so sánh hiệu quả hoặc live ZIP.
+[Báo cáo live Suy luận](docs/phase5/B17_RAGE_REASONING_LIVE_20261119.md).
+
+Source nghiên cứu mới `17c35c7e…` bổ sung rủi ro kiếm sau lấp bàn cho common
+adviser và sửa ngân sách tóm tắt log. 112 kiểm tra đạt; paired 633 trạng thái,
+95 đổi SWAP hợp lệ, không tăng node cap. Đã kiểm lại toàn bộ 633 trên source
+chốt; chưa live/build source này. [Báo cáo](docs/phase5/ADVISER_REFILL_RISK_20261119.md).
+
+Kiểm native tiếp theo trên source `17c35c7e…`: 1 BASIC + 1 Suy luận, hai
+WIN và về đúng phòng; R có 10 quyết định/30 receipt hợp lệ, nhánh refill đã
+thực thi. Có một khoảng trống capture BASIC được ghi riêng, không safe stop.
+Chưa build source này. [Báo cáo live](docs/phase5/REFILL_RISK_NATIVE_20261119.md).
+
 ## Phase 5 closeout — 2026-10-31
 
 Checkpoint **v1.3.0** (01/11/2026) includes the completed scoped UI opt-in.

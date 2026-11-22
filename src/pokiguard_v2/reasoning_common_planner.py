@@ -248,6 +248,26 @@ def _replies(grid,work,sword_first):
     return replies,nominal,maximum
 
 
+def _refill_sword_hazard(grid,work):
+    """Reuse the existing solver's one-cell refill hazard, risk only.
+
+    It distinguishes immediate auto-matches from a potential settled Sword
+    swap, including a known Sword moved into a missing non-Sword cell. Other
+    missing cells stay unknown; this is not a sampled or complete refill.
+    """
+    from .board_simulator import _hypothetical_unknown_hazard
+    work.check()
+    if not any(c.gem is GemType.UNKNOWN for row in grid for c in row):return None
+    work.node()
+    board=[[_CellValue(c.gem,c.multiplier) for c in row] for row in grid]
+    sites,units,auto_sites,auto_units=_hypothetical_unknown_hazard(board)
+    work.check()
+    if not sites:return None
+    return dict(effective_swords=units,completion_sites=sites,auto_match_sites=auto_sites,
+        auto_match_effective_swords=auto_units,kind='EXISTING_SOLVER_UNKNOWN_REFILL_SWORD_HAZARD',
+        probability=None,damage=None,complete_refill=False)
+
+
 def _future_setup(problem,replies,nominal,work,cache):
     """Bound setup credit across boss-policy assumptions, not reply probabilities.
 
@@ -298,13 +318,25 @@ def _future_setup(problem,replies,nominal,work,cache):
     return Bound(lower*.5,upper*.5,'PRESENT','KNOWN_REPLY_POLICY_SENSITIVITY'),info
 
 
-def _features(problem,step,replies,maximum):
+def _features(problem,step,replies,maximum,refill_hazard=None):
     facts=problem.facts.plain();own=facts.get('self',{});other=facts.get('opponent',{})
     hp,cap=own.get('hp'),own.get('max_hp')
     pressure=clip(1-hp/cap) if type(hp) is int and type(cap) is int and cap>0 else 1.
     profile=problem.intent.profile;settings=problem.intent.settings.plain()
     from .reasoning_common_tactics import evaluate_context,fill
     context,context_details,unknown_features=evaluate_context(problem,step,replies,maximum)
+    if refill_hazard is not None and not step.unresolved_residual:
+        sensitivity=context_details['boss_reply_sensitivity']
+        before=sensitivity['high']
+        rage=context_details['boss_rage_reference_fraction']
+        advantage=context_details['boss_attack_advantage_proxy']
+        risk=clip(refill_hazard['effective_swords']/8*(1+.75*rage+.5*advantage))
+        # One conditional Sword reply, never the sum of effects from different
+        # replies. Keep the known-only endpoint and every positive feature.
+        if 'T' not in unknown_features:sensitivity['high']=max(before,risk)
+        sensitivity.update(refill_sword_hazard=refill_hazard,
+            refill_sword_proxy=risk,refill_sensitive=sensitivity['high']>before,
+            refill_scope='ONE_MISSING_CELL_EXISTING_SOLVER_NOT_ALL_REFILLS')
     missing=list(context_details['missing'])
     # Known direct Sword matches are offense too; the passive is one route.
     sword=effective(step.resources,'sword')
@@ -400,9 +432,33 @@ def _features(problem,step,replies,maximum):
 def _score(problem,step,features,weights,details,*,followup=None):
     bounds={k:Bound.missing('COMMON_REQUIRED_EFFECT_INPUT_UNKNOWN') if k in details.get('unknown_features',())
         else Bound.fixed(features[k],'COMMON_STRUCTURAL_PROXY') for k in FEATURES}
+    if (problem.intent.profile=='demon_aegis_farm' and step.unresolved_residual
+            and step.coverage=='CONDITIONAL_PASSIVE_FIRST_WAVE_ONLY'):
+        # The declared first sweep already collected these Swords and may
+        # already meet its nominal collection goal. Unknown continuation can
+        # add collection; it cannot erase this prefix. No damage, stored Rage,
+        # protection or boss-response floor follows from that observation.
+        for name in ('F','D'):
+            if name in details.get('unknown_features',()) and features[name]>0:
+                bounds[name]=Bound(features[name],1.,'PRESENT','DEMON_FIRST_WAVE_FLOOR')
+        # The same prefix can collect Health while attacking. Preserve only
+        # that existing collection/HP-deficit proxy, not the whole protection
+        # score (which includes Shield and Drain). Later effects can change
+        # the net HP but cannot erase the known collection opportunity.
+        context=details['tactical_context']
+        health=context['protection_proxy']['health']
+        if (step.action.family=='swap' and not step.heals_self
+                and context['self_hp_fraction'] is not None and health>0
+                and 'P' in details.get('unknown_features',())):
+            bounds['P']=Bound(health,1.,'PRESENT','DEMON_FIRST_WAVE_HEALTH_OPPORTUNITY')
     sensitivity=details['tactical_context'].get('boss_reply_sensitivity')
     if sensitivity is not None and 'T' not in details.get('unknown_features',()):
-        bounds['T']=Bound(sensitivity['low'],sensitivity['high'],'PRESENT','KNOWN_REPLY_POLICY_SENSITIVITY')
+        reason=('KNOWN_REPLY_AND_REFILL_SWORD_SENSITIVITY' if sensitivity.get('refill_sensitive')
+            else 'KNOWN_REPLY_POLICY_SENSITIVITY')
+        bounds['T']=Bound(sensitivity['low'],sensitivity['high'],'PRESENT',reason)
+    stockpile=details['tactical_context'].get('resource_stockpile_sensitivity')
+    if stockpile is not None and 'R' not in details.get('unknown_features',()):
+        bounds['R']=Bound(stockpile['low'],stockpile['high'],'PRESENT',stockpile['kind'])
     if followup is not None:bounds['H']=followup
     contributions={k:Bound(-bounds[k].high*weights[k],-bounds[k].low*weights[k],'BOUNDED') if k in ('T','X','L','E')
         else Bound(bounds[k].low*weights[k],bounds[k].high*weights[k],'BOUNDED') for k in FEATURES}
@@ -443,7 +499,8 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
         for step in steps:
             replies,nominal,maximum=([],[],0) if step.unresolved_residual else _replies(step.after,work,
                 facts.get('boss_policy')=='USER_CONDITIONAL_MAX_EFFECTIVE_SWORD')
-            features,weights,details=_features(problem,step,replies,maximum)
+            refill=(None if step.unresolved_residual else _refill_sword_hazard(step.after,work))
+            features,weights,details=_features(problem,step,replies,maximum,refill)
             score=_score(problem,step,features,weights,details)
             root_scores.append((score,step,nominal,features,weights,details,replies))
         scored[:]=[r[0] for r in root_scores]

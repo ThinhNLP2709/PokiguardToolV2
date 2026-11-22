@@ -375,6 +375,15 @@ class StrategyIntentTests(unittest.TestCase):
         self.assertEqual("score = by_id.get(candidate['candidate_id'])",ast.unparse(loop.body[0]))
         self.assertEqual('score is not None',ast.unparse(loop.body[1].test))
         loop.body=loop.body[2:]
+        # Exact diagnostic-only budget successor: with no proposal, a second
+        # candidate is optional. Do not skip worker/admission AST checks.
+        budget=next(n for n in fn.body if isinstance(n,ast.Assign)
+            and any(isinstance(t,ast.Name) and t.id=='mandatory_candidates' for t in n.targets))
+        self.assertEqual('mandatory_candidates = len({baseline_id, proposal_id} - {None})',ast.unparse(budget))
+        fn.body.remove(budget)
+        trim=next(n for n in fn.body if isinstance(n,ast.While))
+        self.assertEqual('len(candidates) > mandatory_candidates',ast.unparse(trim.test.values[-1]))
+        trim.test.values[-1].comparators[0]=ast.Constant(value=2)
         self.assertEqual(ast.dump(before,include_attributes=False),ast.dump(after,include_attributes=False))
 
 
