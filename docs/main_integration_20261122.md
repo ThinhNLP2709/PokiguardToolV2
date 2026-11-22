@@ -61,6 +61,14 @@ CI trên GitHub phải được theo dõi theo đúng SHA của commit tích h�
 kết quả375 test local không tự là bằng chứng build/EXE trên runner từ xa.
 Biên bản local: `temp/reasoning/main_integration_20261122/`.
 
+Lần GitHub run44987164658 dừng trước build: một test review timing lịch sử
+cần archive native cá nhân đã chủ động loại khỏi Git. Bổ sung skip có điều kiện
+cho đúng test đó khi archive gốc không tồn tại, giống nhóm audit B17 chỉ chạy
+khi có game/reverse local. Archive hiện hữu nhưng hỏng/hash sai vẫn phải fail;
+không tạo proof giả, skip cả common-native group hoặc nới runtime validator.
+Các kiểm tra synthetic/native-IO giả vẫn chạy trên CI. Log lỗi lần đầu giữ
+riêng và CI phải chạy lại trên commit sửa.
+
 [Demon/Highsion closeout](phase5/HIGHSION_REASONING_UI_VALIDATION_20261122.md),
 [updater](tool_update_release.md),
 [migration](self_service_compatibility.md),

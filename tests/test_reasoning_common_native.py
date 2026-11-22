@@ -231,6 +231,8 @@ class CommonNativeTests(unittest.TestCase):
         from tools.prepare_common_runtime import prepare_compatible,ROOT
         from pokiguard_v2.reasoning_calibration import source_files
         old=ROOT/'docs/phase5/artifacts/adviser_reasoning_1_20261104_010336/data/preferences/reasoning_acceptance/common.json'
+        if not old.is_file():
+            self.skipTest('retained native timing archive is local evidence, not part of a fresh checkout')
         original=json.loads(old.read_text('utf-8'))
         q=json.loads((old.parent/'qualification.json').read_text('utf-8'))
         b14_manifest=ROOT/'docs/artifacts/rebuild_v1_3_1_20261105/source_manifest.json'
