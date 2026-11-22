@@ -26,6 +26,7 @@ from .gameplay_profile import (
     DamageCardMode,
     DemonTargetGem,
     EvolutionTarget,
+    G4_PET_ROUTES,
     GameMode,
     MainPetType,
     MegaSelfProtection,
@@ -72,6 +73,7 @@ AUDITION_LABELS = {
     AuditionMode.NO_ACTION: "Không có",
 }
 PET_SKILL_FIRE_CONDITION_LABELS = {
+    PetSkillFireCondition.AUTO_COMBO: "Combo 9–13 viên",
     PetSkillFireCondition.SKILL_COST_READY: "Đủ mana skill",
     PetSkillFireCondition.SWORD_COUNT: "Kiếm đủ",
     PetSkillFireCondition.MANA_GEM_COUNT: "Mana Đủ",
@@ -87,6 +89,7 @@ PLAY_STYLE_LABELS = {
     PlayStyle.DEMON_AEGIS_FARM: "Demon Farm",
     PlayStyle.MEGA_ICARUS_SPAM_SKILL: "Mega Kết Ấn (Icarus/T-Rex)",
     PlayStyle.GALAXY: "Galaxy",
+    PlayStyle.GALAXY_SHADOW_SWORD: "G4 Combo (Shadow Sword)",
     PlayStyle.BU_WIN: "Bú win",
 }
 GAME_MODE_LABELS = {
@@ -182,6 +185,11 @@ def loadout_capability(
     )
     if play_style is not None:
         play_style = PlayStyle(play_style)
+    if play_style is PlayStyle.GALAXY_SHADOW_SWORD:
+        valid = bool((main_pet, evolution) in G4_PET_ROUTES
+            and damage_card is DamageCardMode.PET_PASSIVE and audition_mode is AuditionMode.NO_ACTION)
+        return PetLoadoutCapability(main_pet, evolution, (), SkillSourceStatus.NO_SKILL,
+            valid, valid, False, valid, None if valid else "G4_PASSIVE_LOADOUT_INVALID")
     if play_style is PlayStyle.BU_WIN:
         valid = bool(
             main_pet is MainPetType.NORMAL
@@ -353,6 +361,7 @@ class GameplayConfig:
             self.play_style not in {
                 PlayStyle.MEGA_ICARUS_SPAM_SKILL,
                 PlayStyle.GALAXY,
+                PlayStyle.GALAXY_SHADOW_SWORD,
                 PlayStyle.BU_WIN,
             }
             and self.audition_mode is AuditionMode.NO_ACTION
@@ -368,6 +377,11 @@ class GameplayConfig:
         if (self.play_style is PlayStyle.GALAXY
                 and self.pet_skill_fire_condition is not PetSkillFireCondition.SKILL_COST_READY):
             raise ValueError("GALAXY_REQUIRES_RESOURCE_READY")
+        if self.play_style is PlayStyle.GALAXY_SHADOW_SWORD:
+            if self.pet_skill_fire_condition is not PetSkillFireCondition.AUTO_COMBO:
+                raise ValueError("G4_REQUIRES_AUTO_COMBO")
+        elif self.pet_skill_fire_condition is PetSkillFireCondition.AUTO_COMBO:
+            raise ValueError("AUTO_COMBO_REQUIRES_G4")
         for name in ("cast_when_boss_hp_below", "cast_mana_stockpile", "rage_target"):
             value = getattr(self, name)
             if type(value) is not int or value < 0:
@@ -386,7 +400,7 @@ class GameplayConfig:
                 )
         elif self.pet_skill_fire_value is not None:
             raise ValueError(
-                "pet_skill_fire_value must be None for skill_cost_ready"
+                "pet_skill_fire_value must be None for an automatic condition"
             )
 
     @property
@@ -401,6 +415,8 @@ class GameplayConfig:
 
     @property
     def farm_policy_blocker_reason(self) -> str | None:
+        if self.play_style is PlayStyle.GALAXY_SHADOW_SWORD:
+            return self.capability.blocker_reason
         if self.play_style is PlayStyle.BU_WIN:
             if not (
                 self.game_mode is GameMode.COOP
@@ -469,7 +485,8 @@ class GameplayConfig:
         condition = PetSkillFireCondition(
             raw.get(
                 "pet_skill_fire_condition",
-                (PetSkillFireCondition.SKILL_COST_READY if play_style is PlayStyle.GALAXY
+                (PetSkillFireCondition.AUTO_COMBO if play_style is PlayStyle.GALAXY_SHADOW_SWORD
+                 else PetSkillFireCondition.SKILL_COST_READY if play_style is PlayStyle.GALAXY
                  else PetSkillFireCondition.SWORD_COUNT).value,
             )
         )
@@ -493,6 +510,7 @@ class GameplayConfig:
             if play_style in {
                 PlayStyle.MEGA_ICARUS_SPAM_SKILL,
                 PlayStyle.GALAXY,
+                PlayStyle.GALAXY_SHADOW_SWORD,
                 PlayStyle.BU_WIN,
             }
             else AuditionMode.V3_TWO_DIRECTION.value
@@ -626,11 +644,11 @@ def gameplay_config_from_args(args: Any) -> GameplayConfig:
             value = getattr(args, name)
             if value is not None or name not in {"audition_mode", "pet_skill_fire_condition"}:
                 raw[name] = value
-    if raw['play_style'] == PlayStyle.GALAXY.value:
+    if raw['play_style'] in {PlayStyle.GALAXY.value, PlayStyle.GALAXY_SHADOW_SWORD.value}:
         for name in ('audition_mode', 'pet_skill_fire_condition'):
             if getattr(args, name, None) is None:
                 raw.pop(name)
-    if raw.get("pet_skill_fire_condition") == PetSkillFireCondition.SKILL_COST_READY.value:
+    if raw.get("pet_skill_fire_condition") in {PetSkillFireCondition.SKILL_COST_READY.value, PetSkillFireCondition.AUTO_COMBO.value}:
         raw["pet_skill_fire_value"] = None
     if legacy is not None:
         raw["mana_priority"] = legacy

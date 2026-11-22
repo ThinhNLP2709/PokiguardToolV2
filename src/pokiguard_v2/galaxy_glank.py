@@ -11,6 +11,7 @@ from .board_simulator import (
     MoveEvaluation, _candidate_swaps, _resolve_known_reply, _CellValue,
 )
 from .state import GemType
+from .boss_threat import state_boss_threat
 
 
 G2_ELEMENT = "GALAXY_2"
@@ -56,6 +57,7 @@ class GlankPlanner:
         boss = next((actor for actor in state.opponents if actor.is_boss), None)
         shields = shield_count(state.board.cells)
         effective_shields = shield_value(state.board.cells)
+        boss_threat = state_boss_threat(state)
         sword_allowed = own.power == 0  # UNKNOWN never means empty.
         current_swords = max((move.sword_effective for move in evaluations), default=0)
         nominal_reply = (current_swords * boss.attack
@@ -71,6 +73,7 @@ class GlankPlanner:
             passive_armor_remaining="UNKNOWN", hp_ratio=hp_ratio, rage=own.power,
             sword_allowed=sword_allowed, current_sword_effective_max=current_swords,
             nominal_boss_sword_pressure=nominal_reply, refill_credit=0,
+            boss_skill_threat=boss_threat,
             deferred_source_turn=self.deferred_turn if self.deferred_turn != state.battle.turn_number else None)
 
         def result(action, step, selected=None, **detail):
@@ -78,7 +81,7 @@ class GlankPlanner:
 
         # Casting now also protects. Never postpone the available defense at
         # low/unknown HP or substantial known Sword pressure for a refill bet.
-        needs_defense = (hp_ratio is None or hp_ratio <= .35
+        needs_defense = (hp_ratio is None or hp_ratio <= .35 or boss_threat['protection_requested']
             or (nominal_reply is not None and own.hp is not None
                 and nominal_reply >= .25 * (own.hp + (own.shield or 0))))
         if can_cast:

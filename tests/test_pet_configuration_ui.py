@@ -404,7 +404,7 @@ class PetConfigurationTkTests(unittest.TestCase):
         self.assertIsNone(config.pet_skill_fire_value)
 
         for condition, label in PET_SKILL_FIRE_CONDITION_LABELS.items():
-            if condition is PetSkillFireCondition.SKILL_COST_READY:
+            if not condition.uses_board_count:
                 continue
             with self.subTest(condition=condition):
                 self.app.pet_skill_fire_condition.set(label)

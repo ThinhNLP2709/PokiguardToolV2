@@ -1469,3 +1469,42 @@ not controller SAFE_STOP commands. No production importer was added.
 Frozen retrospective comparison did not establish better prediction quality;
 no model was deployed or rebound to the historical native timing profile.
 [Model, support and paired evaluation](phase5/DAMAGE_CONDITIONAL_MODEL_20261121.md).
+
+## 2026-11-22 — G4 per-swap multiplier-weighted combo projection
+
+The separate G4 style reuses `evaluate_all_moves` and the existing known
+match/collapse core; board resolution, multipliers and input mapping are unchanged.
+The user confirms that trigger thresholds count multiplier units x1..x7,
+including known direct/cascade clears in one swap. Physical cells are separate
+diagnostics: x7+x1+x1 is three cells and nine trigger units. This supersedes
+the initial physical-count assumption, including setup and fallback ranking.
+Per-wave sets prevent double-counting T/L intersections. Unknown refills and
+previous turns never contribute guessed units. The counting rule is user-confirmed,
+not a native G4 measurement; actual activation and damage still need G4 evidence.
+No G4 sweep mask, active card or new memory offset is inferred.
+[G4 design, tests and live unknowns](galaxy_shadow_sword_20261122.md).
+
+Native G4 BASIC1 follow-up: on source32531478… the logged pre-decision board
+at turn21 yields3 physical cells and12 effective units, selected as tier12;
+turn17 yields6 cells/12 units including known cascades. Eleven decisions
+replay exactly;11 normal SWAPs receive11 ACKs, no PASS/safe stop. This verifies
+runtime reading/counting and functional dispatch, not full server effect or
+damage attribution. [Bounded native evidence](phase5/G4_BASIC_NATIVE_20261122.md).
+
+After the loss review, G4 filters the minimum known effective Sword-reply pool
+before tier/combo selection in both modes; below tier9 it reuses BASIC Sword
+ranking. On the same11 pre-action boards the old BASIC/R selections left
+avoidable known Sword in6/3 decisions; the correction leaves none in either
+mode. No claim is made about unknown refill or counterfactual battle results.
+G4 evolution routes use existing Fusion state and the ordinary Step1 action,
+with passive credit delayed until confirmed fusion for Normal-to-Galaxy.
+[Current strategy and route scope](phase5/G4_DENIAL_AND_EVOLUTION_20261122.md).
+
+2026-11-23 follow-up: G4 now derives an evolution-pending goal from configured
+Evolution and confirmed Fusion.used, using existing read-only Fusion fields.
+Pending routes prefer Mana progress; after success or with no evolution,
+the goal is passive combo without compulsory Sword collection. Known Sword
+reply filtering remains in both phases. Missing cost/balance remains unknown;
+observed Mana gem units do not certify actual Mana gain or readiness.
+No new memory field, address or solver-core change was introduced.
+[Route-goal scope and offline checks](phase5/G4_ROUTE_GOALS_20261123.md).

@@ -1,5 +1,81 @@
 # Bàn giao suy luận — source hiện tại và UI lịch sử
 
+**23/11/2026 — User chốt G4, commit local toàn bộ thay đổi; chưa push.**
+Source4214675b… giữ nguyên/429CI PASS. User tự chạy3 run1 trận: không tiến
+hóa LOSS, pet thường→G4 WIN, G4→pet thường WIN; hai route EVO về lobby/đủ1.
+No-evo có POSTMATCH_UI_AMBIGUOUS sau khi combat kết thúc, ghi là lỗi nhận diện
+sau trận còn mở, không gọi đã sửa. TổngG4=5 trận,42Demon giữ đóng; không có
+run đang hoạt động. Gameplay G4 chốt theo yêu cầu, không mở rộng/build/push.
+[Checkpoint](G4_CHECKPOINT_20261123.md).
+
+**23/11/2026 — Hoàn tất offline kiến thức skill boss dùng chung.**
+Boss có thể tự bơm Mana/Nộ/cast, không coi0Kiếm hoặc ít tài nguyên là an toàn.
+Shared context cho8 common profiles vàG1/G2/G3/G4; tăng giá trị buffer Khiên,
+G2 tránh hoãn thẻ bảo vệ đủ điều kiện; G4 xét Máu/Khiên/Hút, giữ trigger kèm
+bảo vệ.429CI/88targeted PASS;216 BASIC exact/27GalaxyR chỉ thêm diagnostic.
+Replay9 bàn Raijin R no-evo vẫn cùng9 nước/knownreply0; không có bằng chứng
+chuyển LOSS thành WIN. Không thêm live hoặc mở lại cap; source mới chưa native.
+Không build/commit/push. [Báo cáo](SHARED_BOSS_THREAT_20261123.md),
+[kiến thức chung](../boss_skill_knowledge.md).
+
+**23/11/2026 — G4 R/không tiến hóa1 đã đóng, LOSS do đòn boss; không safe stop.**
+Source3a7bb861…/Raijin518,9SWAP/9ACK,0PASS/recovery/safe,9/9 replay,
+9/9 nước chọn0 known Sword reply, về lobby/đủ1. Boss HP14.109.341→32.524.176
+(+18.414.835), cuối202.356damage khi mình còn180.029, raw response45 HP0.
+Ngay board thực tế trước đòn cuối vẫn0 nước Kiếm; origin chuỗi12Sword của
+boss chưa quy thuộc đủ (skill/refill/board effect). Còn thiếu mô hình boss
+heal/skill; không suy chắc thắng từ guard Kiếm. Cap1 dùng1/còn0, tổngG4=2;
+42Demon giữ đóng, không thêm live/code/build. Chỉ qualify R no-evo của source
+này, không mở rộng sang route EVO. [Báo cáo](G4_RAIJIN_LOSS_REVIEW_20261123.md).
+
+**23/11/2026 — G4 chọn mục tiêu theo route, bỏ ưu tiên Kiếm cố định.**
+Không tiến hóa/sau thành công: combo nội tại, R setup được thay Kiếm nhỏ.
+Có route chưa thành công: Mana/tiến hóa trước, cả G4→Normal và Normal→G4;
+Mana đủ nhưng card chưa dùng được thì đánh tiếp/bảo vệ, không tích thừa;
+cost UNKNOWN/fullMana không giả đủ tiến hóa. Step1/fresh-read cũ giữ nguyên.
+39G4/414CI PASS;243style cũ parity,66 replay trên11bàn với route/cost kiểm soát
+giữ0 phản hồi Kiếm đã biết; không win claim hoặc native qualification.
+Không mở game/tool/live/build/commit/push; các cap cũ giữ đóng.
+[Hành vi hiện tại](G4_ROUTE_GOALS_20261123.md).
+
+**22/11/2026 — Sửa G4 theo phản hồi chừa Kiếm, thêm hai route tiến hóa.**
+Cùng11 bàn Raijin518:6 BASIC/3 R cũ chừa3–4Kiếm dù có nước0; bản mới lọc nhóm
+ít phản hồi Kiếm nhất trước combo, chưa đủ mốc ăn Kiếm bằng rank BASIC.
+Replay mới BASIC/R0/11 bàn chừa Kiếm đã biết, không đoán refill/claim chắc thắng.
+G4 chính+pet thường và pet thường→Galaxy G4 được hỗ trợ qua Step1 EVO cũ;
+chỉ tính nội tại sau fusion.used=True nếu G4 là pet tiến hóa. Ẩn cả dòng
+Kích hoạt nội tại.31test G4/406CI/142liên quan PASS,243style cũ parity exact.
+Không mở thêm trận; bản cũ đã đóng, source sửa/route mới chưa live/build/push.
+[Báo cáo hiện tại](G4_DENIAL_AND_EVOLUTION_20261122.md).
+
+**22/11/2026 — G4 BASIC1 native đã đóng; chưa live Suy luận.**
+User đã đổi account/chọn G4. Raijin518, Shadow Sword14/petId2859 quan sát và
+đối chiếu màn hình, chưa registry tự nhận. Source32531478… không sửa code:
+LOSS1/1,11SWAP/11ACK,0PASS/safe/recovery, UI/memory khớp/vềCoop_165037,
+FARM_TARGET_COMPLETED. Lượt21 có3 ô →12 hiệu dụng, lượt17 có6 ô →12 gồm cascade.
+Replay BASIC11/11 exact; R offline khác4/11 nước, lượt13 HP27,35% đổi từ7
+combo/chừa4Kiếm sang4Máu/chừa0Kiếm đã biết. Không suy R chắc thắng; chưa quy
+thuộc hết effect/damage/heal G4. Cap1 dùng1/còn0,42Demon không reopen; tool
+hoàn thành, không thêm trận/build/commit/push.
+[Báo cáo và log](G4_BASIC_NATIVE_20261122.md).
+
+**22/11/2026 — User yêu cầu nghiên cứu và triển khai G4 riêng, offline xong.**
+G4 Combo/Shadow Sword: Galaxy chính/no evolve/passive/auto_combo, không có
+thẻ/ấn/QTE hoặc chi phí skill. User đã xác nhận mốc cộng hệ số x1…x7 của
+direct+cascade, thay giả định đếm ô thật ban đầu; x7+x1+x1 là3 ô nhưng đạt9.
+Setup/fallback cũng tính hiệu dụng, không cộng qua lượt hoặc đoán refill.
+BASIC ưu tiên9..13; R xét HP/Nộ
+boss, hồi máu/denial/setup conditional bounded1800nodes≤250ms, luônSWAP khi
+có legalmove dù tất cảrisky. Không sửa solver/PASS/native offsets.23test G4,
+398CI offline đạt;243 old-style parity exact ngoài g4_combo=None đã kiểm lại.
+Replay bản đầu54 case đếm ô giữ nguyên lịch sử; bản hiệu dụng lưu riêng,
+không live/quality-win claim.
+Native effect PlayAccumulateStrike RVA18D3C80/2stringrefs đúngB17. PetID,
+actualdamage/buff/refill UNKNOWN; multiplier có user confirmation, chưa native.
+ChưaaccG4 nên không
+attach/input/cap mới;Demon42 đãđóng giữnguyên. Chưabuild/commit/push G4.
+[Nghiên cứu, source và cách dùng](../galaxy_shadow_sword_20261122.md).
+
 **22/11/2026 — User chốt Demon, commit và ghép updater/migration.**
 Checkpoint `72604edf` giữ toàn bộ mốc Demon hiện tại. Nhánh self-service tại
 `3a0df30d` đã là tổ tiên main; không có commit khác cần merge. Phần tích hợp

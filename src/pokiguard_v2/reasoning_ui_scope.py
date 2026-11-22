@@ -26,6 +26,7 @@ def ui_reasoning_scope_reason(config, *, require_target=False):
 def ui_reasoning_intent_reason(config):
     """One opt-in for every objective. Runtime proof is checked separately."""
     from .reasoning_common_problem import PROFILES
-    if config.play_style.value not in PROFILES:return 'UI_REASONING_CONFIG_UNSUPPORTED'
+    if config.play_style.value not in PROFILES and config.play_style.value != 'galaxy_shadow_sword':
+        return 'UI_REASONING_CONFIG_UNSUPPORTED'
     if config.ai.shadow_enabled:return 'UI_REASONING_SHADOW_CONFLICT'
     return None

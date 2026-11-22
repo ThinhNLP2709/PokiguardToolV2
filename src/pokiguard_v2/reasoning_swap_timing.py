@@ -411,7 +411,11 @@ def prepare_reasoning_options_safely(session):
     try:
         options = session.prepare_options()
         return options if type(options) is dict and set(options) <= {
-            "selection_adapter", "swap_timing_adapter", "galaxy_reasoning"} and (
-            "galaxy_reasoning" not in options or type(options["galaxy_reasoning"]) is bool) else {}
+            "selection_adapter", "swap_timing_adapter", "galaxy_reasoning", "g4_reasoning_budget_ms"} and (
+            "galaxy_reasoning" not in options or type(options["galaxy_reasoning"]) is bool) and (
+            "g4_reasoning_budget_ms" not in options or (
+                options.get("galaxy_reasoning") is True
+                and type(options["g4_reasoning_budget_ms"]) is int
+                and 1 <= options["g4_reasoning_budget_ms"] <= 250)) else {}
     except Exception:
         return {}

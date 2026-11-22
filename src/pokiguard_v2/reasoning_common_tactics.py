@@ -4,6 +4,7 @@ Only the already captured packet is used. Styles change objectives; resource
 saturation, opponent replies, affordability and missingness share one model.
 """
 import math
+from .boss_threat import assess_boss_threat
 from .state import GemType
 from .reasoning_snapshot import require
 
@@ -139,6 +140,7 @@ def evaluate_context(problem,step,replies,maximum):
     rates=facts.get('conversion',{});needs=facts.get('resource_requirements',{})
     evolution=facts.get('evolution',{})
     hp_fill=fill(own.get('hp'),own.get('max_hp'));pressure=1-hp_fill if hp_fill is not None else 1.
+    boss_threat=assess_boss_threat(own,boss)
     boss_hp_fill=fill(boss.get('hp'),boss.get('max_hp'))
     boss_mana_fill=fill(boss.get('mana'),boss.get('max_mana'))
     boss_rage_fill=fill(boss.get('rage'),100,1.)
@@ -257,7 +259,8 @@ def evaluate_context(problem,step,replies,maximum):
 
     health=clip(step.resources.effective(GemType.HEALTH)/6)*pressure
     existing_shield=fill(own.get('shield'),own.get('max_hp'),0.)
-    shield=clip(step.resources.effective(GemType.SHIELD)/6)*max(pressure,sword_threat)*(1-existing_shield)
+    shield=clip(step.resources.effective(GemType.SHIELD)/6)*max(
+        pressure,sword_threat,boss_threat['shield_buffer_pressure'])*(1-existing_shield)
     drain_units=step.resources.effective(GemType.DRAIN)
     drain=0.
     if drain_units:
@@ -285,6 +288,7 @@ def evaluate_context(problem,step,replies,maximum):
         boss_rage_reference_fraction=boss_rage_fill,boss_rage_capacity_fraction=fill(boss.get('rage'),boss.get('max_rage')),
         boss_attack_advantage_proxy=advantage,
         protection_proxy=dict(health=health,shield=shield,drain=drain,self_heal_opportunity=heal_opportunity),
+        boss_skill_threat=boss_threat,
         boss_reply_proxy=dict(**worst_reply,replies_examined=len(nominal),aggregation='WORST_SINGLE_REPLY'),
         boss_reply_sensitivity=sensitivity,
         drain_resources=dict(self_exposed=own_drained_fills,boss_exposed=boss_drained_fills,

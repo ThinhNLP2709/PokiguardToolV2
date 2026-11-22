@@ -6,6 +6,7 @@ Refund projections only break charging ties; they never make a cast eligible.
 from .galaxy_glank import GlankPlan
 from .galaxy_profiles import G1_OPTIONS, G3_STAGES, current_profile
 from .state import GemType
+from .boss_threat import state_boss_threat
 
 
 class GalaxyCyclePlanner:
@@ -86,6 +87,7 @@ class GalaxyCyclePlanner:
         hp_ratio = own.hp / own.max_hp if own.hp is not None and own.max_hp and own.max_hp > 0 else None
         boss = next((actor for actor in state.opponents if actor.is_boss), None)
         facts.update(hp_ratio=hp_ratio, mana=own.mana, rage=own.power,
+            boss_skill_threat=state_boss_threat(state),
             required_mana=required_mana, required_rage=required_rage,
             missing_mana=missing_mana, missing_rage=missing_rage)
 

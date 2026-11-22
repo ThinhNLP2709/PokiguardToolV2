@@ -2455,3 +2455,23 @@ crit key ABSENT; no bool/null native witness. This verifies bounded optional
 projection and missing-key retention, not non-critical damage or a client/
 server critical formula. No new offset, memory query or per-step attribution.
 [Native scope and unresolved data](phase5/DAMAGE_OPERATION_NATIVE_20261121.md).
+
+## 2026-11-22 — G4 Shadow Sword passive presentation evidence
+
+B17 script/dump identify `PokiGuard.StatusFx.StatusFxController.PlayAccumulateStrike`
+at RVA0x18D3C80 with explicit damage/healed/steadfast arguments. Exact installed
+GameAssembly bytes reference `shadow_sword.strike_popup` (literal RVA0x4394948)
+at instruction RVAs0x18D3D33 and0x18D3F38. Related literals include
+`SHADOW_SWORD_STRIKE`, `galaxy_shadow_sword` and the accumulate/steadfast library
+and status keys. No method is invoked or new runtime reader/offset installed.
+This establishes a presentation path, not the trigger or damage formula.
+The user separately confirmed multiplier-weighted x1..x7 trigger counting on
+2026-11-22, superseding the initial physical-cell assumption. Exact damage,
+current buff state and runtime G4 pet ID remain UNKNOWN without G4 gameplay.
+[Research and bounded implementation](galaxy_shadow_sword_20261122.md).
+
+G4 BASIC1 follow-up: the current room reads localPetId2859, visually paired
+with Galaxy Shadow Sword14 and the operator's account/pet confirmation.
+Record this observed session identity without installing a new active-card
+classifier, guessing a new offset or invoking any game method. Damage and
+buff attribution remain unknown. [Native record](phase5/G4_BASIC_NATIVE_20261122.md).

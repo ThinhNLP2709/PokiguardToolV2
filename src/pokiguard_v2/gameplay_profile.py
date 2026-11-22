@@ -27,6 +27,13 @@ class EvolutionTarget(str, Enum):
     GALAXY = "galaxy"
 
 
+G4_PET_ROUTES = frozenset({
+    (MainPetType.GALAXY, EvolutionTarget.NONE),
+    (MainPetType.GALAXY, EvolutionTarget.NORMAL),
+    (MainPetType.NORMAL, EvolutionTarget.GALAXY),
+})
+
+
 class DamageCardMode(str, Enum):
     NONE = "none"
     DEFAULT_ATTACK = "default_attack"
@@ -65,6 +72,7 @@ class PetSkillFireCondition(str, Enum):
     """Stable machine identity for the normal Pet Skill fire condition."""
 
     SKILL_COST_READY = "skill_cost_ready"
+    AUTO_COMBO = "auto_combo"
     SWORD_COUNT = "sword_count"
     MANA_GEM_COUNT = "mana_gem_count"
     RAGE_GEM_COUNT = "rage_gem_count"
@@ -73,7 +81,7 @@ class PetSkillFireCondition(str, Enum):
 
     @property
     def uses_board_count(self) -> bool:
-        return self is not PetSkillFireCondition.SKILL_COST_READY
+        return self not in {PetSkillFireCondition.SKILL_COST_READY, PetSkillFireCondition.AUTO_COMBO}
 
 
 class AuditionMode(str, Enum):
@@ -97,6 +105,7 @@ __all__ = [
     "DamageCardMode",
     "DemonTargetGem",
     "EvolutionTarget",
+    "G4_PET_ROUTES",
     "GameMode",
     "MainPetType",
     "MegaSelfProtection",

@@ -123,6 +123,7 @@ class PetConfigurationTests(unittest.TestCase):
             [v.value for v in PetSkillFireCondition],
             [
                 "skill_cost_ready",
+                "auto_combo",
                 "sword_count",
                 "mana_gem_count",
                 "rage_gem_count",

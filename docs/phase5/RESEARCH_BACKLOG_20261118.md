@@ -1,5 +1,19 @@
 # Rà lại nghiên cứu suy luận trong temp — 18/11/2026
 
+**Chốt23/11 — G4 đã đóng theo yêu cầu user; commit local/chưa push.**
+Hai route tiến hóa có1WIN mỗi route, không tiến hóa1LOSS trên source4214675b….
+Run LOSS có POSTMATCH_UI_AMBIGUOUS sau combat: lưu backlog nhận diện màn kết
+quả dùng chung, chưa sửa trong checkpoint này. Không tiếp tục tối ưu/thu trận
+G4 khi chưa có yêu cầu mới. [Biên bản](G4_CHECKPOINT_20261123.md).
+
+**Cập nhật23/11 — Kiến thức skill boss đã dùng chung toàn bộ Suy luận.**
+Đã thêm context tự bơm Mana/Nộ/cast, tăng giá trị buffer Khiên, dùng chung ở
+8common profiles vàG1/G2/G3/G4.429CI/88targeted PASS;9 replay G4 no-evo không
+đổi nước. Chưa có mô hình chi phí/cooldown/heal theo boss, không suy chắc thắng.
+Không lặp lại live cùng boss/cấu hình khi chưa có giả thuyết/bằng chứng mới;
+các cap cũ vẫn đóng. [Báo cáo](SHARED_BOSS_THREAT_20261123.md),
+[kiến thức dùng chung](../boss_skill_knowledge.md).
+
 **Kết luận: chưa hết việc cũ.** Phần nâng tactical planner đã được đưa vào
 source; nhánh mô hình damage/effect/học từ log còn mở. Đề xuất mô hình học
 kết quả hành động là phần nối tiếp của nhánh này, không cần khởi động lại
@@ -35,6 +49,45 @@ Các thư mục dependency, build/package smoke và kiểm nhập chuột ở `t
 không là các nghiên cứu học chiến thuật đang chờ triển khai.
 
 ## Việc cũ vẫn chưa hoàn thành
+
+**23/11/2026 — G4 R no-evo có native1; điểm thiếu là cơ chế boss.**
+LOSS Raijin518: boss hồi18,4M rồi KO202.356/HPta180.029.9/9ACK,0safe/PASS,
+9replay exact/knownreply0; không coi tránh Kiếm là chống được skill/refill.
+Chưa mô hình heal trigger/board-changing threat hoặc thử route EVO; không
+lặp trận không tiến hóa để tăng số mẫu. Cap1 đóng,tổngG4=2/Demon42 đóng.
+[Bằng chứng](G4_RAIJIN_LOSS_REVIEW_20261123.md).
+
+**23/11/2026 — Chỉnh G4 theo route đã kiểm offline trước bài live tiếp.**
+Không ép Kiếm; có tiến hóa thì tích Mana/tiến hóa sớm, xong mới combo.
+39G4/414CI PASS;243 style cũ parity,66 replay với phase/cost kiểm soát.
+Các route mới chưa native, không lặp live bài cũ chỉ để tăng số mẫu.
+[Báo cáo](G4_ROUTE_GOALS_20261123.md).
+
+**22/11/2026 — G4 đã sửa ưu tiên Kiếm và route trước bài live kế tiếp.**
+11bàn native cũ cho6 BASIC/3R tránh được Kiếm nhưng không tránh; bản mới
+chọn minimum known reply trước combo, giữ BASIC Sword, replay0/11 cảhai mode.
+Hai route EVO và UI ẩn điều kiện mặc định đã làm,31G4/406CI/142liên quan PASS.
+Không mở trận mới; bước live kế tiếp là G4+R với route EVO người dùng chọn,
+không lặp bài đếm ô đơn thuần. [Báo cáo](G4_DENIAL_AND_EVOLUTION_20261122.md).
+
+**22/11/2026 — Bổ sung G4 BASIC1 native, không cần lặp lại bài chức năng.**
+Raijin518/Shadow Sword14: LOSS1/1/về lobby,11/11SWAP-ACK,0safe/recovery/PASS,
+3 ô →12 hiệu dụng đã thấy. BASIC replay11/11; R offline khác4/11 bàn, gồm
+PROTECT lấy4Máu/chừa0Kiếm thay7combo/chừa4Kiếm tạiHP27,35%. Chưa live R hoặc
+quy thuộc đủ effect/damage/heal; không coi số trận là nhãn chất lượng. Cap1
+đóng/còn0;42Demon giữ đóng. [Chi tiết](G4_BASIC_NATIVE_20261122.md).
+
+**22/11/2026 — User chuyển tác vụ sang G4; đã làm nghiên cứu và source offline.**
+Không quaylạiDemon. G4 Combo là styleauto passive riêng, dùngsolvercũ cho
+effective+cascade vàmốc9..13, user xác nhận cộng x1…x7 thay giả định ô thật;
+R xétpressure/denial/setupkhôngrefill 1800node,
+≤250ms,khôngrisky-stop khi cólegalmove. NativeB17chỉchứngminhfx/statuskeys,
+chưaformula/ID, counting user-confirmed chưa native.23test G4/398CIofflinePASS,
+243 oldstyle parityexact đã kiểm lại; replay đếm ô ban đầu54 case giữ lịch sử,
+replay hiệu dụng lưu riêng, khôngglobalqualitylabel. ChưaG4acc/live nên
+khôngrequest/cap/inputs,native42cũđóng. PhầnMega/Galaxy chủđộngcũ vẫn giữ
+thứtự riêng sau nhiệm vụ G4;không đồngnhất cơchế thẻvới G4.
+[Thiết kế và kiểm chứng](../galaxy_shadow_sword_20261122.md).
 
 **22/11/2026 — Chốt bài R/UI riêng; không kéo dài nhánh Demon để săn số mẫu.**
 HighsionR1 source1d83 WIN/vềlobby,9decision/26receipt đúng,replay9/9,0safe.

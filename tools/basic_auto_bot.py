@@ -3433,7 +3433,8 @@ def _create_shared_combat_runtime(
 
 def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None = None,
         shadow_adapter: Any | None = None, selection_adapter: Any | None = None,
-        swap_timing_adapter: Any | None = None, galaxy_reasoning: bool = False) -> int:
+        swap_timing_adapter: Any | None = None, galaxy_reasoning: bool = False,
+        g4_reasoning_budget_ms: int = 150) -> int:
     _validate_args(args)
 
     if (
@@ -3447,7 +3448,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
         for name in ("main_pet", "evolution_target", "damage_card")
     )
     galaxy_style = args.play_style == PlayStyle.GALAXY.value
+    g4_style = args.play_style == PlayStyle.GALAXY_SHADOW_SWORD.value
     default_fire_condition = (
+        PetSkillFireCondition.AUTO_COMBO if g4_style else
         PetSkillFireCondition.SKILL_COST_READY if galaxy_style else PetSkillFireCondition.SWORD_COUNT
     )
     fire_condition = PetSkillFireCondition(
@@ -3471,7 +3474,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             damage_card=DamageCardMode(args.damage_card),
             audition_mode=AuditionMode(
                 getattr(args, "audition_mode", None)
-                or (AuditionMode.NO_ACTION if galaxy_style else AuditionMode.V3_TWO_DIRECTION)
+                or (AuditionMode.NO_ACTION if galaxy_style or g4_style else AuditionMode.V3_TWO_DIRECTION)
             ),
             cast_when_boss_hp_below=getattr(args, "cast_when_boss_hp_below", 30_000),
             cast_mana_stockpile=getattr(args, "cast_mana_stockpile", 480),
@@ -3508,6 +3511,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             minimum_evolve_time_seconds=args.minimum_action_time,
         ),
         galaxy_reasoning=galaxy_reasoning,
+        g4_reasoning_budget_ms=g4_reasoning_budget_ms,
     )
     # Production V2 uses only these accepted normal-input calibration values;
     # it no longer depends on a separate PokiguardAuto checkout at runtime.

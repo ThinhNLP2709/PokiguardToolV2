@@ -1,5 +1,54 @@
 # Phase 5 — Status
 
+**23/11/2026 — G4 chốt theo yêu cầu user, commit local/chưa push.**
+3 run user tự khởi tạo trên source4214675b…: no-evo LOSS, hai route tiến hóa
+WIN/về lobby. No-evo có lỗi nhận diện sau trận POSTMATCH_UI_AMBIGUOUS còn mở.
+429CI PASS, tổng5G4/42Demon; không có run active, không thêm live/build.
+[Biên bản chốt](G4_CHECKPOINT_20261123.md).
+
+**23/11/2026 — Shared boss skill threat offline hoàn tất.**
+8 common profiles+G1/G2/G3/G4 dùng cùng knowledge về tự bơm Mana/Nộ/skill và
+giới hạn của Sword denial.429CI/88targeted PASS;216 BASIC exact/27GalaxyR
+diagnostic-only.9 bàn Raijin no-evo cùng nước, không chứng minh thắng; không
+thêm live/reopen cap/build/push. Source mới chưa native.
+[Chi tiết](SHARED_BOSS_THREAT_20261123.md).
+
+**23/11/2026 — G4 R no-evo native1 hoàn thành/LOSS, source3a7bb861….**
+9SWAP/9ACK,0safe/PASS/recovery,9replay exact/knownreply0, về lobby. Boss hồi
+18.414.835HP, KO202.356 khi ta còn180.029; thiếu mô hình heal/skill boss.
+Source chỉ được kiểm R no-evo1, các route EVO vẫn chờ. Cap đóng/còn0,tổngG4=2,
+không sửa code/thêm trận. [Phân tích](G4_RAIJIN_LOSS_REVIEW_20261123.md).
+
+**23/11/2026 — G4 route-goal offline đã xong; chưa live bản mới.**
+Combo nếu không tiến hóa/đã thành công, Mana/tiến hóa trước nếu route đang chờ;
+không ép ăn Kiếm hoặc tính đủ Mana từ công thức chưa biết. Guard Kiếm cũ giữ.
+39G4/414CI PASS,243 old-style parity,66 replay giữ0knownSwordReply.
+Không mở cap/live/build. [Báo cáo](G4_ROUTE_GOALS_20261123.md).
+
+**22/11/2026 — G4 ưu tiên tránh Kiếm trước combo, có hai route EVO mới.**
+Root cause6/11BASIC và3/11R chừa Kiếm có thể tránh trên cùng bàn; bản sửa
+replay0/11 ở cả hai mode. BASIC Sword rank dùng lại, không safe-stop vìrisky.
+Galaxy→Normal và Normal→Galaxy hỗ trợ, không tính nội tại trước EVO thành công;
+bỏ dòng cài đặt nội tại.31G4/406CI/142liên quan PASS;243 old-style parity.
+Không live thêm hoặc build, source hiện tại chưa nhận nghiệm thu native cũ.
+[Chi tiết](G4_DENIAL_AND_EVOLUTION_20261122.md).
+
+**22/11/2026 — G4 BASIC native1/1 hoàn thành, game LOSS; chưa live R.**
+Raijin518/Shadow Sword14, source32531478…:11SWAP/11ACK,0PASS/safe/recovery,
+LOSS UI/memory khớp/về đúng phòng. Witness3 ô →12 hiệu dụng; BASIC replay11/11,
+R offline khác4/11 bàn; không counterfactual win claim. Cap1 đóng/còn0;
+không đổi code/registry/profile hoặc mở lại42Demon.
+[Bằng chứng](G4_BASIC_NATIVE_20261122.md).
+
+**22/11/2026 — G4 Combo được thêm riêng theo yêu cầu mới; chưa native G4.**
+User xác nhận automatic passive9..13 cộng hệ số x1…x7 từ known clear/cascade;
+số ô thật chỉ để log, thay giả định ban đầu. Khôngcast/ấn, không
+đoánrefill hoặc damage. BASIC/R trongTùy chọn;R cópressure/denial/setupbounded,
+timeout dùngnước sẵn có,khôngdừngvìrisky.23test G4,398CI offlinePASS;
+243scenario cũ parity exact đã kiểm lại. Không chơi trênacc khôngcóG4,
+khôngreopen42capDemon,khôngbuild/commit/push.
+[Bằng chứng và giới hạn](../galaxy_shadow_sword_20261122.md).
+
 **22/11/2026 — Highsion R1 đã nghiệm thu chức năng trên source1d83; sửa chờ UI sau đó.**
 WIN1/1/vềphòng,0safe/recovery,9decision/26receipt/replay exact,1PASS game-owned.
 5 override=4thiếu dữ liệu/1tradeoff;không suy chất lượng từ sốlượt/WIN.

@@ -391,9 +391,30 @@ class DesktopIsolationTests(unittest.TestCase):
             self.assertEqual(manifest['files'][name], record['before_sha256'], name)
             self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
             self.assertTrue(record['reason'])
+        g4 = p.load_json(root / 'tests/fixtures/compatibility/g4_integration_20261122.json')
+        self.assertEqual('pokiguard.compatibility.g4-integration.v1', g4['schema'])
+        self.assertEqual('04d9680abf231c09d08fdb689b1d30fba74d0d33', g4['baseline_commit'])
+        self.assertFalse(g4['runtime_profile_authority'])
+        self.assertEqual({
+            'src/pokiguard_v2/basic_policy.py', 'src/pokiguard_v2/gameplay_profile.py',
+            'src/pokiguard_v2/pet_configuration.py', 'src/pokiguard_v2/reasoning_galaxy.py',
+            'src/pokiguard_v2/reasoning_swap_timing.py', 'src/pokiguard_v2/reasoning_ui_scope.py',
+            'src/pokiguard_v2/reasoning_ui_session.py', 'tools/basic_auto_bot.py',
+            'src/pokiguard_v2/reasoning_common_tactics.py',
+            'src/pokiguard_v2/galaxy_glank.py', 'src/pokiguard_v2/galaxy_cycle.py',
+        }, set(g4['reviewed_files']))
+        self.assertEqual({'src/pokiguard_v2/galaxy_shadow_sword.py',
+                          'src/pokiguard_v2/boss_threat.py'}, set(g4['added_files']))
+        for name, expected in g4['added_files'].items():
+            self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
         for name, expected in manifest['files'].items():
             if name in reviewed:
                 expected = reviewed[name]['after_sha256']
+            if name in g4['reviewed_files']:
+                record = g4['reviewed_files'][name]
+                self.assertEqual(expected, record['before_sha256'], name)
+                self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
+                expected = record['after_sha256']
             current = (root / name).read_bytes().replace(b'\r\n', b'\n')
             self.assertEqual(expected, hashlib.sha256(current).hexdigest(), name)
 

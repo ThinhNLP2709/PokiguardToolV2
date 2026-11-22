@@ -1,5 +1,22 @@
 # PokiguardToolV2
 
+Source làm việc bổ sung **G4 Combo (Shadow Sword)**: nội tại theo tổng viên
+hiệu dụng sau nhân x2…x7 trong một nước, gồm cascade; có Cơ bản/Suy luận và
+setup có giới hạn. Đã thêm hai route tiến hóa, giảm Kiếm chừa cho boss và ẩn
+điều kiện nội tại. User đã kiểm/chốt: hai route tiến hóa WIN; không tiến hóa
+LOSS và có lỗi nhận diện sau trận còn mở. Chưa build lại ZIP.
+[Checkpoint](docs/phase5/G4_CHECKPOINT_20261123.md),
+[nghiên cứu và cách dùng](docs/galaxy_shadow_sword_20261122.md).
+
+G4 ngày23/11 chọn mục tiêu theo cấu hình: không tiến hóa thì combo nội tại;
+có route tiến hóa thì ưu tiên Mana/tiến hóa trước. Không bắt buộc ăn Kiếm,
+vẫn giảm Kiếm chừa cho boss. [Chi tiết](docs/phase5/G4_ROUTE_GOALS_20261123.md).
+
+Kiến thức boss tự tăng Mana/Nộ, dùng skill và có thể hồi HP đã được đưa vào
+lớp đánh giá chung của các lối Suy luận, gồm cả G1/G2/G3/G4. Không coi ít tài
+nguyên hoặc không có nước Kiếm là bảo đảm an toàn.
+[Cơ chế và giới hạn](docs/boss_skill_knowledge.md).
+
 Mốc source 22/11/2026 trên `main`: đã chốt Demon adviser, tích hợp updater qua
 GitHub Releases và migration tương thích tự phục vụ. Checkpoint Demon:
 `72604edf`. Các gói ZIP dưới đây là bản đã đóng gói trước mốc này, không phải

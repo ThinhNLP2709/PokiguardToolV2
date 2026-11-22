@@ -13,6 +13,8 @@ MODULES = (
     'test_reasoning_common_selection', 'test_reasoning_strategy_intent',
     'test_reasoning_health_branch_log', 'test_damage_uncertainty',
     'test_reasoning_demon_health_prefix', 'test_reasoning_refill_sword',
+    'test_galaxy_shadow_sword', 'test_galaxy_shadow_sword_ui',
+    'test_boss_threat',
 )
 if __name__ == '__main__':
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromNames(

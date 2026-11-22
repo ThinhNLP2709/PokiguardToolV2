@@ -183,6 +183,9 @@ AI_BUDGET_HELP = (
 def ai_status_text(status: AIStatus) -> str:
     if status.reason.startswith('UI_REASONING_'):
         reasons = {
+            'UI_REASONING_G4_READY':'Suy luận G4: xét combo, hồi máu, kiếm cho boss và setup có giới hạn',
+            'UI_REASONING_G4_WAITING_COMBAT':'Suy luận G4: chờ bàn trong trận',
+            'UI_REASONING_G4_STOPPED':'Suy luận G4 đã dừng',
             'UI_REASONING_GALAXY_PETS_READY':'Suy luận Galaxy: nhận G1/G2/G3 theo thẻ, dùng chiến thuật riêng',
             'UI_REASONING_GALAXY_G2_READY':'Suy luận Galaxy: G2 cân nhắc khiên và bảo vệ; G1/G3 đủ là ra skill',
             'UI_REASONING_GALAXY_WAITING_COMBAT':'Suy luận Galaxy: chờ vào trận và nhận thẻ hiện hành',
@@ -239,6 +242,10 @@ def ai_status_text(status: AIStatus) -> str:
 
 
 def ai_capability_text(profile: PlayStyle) -> str:
+    if profile is PlayStyle.GALAXY_SHADOW_SWORD:
+        return ("G4 ưu tiên giảm Kiếm chừa cho boss và combo 9–13 viên hiệu dụng; có tiến hóa thì tích Mana và tiến hóa trước. Suy luận xét thêm máu, "
+            "kiếm chừa cho boss và setup. Không đoán viên rơi mới hoặc sát thương thực tế. "
+            "Nội tại tự kích hoạt; hệ số x2…x7 và cascade đều được tính.")
     return ("Mục tiêu lấy từ lối chơi đang chọn: " + PLAY_STYLE_LABELS[profile] + ". "
         "AI dùng chung một bộ so sánh; cài đặt chiến thuật là mục tiêu tham khảo. "
         "Hiệu ứng hoặc thời gian của hành động chưa đủ dữ liệu sẽ giữ Cơ bản. "
@@ -2548,7 +2555,9 @@ class DesktopApplication:
         blocker = profile.farm_policy_blocker_reason
         editable = self._config_editable is not False
         demon = profile.play_style is PlayStyle.DEMON_AEGIS_FARM
-        click_only_types = CLICK_ONLY_PET_TYPES.get(profile.play_style)
+        g4 = profile.play_style is PlayStyle.GALAXY_SHADOW_SWORD
+        click_only_types = CLICK_ONLY_PET_TYPES.get(profile.play_style) or (
+            (MainPetType.GALAXY, EvolutionTarget.GALAXY) if g4 else None)
         bu_win = profile.play_style is PlayStyle.BU_WIN
         main_pet = MainPetType(self.main_pet.get())
         for value in DESKTOP_MAIN_PET_OPTIONS:
@@ -2613,10 +2622,11 @@ class DesktopApplication:
                 editable
                 and (
                     (demon and value is DamageCardMode.PET_PASSIVE)
-                    or (click_only_types and value is DamageCardMode.PET_SKILL)
+                    or (g4 and value is DamageCardMode.PET_PASSIVE)
+                    or (not g4 and click_only_types and value is DamageCardMode.PET_SKILL)
                     or (bu_win and value is DamageCardMode.NONE)
                     or (
-                        not demon and not click_only_types and not bu_win
+                        not demon and not g4 and not click_only_types and not bu_win
                         and (
                             value is DamageCardMode.DEFAULT_ATTACK
                             or (
@@ -2632,7 +2642,8 @@ class DesktopApplication:
             self.view_model.reason_text(blocker)
             if blocker else (
                 "Demon Farm: Kiếm đủ tính tổng sau nhân x2/x3; tối thiểu 2 ô Kiếm thực tế."
-                if demon else "Cấu hình tương thích với lối chơi Cơ bản hiện tại."
+                if demon else "G4: có tiến hóa thì ưu tiên Mana và tiến hóa sớm; sau đó tập trung combo nội tại, giảm Kiếm chừa cho boss."
+                if g4 else "Cấu hình tương thích với lối chơi Cơ bản hiện tại."
             ))
         self._sync_pet_skill_fields()
 
@@ -2641,8 +2652,10 @@ class DesktopApplication:
 
         if not hasattr(self, "pet_skill_fire_cell"):
             return
+        style = play_style_from_display(self.play_style.get())
+        g4 = style is PlayStyle.GALAXY_SHADOW_SWORD
         damage = DamageCardMode(self.damage_card.get())
-        fire_visible = damage in {
+        fire_visible = not g4 and damage in {
             DamageCardMode.PET_SKILL,
             DamageCardMode.PET_PASSIVE,
         }
@@ -2669,7 +2682,11 @@ class DesktopApplication:
             play_style_from_display(self.play_style.get())
             is PlayStyle.DEMON_AEGIS_FARM
         )
-        style = play_style_from_display(self.play_style.get())
+        self.pet_skill_fire_label.configure(text="Điều kiện ra skill:")
+        if g4:
+            self.pet_skill_fire_value_widget.grid_remove()
+        else:
+            self.pet_skill_fire_value_widget.grid()
         click_only = style in CLICK_ONLY_PET_TYPES
         for widget in (self.demon_target_gem_label, self.demon_target_gem_widget):
             if demon:
@@ -2682,16 +2699,18 @@ class DesktopApplication:
             else:
                 widget.grid_remove()
         self.pet_skill_fire_condition_widget.configure(
-            values=(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT],)
+            values=(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.AUTO_COMBO],)
+            if g4 else (PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT],)
             if demon
             else ("Đủ điều kiện",)
             if style is PlayStyle.GALAXY
-            else tuple(PET_SKILL_FIRE_CONDITION_LABELS.values())
+            else tuple(label for condition, label in PET_SKILL_FIRE_CONDITION_LABELS.items()
+                if condition is not PetSkillFireCondition.AUTO_COMBO)
         )
         self.audition_widget.configure(
             values=(
                 (AUDITION_LABELS[AuditionMode.NO_ACTION],)
-                if click_only
+                if click_only or g4
                 else (
                     AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION],
                     AUDITION_LABELS[AuditionMode.V2_FOUR_DIRECTION],
@@ -2699,7 +2718,7 @@ class DesktopApplication:
             ),
             state=(
                 "disabled"
-                if click_only or self._config_editable is False
+                if click_only or g4 or self._config_editable is False
                 else "readonly"
             ),
         )
@@ -2710,7 +2729,7 @@ class DesktopApplication:
             )
         except ValueError:
             condition = PetSkillFireCondition.SWORD_COUNT
-        if condition is PetSkillFireCondition.SKILL_COST_READY:
+        if not condition.uses_board_count:
             raw = self.pet_skill_fire_value.get()
             if raw.isascii() and raw.isdigit():
                 numeric = int(raw)
@@ -2788,8 +2807,10 @@ class DesktopApplication:
                 main_pet = MainPetType.NORMAL
                 evolution = EvolutionTarget.NONE
                 normalized = DamageCardMode.NONE
-            elif style in CLICK_ONLY_PET_TYPES:
-                main_type, evolution_type = CLICK_ONLY_PET_TYPES[style]
+            elif style in CLICK_ONLY_PET_TYPES or style is PlayStyle.GALAXY_SHADOW_SWORD:
+                g4 = style is PlayStyle.GALAXY_SHADOW_SWORD
+                main_type, evolution_type = ((MainPetType.GALAXY, EvolutionTarget.GALAXY)
+                    if g4 else CLICK_ONLY_PET_TYPES[style])
                 if main_pet is MainPetType.NORMAL:
                     evolution = evolution_type
                 else:
@@ -2803,7 +2824,7 @@ class DesktopApplication:
                         }
                         else EvolutionTarget.NONE
                     )
-                normalized = DamageCardMode.PET_SKILL
+                normalized = DamageCardMode.PET_PASSIVE if g4 else DamageCardMode.PET_SKILL
             else:
                 evolution = normalize_evolution(
                     main_pet,
@@ -2848,7 +2869,15 @@ class DesktopApplication:
             self._updating_pet_fields = True
             self._updating_fire_fields = True
             try:
-                if style is PlayStyle.DEMON_AEGIS_FARM:
+                if style is PlayStyle.GALAXY_SHADOW_SWORD:
+                    self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
+                    self.main_pet.set(MainPetType.GALAXY.value)
+                    self.evolution.set(EvolutionTarget.NONE.value)
+                    self.damage_card.set(DamageCardMode.PET_PASSIVE.value)
+                    self.audition_mode.set(AUDITION_LABELS[AuditionMode.NO_ACTION])
+                    self.pet_skill_fire_condition.set(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.AUTO_COMBO])
+                    self.pet_skill_fire_value.set("")
+                elif style is PlayStyle.DEMON_AEGIS_FARM:
                     self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
                     self.main_pet.set(MainPetType.NORMAL.value)
                     self.evolution.set(EvolutionTarget.NONE.value)
@@ -2918,6 +2947,10 @@ class DesktopApplication:
                     self.audition_mode.set(
                         AUDITION_LABELS[AuditionMode.V3_TWO_DIRECTION]
                     )
+                    if self.pet_skill_fire_condition.get() == PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.AUTO_COMBO]:
+                        self.pet_skill_fire_condition.set(PET_SKILL_FIRE_CONDITION_LABELS[PetSkillFireCondition.SWORD_COUNT])
+                        self.pet_skill_fire_value.set(str(PET_SKILL_FIRE_VALUE_DEFAULT))
+                        self._last_valid_pet_skill_fire_value = PET_SKILL_FIRE_VALUE_DEFAULT
                 else:
                     self.game_mode.set(GAME_MODE_LABELS[GameMode.SOLO])
             finally:

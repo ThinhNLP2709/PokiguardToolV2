@@ -27,6 +27,7 @@ from .gameplay_profile import (
     DamageCardMode,
     DemonTargetGem,
     EvolutionTarget,
+    G4_PET_ROUTES,
     MainPetType,
     MegaSelfProtection,
     PetSkillFireCondition,
@@ -73,6 +74,7 @@ class PlayStyle(str, Enum):
     DEMON_AEGIS_FARM = "demon_aegis_farm"
     MEGA_ICARUS_SPAM_SKILL = "mega_icarus_spam_skill"
     GALAXY = "galaxy"
+    GALAXY_SHADOW_SWORD = "galaxy_shadow_sword"
     BU_WIN = "bu_win"
 
 
@@ -231,8 +233,11 @@ class PolicyConfig:
                 )
         elif self.pet_skill_fire_value is not None:
             raise ValueError(
-                "pet_skill_fire_value must be None for skill_cost_ready"
+                "pet_skill_fire_value must be None for an automatic condition"
             )
+        if (self.pet_skill_fire_condition is PetSkillFireCondition.AUTO_COMBO
+                and self.play_style is not PlayStyle.GALAXY_SHADOW_SWORD):
+            raise ValueError("AUTO_COMBO_REQUIRES_G4")
         for name in ("low_hp_ratio_simple", "low_hp_ratio_careful"):
             value = getattr(self, name)
             if not 0.0 <= value <= 1.0:
@@ -297,6 +302,13 @@ class PolicyConfig:
             and self.damage_card is DamageCardMode.PET_PASSIVE
             and self.pet_skill_fire_condition is PetSkillFireCondition.SWORD_COUNT
         )
+
+    @property
+    def g4_profile(self) -> bool:
+        return bool(self.play_style is PlayStyle.GALAXY_SHADOW_SWORD
+            and (self.main_pet, self.evolution) in G4_PET_ROUTES
+            and self.damage_card is DamageCardMode.PET_PASSIVE
+            and self.pet_skill_fire_condition is PetSkillFireCondition.AUTO_COMBO)
 
     @property
     def bu_win_profile(self) -> bool:
@@ -421,6 +433,7 @@ class DecisionTrace:
     sword_consumed_by_relaxed_move: int | None = None
     setup_fallback_type: str | None = None
     blocker: str | None = None
+    g4_combo: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -877,10 +890,16 @@ def _skill_rush_fire_trigger(
 class BasicPolicyEngine:
     """Apply the user-specified BASIC rules in their exact priority order."""
 
-    def __init__(self, config: PolicyConfig | None = None, *, galaxy_reasoning: bool = False) -> None:
+    def __init__(self, config: PolicyConfig | None = None, *, galaxy_reasoning: bool = False,
+                 g4_reasoning_budget_ms: int = 150) -> None:
         if type(galaxy_reasoning) is not bool:
             raise ValueError("galaxy_reasoning must be bool")
         self.config = config or PolicyConfig()
+        if type(g4_reasoning_budget_ms) is not int or not 1 <= g4_reasoning_budget_ms <= 250:
+            raise ValueError("G4 setup budget must be 1..250ms")
+        self._g4_reasoning = galaxy_reasoning
+        self._g4_budget_ms = g4_reasoning_budget_ms
+        self._g4_trace = None
         from .galaxy_glank import GlankPlanner
         from .galaxy_cycle import GalaxyCyclePlanner
         self._glank_planner = GlankPlanner() if galaxy_reasoning else None
@@ -1047,6 +1066,7 @@ class BasicPolicyEngine:
                 else None
             ),
             blocker=blocker,
+            g4_combo=self._g4_trace,
         )
         return PolicyDecision(
             action=action,
@@ -1782,6 +1802,7 @@ class BasicPolicyEngine:
         skill_rush_match_context: SkillRushMatchContext | None = None,
     ) -> PolicyDecision:
         failures: list[str] = []
+        self._g4_trace = None
         no_candidates: tuple[MoveEvaluation, ...] = ()
         player = state.player
         player_mana = player.mana if player is not None else None
@@ -1805,7 +1826,8 @@ class BasicPolicyEngine:
         # non-consuming Evolution action succeeds.  Before that transition,
         # use only the proven runtime Fusion cost as the current Mana deficit;
         # do not require or accidentally execute an unrelated/stale skill card.
-        capability = None if skill_source_pending_evolution else pet_skill_capability
+        capability = None if (skill_source_pending_evolution
+            or self.config.play_style is PlayStyle.GALAXY_SHADOW_SWORD) else pet_skill_capability
         galaxy_card = (
             current_click_only_card_type(capability, state.battle.session_key)
             if galaxy_style and not evolution_pending_before_skill and capability is not None
@@ -1993,6 +2015,38 @@ class BasicPolicyEngine:
 
         if self._cycle_planner is not None and galaxy_style:
             self._cycle_planner.observe(state)
+        if self.config.play_style is PlayStyle.GALAXY_SHADOW_SWORD:
+            if not self.config.g4_profile:
+                return self._decision(state, PolicyAction.NONE, "CONFIG",
+                    "G4 requires one supported Galaxy passive loadout route",
+                    failures, no_candidates, blocker="G4_PASSIVE_LOADOUT_INVALID")
+            evolution_decision = self._evolution_priority_decision(
+                state, failures, no_candidates, player_mana)
+            if evolution_decision is not None:
+                return evolution_decision
+            from .galaxy_shadow_sword import plan_g4
+            evaluations = evaluate_all_moves(state.board)
+            passive_active = bool(self.config.main_pet is MainPetType.GALAXY
+                or (state.fusion is not None and state.fusion.used is True))
+            planned = plan_g4(state, evaluations, reasoning=self._g4_reasoning,
+                budget_ms=self._g4_budget_ms, passive_active=passive_active,
+                evolution_pending=bool(self.config.evolve_enabled
+                    and (state.fusion is None or state.fusion.used is not True)),
+                evolution_mana_cost=(state.fusion.mana_cost if state.fusion is not None
+                    and self.config.evolve_enabled and not state.fusion.used else None))
+            self._g4_trace = planned.facts
+            projected = planned.facts.get('selected', {})
+            self._skill_rush_trace = replace(self._skill_rush_trace,
+                pet_skill_fire_condition=PetSkillFireCondition.AUTO_COMBO, pet_skill_fire_value=None,
+                selected_known_gem_count=projected.get('known_destroyed_cells'),
+                selected_known_gem_effective_count=projected.get('known_combo_units'),
+                selected_fire_condition_ready=bool(projected.get('declared_milestone')),
+                fire_condition_scope='PER_SWAP_EFFECTIVE_CLEAR_LOWER_BOUND')
+            return self._decision(state, PolicyAction.SWAP if planned.selected else PolicyAction.NONE,
+                "G4_COMBO_" + planned.step,
+                "G4: minimum known boss Sword reply, route-selected evolution progress or passive combos; refill and damage remain unknown",
+                failures, evaluations, selected=planned.selected,
+                blocker=None if planned.selected else "NO_LEGAL_MOVE")
         evolution_decision = self._evolution_priority_decision(
             state,
             failures,
