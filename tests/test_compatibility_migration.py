@@ -407,11 +407,21 @@ class DesktopIsolationTests(unittest.TestCase):
                           'src/pokiguard_v2/boss_threat.py'}, set(g4['added_files']))
         for name, expected in g4['added_files'].items():
             self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
+        release = p.load_json(root / 'tests/fixtures/compatibility/release_137.json')
+        self.assertEqual('pokiguard.compatibility.release-label.v1', release['schema'])
+        self.assertEqual('v1.3.7', release['version'])
+        self.assertFalse(release['runtime_profile_authority'])
+        self.assertEqual({'src/pokiguard_v2/version.py'}, set(release['reviewed_files']))
         for name, expected in manifest['files'].items():
             if name in reviewed:
                 expected = reviewed[name]['after_sha256']
             if name in g4['reviewed_files']:
                 record = g4['reviewed_files'][name]
+                self.assertEqual(expected, record['before_sha256'], name)
+                self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
+                expected = record['after_sha256']
+            if name in release['reviewed_files']:
+                record = release['reviewed_files'][name]
                 self.assertEqual(expected, record['before_sha256'], name)
                 self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
                 expected = record['after_sha256']

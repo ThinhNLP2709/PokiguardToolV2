@@ -73,6 +73,10 @@ class UpdateFixture(unittest.TestCase):
         tx.prepare_handoff(self.job,self.install,self.data)
         self.trust_patch = patch('pokiguard_v2.updater.protocol.config',return_value=self.trust)
         self.trust_patch.start(); self.addCleanup(self.trust_patch.stop)
+        # This synthetic v1.3.6 bundle is independent of the checkout's label.
+        installed = patch('pokiguard_v2.updater.service.installed_build',
+                          return_value=p.installed_build(self.install))
+        installed.start(); self.addCleanup(installed.stop)
 
     def sign(self,row):
         return {'key_id':'test','payload':copy.deepcopy(row),

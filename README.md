@@ -22,7 +22,18 @@ GitHub Releases và migration tương thích tự phục vụ. Checkpoint Demon:
 `72604edf`. Các gói ZIP dưới đây là bản đã đóng gói trước mốc này, không phải
 bản build lại từ source mới. [Biên bản tích hợp](docs/main_integration_20261122.md).
 
-## Bản portable mới nhất: v1.3.6 — B17
+## Bản phát hành v1.3.7 — B17
+
+Tag `v1.3.7` tạo gói Windows qua CI và Draft Release có manifest cập nhật ký
+số. Khách dùng ZIP1.3.6 cũ cần tải/giải nén1.3.7 một lần để có nút
+**Cài đặt → Cập nhật tool**. Các lần sau có thể cập nhật trong app khi có bản
+stable mới. [GitHub Releases](https://github.com/ThinhNLP2709/PokiguardToolV2/releases),
+[nội dung và phạm vi](docs/v1.3.7_release_report.md).
+
+Gói mới gồm updater, migration và checkpoint G4/Demon đã chốt. Lỗi nhận diện
+màn sau trận `POSTMATCH_UI_AMBIGUOUS` ghi trong checkpoint G4 vẫn còn mở.
+
+## Bản portable trước: v1.3.6 — B17
 
 [Tải ZIP Windows x64 v1.3.6 / B17](build/v1.3.6-b17/PokiguardToolV2-v1.3.6-b17-win-x64.zip)
 · [SHA-256](build/v1.3.6-b17/PokiguardToolV2-v1.3.6-b17-win-x64.zip.sha256)

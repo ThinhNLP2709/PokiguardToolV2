@@ -7,6 +7,11 @@ policy, pacing hoặc input. Các release/ZIP cũ được giữ nguyên.
 
 ## Người dùng
 
+**v1.3.7 là bản bàn giao đầu tiên có nút cập nhật trong app.** Khách đang dùng
+ZIP1.3.6 cũ tải/giải nén1.3.7 thủ công một lần; ZIP1.3.6 đã gửi trước đây
+không được sửa hoặc tự thêm nút từ xa. Các preview updater1.3.6 là bản thử
+riêng, không phải ZIP production1.3.6 cũ.
+
 Trong **Cài đặt → Cập nhật tool**, bấm **Kiểm tra cập nhật**, đọc phiên bản/nội
 dung rồi bấm **Cập nhật và mở lại**. Không thao tác khi FarmRunner/migration
 đang chạy. Chạy source chỉ kiểm tra; cài update qua bản EXE.
