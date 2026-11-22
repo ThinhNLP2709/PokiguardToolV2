@@ -362,11 +362,38 @@ class CatalogTests(unittest.TestCase):
 
 
 class DesktopIsolationTests(unittest.TestCase):
-    def test_gameplay_modules_match_pre_feature_checkpoint(self):
+    def test_gameplay_modules_match_reviewed_demon_integration(self):
         import hashlib
         root = Path(__file__).resolve().parents[1]
-        manifest = p.load_json(root / 'tests/fixtures/compatibility/b17_gameplay_manifest.json')
+        baseline = root / 'tests/fixtures/compatibility/b17_gameplay_manifest.json'
+        manifest = p.load_json(baseline)
+        overlay = p.load_json(root / 'tests/fixtures/compatibility/demon_integration_20261122.json')
+        self.assertEqual('pokiguard.compatibility.demon-integration.v1', overlay['schema'])
+        self.assertEqual(manifest['checkpoint'], overlay['baseline_checkpoint'])
+        self.assertEqual('72604edfd92eb069117de8aa4063d47af666a5c0', overlay['demon_checkpoint'])
+        self.assertEqual(overlay['baseline_manifest_sha256'],
+                         hashlib.sha256(baseline.read_bytes().replace(b'\r\n', b'\n')).hexdigest())
+        self.assertFalse(overlay['runtime_profile_authority'])
+        reviewed = overlay['reviewed_files']
+        self.assertEqual({
+            'src/pokiguard_v2/combat_outcome_evidence.py',
+            'src/pokiguard_v2/dispatcher_chat_roots.py',
+            'src/pokiguard_v2/reasoning_common_planner.py',
+            'src/pokiguard_v2/reasoning_common_tactics.py',
+            'src/pokiguard_v2/reasoning_runner.py',
+            'src/pokiguard_v2/reasoning_ui_session.py',
+            'tools/dispatcher_qte_result_tap.py',
+            'tools/normalize_action_outcomes.py',
+            'tools/normalize_boss_transitions.py',
+        }, set(reviewed))
+        self.assertEqual(240, len(manifest['files']))
+        for name, record in reviewed.items():
+            self.assertEqual(manifest['files'][name], record['before_sha256'], name)
+            self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
+            self.assertTrue(record['reason'])
         for name, expected in manifest['files'].items():
+            if name in reviewed:
+                expected = reviewed[name]['after_sha256']
             current = (root / name).read_bytes().replace(b'\r\n', b'\n')
             self.assertEqual(expected, hashlib.sha256(current).hexdigest(), name)
 

@@ -1,5 +1,10 @@
 # PokiguardToolV2
 
+Mốc source 22/11/2026 trên `main`: đã chốt Demon adviser, tích hợp updater qua
+GitHub Releases và migration tương thích tự phục vụ. Checkpoint Demon:
+`72604edf`. Các gói ZIP dưới đây là bản đã đóng gói trước mốc này, không phải
+bản build lại từ source mới. [Biên bản tích hợp](docs/main_integration_20261122.md).
+
 ## Bản portable mới nhất: v1.3.6 — B17
 
 [Tải ZIP Windows x64 v1.3.6 / B17](build/v1.3.6-b17/PokiguardToolV2-v1.3.6-b17-win-x64.zip)

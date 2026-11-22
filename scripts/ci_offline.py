@@ -9,6 +9,10 @@ MODULES = (
     'test_native_card_ui', 'test_game_location', 'test_desktop_runtime', 'test_farm_checkpoint',
     'test_app_paths', 'test_windows_packaging', 'test_pinned_board_input', 'test_basic_policy',
     'test_reasoning_drain_resources', 'test_reasoning_post_action_resources',
+    'test_reasoning_ui_status', 'test_reasoning_common_native',
+    'test_reasoning_common_selection', 'test_reasoning_strategy_intent',
+    'test_reasoning_health_branch_log', 'test_damage_uncertainty',
+    'test_reasoning_demon_health_prefix', 'test_reasoning_refill_sword',
 )
 if __name__ == '__main__':
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromNames(

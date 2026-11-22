@@ -365,11 +365,31 @@ class StrategyIntentTests(unittest.TestCase):
 
     def test_worker_change_only_adds_common_summary_attribution(self):
         import ast
+        import hashlib
         from pathlib import Path
         root=Path(__file__).resolve().parents[1]
         before=ast.parse((root/'tests/fixtures/reasoning_strategy_alignment_20261103/reasoning_runner.before.py.txt').read_text('utf-8'))
         after=ast.parse((root/'src/pokiguard_v2/reasoning_runner.py').read_text('utf-8'))
+        # The reviewed Nov20 witness is diagnostic only. Pin the entire helper
+        # and its exact failure-isolated call before projecting it away; all
+        # remaining worker/admission code must still match the Nov03 fixture.
+        helper=next(n for n in after.body if isinstance(n,ast.FunctionDef) and n.name=='_health_prefix_summary')
+        self.assertEqual('03767f59c96de102ce567da2e37388cb51ae6e8921a80bb2509f395d5823b55b',
+            hashlib.sha256(ast.dump(helper,include_attributes=False).encode()).hexdigest())
+        after.body.remove(helper)
         fn=next(n for n in after.body if isinstance(n,ast.FunctionDef) and n.name=='_decision_summary')
+        witness=next(n for n in fn.body if isinstance(n,ast.If) and ast.unparse(n.test)=='common'
+            and any(isinstance(child,ast.Try) for child in n.body))
+        expected_witness=ast.parse('''if common:
+    try:
+        summary = _health_prefix_summary(summary, snapshot, result)
+    except Exception as exc:
+        diagnostic = dict(summary, demon_health_prefix_error=type(exc).__name__[:64])
+        if len(json.dumps(diagnostic, separators=(',', ':')).encode()) <= 12000:
+            summary = diagnostic
+''').body[0]
+        self.assertEqual(ast.dump(expected_witness,include_attributes=False),ast.dump(witness,include_attributes=False))
+        fn.body.remove(witness)
         gate=next(n for n in fn.body if isinstance(n,ast.If) and ast.unparse(n.test)=='common')
         loop=next(n for n in gate.body if isinstance(n,ast.For))
         self.assertEqual("score = by_id.get(candidate['candidate_id'])",ast.unparse(loop.body[0]))

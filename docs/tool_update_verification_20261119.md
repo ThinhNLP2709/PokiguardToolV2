@@ -1,5 +1,9 @@
 # Biên bản updater và pipeline — 2026-11-19
 
+Ghi chú22/11: đây là biên bản lịch sử của nhánh updater. Tính năng hiện đã có
+trên `main` cùng Demon; các số đo/ZIP bên dưới vẫn thuộc commit19/11, không
+nghiệm thu lại source mới. [Biên bản tích hợp mới](main_integration_20261122.md).
+
 Triển khai trên `codex/self-service-compatibility`, code kiểm tra tại
 `b7f197d1`. Không merge vào main. Nhánh gốc local
 `codex/phase3a2-board-repair` vẫn ở checkpoint `7abb167c`.

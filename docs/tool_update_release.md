@@ -1,8 +1,9 @@
 # Cập nhật tool và pipeline phát hành
 
-Nhánh triển khai: `codex/self-service-compatibility`. Không sửa solver, policy,
-pacing hoặc input. Các release/ZIP cũ và nhánh gốc được giữ nguyên; chưa merge
-vào `main`.
+Đã tích hợp vào `main` cùng checkpoint Demon ngày22/11/2026. Nhánh triển khai
+gốc là `codex/self-service-compatibility`; riêng updater không sửa solver,
+policy, pacing hoặc input. Các release/ZIP cũ được giữ nguyên.
+[Phạm vi và kiểm tra tích hợp](main_integration_20261122.md).
 
 ## Người dùng
 
@@ -86,12 +87,13 @@ Build mặc định bằng Actions run number; manual dispatch có thể nhập 
 lớn hơn. Tag không tự đổi version trong code. Khi tăng SemVer, sửa version và
 các assertion version liên quan trước; manifest và package phải đồng bộ.
 
-`workflow_dispatch` chỉ dùng được khi workflow có trên default branch. Trong
-giai đoạn giữ riêng nhánh hiện tại, phát hành bằng tag trỏ đúng commit đã kiểm:
+Sau khi push `main`, workflow có trên default branch và có thể dùng
+`workflow_dispatch`. Push nhánh chỉ chạy verify/build, không tự tạo Draft hoặc
+Publish. Cũng có thể tạo tag mới trỏ đúng commit đã kiểm; không dùng lại tag cũ:
 
 ```powershell
-git tag v1.3.6-updater-preview.1 <commit-da-kiem>
-git push origin v1.3.6-updater-preview.1
+git tag <tag-moi> <commit-da-kiem>
+git push origin <tag-moi>
 ```
 
 Không đẩy tag production vào commit chưa kiểm tra. Lỗi secret/sign/check dừng

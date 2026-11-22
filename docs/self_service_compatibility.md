@@ -3,6 +3,8 @@
 Triển khai trên nhánh `codex/self-service-compatibility`, tách từ checkpoint
 `7abb167c0a97f1787d99cb2d415b6df71feea09d`. Nhánh gốc
 `codex/phase3a2-board-repair` và các ZIP v1.3.6 trước đó được giữ nguyên.
+Đã tích hợp vào `main` cùng checkpoint Demon `72604edf` ngày22/11/2026;
+[biên bản tích hợp](main_integration_20261122.md).
 
 ## Người dùng thao tác
 
@@ -50,8 +52,11 @@ cùng object profile. Không monkeypatch globals hoặc sửa code/EXE khi migra
 
 Không có external profile thì B17 đi đúng đường built-in cũ. Solver, scoring,
 policy, drain-resource logic, input backend, pacing, jitter và calibration không
-đổi. Fixture `tests/fixtures/compatibility/b17_gameplay_manifest.json` giữ dấu
-vết 240 module ngoài lớp tích hợp so với checkpoint.
+đổi bởi migration. Fixture `tests/fixtures/compatibility/b17_gameplay_manifest.json`
+giữ nguyên dấu vết240 module của checkpoint trước tính năng. Khi ghép các nâng
+cấp Demon, fixture bổ sung `demon_integration_20261122.json` ghi đúng9 module
+đã thay trong checkpoint Demon;231 module còn lại vẫn khớp baseline. Đây là
+kiểm tra cô lập source, không phải runtime profile hay quyền migrate game mới.
 
 Migration giữ cùng OS controller lease với FarmRunner. GUI khóa Start/Resume
 và sửa đường dẫn trong lúc chạy; đóng cửa sổ sẽ hủy worker và thu hồi child

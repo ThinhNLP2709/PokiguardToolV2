@@ -1,5 +1,13 @@
 # Bàn giao suy luận — source hiện tại và UI lịch sử
 
+**22/11/2026 — User chốt Demon, commit và ghép updater/migration.**
+Checkpoint `72604edf` giữ toàn bộ mốc Demon hiện tại. Nhánh self-service tại
+`3a0df30d` đã là tổ tiên main; không có commit khác cần merge. Phần tích hợp
+chỉ docs/CI/tests:375 test offline PASS,240 module migration được giữ với
+overlay9 file Demon đã review/231 nguyên. AST diagnostic witness pin exact,
+production src/tools nguyên từ checkpoint. Không đổi version hoặc mở live;
+profile/source cũ không rebind. [Biên bản](../main_integration_20261122.md).
+
 **22/11/2026 — R Highsion1/1 đã đóng; lỗi nhãn chờ UI đã sửa offline.**
 User yêu cầu tiếp tục; bài mới max1 tách scout cũ,11 timing BASIC cùng source
 tạo profile max1 mới. Source1d83 WIN/vềCoop_389316,0safe/recovery;9 decision
