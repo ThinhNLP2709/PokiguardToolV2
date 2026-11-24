@@ -104,7 +104,7 @@ def _review_timing_reuse(directory,data,control_source,qualification):
 def review_bundle(directory,data):
     """Recompute timing from hash-pinned raw lines, including sent/ACK joins."""
     from .reasoning_calibration_review import document,read_ref,PARAMETERS
-    from .reasoning_calibration import COMMON_DEMON_CONTROL_PROTOCOL,check_config,decode_config
+    from .reasoning_calibration import COMMON_DEMON_CONTROL_PROTOCOL,COMMON_MEGA_CONTROL_PROTOCOL,check_config,decode_config
     require(data['schema']==SCHEMA,'UI_REASONING_PROFILE_SCHEMA')
     export=document(directory,data['control_export'])
     require(export['schema']=='pokiguard.basic_calibration_export.v1' and export['finalized'] is True
@@ -123,8 +123,10 @@ def review_bundle(directory,data):
     require(hashlib.sha256(raw[data['roles']['request']]).hexdigest()==export['request_sha256'],
         'UI_REASONING_REQUEST_CHANGED')
     config=decode_config(request['config']);cap=request['total_attempt_cap']
-    check_config(config,cap,profile_protocol=COMMON_DEMON_CONTROL_PROTOCOL)
-    require(request.get('profile_protocol')==COMMON_DEMON_CONTROL_PROTOCOL and request['reasoning_enabled'] is False
+    protocol=request.get('profile_protocol')
+    require(protocol in (COMMON_DEMON_CONTROL_PROTOCOL,COMMON_MEGA_CONTROL_PROTOCOL),'UI_REASONING_CONTROL_PROTOCOL')
+    check_config(config,cap,profile_protocol=protocol)
+    require(request['reasoning_enabled'] is False
         and request['config']['ai'].get('reasoning_enabled',False) is False,'UI_REASONING_CONTROL_PROTOCOL')
     require(export['run_id']==request['run_id']==binding['run_id']==watermark['run_id']
         and binding['farm_run_id']==run['farm_run_id']
@@ -172,12 +174,15 @@ def review_bundle(directory,data):
         require(ref['path'] in raw and ref['sha256']==inputs[ref['path']]
             and type(ref['line']) is int and 1<=ref['line']<=100000,'UI_REASONING_RAW_LINE_UNBOUND')
         return strict_json_loads(raw[ref['path']].decode('utf-8').splitlines()[ref['line']-1])
-    H=[];I=[];seen=set()
+    H=[];I=[];seen=set();mega_witnesses=set()
     for sample in export['samples']:
         event=line(sample);p=event['payload']
         require(event['event_type']=='reasoning.swap_timing' and event['correlation']['run_id']==request['run_id']
             and p==sample['payload'],'UI_REASONING_SAMPLE_CHANGED')
         if not sample['eligible_for_descriptive_R']:continue
+        if protocol==COMMON_MEGA_CONTROL_PROTOCOL:
+            from .reasoning_mega_control import mega_swap_witness_key
+            mega_witnesses.add(mega_swap_witness_key(p.get('witness'),config))
         key=(sample['path'],sample['line']);require(key not in seen,'UI_REASONING_DUPLICATE_SAMPLE');seen.add(key)
         times=[p.get(k) for k in ('observed_ns','observation_read_end_ns','decision_exit_ns',
             'preflight_start_ns','read_end_ns','validation_end_ns','executor_return_ns')]
@@ -212,6 +217,8 @@ def review_bundle(directory,data):
             'UI_REASONING_NATIVE_ACK_UNBOUND')
         H.append((times[3]-times[2])/1e6);I.append((times[-1]-times[3])/1e6)
     require(len(H)>=1 and max(I)>0,'UI_REASONING_NATIVE_TIMING_MISSING')
+    if protocol==COMMON_MEGA_CONTROL_PROTOCOL:
+        require(len(mega_witnesses)==1,'UI_REASONING_MIXED_MEGA_SWAP_WITNESS')
     return dict(controller_tail_ms=max(H),final_input_ms=max(I),selector_extra_ms=max(costs)),len(H)
 
 

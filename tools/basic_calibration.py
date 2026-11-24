@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/'src')]
-from pokiguard_v2.reasoning_calibration import build_request, SCHEMA
+from pokiguard_v2.reasoning_calibration import build_request, SCHEMA, COMMON_MEGA_CONTROL_PROTOCOL, decode_config
 from pokiguard_v2.reasoning_snapshot import canonical_json
 from pokiguard_v2.desktop_preferences import DesktopPreferenceStore
 from pokiguard_v2.basic_policy import Intelligence, PlayStyle
@@ -22,6 +22,7 @@ def write_new(path,data):
 def export(request_path,request_sha,timing_directory,farm_directory):
     if sha(request_path)!=request_sha:raise ValueError('request SHA mismatch')
     request=read_json(request_path);binding=read_json(timing_directory/'session.json')
+    mega_control=request.get('profile_protocol')==COMMON_MEGA_CONTROL_PROTOCOL
     if request['schema']!=SCHEMA or binding['run_id']!=request['run_id']:
         raise ValueError('request/session mismatch')
     if (Path(binding['farm_directory']).resolve()!=farm_directory.resolve()
@@ -85,7 +86,12 @@ def export(request_path,request_sha,timing_directory,farm_directory):
                 reasons.append('INVALID_INTERVAL')
             if (p.get('input_mode')!='foreground' or p.get('board_input_mode')!='two_click'
               or p.get('timer_source')!='MatchService.server_tick'):reasons.append('WRONG_INPUT_TIMER_COHORT')
-            witnesses.add(canonical_json(p.get('witness')))
+            if mega_control:
+                from pokiguard_v2.reasoning_mega_control import mega_swap_witness_key
+                try:witnesses.add(mega_swap_witness_key(p.get('witness'),decode_config(request['config'])))
+                except ValueError:
+                    witnesses.add('null');errors.append('MISSING_OR_INVALID_MEGA_SWAP_WITNESS')
+            else:witnesses.add(canonical_json(p.get('witness')))
             samples.append(dict(path=str(path.resolve()),sha256=inputs[str(path.resolve())],line=line,payload=p,
               sent=sent,ack=ack,eligible_for_descriptive_R=not reasons,rejections=reasons))
     if len(witnesses)!=1 or 'null' in witnesses:errors.append('MISSING_OR_MIXED_RUNTIME_WITNESS')

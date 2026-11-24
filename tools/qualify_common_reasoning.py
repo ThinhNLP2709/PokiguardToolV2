@@ -27,7 +27,7 @@ from pokiguard_v2.pet_configuration import GameplayConfig
 CHECKPOINT='e3e3dee90dd09ecd51961c06d0b390dbb04994b5'
 # Reviewed read-compatibility migration only. This is not a native timing
 # profile/source pin and grants no attempts or action-family authority.
-LEGACY_MEGA_DEFAULT_REVIEW_SHA='de85959c3d9b7d07eab624352b5793532ba1f7c473cbddb33914023832108fd9'
+LEGACY_MEGA_DEFAULT_REVIEW_SHA='10f295465c429ac2bc7aa772012985f6c30bbf0d89d2307790c2f2ff85190f35'
 LEGACY_MEGA_DEFAULT_REVIEW_VALUE='hp_below_30'
 
 
@@ -63,6 +63,18 @@ def calibration_ast_projection(previous_raw,current_raw):
     """
     previous=ast.parse(previous_raw)
     current=ast.parse(current_raw)
+    mega_constants=[n for n in current.body if isinstance(n,ast.Assign) and
+        ast.unparse(n)=="COMMON_MEGA_CONTROL_PROTOCOL = 'COMMON_MEGA_BASIC_SWAP_CONTROL_V1'"]
+    if mega_constants:
+        if len(mega_constants)!=1:return False
+        current.body.remove(mega_constants[0])
+        function=next(n for n in current.body if isinstance(n,ast.FunctionDef) and n.name=='check_config')
+        branch=ast.parse('if profile_protocol == COMMON_MEGA_CONTROL_PROTOCOL:\n'
+            '    from .reasoning_mega_control import check_mega_control\n'
+            '    return check_mega_control(config, cap)\n').body[0]
+        matches=[n for n in function.body if ast.dump(n,include_attributes=False)==ast.dump(branch,include_attributes=False)]
+        if len(matches)!=1:return False
+        function.body.remove(matches[0])
     constants=[n for n in current.body if isinstance(n,ast.Assign) and any(
         isinstance(t,ast.Name) and t.id=='COMMON_DEMON_CONTROL_PROTOCOL' for t in n.targets)]
     assert len(constants)==1
@@ -97,7 +109,26 @@ def fixture_target_projection():
     return len(removed)==1 and ast.dump(previous,include_attributes=False)==ast.dump(current,include_attributes=False)
 
 
-def qualify(output,assistant_baseline=None):
+def reviewed_current_fixture_projection():
+    """Three exact harness-only additions; do not omit runtime functions."""
+    name='tests/reasoning_controller_fixture.py'
+    previous=ast.parse(subprocess.check_output(['git','show',CHECKPOINT+':'+name],cwd=ROOT))
+    raw=(ROOT/name).read_bytes()
+    if sha(raw)!='35d3d872c01d856ed25883eef013adb4c8252e7b3109b8fbfb28cbb4d690a39e':return False
+    current=ast.parse(raw);removed=[]
+    expected={'args.demon_target_gem = gameplay_config.demon_target_gem.value',
+        'args.mega_self_protection = gameplay_config.mega_self_protection.value',
+        "if case == 'pet_skill_geometry_fallback':\n    stop_iteration = 4"}
+    class ReviewedFixtureDelta(ast.NodeTransformer):
+        def generic_visit(self,node):
+            if isinstance(node,(ast.Assign,ast.If)) and ast.unparse(node) in expected:
+                removed.append(ast.unparse(node));return None
+            return super().generic_visit(node)
+    current=ReviewedFixtureDelta().visit(current)
+    return len(removed)==3 and set(removed)==expected and ast.dump(previous,include_attributes=False)==ast.dump(current,include_attributes=False)
+
+
+def qualify(output,assistant_baseline=None,*,same_source=False):
     output.mkdir(parents=True,exist_ok=False) # Preserve earlier qualification attempts.
     source_start=source_files(ROOT)
     if assistant_baseline is None:
@@ -110,6 +141,9 @@ def qualify(output,assistant_baseline=None):
         assert digest(before['files'])==before['fingerprint']
         raw=(base/'baseline_basic_auto_bot.py').read_bytes()
     assert sha(raw)==before['files']['tools/basic_auto_bot.py']
+    if same_source:
+        assert assistant_baseline is not None and before['files']==source_start
+        assert before['fingerprint']==digest(source_start)
     saved=output/'v1_3_0_basic_auto_bot.py';saved.write_bytes(raw)
     name='tools._common_release_baseline';spec=importlib.util.spec_from_file_location(name,saved)
     module=importlib.util.module_from_spec(spec);sys.modules[name]=module;spec.loader.exec_module(module)
@@ -250,12 +284,14 @@ def qualify(output,assistant_baseline=None):
             'tests/test_desktop_ui_hardening.py','tests/test_release_130.py',
             'tests/test_game_update_b14.py','tests/test_reasoning_common_native.py'}
         approved_additions=set()
+    if same_source:
+        allowed=set();approved_additions=set()
     gates=dict(disabled_semantic_parity=all(p['semantic_trace'] for p in parity),
         enabled_transport_order=all(p['calls_equal'] for p in enabled),boundary_input=all(p['pass_inputs'] for p in boundary),
         configured_demon_targets=all(p['calls_equal'] and p['model_completed'] and p['declaration_bound'] for p in configured_targets),
         protected_source=set(changed)<=allowed,worker_reaped=bridge_closed,writer_reaped=sink_closed,
         legacy_calibration_ast_unchanged=calibration_projection(),
-        fixture_target_argument_only=fixture_target_projection(),
+        fixture_target_argument_only=reviewed_current_fixture_projection() if same_source else fixture_target_projection(),
         source_additions_reviewed=additions==approved_additions,source_frozen=source_start==source_files(ROOT),
         flushed=flushed,selector_current_contract_smoke=all(summary['triple_ms'][k]<=v for k,v in (('p50',1.5),('p95',3),('p99',9),('max',30))),
         no_log_loss=(len(checkpoints)==300 and len({row['event_seq'] for row in checkpoints})==300
@@ -278,5 +314,6 @@ def qualify(output,assistant_baseline=None):
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--output-dir',type=Path,required=True)
     parser.add_argument('--assistant-baseline',type=Path)
+    parser.add_argument('--same-source',action='store_true',help='require an exact frozen current-source baseline; fresh native controls only')
     args=parser.parse_args()
-    raise SystemExit(qualify(args.output_dir,args.assistant_baseline))
+    raise SystemExit(qualify(args.output_dir,args.assistant_baseline,same_source=args.same_source))

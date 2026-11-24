@@ -412,6 +412,25 @@ class DesktopIsolationTests(unittest.TestCase):
         self.assertEqual('v1.3.7', release['version'])
         self.assertFalse(release['runtime_profile_authority'])
         self.assertEqual({'src/pokiguard_v2/version.py'}, set(release['reviewed_files']))
+        skill = p.load_json(root / 'tests/fixtures/compatibility/active_skill_evidence_20261123.json')
+        self.assertEqual('pokiguard.compatibility.active-skill-evidence.v1', skill['schema'])
+        self.assertFalse(skill['runtime_profile_authority'])
+        self.assertFalse(skill['native_acceptance'])
+        self.assertFalse(skill['read_policy_changed'])
+        self.assertFalse(skill['input_policy_changed'])
+        self.assertEqual({'tools/basic_auto_bot.py', 'tools/dispatcher_qte_result_tap.py'},
+                         set(skill['reviewed_files']))
+        self.assertEqual({'src/pokiguard_v2/skill_action_evidence.py'}, set(skill['added_files']))
+        for name, expected in skill['added_files'].items():
+            self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
+        timing = p.load_json(root / 'tests/fixtures/compatibility/mega_swap_control_20261124.json')
+        self.assertFalse(timing['runtime_profile_authority'])
+        self.assertFalse(timing['native_acceptance'])
+        self.assertEqual({'src/pokiguard_v2/reasoning_calibration.py',
+                          'src/pokiguard_v2/reasoning_common_native.py',
+                          'tools/qualify_common_reasoning.py', 'tools/basic_calibration.py'}, set(timing['reviewed_files']))
+        for name, expected in timing['added_files'].items():
+            self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
         for name, expected in manifest['files'].items():
             if name in reviewed:
                 expected = reviewed[name]['after_sha256']
@@ -422,6 +441,16 @@ class DesktopIsolationTests(unittest.TestCase):
                 expected = record['after_sha256']
             if name in release['reviewed_files']:
                 record = release['reviewed_files'][name]
+                self.assertEqual(expected, record['before_sha256'], name)
+                self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
+                expected = record['after_sha256']
+            if name in skill['reviewed_files']:
+                record = skill['reviewed_files'][name]
+                self.assertEqual(expected, record['before_sha256'], name)
+                self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
+                expected = record['after_sha256']
+            if name in timing['reviewed_files']:
+                record = timing['reviewed_files'][name]
                 self.assertEqual(expected, record['before_sha256'], name)
                 self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
                 expected = record['after_sha256']

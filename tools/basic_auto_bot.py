@@ -9448,6 +9448,9 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
             )
             if decision.action is PolicyAction.PET_SKILL:
                 from tools.pet_skill_action import run_embedded_policy_action
+                from pokiguard_v2.skill_action_evidence import (
+                    context_fields_safely, emit_retained_skill_outcomes_safely,
+                )
 
                 if selection_receipt is not None:
                     failure = revalidate_safely(selection_adapter, selection_receipt, fresh,
@@ -9500,6 +9503,7 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     currentMana=decision.trace.current_mana,
                     currentRage=decision.trace.current_rage,
                     maxSimultaneousLimit=1,
+                    **context_fields_safely(identity, fresh, fresh_pet_skill_capability, policy.config),
                 )
                 dispatch_context: dict[str, Any] = {}
                 pinned_qte_action = None
@@ -9713,6 +9717,8 @@ def run(args: argparse.Namespace, *, shared_runtime: SharedCombatRuntime | None 
                     pinnedQteCleanupOk=pinned_qte_cleanup_ok,
                     blindRetry=False,
                 )
+                emit_retained_skill_outcomes_safely(dispatcher_tap, identity,
+                    lambda event, **fields: _write(log, event, **fields))
                 if outcome.state is PetSkillDispatchState.LEASE_DENIED:
                     _cancel_unsent(
                         guard,

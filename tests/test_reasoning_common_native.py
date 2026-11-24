@@ -237,6 +237,11 @@ class CommonNativeTests(unittest.TestCase):
         q=json.loads((old.parent/'qualification.json').read_text('utf-8'))
         b14_manifest=ROOT/'docs/artifacts/rebuild_v1_3_1_20261105/source_manifest.json'
         q['source_files']=json.loads(b14_manifest.read_text('utf-8'))['files']
+        # Synthetic successor of the setup verifier only. Its protected runtime
+        # AST is checked independently; this does not qualify current gameplay
+        # files or install/rebind any historical native profile.
+        native='src/pokiguard_v2/reasoning_common_native.py'
+        q['source_files'][native]=hashlib.sha256((ROOT/native).read_bytes()).hexdigest()
         q['source_sha256']=digest(q['source_files'])
         current_files=source_files(ROOT)
         with tempfile.TemporaryDirectory(dir=reasoning_temp_root()) as temp:
@@ -264,6 +269,8 @@ class CommonNativeTests(unittest.TestCase):
                     'src/pokiguard_v2/room_invite.py','src/pokiguard_v2/farm_checkpoint.py','src/pokiguard_v2/version.py'):
                 with self.subTest(protected=name),self.assertRaisesRegex(ValueError,'IMPLEMENTATION_CHANGED'):
                     review_bundle(out,mutated_source(name))
+            with self.assertRaisesRegex(ValueError,'NATIVE_ENVELOPE_CHANGED'):
+                review_bundle(out,mutated_source('src/pokiguard_v2/reasoning_common_native.py'))
             if current_files['src/pokiguard_v2/game_location.py']!=q['source_files']['src/pokiguard_v2/game_location.py']:
                 current_q=dict(q,source_files=current_files,source_sha256=digest(current_files))
                 raw=canonical_json(current_q).encode()

@@ -15,6 +15,12 @@ MODULES = (
     'test_reasoning_demon_health_prefix', 'test_reasoning_refill_sword',
     'test_galaxy_shadow_sword', 'test_galaxy_shadow_sword_ui',
     'test_boss_threat',
+    'test_active_skill_inventory', 'test_active_skill_evidence', 'test_skill_evidence_isolation',
+    'test_icarus_core_evidence',
+    'test_trex_core_evidence',
+    'test_galaxy_core_evidence',
+    'test_galaxy', 'test_galaxy_glank', 'test_galaxy_pet_reasoning', 'test_galaxy_skill_phase',
+    'test_mega_swap_control', 'test_reasoning_calibration_compat_projection',
 )
 if __name__ == '__main__':
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromNames(

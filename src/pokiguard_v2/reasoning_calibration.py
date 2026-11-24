@@ -23,6 +23,7 @@ D2_CONTROL_PROTOCOL='D2_SKILL_RUSH_BASIC_CONTROL_V1'
 D2_TIMING_PROTOCOL='D2_SKILL_RUSH_SKILL_TIMING_PROBE_V1'
 D3_CONTROL_PROTOCOL='D3_DEMON_AEGIS_BASIC_CONTROL_V1'
 COMMON_DEMON_CONTROL_PROTOCOL='COMMON_DEMON_TARGET_BASIC_CONTROL_V1'
+COMMON_MEGA_CONTROL_PROTOCOL='COMMON_MEGA_BASIC_SWAP_CONTROL_V1'
 D4_CONTROL_PROTOCOL='D4_MEGA_ICARUS_BASIC_CONTROL_V1'
 D4_INPUT_TIMING_PROTOCOL='D4_MEGA_CLICK_ONLY_INPUT_PROBE_V1'
 D4_INPUT_RETRY_PROTOCOL='D4_MEGA_CLICK_ONLY_INPUT_REMEDIATION_V2'
@@ -142,6 +143,9 @@ def decode_config(raw):
 
 
 def check_config(config,cap,*,profile_protocol=None):
+    if profile_protocol == COMMON_MEGA_CONTROL_PROTOCOL:
+        from .reasoning_mega_control import check_mega_control
+        return check_mega_control(config,cap)
     if profile_protocol == COMMON_DEMON_CONTROL_PROTOCOL:
         from .gameplay_profile import MainPetType,EvolutionTarget,DamageCardMode,PetSkillFireCondition,DemonTargetGem
         if (config.intelligence is not Intelligence.BASIC or config.ai.shadow_enabled or config.ai.reasoning_enabled

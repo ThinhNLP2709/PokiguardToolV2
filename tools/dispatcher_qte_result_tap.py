@@ -538,6 +538,39 @@ class DispatcherTransportTap:
                     evidence.get('server_sequence'), 'QUEUE')
         return records
 
+    def skill_outcome_snapshot(self, match_id: str, after_sequence: int) -> tuple[dict[str, Any], ...]:
+        """Copy <=2 retained skill witnesses; no reads, queue drain or board ACK.
+
+        Called after a primitive returns so already-retained terminal effects
+        can be written before session cleanup. Absence does not mean zero damage.
+        """
+        if type(after_sequence) is not int or after_sequence < 0:
+            return ()
+        with self._lock:
+            captures = tuple(c for key, (_, c) in self._combat_outcomes.items() if key[0] == match_id)
+            dropped = self._dropped_combat_outcomes
+        found = {}
+        for capture in captures:
+            record = capture.to_dict()
+            evidence = record.get('evidence')
+            identity = evidence if type(evidence) is dict else record.get('response_identity')
+            if (type(identity) is not dict or identity.get('match_id') != match_id
+                    or identity.get('event_type') != 'MATCH_SKILL_USE_RES'
+                    or type(identity.get('server_sequence')) is not int
+                    or identity['server_sequence'] <= after_sequence):
+                continue
+            if type(evidence) is dict:
+                evidence.update(accepted_board_attached=False,
+                    provenance='EXISTING_RETAINED_JSON_WITHOUT_PROVIDER_BOARD_ATTESTATION')
+            key = (identity['server_sequence'], identity.get('raw_sha256'))
+            found.setdefault(key, record)
+        ordered = [r for _, r in sorted(found.items())]
+        if len(ordered) > 2:
+            return (ordered[0], CombatOutcomeCapture('UNAVAILABLE', 'SKILL_SNAPSHOT_EXPORT_LIMIT').to_dict())
+        if dropped and len(ordered) < 2:
+            ordered.append(CombatOutcomeCapture('UNAVAILABLE', 'CAPTURE_QUEUE_OR_RECORD_LIMIT_REACHED').to_dict())
+        return tuple(ordered)
+
     def _trace_capture(self, **metadata) -> None:
         """Optional host metadata must not interrupt board/message delivery."""
         with self._lock:
