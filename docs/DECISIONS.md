@@ -7,6 +7,45 @@ Technical implementation and acceptance status are in
 [CURRENT_STATE.md](CURRENT_STATE.md). Workspace/safety precedence begins with
 [AGENTS.md](../AGENTS.md).
 
+## Suy luận Opus — người dùng chốt 23/11/2026
+
+Chỉ áp cho nhánh **Suy luận** theo [plan canonical](opus/opus-reasoning-upgrade-plan.md).
+BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản phẩm, chưa là năng lực đã triển khai.
+
+- **Trạng thái:** mỗi quyết định chỉ dùng trạng thái hiện tại và tri thức offline đã đóng băng;
+  không nhớ diễn biến trong trận. Context BASIC sẵn có giữ hành vi cũ.
+- **Hút:** giá trị chặn là chênh lệch khả năng boss đủ ngưỡng skill giữa có Hút và không Hút,
+  gồm tự bơm, sàn 0, trần tài nguyên và viên boss ăn thêm. Hút có giới hạn và có thể ra Mana hoặc
+  Nộ; khi boss đã nhiều Mana sau một lần skill, Hút ra Nộ vẫn có thể làm boss không đủ ra skill,
+  nên boss đang trên ngưỡng **không** mặc định Hút vô ích. Thiếu dữ kiện → UNKNOWN; không tự gán
+  xác suất. Luật Hút của BASIC (boss Mana>160 và Nộ>100) giữ nguyên.
+- **Giả thuyết chưa xác minh:** boss đang có Khiên thì Hút có thể không lấy được tài nguyên
+  (người dùng không chắc). UI có icon Khiên; chỉ dùng giả thuyết này sau khi dữ liệu xác minh.
+- **Kết liễu (S01):** mô hình chắc chắn kết liễu được thì kết liễu ngay, kể cả khi lối chơi đang
+  cấm ăn Kiếm hoặc đang setup. "Chắc" nghĩa là biên dưới sát thương ≥ HP boss hiệu dụng; chưa có
+  mô hình sát thương thì không kích hoạt.
+- **Phòng thủ (S02):** máu ta quá thấp và sát thương boss cao thì ưu tiên phòng thủ, trừ khi kết
+  liễu được trước. Sát thương boss ước lượng từ tri thức offline học qua nhiều trận và chỉ số hiện
+  tại; dùng sát thương quan sát trong chính trận đó là ngoại lệ của luật không nhớ, chưa chốt.
+- **Vùng hồi máu (S06):** khi có dữ liệu ngưỡng hồi của boss, tránh đánh lẻ đẩy boss vào vùng hồi
+  nếu chưa đủ sát thương kết liễu.
+- **Bảo toàn tài nguyên (S11):** lối chơi cần Mana/Nộ cho skill và boss có nước Hút thì ưu tiên
+  phá nước Hút của boss; ta tự ăn Hút cũng là một cách phá. Chỉ bỏ khi có nước tốt hơn rõ ràng.
+- **Khiên boss (S20):** chỉ tính sát thương bị Khiên hấp thụ khi dữ liệu cho thấy rõ.
+- **Không dừng:** thiếu model hoặc không có nước an toàn → BASIC hoặc nước hợp lệ rủi ro thấp
+  nhất; không tạo lý do dừng tool mới. Fail-closed sẵn có của state/BASIC giữ nguyên.
+- **Model:** phát hành cùng bản tool, có chữ ký; owner duyệt trước khi phát hành; mỗi phiên pin
+  một phiên bản; máy khách không tự học; runtime không import trainer.
+- **Dữ liệu đóng góp:** người chơi tự xuất file .zip ẩn danh, có xác nhận đồng ý; upload tự động
+  làm sau.
+- **UI:** tab chính chọn Lối chơi và Cơ bản/Suy luận; tab AI chỉ chứa ngân sách, chẩn đoán,
+  phiên bản model (chỉ đọc) và nút xuất dữ liệu.
+- **Coop/Bú win:** mục tiêu đội, không đổi thành sống sót của riêng mình; nghiệm thu riêng.
+- **Sau trận:** `POSTMATCH_UI_AMBIGUOUS` không là blocker của plan này; ảnh thua đã được EXE 1.3.7
+  nhận đúng. Giữ nguyên cơ chế kiểm tra sau trận trong code.
+- **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), KPI/ngân sách (D-U1), đọc bộ nhớ mới (D-U2),
+  văn bản đồng ý gửi dữ liệu (D-U3).
+
 ## Demon Farm: cơ chế chung cho 5 viên — người dùng chốt 01/11/2026
 
 - Khiên, Máu, Mana, Hút và Nộ dùng cùng phép quét: ghép ngang phá các cột,

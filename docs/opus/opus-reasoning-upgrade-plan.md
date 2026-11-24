@@ -170,6 +170,8 @@ Situation (nhãn + chứng cứ) ─► plan_common v2: root → kịch bản re
 4. Boss đang trên ngưỡng **không** mặc định Hút vô ích: Hút vẫn có thể kéo xuống dưới ngưỡng.
 5. Theft hiện có giữ làm thành phần riêng; rủi ro boss Hút tài nguyên ta tính đối xứng.
 6. Không có xác suất nếu model pack chưa có tần suất thực nghiệm có số mẫu.
+7. Giả thuyết của user, chưa xác minh: boss đang có Khiên thì Hút có thể không lấy được tài
+   nguyên. Kiểm bằng log (hiệu ứng STEAL khi Khiên boss > 0 so với = 0) trước khi dùng.
 
 ### 4.4 Model pack và kiểm soát của owner
 
@@ -511,12 +513,12 @@ Không Hút: 550–650 → `READY`. Có Hút: 450–550 → `PARTIAL` (ca 2), d�
 Hút có thể lấy Mana hoặc Nộ (cách server chọn chưa rõ): mỗi loại là một kịch bản riêng; skill boss
 có thể cần Mana và/hoặc Nộ theo registry (gộp AND).
 
-## Phụ lục B — Catalog tình huống v2 (dự thảo, duyệt ở U0)
+## Phụ lục B — Catalog tình huống v2 (user duyệt 23/11/2026, xem DECISIONS.md)
 
 | Mã | Tình huống | Kỳ vọng |
 |---|---|---|
-| S01 | Có hành động kết liễu chắc trong mô hình | Kết liễu |
-| S02 | Boss có thể kết liễu ta lượt tới | Phòng thủ hoặc kết liễu trước nếu được |
+| S01 | Có hành động kết liễu chắc trong mô hình | Kết liễu ngay, kể cả khi lối chơi đang cấm ăn Kiếm hoặc đang setup |
+| S02 | Máu ta quá thấp và sát thương boss cao | Phòng thủ, trừ khi kết liễu được trước; sát thương boss từ tri thức offline + chỉ số hiện tại |
 | S03 | Hút đổi boss từ đủ sang chưa đủ ngưỡng | Ưu tiên Hút theo mức chặn |
 | S04 | Hút không đổi khả năng skill lượt tới | Không cộng điểm chặn; xét theft/horizon và nước khác |
 | S05 | Thiếu ngưỡng/tự bơm/lượng Hút | UNKNOWN, không suy |
@@ -525,7 +527,7 @@ có thể cần Mana và/hoặc Nộ theo registry (gộp AND).
 | S08 | Bắn skill xong boss có burst chết người | Cân nhắc phòng trước nếu skill không kết liễu |
 | S09 | Tiến hóa ngay vs giữ Mana | Theo giá trị, cần D-U6 |
 | S10 | Tài nguyên đầy | Không ăn chỉ vì tài nguyên đó |
-| S11 | Ta giữ nhiều Mana/Nộ, boss có nước Hút | Giảm Hút cho boss |
+| S11 | Lối chơi cần Mana/Nộ, boss có nước Hút | Phá nước Hút của boss (kể cả tự ăn Hút); chỉ bỏ khi có nước tốt hơn rõ ràng |
 | S12 | Mọi nước đều chừa Kiếm | Chừa ít nhất, vẫn đi nước, không dừng |
 | S13 | Nước mở cột sâu | Hazard sau refill |
 | S14 | Setup lượt sau | Chỉ tính phần còn sau phản hồi boss |
@@ -534,7 +536,7 @@ có thể cần Mana và/hoặc Nộ theo registry (gộp AND).
 | S17 | Galaxy G1/G3 | Theo pha runtime |
 | S18 | Mega | Ấn vs bảo vệ/hồi máu |
 | S19 | HT7 | Giữ Kiếm cho skill vs sống sót |
-| S20 | Boss có Khiên lớn | Xét hấp thụ nếu dữ liệu cho thấy |
+| S20 | Boss có Khiên lớn | Chỉ tính phần bị Khiên hấp thụ khi dữ liệu cho thấy rõ |
 | S21 | Boss máu thấp + đủ Mana chưởng | Giữ finisher BASIC, R chỉ so sánh |
 | S22 | Bú win | Mục tiêu đội, không solo-survival |
 | S23 | Thiếu model hoặc không có nước an toàn | Dùng BASIC/nước rủi ro thấp nhất hợp lệ, không dừng |
