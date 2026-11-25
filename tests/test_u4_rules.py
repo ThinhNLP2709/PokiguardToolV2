@@ -41,5 +41,19 @@ class U4RuleTests(unittest.TestCase):
         self.assertIsNone(on.proposal)
 
 
+    def test_profile_trial_flag_in_facts_matches_limits_flag(self):
+        from dataclasses import replace
+        from pokiguard_v2.reasoning_common_problem import FrozenJSON
+        problem = case('ICARUS', 'M_9c305403', 13)
+        flagged = replace(problem, facts=FrozenJSON.of(dict(problem.facts.plain(), d_u1_rules=True)))
+        by_facts = plan_common(flagged, clock=lambda: 0)
+        by_limits = plan_common(problem, CommonLimits(rules=True), clock=lambda: 0)
+        self.assertEqual(by_limits.proposal, by_facts.proposal)
+        self.assertEqual(0, sword(flagged, by_facts))
+
+    def test_trial_flag_needs_common_authority_and_matching_digest(self):
+        from pokiguard_v2.reasoning_ui_session import _profile_trial_rules
+        self.assertIs(False, _profile_trial_rules(None, object()))
+
 if __name__ == '__main__':
     unittest.main()

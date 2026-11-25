@@ -533,7 +533,8 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
     root_scores=[];lefts=[]
     # D-U1: K4/K6 filter proposed SWAPs for any incumbent. K7 re-scoring applies only against a SWAP
     # incumbent, so skill/cast/PASS timing stays with the BASIC owner (U6).
-    rules=limits.rules and problem.intent.profile in RULE_PROFILES
+    # A profile-scoped live trial carries facts.d_u1_rules, so worker and host verify the same rules.
+    rules=(limits.rules or facts.get('d_u1_rules') is True) and problem.intent.profile in RULE_PROFILES
     rescore=rules and problem.baseline.family=='swap'
     try:
         for move in _candidate_swaps():
@@ -557,7 +558,8 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
         scored[:]=[r[0] for r in root_scores]
         stage='ONE_STEP_COMPLETE'
         blocked,why=_rule_blocked(problem,facts,lefts) if rules else (frozenset(),{})
-        if limits.rules:rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
+        if limits.rules or facts.get('d_u1_rules') is True:
+            rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
         def choose():
             ordered=[c for c in sorted(scored,key=lambda c:order_key(c,problem.intent.profile))
                 if c.baseline_member or c.action not in blocked]

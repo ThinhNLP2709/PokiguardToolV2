@@ -48,6 +48,7 @@ def _observation_status(authority,observation):
 class UIReasoningSession:
     def __init__(self,config,authority,*,directory,observer,bridge_factory=None,sink_factory=None):
         self.config=config;self.authority=authority;self.directory=Path(directory);self.observer=observer
+        self.d_u1_rules=False  # U4 trial switch; set only from the loaded profile's own digest-bound key
         self.intent=FrozenAIIntent.freeze(config);self.run_id=uuid.uuid4().hex
         self.bridge_factory=bridge_factory;self.sink_factory=sink_factory
         self.lock=threading.Lock();self.stop_event=threading.Event();self.closed=threading.Event()
@@ -136,6 +137,7 @@ class UIReasoningSession:
                 extra['boss_identity']=dict(pet_id=int(boss_id) if boss_id.isdigit() else None,
                     name=getattr(self.config,'normalized_boss_name',None) or None,island=None,level=None,
                     source='PINNED_FARM_TARGET_CONFIG')
+                if self.d_u1_rules is True:extra['d_u1_rules']=True
             bridge=factory(enabled=True,authority=self.authority,
                 verified_build_sha256=self.authority.game_build_sha256,diagnostics=self.sink,
                 run_id=combat_run_id,warm_worker=True,decision_budget=True,**extra)
@@ -244,6 +246,17 @@ class UIReasoningSession:
             self.closed.set()
 
 
+def _profile_trial_rules(paths,authority):
+    """U4 trial: the loaded common profile's `d_u1_rules`, bound to the authority digest; else off."""
+    from .reasoning_common_native import CommonNativeAuthority,profile_path
+    from .reasoning_snapshot import digest,strict_json_loads
+    if type(authority) is not CommonNativeAuthority:return False
+    try:
+        data=strict_json_loads(profile_path(paths).read_text('utf-8'))
+        return data.get('d_u1_rules') is True and digest(data)==authority.calibration_sha256
+    except Exception:return False
+
+
 def create_ui_reasoning_session(config,*,paths,game_executable,directory,observer,profile_loader=None):
     if not config.ai.reasoning_enabled:return None
     from .reasoning_ui_scope import ui_reasoning_intent_reason
@@ -255,7 +268,9 @@ def create_ui_reasoning_session(config,*,paths,game_executable,directory,observe
             return GalaxyReasoningSession(config,directory=directory,observer=observer)
         from .reasoning_ui_profile import load_session_authority
         authority=(profile_loader or load_session_authority)(config,paths=paths,game_executable=game_executable)
-        return UIReasoningSession(config,authority,directory=directory,observer=observer)
+        session=UIReasoningSession(config,authority,directory=directory,observer=observer)
+        session.d_u1_rules=_profile_trial_rules(paths,authority)
+        return session
     except Exception as exc:
         reason=str(exc) if str(exc).startswith('UI_REASONING_') else 'UI_REASONING_PROFILE_'+type(exc).__name__
         try:observer(AIStatus('UNSUPPORTED' if isinstance(exc,(ValueError,FileNotFoundError)) else 'DEGRADED',reason[:160]),'AI_STATUS')

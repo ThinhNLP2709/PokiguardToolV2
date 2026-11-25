@@ -59,7 +59,7 @@ def prepare_control(preferences,output,*,game,boss_id,boss_name,prior_basic_fall
     return result
 
 
-def prepare_reasoning_run(export,qualification,output,*,attempt_cap,operator_authorization):
+def prepare_reasoning_run(export,qualification,output,*,attempt_cap,operator_authorization,d_u1_rules=False):
     """The explicit new run limit is independent of the measured BASIC cap."""
     require(type(attempt_cap) is int and 1<=attempt_cap<=5,'explicit reasoning attempt cap 1..5 required')
     require(type(operator_authorization) is str and bool(operator_authorization.strip()),'operator authorization required')
@@ -69,6 +69,7 @@ def prepare_reasoning_run(export,qualification,output,*,attempt_cap,operator_aut
     require(data['source_sha256']==source_fingerprint(ROOT),'fresh native control and qualification required')
     data.update(max_attempts=attempt_cap,operator_authorization=operator_authorization,
         attempt_limit_scope='NEW_OPERATOR_REQUEST_NOT_OLD_CONTROL_CLAIM',live_acceptance=False)
+    if d_u1_rules is True:data['d_u1_rules']=True  # U4 trial: D-U1 rules for this run only
     path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     from pokiguard_v2.reasoning_common_native import review_bundle
     components,samples=review_bundle(output,data)

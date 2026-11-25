@@ -175,7 +175,7 @@ def boss_identity_fact(value):
 
 def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geometry=AUTO_GEOMETRY,
                   conversion=None,operator_demon_rage_discount=AUTO_DISCOUNT,demon_damage_model=None,
-                  boss_identity=None):
+                  boss_identity=None,d_u1_rules=False):
     state,config,baseline,cap,history,owner,pass_owner=value
     require(type(observed_ns) is int and type(read_end_ns) is int and 0<=observed_ns<=read_end_ns,
         'invalid observation interval')
@@ -224,6 +224,8 @@ def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geomet
         provenance='EXISTING_STATE_AND_OWNER_PACKET_ONLY_NO_EXTRA_READ')
     if seal_type is not None:
         facts['mega_seal_type'] = seal_type
+    if d_u1_rules is True:
+        facts['d_u1_rules'] = True  # absent when off: old facts and snapshot ids stay identical
     board=tuple(tuple((c.gem.value,c.multiplier) for c in row) for row in state.board.cells)
     intent=CommonIntent(config.play_style.value,FrozenJSON.of(jsonable(config)),
         FrozenJSON.of(dict(engine=VERSION)),FrozenJSON.of(dict(kind='COMMON_STRUCTURAL_MODEL_NOT_DAMAGE_AUTHORITY')))
