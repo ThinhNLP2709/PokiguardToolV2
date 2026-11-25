@@ -424,6 +424,12 @@ class DesktopIsolationTests(unittest.TestCase):
         for name, expected in skill['added_files'].items():
             self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
         u2 = p.load_json(root / 'tests/fixtures/compatibility/u2_evidence_20261124.json')
+        u4 = p.load_json(root / 'tests/fixtures/compatibility/u4_core_20261125.json')
+        self.assertEqual('pokiguard.compatibility.u4-core.v1', u4['schema'])
+        self.assertFalse(u4['runtime_profile_authority'] or u4['read_policy_changed'] or u4['input_policy_changed']
+            or u4['default_decision_changed'] or u4['rules_flag_default'])
+        for name, expected in u4['added_files'].items():
+            self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
         self.assertEqual('pokiguard.compatibility.u2-evidence.v1', u2['schema'])
         self.assertFalse(u2['runtime_profile_authority'] or u2['read_policy_changed'] or u2['input_policy_changed']
             or u2['gameplay_decision_changed'])
@@ -462,6 +468,11 @@ class DesktopIsolationTests(unittest.TestCase):
                 expected = record['after_sha256']
             if name in u2['reviewed_files']:
                 record = u2['reviewed_files'][name]
+                self.assertEqual(expected, record['before_sha256'], name)
+                self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
+                expected = record['after_sha256']
+            if name in u4['reviewed_files']:
+                record = u4['reviewed_files'][name]
                 self.assertEqual(expected, record['before_sha256'], name)
                 self.assertNotEqual(record['before_sha256'], record['after_sha256'], name)
                 expected = record['after_sha256']

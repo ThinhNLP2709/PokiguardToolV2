@@ -42,6 +42,7 @@ class CommonLimits:
     scenarios:int=32
     nodes:int=18000
     lookahead:bool=True
+    rules:bool=False
 
     def __post_init__(self):
         require(type(self.duration_ms) in (int,float) and math.isfinite(self.duration_ms)
@@ -50,6 +51,7 @@ class CommonLimits:
             and 1<=self.scenarios<=32 and type(self.nodes) is int and 1<=self.nodes<=50000,
             'bounded common work required')
         require(type(self.lookahead) is bool,'explicit lookahead flag required')
+        require(type(self.rules) is bool,'explicit D-U1 rule flag required')
 
 
 class Exhausted(Exception):pass
@@ -468,16 +470,58 @@ def _score(problem,step,features,weights,details,*,followup=None):
             'BOUNDED','COMMON_CONDITIONAL_MODEL_UTILITY'),1,FrozenJSON.of(details))
 
 
+# D-U1 (user 24/11/2026), OFF by default. Demon stays on its checkpoint: no rule layer there.
+RULE_PROFILES=('simple','careful','dinosaur','mega_icarus_spam_skill','galaxy')
+RAGE_LOCK_PROFILES=('mega_icarus_spam_skill','galaxy')
+PROTECTION_THRESHOLDS=dict(none=None,hp_below_30=.30,hp_below_10=.10)
+
+
+def _protection_allowed(problem,facts):
+    """K7: protect only when the Tự bảo vệ setting is on and HP is below its threshold."""
+    setting=problem.intent.settings.plain().get('mega_self_protection')
+    if setting not in PROTECTION_THRESHOLDS:return True
+    own=facts.get('self') if type(facts.get('self')) is dict else {}
+    hp,cap=own.get('hp'),own.get('max_hp')
+    threshold=PROTECTION_THRESHOLDS[setting]
+    return threshold is not None and type(hp) is int and type(cap) is int and cap>0 and hp/cap<threshold
+
+
+def _rule_blocked(problem,facts,rows):
+    """K4 and K6 filters over completed root rows; the BASIC incumbent is never blocked."""
+    profile=problem.intent.profile
+    if profile not in RULE_PROFILES:return frozenset(),{}
+    own=facts.get('self') if type(facts.get('self')) is dict else {}
+    rage,cap=own.get('rage'),own.get('max_rage')
+    per=facts.get('conversion',{}).get('rage') if type(facts.get('conversion')) is dict else None
+    per=per if type(per) in (int,float) and per>0 else 20
+    base=next((r for r in rows if r[0].baseline_member),None)
+    base_left=None if base is None else base[2]
+    swaps=[r for r in rows if r[1].action.family=='swap']
+    safe_left=[r[2] for r in swaps if effective(r[1].resources,'sword')<=0]
+    exception=(type(rage) is int and type(cap) is int and rage>=cap
+        and (not safe_left or min(safe_left)>6 or _protection_allowed(problem,facts)))
+    blocked=set();why={}
+    for score,step,left in rows:
+        if score.baseline_member or step.action.family!='swap':continue
+        sword=effective(step.resources,'sword')
+        if (profile in RAGE_LOCK_PROFILES and sword>0 and type(rage) is int and not exception
+                and rage+per*effective(step.resources,'rage')>=100):
+            blocked.add(step.action);why['K6']=why.get('K6',0)+1
+        elif base_left is not None and left>base_left:
+            blocked.add(step.action);why['K4']=why.get('K4',0)+1
+    return frozenset(blocked),why
+
+
 def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cancelled=lambda:False,deadline_ns=None):
     require(type(problem) is CommonProblem,'immutable common problem required')
-    work=Work(limits,clock,cancelled,deadline_ns);steps=[];scored=[];excluded=[];stage='ROOT'
+    work=Work(limits,clock,cancelled,deadline_ns);steps=[];scored=[];excluded=[];stage='ROOT';rule_diag={}
     def finish(reason,chosen=None,diag=None):
         ordered=tuple(sorted(scored,key=lambda c:order_key(c,problem.intent.profile)))
         return CommonDecision(problem.snapshot_id,problem.intent.config_hash,problem.baseline,
             'PROPOSE_OFFLINE' if chosen is not None else 'RETAIN_BASELINE',reason,chosen,ordered,
             FrozenJSON.of(dict(version=VERSION,stage=stage,nodes=work.nodes,adjacent_pairs=112,
                 legal_swaps=sum(s.action.family=='swap' for s in steps),excluded_actions=excluded,
-                input_authority=False,global_optimum_claim=False,**(diag or {}))))
+                input_authority=False,global_optimum_claim=False,**(diag or {}),**rule_diag)))
     facts=problem.facts.plain()
     if facts.get('root_allowed') is not True or facts.get('pending') is True:
         return finish('COMMON_EXISTING_OWNER_OR_PENDING')
@@ -486,7 +530,11 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
     if problem.baseline.family not in ('swap','pet_skill','cast','pass'):
         return finish('COMMON_BASELINE_EXISTING_ACTION_OWNER')
     grid=tuple(tuple(SimulatedCell(GemType(g),m) for g,m in row) for row in problem.board)
-    root_scores=[]
+    root_scores=[];lefts=[]
+    # D-U1: K4/K6 filter proposed SWAPs for any incumbent. K7 re-scoring applies only against a SWAP
+    # incumbent, so skill/cast/PASS timing stays with the BASIC owner (U6).
+    rules=limits.rules and problem.intent.profile in RULE_PROFILES
+    rescore=rules and problem.baseline.family=='swap'
     try:
         for move in _candidate_swaps():
             step=_root_step(problem,grid,move,work)
@@ -501,12 +549,18 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
                 facts.get('boss_policy')=='USER_CONDITIONAL_MAX_EFFECTIVE_SWORD')
             refill=(None if step.unresolved_residual else _refill_sword_hazard(step.after,work))
             features,weights,details=_features(problem,step,replies,maximum,refill)
+            if rescore and not _protection_allowed(problem,facts):
+                features=dict(features,P=0.)
             score=_score(problem,step,features,weights,details)
             root_scores.append((score,step,nominal,features,weights,details,replies))
+            lefts.append((score,step,maximum))
         scored[:]=[r[0] for r in root_scores]
         stage='ONE_STEP_COMPLETE'
+        blocked,why=_rule_blocked(problem,facts,lefts) if rules else (frozenset(),{})
+        if limits.rules:rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
         def choose():
-            ordered=sorted(scored,key=lambda c:order_key(c,problem.intent.profile))
+            ordered=[c for c in sorted(scored,key=lambda c:order_key(c,problem.intent.profile))
+                if c.baseline_member or c.action not in blocked]
             base=next(c for c in ordered if c.baseline_member)
             best=ordered[0]
             return best.action if not best.baseline_member and best.utility.low-base.utility.high>=.05 else None
