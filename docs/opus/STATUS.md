@@ -6,7 +6,7 @@ Con trỏ tiến độ của [plan canonical](opus-reasoning-upgrade-plan.md).
 |---|---|
 | Plan canonical | Đã chốt và push (`5c887b77`, 23/11/2026) |
 | Phase hiện tại | **U1 hoàn tất phần offline (24/11/2026); D-U1 đã chốt đủ** |
-| Phase kế tiếp | **U2: phần offline xong** ([báo cáo](reports/U2_report.md)); D-U2 đã chốt; L0 (2 trận BASIC) chờ user chạy |
+| Phase kế tiếp | **U2: phần offline xong** ([báo cáo](reports/U2_report.md)); **U2 xong** (L0 25/11/2026: 2 trận BASIC WIN, đủ trường mới, 0 lỗi); bước kế tiếp chờ user cho phép |
 | Runtime | `src/` không đổi; không live/build/release/commit/push. Fingerprint source `ace28cad…` → `6beb3b40…` vì có tool/test mới |
 
 ## U0 — đã làm
@@ -43,7 +43,7 @@ Báo cáo: [reports/U1_report.md](reports/U1_report.md). Bằng chứng commit �
 ## Câu hỏi còn mở
 
 - **D-U2 đã chốt 24/11/2026** (DECISIONS): chạy L0, không đọc bộ nhớ mới, đảo/level lấy từ log UI có sẵn,
-  ghi quan sát Khiên/Hút vào kiến thức chung, commit U2. Đang chờ user chạy 2 trận L0.
+  ghi quan sát Khiên/Hút vào kiến thức chung, commit U2 (`887d423b`). L0 đã chạy xong 25/11/2026.
 
 - **D-U1 đã chốt đủ 24/11/2026**, nguyên văn ở [DECISIONS.md](../DECISIONS.md). G4 giữ bảo vệ sớm
   khi Galaxy không tiến hóa, hoặc tiến hóa pet thường nhưng chưa thành công.

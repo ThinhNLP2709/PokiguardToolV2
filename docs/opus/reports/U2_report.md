@@ -2,9 +2,9 @@
 
 ```text
 ROADMAP: Opus canonical plan — U2 (sau D-U1 24/11/2026; user chọn phương án (a) cho file ghim)
-RESULT: PASS_OFFLINE — phần offline U2 xong; L0 (2 trận BASIC thật) chờ user chạy; dừng ở D-U2
+RESULT: PASS — offline U2 xong; L0 2 trận BASIC thật (25/11/2026) xác nhận các trường mới; U2 dừng ở đây
 EFFICACY VERDICT: NOT_APPLICABLE (chỉ thêm evidence, không đổi quyết định)
-HEAD: a63c89f5 + thay đổi U2 chưa commit
+HEAD: 887d423b (U2, chưa push)
 SOURCE: 3b34d6ba6aae44acbaa29a2ff15b9229ab26fc08fae28c52ed268685bfe67170 (fingerprint sau U2, gồm tool/test mới)
 RUNTIME: chỉ thêm trường log và một fact không được planner đọc; không đọc bộ nhớ mới, không đổi input/ACK/PASS/recovery
 ```
@@ -66,6 +66,25 @@ Kiếm đánh vào trước". Lượng Khiên bị phá và thứ tự xử lý 
    - `dispatcher_combat_outcome.combatOutcome.board_operations`: đủ SWAP/DESTROY/FALL/SPAWN, đúng thứ tự;
    - `player_extras`: key nào xuất hiện cho ta và cho boss, key nào vắng;
    - không có lỗi `INVALID` mới, không thay đổi nước đi/thời gian so với BASIC trước đó.
+
+## 5b. Kết quả L0 (25/11/2026, commit `887d423b`, Trí tuệ Cơ bản)
+
+Biên nhận: [`l0_receipt.json`](../artifacts/u2_20261125/l0_receipt.json) (SHA file combat, run.json).
+
+| Trận | Boss (log UI) | Kết quả | `board_operations` | `player_extras` | Byte lớn nhất | Lỗi |
+|---|---|---|---|---|---|---|
+| `06a03ac7` | Mumu, lv 350, Đảo Liên Minh | WIN | 32/32 CAPTURED, đúng thứ tự (SWAP 32, DESTROY 50, FALL 395, SPAWN 178) | 36/36 CAPTURED | 14 014 | 0 |
+| `49ee2689` | Voltlynx, lv 498, Đảo Sấm Sét (user chọn làm boss mạnh) | WIN | 51 CAPTURED + 2 OMITTED, đúng thứ tự (SWAP 49, DESTROY 84, FALL 745, SPAWN 362) | 60/60 CAPTURED | 21 222 | 0 |
+
+- Phía ta có đủ 15 trường B17 mới ở mọi phản hồi: `level`, `fusionLastAttemptTurn`, `fusionPityFails`,
+  `fusionPityPercent`, `skillCooldownCardId`, `skillCooldownLeft`, `skillStacks`, `skillStackMax`,
+  `skillStackPct`, `skillPhaseNext`, `skillPhaseMax`, `skillPhaseCardId`, `dotDropPct`, `luckyDotTag`,
+  `luckPct`. Tên key JSON trùng tên field. `cardCooldownLeft` luôn vắng.
+- **Boss không nằm trong danh sách người chơi của phản hồi**, nên cooldown/skill của boss không lấy
+  được qua đường này (khớp việc trước đó không thấy Khiên boss trong player context).
+- 2 bản ghi OMITTED đều là phản hồi lượt boss có 134 và 168 thao tác, vượt giới hạn 128; bị bỏ trọn,
+  không cắt dở, evidence khác giữ nguyên.
+- Đảo và level boss có trong log UI (`targetLevel`/`targetIsland`) cho cả hai trận.
 
 ## 6. D-U2 — user đã chốt 24/11/2026
 
