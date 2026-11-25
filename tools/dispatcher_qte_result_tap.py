@@ -303,6 +303,9 @@ class DispatcherTransportTap:
             tuple[str, int, int], tuple[OpeningBoardSnapshot | ServerMessage, CombatOutcomeCapture]
         ] = {}
         self._pending_combat_outcomes: deque[tuple[str, CombatOutcomeCapture]] = deque()
+        # (raw JSON sha256, board attested) of each retained projection, so a later read of the
+        # same immutable response reuses it instead of re-projecting on every provider read.
+        self._outcome_projection_keys: dict[tuple[str, int, int], tuple[str, bool]] = {}
         self._dropped_combat_outcomes = 0
         self._capture_trace = CaptureTrace()
         self._capture_trace_faults = 0
@@ -354,6 +357,7 @@ class DispatcherTransportTap:
                 self._raw_boards.clear()
                 self._transport_boards.clear()
                 self._combat_outcomes.clear()
+                self._outcome_projection_keys.clear()
                 self._pending_combat_outcomes.clear()
                 self._dropped_combat_outcomes = 0
                 try:
@@ -406,6 +410,7 @@ class DispatcherTransportTap:
             self._raw_boards.clear()
             self._transport_boards.clear()
             self._combat_outcomes.clear()
+            self._outcome_projection_keys.clear()
             self._pending_combat_outcomes.clear()
             self._dropped_combat_outcomes = 0
             try:
@@ -1104,12 +1109,20 @@ class DispatcherTransportTap:
                         if not room_for_outcome:
                             self._dropped_combat_outcomes += 1
                     if room_for_outcome:
-                        try:
-                            outcome = project_combat_outcome(raw_envelope, expected_match_id=match_id,
-                                expected_sequence=(snapshot.sequence if snapshot is not None else raw_message.server_sequence),
-                                raw_sha256=raw_fingerprint.hex(), board_attested=snapshot is not None)
-                        except Exception as exc:
-                            outcome = CombatOutcomeCapture('INVALID', 'PROJECTION_' + type(exc).__name__)
+                        projection_key = (raw_fingerprint.hex(), snapshot is not None)
+                        with self._lock:
+                            prior = (self._combat_outcomes.get(outcome_identity)
+                                if self._outcome_projection_keys.get(outcome_identity) == projection_key else None)
+                        if prior is not None:
+                            # Same immutable JSON and attestation: identical capture, no per-read cost.
+                            outcome = prior[1]
+                        else:
+                            try:
+                                outcome = project_combat_outcome(raw_envelope, expected_match_id=match_id,
+                                    expected_sequence=(snapshot.sequence if snapshot is not None else raw_message.server_sequence),
+                                    raw_sha256=raw_fingerprint.hex(), board_attested=snapshot is not None)
+                            except Exception as exc:
+                                outcome = CombatOutcomeCapture('INVALID', 'PROJECTION_' + type(exc).__name__)
                 self._trace_capture(match_id=match_id, raw_envelope=raw_envelope, dto_message=dto_message,
                     raw_sha256=raw_fingerprint.hex(), json_chars=len(raw_json) if raw_json is not None else None,
                     json_read_state=('READ' if raw_json is not None else 'READ_ERROR'
@@ -1121,6 +1134,7 @@ class DispatcherTransportTap:
                 if outcome is not None:
                     with self._lock:
                         self._combat_outcomes[outcome_identity] = (outcome_witness, outcome)
+                        self._outcome_projection_keys[outcome_identity] = projection_key
                         if snapshot is None:
                             if len(self._pending_combat_outcomes) < MAX_RETAINED_CAPTURES:
                                 self._pending_combat_outcomes.append((match_id, outcome))

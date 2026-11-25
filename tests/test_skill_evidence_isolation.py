@@ -59,6 +59,7 @@ def ast_hash(tree):
 class SkillDiagnosticIsolationTests(unittest.TestCase):
     def test_erasing_only_reviewed_diagnostics_restores_exact_controller_and_tap_ast(self):
         data = json.loads(FIXTURE.read_text(encoding='utf-8'))
+        u4 = json.loads((ROOT / 'tests/fixtures/compatibility/u4_core_20261125.json').read_text(encoding='utf-8'))
         self.assertFalse(data['runtime_profile_authority'])
         self.assertFalse(data['native_acceptance'])
         for name, record in data['reviewed_files'].items():
@@ -66,7 +67,13 @@ class SkillDiagnosticIsolationTests(unittest.TestCase):
             strip = RemoveSkillDiagnostics()
             restored = strip.visit(copy.deepcopy(tree))
             self.assertEqual(record['erased_node_counts'], strip.counts, name)
-            self.assertEqual(record['baseline_ast_sha256'], ast_hash(restored), name)
+            expected = record['baseline_ast_sha256']
+            later = u4['reviewed_files'].get(name, {})
+            if 'skill_isolation_baseline_ast_sha256' in later:
+                # A later reviewed change starts from this pinned baseline and records the next one.
+                self.assertEqual(expected, later['skill_isolation_previous_ast_sha256'], name)
+                expected = later['skill_isolation_baseline_ast_sha256']
+            self.assertEqual(expected, ast_hash(restored), name)
 
     def test_helpers_are_in_pet_skill_branch_and_export_follows_result(self):
         tree = ast.parse((ROOT/'tools/basic_auto_bot.py').read_text(encoding='utf-8-sig'))
