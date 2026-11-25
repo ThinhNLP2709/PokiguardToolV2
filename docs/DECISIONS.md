@@ -19,8 +19,11 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
   Nộ; khi boss đã nhiều Mana sau một lần skill, Hút ra Nộ vẫn có thể làm boss không đủ ra skill,
   nên boss đang trên ngưỡng **không** mặc định Hút vô ích. Thiếu dữ kiện → UNKNOWN; không tự gán
   xác suất. Luật Hút của BASIC (boss Mana>160 và Nộ>100) giữ nguyên.
-- **Giả thuyết chưa xác minh:** boss đang có Khiên thì Hút có thể không lấy được tài nguyên
-  (người dùng không chắc). UI có icon Khiên; chỉ dùng giả thuyết này sau khi dữ liệu xác minh.
+- **Khiên boss và Hút (quan sát U2, user chốt ghi vào kiến thức chung 24/11/2026):** boss còn Khiên
+  thì Hút không lấy được tài nguyên, trừ khi trong cùng nước boss đã bị đánh trước. Đây là kết quả
+  quan sát trên 176 log (0 lần lấy được khi chưa bị đánh trước; 16/16 lần lấy được đều sau đòn vào
+  boss), chưa phải công thức; lượng Khiên bị phá và thứ tự xử lý vẫn UNKNOWN. Xem
+  [báo cáo U2](opus/reports/U2_report.md).
 - **Kết liễu (S01):** mô hình chắc chắn kết liễu được thì kết liễu ngay, kể cả khi lối chơi đang
   cấm ăn Kiếm hoặc đang setup. "Chắc" nghĩa là biên dưới sát thương ≥ HP boss hiệu dụng; chưa có
   mô hình sát thương thì không kích hoạt.
@@ -45,6 +48,14 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
   nhận đúng. Giữ nguyên cơ chế kiểm tra sau trận trong code.
 - **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), đọc bộ nhớ mới (D-U2), văn bản đồng ý gửi dữ
   liệu (D-U3), S02 dùng sát thương quan sát trong trận.
+
+### D-U2 — thu dữ liệu v2 (người dùng chốt 24/11/2026)
+
+- Cho chạy L0: tối đa 2 trận BASIC, một boss thường và một boss từ Đảo Cổ Đại trở đi.
+- Không đọc thêm bộ nhớ game; chỉ dùng dữ liệu đang đọc sẵn.
+- Đảo và level boss: log UI đã ghi sẵn `targetLevel`/`targetIsland` từ lần đọc ở sảnh, nên không sửa
+  thêm file ghim; phân tích offline ghép theo log UI.
+- Ghi quan sát Khiên boss và Hút vào kiến thức chung (mục trên).
 
 ### D-U1 — gate, KPI và ngân sách (người dùng chốt 24/11/2026)
 

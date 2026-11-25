@@ -21,6 +21,20 @@ chung của bộ Suy luận, áp dụng qua `boss_threat.py`, không là đặc 
 - Snapshot hiện tại chưa có định danh đảo/kỹ năng/cooldown của boss. Không
   đoán boss đang ở đảo nào từ HP, cấp hoặc tên. `current_boss_scope=UNKNOWN`.
 
+## Khiên boss và Hút (quan sát U2, 24/11/2026)
+
+Boss còn Khiên thì Hút không lấy được tài nguyên, trừ khi trong cùng nước boss đã bị đánh trước
+(`tools/u2_steal_shield_check.py`, 176 log, 492 nước SWAP). Khiên trước nước lấy từ
+`policy_decision.boss.shield`; Hút lấy theo `destroyed_by_tag['trang Dot']`.
+
+| Khiên boss trước nước | Ăn Hút, có STEAL | Ăn Hút, không STEAL |
+|---|---:|---:|
+| 0 | 148 | 14 |
+| > 0 | 16 (cả 16 sau đòn DAMAGE/BLOCK vào boss trong cùng nước) | 26 |
+
+Đây là kết quả quan sát, chưa phải công thức: lượng Khiên bị phá, thứ tự xử lý và 14 ca không STEAL
+khi boss không có Khiên vẫn UNKNOWN.
+
 ## Cách dùng trong code
 
 `assess_boss_threat()` nhận các field đã được provider công bố, không đọc thêm

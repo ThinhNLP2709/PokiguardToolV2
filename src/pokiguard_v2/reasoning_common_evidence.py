@@ -162,8 +162,20 @@ def _stats(actor):
         ('rage','power'),('max_rage','max_power'),('shield','shield'),('attack','attack'))}
 
 
+def boss_identity_fact(value):
+    """Pinned run target only; never inferred from HP, level or name. Planner does not read it."""
+    unknown=dict(pet_id=None,name=None,island=None,level=None,source='UNKNOWN_NOT_PROVIDED')
+    if type(value) is not dict or set(value)!=set(unknown):return unknown
+    ok=(value['pet_id'] is None or type(value['pet_id']) is int and value['pet_id']>0)
+    ok=ok and (value['level'] is None or type(value['level']) is int and 0<value['level']<100000)
+    ok=ok and all(value[k] is None or type(value[k]) is str and 0<len(value[k])<=64 for k in ('name','island'))
+    ok=ok and type(value['source']) is str and 0<len(value['source'])<=64
+    return dict(value) if ok else unknown
+
+
 def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geometry=AUTO_GEOMETRY,
-                  conversion=None,operator_demon_rage_discount=AUTO_DISCOUNT,demon_damage_model=None):
+                  conversion=None,operator_demon_rage_discount=AUTO_DISCOUNT,demon_damage_model=None,
+                  boss_identity=None):
     state,config,baseline,cap,history,owner,pass_owner=value
     require(type(observed_ns) is int and type(read_end_ns) is int and 0<=observed_ns<=read_end_ns,
         'invalid observation interval')
@@ -208,6 +220,7 @@ def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geomet
         raw_remaining_seconds=state.battle.turn_time_remaining_seconds,timer_source=state.battle.turn_timer_source,
         account_sha256=None if state.battle.local_username is None else hashlib.sha256(
             state.battle.local_username.casefold().encode()).hexdigest(),
+        boss_identity=boss_identity_fact(boss_identity),
         provenance='EXISTING_STATE_AND_OWNER_PACKET_ONLY_NO_EXTRA_READ')
     if seal_type is not None:
         facts['mega_seal_type'] = seal_type

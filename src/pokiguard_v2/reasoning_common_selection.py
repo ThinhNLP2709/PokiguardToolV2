@@ -76,7 +76,7 @@ class CommonAdmission:
             and 0<self.max_read_span_ms<=1000 and type(self.budget_ms) in (int,float)
             and math.isfinite(self.budget_ms) and 0<self.budget_ms<=6000,'bounded observation/budget required')
         model=self.models.plain()
-        require(type(model) is dict and set(model)<=set(('demon_geometry','conversion','operator_demon_rage_discount','demon_damage_model')),
+        require(type(model) is dict and set(model)<=set(('demon_geometry','conversion','operator_demon_rage_discount','demon_damage_model','boss_identity')),
             'unknown model setting')
         require(model.get('demon_geometry') in (None,'USER_DECLARED_PERPENDICULAR'),'unknown Demon effect')
         conversion=model.get('conversion',{})
@@ -452,14 +452,16 @@ def await_common_safely(adapter,*args,**kwargs):
 
 
 def create_common_native_bridge(*,enabled=False,authority=None,verified_build_sha256=None,
-        diagnostics=None,run_id=None,warm_worker=True,decision_budget=True):
+        diagnostics=None,run_id=None,warm_worker=True,decision_budget=True,boss_identity=None):
     if enabled is not True:return None
     from .reasoning_common_native import CommonNativeAuthority,CONTEXT as NATIVE_CONTEXT
     require(type(authority) is CommonNativeAuthority and verified_build_sha256==authority.game_build_sha256
         and warm_worker is True and decision_budget is True,'verified shared native context required')
     # PASS sends no input. Keep the full measured BASIC fallback reserve; its
     # existing server proof/first-turn/third-pass guards still own eligibility.
-    admission=CommonAdmission(authority.policy_json,FrozenJSON.of({'swap':authority.reserve_ms,'pass':authority.reserve_ms}),FrozenJSON.of({}),
+    # U2 evidence only: the pinned run target joins facts; empty models keep the old identity.
+    models={} if boss_identity is None else dict(boss_identity=boss_identity)
+    admission=CommonAdmission(authority.policy_json,FrozenJSON.of({'swap':authority.reserve_ms,'pass':authority.reserve_ms}),FrozenJSON.of(models),
         max_read_span_ms=authority.max_read_span_ms,budget_ms=authority.budget_ms,
         context=NATIVE_CONTEXT,native_authority=authority)
     return create_common_bridge(enabled=True,admission=admission,diagnostics=diagnostics,run_id=run_id)

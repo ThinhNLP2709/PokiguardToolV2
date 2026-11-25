@@ -6,7 +6,7 @@ Con trỏ tiến độ của [plan canonical](opus-reasoning-upgrade-plan.md).
 |---|---|
 | Plan canonical | Đã chốt và push (`5c887b77`, 23/11/2026) |
 | Phase hiện tại | **U1 hoàn tất phần offline (24/11/2026); D-U1 đã chốt đủ** |
-| Phase kế tiếp | U2 — thu dữ liệu v2 (chỉ evidence), chỉ bắt đầu khi user cho phép |
+| Phase kế tiếp | **U2: phần offline xong** ([báo cáo](reports/U2_report.md)); D-U2 đã chốt; L0 (2 trận BASIC) chờ user chạy |
 | Runtime | `src/` không đổi; không live/build/release/commit/push. Fingerprint source `ace28cad…` → `6beb3b40…` vì có tool/test mới |
 
 ## U0 — đã làm
@@ -31,7 +31,19 @@ Báo cáo: [reports/U1_report.md](reports/U1_report.md). Bằng chứng commit �
 - Tool [`tools/reasoning_u1_bench.py`](../../tools/reasoning_u1_bench.py), test
   `tests/test_reasoning_u1_bench.py` (đã thêm vào `scripts/ci_offline.py`). ci_offline 624/624 PASS.
 
+## U2 — đã làm (offline, chưa commit)
+
+- Thêm `board_operations` (SWAP/DESTROY/FALL/SPAWN theo thứ tự server) và `player_extras` (trường B17
+  mới) vào `combatOutcome`; định danh boss (petId + tên đã pin) vào facts. 4 file ghim có bản ghi review
+  `tests/fixtures/compatibility/u2_evidence_20261124.json` (user chọn phương án (a)).
+- ci_offline 632/632; K2 giữ nguyên digest U1 `f35e6991…` (0 case lệch); không đọc bộ nhớ mới.
+- Hút khi boss có Khiên: 0 lần lấy được nếu boss chưa bị đánh trước trong cùng nước; 16/16 lần lấy được
+  đều sau một đòn vào boss (`tools/u2_steal_shield_check.py`).
+
 ## Câu hỏi còn mở
+
+- **D-U2 đã chốt 24/11/2026** (DECISIONS): chạy L0, không đọc bộ nhớ mới, đảo/level lấy từ log UI có sẵn,
+  ghi quan sát Khiên/Hút vào kiến thức chung, commit U2. Đang chờ user chạy 2 trận L0.
 
 - **D-U1 đã chốt đủ 24/11/2026**, nguyên văn ở [DECISIONS.md](../DECISIONS.md). G4 giữ bảo vệ sớm
   khi Galaxy không tiến hóa, hoặc tiến hóa pet thường nhưng chưa thành công.

@@ -130,9 +130,15 @@ class UIReasoningSession:
             factory=self.bridge_factory or (create_common_native_bridge
                 if type(self.authority) is CommonNativeAuthority else create_pilot_bridge)
             combat_run_id=f'{self.run_id}:{self.serial+1}'
+            extra={}
+            if factory is create_common_native_bridge:
+                boss_id=str(getattr(self.config,'normalized_boss_id',None) or '')
+                extra['boss_identity']=dict(pet_id=int(boss_id) if boss_id.isdigit() else None,
+                    name=getattr(self.config,'normalized_boss_name',None) or None,island=None,level=None,
+                    source='PINNED_FARM_TARGET_CONFIG')
             bridge=factory(enabled=True,authority=self.authority,
                 verified_build_sha256=self.authority.game_build_sha256,diagnostics=self.sink,
-                run_id=combat_run_id,warm_worker=True,decision_budget=True)
+                run_id=combat_run_id,warm_worker=True,decision_budget=True,**extra)
             if bridge is None:
                 self._publish('DEGRADED','UI_REASONING_WORKER_UNAVAILABLE');return {}
             collector=SwapTimingCollector(sink=bridge.timing_diagnostics,run_id=combat_run_id,

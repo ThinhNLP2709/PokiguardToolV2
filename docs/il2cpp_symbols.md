@@ -1,5 +1,35 @@
 # IL2CPP symbols — Phase 1
 
+## 24/11/2026 — U2: B17 DTO keys projected from already-read JSON (offline)
+
+Nguồn: `reverse/reverse_1.7.4-b17/dump.cs`, `MatchPlayerSnapshotDTO` (TypeDefIndex 631). U2 chỉ
+chiếu các key này từ JSON phản hồi đã đọc (`response_player_extras.py`); không đọc offset nào bằng
+RPM. Offset chỉ ghi để đối chiếu reverse; ý nghĩa gameplay vẫn UNKNOWN cho tới khi có bằng chứng
+native.
+
+| Field | Kiểu | Offset |
+|---|---|---|
+| `level` | int | +0x8C |
+| `fusionLastAttemptTurn` | int | +0xDC |
+| `fusionPityFails` / `fusionPityPercent` | int / int | +0x128 / +0x12C |
+| `skillCooldownCardId` / `skillCooldownLeft` | int / int | +0x140 / +0x144 |
+| `cardCooldownLeft` | `Dictionary<int,int>` | +0x148 |
+| `skillStacks` / `skillStackMax` / `skillStackPct` | int / int / int | +0x150 / +0x154 / +0x158 |
+| `skillPhaseNext` / `skillPhaseMax` / `skillPhaseCardId` | int / int / int | +0x15C / +0x17C / +0x180 |
+| `dotDropPct` | `int[]` | +0x1B8 |
+| `luckyDotTag` | string | +0x1C0 |
+| `luckPct` | int | +0x1C8 |
+
+JSON key được giả định trùng tên field như các key player context đã quan sát (`hpMax`, `petId`…).
+Trận L0 phải xác nhận key nào thật sự xuất hiện; key vắng được ghi là vắng, không phải 0.
+
+`MatchOpDTO` (TypeDefIndex 632) theo `research/spawn/spawn_static_analysis.md`: `SPAWN.data` có
+`col`, `row`, `tag`, tùy chọn `multiplier` (client mặc định `max(1, …)`); `FALL.data` có `col`,
+`fromRow`, `toRow`; `DESTROY.data.positions` là `[col,row]`. U2 ghi theo đúng thứ tự server
+(`board_operation_context.py`), không điền mặc định của client. Tag là tên prefab (`vang`, `xanhduong`,
+`do`, `tim`, `xanh`, `trang` + ` Dot`); ánh xạ sang GemType dùng `live_state.TAG_TO_GEM` khi phân tích
+offline.
+
 ## 21/11/2026 — B17 same-response context observed natively
 
 On unchanged source c50977f8, BASIC1 + REASONING1 retain30 contexts from

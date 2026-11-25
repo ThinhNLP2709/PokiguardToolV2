@@ -27,6 +27,8 @@ class CombatOutcomeCapture:
     response_identity_json: str | None = None
     player_context_json: str | None = None
     damage_operations_json: str | None = None
+    board_operations_json: str | None = None
+    player_extras_json: str | None = None
 
     def to_dict(self):
         record = dict(schema=SCHEMA, status=self.status, reason=self.reason,
@@ -40,6 +42,10 @@ class CombatOutcomeCapture:
             record['player_context'] = json.loads(self.player_context_json)
         if self.damage_operations_json is not None:
             record['damage_operations'] = json.loads(self.damage_operations_json)
+        if self.board_operations_json is not None:
+            record['board_operations'] = json.loads(self.board_operations_json)
+        if self.player_extras_json is not None:
+            record['player_extras'] = json.loads(self.player_extras_json)
         return record
 
 
@@ -334,9 +340,9 @@ def _project_outcome_with_players(envelope: Any, *, expected_match_id: str,
         return capture
 
 
-def project_combat_outcome(envelope: Any, *, expected_match_id: str,
-                           expected_sequence: int, raw_sha256: str,
-                           board_attested: bool = True) -> CombatOutcomeCapture:
+def _project_with_damage(envelope: Any, *, expected_match_id: str,
+                         expected_sequence: int, raw_sha256: str,
+                         board_attested: bool = True) -> CombatOutcomeCapture:
     """Optional crit/HP-op metadata never evicts old effects or player context."""
     capture = _project_outcome_with_players(envelope, expected_match_id=expected_match_id,
         expected_sequence=expected_sequence, raw_sha256=raw_sha256, board_attested=board_attested)
@@ -367,6 +373,37 @@ def project_combat_outcome(envelope: Any, *, expected_match_id: str,
             if size+len(raw.encode())<=MAX_CAPTURE_BYTES:
                 return replace(capture,damage_operations_json=raw)
         return capture
+
+
+def _attached_bytes(capture):
+    return sum(len((v or '').encode()) for v in (capture.payload_json, capture.player_context_json,
+        capture.damage_operations_json, capture.board_operations_json, capture.player_extras_json))
+
+
+def project_combat_outcome(envelope: Any, *, expected_match_id: str,
+                           expected_sequence: int, raw_sha256: str,
+                           board_attested: bool = True) -> CombatOutcomeCapture:
+    """U2 board/player extras are last and optional: never evict prior evidence."""
+    capture = _project_with_damage(envelope, expected_match_id=expected_match_id,
+        expected_sequence=expected_sequence, raw_sha256=raw_sha256, board_attested=board_attested)
+    if capture.status not in ('CAPTURED', 'UNAVAILABLE'): return capture
+    from .board_operation_context import project_board_operations
+    from .response_player_extras import project_player_extras
+    for field, key, project in (('board_operations_json', 'operations', project_board_operations),
+                                ('player_extras_json', 'players', project_player_extras)):
+        try:
+            context = project(envelope, expected_match_id=expected_match_id,
+                expected_sequence=expected_sequence, raw_sha256=raw_sha256)
+            if context is None: continue
+            raw = json.dumps(context, sort_keys=True, ensure_ascii=True, separators=(',', ':'), allow_nan=False)
+            if _attached_bytes(capture) + len(raw.encode()) > MAX_CAPTURE_BYTES:
+                context.update(status='OMITTED', reason='COMBINED_CAPTURE_BYTE_LIMIT', **{key: []})
+                raw = json.dumps(context, sort_keys=True, ensure_ascii=True, separators=(',', ':'), allow_nan=False)
+                if _attached_bytes(capture) + len(raw.encode()) > MAX_CAPTURE_BYTES: continue
+            capture = replace(capture, **{field: raw})
+        except Exception:
+            continue  # Diagnostic-only: evidence is lost, board/effect status and input are unchanged.
+    return capture
 
 
 def observed_effect_totals(record):

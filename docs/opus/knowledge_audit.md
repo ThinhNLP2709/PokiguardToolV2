@@ -17,7 +17,7 @@ một mục đổi trạng thái. Nhãn: **KNOWN** (code/runtime đã kiểm), *
 | Cooldown/stack skill boss | STATIC | `MatchPlayerSnapshotDTO.skillCooldownLeft/skillStacks…` | Chiếu từ JSON, kiểm (U2) |
 | Boss hồi máu | KNOWN (1 mẫu) | Raijin: +18.414.835 HP | Ngưỡng/lượng chung UNKNOWN (U9) |
 | Hút ra Mana hoặc Nộ | KNOWN | B17 `stealType` MANA/POWER | Cách server chọn và lượng UNKNOWN (U9) |
-| Boss có Khiên thì Hút không lấy được | HYPOTHESIS | User 23/11 | Chưa kiểm ở U1; kiểm STEAL khi Khiên boss > 0 ở U2 |
+| Boss có Khiên thì Hút không lấy được | KNOWN (quan sát U2, đã ghi kiến thức chung) | `tools/u2_steal_shield_check.py`: Khiên > 0 và ăn Hút → 0 lần lấy được nếu boss chưa bị đánh trước; 16/16 lần lấy được đều sau đòn vào boss | Lượng Khiên bị phá, thứ tự xử lý UNKNOWN |
 | Hút = theft trong lõi chung | KNOWN | `reasoning_common_tactics._drain_fills` | Denial có/không chưa có (U5) |
 | Refill do server sinh | KNOWN | `research/spawn/spawn_research.md` | Phân phối UNKNOWN; SPAWN chưa thu (U2) |
 | Tỷ lệ rơi viên/may mắn | STATIC | `dotDropPct`, `luckyDotTag`, `luckPct` | Chưa rõ nghĩa (U2) |
