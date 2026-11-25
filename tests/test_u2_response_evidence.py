@@ -42,9 +42,13 @@ class U2ResponseEvidenceTests(unittest.TestCase):
         self.assertEqual(('INVALID', []), (record['status'], record['operations']))
 
     def test_operation_limit_is_omitted_not_truncated(self):
-        many = [dict(type='FALL', data=dict(col=0, fromRow=1, toRow=0))] * 129
-        record = project_board_operations(envelope(many), expected_match_id='M_1', expected_sequence=7, raw_sha256=RAW)
-        self.assertEqual(('OMITTED', []), (record['status'], record['operations']))
+        fall = dict(type='FALL', data=dict(col=0, fromRow=1, toRow=0))
+        big_boss_turn = project_board_operations(envelope([fall] * 168), expected_match_id='M_1',
+            expected_sequence=7, raw_sha256=RAW)
+        self.assertEqual(('CAPTURED', 168), (big_boss_turn['status'], len(big_boss_turn['operations'])))
+        record = project_board_operations(envelope([fall] * 257), expected_match_id='M_1', expected_sequence=7,
+            raw_sha256=RAW)
+        self.assertEqual(('OMITTED', [], 256), (record['status'], record['operations'], record['operation_limit']))
 
     def test_player_extras_list_absent_fields(self):
         players = {'me': dict(hp=10, skillCooldownLeft=2, cardCooldownLeft={'7': 1}, dotDropPct=[10, 20],

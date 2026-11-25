@@ -84,6 +84,8 @@ Biên nhận: [`l0_receipt.json`](../artifacts/u2_20261125/l0_receipt.json) (SHA
   được qua đường này (khớp việc trước đó không thấy Khiên boss trong player context).
 - 2 bản ghi OMITTED đều là phản hồi lượt boss có 134 và 168 thao tác, vượt giới hạn 128; bị bỏ trọn,
   không cắt dở, evidence khác giữ nguyên.
+- Sau L0, user duyệt nâng giới hạn của `board_operations` lên 256 thao tác (vẫn ≤16 KiB, tổng ≤32 KiB)
+  để giữ các lượt boss lớn; giới hạn 128 của evidence cũ giữ nguyên.
 - Đảo và level boss có trong log UI (`targetLevel`/`targetIsland`) cho cả hai trận.
 
 ## 6. D-U2 — user đã chốt 24/11/2026

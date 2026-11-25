@@ -5,10 +5,12 @@ refill forecast, planner input or action authority. Absent keys stay absent;
 the client defaults (col/row 0, multiplier 1) are not replayed. No process I/O.
 """
 import json
-from .combat_outcome_evidence import RESPONSE_TYPES, MAX_OPERATIONS, _integer, _text, actor_identity
+from .combat_outcome_evidence import RESPONSE_TYPES, _integer, _text, actor_identity
 
 SCHEMA = 'pokiguard.board_operation_context.v1'
 MAX_BYTES = 16384
+# L0 25/11/2026: boss turns reached 134/168 operations; keep them, still bounded by bytes.
+MAX_BOARD_OPERATIONS = 256
 KEYS = dict(SWAP=('fromRow', 'fromCol', 'toRow', 'toCol'), FALL=('col', 'fromRow', 'toRow'),
     SPAWN=('col', 'row', 'multiplier'), DESTROY=())
 
@@ -35,9 +37,9 @@ def project_board_operations(envelope, *, expected_match_id, expected_sequence, 
         tag_semantics='RAW_PREFAB_TAG_NOT_GEM_MAPPING', calibration_eligible=False, input_authority=False)
     try:
         if type(ops) is not list: raise ValueError('OPERATION_SHAPE')
-        if len(ops) > MAX_OPERATIONS:
+        if len(ops) > MAX_BOARD_OPERATIONS:
             record.update(status='OMITTED', reason='OPERATION_SCAN_LIMIT', operation_count=len(ops),
-                operation_limit=MAX_OPERATIONS)
+                operation_limit=MAX_BOARD_OPERATIONS)
             return record
         for index, op in enumerate(ops):
             if type(op) is not dict: raise ValueError('OPERATION_OBJECT')
