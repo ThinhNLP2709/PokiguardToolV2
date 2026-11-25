@@ -7,7 +7,7 @@ Con trỏ tiến độ của [plan canonical](opus-reasoning-upgrade-plan.md).
 | Plan canonical | Đã chốt và push (`5c887b77`, 23/11/2026) |
 | Phase hiện tại | **U4 đang làm (offline)**: U4a + U4b xong ([báo cáo U4](reports/U4_report.md)); luật D-U1 sau cờ `CommonLimits.rules`, mặc định tắt; còn U4c |
 | Phase trước | U1 + D-U1 (24/11); U2 + D-U2 + L0 2 trận BASIC ([báo cáo U2](reports/U2_report.md), 25/11) |
-| Runtime | `src/` không đổi; không live/build/release/commit/push. Fingerprint source `ace28cad…` → `6beb3b40…` vì có tool/test mới |
+| Runtime | U2 thêm trường log + fact boss (đã chạy L0); U4b thêm luật D-U1 sau cờ mặc định tắt. Đã commit, chưa push. Fingerprint source đổi theo từng commit; profile Suy luận chế độ source phải chuẩn bị lại trước khi chạy thật |
 
 ## U0 — đã làm
 

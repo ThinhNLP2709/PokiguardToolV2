@@ -35,6 +35,18 @@ RUNTIME MẶC ĐỊNH: không đổi — CommonLimits.rules=False; digest quyế
 
 Nước đổi khi bật luật không được coi là tốt hơn; đây là phép kiểm luật, không phải phép đo hiệu quả.
 
+Gate còn lại khi bật luật (`temp/reasoning/u1_bench_20261124/u4b_gates.py`, 207 bàn không phải Demon,
+mỗi bàn một lần chạy, nên chưa phải phép đo E1 chuẩn 3 lần/bàn):
+
+| Gate | Luật tắt | Luật bật |
+|---|---|---|
+| K5 — nước làm tăng hazard refill so với BASIC | Icarus 1, G1 1 | Icarus 0, G1 1 (không vượt mức U1) |
+| K4 — nước chừa Kiếm cho boss nhiều hơn BASIC | 0 | 0 |
+| K8 — ca REVIEW của lõi chung | 0 | 0 |
+| K9 — thời gian `plan_common` | p50 76,4 / p95 297,6 / max 738,1 ms | p50 79,3 / p95 347,9 / max 780,8 ms (trong E1: p95 ≤ 500, max ≤ 1000) |
+
+K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p99 theo đúng cách đo E1 cũng chưa đo.
+
 ## 3. Còn lại / cần user
 
 - **U4c (offline, làm tiếp):** schema `common_problem.v2` đọc được v1; đưa G4 (`galaxy_shadow_sword`) vào lõi chung
