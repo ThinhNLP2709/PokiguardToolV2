@@ -43,8 +43,59 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
 - **Coop/Bú win:** mục tiêu đội, không đổi thành sống sót của riêng mình; nghiệm thu riêng.
 - **Sau trận:** `POSTMATCH_UI_AMBIGUOUS` không là blocker của plan này; ảnh thua đã được EXE 1.3.7
   nhận đúng. Giữ nguyên cơ chế kiểm tra sau trận trong code.
-- **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), KPI/ngân sách (D-U1), đọc bộ nhớ mới (D-U2),
-  văn bản đồng ý gửi dữ liệu (D-U3).
+- **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), đọc bộ nhớ mới (D-U2), văn bản đồng ý gửi dữ
+  liệu (D-U3), S02 dùng sát thương quan sát trong trận.
+
+### D-U1 — gate, KPI và ngân sách (người dùng chốt 24/11/2026)
+
+Bằng chứng: [báo cáo U1](opus/reports/U1_report.md). Mọi thay đổi lõi Suy luận từ U4 phải chạy lại
+corpus U1 và dữ liệu mới. Không đạt gate thì không đưa lên live, không bật cho lối chơi đó. BASIC
+vẫn là mặc định; không tự nới gate. Các gate dưới đây bổ sung cho phần "settings là tham chiếu" của
+5A.1 ở nhánh Suy luận Opus.
+
+- **K1 Tái lập:** hai process, hai hash seed cho cùng digest.
+- **K2 Tắt tính năng mới:** quyết định từng case trùng mốc U1 (digest `f35e6991…`).
+- **K3 Replay:** chạy lại input thật cùng source ra đúng nước đã gửi.
+- **K4 Kiếm chừa cho boss:** Demon, Chịu đấm ăn xôi và Bú win được phép chừa Kiếm cho boss để đạt
+  mục tiêu lối chơi. Các lối chơi còn lại không được chừa; nếu mọi nước đều chừa thì chừa ít nhất có
+  thể, và không chừa nhiều hơn BASIC trên cùng bàn. Ngoại lệ S01 (kết liễu chắc). Chừa Kiếm cho boss
+  là việc khác với việc ta ăn Kiếm (K6).
+- **K5 Hazard refill 1 ô:** số ca tăng so với BASIC không vượt mức U1, liệt kê từng ca.
+- **K6 Không ăn Kiếm khi Nộ từ 100:** áp cho pet có skill cần Nộ (Galaxy G1/G2/G3, Mega
+  Icarus/T-Rex). Lý do: ăn Kiếm khi Nộ ≥ 100 thì game trừ 100 Nộ cho đòn đánh (`FULL_POWER`, đã thấy
+  trong log U1). Ngưỡng tính cả đúng 100 và cả Nộ chắc chắn ăn được trong cùng nước.
+  - Ngoại lệ: Nộ đầy 250 và bất lợi. Bất lợi là mọi nước không ăn Kiếm đều để boss ăn được trên 6
+    Kiếm hiệu dụng, hoặc máu ta đang dưới ngưỡng Tự bảo vệ đã bật. Nhánh "không ăn thì boss đánh
+    chết" chỉ dùng khi đã có mô hình sát thương. Ăn xong còn 150 Nộ thì gom lại cho skill sau.
+  - Dưới 250 Nộ, K6 đứng trên K4: chọn nước chừa ít Kiếm nhất trong các nước không ăn Kiếm.
+  - S01 đứng trên K6. Nếu mọi nước hợp lệ đều phải ăn Kiếm thì PASS khi game cho phép, không thì đi
+    nước ít hại nhất; không tạo lý do dừng tool mới.
+  - Không áp cho Demon, G4, Đơn giản, Cẩn thận, Khủng long, Bú win. Chịu đấm ăn xôi giữ luật chặt
+    hơn đã duyệt (không ăn Kiếm trước skill đầu ở mọi mức Nộ).
+- **K7 G4 và bảo vệ theo cài đặt:**
+  - G4 giữ schema riêng, không alias thành Galaxy hay Đơn giản. Replay `plan_g4` phải khớp nước đã
+    gửi. Giữ tách ACK với terminal không ACK.
+  - Suy luận chỉ được bảo vệ, và nhờ đó chọn mốc combo thấp hơn BASIC, khi cài đặt Tự bảo vệ cho
+    phép.
+  - Quy tắc bảo vệ này áp cho mọi lối chơi có cài đặt Tự bảo vệ. "Không" thì Suy luận không chọn nước
+    vì mục đích bảo vệ, và S02 tắt. "Dưới 30%"/"dưới 10%" thì chỉ bảo vệ khi máu dưới đúng ngưỡng đó.
+  - Ngoại lệ G4 (user chốt 24/11/2026): G4 được bảo vệ sớm, tức bảo vệ trước ngưỡng khi có cảnh
+    báo boss, trong hai trường hợp:
+    - Galaxy không tiến hóa (`main_pet=galaxy`, `evolution=none`).
+    - Galaxy tiến hóa pet thường (`evolution=normal`) nhưng chưa tiến hóa thành công.
+    - Sau khi tiến hóa thành công, G4 theo đúng quy tắc bảo vệ ở trên.
+- **K8:** số ca "chịu chi phí mà không thấy lợi" không tăng so với U1; mỗi ca có ghi chú rà.
+- **K9:** thời gian nằm trong envelope bên dưới; 0 kết quả dở do hết giờ hoặc hết node trên corpus.
+- **Không phải gate** (chỉ báo cáo theo nhóm): tỷ lệ đổi nước, phân loại đánh đổi, chênh lệch viên,
+  Mana/Nộ thu khi thiếu, Khiên còn, combo, độ phủ Suy luận. WIN và số lượt chỉ là KPI theo nhóm.
+- **Envelope ngân sách:** giữ công thức deadline/reserve và gate read span 100 ms hiện có.
+  - E1: mỗi lần `plan_common` offline trên host tham chiếu có p95 ≤ 500 ms, p99 ≤ 750 ms,
+    max ≤ 1000 ms; giữ cap 18000 node.
+  - E2: khi live, chờ worker p95 ≤ 1500 ms, max ≤ 3000 ms, 0 fallback do DEADLINE.
+  - E3: `plan_g4` p99 ≤ 150 ms.
+  - E4 (tự kiểm trong phiên cho bản đóng gói) để D-U8.
+- Nhánh Suy luận không có độ trễ phản ứng và khoảng ngẫu nhiên giữa hai click: giữ nguyên, rà lại ở
+  U8. Đo máy thứ hai không bắt buộc; khi chưa đo, U8 phải có bước tự kiểm trong phiên.
 
 ## Demon Farm: cơ chế chung cho 5 viên — người dùng chốt 01/11/2026
 

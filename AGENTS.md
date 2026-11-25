@@ -109,3 +109,13 @@ Never hard-code ASLR-dependent absolute runtime addresses.
   Tests should use `tests.reasoning_test_paths.reasoning_temp_root()` as the
   parent of `tempfile.TemporaryDirectory`; keep permanent evidence in docs.
 - Stop at the milestone requested by the user.
+
+## Verification
+
+- Offline gate: `python scripts/ci_offline.py` (624 tests after U1, about 100 s).
+- One test module needs `PYTHONPATH=<repo>;<repo>\src`, e.g.
+  `python -m unittest tests.test_reasoning_u1_bench`.
+- Same-board bench/timing: `python tools/reasoning_u1_bench.py corpus|run|compare|timing|freeze`
+  (see `docs/opus/reports/U1_report.md`).
+- Any added or changed `.py` under `src/`, `tools/` or `tests/` changes the source fingerprint that
+  pins source-mode reasoning profiles; report the new fingerprint.
