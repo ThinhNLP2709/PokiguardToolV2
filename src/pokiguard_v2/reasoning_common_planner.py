@@ -26,6 +26,7 @@ WEIGHTS={
     'demon_aegis_farm':(12,4,6,4,6,0,6,3,0,1),
     'mega_icarus_spam_skill':(10,6,4,5,5,0,7,3,0,1),
     'galaxy':(0,7,4,5,5,0,7,3,0,1),
+    'galaxy_shadow_sword':(0,7,4,5,5,0,7,3,0,1),  # ordering only; G4 tactics choose
     'bu_win':(0,0,0,0,0,10,0,2,0,1),
 }
 
@@ -471,7 +472,7 @@ def _score(problem,step,features,weights,details,*,followup=None):
 
 
 # D-U1 (user 24/11/2026), OFF by default. Demon stays on its checkpoint: no rule layer there.
-RULE_PROFILES=('simple','careful','dinosaur','mega_icarus_spam_skill','galaxy')
+RULE_PROFILES=('simple','careful','dinosaur','mega_icarus_spam_skill','galaxy','galaxy_shadow_sword')
 RAGE_LOCK_PROFILES=('mega_icarus_spam_skill','galaxy')
 PROTECTION_THRESHOLDS=dict(none=None,hp_below_30=.30,hp_below_10=.10)
 
@@ -484,6 +485,35 @@ def _protection_allowed(problem,facts):
     hp,cap=own.get('hp'),own.get('max_hp')
     threshold=PROTECTION_THRESHOLDS[setting]
     return threshold is not None and type(hp) is int and type(cap) is int and cap>0 and hp/cap<threshold
+
+
+def _g4_choice(problem,facts,clock):
+    """U4c: the existing G4 tactics (plan_g4, reasoning mode) over the common problem's facts.
+
+    Reads only the frozen problem. Combo milestones, Sword denial, evolution Mana and protection
+    keep their G4 meaning; the common rule layer still filters the result.
+    """
+    from types import SimpleNamespace
+    from .board_simulator import evaluate_all_moves
+    from .galaxy_shadow_sword import plan_g4
+    from .state import BoardState,CellState
+    def actor(data,boss=False):
+        data=data if type(data) is dict else {}
+        return SimpleNamespace(is_boss=boss,hp=data.get('hp'),max_hp=data.get('max_hp'),mana=data.get('mana'),
+            max_mana=data.get('max_mana'),power=data.get('rage'),max_power=data.get('max_rage'),shield=data.get('shield'))
+    state=SimpleNamespace(player=actor(facts.get('self')),opponents=(actor(facts.get('opponent'),True),))
+    evolution=facts.get('evolution') if type(facts.get('evolution')) is dict else {}
+    evolved=evolution.get('evolved') is True
+    pending=evolution.get('pending') is True
+    board=BoardState(tuple(tuple(CellState(r,c,GemType(g),m) for c,(g,m) in enumerate(row))
+        for r,row in enumerate(problem.board)))
+    plan=plan_g4(state,evaluate_all_moves(board),reasoning=True,budget_ms=150,clock=clock,
+        passive_active=problem.intent.settings.plain().get('main_pet')=='galaxy' or evolved,
+        evolution_pending=pending,evolution_mana_cost=evolution.get('mana_cost') if pending else None,evolved=evolved)
+    diag=dict(g4_step=plan.step,g4_source='PLAN_G4_REASONING_ON_COMMON_FACTS')
+    if plan.selected is None:return None,diag
+    first,second=plan.selected.move.first,plan.selected.move.second
+    return Action.from_dict(dict(family='swap',move=[list(first),list(second)],card_source=None)),diag
 
 
 def _evolution_need(facts):
@@ -608,6 +638,13 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
         if seal_blocked:
             blocked=blocked|seal_blocked;why['D_U4_SEAL']=len(seal_blocked)
         if tiers is not None:rule_diag.update(d_u4='PRE_EVOLUTION_MANA_FIRST')
+        if problem.intent.profile=='galaxy_shadow_sword':
+            chosen,g4=_g4_choice(problem,facts,clock);rule_diag.update(g4)
+            stage='G4_TACTIC_COMPLETE'
+            if (chosen is None or chosen==problem.baseline or chosen in blocked
+                    or not any(c.action==chosen for c in scored)):
+                return finish('COMMON_G4_RETAIN')
+            return finish('COMMON_G4_TACTIC',chosen)
         if limits.rules or facts.get('d_u1_rules') is True:
             rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
         def choose():

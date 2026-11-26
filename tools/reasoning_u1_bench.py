@@ -149,7 +149,7 @@ def skills(cohort, path, data):
 
 
 def g4(cohort, path, data):
-    require('galaxy_shadow_sword' not in PROFILES and data['common_problem_compatible'] is False, 'G4_SCHEMA_SCOPE')
+    require(data['common_problem_compatible'] is False, 'G4_SCHEMA_SCOPE')  # historical G4 logs keep their native schema
     for i, c in enumerate(data['cases']):
         pre, e = c['pre_input'], c['execution']
         require(digest(pre) == c['case_id'] and c['common_schema_supported'] is False

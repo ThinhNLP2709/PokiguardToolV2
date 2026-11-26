@@ -209,6 +209,8 @@ def build_problem(value,*,run_id,generation,observed_ns,read_end_ns,demon_geomet
     fusion=state.fusion
     evolution=dict(pending=bool(config.evolution.value!='none' and fusion is not None and fusion.enabled and not fusion.used),
         mana_cost=None if fusion is None else fusion.mana_cost,source='EXISTING_FUSION_STATE')
+    if config.evolution.value!='none' and fusion is not None and fusion.used is True:
+        evolution['evolved']=True  # absent otherwise: older facts stay identical
     facts=dict(root_allowed=root,pending=False,self=_stats(state.player),opponent=_stats(opponent),
         conversion=rates,resource_requirements=requirements,demon_strategy=strategy,evolution=evolution,
         demon_damage_model=demon_damage_model,damage_session=canonical_json(jsonable(state.battle.session_key)),

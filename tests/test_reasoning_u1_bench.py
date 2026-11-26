@@ -37,7 +37,7 @@ class U1BenchTests(unittest.TestCase):
 
     def test_g4_keeps_own_schema_and_terminal_non_acks(self):
         g4 = self.groups[('G4', 'SWAP_PAIR')]
-        self.assertNotIn('galaxy_shadow_sword', PROFILES)
+        self.assertIn('galaxy_shadow_sword', PROFILES)  # U4c: admitted to the common core; U1 cases stay native
         self.assertTrue(all(c['schema'] == 'G4_NATIVE_V1' and c['profile'] == 'galaxy_shadow_sword' for c in g4))
         self.assertEqual(Counter(ACK=6, TERMINAL_NO_PROTOCOL_ACK=3), Counter(c['native']['execution'] for c in g4))
         for case in g4:
