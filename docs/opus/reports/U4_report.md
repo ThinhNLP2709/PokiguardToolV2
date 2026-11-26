@@ -76,13 +76,13 @@ K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p9
   1 lượt (85) ăn 5 Kiếm ở Nộ 250 để boss hết Kiếm thay vì Hút 6 (boss khi đó có 3250 Khiên).
 - 10 trận trên một boss chỉ cho thấy luật chạy đúng hướng; chưa đủ để nói Suy luận mạnh hơn BASIC.
 
-## 3c. Điểm còn phải rà
+## 3c. Hai điểm rà sau chạy thử (đã xử lý 26/11/2026)
 
-- Công cụ so sánh offline đếm "Kiếm chừa cho boss" khác cách lõi đếm (`_replies` trong planner). Theo cách
-  của công cụ, 2/105 đề xuất của phiên D-U1 chừa nhiều hơn BASIC (ví dụ ván 4 lượt 53: 11 so với 7);
-  theo cách của lõi thì K4 không chặn. Cần thống nhất một thước đo trước khi coi K4 đã nghiệm thu.
-- 5 nước ăn Kiếm ở Nộ ≥ 100 trong phiên D-U1 cần đối chiếu từng nước với ngoại lệ Nộ đầy 250 (> 6 Kiếm
-  hoặc máu dưới ngưỡng). Lượt 85 ván 4 đã đối chiếu: đúng ngoại lệ.
+- **K4:** 2 đề xuất "chừa Kiếm nhiều hơn BASIC" đều là **PASS** (để boss 9 và 11 Kiếm so với 7). Thước đo
+  của lõi và công cụ là một (`_replies`); lỗi là K4 chỉ xét nước SWAP. Đã sửa: K4 xét mọi đề xuất khác
+  BASIC, kể cả PASS (`tests/test_u4_k4_pass.py`). Luật tắt: digest U1 vẫn `f35e6991…`.
+- **K6:** cả 5 nước ăn Kiếm ở Nộ ≥ 100 đều đúng ngoại lệ: Nộ đầy 250 và mọi nước không ăn Kiếm đều để boss
+  ăn được 7–11 Kiếm (> 6).
 
 ## 3. Còn lại / cần user
 
