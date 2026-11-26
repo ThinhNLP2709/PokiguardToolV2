@@ -5,7 +5,8 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/'src')]
-from pokiguard_v2.reasoning_calibration import build_request, SCHEMA, COMMON_MEGA_CONTROL_PROTOCOL, decode_config
+from pokiguard_v2.reasoning_calibration import (build_request, SCHEMA, COMMON_MEGA_CONTROL_PROTOCOL,
+    COMMON_GALAXY_CONTROL_PROTOCOL, decode_config)
 from pokiguard_v2.reasoning_snapshot import canonical_json
 from pokiguard_v2.desktop_preferences import DesktopPreferenceStore
 from pokiguard_v2.basic_policy import Intelligence, PlayStyle
@@ -22,7 +23,8 @@ def write_new(path,data):
 def export(request_path,request_sha,timing_directory,farm_directory):
     if sha(request_path)!=request_sha:raise ValueError('request SHA mismatch')
     request=read_json(request_path);binding=read_json(timing_directory/'session.json')
-    mega_control=request.get('profile_protocol')==COMMON_MEGA_CONTROL_PROTOCOL
+    # U4c: Galaxy/G4 controls share the swap-witness projection (cards/fusion may change mid-match).
+    mega_control=request.get('profile_protocol') in (COMMON_MEGA_CONTROL_PROTOCOL,COMMON_GALAXY_CONTROL_PROTOCOL)
     if request['schema']!=SCHEMA or binding['run_id']!=request['run_id']:
         raise ValueError('request/session mismatch')
     if (Path(binding['farm_directory']).resolve()!=farm_directory.resolve()

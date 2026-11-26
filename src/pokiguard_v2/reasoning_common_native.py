@@ -182,7 +182,7 @@ def review_bundle(directory,data):
         require(event['event_type']=='reasoning.swap_timing' and event['correlation']['run_id']==request['run_id']
             and p==sample['payload'],'UI_REASONING_SAMPLE_CHANGED')
         if not sample['eligible_for_descriptive_R']:continue
-        if protocol==COMMON_MEGA_CONTROL_PROTOCOL:
+        if protocol in (COMMON_MEGA_CONTROL_PROTOCOL,COMMON_GALAXY_CONTROL_PROTOCOL):
             from .reasoning_mega_control import mega_swap_witness_key
             mega_witnesses.add(mega_swap_witness_key(p.get('witness'),config))
         key=(sample['path'],sample['line']);require(key not in seen,'UI_REASONING_DUPLICATE_SAMPLE');seen.add(key)
@@ -219,7 +219,7 @@ def review_bundle(directory,data):
             'UI_REASONING_NATIVE_ACK_UNBOUND')
         H.append((times[3]-times[2])/1e6);I.append((times[-1]-times[3])/1e6)
     require(len(H)>=1 and max(I)>0,'UI_REASONING_NATIVE_TIMING_MISSING')
-    if protocol==COMMON_MEGA_CONTROL_PROTOCOL:
+    if protocol in (COMMON_MEGA_CONTROL_PROTOCOL,COMMON_GALAXY_CONTROL_PROTOCOL):
         require(len(mega_witnesses)==1,'UI_REASONING_MIXED_MEGA_SWAP_WITNESS')
     return dict(controller_tail_ms=max(H),final_input_ms=max(I),selector_extra_ms=max(costs)),len(H)
 
