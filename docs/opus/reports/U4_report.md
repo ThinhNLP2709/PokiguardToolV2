@@ -76,6 +76,14 @@ K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p9
   1 lượt (85) ăn 5 Kiếm ở Nộ 250 để boss hết Kiếm thay vì Hút 6 (boss khi đó có 3250 Khiên).
 - 10 trận trên một boss chỉ cho thấy luật chạy đúng hướng; chưa đủ để nói Suy luận mạnh hơn BASIC.
 
+## 3c. Điểm còn phải rà
+
+- Công cụ so sánh offline đếm "Kiếm chừa cho boss" khác cách lõi đếm (`_replies` trong planner). Theo cách
+  của công cụ, 2/105 đề xuất của phiên D-U1 chừa nhiều hơn BASIC (ví dụ ván 4 lượt 53: 11 so với 7);
+  theo cách của lõi thì K4 không chặn. Cần thống nhất một thước đo trước khi coi K4 đã nghiệm thu.
+- 5 nước ăn Kiếm ở Nộ ≥ 100 trong phiên D-U1 cần đối chiếu từng nước với ngoại lệ Nộ đầy 250 (> 6 Kiếm
+  hoặc máu dưới ngưỡng). Lượt 85 ván 4 đã đối chiếu: đúng ngoại lệ.
+
 ## 3. Còn lại / cần user
 
 - **U4c (offline, làm tiếp):** schema `common_problem.v2` đọc được v1; đưa G4 (`galaxy_shadow_sword`) vào lõi chung
