@@ -1687,6 +1687,15 @@ class DesktopApplication:
         self.farm_runs_clear_button.grid(
             row=1, column=1, sticky=tk.W, padx=(8, 0), pady=(6, 0)
         )
+        # D-U3: zip match logs (account names hashed) and open the owner's Drive folder.
+        self.contribution_export_button = ttk.Button(
+            farm_runs_cell,
+            text="Xuất dữ liệu đóng góp",
+            command=self._export_contribution,
+        )
+        self.contribution_export_button.grid(
+            row=1, column=2, sticky=tk.W, padx=(8, 0), pady=(6, 0)
+        )
         ttk.Label(
             farm_runs_cell,
             textvariable=self.farm_runs_feedback_var,
@@ -2228,6 +2237,33 @@ class DesktopApplication:
 
     def _refresh_farm_runs_usage(self) -> None:
         self._start_farm_runs_operation("scan")
+
+    def _export_contribution(self) -> None:
+        import os
+        import webbrowser
+
+        from .contribution_export import DRIVE_URL, export_contribution
+
+        if self.view_model.control_plane.snapshot().controller.active:
+            self.farm_runs_feedback_var.set("Hãy dừng FarmRunner trước khi xuất dữ liệu.")
+            return
+        if self._farm_runs_root is None or self._farm_runs_busy:
+            return
+        try:
+            target = export_contribution(
+                self._farm_runs_root, self._farm_runs_root.parent / "contribution_exports"
+            )
+        except Exception as exc:
+            self.farm_runs_feedback_var.set(f"Xuất dữ liệu lỗi: {type(exc).__name__}: {exc}"[:200])
+            return
+        self.farm_runs_feedback_var.set(
+            f"Đã xuất {target.name}. Kéo file này vào thư mục Google Drive vừa mở."
+        )
+        for opener in (lambda: os.startfile(target.parent), lambda: webbrowser.open(DRIVE_URL)):
+            try:
+                opener()
+            except Exception:
+                pass
 
     def _confirm_clear_farm_runs(self) -> None:
         from tkinter import messagebox
