@@ -17,6 +17,8 @@ import time
 from typing import Any, Protocol
 
 from .acked_sequences import AckedSequenceSnapshot, read_acked_sequences
+
+_PROFILE_UNSET = object()
 from .combat_cards import (
     ATTACK_ELEMENT_TYPES,
     CARD_UI_BOARD_OFFSET,
@@ -3475,6 +3477,17 @@ class MemoryBoardStateProvider(BoardStateProvider):
             return ()
 
     def poll(self) -> ProviderPoll:
+        # U4 diagnosis of slow observation reads: opt-in, session-only, off by default.
+        profile = self.__dict__.get("_poll_profile", _PROFILE_UNSET)
+        if profile is _PROFILE_UNSET:
+            from .provider_poll_profile import attach_poll_profile
+
+            profile = self._poll_profile = attach_poll_profile(self)
+        if profile is None:
+            return self._poll_impl()
+        return profile.measure(self._poll_impl)
+
+    def _poll_impl(self) -> ProviderPoll:
         self.metrics.polls += 1
         if not self.target.is_running():
             return ProviderPoll(None, False, "process_exited", "process_exited")
@@ -6206,6 +6219,11 @@ class MemoryBoardStateProvider(BoardStateProvider):
             "nativeDotBoardMaxSeconds": round(
                 self.metrics.native_dot_board_max_seconds,
                 6,
+            ),
+            **(
+                {"pollProfile": self.__dict__["_poll_profile"].plain()}
+                if self.__dict__.get("_poll_profile") not in (None, _PROFILE_UNSET)
+                else {}
             ),
             "livePetSkillCardIdentity": tuple(
                 sorted(
