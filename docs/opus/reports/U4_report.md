@@ -84,6 +84,22 @@ K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p9
 - **K6:** cả 5 nước ăn Kiếm ở Nộ ≥ 100 đều đúng ngoại lệ: Nộ đầy 250 và mọi nước không ăn Kiếm đều để boss
   ăn được 7–11 Kiếm (> 6).
 
+## 3d. U4c — G4 và Galaxy lên lõi chung (offline, 26–27/11/2026)
+
+- `reasoning_common_problem.PROFILES` nhận `galaxy_shadow_sword`; planner G4 gọi `plan_g4(reasoning=True)` trên
+  dữ kiện đóng băng (`_g4_choice`), K4 vẫn lọc; dữ kiện có `evolution.evolved` chỉ khi đã tiến hóa.
+- G4 bảo vệ sớm theo đe dọa boss chỉ trước khi tiến hóa thành công (`plan_g4(evolved=...)`); BASIC và G4
+  trước tiến hóa giữ nguyên quyết định và facts (9/9 bàn G4 U1).
+- Giao thức `COMMON_GALAXY_BASIC_SWAP_CONTROL_V1` (`reasoning_galaxy_control.py`), bản chiếu AST + ghim file
+  calibration đã duyệt; export/review dùng chiếu witness như Mega. Chạy thử khô: request G4 tạo đúng,
+  qualification 14/14 gate.
+- Định tuyến: Galaxy/G4 dùng lõi chung chỉ khi `common.json` có `play_style` đúng lối chơi.
+- U3: nút "Xuất dữ liệu đóng góp" (tab Cài đặt, ô farm_runs): zip log JSON, hash tên tài khoản, che đường dẫn
+  home, mở thư mục và link Drive; không tự tải lên. Chạy khô trên log thật: 31 tệp, 4,7 MB.
+- `ci_offline` 662/662; luật tắt: digest U1 `f35e6991…` không đổi.
+- Còn cần live: G4 (boss Argilpus lv170, id 2233) và G1–G3 (Genbu lv161 id 1752 / Argilpus) — mỗi lối chơi
+  1 trận BASIC hiệu chuẩn rồi tối đa 5 trận Suy luận.
+
 ## 3. Còn lại / cần user
 
 - **U4c (offline, làm tiếp):** schema `common_problem.v2` đọc được v1; đưa G4 (`galaxy_shadow_sword`) vào lõi chung

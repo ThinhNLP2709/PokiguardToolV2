@@ -49,6 +49,16 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
 - **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), đọc bộ nhớ mới (D-U2), văn bản đồng ý gửi dữ
   liệu (D-U3), S02 dùng sát thương quan sát trong trận.
 
+### D-U4c — G4 và Galaxy chạy trên lõi Suy luận chung (người dùng chốt 26/11/2026)
+
+- G4 (`galaxy_shadow_sword`) và Galaxy G1–G3 chuyển sang lõi chung giống Mega, cho đồng nhất. Lõi chung
+  của G4 dùng chính chiến thuật G4 (`plan_g4`, chế độ Suy luận) trên dữ kiện đóng băng, rồi lớp luật D-U1
+  (K4) lọc; G1–G3 dùng mục tiêu `galaxy` của lõi chung với luật D-U1/D-U4.
+- Mỗi lối chơi cần hiệu chuẩn riêng: 1 trận BASIC theo giao thức `COMMON_GALAXY_BASIC_SWAP_CONTROL_V1`.
+  Profile ghi `play_style`; Galaxy/G4 chỉ dùng lõi chung khi có profile đúng lối chơi đó, không thì giữ cách
+  chạy cũ (chiến thuật từng pet trong BASIC).
+- G4 sau khi tiến hóa thành công chỉ bảo vệ theo ngưỡng máu như BASIC (K7).
+
 ### D-U3 — xuất dữ liệu đóng góp (người dùng chốt 26/11/2026)
 
 - Người dùng là nhóm nhỏ của chủ tool: **xuất trực tiếp, không cần văn bản đồng ý**.
