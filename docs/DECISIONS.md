@@ -49,6 +49,12 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
 - **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), đọc bộ nhớ mới (D-U2), văn bản đồng ý gửi dữ
   liệu (D-U3), S02 dùng sát thương quan sát trong trận.
 
+### S02 — sát thương quan sát trong trận (người dùng chốt 26/11/2026)
+
+Suy luận **được phép** dùng sát thương quan sát được trong chính trận đang đánh, lấy từ phản hồi server
+đã ghi. Chỉ dùng trong trận đó; không suy ra công thức sát thương chung; trường thiếu vẫn là UNKNOWN.
+Cấu hình cá nhân của người dùng giữ nguyên như hiện tại (không trả về 400/600).
+
 ### D-U4 — giai đoạn trước tiến hóa (người dùng chốt 26/11/2026)
 
 Áp cho mọi lối chơi có cài Tiến hóa, trừ Demon (giữ checkpoint), khi chưa tiến hóa thành công và
