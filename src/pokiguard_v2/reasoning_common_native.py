@@ -104,7 +104,8 @@ def _review_timing_reuse(directory,data,control_source,qualification):
 def review_bundle(directory,data):
     """Recompute timing from hash-pinned raw lines, including sent/ACK joins."""
     from .reasoning_calibration_review import document,read_ref,PARAMETERS
-    from .reasoning_calibration import COMMON_DEMON_CONTROL_PROTOCOL,COMMON_MEGA_CONTROL_PROTOCOL,check_config,decode_config
+    from .reasoning_calibration import (COMMON_DEMON_CONTROL_PROTOCOL,COMMON_MEGA_CONTROL_PROTOCOL,
+        COMMON_GALAXY_CONTROL_PROTOCOL,check_config,decode_config)
     require(data['schema']==SCHEMA,'UI_REASONING_PROFILE_SCHEMA')
     export=document(directory,data['control_export'])
     require(export['schema']=='pokiguard.basic_calibration_export.v1' and export['finalized'] is True
@@ -124,7 +125,8 @@ def review_bundle(directory,data):
         'UI_REASONING_REQUEST_CHANGED')
     config=decode_config(request['config']);cap=request['total_attempt_cap']
     protocol=request.get('profile_protocol')
-    require(protocol in (COMMON_DEMON_CONTROL_PROTOCOL,COMMON_MEGA_CONTROL_PROTOCOL),'UI_REASONING_CONTROL_PROTOCOL')
+    require(protocol in (COMMON_DEMON_CONTROL_PROTOCOL,COMMON_MEGA_CONTROL_PROTOCOL,COMMON_GALAXY_CONTROL_PROTOCOL),
+        'UI_REASONING_CONTROL_PROTOCOL')
     check_config(config,cap,profile_protocol=protocol)
     require(request['reasoning_enabled'] is False
         and request['config']['ai'].get('reasoning_enabled',False) is False,'UI_REASONING_CONTROL_PROTOCOL')

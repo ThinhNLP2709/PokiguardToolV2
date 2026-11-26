@@ -246,6 +246,16 @@ class UIReasoningSession:
             self.closed.set()
 
 
+def _common_profile_for_style(paths,style):
+    """U4c: Galaxy/G4 use the common core only with a profile prepared for that exact play style."""
+    from .reasoning_common_native import profile_path
+    from .reasoning_snapshot import strict_json_loads
+    try:
+        path=profile_path(paths)
+        return path.is_file() and strict_json_loads(path.read_text('utf-8')).get('play_style')==style
+    except Exception:return False
+
+
 def _profile_trial_rules(paths,authority):
     """U4 trial: the loaded common profile's `d_u1_rules`, bound to the authority digest; else off."""
     from .reasoning_common_native import CommonNativeAuthority,profile_path
@@ -263,7 +273,8 @@ def create_ui_reasoning_session(config,*,paths,game_executable,directory,observe
     reason=ui_reasoning_intent_reason(config)
     try:
         if reason is not None:raise ValueError(reason)
-        if config.play_style.value in ('galaxy','galaxy_shadow_sword') and profile_loader is None:
+        if (config.play_style.value in ('galaxy','galaxy_shadow_sword') and profile_loader is None
+                and not _common_profile_for_style(paths,config.play_style.value)):
             from .reasoning_galaxy import GalaxyReasoningSession
             return GalaxyReasoningSession(config,directory=directory,observer=observer)
         from .reasoning_ui_profile import load_session_authority

@@ -27,7 +27,8 @@ from pokiguard_v2.pet_configuration import GameplayConfig
 CHECKPOINT='e3e3dee90dd09ecd51961c06d0b390dbb04994b5'
 # Reviewed read-compatibility migration only. This is not a native timing
 # profile/source pin and grants no attempts or action-family authority.
-LEGACY_MEGA_DEFAULT_REVIEW_SHA='10f295465c429ac2bc7aa772012985f6c30bbf0d89d2307790c2f2ff85190f35'
+# U4c (26/11/2026): the same reviewed file plus the Galaxy/G4 control branch (stripped above).
+LEGACY_MEGA_DEFAULT_REVIEW_SHA='7c440ea40d5830420e6b05911af9e641c66f34f15577cf1a6429c7613ef151d1'
 LEGACY_MEGA_DEFAULT_REVIEW_VALUE='hp_below_30'
 
 
@@ -72,6 +73,19 @@ def calibration_ast_projection(previous_raw,current_raw):
         branch=ast.parse('if profile_protocol == COMMON_MEGA_CONTROL_PROTOCOL:\n'
             '    from .reasoning_mega_control import check_mega_control\n'
             '    return check_mega_control(config, cap)\n').body[0]
+        matches=[n for n in function.body if ast.dump(n,include_attributes=False)==ast.dump(branch,include_attributes=False)]
+        if len(matches)!=1:return False
+        function.body.remove(matches[0])
+    # U4c: the Galaxy/G4 control is the same reviewed shape as the Mega one.
+    galaxy_constants=[n for n in current.body if isinstance(n,ast.Assign) and
+        ast.unparse(n)=="COMMON_GALAXY_CONTROL_PROTOCOL = 'COMMON_GALAXY_BASIC_SWAP_CONTROL_V1'"]
+    if galaxy_constants:
+        if len(galaxy_constants)!=1:return False
+        current.body.remove(galaxy_constants[0])
+        function=next(n for n in current.body if isinstance(n,ast.FunctionDef) and n.name=='check_config')
+        branch=ast.parse('if profile_protocol == COMMON_GALAXY_CONTROL_PROTOCOL:\n'
+            '    from .reasoning_galaxy_control import check_galaxy_control\n'
+            '    return check_galaxy_control(config, cap)\n').body[0]
         matches=[n for n in function.body if ast.dump(n,include_attributes=False)==ast.dump(branch,include_attributes=False)]
         if len(matches)!=1:return False
         function.body.remove(matches[0])
