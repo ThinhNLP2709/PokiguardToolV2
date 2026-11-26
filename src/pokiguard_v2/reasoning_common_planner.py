@@ -547,8 +547,8 @@ def _rule_blocked(problem,facts,rows):
         and (not safe_left or min(safe_left)>6 or _protection_allowed(problem,facts)))
     blocked=set();why={}
     for score,step,left in rows:
-        if score.baseline_member or step.action.family!='swap':continue
-        sword=effective(step.resources,'sword')
+        if score.baseline_member:continue  # K4 also covers PASS/effects; K6 only judges SWAPs
+        sword=effective(step.resources,'sword') if step.action.family=='swap' else 0
         if (profile in RAGE_LOCK_PROFILES and sword>0 and type(rage) is int and not exception
                 and not _evolution_need(facts)  # D-U4: no Rage lock before evolution
                 and rage+per*effective(step.resources,'rage')>=100):
