@@ -2033,7 +2033,9 @@ class BasicPolicyEngine:
                 evolution_pending=bool(self.config.evolve_enabled
                     and (state.fusion is None or state.fusion.used is not True)),
                 evolution_mana_cost=(state.fusion.mana_cost if state.fusion is not None
-                    and self.config.evolve_enabled and not state.fusion.used else None))
+                    and self.config.evolve_enabled and not state.fusion.used else None),
+                evolved=bool(self.config.evolve_enabled and state.fusion is not None
+                    and state.fusion.used is True))
             self._g4_trace = planned.facts
             projected = planned.facts.get('selected', {})
             self._skill_rush_trace = replace(self._skill_rush_trace,

@@ -86,10 +86,10 @@ def _future(move, budget):
 
 
 def plan_g4(state, moves, *, reasoning=False, budget_ms=150, clock=time.perf_counter_ns,
-            passive_active=True, evolution_pending=False, evolution_mana_cost=None):
+            passive_active=True, evolution_pending=False, evolution_mana_cost=None, evolved=False):
     """Always return an existing legal swap when one exists, even if risky."""
     if (type(reasoning) is not bool or type(passive_active) is not bool
-            or type(evolution_pending) is not bool
+            or type(evolution_pending) is not bool or type(evolved) is not bool
             or type(budget_ms) is not int or not 1 <= budget_ms <= 250):
         raise ValueError('G4 requires a boolean mode and a bounded 1..250ms setup budget')
     if not moves:
@@ -107,7 +107,10 @@ def plan_g4(state, moves, *, reasoning=False, budget_ms=150, clock=time.perf_cou
     own_rage = fraction(own, 'power', 'max_power')
     boss_threat = state_boss_threat(state)
     pressure = critical or (fill is not None and fill <= .60 and boss_rage is not None and boss_rage >= .80)
-    if reasoning:
+    # K7 (D-U1): boss-threat early protection only before a successful evolution;
+    # once evolved, protection follows the configured HP rule like BASIC.
+    early_protection = bool(reasoning and not evolved)
+    if early_protection:
         pressure = pressure or boss_threat['protection_requested']
     mana = getattr(own, 'mana', None)
     cost_known = type(evolution_mana_cost) is int and evolution_mana_cost > 0
@@ -217,6 +220,7 @@ def plan_g4(state, moves, *, reasoning=False, budget_ms=150, clock=time.perf_cou
         avoidable_known_sword_reply=False, refill_safety_certified=False,
         boss_hp_fraction=boss_hp, boss_rage_fraction=boss_rage, own_rage_fraction=own_rage,
         pressure_proxy=pressure, pressure_is_lethality_proof=False,
+        **({'early_protection_allowed': False} if reasoning and evolved else {}),
         boss_skill_threat=boss_threat, selected_protection_proxy=protection(selected),
         protection_amounts_and_drain_target='UNKNOWN_NOT_SURVIVAL_OR_CAST_PREVENTION',
         low_boss_hp_bonus='DECLARED_OPPORTUNITY_NOT_A_DAMAGE_FORMULA' if boss_hp is not None and boss_hp < 1 else 'UNKNOWN_OR_NOT_ACTIVE',

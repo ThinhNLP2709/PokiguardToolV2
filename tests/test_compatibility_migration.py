@@ -405,7 +405,11 @@ class DesktopIsolationTests(unittest.TestCase):
         }, set(g4['reviewed_files']))
         self.assertEqual({'src/pokiguard_v2/galaxy_shadow_sword.py',
                           'src/pokiguard_v2/boss_threat.py'}, set(g4['added_files']))
+        u4_reviewed = p.load_json(root / 'tests/fixtures/compatibility/u4_core_20261125.json')['reviewed_files']
         for name, expected in g4['added_files'].items():
+            if name in u4_reviewed:  # a later reviewed U4 change starts from the G4 pin
+                self.assertEqual(expected, u4_reviewed[name]['before_sha256'], name)
+                expected = u4_reviewed[name]['after_sha256']
             self.assertEqual(expected, hashlib.sha256((root/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest(), name)
         release = p.load_json(root / 'tests/fixtures/compatibility/release_137.json')
         self.assertEqual('pokiguard.compatibility.release-label.v1', release['schema'])
