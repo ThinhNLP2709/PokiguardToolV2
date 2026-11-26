@@ -486,6 +486,51 @@ def _protection_allowed(problem,facts):
     return threshold is not None and type(hp) is int and type(cap) is int and cap>0 and hp/cap<threshold
 
 
+def _evolution_need(facts):
+    """D-U4: evolution pending and our Mana still below the game's evolution cost."""
+    evolution=facts.get('evolution') if type(facts.get('evolution')) is dict else {}
+    own=facts.get('self') if type(facts.get('self')) is dict else {}
+    cost,mana=evolution.get('mana_cost'),own.get('mana')
+    return evolution.get('pending') is True and type(cost) is int and type(mana) is int and mana<cost
+
+
+def _seal_swords(grid,cells):
+    total=0
+    for row,col in cells:
+        cell=grid[row][col]
+        gem,mult=(cell.gem,cell.multiplier) if hasattr(cell,'gem') else (GemType(cell[0]),cell[1])
+        if gem is GemType.SWORD:total+=mult or 1
+    return total
+
+
+def _evolution_tiers(problem,facts,rows):
+    """D-U4 tiers: 0 Mana, 1 useful Drain/Shield, 2 other moves, 3 PASS. Mega keeps seal-area Swords."""
+    if not _evolution_need(facts):return None,frozenset()
+    own=facts.get('self') if type(facts.get('self')) is dict else {}
+    boss=facts.get('opponent') if type(facts.get('opponent')) is dict else {}
+    boss_mana,boss_shield=boss.get('mana'),boss.get('shield')
+    tiers={problem.baseline:3} if problem.baseline.family=='pass' else {}
+    for score,step,left in rows:
+        if step.action.family!='swap':continue
+        res=step.resources
+        sword=effective(res,'sword')
+        drain=(effective(res,'drain')>0 and type(boss_mana) is int and boss_mana>0
+            and (boss_shield in (None,0) or sword>0))
+        shield=effective(res,'shield')>0 and type(own.get('mana')) is int and own['mana']>=100
+        tiers[step.action]=0 if effective(res,'mana')>0 else 1 if drain or shield else 2
+    seal_blocked=set()
+    if problem.intent.profile=='mega_icarus_spam_skill':
+        from .mega_icarus import mega_seal_for_type
+        seal=mega_seal_for_type(facts.get('mega_seal_type'))
+        if seal is not None:
+            before=_seal_swords(problem.board,seal.cells)
+            loss={r[1].action:before-_seal_swords(r[1].after,seal.cells) for r in rows
+                if r[1].action.family=='swap' and tiers.get(r[1].action)==2 and not r[1].unresolved_residual}
+            if any(v<=0 for v in loss.values()):
+                seal_blocked={a for a,v in loss.items() if v>0}
+    return tiers,frozenset(seal_blocked)
+
+
 def _rule_blocked(problem,facts,rows):
     """K4 and K6 filters over completed root rows; the BASIC incumbent is never blocked."""
     profile=problem.intent.profile
@@ -505,6 +550,7 @@ def _rule_blocked(problem,facts,rows):
         if score.baseline_member or step.action.family!='swap':continue
         sword=effective(step.resources,'sword')
         if (profile in RAGE_LOCK_PROFILES and sword>0 and type(rage) is int and not exception
+                and not _evolution_need(facts)  # D-U4: no Rage lock before evolution
                 and rage+per*effective(step.resources,'rage')>=100):
             blocked.add(step.action);why['K6']=why.get('K6',0)+1
         elif base_left is not None and left>base_left:
@@ -558,11 +604,22 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
         scored[:]=[r[0] for r in root_scores]
         stage='ONE_STEP_COMPLETE'
         blocked,why=_rule_blocked(problem,facts,lefts) if rules else (frozenset(),{})
+        tiers,seal_blocked=_evolution_tiers(problem,facts,lefts) if rules else (None,frozenset())
+        if seal_blocked:
+            blocked=blocked|seal_blocked;why['D_U4_SEAL']=len(seal_blocked)
+        if tiers is not None:rule_diag.update(d_u4='PRE_EVOLUTION_MANA_FIRST')
         if limits.rules or facts.get('d_u1_rules') is True:
             rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
         def choose():
             ordered=[c for c in sorted(scored,key=lambda c:order_key(c,problem.intent.profile))
                 if c.baseline_member or c.action not in blocked]
+            if tiers is not None:
+                rank=lambda c:tiers.get(c.action,2)
+                top=min(rank(c) for c in ordered)
+                if rank(next(c for c in ordered if c.baseline_member))>top:
+                    # D-U4 user priority overrides the improvement margin.
+                    return next(c for c in ordered if rank(c)==top).action
+                ordered=[c for c in ordered if rank(c)==top]
             base=next(c for c in ordered if c.baseline_member)
             best=ordered[0]
             return best.action if not best.baseline_member and best.utility.low-base.utility.high>=.05 else None
