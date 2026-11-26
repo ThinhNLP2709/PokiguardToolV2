@@ -2,7 +2,7 @@
 
 ```text
 ROADMAP: Opus canonical plan — U4 (sau U2; user cho làm tiếp tự động 25/11/2026)
-RESULT: PARTIAL_PASS_OFFLINE — U4a (kiến thức boss, nhãn tình huống) và U4b (luật D-U1 sau cờ tắt) xong;
+RESULT: PARTIAL_PASS — U4a, U4b (luật D-U1) và D-U4 xong; chạy thử thật 10 trận Mega (26/11) đạt;
         U4c (schema common_problem v2, G4 vào lõi chung) còn làm
 EFFICACY VERDICT: NOT_APPLICABLE (bật luật chỉ đo offline trên corpus U1, chưa live)
 RUNTIME MẶC ĐỊNH: không đổi — CommonLimits.rules=False; digest quyết định U1 giữ nguyên f35e6991… (447/447)
@@ -46,6 +46,35 @@ mỗi bàn một lần chạy, nên chưa phải phép đo E1 chuẩn 3 lần/b�
 | K9 — thời gian `plan_common` | p50 76,4 / p95 297,6 / max 738,1 ms | p50 79,3 / p95 347,9 / max 780,8 ms (trong E1: p95 ≤ 500, max ≤ 1000) |
 
 K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p99 theo đúng cách đo E1 cũng chưa đo.
+
+## 3a. Đọc chậm khi chạy thật — nguyên nhân và sửa (25–26/11/2026)
+
+- Trận BASIC hiệu chuẩn nhiều lần bị loại vì có lần đọc trạng thái > 100 ms (gate hiệu chuẩn bắt buộc mọi
+  mẫu ≤ 100 ms). Hiện tượng có từ trước U2 (5/6 trận Suy luận Mega ngày 24/11 có lần đọc > 100 ms).
+- Bộ đo `POKIGUARD_V2_PROVIDER_PROFILE=1` (opt-in, chỉ bật trong phiên test) chỉ ra nguyên nhân: mỗi lần đọc
+  chậm, `_retain_validated_learned_regions` rà lại toàn bộ vùng nhớ (~90–100 ms) vì đối tượng nằm ngoài mọi
+  vùng nhớ hợp lệ, và lặp lại ở mọi lần đọc.
+- Sửa: cùng một tập địa chỉ không tìm thấy vùng thì chỉ rà lại sau 120 s (`memory_board_provider.py`); tap
+  dùng lại capture đã chiếu của cùng JSON (`dispatcher_qte_result_tap.py`). Lần đọc > 100 ms: 78/810 →
+  14/593 → 4/443; hai trận hiệu chuẩn cuối đạt 12/12 và 15/15.
+
+## 3b. Chạy thử thật (No. 11 lv185, Mega Icarus, phiên cấu hình riêng)
+
+| | 24/11 (trước sửa) | 26/11 luật D-U1 | 26/11 luật D-U1 + D-U4, skill 6 Kiếm trong vùng ấn |
+|---|---|---|---|
+| Kết quả | 4/5 WIN (Icarus) | 5/5 WIN | 5/5 WIN |
+| Số lượt mỗi trận | — | 97, 51, 55, 89, 41 (TB 67) | 37, 55, 43, 63, 75 (TB 55) |
+| SWAP do Suy luận quyết | 76% Icarus, 44% T-Rex | 109/109 | 101/101 |
+| Đọc > 100 ms làm rơi về BASIC | 27 + 13 | 0 | 0 |
+| Quyết định trước tiến hóa | — | 144 | 69 |
+| Trước tiến hóa: Mana / Hút / Khiên / Kiếm / khác | — | 19% / 16% / 9% / 7% / 49% | 35% / 17% / 12% / 12% / 25% |
+
+- Chạy lại lõi offline trên đúng các bàn của phiên D-U4 cho cùng 69/69 lựa chọn (tái lập).
+- Với điều kiện ra skill theo số Kiếm, lookahead của Mega lần đầu hoàn tất (COMMON_BOUNDED_IMPROVEMENT 37,
+  COMMON_COMPLETED_RETENTION 23 trên 160 quyết định).
+- Ván 4 phiên D-U1: trong 18 lượt boss có ≥ 160 Mana, 12 lượt không có nước Hút trên bàn, 5 lượt có Hút,
+  1 lượt (85) ăn 5 Kiếm ở Nộ 250 để boss hết Kiếm thay vì Hút 6 (boss khi đó có 3250 Khiên).
+- 10 trận trên một boss chỉ cho thấy luật chạy đúng hướng; chưa đủ để nói Suy luận mạnh hơn BASIC.
 
 ## 3. Còn lại / cần user
 
