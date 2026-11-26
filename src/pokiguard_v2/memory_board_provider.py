@@ -19,7 +19,7 @@ from typing import Any, Protocol
 from .acked_sequences import AckedSequenceSnapshot, read_acked_sequences
 
 _PROFILE_UNSET = object()
-LEARNED_REGION_MISS_RETRY_SECONDS = 5.0
+LEARNED_REGION_MISS_RETRY_SECONDS = 120.0
 from .combat_cards import (
     ATTACK_ELEMENT_TYPES,
     CARD_UI_BOARD_OFFSET,
