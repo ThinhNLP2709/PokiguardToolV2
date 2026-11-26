@@ -18,7 +18,7 @@ MODULES = (
     'test_active_skill_inventory', 'test_active_skill_evidence', 'test_skill_evidence_isolation',
     'test_icarus_core_evidence',
     'test_trex_core_evidence',
-    'test_galaxy_core_evidence', 'test_reasoning_u1_bench', 'test_u2_response_evidence', 'test_u4_knowledge_situations', 'test_u4_rules', 'test_u4_tap_projection_reuse', 'test_u4_poll_profile',
+    'test_galaxy_core_evidence', 'test_reasoning_u1_bench', 'test_u2_response_evidence', 'test_u4_knowledge_situations', 'test_u4_rules', 'test_u4_tap_projection_reuse', 'test_u4_poll_profile', 'test_u4_learned_region_misses',
     'test_galaxy', 'test_galaxy_glank', 'test_galaxy_pet_reasoning', 'test_galaxy_skill_phase',
     'test_mega_swap_control', 'test_reasoning_calibration_compat_projection',
 )

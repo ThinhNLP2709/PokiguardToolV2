@@ -19,6 +19,7 @@ from typing import Any, Protocol
 from .acked_sequences import AckedSequenceSnapshot, read_acked_sequences
 
 _PROFILE_UNSET = object()
+LEARNED_REGION_MISS_RETRY_SECONDS = 5.0
 from .combat_cards import (
     ATTACK_ELEMENT_TYPES,
     CARD_UI_BOARD_OFFSET,
@@ -1986,10 +1987,25 @@ class MemoryBoardStateProvider(BoardStateProvider):
         if current:
             self._learned_regions[name] = set(current)
             return
+        # U4: live polls repeated this full VirtualQuery walk (~90 ms) every poll when the
+        # validated objects sat outside every bounded region. Same addresses: retry after a bound.
+        key = frozenset(addresses)
+        misses = self.__dict__.setdefault("_learned_region_misses", {})
+        now = time.monotonic()
+        miss = misses.get(name)
+        if (
+            miss is not None
+            and miss[0] == key
+            and now - miss[1] < LEARNED_REGION_MISS_RETRY_SECONDS
+        ):
+            self._learned_regions.pop(name, None)
+            return
         current = regions_containing_addresses(self._regions(), addresses)
         if current:
+            misses.pop(name, None)
             self._learned_regions[name] = set(current)
         else:
+            misses[name] = (key, now)
             self._learned_regions.pop(name, None)
 
     def _owned_anchor_regions(self, addresses: set[int]) -> tuple[Any, ...]:
