@@ -49,6 +49,14 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
 - **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), đọc bộ nhớ mới (D-U2), văn bản đồng ý gửi dữ
   liệu (D-U3), S02 dùng sát thương quan sát trong trận.
 
+### D-U3 — xuất dữ liệu đóng góp (người dùng chốt 26/11/2026)
+
+- Người dùng là nhóm nhỏ của chủ tool: **xuất trực tiếp, không cần văn bản đồng ý**.
+- Gói chỉ chứa log trận đấu (bàn cờ, nước đi, kết quả, bằng chứng server đã ghi). Tên tài khoản chỉ ở dạng
+  hash một chiều; không có mật khẩu, IP hay dữ liệu cá nhân khác.
+- Nơi nhận: một thư mục Google Drive do chủ tool tạo và chia sẻ riêng (có thể gắn link vào tool). Tool chỉ
+  tạo file và mở thư mục/link; không tự tải lên, không lưu thông tin đăng nhập Drive trong tool.
+
 ### S02 — sát thương quan sát trong trận (người dùng chốt 26/11/2026)
 
 Suy luận **được phép** dùng sát thương quan sát được trong chính trận đang đánh, lấy từ phản hồi server
