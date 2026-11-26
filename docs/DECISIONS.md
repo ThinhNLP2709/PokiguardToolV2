@@ -49,6 +49,25 @@ BASIC giữ nguyên và vẫn là mặc định. Đây là chỉ đạo sản ph
 - **Chưa chốt:** hoãn tiến hóa/giữ skill (D-U6), đọc bộ nhớ mới (D-U2), văn bản đồng ý gửi dữ
   liệu (D-U3), S02 dùng sát thương quan sát trong trận.
 
+### D-U4 — giai đoạn trước tiến hóa (người dùng chốt 26/11/2026)
+
+Áp cho mọi lối chơi có cài Tiến hóa, trừ Demon (giữ checkpoint), khi chưa tiến hóa thành công và
+Mana hiện tại còn thấp hơn Mana game yêu cầu để tiến hóa. Chỉ trong lõi Suy luận, sau công tắc chạy
+thử; BASIC giữ nguyên. Sau khi tiến hóa thành công thì quay về luật D-U1.
+
+- **Mục tiêu:** gom Mana để tiến hóa, từ viên Mana và Hút của boss.
+- **Khiên:** giữ Mana của ta khỏi bị boss Hút; chỉ có ích khi ta có từ 100 Mana trở lên. Dưới 100
+  Mana thì Khiên là nước vô nghĩa.
+- **Thứ tự:** có nước ăn Mana thì ăn Mana trước. Không có thì Hút nếu boss có Mana > 0; Hút tốt hơn
+  Khiên vô nghĩa, Kiếm, Máu và tốt hơn bỏ lượt. Boss đang có Khiên thì Hút coi là vô nghĩa, trừ khi
+  trong cùng nước có đòn đánh trúng boss trước (quan sát U2).
+- **Nộ:** chưa cần giữ Nộ, nên không áp K6 trong giai đoạn này. Không còn nước Mana, Khiên có ích hay
+  Hút mà chỉ còn nước Kiếm thì ăn Kiếm để làm mới bàn thay vì bỏ lượt.
+- **Mega Kết Ấn:** giữ Kiếm trong vùng ấn vì skill cần chúng; khi phải ăn Kiếm thì ăn Kiếm ngoài vùng
+  ấn trước. Khi test Mega, điều kiện ra skill là 6 Kiếm trong vùng ấn, đếm theo luật điều kiện ra skill
+  hiện có (cộng hệ số nhân).
+- **K4** (không chừa Kiếm cho boss nhiều hơn BASIC) vẫn giữ trong giai đoạn này.
+
 ### D-U2 — thu dữ liệu v2 (người dùng chốt 24/11/2026)
 
 - Cho chạy L0: tối đa 2 trận BASIC, một boss thường và một boss từ Đảo Cổ Đại trở đi.
