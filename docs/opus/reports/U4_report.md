@@ -110,6 +110,18 @@ K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p9
   0 lỗi), 6 nước khác BASIC, K4 gạt 242 ứng viên. Bước G4: BEST_AVAILABLE 43, TRIGGER 17, PROTECT 10,
   HEALING_COMBO 3, PROTECTING_TRIGGER 2. Một trận BASIC G4 cùng boss: WIN, 31 lượt.
 
+## 3f. Galaxy (G1) trên lõi chung — chạy thật (27/11/2026, Voltlynx lv498 id 153, Đảo Sấm Sét)
+
+- Pet thường → tiến hóa G1, thẻ skill, ra skill khi đủ cost, Tự bảo vệ: Không. Hiệu chuẩn 50/50 mẫu sau khi
+  nâng giới hạn rà lại vùng nhớ lên 3600 s (lần trước 39/40, một lần rà trùng lúc đọc: 133 ms).
+- 5 trận Suy luận: 5/5 WIN, 115/85/65/145/83 lượt, 179 SWAP; Suy luận quyết 104 (58%). 75 nước còn lại theo
+  thiết kế: bộ chặn chiến thuật Galaxy của BASIC (`galaxy_strategy_allows`, 78 lần kiểm) và chưa có đề xuất
+  hoàn tất (42 lần: 30 nước BASIC lõi không biểu diễn được, 12 nước do skill/tiến hóa sở hữu).
+- Lookahead hoàn tất ở 89 quyết định (COMMON_BOUNDED_IMPROVEMENT); 22 nước khác BASIC; 0 lần đọc > 100 ms; 0 lỗi.
+- Luật: K6 gạt 98 nước ăn Kiếm ở Nộ ≥ 100, K4 gạt 591; không có vi phạm K6 thật (1 ca bị công cụ đánh dấu là
+  trước tiến hóa, Mana 60 < 120, D-U4 cho phép).
+- Trước tiến hóa (27 quyết định): Mana 18, Hút 4, Kiếm 3, khác 2; chạy lại offline cho cùng lựa chọn.
+
 ## 3. Còn lại / cần user
 
 - **U4c (offline, làm tiếp):** schema `common_problem.v2` đọc được v1; đưa G4 (`galaxy_shadow_sword`) vào lõi chung
