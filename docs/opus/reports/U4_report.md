@@ -139,6 +139,10 @@ Chênh lệch trung bình mỗi nước (Suy luận − BASIC), chỉ các nư�
 - **Galaxy: 22 nước đều do nhìn trước lượt sau (18 lookahead hoàn tất, 4 chạm trần node)**, mất trung bình 2,27 Mana
   và 4,27 tài nguyên ở lượt hiện tại mà gần như không giảm Kiếm boss. Đây đúng là dạng "trả giá mà chưa đo được lợi"
   của gate K8; cần kiểm lợi ích ở lượt sau có thật không trước khi dùng Galaxy Suy luận rộng hơn.
+- **Kiểm lượt sau (cùng log, so theo nhóm, không phải phản thực tế):** lượt kế tiếp của ta sau 14 nước Galaxy
+  Suy luận thu trung bình 12,0 tài nguyên (Mana 4,07), sau nước BASIC là 7,67 (Mana 2,52): +4,3 tổng, +1,5 Mana,
+  gần bằng phần đã bỏ ra (−4,27, Mana −2,27). Tính hai lượt gần như hòa (tổng ≈ 0, Mana ≈ −0,7). Mẫu nhỏ, có nhiễu;
+  chưa sửa cách chấm điểm Galaxy, cần thêm trận Galaxy (G2/G3) để kết luận.
 
 ## 3. Còn lại / cần user
 
