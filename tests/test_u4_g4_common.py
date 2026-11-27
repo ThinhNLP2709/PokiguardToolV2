@@ -25,15 +25,24 @@ class G4CommonTests(unittest.TestCase):
         seen = 0
         for p in g4_problems():
             d = plan_common(p, CommonLimits(rules=True), clock=lambda: 0)
-            self.assertIn(d.reason, ('COMMON_G4_TACTIC', 'COMMON_G4_RETAIN'))
-            self.assertEqual('G4_TACTIC_COMPLETE', d.diagnostics.plain()['stage'])
+            # The host selection check accepts only completed common stages/reasons.
+            self.assertIn(d.reason, ('COMMON_ONE_STEP_IMPROVEMENT', 'COMMON_COMPLETED_RETENTION'))
+            self.assertEqual('ONE_STEP_COMPLETE', d.diagnostics.plain()['stage'])
+            self.assertIn('g4_step', d.diagnostics.plain())
             chosen, _ = _g4_choice(p, p.facts.plain(), lambda: 0)
-            if d.reason == 'COMMON_G4_TACTIC':
+            if d.proposal is not None:
                 self.assertEqual(chosen, d.proposal)
                 c, b = u1.compact(project_action(p, d.proposal)), u1.compact(project_action(p, p.baseline))
                 self.assertLessEqual(c['known_reply_sword_max'], b['known_reply_sword_max'])
             seen += 1
         self.assertGreater(seen, 0)
+
+    def test_host_recompute_is_reproducible_with_a_wall_clock(self):
+        import time
+        for p in g4_problems(4):
+            a = plan_common(p, CommonLimits(rules=True), clock=lambda: 0)
+            b = plan_common(p, CommonLimits(rules=True, duration_ms=6000), clock=time.perf_counter_ns)
+            self.assertEqual((a.reason, a.proposal), (b.reason, b.proposal))
 
 
 if __name__ == '__main__':

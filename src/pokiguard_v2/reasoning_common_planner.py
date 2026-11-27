@@ -639,12 +639,14 @@ def plan_common(problem,limits=CommonLimits(),*,clock=time.perf_counter_ns,cance
             blocked=blocked|seal_blocked;why['D_U4_SEAL']=len(seal_blocked)
         if tiers is not None:rule_diag.update(d_u4='PRE_EVOLUTION_MANA_FIRST')
         if problem.intent.profile=='galaxy_shadow_sword':
-            chosen,g4=_g4_choice(problem,facts,clock);rule_diag.update(g4)
-            stage='G4_TACTIC_COMPLETE'
+            # One-step G4 tactic; the host recomputes it, so its setup budget uses no wall clock.
+            chosen,g4=_g4_choice(problem,facts,lambda:0);rule_diag.update(g4)
+            if limits.rules or facts.get('d_u1_rules') is True:
+                rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
             if (chosen is None or chosen==problem.baseline or chosen in blocked
                     or not any(c.action==chosen for c in scored)):
-                return finish('COMMON_G4_RETAIN')
-            return finish('COMMON_G4_TACTIC',chosen)
+                return finish('COMMON_COMPLETED_RETENTION')
+            return finish('COMMON_ONE_STEP_IMPROVEMENT',chosen)
         if limits.rules or facts.get('d_u1_rules') is True:
             rule_diag.update(rules='D_U1' if rules else 'D_U1_NOT_APPLICABLE',rule_blocked=dict(why))
         def choose():
