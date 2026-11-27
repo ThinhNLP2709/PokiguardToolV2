@@ -122,6 +122,24 @@ K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p9
   trước tiến hóa, Mana 60 < 120, D-U4 cho phép).
 - Trước tiến hóa (27 quyết định): Mana 18, Hút 4, Kiếm 3, khác 2; chạy lại offline cho cùng lựa chọn.
 
+## 3g. Đánh giá offline: nước Suy luận khác BASIC trên chính các bàn live (27/11/2026)
+
+Chỉ so phần đã biết của nước đi (trước refill, không có mô hình sát thương); không chứng minh nước nào hay hơn.
+Chênh lệch trung bình mỗi nước (Suy luận − BASIC), chỉ các nước đã thực sự gửi:
+
+| | Số nước | Kiếm boss ăn được (đã biết) | Mana | Nộ | Kiếm ta ăn | Khiên | Máu | Tổng tài nguyên |
+|---|---:|---|---:|---:|---:|---:|---:|---:|
+| Mega (D-U1 + D-U4) | 48 | −1,6; ít hơn ở 18, bằng ở 30, nhiều hơn 0 | −0,58 | +0,38 | +1,79 | −0,38 | −0,35 | +1,17 |
+| G4 | 6 | bằng ở 6 | 0 | −5,33 | 0 | +0,67 | +0,17 | −3,17 (Hút +1,33) |
+| Galaxy G1 | 22 | −0,05; ít hơn ở 1, bằng ở 21 | −2,27 | −0,18 | 0 | −0,64 | −1,18 | −4,27 |
+
+- Mega: nước khác BASIC chặn Kiếm boss và ăn nhiều Kiếm hơn; 9 lần ăn Kiếm ở Nộ ≥ 100 đều hợp lệ (7 trước tiến
+  hóa theo D-U4, 2 ngoại lệ Nộ đầy 250).
+- G4: đổi Nộ (G4 không dùng) lấy Hút/Khiên/Máu khi boss đe dọa, đúng thiết kế bảo vệ sớm.
+- **Galaxy: 22 nước đều do nhìn trước lượt sau (18 lookahead hoàn tất, 4 chạm trần node)**, mất trung bình 2,27 Mana
+  và 4,27 tài nguyên ở lượt hiện tại mà gần như không giảm Kiếm boss. Đây đúng là dạng "trả giá mà chưa đo được lợi"
+  của gate K8; cần kiểm lợi ích ở lượt sau có thật không trước khi dùng Galaxy Suy luận rộng hơn.
+
 ## 3. Còn lại / cần user
 
 - **U4c (offline, làm tiếp):** schema `common_problem.v2` đọc được v1; đưa G4 (`galaxy_shadow_sword`) vào lõi chung
