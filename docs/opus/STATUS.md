@@ -5,7 +5,7 @@ Con trỏ tiến độ của [plan canonical](opus-reasoning-upgrade-plan.md).
 | Mục | Trạng thái |
 |---|---|
 | Plan canonical | Đã chốt và push (`5c887b77`, 23/11/2026) |
-| Phase hiện tại | **U4c xong offline** (26–27/11): G4 + Galaxy lên lõi chung, giao thức hiệu chuẩn Galaxy/G4, định tuyến theo lối chơi; G4 bảo vệ sớm chỉ trước tiến hóa; U3 nút xuất dữ liệu ([báo cáo U4](reports/U4_report.md)). **Chờ live**: hiệu chuẩn + Suy luận G4, rồi G1–G3 |
+| Phase hiện tại | **U4c**: G4 chạy thật trên lõi chung 5/5 WIN, 75/75 SWAP do Suy luận quyết (27/11); Mega 10/10 WIN (26/11) ([báo cáo U4](reports/U4_report.md)). **Chờ live**: G1–G3 trên lõi chung |
 | Bàn giao | Điểm chốt 26/11/2026 cho agent/session khác: [HANDOFF_20261126.md](HANDOFF_20261126.md) |
 | Phase trước | U1 + D-U1 (24/11); U2 + D-U2 + L0 2 trận BASIC ([báo cáo U2](reports/U2_report.md), 25/11) |
 | Runtime | U2 thêm trường log + fact boss (đã chạy L0); U4b thêm luật D-U1 sau cờ mặc định tắt. Đã commit, chưa push. Fingerprint source đổi theo từng commit; profile Suy luận chế độ source phải chuẩn bị lại trước khi chạy thật |

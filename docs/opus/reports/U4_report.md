@@ -100,6 +100,16 @@ K1 (tái lập hai process) cho chế độ bật luật chưa chạy riêng; p9
 - Còn cần live: G4 (boss Argilpus lv170, id 2233) và G1–G3 (Genbu lv161 id 1752 / Argilpus) — mỗi lối chơi
   1 trận BASIC hiệu chuẩn rồi tối đa 5 trận Suy luận.
 
+## 3e. G4 trên lõi chung — chạy thật (27/11/2026, Lienor lv324 id 2217, Khế Ước)
+
+- Lần chạy đầu (Argilpus) mọi quyết định G4 bị bước kiểm phía host loại (nhãn giai đoạn/lý do riêng); đã sửa
+  để G4 dùng `ONE_STEP_COMPLETE` và lý do chuẩn, ngân sách G4 không dùng đồng hồ thật nên host tính lại khớp.
+- Lỗi khác đã sửa: witness Galaxy không tiến hóa có fusion `[0, 0]`; Start khi cửa sổ game bị thu nhỏ làm mất
+  lượt hiệu chuẩn (không phải lỗi code, phải tạo phiên mới).
+- Kết quả 5 trận Suy luận G4: 5/5 WIN, 21/27/31/43/23 lượt, 75 SWAP đều do Suy luận quyết (0 lần đọc > 100 ms,
+  0 lỗi), 6 nước khác BASIC, K4 gạt 242 ứng viên. Bước G4: BEST_AVAILABLE 43, TRIGGER 17, PROTECT 10,
+  HEALING_COMBO 3, PROTECTING_TRIGGER 2. Một trận BASIC G4 cùng boss: WIN, 31 lượt.
+
 ## 3. Còn lại / cần user
 
 - **U4c (offline, làm tiếp):** schema `common_problem.v2` đọc được v1; đưa G4 (`galaxy_shadow_sword`) vào lõi chung
