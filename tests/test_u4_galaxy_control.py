@@ -46,5 +46,15 @@ class GalaxyControlTests(unittest.TestCase):
             self.assertTrue(_common_profile_for_style(paths, 'galaxy_shadow_sword'))
 
 
+    def test_galaxy_witness_accepts_no_fusion_zeros_and_mega_key_stays_strict(self):
+        from pokiguard_v2.reasoning_galaxy_control import galaxy_swap_witness_key
+        from pokiguard_v2.reasoning_mega_control import mega_swap_witness_key
+        cfg = self.control()
+        witness = dict(account_username_sha256='a' * 64, boss=[99, 1212567, 1056, 250, 1103],
+                       loadout=dict(cards=[], config=['galaxy', 'none', 'pet_passive'], fusion=[0, 0]))
+        self.assertIn('pet_passive', galaxy_swap_witness_key(witness, cfg))
+        with self.assertRaises(ValueError):
+            mega_swap_witness_key(witness, cfg)
+
 if __name__ == '__main__':
     unittest.main()

@@ -184,7 +184,9 @@ def review_bundle(directory,data):
         if not sample['eligible_for_descriptive_R']:continue
         if protocol in (COMMON_MEGA_CONTROL_PROTOCOL,COMMON_GALAXY_CONTROL_PROTOCOL):
             from .reasoning_mega_control import mega_swap_witness_key
-            mega_witnesses.add(mega_swap_witness_key(p.get('witness'),config))
+            from .reasoning_galaxy_control import galaxy_swap_witness_key
+            key=galaxy_swap_witness_key if protocol==COMMON_GALAXY_CONTROL_PROTOCOL else mega_swap_witness_key
+            mega_witnesses.add(key(p.get('witness'),config))
         key=(sample['path'],sample['line']);require(key not in seen,'UI_REASONING_DUPLICATE_SAMPLE');seen.add(key)
         times=[p.get(k) for k in ('observed_ns','observation_read_end_ns','decision_exit_ns',
             'preflight_start_ns','read_end_ns','validation_end_ns','executor_return_ns')]

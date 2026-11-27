@@ -90,7 +90,10 @@ def export(request_path,request_sha,timing_directory,farm_directory):
               or p.get('timer_source')!='MatchService.server_tick'):reasons.append('WRONG_INPUT_TIMER_COHORT')
             if mega_control:
                 from pokiguard_v2.reasoning_mega_control import mega_swap_witness_key
-                try:witnesses.add(mega_swap_witness_key(p.get('witness'),decode_config(request['config'])))
+                from pokiguard_v2.reasoning_galaxy_control import galaxy_swap_witness_key
+                key=(galaxy_swap_witness_key if request.get('profile_protocol')==COMMON_GALAXY_CONTROL_PROTOCOL
+                    else mega_swap_witness_key)  # a Galaxy pet without fusion reports [0, 0]
+                try:witnesses.add(key(p.get('witness'),decode_config(request['config'])))
                 except ValueError:
                     witnesses.add('null');errors.append('MISSING_OR_INVALID_MEGA_SWAP_WITNESS')
             else:witnesses.add(canonical_json(p.get('witness')))
